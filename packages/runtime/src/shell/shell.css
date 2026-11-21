@@ -227,6 +227,10 @@ body {
 
 .pop-action { margin: var(--space-2) var(--space-2) 0; }
 
+/* The brain's model under its choice (brain-model.ts). */
+.brain-model { margin-top: var(--space-2); }
+.brain-model .input { flex: 1; min-width: 0; }
+
 .dialog-title {
   margin: 0;
   font-size: var(--text-lg);

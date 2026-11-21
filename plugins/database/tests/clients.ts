@@ -2,7 +2,7 @@
 // protocol (markers read from the arguments, quote mode), and what a session's db.run would answer
 // (the bridge stub's StubDatabase, ADR 0281), from a script that answers each statement. The unit
 // tests' harness and the runtime e2e page (packages/runtime/e2e/fixture/database.ts) share them, so
-// this file imports nothing the browser cannot load.
+// this file imports nothing the browser cannot load. pg_dump and pg_restore are backup-fixture.ts's.
 import type {
   DbColumn,
   DbServerError,
@@ -10,6 +10,7 @@ import type {
   StubSession,
   StubStatement,
 } from "../../../packages/bridge/src/index";
+import { programReply } from "./backup-fixture";
 
 /**
  * What a scripted statement gives back: rows (the first is the header; on PostgreSQL a value may be
@@ -72,6 +73,8 @@ export function scriptedReply(
   script: Script,
   env: Record<string, string>,
 ): Reply {
+  const program = programReply(command, args);
+  if (program) return program;
   if (args[0] === "--version") return { stdout: VERSIONS[command] ?? "", stderr: "", code: 0 };
   return sqliteRun(args, script, env);
 }

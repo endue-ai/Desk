@@ -1,7 +1,7 @@
 # plugins/sheets
 
 `endue.sheets` opens every spreadsheet in one grid, in the community folder format and on the public
-SDK only, and edits CSV and TSV cells so that a save changes only their bytes (ADR 0071).
+SDK only, and edits CSV and TSV cells so that a save changes only their bytes (ADR 0071). Eris reads a range of an open one with `endue.sheets.read { path?, sheet?, range?, formulas? }` (ADR 0088, `ui/agent.js`).
 
 | Formats | Read tier | Edit tier |
 | --- | --- | --- |

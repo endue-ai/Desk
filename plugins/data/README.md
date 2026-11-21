@@ -3,7 +3,7 @@
 `endue.data` ("Data"), structured data and configuration files, each in a window of its own (ADR 0212),
 in the community folder format on the public SDK only. Its `contributes.files` rules open JSON, JSONC, JSON5, JSON
 Lines and NDJSON, YAML, TOML, XML, XSD and XSLT, property lists (XML and binary), INI, CFG and CONF,
-Java properties, dotenv (`.env`, `.env.*`), HCL and Terraform, MessagePack, CBOR and BSON.
+Java properties, dotenv (`.env`, `.env.*`), HCL and Terraform, MessagePack, CBOR and BSON. Eris reads the file in the window in use with `endue.data.read { path?, pointer?, depth? }` (ADR 0088, `ui/agent.js`); masked values come back as `[secret]`, revealed or not.
 
 Each format has its own parser (`ui/parse/`, no third-party code) into one typed tree: tree and raw
 text (hex for binary data), groups of 100, search (`Mod+F`, `Mod+G`), JSON Pointer and path, parse

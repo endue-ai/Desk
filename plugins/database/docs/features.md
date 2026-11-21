@@ -56,13 +56,14 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   schema's types. Passwords are never read: not a user mapping's options, a subscription's connection string, a
   role's password, or an option named like a secret.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
-  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
+  exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
+  schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
+  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
   Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
-kinds in `schema/pg/`), `view-tree.js`, `view-diagram.js`.
+kinds in `schema/pg/`), `view-tree.js`.
 
 ## Objects
 
@@ -300,6 +301,29 @@ Modules: `features/activity/`.
 
 Modules: `features/overview/`.
 
+## ER diagram
+
+- A diagram of a schema, of several, of the tables the explorer's filter keeps, or of a table and its
+  neighbours 1 to 9 foreign keys away either way (Database: ER diagram of a table and its neighbours). A
+  PostgreSQL connection's diagram reads the schema cache (ADR 0285); other engines read their catalog.
+- Each table shows its columns with type, `null` for a nullable one, PK and FK, and its comment as a tooltip;
+  all columns (the first 50, then how many more), keys only, or none. Each line names its foreign key; its ends
+  say one, zero or one, or many. Tables of other schemas are named with their schema.
+- Laid out in layers over the foreign keys, a referenced table left of those that refer to it, lines routed
+  round the tables; Auto layout (`a`) lays it out again. A table dragged, or moved with Shift and the arrows, stays
+  where it was put: the layout is kept per connection and diagram in the plugin's store across restarts
+  (ADR 0315). A new table lands beside the placed ones; a dropped one leaves.
+- Add or remove a table, add a table's neighbours (`n`) or a schema, and draw a relation the database does not
+  declare (dashed, said to be not in the database, kept with the diagram).
+- Export image… writes SVG (the theme's colours as values) or PNG at 1x or 2x where the save dialog says,
+  asking once for the path when it is not granted (ADR 0260); Copy image puts a PNG on the clipboard. Either
+  holds the diagram alone.
+- Wheel pans, Mod and the wheel zooms, a drag on the background pans; Fit, `+`, `-` and `0` set the zoom; past
+  30 tables a map shows where the view is. Arrows move between tables, Enter opens one, Delete removes it.
+  From 200 tables the layout runs in a worker; boxes away from the view are not drawn, nor rows far out.
+
+Modules: `features/diagram/`, `schema/diagram.js`.
+
 ## Maintenance
 
 - A form per target of a PostgreSQL connection (13 and later; a standby refuses): VACUUM, ANALYZE, REINDEX
@@ -316,6 +340,46 @@ Modules: `features/overview/`.
   (VERBOSE) shows when it ends (ADR 0038), with the statistics before and after; `g` reads again (ADR 0293).
 
 Modules: `features/maintenance/`.
+
+## Routines
+
+- A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
+  Routines, or Run with its arguments, first in the row's menu) or the palette (a name, then the signature of
+  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in
+  words.
+- A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
+  0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
+  the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and
+  TABLE arguments say they come back as columns. The exact call shows as values change: `SELECT f(...)`,
+  `SELECT * FROM f(...)` for a set, a row type or OUT columns, `CALL p(...)` with OUT passed as NULL; named
+  notation where arguments have names, every literal quoted and cast to its declared type.
+- Volatility decides the guard: a VOLATILE function or any procedure is a write, refused on a read-only
+  connection (rolled back too), asked on production, and run for an agent only after the person's yes.
+  "Run in a transaction and roll back" sends the call between BEGIN and ROLLBACK; a procedure whose source
+  commits or rolls back runs alone and is not offered it.
+- Run (`Mod+Enter`) runs the call in the connection's console: its result tabs, notices in Messages, the
+  history. The arguments are remembered per connection and routine for the session, never across a restart.
+
+Modules: `features/routines/`.
+## Backup and restore
+
+- Back up a PostgreSQL database with `pg_dump` from a form (ADR 0313): format (custom, directory, tar, plain),
+  the whole database, schemas or tables, data or schema only, without owners or privileges, compression
+  (custom and directory; lz4 and zstd from pg_dump 16), jobs (directory) and INSERTs (plain, on by default so
+  the file runs as a script). The save dialog names the file or folder and its grant is asked for there.
+- Restore from a file or folder from the open dialog into any PostgreSQL connection's database: clean,
+  if-exists, create, data or schema only, without owners or privileges, jobs (not tar), one transaction (one
+  job, no create), and the entries `pg_restore --list` reads, filtered and chosen (a list file in the
+  plugin's folder). A plain SQL file runs as a script through run-file, on a session. A read-only connection refuses it and
+  production is always asked first.
+- Both forms show the exact command line, never the password; it goes in `PGPASSWORD` of the program's own
+  environment when typed this session, else libpq reads `~/.pgpass`. Each program must be at least the
+  server's major version (read through a session) and is found by its own setting (`.pg-dump`,
+  `.pg-restore`), on the desk's PATH or in the `path` setting's folders.
+- The run has a log panel: the verbose lines as they come, tables written or entries restored, Cancel
+  (SIGINT, then SIGKILL), and what came of it with the size written.
+
+Modules: `features/backup/`.
 
 ## Agents
 
@@ -334,5 +398,9 @@ Modules: `features/maintenance/`.
 - The objects feature's commands (`.rename-object`, `.drop-object`, `.edit-source`, `.generate-sql` and the
   rest) take the object by connection, schema, name (and table, for a part); each change shows the person
   its dialog, and `.drop-object` and `.truncate-table` are irreversible (ADR 0312).
+- `.routine` opens a function's or procedure's form with its arguments (by name or in order) and answers
+  the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
+  the result's first 50 rows and the notices.
+- `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
 
 Modules: `agent.js`.

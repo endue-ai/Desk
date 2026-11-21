@@ -44,7 +44,7 @@ pub fn brains(data: &Path, home: &Path, account: Arc<Account>) -> Brains {
         .map(PathBuf::from)
         .or_else(|| find_claude(std::env::var_os("PATH"), Some(home.to_path_buf())))
         .unwrap_or_else(|| PathBuf::from("claude"));
-    let mut claude = ClaudeCodeOptions::new(program);
+    let mut claude = ClaudeCodeOptions::new(program.clone());
     if let Ok(model) = std::env::var("DESK_CLAUDE_MODEL") {
         claude = claude.with_model(model);
     }
@@ -52,6 +52,13 @@ pub fn brains(data: &Path, home: &Path, account: Arc<Account>) -> Brains {
         Ok(brain) => brains = brains.with_claude(Arc::new(brain)),
         Err(why) => eprintln!("endue Desk: no Claude Code brain ({why})"),
     }
+    // The model the person chose for Eris (`brain.claude-model`, ADR 0296), each in a folder of its own.
+    let claude_models = data.join("claude-brain-models");
+    brains = brains.with_claude_models(move |model: &str| {
+        let options = ClaudeCodeOptions::new(program.clone()).with_model(model.to_owned());
+        let brain = LocalBrain::claude_code(claude_models.join(file_safe(model)), options)?;
+        Ok(Arc::new(brain) as Arc<dyn Brain>)
+    });
     let ollama = url("DESK_OLLAMA_URL", DEFAULT_BASE_URL);
     let folder = data.join("local-brain");
     brains.with_local(move |model: &str| {

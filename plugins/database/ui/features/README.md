@@ -18,7 +18,8 @@ one line in `index.js`, in alphabetical order (`export { feature as sessions } f
 - `styles`: `[new URL("./<name>.css", import.meta.url).href]`, with the theme's `--desk-*` tokens.
 
 `deps`: `bridge`, `commands`, `view`, `manager`, `consoles`, `catalog`, `explorer`, `tools`,
-`execute` (every write goes through it, under the read-only, production and agent guards),
+`execute` (every write goes through it, under the read-only, production and agent guards), `runner`
+and `clients` (another program, as `backup/` runs pg_dump), `startWorker` (absent in tests),
 `settings()`, `onSettings(fn)`, `pick`, `confirm`, `dialog`, `say`, `guard`, `cancelled`. A panel
 is a desk buffer: `consoles.openPanel(conn, type, "kind: title", state)` opens it once per type and
 name (the header shows the title), `consoles.updatePanel(id, next)` draws a new state object, and

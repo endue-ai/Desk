@@ -1,0 +1,72 @@
+/* Sweep (ADR 0296): the area Cmd+drag draws, the rings of the windows Select picked, and the bar
+   with the modes, the selection's commands and what the next line to Eris carries. The marks and
+   the bar are drawn above the windows (the compositor's parts desk.sweep-marks and desk.sweep). */
+.sweep-layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-popover);
+  pointer-events: none;
+}
+
+.sweep-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+.sweep-area {
+  border: 1px dashed var(--desk-primary);
+  background: color-mix(in srgb, var(--desk-primary) 10%, transparent);
+}
+
+.sweep-ring {
+  border: 2px solid var(--desk-primary);
+}
+
+.sweep-area[hidden] {
+  display: none;
+}
+
+.sweep-bar {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--space-8));
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-md);
+  background: var(--desk-popover);
+  color: var(--desk-text);
+  box-shadow: var(--desk-shadow-md);
+  font-size: var(--text-sm);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  flex-wrap: wrap;
+}
+
+.sweep-bar[hidden] {
+  display: none;
+}
+
+.sweep-count {
+  color: var(--desk-text-muted);
+  white-space: nowrap;
+}
+
+.sweep-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sweep-thumb {
+  width: calc(var(--space-8) * 2);
+  height: var(--space-8);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}

@@ -6,6 +6,7 @@
 // and the frame lost (it slept, or its page loaded again) opens again, on the slide it was on when a
 // sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
 // SDK's test host runs it.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { openFile } from "./open.js";
 import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
@@ -326,6 +327,8 @@ export function createSlides({ bridge, commands, surface }, view, options) {
     }
     return "";
   });
+
+  answerAgents(commands, { open: () => [...files.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

@@ -1,5 +1,7 @@
 /* The connections' colours and groups. Every colour, font, size, radius and duration comes from
-   the theme's --desk-* tokens; a connection's colour is a category colour. */
+   the theme's --desk-* tokens; a connection's colour is a category colour, drawn leaning toward the
+   body text so its dot and band reach 3:1 on every surface in both schemes (tests/contrast.test.ts:
+   chart-2, chart-3 and chart-7 stand under it on the light surfaces alone). */
 
 /* A connection's colour: a dot in the explorer, a band down the header's left edge. */
 .swatch {
@@ -8,7 +10,7 @@
   width: 8px;
   height: 8px;
   border-radius: var(--desk-radius-full);
-  background: var(--swatch);
+  background: color-mix(in srgb, var(--swatch) 70%, var(--desk-text));
 }
 
 .swatch-chart-1,
@@ -52,7 +54,7 @@ body[data-color="chart-8"] {
 }
 
 body[data-color^="chart-"] header {
-  box-shadow: inset 4px 0 0 var(--swatch);
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--swatch) 70%, var(--desk-text));
 }
 
 .row.group .label {

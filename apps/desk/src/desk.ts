@@ -23,6 +23,7 @@ import { shellSurfaces } from "./compositor-surfaces";
 import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
+import { installEditCommands } from "./edit-commands";
 import "./crashes.css";
 import { installFrameSignals } from "./frame-signals";
 import { adapter, invoke, listen } from "./host";
@@ -241,6 +242,10 @@ window.addEventListener("pagehide", stopCompositor, { once: true });
 // the CEF shell names its plugin, and the runtime's frames take it from there.
 const offFrameSignals = installFrameSignals(desk.runtime.frames);
 window.addEventListener("pagehide", offFrameSignals, { once: true });
+
+// The Edit menu as desk.edit.* commands, for any key a person binds to them (ADR 0296).
+const disposeEdit = installEditCommands(desk.runtime.commands, invoke);
+window.addEventListener("pagehide", disposeEdit, { once: true });
 
 // The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
 const disposeUpdates = installUpdates({
