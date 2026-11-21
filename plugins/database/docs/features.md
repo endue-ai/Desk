@@ -179,6 +179,10 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
 `view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
 
+## Map
+
+How a result's geometry and geography values are drawn and picked on a map: [`map.md`](map.md).
+
 ## Editing
 
 - On a table's view, or a console's plain SELECT of one table: change a cell (Enter or F2, `n` for NULL), add a
