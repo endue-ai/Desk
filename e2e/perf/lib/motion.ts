@@ -301,9 +301,11 @@ export function gripOf(
 
 /**
  * How far to drag a window at `rect` ([x, y, w, h]) so a shake of ±`amp` px keeps it on a desk
- * `width` wide, and it lies on whole pixels: [dx, dy], [0, 0] when it can swing where it is. None
- * when the window is wider than the room the swing leaves. The Default profile's layout decides
- * where the shaken window starts, so a layout change must not stop the gate (2026-11-19).
+ * `width` wide, and it lies on whole pixels: [dx, dy], only the rounding when it can swing where it
+ * is. One that cannot goes to the desk's middle, not just inside an edge, where the bars at the
+ * desk's sides (the rail, the agent bar) would lie over its swing. None when the window is wider
+ * than the room the swing leaves. The Default profile's layout decides where the shaken window
+ * starts, so a layout change must not stop the gate (2026-11-19).
  */
 export function swingRoom(
   rect: readonly number[],
@@ -311,9 +313,9 @@ export function swingRoom(
   amp: number,
 ): [number, number] | undefined {
   const [x = 0, y = 0, w = 0] = rect;
-  const most = width - w - amp;
-  if (most < amp) return undefined;
-  const to = Math.round(Math.min(Math.max(x, amp), most));
+  if (width - w - amp < amp) return undefined;
+  const fits = x - amp >= 0 && x + w + amp <= width;
+  const to = Math.round(fits ? x : (width - w) / 2);
   const round = (n: number) => Math.round(n * 1000) / 1000;
   return [round(to - x), round(Math.round(y) - y)];
 }
