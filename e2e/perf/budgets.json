@@ -11,14 +11,15 @@
     "allowedRegression": 0.25
   },
   "startup": {
-    "readyMs": null,
-    "firstFrameMs": null,
+    "readyMs": 1839.5,
+    "firstFrameMs": 1856,
     "targetMs": 1200,
     "sessionSurfaces": 6,
     "runs": 3,
-    "platform": null,
-    "recorded": null,
-    "allowedRegression": 0.25
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-21",
+    "allowedRegression": 0.25,
+    "reason": "#370 (ADR 0261): a second start with a saved session of six surfaces, through just perf-app's start-up spec (e2e/perf/startup.perf.ts), the median of two runs' medians of three relaunches each on the reference machine on 2026-11-21, a debug bundle of main a6a50ba9 with chromedriver attached, started at a load average of 4.2 and 9.5 with other sessions building: readyMs 1838.5 and 1840.4, firstFrameMs 1851.1 and 1860.8. All six opens answered and every relaunch's trace had the six mount phases; no GPU process exited. A third run at a load of 6.8 read 1993.1 and 2008.4. Fails past allowedRegression on the platform its baseline was recorded on."
   },
   "idleMemory": {
     "rssMb": 3560.3,

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-16
 decision-makers: Team endue
 ---
@@ -72,9 +72,27 @@ debug bundle, a machine at a high load).
 `frames.rs` says that CEF sends no begin frame while one is out, yet the GPU process received
 overlapping ones. The hold makes the rule the shell's own, wherever CEF's lapses.
 
-To be measured before this ADR is accepted, on a quiet machine:
+Measured on 2026-11-21 (#370) on the reference machine (Mac mini M4, macOS 26.2), main a6a50ba9.
+No quiet window was to be had (other sessions were building), so each number says its load:
 
-* `just perf-app`'s start-up spec, two runs: whether all six opens answer, whether the GPU process
-  exits, `counts.held`, and the medians of `readyMs` and `firstFrameMs`. Those medians go into
-  `e2e/perf/budgets.json`'s `startup` once #312 (PR #340) has merged.
-* `just perf-motion` against `main`: the motion gate's verdicts and `counts.held` while windows move.
+* `just perf-app`'s start-up spec, a debug bundle with chromedriver attached, three runs of a first
+  start that opens six files and three relaunches each, started at a 1-minute load of 4.2, 9.5 and
+  6.8. In every run all six opens answered, and every relaunch's trace had the six `mount <plugin>`
+  phases. The desk's log (runs two and three; the first run's was overwritten) holds no "Got
+  overlapping IssueExternalBeginFrame" and no exit of the GPU process. The medians of the
+  relaunches: `readyMs` 1838.5, 1840.4 and 1993.1; `firstFrameMs` 1851.1, 1860.8 and 2008.4. The
+  first two runs' medians, 1839.5 and 1856, are `startup`'s baselines in `e2e/perf/budgets.json`.
+  `counts.held` (read from `compositor_stats` over DevTools every 2 s): 991 begin frames held of
+  2,107 sent by the first start's last read, and 270 of 588 by a relaunch's; most are held at the
+  start, while pages load and paint.
+* `just perf-motion`, optimized offscreen, on `main` 1f206027 (its shell is a6a50ba9's), three runs
+  at a load of 5.6, 3.5 and 3.6: fps 59.6,
+  smooth 2.1 % (p95 23.1 ms, over its 2 % by a tenth, as on `main` all day: 2.1 to 3.4 % at loads
+  of 4 to 48, 1.3 % at a load of 3), own-pixels 0, painting none, soft 1; the sway's checks pass
+  but the known `sway-smooth` (11.8 %, #249); the loop stopped one page in one run (#345). The
+  trace's `held` lines, the begin frames the clock held while windows moved: 546, 534 and 580 a
+  run, against about 2,000 desk frames each. Against the gate's baseline from before the hold
+  (`e2e/perf/motion.json`, 6e75d95e of 2026-11-13: fps 59.6, long intervals 1.7 %), fps is the
+  same and the long intervals within the day's spread, so the hold costs no frame the gate counts.
+
+The GPU process did not exit with the hold in place, so this decision is accepted.
