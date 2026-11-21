@@ -46,14 +46,16 @@ impl std::fmt::Display for SceneError {
 
 impl std::error::Error for SceneError {}
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Entry {
     pub node: Node,
     pub parent: Option<NodeId>,
     pub children: Vec<NodeId>,
 }
 
-#[derive(Debug)]
+/// A clone is the same scene to a compositor (its id and revision with it), so a renderer on
+/// another thread draws a copy while its owner lays the next one out (the shell's render thread).
+#[derive(Clone, Debug)]
 pub struct Scene {
     id: u64,
     entries: HashMap<NodeId, Entry>,
