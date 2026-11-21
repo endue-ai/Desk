@@ -79,6 +79,18 @@ describe("the desk's system parts", () => {
     ]);
   });
 
+  it("report the notification centre's control beside the line, and its panel over the windows", () => {
+    // The control is a sibling of the line, which re-renders its own children (#307).
+    at("desk-status", [600, 8, 200, 28]);
+    at("btn btn-xs desk-notify-bell", [804, 8, 40, 28]);
+    at("popover desk-notify-centre", [530, 44, 380, 300]);
+    expect(systemParts(document)).toEqual([
+      { id: "desk.notices", x: 600, y: 8, width: 200, height: 28 },
+      { id: "desk.notice-actions", x: 804, y: 8, width: 40, height: 28 },
+      { id: "desk.overlays", x: 530, y: 44, width: 380, height: 300 },
+    ]);
+  });
+
   it("report every overlay the page has open, each with its own box", () => {
     at("popover rail-popover", [900, 300, 280, 180.4]);
     at("tooltip", [40.5, 640, 120, 24]);
