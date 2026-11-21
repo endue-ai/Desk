@@ -9,7 +9,7 @@ decision-makers: Team endue
 ## Context and Problem Statement
 
 The Database plugin (`plugins/database`, ADR 0038) shows results in a grid and now lets people
-change them there, as DataGrip does: change a cell, add a row, delete rows. The plugin has no driver:
+change them in place: change a cell, add a row, delete rows. The plugin has no driver:
 every run is one process of the engine's own client (psql, mysql or mariadb, sqlite3), one
 connection, and a transaction cannot span two runs. Values arrive as text, so types come from the
 catalog. How do edits in the grid reach the database so that a half-applied set of changes, a
