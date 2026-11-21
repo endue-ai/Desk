@@ -45,8 +45,9 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
   picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
-  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `n`, `e` and
-  Delete add, change and remove a connection, `u` adds one from a URI.
+  from its foreign keys, `m` opens the maintenance form of a connection, schema, table or index, `x` opens the
+  form of a PostgreSQL function or procedure, `n`, `e` and Delete add, change and remove a connection, `u`
+  adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
@@ -241,6 +242,26 @@ Modules: `features/overview/`.
 
 Modules: `features/maintenance/`.
 
+## Routines
+
+- A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
+  Routines) or the palette (a name, then the signature of an overloaded one); aggregates, window and trigger
+  functions and those taking `internal` are refused in words.
+- A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
+  0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
+  the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and
+  TABLE arguments say they come back as columns. The exact call shows as values change: `SELECT f(...)`,
+  `SELECT * FROM f(...)` for a set, a row type or OUT columns, `CALL p(...)` with OUT passed as NULL; named
+  notation where arguments have names, every literal quoted and cast to its declared type.
+- Volatility decides the guard: a VOLATILE function or any procedure is a write, refused on a read-only
+  connection (rolled back too), asked on production, and run for an agent only after the person's yes.
+  "Run in a transaction and roll back" sends the call between BEGIN and ROLLBACK; a procedure whose source
+  commits or rolls back runs alone and is not offered it.
+- Run (`Mod+Enter`) runs the call in the connection's console: its result tabs, notices in Messages, the
+  history. The arguments are remembered per connection and routine for the session, never across a restart.
+
+Modules: `features/routines/`.
+
 ## Agents
 
 - `endue.database.connections` (never a password), `.schema` and `.query` (100 rows a statement by default,
@@ -253,5 +274,8 @@ Modules: `features/maintenance/`.
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
+- `.routine` opens a function's or procedure's form with its arguments (by name or in order) and answers
+  the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
+  the result's first 50 rows and the notices.
 
 Modules: `agent.js`.

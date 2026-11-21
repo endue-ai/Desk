@@ -4,7 +4,8 @@
 // PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
 // one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
 // (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
-// answers the server overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql
+// answers the server overview (overview-fixture.ts), the routine forms' functions and procedures on
+// every PostgreSQL connection (routine-fixture.ts), and fs.* over a folder in memory with one .sql
 // file (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
@@ -28,6 +29,7 @@ import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -76,10 +78,11 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, then the maintenance form its own, before
-    // the activity view's looser matches.
+    // The routine forms and the overview answer their own statements exactly, then the
+    // maintenance form its own, before the activity view's looser matches.
     ...procHandlers(
-      overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
+      routineServer(overviewServer(maintenanceServer(activityServer(fixtureScript).script).script))
+        .script,
       (event) => emit(event),
     ),
     ...fsHandlers,

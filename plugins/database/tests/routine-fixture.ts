@@ -181,14 +181,12 @@ export function routineServer(fallback: Script = () => ({}), version = "170006")
         return {};
       }
       const called = /^(?:SELECT \* FROM |SELECT |CALL )public\.(\w+)\(/u.exec(text);
-      if (called) {
-        server.ran.push(text);
-        // area is overloaded: its two arguments name w and h.
-        const oid = called[1] === "area" ? (/w =>/u.test(text) ? "9003" : "9002") : undefined;
-        const r = ROUTINES.find((f) => (oid ? f.oid === oid : f.name === called[1]));
-        return r ? r.answer(text) : { error: `function public.${called[1]} does not exist` };
-      }
-      return fallback(sql, env);
+      // area is overloaded: its two arguments name w and h.
+      const oid = called?.[1] === "area" ? (/w =>/u.test(text) ? "9003" : "9002") : undefined;
+      const r = called && ROUTINES.find((f) => (oid ? f.oid === oid : f.name === called[1]));
+      if (!r) return fallback(sql, env);
+      server.ran.push(text);
+      return r.answer(text);
     },
   };
   return server;
