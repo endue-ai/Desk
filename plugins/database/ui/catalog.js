@@ -1,13 +1,16 @@
 // What a connection holds, read from the engine's catalog: schemas (MySQL's databases, SQLite's
 // main), their objects (tables, views, sequences, routines ..., schema/), a table's columns and
-// parts (keys, foreign keys, indexes, triggers), the DDL of each, and exact row counts. Each answer
-// is kept until a refresh, so the explorer opens folders without asking the server again, and what
-// has been read is there at once for autocomplete (`snapshot`).
+// parts (keys, foreign keys, indexes, triggers), the DDL of each, and exact row counts. PostgreSQL's
+// come from the schema cache (schema-cache/, ADR 0285), kept on disk and refreshed by what changed;
+// what it does not hold (a schema not chosen, a table made since its last check) and the other
+// engines' are read when asked and kept until a refresh, so the explorer opens folders without
+// asking the server again, and what has been read is there at once for autocomplete (`snapshot`).
 
 import { countSql, engineOf, pageSql } from "./engines/index.js";
 import { objectsOf, partsOf, RELATIONS } from "./schema/common.js";
 import { diagramOf, diagramQueries } from "./schema/diagram.js";
 import { schemaOf } from "./schema/index.js";
+import { createSchemaCache, ranDdl } from "./schema-cache/index.js";
 import { qualified } from "./sql/quote.js";
 
 /**
@@ -17,7 +20,7 @@ import { qualified } from "./sql/quote.js";
  * @typedef {import("./schema/common.js").SchemaObject} SchemaObject
  * @typedef {import("./schema/common.js").Part} Part
  * @typedef {{ name: string, type: string, rows?: number | null }} Table
- * @typedef {{ name: string, type: string, nullable: boolean, default: string | null, primary: boolean }} Column
+ * @typedef {{ name: string, type: string, nullable: boolean, default: string | null, primary: boolean, comment?: string }} Column
  * @typedef {(conn: Connection, sql: string, options?: ExecuteOptions) => Promise<Execution>} Execute
  * @typedef {{ rows: (string | null)[][][], columns: string[][], failed?: { index: number, message: string } }} Many
  */
@@ -35,13 +38,42 @@ export function defaultSchema(/** @type {Connection} */ conn) {
 const failure = (/** @type {{ message: string, kind?: string } | undefined} */ error) =>
   Object.assign(new Error(error?.message ?? "Not read."), { kind: error?.kind });
 
+/** A store in memory, for a catalog nobody keeps. */
+const memoryStore = () => {
+  /** @type {Map<string, unknown>} */
+  const values = new Map();
+  return {
+    get: async (/** @type {string} */ key) => values.get(key),
+    set: async (/** @type {string} */ key, /** @type {unknown} */ value) => {
+      values.set(key, value);
+    },
+  };
+};
+
 /**
  * @param {Execute} execute
  * @param {() => boolean} systemSchemas
+ * @param {{ store?: import("./schema-cache/store.js").Store, changed?(connection: string): void, now?(): number }} [options]
+ *   `store` keeps the schema cache (the plugin's store); `changed` hears that what a connection
+ *   holds changed (a cache read, a DDL statement ran), so the explorer reads it again.
  */
-export function createCatalog(execute, systemSchemas) {
-  /** @type {Map<string, Promise<unknown>>} */
-  const cache = new Map();
+export function createCatalog(execute, systemSchemas, options = {}) {
+  const changed = (/** @type {string} */ connection) => options.changed?.(connection);
+  const cache = createSchemaCache({
+    execute,
+    store: options.store ?? memoryStore(),
+    systemSchemas,
+    changed,
+    ...(options.now ? { now: options.now } : {}),
+  });
+  /** The cache's answers once it is in memory, or undefined for an engine it does not hold. */
+  const held = async (/** @type {Connection} */ conn, quiet = false) => {
+    if (!cache.cached(conn)) return undefined;
+    await cache.open(conn, quiet);
+    return cache.view(conn);
+  };
+  /** What was read on demand, by connection and node. @type {Map<string, Promise<unknown>>} */
+  const reads = new Map();
   /** What each kept answer resolved to, for reading without waiting. */
   /** @type {Map<string, unknown>} */
   const done = new Map();
@@ -81,16 +113,16 @@ export function createCatalog(execute, systemSchemas) {
    * @returns {Promise<T>}
    */
   const kept = (key, load) => {
-    let entry = /** @type {Promise<T> | undefined} */ (cache.get(key));
+    let entry = /** @type {Promise<T> | undefined} */ (reads.get(key));
     if (!entry) {
       const made = load();
       entry = made;
-      cache.set(key, made);
+      reads.set(key, made);
       made.then(
         (value) => {
-          if (cache.get(key) === made) done.set(key, value);
+          if (reads.get(key) === made) done.set(key, value);
         },
-        () => cache.delete(key),
+        () => reads.delete(key),
       );
     }
     return entry;
@@ -99,14 +131,18 @@ export function createCatalog(execute, systemSchemas) {
     [conn.id, ...parts].join(SEP);
 
   /** @returns {Promise<SchemaObject[]>} */
-  const objects = (/** @type {Connection} */ conn, /** @type {string} */ schema, quiet = false) =>
+  const readObjects = (
+    /** @type {Connection} */ conn,
+    /** @type {string} */ schema,
+    quiet = false,
+  ) =>
     kept(keyOf(conn, ["objects", schema]), async () => {
       const read = await many(conn, schemaOf(conn.engine).objects(schema), quiet);
       return objectsOf(read.rows.flat(), schema);
     });
 
   /** @returns {Promise<Column[]>} */
-  const columns = (
+  const readColumns = (
     /** @type {Connection} */ conn,
     /** @type {string} */ schema,
     /** @type {string} */ table,
@@ -123,9 +159,37 @@ export function createCatalog(execute, systemSchemas) {
       }));
     });
 
+  /** @returns {Promise<SchemaObject[]>} */
+  const objects = async (
+    /** @type {Connection} */ conn,
+    /** @type {string} */ schema,
+    quiet = false,
+  ) => (await held(conn, quiet))?.objects(schema) ?? readObjects(conn, schema, quiet);
+
+  /** @returns {Promise<Column[]>} */
+  const columns = async (
+    /** @type {Connection} */ conn,
+    /** @type {string} */ schema,
+    /** @type {string} */ table,
+    quiet = false,
+  ) => (await held(conn, quiet))?.columns(schema, table) ?? readColumns(conn, schema, table, quiet);
+
+  /** Forget what was read on demand for one connection (under `prefix`, one schema say), or for all. */
+  const forget = (
+    /** @type {string | undefined} */ connection,
+    /** @type {string[]} */ prefix = [],
+  ) => {
+    const start = connection === undefined ? "" : [connection, ...prefix].join(SEP);
+    for (const map of [reads, done])
+      for (const key of [...map.keys()]) if (key.startsWith(start)) map.delete(key);
+  };
+
   return {
+    /** The schema cache itself, for what catalog.js does not answer (schema-cache/README.md). */
+    cache,
     /** @returns {Promise<string[]>} */
-    schemas: (/** @type {Connection} */ conn, quiet = false) =>
+    schemas: async (/** @type {Connection} */ conn, quiet = false) =>
+      (await held(conn, quiet))?.listed() ??
       kept(keyOf(conn, ["schemas"]), async () => {
         const sql = engineOf(conn.engine).catalog.schemas(systemSchemas());
         return (await rows(conn, sql, quiet)).map((row) => row[0] ?? "");
@@ -138,11 +202,12 @@ export function createCatalog(execute, systemSchemas) {
         .map((o) => ({ name: o.name, type: o.kind, rows: o.rows })),
     columns,
     /** A table's keys, foreign keys, indexes and triggers. @returns {Promise<Part[]>} */
-    parts: (
+    parts: async (
       /** @type {Connection} */ conn,
       /** @type {string} */ schema,
       /** @type {string} */ table,
     ) =>
+      (await held(conn))?.parts(schema, table) ??
       kept(keyOf(conn, ["parts", schema, table]), async () => {
         const read = await many(conn, schemaOf(conn.engine).parts(schema, table));
         return partsOf(read.rows.flat(), { schema, name: table });
@@ -169,32 +234,91 @@ export function createCatalog(execute, systemSchemas) {
         return value === null || value === undefined ? null : Number(value);
       });
     },
-    /** A schema's tables, columns and foreign keys, for its ER diagram, read afresh. */
+    /** A schema's tables, columns and foreign keys, for its ER diagram: cached, or read afresh. */
     diagram: async (/** @type {Connection} */ conn, /** @type {string} */ schema) => {
+      const view = await held(conn);
+      if (view?.held(schema)) return diagramOf(...diagramRows(view, schema));
       const read = await many(conn, diagramQueries(conn.engine, schema));
       return diagramOf(read.rows[0] ?? [], read.rows[1] ?? []);
     },
     /** What has been read of a connection, without waiting: for autocomplete. */
     snapshot(/** @type {Connection} */ conn) {
       const get = (/** @type {string[]} */ parts) => done.get(keyOf(conn, parts));
+      const view = cache.view(conn);
       return {
         defaultSchema: defaultSchema(conn),
-        schemas: () => /** @type {string[] | undefined} */ (get(["schemas"])) ?? [],
+        schemas: () =>
+          view?.listed() ?? /** @type {string[] | undefined} */ (get(["schemas"])) ?? [],
         tables: (/** @type {string} */ schema) =>
-          /** @type {SchemaObject[] | undefined} */ (get(["objects", schema]))
+          (
+            view?.objects(schema) ??
+            /** @type {SchemaObject[] | undefined} */ (get(["objects", schema]))
+          )
             ?.filter((o) => RELATIONS.has(o.kind))
             .map((o) => ({ name: o.name, type: o.kind })),
         columns: (/** @type {string} */ schema, /** @type {string} */ table) =>
+          view?.columns(schema, table) ??
           /** @type {Column[] | undefined} */ (get(["columns", schema, table])),
       };
     },
-    /** Forget what was read for one connection (under `prefix`, one schema say), or for all. */
-    forget(/** @type {string | undefined} */ connection, /** @type {string[]} */ prefix = []) {
-      const start = connection === undefined ? "" : [connection, ...prefix].join(SEP);
-      for (const map of [cache, done])
-        for (const key of [...map.keys()]) if (key.startsWith(start)) map.delete(key);
+    /** The schema cache's answers and state for a connection (PostgreSQL), or undefined. */
+    status: (/** @type {Connection} */ conn) => cache.view(conn),
+    /**
+     * Read again what a refresh in the explorer names: the cache reads the schema, or every chosen
+     * one; what was read on demand is forgotten under it.
+     * @param {string | undefined} connection
+     * @param {string} [schema]
+     * @param {string} [table]
+     */
+    refresh(connection, schema, table) {
+      if (schema === undefined) forget(connection);
+      else if (table !== undefined)
+        for (const what of ["columns", "parts"]) forget(connection, [what, schema, table]);
+      else for (const what of ["objects", "columns", "parts"]) forget(connection, [what, schema]);
+      for (const conn of cache.opened())
+        if (connection === undefined || conn.id === connection)
+          cache
+            .refresh(conn, schema === undefined ? { all: true } : { schemas: [schema] })
+            .catch(() => {});
     },
+    /** A run of the plugin's own ended: a DDL statement in it reads again what it touched. */
+    ran(/** @type {Execution} */ execution) {
+      const { conn } = execution;
+      if (cache.cached(conn)) return cache.ran(conn, execution);
+      if (!ranDdl(execution)) return false;
+      forget(conn.id);
+      changed(conn.id);
+      return true;
+    },
+    /** Stop the schema cache's passes (of one connection, or of all). */
+    cancel: (/** @type {string | undefined} */ connection) => cache.cancel(connection),
+    /** A connection was removed: forget everything of it, the cache on disk too. */
+    async drop(/** @type {string} */ connection) {
+      forget(connection);
+      await cache.drop(connection);
+    },
+    forget,
   };
+}
+
+/** The rows `diagramOf` reads, from the cache: tables' columns and the foreign keys inside the schema. */
+function diagramRows(
+  /** @type {import("./schema-cache/view.js").CacheView} */ view,
+  /** @type {string} */ schema,
+) {
+  const tables = (view.objects(schema) ?? []).filter((o) => o.kind === "table");
+  /** @type {(string | null)[][]} */
+  const columns = [];
+  /** @type {(string | null)[][]} */
+  const keys = [];
+  for (const table of tables) {
+    for (const c of view.columns(schema, table.name) ?? [])
+      columns.push([table.name, c.name, c.type, c.primary ? "YES" : "NO"]);
+    for (const k of view.foreignKeys(schema, table.name) ?? [])
+      if (k.schema === schema)
+        keys.push([table.name, k.name, k.columns.join(", "), k.table, k.refColumns.join(", ")]);
+  }
+  return /** @type {const} */ ([columns, keys]);
 }
 
 /** A table's name as SQL: schema-qualified, except SQLite's main. */

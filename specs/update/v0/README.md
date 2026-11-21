@@ -1,11 +1,13 @@
 # Desk update v0
 
-The documents Desk's updater reads from the release origin (Cloudflare R2, ADR 0054). Static files
-only: every decision is made on the device. `index.schema.json` is a channel's index, and
+Desk discovers updates in the published GitHub Releases of `endue-ai/Desk`. The same signed formats
+also serve earlier clients on R2 (ADR 0054). `index.schema.json` is a channel's index, and
 `release.schema.json` is one build's manifest. v0 may break on any minor release (ADR 0004).
 
 | Path on the origin | What it is |
 | --- | --- |
+| GitHub release asset `UPGRADE_PATH.json` (+ `.sig`) | A signed `ReleaseIndex`. A version tag lists its own version at most once. An empty index withdraws that offer. |
+| GitHub release asset `release.json` (+ `.sig`) | The signed manifest for the version in that tag, with the URLs of its signed update packages. |
 | `desk/channels/<channel>/index.json` (+ `.sig`) | `ReleaseIndex`: the builds on `canary`, `beta` or `stable`, newest first, with a `serial` every write raises |
 | `desk/releases/<version>/release.json` (+ `.sig`) | `ReleaseManifest`: the Tauri updater's static format plus a `desk` block of per-target `sha256` and `size` |
 | `desk/releases/<version>/<artifact>` (+ `.sig`) | The updater artifact of a target, as `platforms.<target>.url` names it |
@@ -32,6 +34,18 @@ removes its listing and leaves its files.
    and replaced when a newer build is next.
 
 An index served for another channel is refused, and so is one whose `serial` is below one already seen.
+
+**GitHub discovery.** Read all pages of the public Releases API. Ignore drafts and installer-only
+tags. For each newer `v<SemVer>` tag on the chosen channel, verify its tagged path, then apply the
+rules above across tags. A stable tag must be a final. A prerelease tag must also be marked as a
+GitHub prerelease. The serial of each signed path is tracked separately. Version tags link to
+`release.json` on the same tag. The `desk-updates-beta` and `desk-updates-canary` prereleases
+carry their channel's signed snapshot, with absolute manifest URLs for release-line builds.
+Discovery needs no credential and sends no installed version or platform to GitHub.
+
+**Installation.** A downloaded build waits for a person to install it immediately or select that
+version for their next Desk start. Consume the restart choice before installation and verify the
+staged bytes again. A failed installation or a replacement version needs a new choice.
 
 `vectors/` holds valid and invalid documents for the contract tests. `decisions/` holds one case per
 rule: the running version, the targets, the salt, the index and the staged build in, and the next

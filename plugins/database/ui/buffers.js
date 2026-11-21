@@ -1,7 +1,7 @@
 // The plugin's desk buffers: its consoles, table views, DDL views and the features' panels, which
-// of them is on screen, and the desk's side of each (opened under a name, shown, closed, closed
-// with its connection). Every change draws the buffer on screen and tells the controller, which
-// keeps what comes back after a restart. No DOM.
+// of them is on screen (and when each was last), and the desk's side of each (opened under a name,
+// shown, closed, closed with its connection). Every change draws the buffer on screen and tells the
+// controller, which keeps what comes back after a restart. No DOM.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -22,6 +22,8 @@ export function createBuffers(deps) {
   /** @type {string | null} */
   let current = null;
   let local = 0;
+  /** Counts each show, so a buffer knows when it was on screen last (`used`). */
+  let tick = 0;
 
   const shown = () => (current ? (all.get(current) ?? null) : null);
   const render = () => {
@@ -64,6 +66,7 @@ export function createBuffers(deps) {
     show(/** @type {Console} */ target) {
       all.set(target.id, target);
       current = target.id;
+      target.used = ++tick;
       render();
       return target;
     },
@@ -78,8 +81,10 @@ export function createBuffers(deps) {
     list: () => [...all.values()],
     /** The desk shows one of this plugin's buffers. */
     showId(/** @type {string} */ id) {
-      if (!all.has(id)) return false;
+      const target = all.get(id);
+      if (!target) return false;
       current = id;
+      target.used = ++tick;
       render();
       return true;
     },

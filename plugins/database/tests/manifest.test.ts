@@ -4,6 +4,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
 import { candidates } from "../ui/clients.js";
+import { writeScope } from "../ui/console-files.js";
+import { spillPath } from "../ui/console-text.js";
 import { createDropped } from "../ui/dropped.js";
 import { EXPORT_FOLDER, exportResult } from "../ui/export.js";
 import { createRunner } from "../ui/run.js";
@@ -103,7 +105,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(37);
+    expect(ids).toHaveLength(52);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -117,13 +119,33 @@ describe("plugin.json", () => {
       .join("\n");
     for (const id of ids) expect(source, id).toContain(`"${id}"`);
     expect(contributes?.keys).toEqual([{ key: "Mod+Shift+B", command: "endue.database.open" }]);
-    expect(contributes?.files?.map((f) => f.pattern)).toEqual(["*.sqlite", "*.sqlite3", "*.db3"]);
+    expect(contributes?.files?.map((f) => f.pattern)).toEqual([
+      "*.sqlite",
+      "*.sqlite3",
+      "*.db3",
+      "*.sql",
+    ]);
     expect(Object.keys(contributes?.settings ?? {})).toEqual(SETTING_KEYS);
+  });
+
+  it("ships the vendored SQL parser its worker loads, with its licences and pins", () => {
+    const vendored =
+      "libpg-query.mjs libpg-query.wasm LICENSE LICENSE.libpg_query COPYRIGHT.postgresql";
+    for (const name of [...vendored.split(" "), "VERSIONS"])
+      expect(existsSync(join(folder, "ui/vendor", name)), name).toBe(true);
+    expect(readFileSync(join(folder, "ui/sql/parse/worker.js"), "utf8")).toContain(
+      'new URL("../../vendor/libpg-query.wasm", import.meta.url)',
+    );
   });
 
   it("keeps every source and document under 400 lines and the README under 40", () => {
     const docs = existsSync(join(folder, "docs")) ? files(join(folder, "docs")) : [];
-    for (const path of [...files(join(folder, "ui")), ...files(join(folder, "tests")), ...docs]) {
+    // ui/vendor holds a vendored build as it was published (ADR 0283), not the plugin's source.
+    const vendor = join(folder, "ui", "vendor");
+    const sources = [...files(join(folder, "ui")), ...files(join(folder, "tests")), ...docs].filter(
+      (path) => !path.startsWith(vendor),
+    );
+    for (const path of sources) {
       const text = readFileSync(path, "utf8");
       const lines = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
       expect(lines, path).toBeLessThanOrEqual(400);
@@ -156,12 +178,20 @@ describe("permissions", () => {
           "desk.buffers.update",
           "desk.buffers.close",
           "desk.files.reveal",
+          "desk.files.changed",
         ],
       },
       // A dropped .sql, .csv, .tsv or .json file anywhere (dropped.js): asked for each file.
       { permission: "fs:read", paths: ["/**"] },
       // The client a setting names by another name or a path (run.js): asked for each program.
       { permission: "proc:spawn", commands: ["*"] },
+      // Saving a .sql file the person opened, anywhere (console-files.js): asked for each file.
+      { permission: "fs:write", paths: ["/**"] },
+      // A console's text past the store's limit (console-text.js): granted at install.
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
+      { permission: "fs:read", paths: ["${home}/.endue/database/**"] },
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
+      { permission: "fs:write", paths: ["${home}/.endue/database/**"] },
     ]);
   });
 
@@ -197,6 +227,7 @@ describe("permissions", () => {
       bridge: drop.bridge,
       manager: { get: () => undefined, choose: async () => undefined },
       consoles: { current: () => null, open: async () => undefined },
+      files: { open: async () => undefined },
       importer: { start: async () => {} },
       view: { insert: () => {}, focus: () => {} },
       visit: async () => {},
@@ -209,12 +240,30 @@ describe("permissions", () => {
     ]);
     for (const asked of drop.asked) expect(coveredBy(asked)).toEqual([declarations()[3]]);
 
-    // An export: under the Downloads declaration alone.
+    // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
     const out = refusing();
     const set = { columns: ["id"], rows: [["1"]], truncated: false };
     await exportResult(out.bridge, { set, format: "csv", name: "orders" }).catch(() => {});
     expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Downloads/**"] }]);
-    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1]]);
+    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1], declarations()[5]]);
+
+    // A .sql file saved anywhere: only `/**` covers it. A console's long text: the plugin's folder,
+    // granted at install, besides `/**`, which only lets it ask.
+    const save = {
+      permission: "fs:write",
+      paths: [writeScope("/Volumes/USB/Q.SQL").paths[0] ?? ""],
+    };
+    expect(coveredBy(save)).toEqual([declarations()[5]]);
+    const spill = spillPath("k-0123456789");
+    expect(spill).toMatch(/^~\/\.endue\/database\//u);
+    expect(coveredBy({ permission: "fs:write", paths: [spill] })).toEqual([
+      declarations()[5],
+      declarations()[7],
+    ]);
+    expect(coveredBy({ permission: "fs:read", paths: [spill] })).toEqual([
+      declarations()[3],
+      declarations()[6],
+    ]);
   });
 
   it("the README's permission table is the manifest's, one row per declaration", () => {

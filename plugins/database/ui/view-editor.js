@@ -1,21 +1,58 @@
-// The SQL editor's DOM: a textarea over a highlighted copy of its text (the same lexer the
-// statements are cut with, so a string or a comment is drawn as the client reads it), and an
-// autocomplete list at the caret. The list opens by itself after `.` or two letters of a name, or
-// on Ctrl+Space; ArrowUp and ArrowDown move in it, Enter or Tab take the choice, Escape closes it.
-// The controller answers what to offer (`complete`); this only draws and edits.
+// The SQL editor: the vendored editor component (ADR 0282) in the console's box, with the plugin's
+// own lexer for highlighting, brackets, quotes and folds (editor/lexing.js), completion from the
+// controller (editor/completion.js), find and replace (editor/search-panel.js), several carets and
+// column selection (Alt+drag), comment and indent toggles, and an undo history per console: each
+// console's editor state (text, history, selection, folds, scroll) is kept while the plugin runs.
+// The console's textarea stays the handle the surface holds (editor/facade.js). The controller
+// answers what to offer and runs; this only draws and edits.
 
-import { el } from "./dom.js";
-import { highlight } from "./editor/highlight.js";
-import { actionFor, pressOf } from "./keys.js";
+import { sqlCompletion } from "./editor/completion.js";
+import { attachFacade, textOf } from "./editor/facade.js";
+import { editorKeymap } from "./editor/keymap.js";
+import { dialectFacet, sqlLanguage } from "./editor/lexing.js";
+import { findAndReplace } from "./editor/search-panel.js";
+import {
+  Annotation,
+  Compartment,
+  closeCompletion,
+  codeFolding,
+  crosshairCursor,
+  drawSelection,
+  EditorState,
+  EditorView,
+  foldGutter,
+  highlightSelectionMatches,
+  history,
+  indentUnit,
+  placeholder,
+  rectangularSelection,
+} from "./vendor/editor/editor-component.mjs";
 
 /**
  * @typedef {import("./sql/lexer.js").Dialect} Dialect
- * @typedef {import("./editor/complete.js").Completion} Completion
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
+ * @typedef {import("./vendor/editor/editor-component.mjs").EditorState} State
  */
 
-const WORD = /[A-Za-z0-9_$\u0080-￿]/u;
-const DELAY = 120;
+/** How many consoles keep their editor state at once; the oldest goes first. */
+export const KEPT = 32;
+
+/** A change that comes from the console's model (another console, the history), not the person. */
+const fromModel = Annotation.define();
+
+/** The change from `before` to `after`: only what differs between their common start and end. */
+export function diff(/** @type {string} */ before, /** @type {string} */ after) {
+  const n = Math.min(before.length, after.length);
+  let start = 0;
+  while (start < n && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+  let end = 0;
+  while (
+    end < n - start &&
+    before.charCodeAt(before.length - 1 - end) === after.charCodeAt(after.length - 1 - end)
+  )
+    end++;
+  return { from: start, to: before.length - end, insert: after.slice(start, after.length - end) };
+}
 
 /**
  * @param {Document} doc
@@ -24,193 +61,118 @@ const DELAY = 120;
  * @param {() => boolean} running Whether a run goes on (Escape cancels it then).
  */
 export function createEditor(doc, { box, editor, layer, list }, act, running) {
-  const win = doc.defaultView;
-  const later = (/** @type {() => void} */ fn) =>
-    win?.requestAnimationFrame ? win.requestAnimationFrame(fn) : setTimeout(fn, 16);
-  /** @type {Dialect} */
-  let dialect = "postgresql";
-  let painting = false;
-  /** @type {Completion | null} */
-  let open = null;
-  let chosen = 0;
-  let asking = 0;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let timer;
+  const dialect = new Compartment();
+  const readOnly = new Compartment();
+  const fixed = [
+    sqlLanguage,
+    history(),
+    drawSelection(),
+    rectangularSelection(),
+    crosshairCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    highlightSelectionMatches(),
+    codeFolding({ placeholderText: "…" }),
+    foldGutter({ markerDOM: (open) => marker(doc, open) }),
+    EditorView.lineWrapping,
+    EditorState.tabSize.of(2),
+    indentUnit.of("  "),
+    EditorState.languageData.of(() => [
+      { commentTokens: { line: "--", block: { open: "/*", close: "*/" } } },
+    ]),
+    placeholder(editor.placeholder),
+    EditorView.contentAttributes.of({
+      "aria-label": editor.getAttribute("aria-label") ?? "SQL",
+      "aria-multiline": "true",
+    }),
+    findAndReplace(),
+    sqlCompletion(act),
+    editorKeymap((action) => act(action), running),
+    EditorView.updateListener.of((update) => {
+      if (!update.docChanged) return;
+      if (update.transactions.every((tr) => tr.annotation(fromModel))) return;
+      act("edited", textOf(update.state.doc));
+    }),
+  ];
+  const readOnlyOf = (/** @type {boolean} */ on) => [
+    EditorState.readOnly.of(on),
+    EditorView.contentAttributes.of({ "aria-readonly": String(on) }),
+  ];
+  const stateOf = (/** @type {string} */ text, /** @type {Dialect} */ next, on = false) =>
+    EditorState.create({
+      doc: text,
+      extensions: [dialect.of(dialectFacet.of(next)), readOnly.of(readOnlyOf(on)), fixed],
+    });
 
-  const paint = () => {
-    painting = false;
-    const runs = highlight(editor.value, dialect).map((run) =>
-      run.kind === "plain"
-        ? doc.createTextNode(run.text)
-        : el(doc, "span", { class: `tok-${run.kind}` }, run.text),
-    );
-    // A last line break keeps the copy as tall as the textarea when the text ends with one.
-    layer.replaceChildren(...runs, doc.createTextNode("\n"));
-    sync();
-  };
-  const schedule = () => {
-    if (painting) return;
-    painting = true;
-    later(paint);
-  };
-  const sync = () => {
-    layer.scrollTop = editor.scrollTop;
-    layer.scrollLeft = editor.scrollLeft;
-  };
-
-  const close = () => {
-    open = null;
-    list.hidden = true;
-    list.replaceChildren();
-    editor.removeAttribute("aria-activedescendant");
-    asking++;
-  };
-
-  /** Where the caret is, in the box's pixels: a hidden copy of the text up to it (work.css gives
-   * it the editor's font and padding). */
-  const caretPoint = () => {
-    const mirror = el(doc, "div", { class: "mirror", "aria-hidden": "true" });
-    mirror.style.width = `${editor.clientWidth}px`;
-    mirror.textContent = editor.value.slice(0, editor.selectionStart);
-    const mark = el(doc, "span", {}, "​");
-    mirror.append(mark);
-    box.append(mirror);
-    const point = {
-      top: mark.offsetTop - editor.scrollTop,
-      left: mark.offsetLeft - editor.scrollLeft,
-    };
-    mirror.remove();
-    return point;
-  };
-
-  const drawList = () => {
-    if (!open) return;
-    const items = open.items.map((item, i) =>
-      el(
-        doc,
-        "li",
-        {
-          id: `complete-${i}`,
-          role: "option",
-          class: `option kind-${item.kind}`,
-          "aria-selected": String(i === chosen),
-          "data-index": String(i),
-        },
-        el(doc, "span", { class: "label" }, item.label),
-        el(doc, "span", { class: "detail" }, item.detail),
-      ),
-    );
-    list.replaceChildren(...items);
-    const { top, left } = caretPoint();
-    list.style.top = `${Math.max(0, top) + 20}px`;
-    list.style.left = `${Math.max(0, Math.min(left, editor.clientWidth - 260))}px`;
-    list.hidden = false;
-    editor.setAttribute("aria-activedescendant", `complete-${chosen}`);
-    items[chosen]?.scrollIntoView?.({ block: "nearest" });
-  };
-
-  const ask = async (/** @type {boolean} */ asked) => {
-    const ticket = ++asking;
-    const found = /** @type {Completion | undefined} */ (
-      await act("complete", editor.value, editor.selectionStart)
-    );
-    if (ticket !== asking || doc.activeElement !== editor) return;
-    if (!found || found.items.length === 0) {
-      close();
-      if (asked) act("say", "Nothing to complete here.");
-      return;
-    }
-    open = found;
-    chosen = 0;
-    drawList();
-  };
-
-  const accept = (/** @type {number} */ index) => {
-    const item = open?.items[index];
-    if (!open || !item) return;
-    editor.setRangeText(item.insert, open.from, editor.selectionStart, "end");
-    close();
-    act("edited", editor.value);
-    schedule();
-  };
-
-  editor.addEventListener("keydown", (event) => {
-    if (open && !event.isComposing) {
-      const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
-      if (step) {
-        event.preventDefault();
-        chosen = (chosen + step + open.items.length) % open.items.length;
-        drawList();
-        return;
-      }
-      if (
-        (event.key === "Enter" || event.key === "Tab") &&
-        !event.shiftKey &&
-        !event.metaKey &&
-        !event.ctrlKey
-      ) {
-        event.preventDefault();
-        accept(chosen);
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close();
-        return;
-      }
-    }
-    if (event.ctrlKey && !event.metaKey && (event.key === " " || event.code === "Space")) {
-      event.preventDefault();
-      void ask(true);
-      return;
-    }
-    const action = actionFor("editor", pressOf(event), { running: running() });
-    if (!action) return;
-    event.preventDefault();
-    close();
-    act(action);
+  const view = new EditorView({ state: stateOf("", "postgresql"), parent: box });
+  layer.hidden = true;
+  list.hidden = true;
+  attachFacade(editor, view, {
+    setReadOnly: (on) => view.dispatch({ effects: readOnly.reconfigure(readOnlyOf(on)) }),
   });
-  editor.addEventListener("input", (event) => {
-    schedule();
-    act("edited", editor.value);
-    clearTimeout(timer);
-    const typed = /** @type {InputEvent} */ (event).data ?? "";
-    const at = editor.selectionStart;
-    let from = at;
-    while (from > 0 && WORD.test(editor.value[from - 1] ?? "")) from--;
-    const wants = typed === "." || (WORD.test(typed) && at - from >= 2);
-    if (wants || open) timer = setTimeout(() => void ask(false), DELAY);
-    else close();
-  });
-  editor.addEventListener("scroll", sync);
-  editor.addEventListener("blur", () =>
-    setTimeout(() => doc.activeElement !== editor && close(), 0),
-  );
-  list.addEventListener("mousedown", (event) => event.preventDefault());
-  list.addEventListener("click", (event) => {
-    const option = /** @type {HTMLElement | null} */ (event.target)?.closest?.("[role=option]");
-    if (option) accept(Number(/** @type {HTMLElement} */ (option).dataset.index));
-  });
+
+  /** @type {Map<unknown, { state: State, scroll: unknown }>} */
+  const kept = new Map();
+  /** @type {unknown} */
+  let shownKey;
+
+  /** Show the console `key`: its kept state, or a new one with `text`. */
+  const switchTo = (
+    /** @type {unknown} */ key,
+    /** @type {string} */ text,
+    /** @type {Dialect} */ next,
+    /** @type {boolean} */ on,
+  ) => {
+    if (shownKey !== undefined) {
+      kept.delete(shownKey);
+      kept.set(shownKey, { state: view.state, scroll: view.scrollSnapshot() });
+      while (kept.size > KEPT) kept.delete(kept.keys().next().value);
+    }
+    shownKey = key;
+    const entry = kept.get(key);
+    view.setState(entry ? entry.state : stateOf(text, next, on));
+    if (entry) view.dispatch({ effects: /** @type {never} */ (entry.scroll) });
+  };
 
   return {
-    /** Show text, in a dialect, read-only (DDL) or not; never under the person's typing. */
-    show(/** @type {string} */ text, /** @type {Dialect} */ next, /** @type {boolean} */ readOnly) {
-      const changed = editor.value !== text || dialect !== next;
-      dialect = next;
-      editor.readOnly = readOnly;
-      if (editor.value !== text) editor.value = text;
-      if (changed) schedule();
+    /** Show text, in a dialect, read-only (DDL) or not, for the console `key`; never under the
+     * person's typing: the text the controller has from this editor changes nothing. */
+    show(
+      /** @type {string} */ text,
+      /** @type {Dialect} */ next,
+      /** @type {boolean} */ on,
+      /** @type {unknown} */ key = shownKey ?? "",
+    ) {
+      if (key !== shownKey) switchTo(key, text, next, on);
+      const state = view.state;
+      const effects = [];
+      if (state.facet(dialectFacet) !== next)
+        effects.push(dialect.reconfigure(dialectFacet.of(next)));
+      if (state.readOnly !== on) effects.push(readOnly.reconfigure(readOnlyOf(on)));
+      const current = textOf(state.doc);
+      const changes = current === text ? undefined : diff(current, text);
+      if (!changes && effects.length === 0) return;
+      view.dispatch({ changes, effects, annotations: fromModel.of(true) });
     },
-    /** Replace a range (Format), keeping it undoable where the browser can. */
+    /** Replace a range (Format), undoable. */
     replace(/** @type {number} */ start, /** @type {number} */ end, /** @type {string} */ text) {
-      editor.focus();
-      editor.setSelectionRange(start, end);
-      const done = doc.execCommand?.("insertText", false, text);
-      if (!done) editor.setRangeText(text, start, end, "end");
-      act("edited", editor.value);
-      schedule();
+      view.focus();
+      view.dispatch({
+        changes: { from: start, to: end, insert: text },
+        selection: { anchor: start + text.length },
+        scrollIntoView: true,
+        userEvent: "input.format",
+      });
     },
-    repaint: schedule,
-    close,
+    repaint: () => view.requestMeasure(),
+    close: () => closeCompletion(view),
   };
+}
+
+/** The fold gutter's marker: a chevron, open or closed, from the theme's text colour. */
+function marker(/** @type {Document} */ doc, /** @type {boolean} */ open) {
+  const span = doc.createElement("span");
+  span.className = `fold-marker ${open ? "open" : "closed"}`;
+  span.textContent = open ? "⌄" : "›";
+  span.setAttribute("aria-hidden", "true");
+  return span;
 }

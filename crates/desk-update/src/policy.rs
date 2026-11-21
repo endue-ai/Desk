@@ -19,25 +19,31 @@ pub fn choose<'a>(
     targets: &[String],
     bucket: impl Fn(&str) -> u8,
 ) -> Option<&'a Listed> {
-    let mut candidates: Vec<(Version, &Listed)> = index
+    index
         .releases
         .iter()
-        .filter_map(|listed| Some((Version::parse(&listed.version).ok()?, listed)))
-        .filter(|(version, listed)| {
-            version > current
-                && listed.targets.iter().any(|t| targets.contains(t))
-                && bucket(&listed.version) < rollout(listed)
-        })
-        .collect();
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
-    candidates
-        .into_iter()
-        .find(|(_, listed)| reachable(listed.min_from.as_deref(), current))
+        .filter_map(|listed| eligible(listed, current, targets, &bucket).map(|v| (v, listed)))
+        .max_by(|a, b| a.0.cmp(&b.0))
         .map(|(_, listed)| listed)
 }
 
+/// The eligible version, shared by candidate selection and rechecking an older staged fallback.
+pub(crate) fn eligible(
+    listed: &Listed,
+    current: &Version,
+    targets: &[String],
+    bucket: impl Fn(&str) -> u8,
+) -> Option<Version> {
+    let version = Version::parse(&listed.version).ok()?;
+    (version > *current
+        && listed.targets.iter().any(|t| targets.contains(t))
+        && reachable(listed.min_from.as_deref(), current)
+        && bucket(&listed.version) < rollout(listed))
+    .then_some(version)
+}
+
 /// Whether a build that names `min_from` takes a desk at `current` directly.
-fn reachable(min_from: Option<&str>, current: &Version) -> bool {
+pub(crate) fn reachable(min_from: Option<&str>, current: &Version) -> bool {
     match min_from {
         None => true,
         Some(min) => Version::parse(min).is_ok_and(|min| min <= *current),

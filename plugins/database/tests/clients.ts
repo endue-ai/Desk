@@ -27,6 +27,10 @@ export const VERSIONS: Record<string, string> = {
 const quote = (value: string) =>
   /^-?\d+(\.\d+)?$/u.test(value) ? value : `'${value.replaceAll("'", "''")}'`;
 
+/** A field of psql's --csv output: quoted when it holds a comma, a quote or a line break. */
+const csv = (value: string) =>
+  /[",\r\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+
 /** sqlite3's answer to a run: each statement's rows in quote mode, then its marker's total. */
 export function sqliteRun(args: string[], script: Script, env: Record<string, string>): Reply {
   let stdout = "";
@@ -62,7 +66,7 @@ export function psqlRun(args: string[], script: Script, env: Record<string, stri
         code: 2,
       };
     if (answer.error) return { stdout, stderr: `${stderr}ERROR:  ${answer.error}\n`, code: 1 };
-    for (const row of answer.rows ?? []) stdout += `${row.join(",")}\n`;
+    for (const row of answer.rows ?? []) stdout += `${row.map(csv).join(",")}\n`;
     if (!echo) {
       i += 1;
       continue;
