@@ -1,8 +1,9 @@
 // The value search through the plugin's commands and actions on the SDK's test host, against the
-// scripted PostgreSQL of search-fixture.ts: the panel per connection with the estimate, each table
-// searched in its own read-only run, the results grouped by table and column, the tables left out
-// and why, a production connection asked first, Cancel, a hit opened filtered, and an agent's search
-// answered under the same limits.
+// scripted PostgreSQL of search-fixture.ts on the stub's sessions: the panel per connection with the
+// estimate, each table searched in its own read-only run on a session of its own, the results
+// grouped by table and column, the tables left out and why, a production connection asked first,
+// Cancel of the run in flight on its session alone, a hit opened filtered, a partitioned table
+// searched once, and an agent's search answered under the same limits.
 import { describe, expect, it } from "vitest";
 import type { Connection } from "../ui/engines/common.js";
 import type { SearchState } from "../ui/features/search/controller.js";
@@ -25,10 +26,11 @@ async function start(
 }
 const acts = (m: Mounted) =>
   m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
-const sqls = (m: Mounted) =>
-  m.clients.spawned.flatMap((s) =>
-    s.args.filter((a, i) => s.args[i - 1] === "-c" && !a.startsWith("\\")),
-  );
+const sqls = (m: Mounted) => m.sessions().flat();
+/** The sessions a table's run had: read-only, its timeout, EXPLAIN, the search, COMMIT. */
+const runs = (m: Mounted) => m.sessions().filter((s) => s.includes("BEGIN READ ONLY"));
+const made = (m: Mounted, method: string) =>
+  m.host.calls.filter((c) => c.method === method).map((c) => c.params as Record<string, unknown>);
 const searches = (m: Mounted) =>
   sqls(m).filter(
     (s) => /^SELECT .* FROM "/u.test(s) && / LIMIT \d+$/u.test(s) && s.includes("CASE WHEN"),
@@ -81,12 +83,10 @@ describe("the value search", () => {
       ["sales.big_log", "timeout"],
     ]);
     expect(run?.empty).toBe(1);
-    // Each table in its own run: read-only, its own timeout, EXPLAIN, then the search.
-    const runs = m.clients.spawned.filter((s) => s.args.includes("BEGIN READ ONLY"));
-    expect(runs).toHaveLength(6);
-    const first = runs[0]?.args.filter(
-      (a, i) => runs[0]?.args[i - 1] === "-c" && !a.startsWith("\\"),
-    );
+    // Each table in its own run on a session of its own: read-only, its own timeout, EXPLAIN, then
+    // the search.
+    expect(runs(m)).toHaveLength(6);
+    const first = runs(m)[0];
     expect(first?.slice(0, 3)).toEqual([
       "BEGIN READ ONLY",
       "SET LOCAL statement_timeout = 10000",
@@ -146,8 +146,7 @@ describe("the value search", () => {
       match: "contains",
     });
     expect(panel(m).run?.phase).toBe("done");
-    const ro = m.clients.spawned.filter((s) => s.args.includes("BEGIN READ ONLY")).at(-1);
-    expect(ro?.env.PGOPTIONS).toContain("default_transaction_read_only=on");
+    expect(made(m, "db.open").at(-1)).toMatchObject({ database: "ledger", readOnly: true });
   });
 
   it("skips a table with no permission or past its timeout and says why", async () => {
@@ -165,13 +164,16 @@ describe("the value search", () => {
     ]);
   });
 
-  it("Cancel stops the statement running and the tables after it", async () => {
+  it("Cancel stops the statement running on its session and the tables after it", async () => {
     let m: Mounted | undefined;
     const seen: string[] = [];
     m = await start({
+      // The events table's search runs on the server until it is cancelled.
+      waits: "public.events",
       onSearch: (table) => {
         seen.push(table);
-        if (table === "public.events" && m) void acts(m).searchCancel?.(m.shown()?.id as string);
+        const id = m?.shown()?.id as string;
+        if (table === "public.events") setTimeout(() => void acts(m as Mounted).searchCancel?.(id));
       },
     });
     await m.host.command("endue.database.search-data", { connection: "ledger" });
@@ -180,11 +182,14 @@ describe("the value search", () => {
     expect(seen).toEqual(["public.customers", "public.events"]);
     const run = panel(m).run;
     expect(run?.phase).toBe("cancelled");
-    expect(run?.tables.map((t) => t.name)).toEqual(["customers", "events"]);
+    expect(run?.tables.map((t) => t.name)).toEqual(["customers"]);
+    expect(run?.skipped.at(-1)).toMatchObject({ name: "events", why: "cancelled" });
     expect(m.view.said.at(-1)).toBe(
-      "Found 3 rows in 2 tables (3 columns); 2 tables searched, 1 left out, cancelled after 3 of 8 tables.",
+      "Found 2 rows in 1 table (2 columns); 1 table searched, 1 left out, cancelled after 3 of 8 tables.",
     );
-    // The client was asked to stop (SIGINT), and no later table was read.
+    // db.cancel went to the events run's session alone, and no later table was read.
+    const events = made(m, "db.run").find((p) => String(p.sql).includes('"events"'));
+    expect(made(m, "db.cancel")).toEqual([{ sessionId: events?.sessionId }]);
     expect(searches(m).some((s) => s.includes('"orders"') || s.includes('"invoices"'))).toBe(false);
     await expect(m.host.command("endue.database.search-data-cancel")).rejects.toThrow(
       "No search is going on.",
@@ -217,6 +222,64 @@ describe("the value search", () => {
     // A column opens the table filtered to all its matches.
     await acts(m).searchOpen?.(id, 0, 1);
     expect(m.shown()?.table?.where).toBe(`"note" LIKE '%4242%'`);
+  });
+
+  it("searches a partitioned table once, for its partitions' rows, and a hit opens it", async () => {
+    // As the server's catalog does, the ledger lists the partitioned table and none of its
+    // partitions: each row names the partition it lives in (tableoid).
+    const m = await start({
+      ledger: {
+        public: [
+          {
+            name: "shipments",
+            kind: "p",
+            plan: "full",
+            columns: [
+              ["sent", "date", ""],
+              ["code", "text", ""],
+            ],
+            rows: [
+              ["2025-06-01", "4242"],
+              ["2026-06-01", "A-4242"],
+            ],
+            ctids: ["(0,1)", "(0,1)"],
+            parts: ["public.shipments_2025", "public.shipments_2026"],
+          },
+        ],
+      },
+    });
+    const answer = await m.host.command("endue.database.search-data", {
+      connection: "ledger",
+      value: "4242",
+      match: "contains",
+    });
+    expect(answer).toMatchObject({
+      searched: 1,
+      tables: [
+        { table: "public.shipments", rowsBy: "ctid", columns: [{ column: "code", count: 2 }] },
+      ],
+      skipped: [],
+    });
+    expect(searches(m)).toHaveLength(1);
+    expect(searches(m)[0]).toMatch(
+      /^SELECT ctid::text, tableoid::regclass::text, CASE WHEN .* FROM "public"\."shipments" WHERE /u,
+    );
+    expect(sqls(m).some((s) => s.includes("shipments_20"))).toBe(false);
+    // The hits are grouped under the partitioned table, each with its partition.
+    const run = panel(m).run;
+    expect(run?.total).toBe(1);
+    expect(run?.tables[0]?.columns[0]?.hits.map((h) => h.key)).toEqual([
+      ["(0,1)", "public.shipments_2025"],
+      ["(0,1)", "public.shipments_2026"],
+    ]);
+    // A hit opens the partitioned table filtered to its row: its ctid in its partition.
+    await acts(m).searchOpen?.(m.shown()?.id as string, 0, 0, 1);
+    expect(m.shown()?.table).toMatchObject({
+      schema: "public",
+      name: "shipments",
+      where: "ctid = '(0,1)'::tid AND tableoid = 'public.shipments_2026'::regclass",
+    });
+    expect(m.shown()?.shown?.tabs[0]?.set?.rows).toEqual([["2026-06-01", "A-4242"]]);
   });
 
   it("an agent's search answers the counts under the same limits", async () => {

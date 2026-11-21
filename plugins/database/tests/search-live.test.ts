@@ -1,37 +1,33 @@
-// The value search against a real PostgreSQL, through the plugin's commands and the real psql. It
-// runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database it may write in, for example
-// postgresql://postgres:pw@db/scratch, as a superuser: a schema of its own with twelve small tables of
-// mixed column types (dropped after), a value found in three of them (a text, a jsonb document, a
-// number), a regular expression ignoring case, a table left out by the size limit and found by its
-// index when asked, each hit's filter finding its row on the server, and a role of its own (dropped
-// after) refused one table and slowed on another by a row-level policy that sleeps per row: that
-// table passes a one-second statement timeout and is listed as skipped, and Cancel stops it.
-import { spawnSync } from "node:child_process";
+// The value search against a real PostgreSQL, through the plugin's commands on the desk core's
+// sessions (core-bridge.ts), no psql. It runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch
+// database it may write in, for example postgresql://postgres:pw@db/scratch, as a superuser: a schema
+// of its own with thirteen small tables of mixed column types (dropped after), one of them
+// partitioned in two, a value found in four of them (a text, a jsonb document, a number, a row in
+// each partition, searched once through the partitioned table), a regular expression ignoring case,
+// a table left out by the size limit and found by its index when asked, each hit's filter finding its
+// row on the server, and a role of this database's (dropped after) refused one table and slowed on
+// another by a row-level policy that sleeps per row: that table passes a one-second statement
+// timeout and is listed as skipped, and Cancel stops its statement on its session.
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { SearchState } from "../ui/features/search/controller.js";
-import { type Handlers, type Mounted, mount } from "./harness";
+import { serverSession } from "./core-bridge";
+import { type Mounted, mount } from "./harness";
+import { databaseOf, liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const SCHEMA = "search_live";
-const ROLE = "t491_reader";
+// Other runs use the same server at once, each in a database of its own: the role is this
+// database's, and only this database's sessions are looked up and ended.
+const ROLE = `t491_reader_${databaseOf(uri)
+  .toLowerCase()
+  .replace(/[^a-z0-9_]/gu, "_")}`.slice(0, 63);
 const PASSWORD = randomUUID();
+const { admin } = liveSessions(uri, "search");
 
-/** psql on the scratch database as the URI's role, unaligned, for what the test sets up. */
-const admin = (sql: string) => {
-  const done = spawnSync(
-    "psql",
-    ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
-  );
-  if (done.status !== 0) throw new Error(done.stderr);
-  return done.stdout.trim();
-};
-
+/** The statements that set the schema up, one by one on one session. */
 const SETUP = `
 CREATE SCHEMA ${SCHEMA};
 SET search_path = ${SCHEMA};
@@ -58,9 +54,13 @@ CREATE TABLE products (sku text PRIMARY KEY, title text, price numeric);
 INSERT INTO products VALUES ('SKU-1', 'Blue mug', 12.5), ('SKU-2', 'Red mug', 9);
 CREATE TABLE sessions (token uuid, seen timestamptz);
 INSERT INTO sessions VALUES (gen_random_uuid(), now());
+CREATE TABLE shipments (sent date, code text) PARTITION BY RANGE (sent);
+CREATE TABLE shipments_2025 PARTITION OF shipments FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+CREATE TABLE shipments_2026 PARTITION OF shipments FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+INSERT INTO shipments VALUES ('2025-06-01', '987654'), ('2026-06-01', '987654'), ('2026-07-01', 'A-2');
 CREATE TABLE tags (id int PRIMARY KEY, labels text[]);
 INSERT INTO tags VALUES (1, ARRAY['987654']);
-ANALYZE accounts, audit, big, customers, events, flags, notes, orders, payments, products, sessions, tags;
+ANALYZE accounts, audit, big, customers, events, flags, notes, orders, payments, products, sessions, shipments, tags;
 -- The role reads every table but customers, and audit only half a second a row.
 CREATE ROLE ${ROLE} LOGIN PASSWORD '${PASSWORD}';
 GRANT USAGE ON SCHEMA ${SCHEMA} TO ${ROLE};
@@ -68,8 +68,11 @@ GRANT SELECT ON ALL TABLES IN SCHEMA ${SCHEMA} TO ${ROLE};
 REVOKE SELECT ON customers FROM ${ROLE};
 CREATE FUNCTION slowly(bigint) RETURNS boolean LANGUAGE sql VOLATILE AS 'SELECT $1 IS NOT NULL FROM pg_sleep(0.5)';
 ALTER TABLE audit ENABLE ROW LEVEL SECURITY;
-CREATE POLICY slowly ON audit FOR SELECT TO ${ROLE} USING (slowly(id));
-`;
+CREATE POLICY slowly ON audit FOR SELECT TO ${ROLE} USING (slowly(id))
+`
+  .split(";\n")
+  .map((sql) => sql.trim())
+  .filter(Boolean);
 
 /** The plugin with one connection to the scratch database, as the URI's role or `as`. */
 async function plugin(as?: { user: string; password: string }) {
@@ -81,24 +84,13 @@ async function plugin(as?: { user: string; password: string }) {
     name: "live",
   });
   const secret = as?.password ?? password;
-  const procs = realProcs();
-  const spawnReal = procs.handlers["proc.spawn"] as unknown as (
-    params: Record<string, unknown>,
-    caller?: string,
-  ) => unknown;
-  const handlers = {
-    ...procs.handlers,
-    // The password reaches psql as the person's typed one would, never through the store.
-    "proc.spawn": (params: Record<string, unknown>, caller?: string) =>
-      spawnReal(
-        {
-          ...params,
-          env: { ...(params.env as object), ...(secret ? { PGPASSWORD: secret } : {}) },
-        },
-        caller,
-      ),
-  } as unknown as Handlers;
-  const m = await mount({ store: { connections: [conn] }, handlers, pick: () => "yes" });
+  // The password signs the session in as the person's typed one would, never through the store.
+  const procs = realProcs(secret ? { password: secret } : {});
+  const m = await mount({
+    store: { connections: [conn] },
+    handlers: procs.handlers,
+    pick: () => "yes",
+  });
   procs.attach((event) => m.host.emit(event));
   return m;
 }
@@ -128,70 +120,89 @@ const act = (m: Mounted, name: string, ...args: unknown[]) => {
   return fn(...args);
 };
 const panel = (m: Mounted) => m.shown()?.search as SearchState | undefined;
-const active = () =>
+const active = async () =>
   Number(
-    admin(
+    await admin(
       `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%"${SCHEMA}"."audit"%' AND pid <> pg_backend_pid()`,
     ),
   );
 
 /** End the role's sessions in this database, then drop what the test made. */
-const clean = () => {
-  admin(
-    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND usename = '${ROLE}'`,
+const clean = async () => {
+  await admin(
+    `SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = current_database() AND usename = '${ROLE}'`,
   );
-  admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
+  await admin(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
   // The role's grants and its policy went with the schema.
-  admin(`DROP ROLE IF EXISTS ${ROLE}`);
+  await admin(`DROP ROLE IF EXISTS ${ROLE}`);
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   if (!uri) return;
-  clean();
-  admin(SETUP);
+  await clean();
+  const own = await serverSession(uri, "search setup", { lock_timeout: "30s" });
+  try {
+    await own.run(...SETUP);
+  } finally {
+    await own.close();
+  }
 }, 60_000);
 
-afterAll(() => {
-  if (uri) clean();
+afterAll(async () => {
+  if (uri) await clean();
 });
 
 describe.skipIf(!uri)("the value search on a real PostgreSQL", () => {
-  it("finds a value in three of twelve tables (text, jsonb, a number), by a regular expression, skips a table past its timeout and cancels mid-search", async () => {
+  it("finds a value in four of thirteen tables (text, jsonb, a number, a partitioned table), by a regular expression, skips a table past its timeout and cancels mid-search", async () => {
     const m = await plugin();
 
-    // A value equal to a text, to a number deep in a jsonb document and to an integer key; the big
-    // table is left out by the size limit, the one of booleans has nothing to look in.
+    // A value equal to a text, to a number deep in a jsonb document, to an integer key and to a
+    // text in both partitions of a partitioned table; the big table is left out by the size limit,
+    // the one of booleans has nothing to look in.
     const equal = await search(m, { value: "987654", sizeLimit: 10_000 });
     expect(equal.phase).toBe("done");
     expect(found(equal)).toEqual([
       ["customers", ["code"]],
       ["events", ["payload"]],
       ["orders", ["id"]],
+      ["shipments", ["code"]],
     ]);
-    expect(equal.tables.map((t) => t.rowsBy)).toEqual([["id"], "ctid", ["id"]]);
+    expect(equal.tables.map((t) => t.rowsBy)).toEqual([["id"], "ctid", ["id"], "ctid"]);
     expect(equal.skipped).toEqual([
       { table: `${SCHEMA}.big`, why: "over the size limit: about 20 thousand rows" },
     ]);
-    expect(equal.searched).toBe(10);
+    expect(equal.searched).toBe(11);
     const run = panel(m)?.run;
     expect(run?.empty).toBe(1);
+    // The partitioned table is searched once, for its partitions' rows; no partition on its own.
+    expect(run?.total).toBe(13);
+    const shipments = run?.tables[3]?.columns[0];
+    expect(shipments?.count).toBe(2);
+    expect(shipments?.hits.map((h) => h.key[1]).sort()).toEqual([
+      `${SCHEMA}.shipments_2025`,
+      `${SCHEMA}.shipments_2026`,
+    ]);
     // So few rows are read in full; a number in the big table's key is found by its index.
-    expect(run?.tables.map((t) => t.scan)).toEqual(["full", "full", "full"]);
+    expect(run?.tables.map((t) => t.scan)).toEqual(["full", "full", "full", "full"]);
 
-    // Each hit's filter finds its row: the key, else the ctid.
+    // Each hit's filter finds its row on the table it is listed under: the key, else the ctid (and
+    // the partition the row lives in).
     const id = m.shown()?.id as string;
-    for (const [t, rows] of [
-      [0, 1],
-      [1, 1],
-      [2, 1],
+    for (const [t, hit] of [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+      [3, 1],
     ] as const) {
-      const { where } = (await act(m, "searchOpen", id, t, 0, 0)) as { where: string };
+      const { where } = (await act(m, "searchOpen", id, t, 0, hit)) as { where: string };
       const table = run?.tables[t]?.name;
-      expect(admin(`SELECT count(*) FROM ${SCHEMA}.${table} WHERE ${where}`), where).toBe(
-        String(rows),
+      expect(await admin(`SELECT count(*) FROM ${SCHEMA}.${table} WHERE ${where}`), where).toBe(
+        "1",
       );
+      if (t === 2) expect(m.view.said.at(-1)).toBe("orders: the row of id 987654.");
     }
-    expect(m.view.said.at(-1)).toBe("orders: the row of id 987654.");
+    expect(m.shown()?.table).toMatchObject({ schema: SCHEMA, name: "shipments" });
 
     // A regular expression ignoring case: a text, a varchar and a string inside a jsonb document.
     const regex = await search(m, { value: "^order-\\d+", match: "regex", ignoreCase: true });
@@ -223,6 +234,7 @@ describe.skipIf(!uri)("the value search on a real PostgreSQL", () => {
     expect(found(refused)).toEqual([
       ["events", ["payload"]],
       ["orders", ["id"]],
+      ["shipments", ["code"]],
     ]);
     expect(refused.skipped).toEqual([
       { table: `${SCHEMA}.big`, why: "over the size limit: about 20 thousand rows" },
@@ -245,16 +257,27 @@ describe.skipIf(!uri)("the value search on a real PostgreSQL", () => {
     await act(reader, "searchCancel", panelId);
     await started;
     const elapsed = Date.now() - asked;
+    // The cancel went to the run in flight alone, on its own session.
+    const calls = reader.host.calls as readonly {
+      method: string;
+      params?: Record<string, string>;
+    }[];
+    const audit = calls
+      .filter((c) => c.method === "db.run" && c.params?.sql?.includes(`"${SCHEMA}"."audit"`))
+      .at(-1);
+    expect(calls.filter((c) => c.method === "db.cancel").map((c) => c.params?.sessionId)).toEqual([
+      audit?.params?.sessionId,
+    ]);
     const cancelled = panel(reader)?.run;
     expect(cancelled?.phase).toBe("cancelled");
-    expect([cancelled?.done, cancelled?.total]).toEqual([2, 12]);
+    expect([cancelled?.done, cancelled?.total]).toEqual([2, 13]);
     expect(cancelled?.skipped.map((s) => [s.name, s.why])).toEqual([["audit", "cancelled"]]);
     expect(elapsed).toBeLessThan(1500);
-    for (let i = 0; i < 50 && active() > 0; i++)
+    for (let i = 0; i < 50 && (await active()) > 0; i++)
       await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(active()).toBe(0);
+    expect(await active()).toBe(0);
     expect(reader.view.said.at(-1)).toBe(
-      "No match; 1 table searched, cancelled after 2 of 12 tables.",
+      "No match; 1 table searched, cancelled after 2 of 13 tables.",
     );
   }, 60_000);
 });

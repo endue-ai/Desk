@@ -5,8 +5,8 @@
 // table's rows where a searched column's text passes `find` (by default: holds "4242"), shaped as the
 // statement's select list asks (its key, then each column's text where it matched), and a table's
 // page filtered as a hit opens it. One table is refused (no permission), one passes its statement
-// timeout, one is past the size limit. Every other database's statement goes to the script behind
-// it. Fixture data only; it needs no Node.
+// timeout, one is past the size limit. It answers on the stub's sessions (clients.ts scriptedDb);
+// every other database's statement goes to the script behind it. Fixture data only; it needs no Node.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer, Script } from "./clients";
 import { catalogScript, type PgCatalog } from "./pg-catalog";
@@ -29,6 +29,8 @@ export const SEARCH_CONNECTION: Connection = {
 
 export interface LedgerTable {
   name: string;
+  /** relkind, "p" for a partitioned table; a table ("r") by default */
+  kind?: string;
   estimate?: string;
   /** name, type, flags (n not null, p primary key) */
   columns: string[][];
@@ -36,6 +38,8 @@ export interface LedgerTable {
   rows?: string[][];
   /** each row's ctid, for a table without a primary key */
   ctids?: string[];
+  /** a partitioned table's: the partition each row lives in, as tableoid::regclass names it */
+  parts?: string[];
   plan?: "index" | "full";
   /** the server refuses it: permission denied */
   deny?: boolean;
@@ -96,14 +100,17 @@ export const LEDGER: Record<string, LedgerTable[]> = {
   ],
 };
 
-/** The schema cache's view of the ledger. */
-export function ledgerCatalog(): PgCatalog {
+type Ledger = Record<string, LedgerTable[]>;
+
+/** The schema cache's view of the ledger; as the server's, it lists no partition of its own. */
+export function ledgerCatalog(ledger: Ledger = LEDGER): PgCatalog {
   const out: PgCatalog = {};
-  for (const [schema, tables] of Object.entries(LEDGER))
+  for (const [schema, tables] of Object.entries(ledger))
     out[schema] = {
       mark: `${schema.length}.1:1`,
       tables: tables.map((t) => ({
         name: t.name,
+        ...(t.kind ? { kind: t.kind } : {}),
         ...(t.estimate ? { estimate: t.estimate } : {}),
         columns: t.columns,
       })),
@@ -133,17 +140,25 @@ export interface SearchServerOptions {
   onSearch?: (table: string) => void;
   /** The regular expression tried first fails with this. */
   badRegex?: string;
+  /** schema.table whose search runs on the server until it is cancelled. */
+  waits?: string;
+  /** The tables by schema, the ledger's by default. */
+  ledger?: Ledger;
 }
 
 /** The answer to one table's search, shaped as its select list asks. */
-function searched(sql: string, find: (text: string) => boolean): Answer | undefined {
+function searched(
+  ledger: Ledger,
+  sql: string,
+  find: (text: string) => boolean,
+): Answer | undefined {
   const head =
     /^SELECT ([\s\S]*?) FROM ("(?:[^"]|"")*")\.("(?:[^"]|"")*") WHERE [\s\S]* LIMIT (\d+)$/u.exec(
       sql,
     );
   if (!head) return undefined;
   const [, list = "", schema = "", name = "", limit = "0"] = head;
-  const table = LEDGER[unquote(schema)]?.find((t) => t.name === unquote(name));
+  const table = ledger[unquote(schema)]?.find((t) => t.name === unquote(name));
   if (!table) return { error: `relation ${schema}.${name} does not exist` };
   if (table.deny) return { error: `permission denied for table ${table.name}` };
   if (table.slow) return { error: "canceling statement due to statement timeout" };
@@ -166,7 +181,7 @@ function searched(sql: string, find: (text: string) => boolean): Answer | undefi
       k === "ctid::text"
         ? (table.ctids?.[r] ?? "")
         : k.startsWith("tableoid")
-          ? `${unquote(schema)}.${table.name}`
+          ? (table.parts?.[r] ?? `${unquote(schema)}.${table.name}`)
           : (row[index(unquote(k))] ?? ""),
     );
     return [[...key, ...cells]];
@@ -176,14 +191,14 @@ function searched(sql: string, find: (text: string) => boolean): Answer | undefi
 }
 
 /** A table's page, filtered as a hit opens it: by its key, its ctid, or a column's match. */
-function paged(sql: string, find: (text: string) => boolean): Answer | undefined {
+function paged(ledger: Ledger, sql: string, find: (text: string) => boolean): Answer | undefined {
   const page =
     /^SELECT \* FROM ("(?:[^"]|"")*")\.("(?:[^"]|"")*")(?: WHERE ([\s\S]*?))?(?: ORDER BY [\s\S]*)? LIMIT (\d+) OFFSET (\d+)$/u.exec(
       sql,
     );
   if (!page) return undefined;
   const [, schema = "", name = "", where = "", limit = "0", offset = "0"] = page;
-  const table = LEDGER[unquote(schema)]?.find((t) => t.name === unquote(name));
+  const table = ledger[unquote(schema)]?.find((t) => t.name === unquote(name));
   if (!table) return undefined;
   const at = (column: string) => table.columns.findIndex(([n]) => n === column);
   const tests = where ? where.split(" AND ") : [];
@@ -191,6 +206,8 @@ function paged(sql: string, find: (text: string) => boolean): Answer | undefined
     tests.every((test) => {
       const ctid = /^ctid = '([^']*)'::tid$/u.exec(test);
       if (ctid) return table.ctids?.[r] === ctid[1];
+      const part = /^tableoid = '([^']*)'::regclass$/u.exec(test);
+      if (part) return table.parts?.[r] === part[1];
       const key = /^("(?:[^"]|"")*") = '((?:[^']|'')*)'$/u.exec(test);
       if (key) return row[at(unquote(key[1] ?? '""'))] === (key[2] ?? "").replaceAll("''", "'");
       const column = /^("(?:[^"]|"")*")/u.exec(test)?.[1];
@@ -204,9 +221,10 @@ function paged(sql: string, find: (text: string) => boolean): Answer | undefined
 /** The search's server in front of another script, for the ledger's database only. */
 export function searchServer(base: Script = () => ({}), options: SearchServerOptions = {}): Script {
   const find = options.find ?? ((text: string) => text.includes("4242"));
-  const catalog = catalogScript(ledgerCatalog);
-  return (sql, env) => {
-    if (env.PGDATABASE !== SEARCH_CONNECTION.database) return base(sql, env);
+  const ledger = options.ledger ?? LEDGER;
+  const catalog = catalogScript(() => ledgerCatalog(ledger));
+  return (sql, who) => {
+    if (who.database !== SEARCH_CONNECTION.database) return base(sql, who);
     const text = sql.trim();
     if (text === "SELECT current_setting('server_version_num')")
       return { rows: [["current_setting"], ["170006"]] };
@@ -215,7 +233,7 @@ export function searchServer(base: Script = () => ({}), options: SearchServerOpt
     if (/^(?:BEGIN READ ONLY|SET LOCAL statement_timeout = \d+|COMMIT)$/u.test(text)) return {};
     if (text.startsWith("EXPLAIN SELECT ")) {
       const name = /FROM "(?:[^"]|"")*"\."((?:[^"]|"")*)"/u.exec(text)?.[1] ?? "";
-      const table = Object.values(LEDGER)
+      const table = Object.values(ledger)
         .flat()
         .find((t) => t.name === name);
       const scan =
@@ -224,14 +242,15 @@ export function searchServer(base: Script = () => ({}), options: SearchServerOpt
           : `  ->  Seq Scan on ${name}`;
       return { rows: [["QUERY PLAN"], ["Limit  (cost=0.00..1.05 rows=1 width=64)"], [scan]] };
     }
-    const opened = text.startsWith("SELECT * ") ? paged(text, find) : undefined;
+    const opened = text.startsWith("SELECT * ") ? paged(ledger, text, find) : undefined;
     if (opened) return opened;
-    const hit = text.startsWith("SELECT ") ? searched(text, find) : undefined;
+    const hit = text.startsWith("SELECT ") ? searched(ledger, text, find) : undefined;
     if (hit) {
       const table = /FROM "((?:[^"]|"")*)"\."((?:[^"]|"")*)"/u.exec(text);
-      options.onSearch?.(`${table?.[1]}.${table?.[2]}`);
-      return hit;
+      const name = `${table?.[1]}.${table?.[2]}`;
+      options.onSearch?.(name);
+      return name === options.waits ? { waits: true } : hit;
     }
-    return catalog(sql, env);
+    return catalog(sql, who);
   };
 }
