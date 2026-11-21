@@ -6,8 +6,9 @@
 // is missing (ADR 0260), reads a CA file for the TLS modes that check certificates, hands over the
 // password the person typed (else names the one the keychain keeps, `passwordRef`, ADR 0311; the
 // core reads the password file first), and starts read-only for a read-only connection. Cancel is
-// db.cancel, for the runs of the console on screen; the statement timeout is the server's
-// statement_timeout, which a kept session takes again with SET when the setting changed. No DOM.
+// db.cancel, for the runs of the console on screen, or of one run its signal stops (a kept session
+// stays open); the statement timeout is the server's statement_timeout, which a kept session takes
+// again with SET when the setting changed. No DOM.
 
 import { readScope, withGrant } from "../console-files.js";
 import { endpoint } from "../keychain.js";
@@ -37,6 +38,8 @@ export { BACKSTOP_MS, GRACE_MS } from "./pg-script.js";
 const SIGN_IN_MS = 10_000;
 /** Kept sessions per connection when no setting says. */
 const PER_CONNECTION = 8;
+/** @returns {DbError} */
+const cancelled = () => ({ kind: "cancelled", message: "Cancelled." });
 /** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
 const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
 
@@ -220,12 +223,13 @@ export function createSessions(bridge, options = {}) {
   ) => {
     await slots.take("short");
     try {
-      if (job.cancelled)
-        return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
+      if (job.cancelled) return failedRun(plan.statements, cancelled());
       const opened = await open(conn, target, plan);
       if ("error" in opened) return failedRun(plan.statements, opened.error);
       job.sessionId = opened.sessionId;
       try {
+        // Cancelled while it signed in: nothing ran.
+        if (job.cancelled) return failedRun(plan.statements, cancelled());
         return await script(job, plan);
       } finally {
         sinks.delete(opened.sessionId);
@@ -249,8 +253,7 @@ export function createSessions(bridge, options = {}) {
       plan.timeoutMs,
       () => open(conn, target, plan),
       async (entry, notes) => {
-        if (job.cancelled)
-          return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
+        if (job.cancelled) return failedRun(plan.statements, cancelled());
         job.sessionId = entry.sessionId;
         job.transaction = entry.transaction;
         // A changed statement timeout reaches the session outside a transaction, where SET stays.
@@ -283,6 +286,7 @@ export function createSessions(bridge, options = {}) {
     const target = targetOf(conn);
     if (typeof target === "string")
       return failedRun(plan.statements, { kind: "connect", message: target });
+    if (plan.signal?.aborted) return failedRun(plan.statements, cancelled());
     /** @type {Job} */
     const job = {
       running: false,
@@ -291,6 +295,8 @@ export function createSessions(bridge, options = {}) {
       agent: plan.agent === true,
       ...(plan.session ? { owner: plan.session.owner } : {}),
     };
+    const abort = () => stop(job);
+    plan.signal?.addEventListener("abort", abort, { once: true });
     jobs.add(job);
     onBusy(jobs.size);
     try {
@@ -299,23 +305,26 @@ export function createSessions(bridge, options = {}) {
         : await short(job, conn, target, plan);
       return { ...done, ms: now() - started };
     } finally {
+      plan.signal?.removeEventListener("abort", abort);
       jobs.delete(job);
       onBusy(jobs.size);
     }
   };
 
+  /** Cancel one run: its statement is cancelled on its session, nothing after it starts. */
+  const stop = (/** @type {Job} */ job) => {
+    job.cancelled = true;
+    if (job.running && job.sessionId)
+      void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
+  };
   /**
-   * Cancel runs: the statement that runs is cancelled on the server, nothing after starts. With a
-   * scope, the owner's runs and the plugin's own short reads; another owner's and agents' go on.
+   * Cancel runs. With a scope, the owner's runs and the plugin's own short reads; another owner's
+   * and agents' go on. A kept session stays open: only its statement is cancelled.
    * @param {Scope} [scope]
    */
   const cancel = (scope) => {
-    for (const job of jobs) {
-      if (scope && job.owner !== scope.owner && (job.owner || job.agent)) continue;
-      job.cancelled = true;
-      if (job.running && job.sessionId)
-        void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
-    }
+    for (const job of jobs)
+      if (!scope || job.owner === scope.owner || (!job.owner && !job.agent)) stop(job);
   };
 
   return {

@@ -66,8 +66,9 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
   schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
-  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
-  Delete add, change and remove a connection, `u` adds one from a URI.
+  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
+  a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
+  a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
@@ -333,6 +334,10 @@ Modules: `features/diagram/`, `schema/diagram.js`.
 
 Modules: `features/maintenance/`.
 
+## Value search
+
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md).
+
 ## Routines
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
@@ -379,6 +384,7 @@ Modules: `features/backup/`.
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.search-data` answers where a value is in a connection's tables, read-only under the panel's limits.
 - `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
   the person's paste; nothing runs until the person submits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
