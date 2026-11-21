@@ -139,13 +139,15 @@ impl Due {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::{Due, FRAME};
+    use super::Due;
+    use crate::web_host::frames::{FRAME, interval};
 
     fn due(dirty: bool, occluded: bool) -> Due {
         Due {
             dirty,
             occluded,
             last_frame: Instant::now() - Duration::from_secs(5),
+            interval: FRAME,
             hosted: None,
             clock: None,
             withheld: None,
@@ -162,6 +164,37 @@ mod tests {
     }
 
     #[test]
+    fn a_frame_is_due_a_display_interval_after_the_last() {
+        for (rate, ms) in [(120, 8.333), (60, 16.667)] {
+            let every = interval(rate);
+            assert!(
+                (every.as_secs_f64() * 1e3 - ms).abs() < 1e-3,
+                "{rate} Hz: {every:?}"
+            );
+            let mut shown = due(true, false);
+            shown.interval = every;
+            assert_eq!(shown.frame(), Some(shown.last_frame + every), "{rate} Hz");
+            let last = Instant::now();
+            let late = Duration::from_millis(1);
+            let beat = Due::beat(last, last + every + late, every);
+            assert_eq!(beat, last + every, "{rate} Hz: on the display's beat");
+            let missed = last + every * 2 + late;
+            assert_eq!(
+                Due::beat(last, missed, every),
+                missed,
+                "{rate} Hz: a frame missed"
+            );
+        }
+        let mut fast = due(true, false);
+        fast.interval = interval(120);
+        assert_ne!(
+            fast.frame(),
+            Some(fast.last_frame + FRAME),
+            "never a fixed FRAME"
+        );
+    }
+
+    #[test]
     fn frames_keep_the_clocks_beat_whatever_each_wake_up_is_late() {
         let start = Instant::now();
         let late = Duration::from_millis(3);
@@ -169,7 +202,7 @@ mod tests {
         let mut last = start;
         for _ in 0..60 {
             let due = last + FRAME;
-            last = Due::beat(last, due + late);
+            last = Due::beat(last, due + late, FRAME);
             assert_eq!(last, due, "the frame counts from when it was due");
         }
         assert_eq!(last, start + FRAME * 60);
@@ -181,11 +214,23 @@ mod tests {
     fn a_frame_after_a_rest_or_a_missed_one_starts_the_beat_again() {
         let last = Instant::now();
         let rested = last + Duration::from_secs(2);
-        assert_eq!(Due::beat(last, rested), rested, "nothing drawn a while");
+        assert_eq!(
+            Due::beat(last, rested, FRAME),
+            rested,
+            "nothing drawn a while"
+        );
         let missed = last + FRAME * 2 + Duration::from_millis(1);
-        assert_eq!(Due::beat(last, missed), missed, "a whole frame missed");
+        assert_eq!(
+            Due::beat(last, missed, FRAME),
+            missed,
+            "a whole frame missed"
+        );
         let early = last + FRAME - Duration::from_millis(1);
-        assert_eq!(Due::beat(last, early), early, "drawn before it was due");
+        assert_eq!(
+            Due::beat(last, early, FRAME),
+            early,
+            "drawn before it was due"
+        );
     }
 
     #[test]
