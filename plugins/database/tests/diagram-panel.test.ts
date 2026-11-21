@@ -144,12 +144,30 @@ describe("the diagram panel", () => {
       [...root.querySelectorAll("button")].find((b) => b.textContent === text) as HTMLButtonElement;
     tool("Auto layout").click();
     tool("Keys").click();
-    tool("Export").click();
     tool("Copy image").click();
     tool("Draw relation").click();
-    for (const name of ["diagramArrange", "diagramExport", "diagramCopy", "diagramRelation"])
+    for (const name of ["diagramArrange", "diagramCopy", "diagramRelation"])
       expect(act).toHaveBeenCalledWith(name, "b-1");
     expect(act).toHaveBeenCalledWith("diagramColumns", "b-1", "keys");
+    // Export opens a menu of formats; a format exports, the last item copies.
+    const menu = root.querySelector(".er-export-menu") as HTMLElement;
+    expect(menu.hidden).toBe(true);
+    tool("Export image…").click();
+    expect(menu.hidden).toBe(false);
+    const items = [...menu.querySelectorAll("[role=menuitem]")] as HTMLElement[];
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Export as SVG, vector…",
+      "Export as PNG…",
+      "Export as PNG at 2x…",
+      "Copy as an image",
+    ]);
+    const choose = (item: HTMLElement | undefined) =>
+      menu.dispatchEvent(new CustomEvent("desk-select", { detail: { item } }));
+    choose(items[2]);
+    expect(menu.hidden).toBe(true);
+    expect(act).toHaveBeenLastCalledWith("diagramExport", "b-1", "png2x");
+    choose(items[3]);
+    expect(act).toHaveBeenLastCalledWith("diagramCopy", "b-1");
     expect(tool("All").getAttribute("aria-pressed")).toBe("true");
 
     // Zoom in, out and Fit.

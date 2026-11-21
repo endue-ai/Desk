@@ -3,7 +3,7 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 // The ER diagram of endue.database (plugins/database/ui/features/diagram) on the fixture page's
 // scripted PostgreSQL connection `depot` (plugins/database/tests/diagram-fixture.ts): a table dragged
 // stays where it was put after its panel closes and the diagram opens again; Export writes an SVG
-// naming every table and a PNG through the fixture's save dialog; and a schema of 500 tables and
+// naming every table, and its menu a PNG, through the fixture's save dialog; and a schema of 500 tables and
 // 1,000 foreign keys opens and pans with its frame times measured.
 const SURFACE = '[data-surface="endue.database"]';
 const SIZE = { width: 1100, height: 700 };
@@ -102,7 +102,9 @@ test("Export writes an SVG naming every table and a PNG where the save dialog sa
     expect(svg).toContain(`>${table}</text>`);
   expect(svg).not.toContain("var(");
   expect(svg).not.toContain("tabindex");
-  await run(page, "endue.database.er-export", { format: "png2x" });
+  // The panel's Export… menu: PNG at 2x.
+  await frame.getByRole("button", { name: "Export image…" }).click();
+  await frame.getByRole("menuitem", { name: "Export as PNG at 2x…" }).click();
   await expect
     .poll(async () => (await files(page))["~/Pictures/er-depot-public.png"]?.slice(0, 12))
     .toBe("iVBORw0KGgoA");

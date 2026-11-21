@@ -34,6 +34,8 @@ export const HEAD = 26;
 export const LINE = 18;
 export const PAD = 10;
 export const TAG = 26;
+/** The tag column when a row is both a primary and a foreign key ("PK FK"). */
+const BOTH = 46;
 const CHAR = 7.2;
 const MIN_W = 140;
 const MAX_W = 380;
@@ -54,11 +56,16 @@ export function rowsOf(/** @type {Table} */ table, /** @type {Mode} */ mode) {
   return { rows, more: list.length - rows.length };
 }
 
+/** The width of a box's tag column (PK, FK): wider when a row is both. */
+export const tagOf = (/** @type {Column[]} */ rows) =>
+  rows.some((c) => c.primary && c.foreign) ? BOTH : TAG;
+
 /** A box's size: as wide as its widest line (within bounds), as tall as its rows. */
 export function sizeOf(/** @type {string} */ label, /** @type {Column[]} */ rows, more = 0) {
+  const tag = tagOf(rows);
   const widest = Math.max(
     label.length * CHAR,
-    ...rows.map((c) => TAG + (c.name.length + typeText(c).length + 2) * CHAR),
+    ...rows.map((c) => tag + (c.name.length + typeText(c).length + 2) * CHAR),
   );
   const w = Math.round(Math.min(MAX_W, Math.max(MIN_W, widest + 2 * PAD)));
   const lines = rows.length + (more > 0 ? 1 : 0);

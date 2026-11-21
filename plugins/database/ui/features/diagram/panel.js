@@ -5,6 +5,7 @@
 // out of the diagram, n adds its neighbours; + - and 0 zoom and fit, a lays the tables out again.
 // A new state of the same diagram draws in place and keeps the view and the focus.
 
+import { createExportMenu } from "./export-menu.js";
 import { createMap } from "./minimap.js";
 import { createStage } from "./stage.js";
 
@@ -73,6 +74,8 @@ export function diagramPanel(doc, first, act, buffer) {
   out.setAttribute("aria-label", "Zoom out");
   const into = button("+", "Zoom in (+)", () => stage.zoom(1.25), "desk-icon-btn");
   into.setAttribute("aria-label", "Zoom in");
+  const exporting = button("Export image…", "Save as SVG or PNG", () => menu.open(exporting));
+  exporting.setAttribute("aria-haspopup", "menu");
   const status = make("span", "er-count");
   status.setAttribute("role", "status");
   bar.append(
@@ -86,7 +89,7 @@ export function diagramPanel(doc, first, act, buffer) {
     button("Draw relation", "Draw a relation the database does not declare", () =>
       run("diagramRelation"),
     ),
-    button("Export", "Save as SVG or PNG", () => run("diagramExport")),
+    exporting,
     button("Copy image", "Copy as a PNG", () => run("diagramCopy")),
     make("span", "desk-bar-spacer"),
     status,
@@ -94,6 +97,9 @@ export function diagramPanel(doc, first, act, buffer) {
   const host = make("div", "er-stage");
   const empty = make("p", "empty", "No tables in this diagram: Add table or Add schema adds some.");
   root.append(bar, host, empty);
+  const menu = createExportMenu(doc, root, (choice) =>
+    choice === "copy" ? run("diagramCopy") : run("diagramExport", choice),
+  );
 
   const stage = createStage(doc, host, {
     moved: (moves) => run("diagramMoved", moves),
@@ -208,6 +214,7 @@ export function diagramPanel(doc, first, act, buffer) {
       host.removeEventListener("dblclick", open);
       stage.destroy();
       map.destroy();
+      menu.destroy();
     },
     /** The stage, for tests. */
     stage,

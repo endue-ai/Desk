@@ -5,7 +5,7 @@
 // and moves it; `documentOf` is the export: the diagram alone, sized to its bounds, with the
 // theme's colours and font given as values. Pure.
 
-import { HEAD, LINE, PAD, TAG, typeText } from "./layout.js";
+import { HEAD, LINE, PAD, tagOf, typeText } from "./layout.js";
 
 /**
  * @typedef {import("./layout.js").Layout} Layout
@@ -83,17 +83,18 @@ function boxOf(/** @type {Box} */ box, /** @type {number} */ i, /** @type {boole
   const attrs = live
     ? ` data-b="${i}" tabindex="0" role="button" aria-label="${esc(`${box.label}: ${box.rows.length + box.more} columns shown. Enter opens its rows.`)}"`
     : "";
+  const tagged = tagOf(box.rows);
   const rows = box.rows.map((c, r) => {
     const y = HEAD + 4 + r * LINE + 13;
     const tag = [c.primary ? "PK" : "", c.foreign ? "FK" : ""].filter(Boolean).join(" ");
     const type = typeText(c);
-    const room = box.w - 2 * PAD - TAG - 8;
+    const room = box.w - 2 * PAD - tagged - 8;
     const nameRoom = Math.max(4 * CHAR, room - type.length * CHAR);
     const note = `${c.name}: ${c.type}, ${c.nullable ? "nullable" : "not null"}${c.primary ? ", primary key" : ""}${c.foreign ? ", foreign key" : ""}${c.comment ? `. ${c.comment}` : ""}`;
     return (
       `<g class="er-row"><title>${esc(note)}</title>` +
       (tag ? `<text class="er-tag" x="${PAD}" y="${y}">${tag}</text>` : "") +
-      `<text class="${c.primary ? "er-column er-key" : "er-column"}" x="${PAD + TAG}" y="${y}">${esc(cut(c.name, nameRoom))}</text>` +
+      `<text class="${c.primary ? "er-column er-key" : "er-column"}" x="${PAD + tagged}" y="${y}">${esc(cut(c.name, nameRoom))}</text>` +
       `<text class="er-type" x="${box.w - PAD}" y="${y}" text-anchor="end">${esc(cut(type, Math.max(4 * CHAR, room - nameRoom + 4 * CHAR)))}</text></g>`
     );
   });

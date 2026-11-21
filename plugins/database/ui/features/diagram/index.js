@@ -147,7 +147,8 @@ export const feature = {
       diagramExpand: (/** @type {string} */ id, /** @type {string} */ table) =>
         edits.expand(id, table, undefined),
       diagramRelation: (/** @type {string} */ id) => edits.relation(id, {}),
-      diagramExport: (/** @type {string} */ id) => exportDiagram(deps, diagrams.target(id), {}),
+      diagramExport: (/** @type {string} */ id, /** @type {unknown} */ format) =>
+        exportDiagram(deps, diagrams.target(id), { format }),
       diagramCopy: (/** @type {string} */ id) => copyDiagram(deps, diagrams.target(id)),
       diagramFlush: () => diagrams.flush(),
     };

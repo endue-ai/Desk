@@ -237,9 +237,9 @@ Modules: `features/overview/`.
   (ADR 0315). A new table lands beside the placed ones; a dropped one leaves.
 - Add or remove a table, add a table's neighbours (`n`) or a schema, and draw a relation the database does not
   declare (dashed, said to be not in the database, kept with the diagram).
-- Export writes SVG (the theme's colours as values) or PNG at 1x or 2x where the save dialog says, asking once
-  for the path when it is not granted (ADR 0260); Copy image puts a PNG on the clipboard. Either holds the
-  diagram alone.
+- Export image… writes SVG (the theme's colours as values) or PNG at 1x or 2x where the save dialog says,
+  asking once for the path when it is not granted (ADR 0260); Copy image puts a PNG on the clipboard. Either
+  holds the diagram alone.
 - Wheel pans, Mod and the wheel zooms, a drag on the background pans; Fit, `+`, `-` and `0` set the zoom; past
   30 tables a map shows where the view is. Arrows move between tables, Enter opens one, Delete removes it.
   From 200 tables the layout runs in a worker; boxes away from the view are not drawn, nor rows far out.
