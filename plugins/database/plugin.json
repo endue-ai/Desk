@@ -166,6 +166,16 @@
         "keywords": ["reload", "schema"]
       },
       {
+        "id": "endue.database.reload-schema",
+        "title": "Database: read the schema again",
+        "keywords": ["schema", "cache", "reload", "refresh", "catalog"]
+      },
+      {
+        "id": "endue.database.choose-schemas",
+        "title": "Database: choose the schemas to read",
+        "keywords": ["schema", "cache", "system schemas", "catalog"]
+      },
+      {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
         "keywords": ["find", "search", "objects"]

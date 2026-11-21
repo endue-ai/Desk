@@ -37,12 +37,19 @@ Modules: `connections.js`, `manage.js`, `view-form.js`, `clients.js`, `run.js`, 
 - Connections, then schemas (MySQL's databases, SQLite's main), a folder per kind of object (tables, views,
   materialized views, sequences, routines, events) and, under a table, its columns, keys, foreign keys, indexes
   and triggers. A node is read when it opens and kept until it is refreshed; system schemas show with a setting.
+- A PostgreSQL connection's schema is read once into a cache (ADR 0285) that the explorer, completion and the
+  ER diagram read: one statement per kind for every chosen schema, with progress and Cancel. It is kept in the
+  plugin's store across restarts, and on connect and on `g` a fingerprint statement says which schemas changed;
+  only those are read again, and a DDL statement run from the plugin starts that check. The connection's line
+  says when it was read. Database: read the schema again reads it all; Database: choose the schemas to read
+  picks them (system schemas stay out by default). Other engines read a node when it opens, as above.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the schema's ER diagram
   from its foreign keys, `n`, `e` and Delete add, change and remove a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
-Modules: `explorer.js`, `catalog.js`, `schema/`, `view-tree.js`, `view-diagram.js`.
+Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/`, `view-tree.js`,
+`view-diagram.js`.
 
 ## Console
 

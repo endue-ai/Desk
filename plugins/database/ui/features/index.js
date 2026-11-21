@@ -5,3 +5,4 @@
 export { feature as activity } from "./activity/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as diagram } from "./diagram/index.js";
+export { feature as schemaCache } from "./schema-cache/index.js";
