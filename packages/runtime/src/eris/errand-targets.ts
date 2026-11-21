@@ -134,25 +134,97 @@ export function windowsShowing(s: DeskState, provider: string): string[] {
     .map((w) => w.id);
 }
 
+/** A box in `host`'s coordinates. */
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /**
- * The middle of window `id` in `host`'s coordinates: of its section where its DOM lies, else of
- * where the desk draws it.
+ * The box of `el` in `host`'s coordinates; an element in a window's own page (ADR 0201) is measured
+ * in that page and lies at the window's place on the desk (`window-docs.ts`).
  */
-export function windowCentre(
+export function boxOf(el: Element, host: HTMLElement, docs?: WindowDocs): Box {
+  const r = el.getBoundingClientRect();
+  const f = host.getBoundingClientRect();
+  let a = { x: r.left, y: r.top };
+  let b = { x: r.left + r.width, y: r.top + r.height };
+  const page =
+    el.ownerDocument !== host.ownerDocument ? docs?.windowOf(el.ownerDocument) : undefined;
+  if (page && docs) [a, b] = [docs.toDesk(page, a), docs.toDesk(page, b)];
+  return { x: a.x - f.left, y: a.y - f.top, w: b.x - a.x, h: b.y - a.y };
+}
+
+/**
+ * Window `id`'s box in `host`'s coordinates, where it is now: of its section where its DOM lies,
+ * else of where the desk draws it (held by a gesture, or as the window manager placed it, the
+ * canvas's pan in it). Read again on every frame, it follows the window and the desk's pan.
+ */
+export function windowBox(
   host: HTMLElement,
   id: string,
   ctx: Seen & Partial<Pick<ShellCtx, "held">>,
-): Point | undefined {
+): Box | undefined {
   const section =
     ctx.pages?.section(id, host) ??
     [...host.querySelectorAll<HTMLElement>(".surface[data-surface]")].find(
       (el) => el.dataset.surface === id,
     );
-  if (section && section.getClientRects().length > 0) return centre(section, host, ctx.pages);
+  if (section && section.getClientRects().length > 0) return boxOf(section, host, ctx.pages);
   const rect = ctx.held?.rect(id) ?? ctx.store.get().wm.front.find((w) => w.id === id)?.rect;
   if (!rect) return undefined;
   const f = host.getBoundingClientRect();
-  return { x: rect.x + rect.w / 2 - f.left, y: rect.y + rect.h / 2 - f.top };
+  return { x: rect.x - f.left, y: rect.y - f.top, w: rect.w, h: rect.h };
+}
+
+/**
+ * Where the way from `box`'s middle toward `toward` crosses its edge: the point of its border that
+ * faces `toward`. From inside the box, the nearest point of its edge.
+ */
+export function borderPoint(box: Box, toward: Point): Point {
+  const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  const dx = toward.x - c.x;
+  const dy = toward.y - c.y;
+  const hw = box.w / 2;
+  const hh = box.h / 2;
+  if (Math.abs(dx) <= hw && Math.abs(dy) <= hh) {
+    const gaps = [
+      toward.x - box.x,
+      box.x + box.w - toward.x,
+      toward.y - box.y,
+      box.y + box.h - toward.y,
+    ];
+    const near = gaps.indexOf(Math.min(...gaps));
+    if (near === 0) return { x: box.x, y: toward.y };
+    if (near === 1) return { x: box.x + box.w, y: toward.y };
+    if (near === 2) return { x: toward.x, y: box.y };
+    return { x: toward.x, y: box.y + box.h };
+  }
+  const s = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
+  return { x: c.x + dx * s, y: c.y + dy * s };
+}
+
+/**
+ * Where on `target`'s border an errand's thread meets it: the point that faces Eris, read again on
+ * every call, so it follows the window as it moves, the desk as it pans and her as she moves. A
+ * window gone from the screen keeps its last place. Undefined when the target is nowhere on screen.
+ */
+export function edgeOf(
+  host: HTMLElement,
+  { el, window }: Target,
+  ctx: Seen & Partial<Pick<ShellCtx, "held">>,
+): (() => Point) | undefined {
+  const now = () =>
+    (window ? windowBox(host, window, ctx) : undefined) ??
+    (el?.isConnected && el.getClientRects().length > 0 ? boxOf(el, host, ctx.pages) : undefined);
+  let last = now();
+  if (!last) return undefined;
+  return () => {
+    last = now() ?? last;
+    return borderPoint(last as Box, erisAt(host));
+  };
 }
 
 /** Who a step goes to, as people read it: `endue.mail` is Mail, the local agent tools Agents. */
