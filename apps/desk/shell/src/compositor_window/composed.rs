@@ -47,6 +47,9 @@ pub struct Composed {
     /// Each window's own page's paints of a size its panes' plugins have no picture of yet, held
     /// aside (ADR 0233).
     pages: window::Pages,
+    /// Each picture's paint of a new size, waiting for the next layout, and the textures retired
+    /// until the render thread drew past them (#249).
+    waiting: waiting::Waiting,
 }
 
 impl Composed {
@@ -102,8 +105,10 @@ impl Composed {
     }
 
     fn drop_frames(&mut self, surface: &str) {
+        self.forget_waiting(surface);
         if let Some(id) = self.textures.remove(surface) {
-            self.frames.destroy(&mut self.compositor, id);
+            // A scene handed before may still draw it (`composed_waiting.rs`).
+            self.retire(id);
             self.dirty = true;
         }
     }
@@ -162,6 +167,7 @@ impl Shared {
             page: page::PageAside::default(),
             panes: pane::Panes::default(),
             pages: window::Pages::default(),
+            waiting: waiting::Waiting::default(),
         })))
     }
 
@@ -184,6 +190,12 @@ impl SurfaceSink for Shared {
             // A window's page may wait for this plugin's picture: the next scene looks.
             composed.dirty |= composed.pages_waiting();
             composed.pane_texture(&attach.surface, size)
+        };
+        // A paint shown of another size than its picture waits for the next layout (#249).
+        let (id, whole) = if aside {
+            (id, whole)
+        } else {
+            composed.shown_texture(&attach.surface, id, size, whole)
         };
         // A paint to another texture than the one before it carries that one's damage only.
         let all = whole.then(|| SurfaceAttach {
@@ -267,6 +279,8 @@ impl SurfaceSink for Shared {
 mod page;
 #[path = "composed_pane.rs"]
 mod pane;
+#[path = "composed_waiting.rs"]
+mod waiting;
 #[path = "composed_window.rs"]
 pub mod window;
 
