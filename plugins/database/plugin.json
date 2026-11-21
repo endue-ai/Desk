@@ -398,6 +398,81 @@
         "id": "endue.database.clients",
         "title": "Database: check the clients",
         "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+      },
+      {
+        "id": "endue.database.hide-column",
+        "title": "Database: hide the result's column at the cursor",
+        "keywords": ["grid", "columns", "hide"]
+      },
+      {
+        "id": "endue.database.show-column",
+        "title": "Database: show a hidden column of the result",
+        "keywords": ["grid", "columns", "unhide"]
+      },
+      {
+        "id": "endue.database.move-column-left",
+        "title": "Database: move the result's column left",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.move-column-right",
+        "title": "Database: move the result's column right",
+        "keywords": ["grid", "columns", "reorder"]
+      },
+      {
+        "id": "endue.database.pin-column",
+        "title": "Database: pin or unpin the result's column",
+        "keywords": ["grid", "columns", "freeze", "sticky"]
+      },
+      {
+        "id": "endue.database.fit-column",
+        "title": "Database: fit the result's column to its content",
+        "keywords": ["grid", "columns", "width", "autosize"]
+      },
+      {
+        "id": "endue.database.narrow-column",
+        "title": "Database: make the result's column narrower",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.widen-column",
+        "title": "Database: make the result's column wider",
+        "keywords": ["grid", "columns", "width", "resize"]
+      },
+      {
+        "id": "endue.database.reset-columns",
+        "title": "Database: reset the result's columns",
+        "keywords": ["grid", "columns", "order", "width"]
+      },
+      {
+        "id": "endue.database.add-sort",
+        "title": "Database: sort the result by its column next",
+        "keywords": ["grid", "order by", "multi-column"]
+      },
+      {
+        "id": "endue.database.filter-by-cell",
+        "title": "Database: filter the result by the cell at the cursor",
+        "keywords": ["grid", "quick filter", "equals", "contains", "null"]
+      },
+      {
+        "id": "endue.database.clear-filters",
+        "title": "Database: clear the result's quick filters",
+        "keywords": ["grid", "quick filter", "where"]
+      },
+      {
+        "id": "endue.database.find-in-result",
+        "title": "Database: find in the result",
+        "keywords": ["grid", "search", "cell"]
+      },
+      {
+        "id": "endue.database.find-next",
+        "title": "Database: find the next match in the result",
+        "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.find-previous",
+        "title": "Database: find the previous match in the result",
+        "keywords": ["grid", "search"]
       }
     ],
     "keys": [

@@ -1,9 +1,12 @@
-// What the grid draws, without the DOM: the rows in their order on screen (sorted by a column,
-// kept by a quick filter, the rows added at the end), each cell's value with its pending change,
-// and a record view of one row. Row numbers are the result's own, so a change lands on the row the
-// server sent whatever the order on screen.
+// What the grid draws, without the DOM: the rows in their order on screen (sorted by several keys,
+// kept by the quick filters and the text filter, the rows added at the end; grid/rows.js does the
+// work on indexes), each cell's value with its pending change, and each column's default width.
+// Row numbers are the result's own, so a change lands on the row the server sent whatever the
+// order on screen.
 
 import { cellAt } from "./edit/pending.js";
+import { CELL_PAD, columnKeys, NAME_ROOM } from "./grid/columns.js";
+import { orderRows } from "./grid/rows.js";
 import { numericColumns } from "./results.js";
 
 /**
@@ -11,13 +14,54 @@ import { numericColumns } from "./results.js";
  * @typedef {import("./edit/pending.js").Changes} Changes
  * @typedef {{ column: number, direction: "asc" | "desc" } | null} Sort
  * @typedef {{ value: string | null, changed: boolean, inserted: boolean, deleted: boolean }} Cell
+ * @typedef {import("./grid/filters.js").Filter} Filter
+ * @typedef {import("./grid/filters.js").SortKey} SortKey
+ * @typedef {{ sort: SortKey[], filters: Filter[], text: string, search: number[] }} Shape
+ *   The keys and filters by column key; `search` the result columns the text filter looks in.
  */
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+/** The result rows added as pending changes, after the others. */
+const withAdded = (
+  /** @type {ResultSet} */ set,
+  /** @type {Changes | null} */ changes,
+  /** @type {number[]} */ order,
+) => (changes ? [...order, ...changes.inserts.map((_, i) => set.rows.length + i)] : order);
+
+/** Read a result's cells with their pending changes. */
+const reader =
+  (/** @type {ResultSet} */ set, /** @type {Changes | null} */ changes) =>
+  (/** @type {number} */ row, /** @type {number} */ col) =>
+    valueAt(set, changes, row, col).value;
 
 /**
- * The result rows in screen order: sorted (numbers by value, NULL last, stable), those holding the
- * filter's text, then the rows added (never filtered out, so a new row stays in sight).
+ * The rows in screen order under sort keys and quick filters named by column key; a key or filter
+ * of a column the result does not have is left out. Added rows are never filtered out.
+ * @param {ResultSet} set
+ * @param {Changes | null} changes
+ * @param {Shape} shape
+ */
+export function orderOf(set, changes, { sort, filters, text, search }) {
+  const at = new Map(columnKeys(set.columns).map((key, i) => [key, i]));
+  const numeric = numericColumns(set);
+  const order = orderRows({
+    count: set.rows.length,
+    value: reader(set, changes),
+    numeric,
+    sort: sort.flatMap((k) =>
+      at.has(k.key) ? [{ column: at.get(k.key) ?? 0, direction: k.direction }] : [],
+    ),
+    filters: filters.flatMap((f) =>
+      at.has(f.key) ? [{ column: at.get(f.key) ?? 0, op: f.op, value: f.value }] : [],
+    ),
+    text,
+    search,
+  });
+  return withAdded(set, changes, order);
+}
+
+/**
+ * The result rows in screen order: sorted by one column (numbers by value, NULL last, stable), those
+ * holding the filter's text in any column, then the rows added.
  * @param {ResultSet} set
  * @param {Changes | null} changes
  * @param {Sort} sort
@@ -25,29 +69,16 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "bas
  * @returns {number[]}
  */
 export function rowOrder(set, changes, sort, filter) {
-  let order = set.rows.map((_, i) => i);
-  const needle = filter.trim().toLowerCase();
-  if (needle) {
-    order = order.filter((r) =>
-      set.columns.some((_, c) => {
-        const value = valueAt(set, changes, r, c).value;
-        return (value === null ? "null" : value.toLowerCase()).includes(needle);
-      }),
-    );
-  }
-  if (sort) {
-    const numeric = numericColumns(set)[sort.column] ?? false;
-    const sign = sort.direction === "asc" ? 1 : -1;
-    order.sort((a, b) => {
-      const x = valueAt(set, changes, a, sort.column).value;
-      const y = valueAt(set, changes, b, sort.column).value;
-      if (x === null || y === null) return x === y ? a - b : x === null ? 1 : -1;
-      const by = numeric ? Number(x) - Number(y) : collator.compare(x, y);
-      return by === 0 ? a - b : sign * by;
-    });
-  }
-  const added = changes ? changes.inserts.map((_, i) => set.rows.length + i) : [];
-  return [...order, ...added];
+  const order = orderRows({
+    count: set.rows.length,
+    value: reader(set, changes),
+    numeric: numericColumns(set),
+    sort: sort ? [sort] : [],
+    filters: [],
+    text: filter,
+    search: set.columns.map((_, c) => c),
+  });
+  return withAdded(set, changes, order);
 }
 
 /** A cell's value with its pending change. @returns {Cell} */
@@ -65,9 +96,9 @@ export function valueAt(
 export function rowsShown(
   /** @type {ResultSet} */ set,
   /** @type {Changes | null} */ changes,
-  /** @type {number[]} */ order,
+  /** @type {ArrayLike<number>} */ order,
 ) {
-  return order.map((r) => set.columns.map((_, c) => valueAt(set, changes, r, c).value));
+  return Array.from(order, (r) => set.columns.map((_, c) => valueAt(set, changes, r, c).value));
 }
 
 /** A cell's text in the grid: NULL apart, line breaks shown, long values cut. */
@@ -80,9 +111,14 @@ export function cellText(/** @type {string | null} */ value) {
 /** Each column's width in characters, from its name and the first rows. */
 export function widths(/** @type {ResultSet} */ set, max = 48) {
   return set.columns.map((name, c) => {
-    let width = name.length + 2;
+    let width = name.length + NAME_ROOM;
     for (const row of set.rows.slice(0, 200))
       width = Math.max(width, Math.min(max, cellText(row[c] ?? "NULL").length + 1));
     return Math.min(max, Math.max(6, width));
   });
+}
+
+/** Each column's default width in pixels, for a character `ch` pixels wide. */
+export function defaultWidths(/** @type {ResultSet} */ set, /** @type {number} */ ch) {
+  return widths(set).map((chars) => Math.ceil(chars * ch) + CELL_PAD);
 }
