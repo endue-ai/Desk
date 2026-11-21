@@ -12,22 +12,25 @@ import { normalize, parseUri } from "../ui/connections.js";
 import { editCell, emptyChanges, targetOf } from "../ui/edit/pending.js";
 import { submitChanges } from "../ui/edit/submit.js";
 import { DEFAULT } from "../ui/edit/values.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
 import { nodeBridge } from "./node-bridge";
 import { inProcessOutput } from "./output";
 
-/** The executor over the real psql, as live.test.ts makes it. */
+/** The executor on the core's sessions, as live.test.ts makes it. */
 function liveHarness(given: string) {
   const { fields, password } = parseUri(given);
   const conn = normalize({ ...fields, id: "c-live", name: "live", readOnly: false });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({ "endue.database.max-rows": 100 });
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },

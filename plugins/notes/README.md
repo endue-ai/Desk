@@ -12,7 +12,7 @@ Asleep out of sight (`ui.surface.state`, ADR 0070, ADR 0176), the SDK's `keepFil
 caret, scroll and unsaved text (whole, or its change from the saved text); back, it neither asks nor takes the focus.
 A dropped path becomes a link at the caret (ADR 0119; Markdown, relative to the note's folder, in a `.md` note), dropped
 text goes in as text, and with no note open dropped files open; reading a dropped path still needs a grant.
-New note (`endue.notes.new`, `Mod+Alt+N`) writes and opens an empty `~/Notes/<YYYY-MM-DD>.md` (`-2`, `-3`).
+New note (`endue.notes.new`, `Mod+Alt+N`) writes and opens an empty `~/Notes/<YYYY-MM-DD>.md` (`-2`, `-3`). Eris (ADR 0088, `ui/agent.js`) stays in `~/Notes`: `list { query }` and `read { path }` (the open copy when the person has it open), `new { text, name, open }`, `append` and `replace`, never over unsaved edits; each write keeps a version.
 Open… and Save as… (`.open`, `.save-as`) use `dialog.*`, granted that file alone. The last 30 open notes go
 to search; other `*.md`/`*.txt` under `~/Notes` are the palette's Notes group (`endue.notes.find`), read when changed.
 

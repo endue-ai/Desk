@@ -161,6 +161,9 @@ export function createLibrary({ bridge }) {
       };
     },
 
+    /** Every note under ~/Notes with its text, for agents (agent.js). */
+    notes: () => onDisk(),
+
     /** Where a new note goes: ~/Notes/2026-11-08.md, else the first free 2026-11-08-<n>.md. */
     async fresh(/** @type {Date} */ now) {
       const day = dateOf(now);

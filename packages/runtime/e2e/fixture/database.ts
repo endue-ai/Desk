@@ -1,11 +1,12 @@
 // Test page: endue.database (plugins/database) over the desk.* policies on the browser stub, with a
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
 // database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team), a saved
-// PostgreSQL connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts),
-// one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
-// (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
-// answers the server overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql
-// file (`window.__files`, what saves wrote). Never shipped.
+// PostgreSQL connection whose scripted server (db.*, the stub's sessions) has one table of typed
+// columns (items, fixtures-pg.ts), one whose server answers the maintenance form
+// (maintenance-fixture.ts), the activity view (activity-fixture.ts), EXPLAIN with fixture plans
+// (fixture-plans.ts) and the reads and DDL of the explorer's operations on objects
+// (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), and fs.*
+// over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -18,12 +19,14 @@ import {
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
 import {
+  dbHandlers,
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
 import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
+import { objectsServer } from "../../../../plugins/database/tests/objects-fixture";
 import {
   OVERVIEW_CONNECTION,
   overviewServer,
@@ -76,10 +79,13 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, then the maintenance form its own, before
-    // the activity view's looser matches.
-    ...procHandlers(
-      overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
+    ...procHandlers(fixtureScript, (event) => emit(event)),
+    // The overview answers its own statements exactly, then the maintenance form its own and the
+    // objects feature its own, before the activity view's looser matches.
+    ...dbHandlers(
+      overviewServer(
+        maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
+      ),
       (event) => emit(event),
     ),
     ...fsHandlers,

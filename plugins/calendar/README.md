@@ -14,7 +14,7 @@ writes. A series asks whether a change or a deletion is for this event, this and
 It answers the desk's `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, as
 `plugins/notes` does, with the same one ask on a refused read or write. Its commands for agents take an
 argument schema: `endue.calendar.events` and `.conflicts` answer `specs/item/v0` event items and the busy
-events that overlap; `.add` adds an event, unsaved until the person saves.
+events that overlap; `.add`, `.update { id, start, scope }` and `.delete` (irreversible) change the calendar on screen, unsaved until the person saves or `.save` runs `desk.files.save`. The manifest declares them as `ui/agent-specs.js` does.
 
 | Permission | Why |
 | --- | --- |

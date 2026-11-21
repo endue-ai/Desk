@@ -1,5 +1,5 @@
 // A scripted PostgreSQL server for the activity view (ui/features/activity/): a saved connection and
-// what the scripted psql answers to the view's reads (the version, pg_stat_activity, pg_locks) and to
+// what the scripted server answers to the view's reads (the version, pg_stat_activity, pg_locks) and to
 // pg_cancel_backend and pg_terminate_backend, which change what the next read sees. Session 4242
 // holds a row in a transaction and sleeps, 4243 waits for its transaction, 4244 waits for 4243 on
 // the row; 4250 is the session reading the view, 4251 another of the plugin's, 4260 another role's
@@ -37,7 +37,7 @@ const LOCK_HEAD = [
   ...["virtualxid", "transactionid", "objid", "wait_ms"],
 ];
 
-/** The sessions as pg_stat_activity answers them ("" is NULL: the scripted psql prints it so). */
+/** The sessions as pg_stat_activity answers them ("" is NULL, as the psql path printed it). */
 // biome-ignore format: one session a line, as the view reads them
 const SESSIONS = [
   ["4100", "", "", "", "", "", "", "autovacuum launcher", "", "Activity", "AutoVacuumMain", "", "", "", "", ""],

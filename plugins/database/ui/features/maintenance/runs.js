@@ -1,7 +1,7 @@
 // A maintenance form's run: refused on a read-only connection, a standby, a server older than 13
 // or a statement that cannot run yet; the statistics read before; the statement sent alone in run
-// mode through deps.execute, so psql gives it its own -c and the server runs it outside a
-// transaction block (the executor's guards ask on production and for an agent); its progress read
+// mode through deps.execute, so it is a db.run of its own on the session and the server runs it
+// outside a transaction block (the executor's guards ask on production and for an agent); its progress read
 // from the server's views while it goes on, one read at a time; its cancel by pg_cancel_backend of
 // its session; and the statistics read again when it ends. No DOM.
 
