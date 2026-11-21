@@ -1,16 +1,12 @@
-/**
- * A local agent's screen (ADR 0110): who it is and where it runs from, Import sessions and Import
- * archive, its sessions in three tabs (the program's own, its archive, the desk's copies) as the
- * core reads them from the program's files, the turns of the session picked, the work handed to it
- * and a work request. The search field and the request are built once; the rest redraws.
- */
-import type {
-  AgentsTranscriptResult,
-  LocalAgentId,
-  LocalAgentMessage,
-  LocalAgentSession,
-  LocalAgentSource,
-} from "@endue-ai/bridge";
+import type { LocalAgentId, LocalAgentSession, LocalAgentSource } from "@endue-ai/bridge";
+import {
+  defineElements,
+  nativeSessionRow,
+  nativeSessionTurns,
+  SessionHistory,
+  type SessionRow,
+  type SessionTurn,
+} from "@endue-ai/ui/elements";
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
 import { localMark } from "../../shell/marks";
@@ -18,99 +14,149 @@ import { localName } from "../../system/local-ids";
 import type { Mounted } from "../views";
 import { mountComposer } from "./composer";
 import { localText } from "./copy";
-import { importLine, programLine, sessionMeta, TABS, tabLabel, titleOf, why } from "./model";
+import { importLine, programLine, TABS, tabLabel, why } from "./model";
 import { runsStrip } from "./runs";
 
-/** Sessions read per page. */
 const PAGE = 30;
-/** Turns read of the session picked. */
-const TURNS = 200;
-
-interface ViewState {
-  tab: LocalAgentSource;
-  query: string;
-  sessions: LocalAgentSession[];
-  total: number;
-  loading: boolean;
-  error: string;
-  selected: LocalAgentSession | undefined;
-  transcript: AgentsTranscriptResult | undefined;
-  reading: boolean;
-  readError: string;
-  importing: "local" | "archive" | null;
-  notice: string;
-}
-
 export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
-  const v: ViewState = {
-    tab: "local",
+  defineElements();
+  const v = {
+    tab: "local" as LocalAgentSource,
     query: "",
-    sessions: [],
+    sessions: [] as LocalAgentSession[],
     total: 0,
-    loading: true,
+    loading: false,
     error: "",
-    selected: undefined,
-    transcript: undefined,
-    reading: false,
-    readError: "",
-    importing: null,
+    selected: undefined as LocalAgentSession | undefined,
+    source: "local" as LocalAgentSource,
+    importing: null as "local" | "archive" | null,
     notice: "",
   };
+  const reader = document.createElement("desk-agent-session");
   const lang = () => ctx.store.get().lang;
   const tr = (key: Parameters<typeof localText>[1], vars?: Record<string, string | number>) =>
     localText(lang(), key, vars);
   const local = () => ctx.bridge.localAgents;
-
   const head = h("div", { class: "local-head" });
+  const tabs = h("div", { class: "segmented local-tabs", role: "tablist", slot: "navigation" });
   const noticeEl = h("p", { class: "local-notice", role: "status" });
-  const tabs = h("div", { class: "segmented local-tabs", role: "tablist" });
-  const search = h("input", {
-    class: "input local-search",
-    type: "search",
-    "data-key": "local-search",
-  });
-  const list = h("ul", { class: "local-sessions", role: "listbox" });
-  const detail = h("section", { class: "local-detail" });
   const runs = h("div", { class: "local-runs" });
   const notice = (line: string) => {
     v.notice = line;
-    drawNotice();
+    noticeEl.textContent = line;
+    noticeEl.hidden = !line;
+  };
+  const history = new SessionHistory(draw);
+  let token = 0,
+    selection = 0,
+    disposed = false;
+  let typing: ReturnType<typeof setTimeout> | undefined;
+  const live = new Map<string, SessionTurn[]>();
+  const fresh = () => {
+    selection++;
+    v.selected = undefined;
+    history.clear();
+    composer.update();
+    draw();
   };
   const composer = mountComposer(
     ctx,
     agent,
     () => v.selected,
     notice,
-    () => {
-      reading += 1;
-      v.selected = undefined;
-      v.transcript = undefined;
-      v.reading = false;
-      v.readError = "";
-      drawList();
-      drawDetail();
-      composer.update();
-    },
+    fresh,
+    () => v.source,
   );
+  composer.el.slot = "composer";
+  reader.append(tabs, composer.el);
   const el = h(
     "div",
     { class: "local-view", "data-local-view": agent },
     head,
     noticeEl,
-    h("div", { class: "local-bar" }, tabs, search),
-    h("div", { class: "local-main" }, list, detail),
+    reader,
     runs,
-    composer.el,
   );
-
-  let token = 0;
-  async function load(more = false): Promise<void> {
+  function sessionRow(s: LocalAgentSession, source: LocalAgentSource): SessionRow {
+    const state = ctx.store.get(),
+      info = state.localAgents.find((a) => a.id === agent);
+    const row = nativeSessionRow(s, localName(state.localAgents, agent), source);
+    const run = state.localRuns.find((r) => r.agent === agent && r.sessionId === s.id);
+    if (!info?.program) row.status = "missing";
+    else if (run) row.status = run.state === "running" ? "working" : run.state;
+    return row;
+  }
+  function draw() {
+    if (disposed) return;
+    const bridge = local(),
+      shown = v.selected;
+    const row = shown ? sessionRow(history.result?.session ?? shown, v.source) : undefined;
+    const turns = nativeSessionTurns(history.result?.messages ?? []);
+    for (const r of ctx.store.get().localRuns) {
+      if (r.agent !== agent || !shown || r.sessionId !== shown.id) continue;
+      if (r.state === "running")
+        turns.push(
+          ...(live.get(r.runId) ??
+            (r.text ? [{ id: r.runId, role: "assistant" as const, text: r.text }] : [])),
+        );
+      if (r.state === "failed" && r.error)
+        turns.push({ id: r.runId, role: "failure", text: r.error });
+    }
+    reader.view = {
+      lang: lang(),
+      now: ctx.wall(),
+      rows: v.sessions.map((s) => sessionRow(s, v.tab)),
+      selected: row,
+      turns,
+      onNew: fresh,
+      listNotice: v.error
+        ? tr("readFailed", { why: v.error })
+        : !v.sessions.length
+          ? v.loading
+            ? tr("reading")
+            : v.query
+              ? ""
+              : tr(v.tab === "desk" ? "emptyDesk" : "empty")
+          : "",
+      notice: history.error
+        ? tr("readFailed", { why: history.error })
+        : history.loading && !history.result
+          ? tr("reading")
+          : undefined,
+      empty: shown ? undefined : tr("pick"),
+      older: history.older,
+      onOlder: () => void history.more(),
+      onRetry: history.error ? () => void history.refresh() : undefined,
+      onRetryList: v.error ? () => void load() : undefined,
+      pages:
+        v.total > v.sessions.length
+          ? [{ id: v.tab, label: tr("more", { n: v.total - v.sessions.length }) }]
+          : [],
+      onPage: () => {
+        if (!v.loading) void load(true);
+      },
+      onSelect: (r) => {
+        const s = v.sessions.find((s) => s.id === r.nativeId);
+        if (s) pick(s);
+      },
+      onQuery: (q) => {
+        clearTimeout(typing);
+        v.query = q;
+        typing = setTimeout(() => void load(), 200);
+      },
+      onPreview: async (r) =>
+        r.nativeId && bridge
+          ? nativeSessionTurns((await bridge.transcript(agent, r.nativeId, 200)).messages)
+          : [],
+    };
+  }
+  async function load(more = false) {
     const bridge = local();
     if (!bridge) return;
     const mine = ++token;
     v.loading = true;
     v.error = "";
-    drawList();
+    draw();
     try {
       const page = await bridge.sessions(agent, {
         from: v.tab,
@@ -121,39 +167,36 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       if (mine !== token) return;
       v.sessions = more ? [...v.sessions, ...page.sessions] : page.sessions;
       v.total = page.total;
-    } catch (error) {
+    } catch (err) {
       if (mine !== token) return;
-      v.error = why(lang(), error);
+      v.error = why(lang(), err);
     }
     v.loading = false;
-    drawList();
+    draw();
   }
-
-  let reading = 0;
-  async function pick(session: LocalAgentSession): Promise<void> {
+  function pick(session: LocalAgentSession) {
     const bridge = local();
     if (!bridge) return;
-    const mine = ++reading;
+    selection++;
     v.selected = session;
-    v.transcript = undefined;
-    v.reading = true;
-    v.readError = "";
-    drawList();
-    drawDetail();
+    v.source = v.tab;
     composer.update();
-    try {
-      const read = await bridge.transcript(agent, session.id, TURNS);
-      if (mine !== reading) return;
-      v.transcript = read;
-      v.selected = read.session;
-    } catch (error) {
-      if (mine !== reading) return;
-      v.readError = why(lang(), error);
-    }
-    v.reading = false;
-    drawDetail();
+    void history.open((limit) => bridge.transcript(agent, session.id, limit));
   }
-
+  async function openSession(id: string) {
+    const found = v.sessions.find((s) => s.id === id);
+    if (found) {
+      pick(found);
+      return;
+    }
+    const mine = ++selection;
+    try {
+      const result = await local()?.transcript(agent, id, 200);
+      if (mine === selection && result) pick(result.session);
+    } catch (err) {
+      if (mine === selection) notice(why(lang(), err));
+    }
+  }
   async function importFrom(from: "local" | "archive"): Promise<void> {
     const bridge = local();
     if (!bridge || v.importing) return;
@@ -170,18 +213,6 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
     drawHead();
     void load();
   }
-
-  const openSession = (sessionId: string) => {
-    const found = v.sessions.find((s) => s.id === sessionId);
-    if (found) void pick(found);
-    else
-      void local()
-        ?.transcript(agent, sessionId, TURNS)
-        .then(
-          (read) => pick(read.session),
-          (error: unknown) => notice(why(lang(), error)),
-        );
-  };
 
   function drawHead(): void {
     const s = ctx.store.get();
@@ -228,6 +259,8 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
             onClick: () => {
               if (v.tab === tab) return;
               v.tab = tab;
+              v.sessions = [];
+              v.total = 0;
               drawHead();
               void load();
             },
@@ -237,170 +270,61 @@ export function localAgentBody(ctx: ShellCtx, agent: LocalAgentId): Mounted {
       ),
     );
     tabs.setAttribute("aria-label", tr("tabs"));
-    search.placeholder = tr("search");
-    search.setAttribute("aria-label", tr("search"));
   }
-
-  function drawNotice(): void {
-    noticeEl.textContent = v.notice;
-    noticeEl.hidden = !v.notice;
+  function drawRuns() {
+    render(runs, () => runsStrip(ctx, agent, (id) => void openSession(id), notice));
   }
-
-  function drawList(): void {
-    const now = ctx.wall();
-    render(list, () => {
-      if (v.error) return [h("li", { class: "local-empty" }, tr("readFailed", { why: v.error }))];
-      if (!v.sessions.length)
-        return [
-          h(
-            "li",
-            { class: "local-empty pop-muted" },
-            v.loading ? tr("reading") : tr(v.tab === "desk" ? "emptyDesk" : "empty"),
-          ),
-        ];
-      const rows = v.sessions.map((session) =>
-        h(
-          "li",
-          { role: "presentation" },
-          h(
-            "button",
-            {
-              class: `menu-item local-session${session.id === v.selected?.id ? " is-selected" : ""}`,
-              type: "button",
-              role: "option",
-              "aria-selected": String(session.id === v.selected?.id),
-              "data-key": `local-session-${session.id}`,
-              "data-session": session.id,
-              onClick: () => void pick(session),
-            },
-            h("span", { class: "local-session-title" }, titleOf(session)),
-            h("span", { class: "local-session-meta" }, sessionMeta(lang(), session, now)),
-            session.imported && v.tab !== "desk"
-              ? h("span", { class: "tag local-in-desk" }, tr("inDesk"))
-              : null,
-          ),
-        ),
-      );
-      const left = v.total - v.sessions.length;
-      return [
-        ...rows,
-        left > 0
-          ? h(
-              "li",
-              { role: "presentation" },
-              h(
-                "button",
-                {
-                  class: "btn btn-xs local-more",
-                  type: "button",
-                  "data-key": "local-more",
-                  disabled: v.loading,
-                  onClick: () => void load(true),
-                },
-                tr("more", { n: left }),
-              ),
-            )
-          : null,
-      ];
-    });
-  }
-
-  const message = (m: LocalAgentMessage) =>
-    h(
-      "li",
-      { class: `local-msg is-${m.role}` },
-      h(
-        "span",
-        { class: "local-msg-who" },
-        m.role === "user"
-          ? tr("you")
-          : m.role === "tool"
-            ? tr("tool", { name: m.name ?? "" })
-            : localName(ctx.store.get().localAgents, agent),
-      ),
-      h("p", { class: "local-msg-text" }, m.cut ? `${m.text}${tr("cut")}` : m.text),
-    );
-
-  function drawDetail(): void {
-    const session = v.selected;
-    render(detail, () => {
-      if (!session) return [h("p", { class: "local-pick pop-muted" }, tr("pick"))];
-      const read = v.transcript;
-      return [
-        h("h3", { class: "local-detail-title" }, titleOf(session)),
-        h(
-          "div",
-          { class: "agent-meta local-detail-meta" },
-          [session.cwd, session.branch, session.model].filter(Boolean).join(" · "),
-          session.archived ? h("span", { class: "tag" }, tr("archived")) : null,
-          session.imported ? h("span", { class: "tag local-in-desk" }, tr("inDesk")) : null,
-        ),
-        v.readError
-          ? h("p", { class: "local-empty" }, tr("readFailed", { why: v.readError }))
-          : !read
-            ? h("p", { class: "local-empty pop-muted" }, tr("reading"))
-            : h(
-                "ol",
-                { class: "local-transcript" },
-                read.truncated
-                  ? h("li", { class: "local-msg is-gap pop-muted" }, tr("truncated"))
-                  : null,
-                read.messages.map(message),
-              ),
-      ];
-    });
-  }
-
-  function drawRuns(): void {
-    render(runs, () => runsStrip(ctx, agent, openSession, notice));
-  }
-
-  let typing: ReturnType<typeof setTimeout> | undefined;
-  search.addEventListener("input", () => {
-    clearTimeout(typing);
-    typing = setTimeout(() => {
-      v.query = search.value.trim();
-      void load();
-    }, 200);
-  });
-
-  drawHead();
-  drawNotice();
-  drawList();
-  drawDetail();
-  drawRuns();
-  void load();
-
   const counts = ctx.store.watch(
     (s) => [s.lang, s.localAgents.find((a) => a.id === agent)],
     () => {
       drawHead();
       composer.update();
+      draw();
     },
   );
   const watchRuns = ctx.store.watch(
     (s) => [s.lang, s.erisRuns, s.localRuns.filter((r) => r.agent === agent)],
-    () => drawRuns(),
-  );
-  // A run that ends in the session on screen added turns to it, and maybe a session to the list.
-  const ended = ctx.store.watch(
-    (s) =>
-      s.localRuns
-        .filter((r) => r.agent === agent && r.state !== "running")
-        .map((r) => [r.runId, r.sessionId]),
     () => {
-      const shown = v.selected;
-      if (shown) void pick(shown);
-      void load();
+      drawRuns();
+      composer.update();
+      draw();
     },
   );
+  const off = local()?.onEvent((event) => {
+    if (event.kind !== "run" || event.data.agent !== agent) return;
+    const e = event.data;
+    if (e.kind === "tool" || e.kind === "text") {
+      const parts = live.get(e.runId) ?? [];
+      parts.push({
+        id: `${e.runId}:${parts.length}`,
+        role: e.kind === "tool" ? "tool" : "assistant",
+        text: e.kind === "tool" ? (e.detail ?? "") : (e.text ?? ""),
+        name: e.tool,
+      });
+      live.set(e.runId, parts);
+      draw();
+    } else if (["done", "failed", "stopped"].includes(e.kind)) {
+      live.delete(e.runId);
+      if (v.selected && e.run?.sessionId === v.selected.id) void history.refresh();
+      void load();
+    }
+  });
+  drawHead();
+  notice("");
+  drawRuns();
+  draw();
+  void load();
   return {
     el,
     off: () => {
+      disposed = true;
+      token++;
+      selection++;
+      history.clear();
       clearTimeout(typing);
       counts();
       watchRuns();
-      ended();
+      off?.();
     },
   };
 }

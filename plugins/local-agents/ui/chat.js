@@ -3,13 +3,13 @@
 // under `chat.<agent>`, cut to fit the desk's store.
 
 import { isValue } from "./catalog.js";
-import { clip, fitList, load, save } from "./store.js";
+import { clip, fitList, load, save, sizeOf, VALUE_LIMIT } from "./store.js";
 
 /**
  * @typedef {"running" | "done" | "failed" | "stopped"} Status
  * @typedef {{ name: string, detail: string }} Tool
  * @typedef {{ id: string, role: "user" | "agent", text: string, at: number, status?: Status,
- *   error?: string, run?: string, tools?: Tool[], ms?: number,
+ *   error?: string, run?: string, tools?: Tool[], parts?: import("./parse.js").Reply["parts"], ms?: number,
  *   usage?: import("./parse.js").Reply["usage"] }} Message
  * @typedef {{ agent: string, session: string, model: string, messages: Message[] }} Conversation
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
@@ -32,9 +32,43 @@ export function readConversation(/** @type {string} */ agent, /** @type {unknown
     session: isValue(v.session) ? /** @type {string} */ (v.session) : "",
     model: isValue(v.model) ? /** @type {string} */ (v.model) : "",
     // A message that was running when the desk closed did not finish.
-    messages: messages.map((m) =>
-      m.status === "running" ? { ...m, status: /** @type {Status} */ ("stopped") } : m,
-    ),
+    messages: messages.map((m) => {
+      const clean = { ...m };
+      if (clean.status === "running") clean.status = "stopped";
+      if (clean.tools)
+        clean.tools = Array.isArray(clean.tools)
+          ? clean.tools.filter(
+              (t) => t && typeof t.name === "string" && typeof t.detail === "string",
+            )
+          : [];
+      if (clean.parts)
+        clean.parts = Array.isArray(clean.parts)
+          ? clean.parts
+              .filter((p) => p && typeof p.text === "string")
+              .map((p) => {
+                if (
+                  p.role === "plan" &&
+                  (!Array.isArray(p.steps) ||
+                    !p.steps.every(
+                      (s) => s && typeof s.text === "string" && typeof s.state === "string",
+                    ))
+                )
+                  return { role: "record", text: p.text };
+                return [
+                  "assistant",
+                  "tool",
+                  "failure",
+                  "plan",
+                  "notification",
+                  "excerpt",
+                  "record",
+                ].includes(p.role)
+                  ? p
+                  : { role: "record", text: p.text };
+              })
+          : [];
+      return clean;
+    }),
   };
 }
 
@@ -48,12 +82,29 @@ const isMessage = (/** @type {any} */ m) =>
 /** What is written: the latest messages, long texts shortened, under the store's limit. */
 export function storedConversation(/** @type {Conversation} */ c) {
   const messages = c.messages.slice(-MESSAGES_KEPT).map((m) => {
-    const { run: _run, ...rest } = m;
-    return {
+    const { run: _run, parts, ...rest } = m;
+    const basic = {
       ...rest,
       text: clip(m.text, TEXT_KEPT),
       ...(m.tools ? { tools: m.tools.slice(-10) } : {}),
     };
+    if (
+      !parts?.length ||
+      (parts.length === 1 &&
+        parts[0]?.role === "assistant" &&
+        parts[0].text.trim() === m.text.trim())
+    )
+      return basic;
+    const withOrder = {
+      ...basic,
+      parts: parts.slice(-100).map((p) => ({
+        ...p,
+        text: clip(p.text, TEXT_KEPT),
+        ...(p.text.length > TEXT_KEPT ? { cut: true } : {}),
+      })),
+    };
+    // Preserve the original saved answer when its optional event details would evict it.
+    return sizeOf({ ...c, messages: [withOrder] }) <= VALUE_LIMIT ? withOrder : basic;
   });
   const wrap = (/** @type {Message[]} */ kept) => ({ ...c, messages: kept });
   return wrap(fitList(messages, wrap));

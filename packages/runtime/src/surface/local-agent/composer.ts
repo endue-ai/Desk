@@ -24,9 +24,23 @@ export function mountComposer(
   notice: (line: string) => void,
   /** Let go of the session on screen, so the next request starts a new one. */
   startNew: () => void,
+  source: () => string,
 ): Composer {
   let access: LocalAgentAccess = "read-only";
-  let sending = false;
+  const drafts = new Map<string, { text: string; access: LocalAgentAccess }>();
+  const pending = new Set<string>();
+  const started = new Map<string, string>();
+  const running = (key: string) =>
+    ctx.store
+      .get()
+      .localRuns.find(
+        (r) =>
+          r.agent === agent &&
+          r.state === "running" &&
+          (r.runId === started.get(key) || (selected()?.id && r.sessionId === selected()?.id)),
+      );
+  const target = () => JSON.stringify([agent, selected() ? source() : "", selected()?.id ?? ""]);
+  let active = target();
   const lang = () => ctx.store.get().lang;
   const runnable = () => Boolean(ctx.store.get().localAgents.find((a) => a.id === agent)?.program);
   const prompt = h("textarea", {
@@ -55,9 +69,19 @@ export function mountComposer(
   const send = async () => {
     const text = prompt.value.trim();
     const local = ctx.bridge.localAgents;
-    if (!text || sending || !local || !runnable()) return;
+    const key = target();
+    const ongoing = running(key);
+    if (ongoing && local) {
+      try {
+        await local.stop(ongoing.runId);
+      } catch (err) {
+        notice(why(lang(), err));
+      }
+      return;
+    }
+    if (!text || pending.has(key) || !local || !runnable()) return;
     const session = selected();
-    sending = true;
+    pending.add(key);
     update();
     try {
       const run = await local.ask({
@@ -67,19 +91,23 @@ export function mountComposer(
         ...(session ? { sessionId: session.id } : {}),
         ...(!session && folder.value.trim() ? { cwd: folder.value.trim() } : {}),
       });
-      prompt.value = "";
-      ctx.store.set((s) => ({
-        localRuns: applyRunStep(s.localRuns, {
-          runId: run.runId,
-          agent: run.agent,
-          kind: "started",
-          run,
-        }),
-      }));
+      if (target() === key && prompt.value.trim() === text) prompt.value = "";
+      const draft = drafts.get(key);
+      if (draft?.text.trim() === text) draft.text = "";
+      started.set(key, run.runId);
+      if (!ctx.store.get().localRuns.some((r) => r.runId === run.runId))
+        ctx.store.set((s) => ({
+          localRuns: applyRunStep(s.localRuns, {
+            runId: run.runId,
+            agent: run.agent,
+            kind: "started",
+            run,
+          }),
+        }));
     } catch (error) {
       notice(localText(lang(), "askFailed", { why: why(lang(), error) }));
     } finally {
-      sending = false;
+      pending.delete(key);
       update();
     }
   };
@@ -114,6 +142,14 @@ export function mountComposer(
     );
 
   function update(): void {
+    const key = target();
+    if (key !== active) {
+      drafts.set(active, { text: prompt.value, access });
+      active = key;
+      const draft = drafts.get(key);
+      prompt.value = draft?.text ?? "";
+      access = draft?.access ?? "read-only";
+    }
     const l = lang();
     const session = selected();
     prompt.setAttribute("aria-label", localText(l, session ? "promptContinue" : "promptNew"));
@@ -152,14 +188,16 @@ export function mountComposer(
           type: "submit",
           "data-key": "local-send",
           // An agent the core found no program for is read here, never asked.
-          disabled: sending || !ctx.bridge.localAgents || !runnable(),
+          disabled: pending.has(key) || !ctx.bridge.localAgents || !runnable(),
         },
-        localText(l, "send"),
+        localText(l, running(key) ? "stop" : "send"),
       ),
     ]);
-    const key = ctx.platform === "mac" ? "⌘↩" : "Ctrl+Enter";
+    const shortcut = ctx.platform === "mac" ? "⌘↩" : "Ctrl+Enter";
     hint.textContent =
-      access === "agent" ? localText(l, "mayChangeHint") : localText(l, "sendHint", { key });
+      access === "agent"
+        ? localText(l, "mayChangeHint")
+        : localText(l, "sendHint", { key: shortcut });
   }
 
   update();

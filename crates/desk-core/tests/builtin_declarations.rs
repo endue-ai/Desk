@@ -116,7 +116,7 @@ const USES: &str = r#"{
   "endue.launcher": [{ "permission": "plugin:manage" },
     { "permission": "cmd:invoke", "ids": ["desk.plugins.open"] }],
   "endue.local-agents": [{ "permission": "proc:spawn", "commands": ["claude", "codex", "gemini", "grok",
-    "qwen", "copilot", "cursor-agent", "opencode"] },
+    "qwen", "copilot", "cursor-agent", "opencode"] }, { "permission": "agents:manage" },
     { "permission": "cmd:invoke", "ids": ["desk.palette.pick"] }],
   "endue.local-models": [{ "permission": "net:connect", "hosts": ["localhost:8080", "127.0.0.1:8080"] },
     { "permission": "net:connect", "hosts": ["studio.local:8080"] },

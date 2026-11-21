@@ -32,8 +32,9 @@ async function mount(agent: "claude" | "codex" = "claude") {
   return { store, local, el: view.el };
 }
 
+const workspace = (el: HTMLElement) => el.querySelector("desk-agent-session")!.shadowRoot!;
 const titles = (el: HTMLElement) =>
-  [...el.querySelectorAll(".local-session-title")].map((t) => t.textContent);
+  [...workspace(el).querySelectorAll(".row-title")].map((t) => t.textContent);
 const click = (el: HTMLElement, selector: string) => {
   const target = el.querySelector<HTMLElement>(selector);
   if (!target) throw new Error(`Missing ${selector}`);
@@ -58,8 +59,9 @@ describe("a local agent's screen", () => {
       "Explain the sync engine",
       "Write the release notes for 1.4",
     ]);
-    expect(el.querySelector(".local-session-meta")?.textContent).toBe(
-      "work/atlas · main · 12 min ago",
+    expect(workspace(el).querySelector(".row-meta")?.textContent).toMatch(/12 min/);
+    expect(workspace(el).querySelector(".workspace")?.getAttribute("title")).toMatch(
+      /work\/atlas$/,
     );
   });
 
@@ -68,7 +70,7 @@ describe("a local agent's screen", () => {
     click(el, '[data-tab="archive"]');
     await settle();
     expect(titles(el)).toEqual(["Spike: drag and drop on the board", "Old CI migration"]);
-    const search = el.querySelector<HTMLInputElement>(".local-search");
+    const search = workspace(el).querySelector<HTMLInputElement>("input[type=search]");
     if (!search) throw new Error("no search");
     search.value = "ci";
     search.dispatchEvent(new Event("input"));
@@ -97,14 +99,13 @@ describe("a local agent's screen", () => {
   it("reads the session picked and continues it with a work request", async () => {
     const { el, local, store } = await mount();
     const ask = vi.spyOn(local, "ask");
-    click(el, ".local-session");
+    workspace(el).querySelector<HTMLButtonElement>("[data-session-key]")!.click();
     await settle();
-    expect(el.querySelector(".local-detail-title")?.textContent).toBe("Fix the flaky upload test");
-    expect([...el.querySelectorAll(".local-msg-who")].map((w) => w.textContent)).toEqual([
-      "You",
-      "Tool · Bash",
-      "Claude Code",
-    ]);
+    expect(workspace(el).querySelector("h2")?.textContent).toBe("Fix the flaky upload test");
+    expect(
+      [...workspace(el).querySelectorAll("[data-turn]")].map((w) => w.getAttribute("data-role")),
+    ).toEqual(["user", "tool", "assistant"]);
+    expect(workspace(el).querySelector(".tool-line strong")?.textContent).toBe("Bash");
     const prompt = el.querySelector<HTMLTextAreaElement>(".local-prompt");
     if (!prompt) throw new Error("no prompt");
     prompt.value = "Now fix it";
@@ -121,7 +122,7 @@ describe("a local agent's screen", () => {
     expect(store.get().localRuns[0]).toMatchObject({ state: "done", sessionId: session?.id });
     expect(el.querySelector(".local-run")?.getAttribute("data-state")).toBe("done");
     click(el, ".local-new");
-    expect(el.querySelector(".local-detail-title")).toBeNull();
+    expect(workspace(el).querySelector("h2")?.textContent).toBe("Choose a session");
     expect(el.querySelector(".local-folder")).not.toBeNull();
     prompt.value = "Start over";
     el.querySelector("form")?.dispatchEvent(new Event("submit", { cancelable: true }));
@@ -207,4 +208,52 @@ it("loads older turns without losing the selection or replacing it with a stale 
   await settle();
   expect(root.querySelector('[role="log"]')?.textContent).toContain("Outline 0");
   expect(root.querySelectorAll("[data-turn]")).toHaveLength(245);
+});
+
+it("stops at an exhausted imported copy and the native transcript cap", async () => {
+  const { el, local } = await mount();
+  const s = local.fixture.sessions[0];
+  if (!s) throw Error("Missing test session");
+  click(el, '[data-import="local"]');
+  await settle();
+  click(el, '[data-tab="desk"]');
+  await settle();
+  const stub = vi
+    .spyOn(local, "transcript")
+    .mockImplementation(async (_agent, _id, limit = 200) => ({
+      session: s,
+      messages: Array.from({ length: Math.min(200, limit) }, (_, i) => ({
+        role: "user",
+        text: String(i),
+      })),
+      truncated: true,
+    }));
+  const root = workspace(el);
+  const select = () => root.querySelector<HTMLButtonElement>("[data-session-key]")?.click();
+  const more = () => root.querySelector<HTMLButtonElement>("[data-older]")?.click();
+  select();
+  await settle();
+  more();
+  await settle();
+  expect(root.querySelector("[data-older]")).toBeNull();
+  expect(root.textContent).toContain("Earlier history is unavailable.");
+  stub.mockImplementation(async (_agent, _id, limit = 200) => ({
+    session: s,
+    messages: Array.from({ length: limit }, (_, i) => ({
+      role: "user",
+      text: String(1000 - limit + i),
+    })),
+    truncated: true,
+  }));
+  click(el, '[data-tab="local"]');
+  await settle();
+  select();
+  await settle();
+  for (let i = 0; i < 4; i++) {
+    more();
+    await settle();
+  }
+  expect(stub.mock.calls.map((args) => args[2]).slice(-5)).toEqual([200, 400, 600, 800, 1000]);
+  expect(root.querySelector("[data-older]")).toBeNull();
+  expect(root.querySelectorAll("[data-turn]")).toHaveLength(1000);
 });
