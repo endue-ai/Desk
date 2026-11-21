@@ -48,7 +48,10 @@ describe("desk.notify.history", () => {
     d.policy.notify({ caller: "desk", title: "Saved", level: "info" });
     await d.hub.commands.run("desk.notify.history");
     expect(d.rows()).toHaveLength(1);
+    expect(document.activeElement).toBe(d.rows()[0]);
     await d.hub.commands.run("desk.notify.clear");
     expect(d.rows()).toHaveLength(0);
+    // The row that had the focus went: the panel keeps it, so Escape still closes it.
+    expect(document.activeElement).toBe(d.panel());
   });
 });
