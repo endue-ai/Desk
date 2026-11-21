@@ -70,14 +70,7 @@ const measured = {
 /** The budgets' verdicts: the five without a baseline, then the seven the budgets gate. */
 const FIRST_RUN = [...Array(5).fill("no-baseline"), ...Array(7).fill("ok")];
 /** The committed budgets.json's verdicts: input latency waits for a baseline; start-up has one (#370). */
-const COMMITTED = [
-  "ok",
-  "ok",
-  "ok",
-  "no-baseline",
-  "no-baseline",
-  ...Array(7).fill("ok"),
-];
+const COMMITTED = ["ok", "ok", "ok", "no-baseline", "no-baseline", ...Array(7).fill("ok")];
 /** The RT-16 targets, by measure. */
 const TARGETS = [1200, 1200, null, 16, 16, null, null, null, null, null, null, null];
 
