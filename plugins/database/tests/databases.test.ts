@@ -214,6 +214,7 @@ describe("one PostgreSQL connection shows every database of its server", () => {
     await m.host.command("endue.database.console", { connection: "Shop" });
     await m.host.command("endue.database.switch-database", { database: "analytics" });
     m.view.text = "select 1";
+    m.app.edited("select 1");
     await m.host.command("endue.database.run");
     await m.settle();
     expect(m.store["history:c-prod"]).toEqual([
@@ -227,6 +228,17 @@ describe("one PostgreSQL connection shows every database of its server", () => {
     await m.host.command("endue.database.history");
     const first = m.picks.at(-1)?.items[0] as { detail?: string } | undefined;
     expect(first?.detail).toContain("analytics · ");
+
+    // The console's text is the console's, and it comes back on its database after a restart.
+    await m.settle();
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    const after = await mount({ store: m.store, state: m.host.state, script: server().script });
+    expect(after.shown()).toMatchObject({
+      connection: ANALYTICS,
+      name: "db: Shop/analytics",
+      consoleId: "c-prod",
+      text: "select 1",
+    });
   });
 
   it("keeps one password in the keychain for every database of the server", async () => {
