@@ -205,7 +205,11 @@ desk (ADR 0133).
 too. The sign-in is SCRAM-SHA-256, SCRAM-SHA-256-PLUS whenever TLS is on and the server offers it, md5,
 or the password itself only over TLS (a server that asks for it in clear without TLS is `io_error`).
 `password` is used once and dropped; without one the core reads the person's password file
-(`PGPASSFILE`, else `~/.pgpass`, ignored when others can read it). `settings` are startup parameters;
+(`PGPASSFILE`, else `~/.pgpass`, ignored when others can read it). `passwordRef` names a password the
+caller kept with `db.passwords.set` instead (not with `password`): when the password file has no line
+for the session, the core reads it from the OS keychain itself, and only when it was kept for the
+session's `host`, `port` and `user`; one that is not kept, or was kept for another server, is as if
+none was given (ADR 0311). `settings` are startup parameters;
 naming `client_encoding` (always `UTF8`), `user`, `database` or `replication` is `invalid_params`.
 `readOnly` sets `default_transaction_read_only`. `timeoutMs` (10 s, 120 s at most) bounds the connection
 and the sign-in; missed, it is `timeout`. The result is the `sessionId` with the server's `pid`, `auth`,
@@ -244,6 +248,16 @@ the session's TLS mode, and answers once the request is sent; the statement's ow
 **db.close** ends a session; closing one that already ended is not an error. **db.list** answers the
 caller's sessions (`sessionId`, `host`, `port`, `database`, `user`, `pid`, `running`, `more`,
 `transaction`), so a frame that slept finds them again.
+
+**db.passwords.set** keeps a `password` in the OS keychain under a `name` the caller chooses (1 to 64
+of `A-Z a-z 0-9 . _ -`, replacing what that name kept), for one `host`, `port` (5432) and `user`; a
+caller keeps 256 at most, another is `invalid_value`. Nothing answers it back: `db.open` uses it by
+`passwordRef`. A plugin's manifest must declare `db:connect` covering the host and port; no grant is
+asked for, since signing in with it is `db.open`'s and its grant's. Where no OS keychain answers it is
+`unsupported`, and nothing is kept elsewhere. **db.passwords.delete** forgets one by name (one not kept
+is not an error); **db.passwords.list** answers the caller's, each `name` with its `host`, `port` and
+`user`, never the password, without reading the keychain. A caller reaches only its own; removing a
+plugin forgets every password it kept. An agent is `permission_denied` (ADR 0311).
 
 A session's events go to its caller alone: `db.notice` as each notice arrives, also while a statement
 runs; `db.notification` for a NOTIFY, also while idle; `db.parameter` for each ParameterStatus; and

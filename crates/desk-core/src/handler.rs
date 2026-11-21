@@ -105,6 +105,8 @@ pub struct Core {
     pub(crate) sockets: Arc<Mutex<Sockets>>,
     /// The database sessions callers opened (ADR 0281).
     pub(crate) databases: Arc<Mutex<Databases>>,
+    /// The passwords callers keep in the OS keychain for db.open (ADR 0311).
+    pub(crate) db_passwords: Mutex<crate::db_passwords::DbPasswords>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
@@ -171,6 +173,7 @@ impl Core {
             audio: Default::default(),
             sockets: Arc::new(Mutex::new(Sockets::default())),
             databases: Arc::new(Mutex::new(Databases::default())),
+            db_passwords: Mutex::default(),
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),

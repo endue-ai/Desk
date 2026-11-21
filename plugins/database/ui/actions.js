@@ -116,6 +116,7 @@ export function builtinActions(deps) {
     formCancel: guard((/** @type {Parameters<typeof manager.cancelForm>[0]} */ fields) =>
       manager.cancelForm(fields),
     ),
-    password: (/** @type {string | undefined} */ value) => manager.answered(value),
+    password: (/** @type {string | undefined} */ value, remember = false) =>
+      manager.answered(value, remember),
   };
 }
