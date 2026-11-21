@@ -1,7 +1,9 @@
 // The editor a column's cells get (PG-40), from its type: on PostgreSQL the catalog's reading of it
 // (pg-types.js: the base type's internal name and category, enum labels, an array's element), or a
 // built-in type OID's; otherwise the declared type's name (MySQL's enum('a','b') with its labels,
-// SQLite's BLOB). A generated or always-identity column is fixed, with the reason. Pure.
+// SQLite's BLOB). A generated or always-identity column is fixed, with the reason; `auto` says what
+// fills a column the server numbers or computes when a new row leaves it out (PG-43's duplicate).
+// Pure.
 
 import { binaryType, numericType } from "../edit/values.js";
 
@@ -14,11 +16,13 @@ import { binaryType, numericType } from "../edit/values.js";
  * @typedef {{
  *   kind: Kind, type: string, cast: string, labels: string[], element?: Editor, zone: boolean,
  *   integer: Integer, nullable: boolean, hasDefault: boolean, fixed: string, timeZone: string,
- *   prefix: string,
+ *   prefix: string, auto: "" | "identity" | "generated" | "serial",
  * }} Editor
  *   `type` as the catalog writes it; `cast` the type a PostgreSQL literal is cast to ("" for none);
  *   `integer` the range of a whole-number column; `fixed` why the column cannot change ("" when it
- *   can); `timeZone` the session's; `prefix` how bytes are written (\x, or 0x on MySQL and SQLite).
+ *   can); `timeZone` the session's; `prefix` how bytes are written (\x, or 0x on MySQL and SQLite);
+ *   `auto` what the server fills a new row's column with: an identity (always or by default), a
+ *   generated column, a sequence's nextval() default ("serial"), or "" for none.
  * @typedef {{ typname: string, category: string, element?: BaseType | null, labels?: string[] }} Resolved
  * @typedef {{ name: string, type: string, nullable?: boolean, default?: string | null }} Column
  */
@@ -85,7 +89,13 @@ export function editorOf(dialect, column, info) {
     ? info.hasDefault
     : column.default !== null && column.default !== undefined;
   const made = editorFor(dialect, type, resolved, info?.timeZone ?? "");
-  return { ...made, nullable, hasDefault, fixed: fixedWhy(column.name, info) };
+  return {
+    ...made,
+    nullable,
+    hasDefault,
+    fixed: fixedWhy(column.name, info),
+    auto: autoOf(column, info),
+  };
 }
 
 /** Give a target's columns of the table their editors (a result column of no table column, none). */
@@ -136,7 +146,15 @@ function editorFor(
     fixed: "",
     timeZone,
     prefix: dialect === "postgresql" ? "\\x" : "0x",
+    auto: "",
   };
+}
+
+/** What the server fills a new row's column with when it is left out. @returns {Editor["auto"]} */
+function autoOf(/** @type {Column} */ column, /** @type {TypeInfo | undefined} */ info) {
+  if (info?.identity) return "identity";
+  if (info?.generated) return "generated";
+  return /^nextval\(/iu.test(column.default ?? "") ? "serial" : "";
 }
 
 /** Why a column cannot change: generated, or an identity GENERATED ALWAYS. */

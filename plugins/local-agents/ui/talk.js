@@ -35,7 +35,7 @@ const answerOf = (result, agent) => ({
 /** @param {App} app */
 export function createTalk(app) {
   const { chats, runs, ui } = app;
-  /** The chat run in flight for each agent. @type {Map<string, string>} */
+  /** The chat run in flight for each agent. @type {Map<string, {run: string}>} */
   const chatting = new Map();
 
   /** The chat's agent: the one named, or the one on screen. */
@@ -50,6 +50,7 @@ export function createTalk(app) {
   /** Talk to another agent in the chat. */
   const useAgent = async (/** @type {unknown} */ agent) => {
     const id = chatAgentOf(agent);
+    app.native.clear();
     ui.chatAgent = id;
     await chats.open(id);
     app.keepPrefs();
@@ -68,13 +69,19 @@ export function createTalk(app) {
     const id = chatAgentOf(agentId);
     if (chatting.has(id))
       throw new Error(`${agentById(id)?.name} is still answering: wait, or stop it first.`);
-    const agent = await app.usable(id);
-    const conversation = await chats.open(id);
-    const history = chats.history(id);
-    chatting.set(id, "");
+    const flight = { run: "" };
+    chatting.set(id, flight);
+    const stillCurrent = () => {
+      if (chatting.get(id) !== flight) throw app.cancelled("This conversation was stopped.");
+    };
     try {
+      const agent = await app.usable(id);
+      const conversation = await chats.open(id);
+      stillCurrent();
+      const history = chats.history(id);
       await chats.add(id, { role: "user", text: prompt, status: "done" });
       const reply = await chats.add(id, { role: "agent", text: "", status: "running" });
+      stillCurrent();
       const { run, done } = runs.start(
         app.question(agent, prompt, {
           history,
@@ -83,11 +90,12 @@ export function createTalk(app) {
         }),
         "chat",
       );
-      chatting.set(id, run.id);
+      flight.run = run.id;
       chats.update(id, reply.id, { run: run.id });
       app.paint();
       const result = await done;
-      if (result.reply.session) chats.setSession(id, result.reply.session);
+      if (result.reply.session && chats.peek(id).messages.some((m) => m.id === reply.id))
+        chats.setSession(id, result.reply.session);
       chats.update(
         id,
         reply.id,
@@ -96,6 +104,7 @@ export function createTalk(app) {
           status: result.ending,
           ...(result.error ? { error: result.error } : {}),
           tools: result.reply.tools.slice(-10),
+          parts: result.reply.parts,
           ms: run.ended - run.started,
           usage: { ...result.reply.usage },
         },
@@ -104,7 +113,7 @@ export function createTalk(app) {
       app.paint();
       return answerOf(result, agent);
     } finally {
-      chatting.delete(id);
+      if (chatting.get(id) === flight) chatting.delete(id);
     }
   };
 
@@ -112,6 +121,7 @@ export function createTalk(app) {
   const newChat = async (/** @type {unknown} */ agent) => {
     const id = chatAgentOf(agent);
     stopChat(id);
+    chatting.delete(id);
     await chats.clear(id);
     ui.chatAgent = id;
     app.show("chat");
@@ -120,8 +130,9 @@ export function createTalk(app) {
 
   /** Stop the chat's answer in progress; false when none is. */
   const stopChat = (/** @type {unknown} */ agent) => {
-    const run = chatting.get(chatAgentOf(agent));
-    return run ? runs.stop(run) : false;
+    const id = chatAgentOf(agent);
+    const flight = chatting.get(id);
+    return flight?.run ? runs.stop(flight.run) : chatting.delete(id);
   };
 
   /** The model the agent's conversation asks for; "" is the program's own default. */

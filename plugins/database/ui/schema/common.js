@@ -3,11 +3,18 @@
 // parts (keys, checks, foreign keys, indexes, triggers) with their definitions. Pure.
 
 /**
- * @typedef {"table" | "view" | "materialized view" | "foreign table" | "sequence" | "function" | "procedure" | "event"} ObjectKind
- * @typedef {"primary key" | "unique" | "check" | "exclusion" | "foreign key" | "index" | "trigger" | "constraint"} PartKind
- * @typedef {{ schema: string, name: string, kind: ObjectKind, detail: string, rows: number | null, ident: string }} SchemaObject
- *   `ident` is what names it in the catalog beyond its name (PostgreSQL's oid, for an overloaded routine).
- * @typedef {{ schema: string, table: string, kind: PartKind, name: string, detail: string, extra: string }} Part
+ * @typedef {"table" | "view" | "materialized view" | "foreign table" | "sequence" | "function" | "procedure" | "event" | PgKind} ObjectKind
+ * @typedef {"type" | "aggregate" | "operator" | "collation" | "text search configuration" | "extension" | "foreign data wrapper" | "foreign server" | "user mapping" | "publication" | "subscription" | "event trigger" | "cast" | "language" | "role" | "tablespace"} PgKind
+ *   PostgreSQL's kinds of PG-50 (schema/pg/): a schema's, then the database's and the server's.
+ * @typedef {"primary key" | "unique" | "check" | "exclusion" | "foreign key" | "index" | "trigger" | "constraint" | "partition" | "inherits" | "policy" | "rule"} PartKind
+ * @typedef {{
+ *   schema: string, name: string, kind: ObjectKind, detail: string, rows: number | null, ident: string,
+ *   bytes?: number | null, owner?: string, comment?: string, def?: Record<string, unknown>,
+ * }} SchemaObject
+ *   `ident` is what names it in the catalog beyond its name (PostgreSQL's oid, for an overloaded
+ *   routine); `bytes` a table's size as the server estimates it; `def` what a cached kind's DDL is
+ *   built from (schema/pg/). A database- or server-level object has the schema "".
+ * @typedef {{ schema: string, table: string, kind: PartKind, name: string, detail: string, extra: string, def?: Record<string, unknown> }} Part
  *   `detail` is its definition (or its columns); `extra` the referenced table of a foreign key, or
  *   "constraint" for an index a constraint owns.
  */

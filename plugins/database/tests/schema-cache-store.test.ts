@@ -33,14 +33,17 @@ describe("the schema cache on disk", () => {
       indexKey(PG.id),
       chunkKey(PG.id, 0),
       chunkKey(PG.id, 1),
+      chunkKey(PG.id, 2),
     ]);
+    // The database level (PG-50) is kept first, then the default schema, then by name.
     expect(store.values.get(indexKey(PG.id))).toMatchObject({
       v: 1,
       where: "postgresql|db.example|5432|shop|app",
       chosen: null,
       kept: [
-        ["public", "10.3:300", expect.any(Number), 0, 1],
-        ["sales", "11.1:200", expect.any(Number), 1, 1],
+        ["", "1:100.2:200", expect.any(Number), 0, 1],
+        ["public", "10.3:300", expect.any(Number), 1, 1],
+        ["sales", "11.1:200", expect.any(Number), 2, 1],
       ],
     });
 
@@ -90,7 +93,7 @@ describe("the schema cache on disk", () => {
     const second = cacheOver(() => model, { store });
     await second.cache.open(PG);
     await second.cache.settled(PG);
-    expect(second.sqls).toHaveLength(7);
+    expect(second.sqls).toHaveLength(10);
     for (const sql of second.sqls.slice(1)) expect(schemasOf(sql)).toEqual(["big"]);
     expect(second.cache.view(PG)?.columns("mid", "table_0149")).toEqual(
       view?.columns("mid", "table_0149"),
@@ -113,24 +116,32 @@ describe("the schema cache on disk", () => {
     const chosen = () => (store.values.get(indexKey(PG.id)) as { chosen: unknown }).chosen;
 
     // A chunk whose header does not match the index: that schema alone is read again.
-    const text = store.values.get(chunkKey(PG.id, 0)) as string;
-    store.values.set(chunkKey(PG.id, 0), text.replace(/^\["public",\d+/u, '["public",1'));
+    const at =
+      (store.values.get(indexKey(PG.id)) as { kept: [string, string, number, number][] }).kept.find(
+        ([name]) => name === "public",
+      )?.[3] ?? 0;
+    const text = store.values.get(chunkKey(PG.id, at)) as string;
+    store.values.set(chunkKey(PG.id, at), text.replace(/^\["public",\d+/u, '["public",1'));
     const torn = await again();
-    expect(torn.sqls.slice(1).map(schemasOf)).toEqual(Array(6).fill(["public"]));
+    expect(torn.sqls.slice(1).map(schemasOf)).toEqual(Array(9).fill(["public"]));
 
     // Other kinds read everything again and keep the choice; another version keeps nothing.
     const index = store.values.get(indexKey(PG.id)) as Record<string, unknown>;
     store.values.set(indexKey(PG.id), { ...index, kinds: "relations" });
     const kinds = await again();
-    expect(kinds.sqls.slice(1).map(schemasOf)).toEqual(Array(6).fill(["public", "sales"]));
+    expect(kinds.sqls.slice(1).map(schemasOf)).toEqual([
+      ...Array(9).fill(["public", "sales"]),
+      [],
+      [],
+    ]);
     expect(chosen()).toEqual(["public", "sales"]);
     store.values.set(indexKey(PG.id), { ...index, v: 0 });
-    expect((await again()).sqls).toHaveLength(7);
+    expect((await again()).sqls).toHaveLength(12);
     expect(chosen()).toBeNull();
 
     // The same id pointed at another server reads everything.
     const moved = await again({ ...PG, host: "db2.example" });
-    expect(moved.sqls).toHaveLength(7);
+    expect(moved.sqls).toHaveLength(12);
     expect(moved.cache.view(PG)).toBeUndefined();
   });
 

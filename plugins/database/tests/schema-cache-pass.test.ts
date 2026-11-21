@@ -1,24 +1,48 @@
 // The schema cache's pass (PG-06): one statement for the fingerprints and one per kind, for every
 // chosen schema at once, whatever their size; progress per step and Cancel between steps; a check
 // that reads again only the schemas whose fingerprint moved; system schemas left out by default.
+// PG-50 adds three per-schema readers and two of the database level (pg-kinds-pass.test.ts).
 import { describe, expect, it } from "vitest";
+import { isNewKind } from "../ui/schema/pg/index.js";
 import { kindOf, type PgCatalog, schemasOf, shop } from "./pg-catalog";
 import { cacheOver, PG } from "./schema-cache-helpers";
 
-const PASS = ["marks", "relations", "columns", "constraints", "indexes", "triggers", "routines"];
+/** A pass over schemas only: the fingerprints and the nine per-schema readers. */
+const SCHEMAS = [
+  "marks",
+  "relations",
+  "columns",
+  "constraints",
+  "indexes",
+  "triggers",
+  "routines",
+  "types",
+  "objects",
+  "table parts",
+];
+/** A first pass: the schemas, then the database level's two readers. */
+const PASS = [...SCHEMAS, "database", "server"];
+const old = (o: { kind: string }) => !isNewKind(o.kind);
 
 describe("the schema cache's pass", () => {
-  it("reads every chosen schema in one pass of seven statements", async () => {
+  it("reads every chosen schema in one pass of twelve statements", async () => {
     const { cache, sqls } = cacheOver(() => shop());
     await cache.open(PG);
     expect(sqls.map(kindOf)).toEqual(PASS);
-    for (const sql of sqls.slice(1)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
+    for (const sql of sqls.slice(1, 10)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
     const view = cache.view(PG);
     expect(view?.listed()).toEqual(["public", "sales"]);
-    expect(view?.objects("public")?.map((o) => [o.name, o.kind, o.rows])).toEqual([
+    expect(
+      view
+        ?.objects("public")
+        ?.filter(old)
+        .map((o) => [o.name, o.kind, o.rows]),
+    ).toEqual([
       ["big_orders", "view", null],
+      ["events", "table", null],
       ["orders", "table", 2],
       ["people", "table", 4],
+      ["people_archive", "table", 0],
       ["people_id_seq", "sequence", null],
       ["refund(order_id integer)", "procedure", null],
       ["touch()", "function", null],
@@ -54,7 +78,12 @@ describe("the schema cache's pass", () => {
       ["foreign key", "orders_person_fkey"],
       ["primary key", "orders_pkey"],
     ]);
-    expect(view?.parts("public", "people")?.map((p) => [p.kind, p.name, p.extra])).toEqual([
+    expect(
+      view
+        ?.parts("public", "people")
+        ?.filter(old)
+        .map((p) => [p.kind, p.name, p.extra]),
+    ).toEqual([
       ["primary key", "people_pkey", ""],
       ["index", "people_name", ""],
       ["index", "people_pkey", "constraint"],
@@ -93,7 +122,7 @@ describe("the schema cache's pass", () => {
     expect(view?.objects("elsewhere")).toBeUndefined();
   });
 
-  it("a schema of ten thousand tables takes the same seven statements, with progress and Cancel", async () => {
+  it("a schema of ten thousand tables takes the same ten statements, with progress and Cancel", async () => {
     const tables = Array.from({ length: 10_000 }, (_, i) => ({
       name: `t${String(i).padStart(5, "0")}`,
       columns: Array.from({ length: 10 }, (_, j) => [`c${j}`, "integer", j === 0 ? "np" : ""]),
@@ -106,15 +135,19 @@ describe("the schema cache's pass", () => {
       },
     });
     await cache.open(PG);
-    expect(sqls).toHaveLength(7);
+    expect(sqls).toHaveLength(10);
+    // No database level in this model: its two steps are passed over, the others keep their numbers.
     expect(steps).toEqual([
-      "1 of 7 schemas",
-      "2 of 7 tables and views",
-      "3 of 7 columns",
-      "4 of 7 keys and foreign keys",
-      "5 of 7 indexes",
-      "6 of 7 triggers",
-      "7 of 7 routines",
+      "1 of 12 schemas",
+      "2 of 12 tables and views",
+      "3 of 12 columns",
+      "4 of 12 keys and foreign keys",
+      "5 of 12 indexes",
+      "6 of 12 triggers",
+      "7 of 12 routines",
+      "8 of 12 types",
+      "9 of 12 aggregates, operators, collations and text search",
+      "10 of 12 partitions, inheritance, policies and rules",
     ]);
     expect(cache.view(PG)?.objects("public")).toHaveLength(10_000);
     expect(cache.view(PG)?.columns("public", "t09999")).toHaveLength(10);
@@ -124,7 +157,7 @@ describe("the schema cache's pass", () => {
     (model.public as { mark: string }).mark = "2";
     (model.public?.tables ?? []).splice(5000);
     await expect(cache.refresh(PG, { all: true })).rejects.toThrow(/Cancelled/u);
-    expect(sqls).toHaveLength(10);
+    expect(sqls).toHaveLength(13);
     expect(cache.view(PG)?.status).toMatchObject({ state: "cancelled" });
     expect(cache.view(PG)?.objects("public")).toHaveLength(10_000);
   }, 60_000);
@@ -142,7 +175,8 @@ describe("the schema cache's pass", () => {
     sales.mark = "11.2:400";
     sales.tables?.push({ name: "visits", columns: [["id", "bigint", "np"]] });
     sqls.length = 0;
-    expect(await cache.refresh(PG)).toEqual({ statements: 7, read: ["sales"] });
+    expect(await cache.refresh(PG)).toEqual({ statements: 10, read: ["sales"] });
+    expect(sqls.map(kindOf)).toEqual(SCHEMAS);
     for (const sql of sqls.slice(1)) expect(schemasOf(sql)).toEqual(["sales"]);
     expect(
       cache
@@ -150,14 +184,18 @@ describe("the schema cache's pass", () => {
         ?.objects("sales")
         ?.map((o) => o.name),
     ).toEqual(["leads", "visits"]);
-    expect(cache.view(PG)?.objects("public")).toHaveLength(6);
+    expect(cache.view(PG)?.objects("public")?.filter(old)).toHaveLength(8);
 
     // One schema asked for is read whatever its fingerprint; an explicit reload reads them all.
     sqls.length = 0;
     expect((await cache.refresh(PG, { schemas: ["public"] })).read).toEqual(["public"]);
     sqls.length = 0;
-    expect((await cache.refresh(PG, { all: true })).read).toEqual(["public", "sales"]);
-    for (const sql of sqls.slice(1)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
+    expect(await cache.refresh(PG, { all: true })).toEqual({
+      statements: 12,
+      read: ["public", "sales"],
+      database: true,
+    });
+    for (const sql of sqls.slice(1, 10)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
 
     // A schema dropped on the server goes from the cache.
     delete model.sales;
@@ -199,9 +237,9 @@ describe("the schema cache's pass", () => {
     const fkey = sales.tables?.at(-1)?.constraints?.[0];
     if (fkey) fkey[5] = "persons";
     sqls.length = 0;
-    expect(await cache.refresh(PG)).toEqual({ statements: 14, read: ["public", "sales"] });
-    expect(sqls.slice(7).map(kindOf)).toEqual(PASS);
-    for (const sql of sqls.slice(8)) expect(schemasOf(sql)).toEqual(["sales"]);
+    expect(await cache.refresh(PG)).toEqual({ statements: 20, read: ["public", "sales"] });
+    expect(sqls.slice(10).map(kindOf)).toEqual(SCHEMAS);
+    for (const sql of sqls.slice(11)) expect(schemasOf(sql)).toEqual(["sales"]);
     expect(cache.view(PG)?.foreignKeys("sales", "visits")?.[0]?.table).toBe("persons");
   });
 
@@ -226,14 +264,14 @@ describe("the schema cache's pass", () => {
 
     sqls.length = 0;
     await cache.choose(PG, ["sales", "pg_catalog"]);
-    expect(sqls.slice(1).map(schemasOf)).toEqual(Array(6).fill(["pg_catalog"]));
+    expect(sqls.slice(1).map(schemasOf)).toEqual(Array(9).fill(["pg_catalog"]));
     expect(cache.view(PG)?.schemas()).toEqual(["pg_catalog", "sales"]);
     expect(cache.view(PG)?.listed()).toEqual(["pg_catalog", "public", "sales"]);
     expect(cache.view(PG)?.chosen("public")).toBe(false);
 
     sqls.length = 0;
     await cache.choose(PG, null);
-    expect(sqls.slice(1).map(schemasOf)).toEqual(Array(6).fill(["public"]));
+    expect(sqls.slice(1).map(schemasOf)).toEqual(Array(9).fill(["public"]));
     expect(cache.view(PG)?.schemas()).toEqual(["public", "sales"]);
   });
 });

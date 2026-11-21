@@ -31,7 +31,7 @@ edits your last message. Chords reach the desk. `Mod+Shift+J` opens it; the pale
 | `cmd:invoke` (`*.chat.*` actions, `desk.palette.pick`, `desk.connectors.open`) | Act through each connector; pick and confirm; lead to connecting an account |
 | `ui:notify` · `shell:open` (http, https, mailto) · `connector:manage` | New DMs and mentions (`notify`); a message's links; the installed message connectors an empty desk names (`connector.list`) |
 
-Settings: `endue.chat.page`, `.notify`, `.mark-read`, `.enter-sends`, `.density`, `.quick-reactions`.
+Settings: `endue.chat.page`, `.notify`, `.mark-read`, `.enter-sends`, `.density`, `.quick-reactions`. Eris (ADR 0088, `ui/agent.js`): `conversations`, `messages { source, channel, thread? }` and `find-messages { text }` answer data and leave the screen alone; send and delete (irreversible), react, edit, mark-read, save, pin and show name `{ source, channel }` or `{ source, id }`.
 The store keeps the layout, filter, service, conversation and columns (`view`), `drafts` and `saved`.
 
 ```bash

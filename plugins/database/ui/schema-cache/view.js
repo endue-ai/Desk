@@ -1,7 +1,9 @@
 // What a connection's cache answers without waiting: the schemas the explorer lists, which of them
 // are read (chosen), held and kept on disk, and each held schema's objects, columns, parts, foreign
-// keys and routines. Undefined means "not held here": the caller reads it from the catalog. Pure.
+// keys and routines; `objects(DATABASE)` the database's and the server's (PG-50). Undefined means
+// "not held here": the caller reads it from the catalog. Pure.
 
+import { DATABASE } from "./kinds.js";
 import { lookupOf } from "./model.js";
 
 /**
@@ -15,12 +17,15 @@ import { lookupOf } from "./model.js";
  * @typedef {{ name: string, system: boolean, chosen: boolean, held: boolean, kept: boolean }} SchemaState
  */
 
-/** Whether a schema is read: the person's list, else every one but the system ones. */
+/**
+ * Whether a schema is read: the person's list, else every one but the system ones. The database
+ * level (DATABASE) is always read.
+ */
 export const isChosen = (
   /** @type {string[] | null} */ chosen,
   /** @type {string} */ name,
   /** @type {boolean} */ system,
-) => (chosen ? chosen.includes(name) : !system);
+) => name === DATABASE || (chosen ? chosen.includes(name) : !system);
 
 /**
  * @param {Held} held
@@ -36,16 +41,19 @@ export function viewOf(held, systemSchemas) {
     const known = held.all.length
       ? held.all
       : [...held.schemas.keys()].map((name) => /** @type {[string, string]} */ ([name, ""]));
-    return known.map(([name, s]) => {
+    return known.flatMap(([name, s]) => {
+      if (name === DATABASE) return [];
       const system = s === "s";
       const has = held.schemas.has(name);
-      return {
-        name,
-        system,
-        chosen: isChosen(held.chosen, name, system),
-        held: has,
-        kept: has && !held.over.has(name),
-      };
+      return [
+        {
+          name,
+          system,
+          chosen: isChosen(held.chosen, name, system),
+          held: has,
+          kept: has && !held.over.has(name),
+        },
+      ];
     });
   };
   /** @template T @param {(l: import("./model.js").Lookup) => Map<string, T[]>} pick */
@@ -65,7 +73,7 @@ export function viewOf(held, systemSchemas) {
     /** The schemas the explorer lists: system ones only with the setting or when chosen. */
     listed: () => all().flatMap((s) => (!s.system || systemSchemas || s.chosen ? [s.name] : [])),
     /** The schemas held in memory. */
-    schemas: () => [...held.schemas.keys()],
+    schemas: () => [...held.schemas.keys()].filter((name) => name !== DATABASE),
     chosen: (/** @type {string} */ schema) =>
       isChosen(held.chosen, schema, all().find((s) => s.name === schema)?.system ?? false),
     held: (/** @type {string} */ schema) => held.schemas.has(schema),

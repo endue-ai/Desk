@@ -16,7 +16,7 @@ properties; a theme restyles both. See [the guide](../../docs/design-system.md) 
 - `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
   `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,
   `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`, `desk-edit-tier`,
-  `desk-universal-view`. Elements keep native roles and keyboard behavior.
+  `desk-universal-view`, `desk-agent-session`. The session workspace takes a `SessionView` and a slotted composer.
 - Universal views (ADR 0087, `specs/view/v0/universal.schema.json`): `@endue-ai/ui/universal` (also in
   the root) reads entries into rows (`rowsOf`, a map's roles) and models `timelineOf`, `calendarOf`,
   `kanbanOf`, `listOf`, `textOf`, `chatOf`, `agentOf`. `<desk-universal-view>` draws them: `view`,

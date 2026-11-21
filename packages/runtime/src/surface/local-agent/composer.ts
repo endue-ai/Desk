@@ -4,29 +4,45 @@
  * built once, so what the person types survives every redraw around it; `update` follows the
  * selection and the language.
  */
-import type { LocalAgentAccess, LocalAgentId, LocalAgentSession } from "@endue-ai/bridge";
+import type { LocalAgentAccess, LocalAgentId, LocalAgentRun } from "@endue-ai/bridge";
+import type { SessionRow } from "@endue-ai/ui/elements";
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
 import { applyRunStep } from "../../system/local-agents";
 import { localText } from "./copy";
-import { titleOf, why } from "./model";
+import { why } from "./model";
 
 export interface Composer {
   el: HTMLElement;
   /** Draw the labels again: the selection or the language changed. */
-  update(): void;
+  update(following?: boolean): void;
 }
 
 export function mountComposer(
   ctx: ShellCtx,
   agent: LocalAgentId,
-  selected: () => LocalAgentSession | undefined,
+  selected: () => SessionRow | undefined,
   notice: (line: string) => void,
   /** Let go of the session on screen, so the next request starts a new one. */
   startNew: () => void,
+  target: () => string,
+  follow: (run: LocalAgentRun) => void,
 ): Composer {
   let access: LocalAgentAccess = "read-only";
-  let sending = false;
+  const drafts = new Map<string, { text: string; access: LocalAgentAccess }>();
+  const pending = new Set<string>();
+  const started = new Map<string, string>();
+  const running = (key: string) =>
+    ctx.store
+      .get()
+      .localRuns.find(
+        (r) =>
+          r.agent === agent &&
+          r.state === "running" &&
+          (r.runId === started.get(key) ||
+            (selected()?.nativeId && r.sessionId === selected()?.nativeId)),
+      );
+  let active = target();
   const lang = () => ctx.store.get().lang;
   const runnable = () => Boolean(ctx.store.get().localAgents.find((a) => a.id === agent)?.program);
   const prompt = h("textarea", {
@@ -55,31 +71,47 @@ export function mountComposer(
   const send = async () => {
     const text = prompt.value.trim();
     const local = ctx.bridge.localAgents;
-    if (!text || sending || !local || !runnable()) return;
+    const key = target();
+    const ongoing = running(key);
+    if (ongoing && local) {
+      try {
+        await local.stop(ongoing.runId);
+      } catch (err) {
+        notice(why(lang(), err));
+      }
+      return;
+    }
+    if (!text || pending.has(key) || !local || !runnable()) return;
     const session = selected();
-    sending = true;
+    pending.add(key);
     update();
     try {
       const run = await local.ask({
         agent,
         prompt: text,
         access,
-        ...(session ? { sessionId: session.id } : {}),
-        ...(!session && folder.value.trim() ? { cwd: folder.value.trim() } : {}),
+        ...(session?.nativeId ? { sessionId: session.nativeId } : {}),
+        ...(!session?.nativeId && folder.value.trim() ? { cwd: folder.value.trim() } : {}),
       });
-      prompt.value = "";
-      ctx.store.set((s) => ({
-        localRuns: applyRunStep(s.localRuns, {
-          runId: run.runId,
-          agent: run.agent,
-          kind: "started",
-          run,
-        }),
-      }));
+      if (target() === key && prompt.value.trim() === text) prompt.value = "";
+      const draft = drafts.get(key);
+      if (draft?.text.trim() === text) draft.text = "";
+      started.set(key, run.runId);
+      if (!ctx.store.get().localRuns.some((r) => r.runId === run.runId))
+        ctx.store.set((s) => ({
+          localRuns: applyRunStep(s.localRuns, {
+            runId: run.runId,
+            agent: run.agent,
+            kind: "started",
+            run,
+          }),
+        }));
+      if (!session?.nativeId && target() === key)
+        follow(ctx.store.get().localRuns.find((r) => r.runId === run.runId) ?? run);
     } catch (error) {
       notice(localText(lang(), "askFailed", { why: why(lang(), error) }));
     } finally {
-      sending = false;
+      pending.delete(key);
       update();
     }
   };
@@ -113,12 +145,23 @@ export function mountComposer(
       label,
     );
 
-  function update(): void {
+  function update(following = false): void {
+    const key = target();
+    if (key !== active) {
+      if (following) drafts.delete(active);
+      else drafts.set(active, { text: prompt.value, access });
+      active = key;
+      if (!following) {
+        const draft = drafts.get(key);
+        prompt.value = draft?.text ?? "";
+        access = draft?.access ?? "read-only";
+      }
+    }
     const l = lang();
     const session = selected();
     prompt.setAttribute("aria-label", localText(l, session ? "promptContinue" : "promptNew"));
     prompt.placeholder = session
-      ? localText(l, "continuing", { title: titleOf(session) })
+      ? localText(l, "continuing", { title: session.title })
       : localText(l, "promptNew");
     folder.setAttribute("aria-label", localText(l, "folder"));
     folder.title = localText(l, "folder");
@@ -152,14 +195,16 @@ export function mountComposer(
           type: "submit",
           "data-key": "local-send",
           // An agent the core found no program for is read here, never asked.
-          disabled: sending || !ctx.bridge.localAgents || !runnable(),
+          disabled: pending.has(key) || !ctx.bridge.localAgents || !runnable(),
         },
-        localText(l, "send"),
+        localText(l, running(key) ? "stop" : "send"),
       ),
     ]);
-    const key = ctx.platform === "mac" ? "⌘↩" : "Ctrl+Enter";
+    const shortcut = ctx.platform === "mac" ? "⌘↩" : "Ctrl+Enter";
     hint.textContent =
-      access === "agent" ? localText(l, "mayChangeHint") : localText(l, "sendHint", { key });
+      access === "agent"
+        ? localText(l, "mayChangeHint")
+        : localText(l, "sendHint", { key: shortcut });
   }
 
   update();
