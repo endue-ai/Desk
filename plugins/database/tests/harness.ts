@@ -178,6 +178,8 @@ export async function mount(
     state?: unknown;
     /** Answers a feature's dialog (undefined: cancelled). */
     dialog?: (type: string, model: unknown) => unknown;
+    /** A scripted server behind db.*, as the test host's stub serves it (ADR 0281). */
+    db?: Options["db"];
   } = {},
 ): Promise<Mounted> {
   const clients = fakeClients(options.script ?? (() => ({})), options.missing);
@@ -187,6 +189,7 @@ export async function mount(
   const host = createTestHost({
     pluginId: "endue.database",
     ...(options.settings ? { settings: options.settings } : {}),
+    ...(options.db ? { db: options.db } : {}),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
       "store.set": ({ key, value }) => {

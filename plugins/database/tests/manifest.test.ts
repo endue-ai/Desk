@@ -44,9 +44,15 @@ const readme = () => readFileSync(join(folder, "README.md"), "utf8");
 const features = join(folder, "docs/features.md");
 
 /** A permission as a manifest declares it, or as the code asks for it. */
-type Scope = { permission: string; commands?: string[]; paths?: string[]; ids?: string[] };
+type Scope = {
+  permission: string;
+  commands?: string[];
+  paths?: string[];
+  ids?: string[];
+  hosts?: string[];
+};
 const declarations = () => manifest().permissions as Scope[];
-const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? [];
+const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? scope.hosts ?? [];
 
 /** `~` and `${home}` are one root, as the core reads them. */
 const homed = (path: string) => path.replace(/^\$\{home\}(?=\/|$)/u, "~");
@@ -105,7 +111,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(56);
+    expect(ids).toHaveLength(57);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -192,6 +198,9 @@ describe("permissions", () => {
       { permission: "fs:read", paths: ["${home}/.endue/database/**"] },
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/.endue/database/**"] },
+      // A connection's password kept in the keychain (keychain.js, ADR 0311) and the sessions of
+      // ADR 0281: declared for any host, granted nothing at install.
+      { permission: "db:connect", hosts: ["*"] },
     ]);
   });
 
