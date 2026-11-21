@@ -118,7 +118,7 @@ test("the routine form draws a field per argument inside the page at 900×600 an
   );
 });
 
-test("runs a function from its form with Mod+Enter into the console's result grid", async ({
+test("the form of a function in the page, filled and run, its rows in the console", async ({
   page,
 }) => {
   const frame = await open(page, LARGE);
