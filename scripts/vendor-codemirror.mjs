@@ -22,6 +22,7 @@ export const ENTRY_PACKAGES = [
   "@codemirror/search",
   "@codemirror/autocomplete",
   "@codemirror/language",
+  "@codemirror/lint",
 ];
 
 const HEADER = [
