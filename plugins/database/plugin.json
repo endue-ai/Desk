@@ -191,7 +191,17 @@
       {
         "id": "endue.database.format",
         "title": "Database: format the SQL",
-        "keywords": ["pretty", "beautify", "indent"]
+        "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
+      },
+      {
+        "id": "endue.database.format-statement",
+        "title": "Database: format the statement at the caret",
+        "keywords": ["pretty", "beautify", "indent", "layout", "query", "cursor"]
+      },
+      {
+        "id": "endue.database.format-preview",
+        "title": "Database: preview the SQL format",
+        "keywords": ["style", "settings", "sample", "layout", "pretty"]
       },
       {
         "id": "endue.database.cancel",
@@ -559,6 +569,61 @@
         "kind": "array",
         "default": [],
         "description": "Folders searched for the clients when they are not on the desk's PATH, before Homebrew's and the system's."
+      },
+      "endue.database.format-keyword-case": {
+        "kind": "string",
+        "default": "upper",
+        "choices": ["upper", "lower", "preserve"],
+        "description": "How Format SQL writes PostgreSQL's keywords: upper (SELECT, INT), lower (select, int) or preserve (as typed). Names, strings and quoted identifiers never change."
+      },
+      "endue.database.format-indent": {
+        "kind": "integer",
+        "default": 4,
+        "minimum": 1,
+        "maximum": 8,
+        "description": "Spaces a level of PostgreSQL's Format SQL indents (1 to 8)."
+      },
+      "endue.database.format-line-width": {
+        "kind": "integer",
+        "default": 80,
+        "minimum": 40,
+        "maximum": 240,
+        "description": "The width a line of PostgreSQL's Format SQL keeps to when it can (40 to 240); a longer name or string still goes on one line."
+      },
+      "endue.database.format-comma": {
+        "kind": "string",
+        "default": "last",
+        "choices": ["last", "first"],
+        "description": "Where a broken list's commas go in PostgreSQL's Format SQL: last (id, then name on the next line) or first (id, then , name)."
+      },
+      "endue.database.format-and-or": {
+        "kind": "string",
+        "default": "before",
+        "choices": ["before", "after"],
+        "description": "Where a broken condition's AND and OR go in PostgreSQL's Format SQL: before (a line starts AND b = 1) or after (a line ends a = 1 AND)."
+      },
+      "endue.database.format-joins": {
+        "kind": "string",
+        "default": "flat",
+        "choices": ["flat", "indented"],
+        "description": "How joins sit in PostgreSQL's Format SQL: flat (JOIN under FROM) or indented (JOIN one level in from FROM)."
+      },
+      "endue.database.format-one-line": {
+        "kind": "string",
+        "default": "clause",
+        "choices": ["clause", "statement", "item"],
+        "description": "What PostgreSQL's Format SQL keeps on one line when it fits: each clause (SELECT a, b then FROM t), the whole statement (SELECT a, b FROM t), or only each item (every list and condition broken one item a line)."
+      },
+      "endue.database.format-lists": {
+        "kind": "string",
+        "default": "indent",
+        "choices": ["indent", "align"],
+        "description": "Where a broken list goes in PostgreSQL's Format SQL: indent (on the lines under SELECT, one level in) or align (after SELECT, each item under the first)."
+      },
+      "endue.database.format-on-save": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
       }
     }
   }
