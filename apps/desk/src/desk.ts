@@ -24,6 +24,7 @@ import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compos
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
+import { installFrameSignals } from "./frame-signals";
 import { adapter, invoke, listen } from "./host";
 import { followLogin } from "./login";
 import { pickNativeFile, realNativePath } from "./native-files";
@@ -237,11 +238,10 @@ const stopCompositor = () => {
 };
 window.addEventListener("pagehide", stopCompositor, { once: true });
 
-// A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.
-const offCrashes = listen<{ plugin?: string }>("desk://frame-crashed", ({ payload }) => {
-  if (typeof payload?.plugin === "string") desk.runtime.frames.crashed(payload.plugin);
-});
-window.addEventListener("pagehide", () => void offCrashes.then((off) => off()), { once: true });
+// A plugin frame whose renderer died (#44), or whose page the shell loaded again by itself (#378):
+// the CEF shell names its plugin, and the runtime's frames take it from there.
+const offFrameSignals = installFrameSignals(desk.runtime.frames);
+window.addEventListener("pagehide", offFrameSignals, { once: true });
 
 // The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
 const disposeUpdates = installUpdates({
