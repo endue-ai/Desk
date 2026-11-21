@@ -234,6 +234,31 @@ describe("the rest", () => {
     expect(actionFor("grid", { key: "s", mod: false, shift: false, alt: false })).toBe("sort");
   });
 
+  it("maps the grid's new keys", () => {
+    const grid = (key: string, mod = false) =>
+      actionFor("grid", {
+        key,
+        mod,
+        shift: key !== key.toLowerCase() || /[<>()]/u.test(key),
+        alt: false,
+      });
+    const keys = { h: "hide", H: "showColumns", "<": "moveLeft", ">": "moveRight", P: "pin" };
+    const more = {
+      w: "fit",
+      "(": "narrower",
+      ")": "wider",
+      S: "addSort",
+      f: "menu",
+      "=": "filterCell",
+    };
+    for (const [key, action] of Object.entries({ ...keys, ...more, F: "clearFilters" }))
+      expect(grid(key), key).toBe(action);
+    expect(grid("f", true)).toBe("find");
+    const modF = { key: "f", mod: true, shift: false, alt: false };
+    expect(actionFor("editor", modF)).toBeUndefined();
+    expect(actionFor("explorer", modF)).toBeUndefined();
+  });
+
   it("lets a table's filter be one expression only", () => {
     expect(oneExpression("id > 1 and name = 'a;b'")).toBe(true);
     expect(oneExpression("1=1; drop table t")).toBe(false);
