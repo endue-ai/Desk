@@ -1,123 +1,222 @@
-// An ER diagram's DOM (item 9), the diagram panel's module: an SVG of the schema's tables as boxes
-// of columns (keys marked) and its foreign keys as lines with an arrow at the table they refer to.
-// Each table is a button in the tab order; the arrow keys move between them, Enter opens its rows.
-// Colours come from the theme through diagram.css's classes.
+// The ER diagram panel's DOM (PG-55): a bar of tools (Auto layout, Fit, zoom, the columns shown,
+// Add table, Add schema, Draw relation, Export, Copy image) and what the diagram holds, over the
+// stage (stage.js) and its map (minimap.js). Each table is a button in the tab order: the arrows
+// move between tables, Shift with an arrow moves the table, Enter opens its rows, Delete takes it
+// out of the diagram, n adds its neighbours; + - and 0 zoom and fit, a lays the tables out again.
+// A new state of the same diagram draws in place and keeps the view and the focus.
 
-import { METRICS } from "../../schema/diagram.js";
+import { createExportMenu } from "./export-menu.js";
+import { createMap } from "./minimap.js";
+import { createStage } from "./stage.js";
 
 /**
- * @typedef {import("../../schema/diagram.js").Layout} Layout
+ * @typedef {import("./read.js").DiagramState} DiagramState
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const SVG = "http://www.w3.org/2000/svg";
+const STEP = 8;
+const PAN = 48;
+const ARROWS = /** @type {Record<string, [number, number]>} */ ({
+  ArrowRight: [1, 0],
+  ArrowLeft: [-1, 0],
+  ArrowDown: [0, 1],
+  ArrowUp: [0, -1],
+});
 
 /**
  * @param {Document} doc
- * @param {Layout} layout
- * @param {(table: string) => void} open Opens a table's rows.
+ * @param {DiagramState} first
+ * @param {Act} act
+ * @param {{ id: string, connection: string }} buffer
  */
-export function diagramView(doc, layout, open) {
-  const make = (
-    /** @type {string} */ tag,
-    /** @type {Record<string, string | number>} */ attrs = {},
-    text = "",
-  ) => {
-    const node = doc.createElementNS(SVG, tag);
-    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, String(value));
+export function diagramPanel(doc, first, act, buffer) {
+  let state = first;
+  const make = (/** @type {string} */ tag, /** @type {string} */ cls = "", text = "") => {
+    const node = doc.createElement(tag);
+    if (cls) node.className = cls;
     if (text) node.textContent = text;
     return node;
   };
-  const svg = make("svg", {
-    class: "er",
-    width: layout.width,
-    height: layout.height,
-    viewBox: `0 0 ${layout.width} ${layout.height}`,
-    role: "group",
-    "aria-label": `${layout.boxes.length} tables, ${layout.edges.length} foreign keys`,
+  const button = (
+    /** @type {string} */ text,
+    /** @type {string} */ title,
+    /** @type {() => unknown} */ press,
+    /** @type {"desk-tab" | "desk-icon-btn" | undefined} */ kind = undefined,
+  ) => {
+    const node = /** @type {HTMLButtonElement} */ (make("button", "desk-btn desk-btn-quiet", text));
+    if (kind) node.className = kind;
+    node.type = "button";
+    node.title = title;
+    node.addEventListener("click", () => void press());
+    return node;
+  };
+  const run = (/** @type {string} */ action, /** @type {unknown[]} */ ...args) =>
+    act(action, buffer.id, ...args);
+
+  const root = make("div", "diagram");
+  const bar = make("div", "desk-bar er-bar");
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", "ER diagram");
+  const columns = make("div", "desk-tabs er-columns");
+  columns.setAttribute("role", "group");
+  columns.setAttribute("aria-label", "Columns shown");
+  const modes = /** @type {const} */ ([
+    ["all", "All", "Every column"],
+    ["keys", "Keys", "Primary and foreign key columns only"],
+    ["none", "None", "Table names only"],
+  ]).map(([mode, label, title]) => {
+    const b = button(label, title, () => run("diagramColumns", mode), "desk-tab");
+    b.dataset.mode = mode;
+    columns.append(b);
+    return b;
   });
-  const defs = make("defs");
-  const marker = make("marker", {
-    id: "er-arrow",
-    viewBox: "0 0 10 10",
-    refX: 9,
-    refY: 5,
-    markerWidth: 7,
-    markerHeight: 7,
-    orient: "auto-start-reverse",
+  const out = button("−", "Zoom out (-)", () => stage.zoom(1 / 1.25), "desk-icon-btn");
+  out.setAttribute("aria-label", "Zoom out");
+  const into = button("+", "Zoom in (+)", () => stage.zoom(1.25), "desk-icon-btn");
+  into.setAttribute("aria-label", "Zoom in");
+  const exporting = button("Export image…", "Save as SVG or PNG", () => menu.open(exporting));
+  exporting.setAttribute("aria-haspopup", "menu");
+  const status = make("span", "er-count");
+  status.setAttribute("role", "status");
+  bar.append(
+    button("Auto layout", "Lay every table out again (a)", () => run("diagramArrange")),
+    button("Fit", "Show the whole diagram (0)", () => stage.fitAll()),
+    out,
+    into,
+    columns,
+    button("Add table", "Add a table to the diagram", () => run("diagramAdd")),
+    button("Add schema", "Add a schema's tables", () => run("diagramAddSchema")),
+    button("Draw relation", "Draw a relation the database does not declare", () =>
+      run("diagramRelation"),
+    ),
+    exporting,
+    button("Copy image", "Copy as a PNG", () => run("diagramCopy")),
+    make("span", "desk-bar-spacer"),
+    status,
+  );
+  const host = make("div", "er-stage");
+  const empty = make("p", "empty", "No tables in this diagram: Add table or Add schema adds some.");
+  root.append(bar, host, empty);
+  const menu = createExportMenu(doc, root, (choice) =>
+    choice === "copy" ? run("diagramCopy") : run("diagramExport", choice),
+  );
+
+  const stage = createStage(doc, host, {
+    moved: (moves) => run("diagramMoved", moves),
+    viewed: (view, size) => map.show(view, size),
   });
-  marker.append(make("path", { d: "M 0 0 L 10 5 L 0 10 z", class: "er-arrow" }));
-  defs.append(marker);
-  svg.append(defs);
-  for (const { link, points } of layout.edges) {
-    const path = make("polyline", {
-      points: points.map((p) => p.join(",")).join(" "),
-      class: "er-link",
-      "marker-end": "url(#er-arrow)",
-    });
-    path.append(
-      make("title", {}, `${link.from} (${link.fromColumns}) → ${link.to} (${link.toColumns})`),
-    );
-    svg.append(path);
-  }
-  /** @type {SVGGElement[]} */
-  const tables = [];
-  for (const box of layout.boxes) {
-    const linked = layout.edges.filter(
-      (e) => e.link.from === box.name || e.link.to === box.name,
-    ).length;
-    const group = /** @type {SVGGElement} */ (
-      make("g", {
-        class: "er-table",
-        tabindex: 0,
-        role: "button",
-        "aria-label": `${box.name}: ${box.columns.length} columns, ${linked} links. Enter opens its rows.`,
-        transform: `translate(${box.x},${box.y})`,
-      })
-    );
-    group.append(make("rect", { width: box.w, height: box.h, rx: 6, class: "er-box" }));
-    group.append(make("rect", { width: box.w, height: METRICS.HEAD, rx: 6, class: "er-head" }));
-    group.append(make("text", { x: 10, y: 17, class: "er-name" }, box.name));
-    box.columns.slice(0, box.columns.length - box.more).forEach((column, i) => {
-      const y = METRICS.HEAD + 14 + i * METRICS.LINE;
-      group.append(
-        make(
-          "text",
-          { x: 10, y, class: column.key ? "er-column er-key" : "er-column" },
-          `${column.key ? "PK " : ""}${column.name}`,
-        ),
-      );
-      group.append(
-        make("text", { x: box.w - 10, y, class: "er-type", "text-anchor": "end" }, column.type),
-      );
-    });
-    if (box.more > 0) {
-      const y = METRICS.HEAD + 14 + (box.columns.length - box.more) * METRICS.LINE;
-      group.append(make("text", { x: 10, y, class: "er-type" }, `… ${box.more} more`));
+  const map = createMap(doc, host, (x, y) => stage.center(x, y));
+
+  /** The tools and the counts for a state. */
+  const describe = (/** @type {DiagramState} */ s) => {
+    for (const b of modes) b.setAttribute("aria-pressed", String(b.dataset.mode === s.layout.mode));
+    const { tables, links, drawn } = s.counts;
+    status.textContent = [
+      `${tables} tables`,
+      `${links} foreign keys`,
+      ...(drawn ? [`${drawn} drawn (dashed: not in the database)`] : []),
+      ...(s.kept ? [] : ["not kept: too large"]),
+    ].join(" · ");
+    empty.hidden = s.layout.boxes.length > 0;
+  };
+  /** @param {DiagramState} s @param {boolean} fitted */
+  const draw = (s, fitted) => {
+    const focused = doc.activeElement?.closest?.("g.er-table");
+    const was = focused
+      ? state.layout.boxes[Number(focused.getAttribute("data-b"))]?.id
+      : undefined;
+    state = s;
+    stage.draw(s.layout, fitted);
+    map.draw(s.layout);
+    describe(s);
+    if (was) {
+      const i = s.layout.boxes.findIndex((b) => b.id === was);
+      if (i >= 0) stage.table(i)?.focus();
     }
-    group.addEventListener("keydown", (event) => {
-      const at = tables.indexOf(group);
-      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        open(box.name);
-      } else if (step) {
-        event.preventDefault();
-        tables[Math.max(0, Math.min(tables.length - 1, at + step))]?.focus();
+  };
+
+  /** The table nearest the focused one in a direction. */
+  const nearest = (/** @type {number} */ from, /** @type {[number, number]} */ [dx, dy]) => {
+    const boxes = state.layout.boxes;
+    const a = boxes[from];
+    if (!a) return -1;
+    const [ax, ay] = [a.x + a.w / 2, a.y + a.h / 2];
+    let best = -1;
+    let low = Infinity;
+    boxes.forEach((b, i) => {
+      if (i === from) return;
+      const [ox, oy] = [b.x + b.w / 2 - ax, b.y + b.h / 2 - ay];
+      const ahead = ox * dx + oy * dy;
+      if (ahead <= 0) return;
+      const score = ahead + 2 * Math.abs(ox * dy - oy * dx);
+      if (score < low) {
+        low = score;
+        best = i;
       }
     });
-    group.addEventListener("dblclick", () => open(box.name));
-    tables.push(group);
-    svg.append(group);
-  }
-  const host = doc.createElement("div");
-  host.className = "diagram";
-  host.append(svg);
-  if (layout.boxes.length === 0) {
-    const empty = doc.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "No tables in this schema.";
-    host.append(empty);
-  }
-  return host;
+    return best;
+  };
+
+  const key = (/** @type {KeyboardEvent} */ event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (/** @type {Element} */ (event.target).closest?.(".er-bar")) return;
+    const table = /** @type {Element} */ (event.target).closest?.("g.er-table");
+    const at = table ? Number(table.getAttribute("data-b")) : -1;
+    const box = state.layout.boxes[at];
+    const arrow = ARROWS[event.key];
+    let done = true;
+    if (arrow && box && event.shiftKey) {
+      stage.move(new Map([[at, [box.x + arrow[0] * STEP, box.y + arrow[1] * STEP]]]));
+      run("diagramMoved", [[box.id, box.x, box.y]]);
+    } else if (arrow && box) {
+      const next = nearest(at, arrow);
+      if (next >= 0) stage.table(next)?.focus();
+    } else if (arrow) stage.panBy(-arrow[0] * PAN, -arrow[1] * PAN);
+    else if ((event.key === "Enter" || event.key === " ") && box)
+      act("openTable", buffer.connection, box.schema, box.name);
+    else if ((event.key === "Delete" || event.key === "Backspace") && box)
+      run("diagramRemove", box.id);
+    else if (event.key === "n" && box) run("diagramExpand", box.id);
+    else if (event.key === "+" || event.key === "=") stage.zoom(1.25);
+    else if (event.key === "-") stage.zoom(1 / 1.25);
+    else if (event.key === "0") stage.fitAll();
+    else if (event.key === "a") run("diagramArrange");
+    else done = false;
+    if (done) event.preventDefault();
+  };
+  const open = (/** @type {MouseEvent} */ event) => {
+    const table = /** @type {Element} */ (event.target).closest?.("g.er-table");
+    const box = table ? state.layout.boxes[Number(table.getAttribute("data-b"))] : undefined;
+    if (box) act("openTable", buffer.connection, box.schema, box.name);
+  };
+  host.addEventListener("keydown", key);
+  // A move waits a moment before it is kept: the page going away keeps it now.
+  const win = doc.defaultView;
+  const away = () => run("diagramFlush");
+  win?.addEventListener("pagehide", away);
+  host.addEventListener("dblclick", open);
+  draw(first, true);
+
+  return {
+    el: root,
+    update(/** @type {DiagramState} */ next) {
+      if (next.layout === state.layout) {
+        state = next;
+        describe(next);
+        return;
+      }
+      draw(next, (next.arranged ?? 0) !== (state.arranged ?? 0));
+    },
+    destroy() {
+      win?.removeEventListener("pagehide", away);
+      run("diagramFlush");
+      host.removeEventListener("keydown", key);
+      host.removeEventListener("dblclick", open);
+      stage.destroy();
+      map.destroy();
+      menu.destroy();
+    },
+    /** The stage, for tests. */
+    stage,
+  };
 }
