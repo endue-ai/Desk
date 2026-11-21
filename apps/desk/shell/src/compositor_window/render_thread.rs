@@ -9,13 +9,11 @@
 //! drawn replaces it; a frame of the pictures alone (`scene: None`) draws the last scene again, and
 //! keeps a scene that waits.
 //!
-//! It owns the window's swapchain (`gpu::Swapchain`): an image the OS withholds, or that comes
-//! late, is this thread's to wait for, and the main thread reads when to ask again (`State`).
-//! Headless it renders each frame off screen while a frame trace runs, the scene's size, so the
-//! gate's frames cost the GPU what shown ones do and need no screen. It locks the compositor's
-//! state (`composed::Shared`) only to render, as an import does; meanwhile the textures a scene
-//! laid out draws keep their sizes until the next layout, and a texture no layout draws goes only
-//! once a frame handed since is drawn (`composed_waiting.rs`).
+//! It owns the window's swapchain (`gpu::Swapchain`), and waits for an image the OS withholds or
+//! hands out late; the main thread reads when to ask again (`State`). Headless it renders each frame
+//! off screen while a frame trace runs, so the gate's frames cost the GPU what shown ones do. It
+//! locks the compositor's state (`composed::Shared`) only to render, as an import does; the
+//! textures a laid-out scene draws keep their sizes until the next layout (`composed_waiting.rs`).
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
@@ -119,7 +117,9 @@ fn lock(mail: &Mutex<Mail>) -> MutexGuard<'_, Mail> {
 /// The render thread, and what it shares with the main thread.
 pub struct RenderThread {
     mail: Arc<Shared2>,
-    thread: Option<JoinHandle<()>>,
+    /// It hands its target back when it stops: the swapchain holds the window, which goes on the
+    /// main thread (winit's window waits for the main thread as it goes, which waits in `join`).
+    thread: Option<JoinHandle<Target>>,
 }
 
 impl RenderThread {
@@ -145,7 +145,7 @@ impl RenderThread {
             .name("desk-render".to_owned())
             .spawn(move || {
                 interactive();
-                Drawer::new(target, shared).run(&theirs);
+                Drawer::new(target, shared).run(&theirs)
             });
         let thread = spawned
             .map_err(|why| eprintln!("endue Desk: no render thread ({why}): nothing is drawn"))
@@ -192,7 +192,8 @@ impl Drop for RenderThread {
         self.lock().stop = true;
         self.mail.1.notify_all();
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            // Its target, the window's swapchain, goes here.
+            drop(thread.join());
         }
     }
 }
@@ -228,8 +229,8 @@ impl Drawer {
         }
     }
 
-    /// Draw each frame at its time until the thread stops.
-    fn run(mut self, mail: &Shared2) {
+    /// Draw each frame at its time until the thread stops; its target, to go where it was made.
+    fn run(mut self, mail: &Shared2) -> Target {
         while let Some((handed, resume)) = self.next(mail) {
             if let (true, Target::Window(chain)) = (resume, &mut self.target) {
                 chain.resume();
@@ -247,6 +248,7 @@ impl Drawer {
                 state.presenting = chain.presents();
             }
         }
+        self.target
     }
 
     /// The next frame, at its time, and whether to try the window again; `None` once it stops.
