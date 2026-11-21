@@ -64,27 +64,57 @@ impl Store {
         if size > limit {
             return Err(format!("value is {size} bytes; the limit is {limit}"));
         }
-        self.data
+        let before = self
+            .data
             .entry(caller.to_owned())
             .or_default()
             .insert(key.to_owned(), value);
-        self.save();
+        if let Err(error) = self.save() {
+            let values = self.data.get_mut(caller).expect("caller just inserted");
+            if let Some(before) = before {
+                values.insert(key.to_owned(), before);
+            } else {
+                values.remove(key);
+            }
+            return Err(error);
+        }
         Ok(())
+    }
+
+    /// Consume a one-shot setting only after its removal is durable.
+    pub(crate) fn take(&mut self, caller: &str, key: &str) -> Result<Option<Value>, String> {
+        let Some(value) = self
+            .data
+            .get_mut(caller)
+            .and_then(|values| values.remove(key))
+        else {
+            return Ok(None);
+        };
+        if let Err(error) = self.save() {
+            self.data
+                .entry(caller.to_owned())
+                .or_default()
+                .insert(key.to_owned(), value);
+            return Err(error);
+        }
+        Ok(Some(value))
     }
 
     /// Forget every value `caller` kept, in one write: its plugin was removed.
     pub(crate) fn remove_caller(&mut self, caller: &str) {
         if self.data.remove(caller).is_some() {
-            self.save();
+            let _ = self.save();
         }
     }
 
     /// Write the whole file, readable by this user only: plugins keep secrets here (secret
     /// variables, tokens, cookies). Through a temp file and a rename, so a crash leaves the old one.
-    fn save(&self) {
-        let Some(path) = &self.path else { return };
-        if let Ok(text) = serde_json::to_string_pretty(&self.data) {
-            let _ = crate::secrets::write_private(path, text.as_bytes());
-        }
+    fn save(&self) -> Result<(), String> {
+        let Some(path) = &self.path else {
+            return Ok(());
+        };
+        let bytes = serde_json::to_vec_pretty(&self.data).map_err(|e| e.to_string())?;
+        crate::secrets::write_private(path, &bytes)
+            .map_err(|e| format!("could not save {}: {e}", path.display()))
     }
 }

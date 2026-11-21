@@ -1,4 +1,5 @@
-// The Database plugin without its DOM: the connections, the explorer, the consoles, table and DDL
+// The Database plugin without its DOM: the connections, the explorer, the consoles (as many per
+// connection as the person opens, and .sql files bound to one: console-files.js), table and DDL
 // views and the features' panels as desk buffers, the plugin's commands (commands.js), the
 // features (features/, feature-host.js), the commands for agents and the desk's requests. It talks
 // only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's test host runs it with a
@@ -14,6 +15,7 @@ import { createClients, searchPath } from "./clients.js";
 import { registerCommands } from "./commands.js";
 import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
+import { createConsoleFiles } from "./console-files.js";
 import { createConsoles } from "./consoles.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
@@ -26,6 +28,7 @@ import { createImporter } from "./importer.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
+import { bridgeStore } from "./schema-cache/store.js";
 import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
@@ -87,6 +90,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view.reading?.(reads);
   });
   const cancel = () => {
+    catalog.cancel();
     runner.cancel();
     output.cancel();
   };
@@ -101,9 +105,10 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view,
     pick,
     confirm,
-    execute: (conn, sql, opts) => executor.execute(conn, sql, opts),
+    execute: (conn, sql, opts) => execute(conn, sql, opts),
     forget: async (connection) => {
-      explorer.refresh(connection, undefined);
+      await catalog.drop(connection);
+      explorer.reread(connection);
       await consoles.drop(connection);
     },
     renamed: (conn) => consoles.renamed(conn),
@@ -120,16 +125,28 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
-  const catalog = createCatalog(executor.execute, () => settings.systemSchemas);
+  // The schema cache (ADR 0285) is kept in the plugin's store; what it read is drawn again.
+  const catalog = createCatalog(executor.execute, () => settings.systemSchemas, {
+    store: bridgeStore(bridge),
+    changed: (connection) => explorer.reread(connection),
+  });
+  /** A run of the person's, an agent's or a feature's: a DDL statement in it refreshes the catalog. */
+  const execute = /** @type {import("./catalog.js").Execute} */ (
+    async (conn, sql, opts) => {
+      const done = await executor.execute(conn, sql, opts);
+      if (!opts?.catalog) catalog.ran(done);
+      return done;
+    }
+  );
   const explorer = createExplorer(catalog, () => manager.list(), changed);
   const consoles = createConsoles({
     commands,
     bridge,
     connection: (id) => manager.get(id),
-    execute: executor.execute,
+    execute,
     catalog,
     settings: () => settings,
-    remember: (conn, execution) => {
+    remember: (conn, execution, target) => {
       if (!settings.history) return;
       const entries = execution.result.statements
         .filter((s) => s.ran)
@@ -139,6 +156,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ms: execution.result.ms,
           ok: !s.error,
           summary: summaryOf(execution, s.index),
+          ...(target.consoleId ? { console: target.consoleId } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },
@@ -149,7 +167,14 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     view,
     changed: () => save(),
     panels: panelsOf(list),
+    choose: (title) => manager.choose(undefined, title),
+    fileEdited: (target) => files.edited(target),
+    bound: async (target, conn) => {
+      if (target.file) await files.remember(target.file.path, conn.id);
+    },
+    ...(options.random ? { random: options.random } : {}),
   });
+  const files = createConsoleFiles({ bridge, commands, manager, consoles, view });
   const tools = createTools({
     bridge,
     commands,
@@ -166,18 +191,26 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
   });
 
-  /** What comes back after a restart: the connection on screen, the explorer, kept panels. */
+  /** What comes back after a restart: the connection on screen, the explorer, the consoles the
+   * plugin opened and the kept panels. */
   const save = () => {
     const panels = consoles.kept();
+    const kept = consoles.keptConsoles();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
+      ...(kept.length ? { consoles: kept } : {}),
       ...(panels.length ? { panels } : {}),
     });
   };
 
-  /** A SQLite file the desk opens: its connection (added the first time) in the buffer given. */
+  /** A file the desk opens, in the buffer given: a .sql file's console, or a SQLite file's
+   * connection (added the first time). */
   const visit = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+    if (/\.sql$/iu.test(path)) {
+      await files.visit(buffer, path);
+      return;
+    }
     let conn = manager.list().find((c) => c.engine === "sqlite" && c.file === path);
     if (!conn) {
       conn = normalize({ engine: "sqlite", file: path, id: newId(options.random) }, manager.list());
@@ -191,11 +224,11 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const importer = createImporter({
     manager,
     catalog,
-    execute: executor.execute,
+    execute,
     current: () => consoles.current(),
     view,
   });
-  const dropped = createDropped({ bridge, manager, consoles, importer, view, visit });
+  const dropped = createDropped({ bridge, manager, consoles, files, importer, view, visit });
 
   const answer = answerer(commands, view);
   registerCommands({
@@ -206,18 +239,18 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     consoles,
     explorer,
     tools,
-    execute: executor.execute,
+    execute,
     cancel,
     pick,
   });
-  answerRequests({ commands, consoles, visit });
+  answerRequests({ commands, consoles, visit, files });
   createAgentCommands({
     bridge,
     commands,
     connections: () => manager.list(),
     find: manager.get,
     catalog,
-    execute: executor.execute,
+    execute,
   });
 
   const guard = guarded(view);
@@ -250,7 +283,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     catalog,
     explorer,
     tools,
-    execute: executor.execute,
+    execute,
     settings: () => settings,
     pick,
     confirm,
@@ -275,8 +308,12 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer.restore(saved?.expanded ?? []);
     changed();
     consoles.render();
+    // The consoles kept; from an older version, which kept none, the console of the one on screen.
+    const back = await guard(() =>
+      consoles.restoreConsoles(/** @type {{ consoles?: unknown } | undefined} */ (saved)?.consoles),
+    )();
     const conn = saved?.current ? manager.get(saved.current) : undefined;
-    if (conn) await guard(() => consoles.open(conn))();
+    if (!back && conn) await guard(() => consoles.open(conn))();
     const kept = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
     await guard(() => consoles.restore(kept))();
   })();

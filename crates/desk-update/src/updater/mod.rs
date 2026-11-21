@@ -6,6 +6,7 @@
 //! what the person needs to see, and the schedule tries again. A failed install is the answer to the
 //! person's own request, so it shows as `failed` with the build still staged.
 
+mod github;
 mod steps;
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
@@ -150,23 +151,41 @@ impl Updater {
     /// Install the staged build and restart into it, after the running step ends. Answers at once
     /// with `applying`; refused when nothing is staged.
     pub fn apply(&self) -> Result<Status, String> {
+        let status = self.status();
+        if status.state == State::Applying {
+            return Ok(status);
+        }
         let staged = self.applicable()?;
-        self.update(|s| *s = s.at(State::Applying, Some(staged), true));
+        self.start_apply(staged);
+        Ok(self.status())
+    }
+
+    /// On startup, only a ready build of the exact version the person chose may run.
+    pub fn apply_on_start(&self, version: &str) {
+        if self.status().state == State::Staged
+            && let Ok(staged) = self.applicable()
+            && staged.version == version
+        {
+            self.start_apply(staged);
+        }
+    }
+
+    fn start_apply(&self, staged: Chosen) {
+        self.update(|s| *s = s.at(State::Applying, Some(staged.clone()), true));
         let me = self.clone();
         thread::spawn(move || {
             me.inner.work.begin();
-            me.apply_step();
+            me.apply_step(staged);
             me.inner.work.end();
         });
-        Ok(self.status())
     }
 
     /// `apply` on this thread.
     pub fn apply_now(&self) -> Result<Status, String> {
         let staged = self.applicable()?;
-        self.update(|s| *s = s.at(State::Applying, Some(staged), true));
+        self.update(|s| *s = s.at(State::Applying, Some(staged.clone()), true));
         self.inner.work.begin();
-        self.apply_step();
+        self.apply_step(staged);
         self.inner.work.end();
         Ok(self.status())
     }
