@@ -2,7 +2,8 @@
 # The endue commit identity (AGENTS.md, Boundaries) as git hooks for every repository under one
 # folder (install.sh). A repository whose remote is GitHub's endue-ai is strict: author, committer and
 # every email in a message are team@endue.ai or Claude (noreply@anthropic.com), and none of the strings
-# in this machine's `endue.block` config appears. The list never lives in a repository: install.sh
+# in this machine's `endue.block` config appears; a pushed commit may also have GitHub as its committer,
+# which is who commits a pull request's squash merge. The list never lives in a repository: install.sh
 # writes it to the machine's own config. Any other repository (GitLab) refuses only identities git
 # guessed from the host name (an address ending in .local).
 #
@@ -11,7 +12,7 @@ set -uf -o pipefail
 export LC_ALL=C
 
 # ensure.sh installs this file over an older one only; raise it with every change.
-IDENTITY_VERSION=2
+IDENTITY_VERSION=3
 
 hook="${1:?usage: check.sh pre-commit | commit-msg <file> | pre-push <remote> <url>}"
 shift
@@ -38,6 +39,9 @@ scan() {
       }
       BEGIN {
         allowed = "^(team@endue\\.ai|noreply@anthropic\\.com)$"
+        # GitHub commits a squash merge: allowed as the committer of a pushed commit only, whose
+        # label is "<sha> committer" (a local one is labelled "committer" alone).
+        merger = "^github <noreply@github\\.com>$"
         email = "[][a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]+"
         guessed = "@[a-z0-9.-]+\\.local([^a-z0-9.-]|$)"
         block = ENVIRON["ENDUE_BLOCK"]
@@ -50,7 +54,7 @@ scan() {
         else if (mode == "strict" && listed(low, block)) why = "a personal identity"
         else if (mode == "strict" && $1 == "I") {
           e = low; sub(/.*</, "", e); sub(/>.*/, "", e)
-          if (e !~ allowed) why = "not team@endue.ai or Claude"
+          if (e !~ allowed && !($2 ~ / committer$/ && low ~ merger)) why = "not team@endue.ai or Claude"
         } else if (mode == "strict") {
           s = low
           while (match(s, email)) {

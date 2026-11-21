@@ -23,7 +23,6 @@ pub mod guard;
 pub mod host;
 pub mod hotkeys;
 pub mod instance;
-pub mod island;
 pub mod language;
 pub mod login;
 #[cfg(target_os = "macos")]

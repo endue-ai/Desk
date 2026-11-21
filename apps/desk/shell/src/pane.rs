@@ -1,5 +1,5 @@
 //! One of the shell's windows: a winit window holding a windowed CEF browser (Stage 1 of #32; the
-//! compositor replaces it in Stage 2). The palette, the island, the computer-use banner and the
+//! compositor replaces it in Stage 2). The palette, the computer-use banner and the
 //! windows popped out of the desk are each one.
 //!
 //! On macOS Chromium keeps a windowed browser's page visible whether its window is on screen or not:
@@ -23,22 +23,17 @@ pub struct Pane {
 }
 
 impl Pane {
-    /// Make a window with `attributes` and a browser in it at `url`, answered by `client`; with
-    /// `panel`, the window is made a non-activating panel (the island's, ADR 0204).
+    /// Make a window with `attributes` and a browser in it at `url`, answered by `client`.
     pub fn open(
         event_loop: &ActiveEventLoop,
-        panel: bool,
         attributes: WindowAttributes,
         url: &str,
         mut client: Client,
     ) -> Result<Self, String> {
-        let create = || event_loop.create_window(attributes);
-        let window = if panel {
-            crate::island::panel::made_as_panel(create)
-        } else {
-            create()
-        };
-        let window = Arc::new(window.map_err(|why| format!("no window ({why})"))?);
+        let window = event_loop
+            .create_window(attributes)
+            .map(Arc::new)
+            .map_err(|why| format!("no window ({why})"))?;
         let parent = parent_handle(&window)
             .ok_or("this windowing system cannot hold a CEF browser".to_owned())?;
         let info = WindowInfo::default().set_as_child(parent, &bounds(&window));

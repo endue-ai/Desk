@@ -69,12 +69,11 @@ the compositor is the only desk (ADR 0156): every plugin surface renders off scr
 own, the compositor draws it where `crates/desk-wm` places its window, and desk-wm runs the window
 gestures, the window commands and the live budget. What stays web runs as system surfaces the
 compositor places above every window (ADR 0160): the desk's own page (the bars, Eris, notices, menus,
-settings and the studios, each part drawn whole), the palette's window and the island's, each calling as
-its window. No plugin runs in the desk's page: its plugin host reaches each plugin's own browser through
-the shell. The island (ADR 0204) is the one surface over other apps while the desk is not in front: the
-agents at work, what waits for an answer and the notices, a press away from answering a permission prompt
-or an agent's approval and from talking to Eris, whom Option+Enter calls from any app. It took the place
-of the floating Eris (ADR 0121).
+settings and the studios, each part drawn whole) and the Search Desk window. Both use their own
+window's caller identity. The shell connects the desk's plugin host to each plugin's own browser.
+Option+Enter brings Desk forward and opens Eris's talk line (ADR 0280). Permission prompts and agent
+approvals are answered in Desk. Shown notices can also reach the OS according to
+`desk.notify.system` (ADR 0240).
 
 A window of the desk can also live in an OS window of its own (ADR 0205, #235). Any window that shows
 one plugin pops out of the canvas into a windowed browser and docks back to its place. `crates/desk-wm`

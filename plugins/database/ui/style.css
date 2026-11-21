@@ -175,6 +175,13 @@ main {
   min-height: 0;
 }
 
+/* A feature's panel (features/README.md) fills the work area and scrolls inside it. */
+#panel-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 #empty,
 .empty {
   padding: 12px;

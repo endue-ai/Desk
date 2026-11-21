@@ -10,6 +10,7 @@ import { createDatabase, type View } from "../ui/database.js";
 import { createDatabaseDrops } from "../ui/dnd.js";
 import type { Connection } from "../ui/engines/common.js";
 import type { Node } from "../ui/explorer.js";
+import type { Feature } from "../ui/feature-host.js";
 import type { FormModel, PasswordModel } from "../ui/manage.js";
 import { type Script, scriptedReply } from "./clients";
 import { inProcessOutput } from "./output";
@@ -129,7 +130,7 @@ export function recordingView(): RecordingView {
     importer: (model) => void view.imports.push(model ? structuredClone(model) : null),
     nodeAt: () => undefined,
     insert: (text) => void view.inserted.push(text),
-    copy: (text) => {
+    copy: async (text) => {
       view.copied.push(text);
       return true;
     },
@@ -157,9 +158,15 @@ export async function mount(
     commands?: Commands;
     store?: Record<string, unknown>;
     init?: Record<string, unknown>;
+    /** Settings the person set, by the plugin's own key (`confirm`), as settings.list names them. */
+    settings?: Record<string, unknown>;
     /** Bridge methods served instead of the scripted clients' (the real processes, for one). */
     handlers?: Handlers;
     pick?: (args: { title: string; items: Array<{ id: string; label: string }> }) => string;
+    /** The features instead of ui/features/index.js's (a fake one, for one). */
+    features?: Feature[];
+    /** What the plugin kept with ctx.state, handed back at init as after a restart. */
+    state?: unknown;
   } = {},
 ): Promise<Mounted> {
   const clients = fakeClients(options.script ?? (() => ({})), options.missing);
@@ -168,6 +175,7 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.database",
+    ...(options.settings ? { settings: options.settings } : {}),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
       "store.set": ({ key, value }) => {
@@ -178,6 +186,7 @@ export async function mount(
       ...clients.handlers,
       ...options.handlers,
     },
+    ...(options.state === undefined ? {} : { state: options.state }),
     commands: {
       "desk.palette.pick": (args) => {
         const asked = args as { title: string; items: Array<{ id: string; label: string }> };
@@ -200,6 +209,7 @@ export async function mount(
         app = createDatabase(ctx, view, {
           random: () => ((ids++ * 7) % 36) / 36,
           output: inProcessOutput,
+          ...(options.features ? { features: options.features } : {}),
         });
         createDatabaseDrops(ctx, app, view);
       },

@@ -15,19 +15,16 @@ pub enum System {
     Desk,
     /// Search Desk over every app, a window of its own.
     Palette,
-    /// The island over every app (ADR 0204), a window of its own while `desk.island.show` is on.
-    Island,
 }
 
 impl System {
-    pub const ALL: [System; 3] = [System::Desk, System::Palette, System::Island];
+    pub const ALL: [System; 2] = [System::Desk, System::Palette];
 
     /// Its surface id: the compositor's for the desk's page, the shell's for the other windows.
     pub fn id(self) -> &'static str {
         match self {
             System::Desk => "desk",
             System::Palette => "palette",
-            System::Island => "island",
         }
     }
 
@@ -36,15 +33,13 @@ impl System {
         match self {
             System::Desk => Role::Main,
             System::Palette => Role::Palette,
-            System::Island => Role::Island,
         }
     }
 
-    /// The caller its bridge calls run as: the desk's, the palette's, and the island's, which is the
-    /// runtime's (it asks only for its own part, [`Sender::may_ask`]).
+    /// The caller its bridge calls run as.
     pub fn caller(self) -> &'static str {
         match self {
-            System::Desk | System::Island => RUNTIME,
+            System::Desk => RUNTIME,
             System::Palette => PALETTE,
         }
     }
@@ -203,7 +198,7 @@ mod tests {
         let ids: Vec<&str> = System::ALL.iter().map(|s| s.id()).collect();
         assert_eq!(
             ids,
-            ["desk", "palette", "island"],
+            ["desk", "palette"],
             "the order the desk starts them in"
         );
         for system in System::ALL {
@@ -214,11 +209,6 @@ mod tests {
         }
         assert_eq!(System::Desk.caller(), "desk");
         assert_eq!(System::Palette.caller(), "palette");
-        assert_eq!(
-            System::Island.caller(),
-            "desk",
-            "the runtime's caller, for what the island shows only"
-        );
         assert_eq!(
             System::of(Role::Banner),
             None,

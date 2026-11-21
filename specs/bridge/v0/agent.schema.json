@@ -142,7 +142,7 @@
       "additionalProperties": false
     },
     "AgentChangedEvent": {
-      "description": "One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again.",
+      "description": "One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work reads agent.list again.",
       "type": "object",
       "properties": {
         "event": { "const": "agent.changed" },

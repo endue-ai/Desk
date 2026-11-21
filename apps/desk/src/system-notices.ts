@@ -1,10 +1,8 @@
 // A desk notice in the OS's notifications while endue is out of sight (#306, ADR 0240). This page
 // decides which notices go: every one that shows (do not disturb's held ones never do), as
-// desk.notify.system says, with its title, body and first action; the shell decides whether now
-// (`apps/desk/shell/src/system_notices.rs`: the desk not in front, and not one the island shows)
-// and asks the OS. A click on the OS notification comes back as `notice://activated` and runs the
+// desk.notify.system says, with its title, body and first action. The shell checks whether the
+// desk is in front and asks the OS. A click on the OS notification comes back as `notice://activated` and runs the
 // notice's action or opens it.
-import type { BridgeEvent } from "@endue-ai/bridge";
 import type { Desk, Notice } from "@endue-ai/runtime";
 
 export const SYSTEM_SETTING = "desk.notify.system";
@@ -18,15 +16,11 @@ export interface SystemPost {
   level: Notice["level"];
   action?: string;
   when: "background" | "always";
-  /** The island shows it too while it is on screen: it came as `ui.notified`. */
-  island: boolean;
 }
 
 export interface SystemNoticesHost {
   settings: Pick<Desk["runtime"]["settings"], "get">;
   notices: Desk["runtime"]["notices"];
-  /** The core's events, which the island hears too. */
-  onEvent(listener: (event: BridgeEvent) => void): () => void;
   /** Tell the shell (`desk_notice_post`). */
   post(post: SystemPost): Promise<unknown>;
   /** The shell's `notice://activated`; resolves to what stops it. */
@@ -40,7 +34,7 @@ export function systemWhen(value: unknown): SystemWhen {
 }
 
 /** What the shell is sent for `notice`, or nothing when the setting is `never`. */
-export function systemPost(notice: Notice, when: SystemWhen, island: boolean): SystemPost | null {
+export function systemPost(notice: Notice, when: SystemWhen): SystemPost | null {
   if (when === "never" || notice.held) return null;
   const action = notice.actions?.[0]?.label;
   return {
@@ -50,24 +44,15 @@ export function systemPost(notice: Notice, when: SystemWhen, island: boolean): S
     level: notice.level,
     ...(action ? { action } : {}),
     when,
-    island,
   };
 }
 
 /** Send each notice that shows to the shell, and act on its clicks; returns what stops it. */
 export function followSystemNotices(host: SystemNoticesHost): () => void {
-  // The ids the core said (`ui.notified`): the island shows those while it is on screen.
-  const fromCore = new Set<string>();
-  const offEvents = host.onEvent((event) => {
-    if (event.event === "ui.notified") fromCore.add(event.data.notificationId);
-  });
   const offShown = host.notices.onShown((notice) => {
     const when = systemWhen(host.settings.get<unknown>(SYSTEM_SETTING, "background"));
-    // After every listener of the event that brought it, whichever heard it first.
-    queueMicrotask(() => {
-      const post = systemPost(notice, when, fromCore.delete(notice.id));
-      if (post) host.post(post).catch((error: unknown) => host.report(error));
-    });
+    const post = systemPost(notice, when);
+    if (post) host.post(post).catch((error: unknown) => host.report(error));
   });
   const listening = host.listen((payload) => {
     const { id, action } = (payload ?? {}) as { id?: unknown; action?: unknown };
@@ -75,7 +60,6 @@ export function followSystemNotices(host: SystemNoticesHost): () => void {
     host.notices.activate(id, action === true).catch((error: unknown) => host.report(error));
   });
   return () => {
-    offEvents();
     offShown();
     void listening.then((off) => off()).catch(() => {});
   };

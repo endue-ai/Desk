@@ -114,7 +114,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     let drags = Arc::new(Mutex::new(drags::Drags::new(&ask.plugin)));
     let desk = Arc::clone(&shell.desk);
     let client = client::client(host.clone(), &ask.surface, pump, desk, Arc::clone(&drags));
-    let pane = match Pane::open(event_loop, false, attributes, &ask.url, client) {
+    let pane = match Pane::open(event_loop, attributes, &ask.url, client) {
         Ok(pane) => pane,
         Err(why) => {
             eprintln!("endue Desk: {}'s window did not open ({why})", ask.plugin);
