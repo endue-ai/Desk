@@ -40,7 +40,7 @@ const run = (page: Page, command: string, args: Record<string, unknown>) =>
 
 async function query(page: Page, frame: Frame) {
   await run(page, "endue.database.console", { connection: "fixture" });
-  const editor = frame.locator("#editor");
+  const editor = frame.getByRole("textbox", { name: "SQL" });
   await editor.click();
   await editor.fill("select * from staff;");
   await editor.press("ControlOrMeta+Enter");
@@ -192,8 +192,8 @@ test("find in the result with Mod+F: next, previous and the count", async ({ pag
   await expect(frame.locator(".grid-find")).toBeHidden();
   await expect(frame.locator("#result [role=grid]")).toBeFocused();
   // The editor's Mod+F is the editor's.
-  await frame.locator("#editor").click();
-  await frame.locator("#editor").press("ControlOrMeta+f");
+  await frame.getByRole("textbox", { name: "SQL" }).click();
+  await frame.getByRole("textbox", { name: "SQL" }).press("ControlOrMeta+f");
   await expect(frame.locator(".grid-find")).toBeHidden();
 });
 

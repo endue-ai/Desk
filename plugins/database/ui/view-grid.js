@@ -237,6 +237,7 @@ export function createGrid(doc, host, act, options = {}) {
       else if (move === "right") moveTo(st.cursor.row, st.cursor.col + 1, false);
     },
     () => grid.focus(),
+    act,
   );
 
   const startEdit = () => {

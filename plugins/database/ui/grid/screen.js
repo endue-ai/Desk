@@ -93,13 +93,15 @@ export function createScreen(doc, st, hooks) {
     if (!cell.at) return undefined;
     const { edit } = st.context;
     const column = edit?.target?.columns[cell.at.col];
+    const fixed = column?.editor?.fixed ?? "";
     return {
       ...cell.at,
       value: cell.value,
       name: set().columns[cell.at.col] ?? "",
       type: column?.type ?? "",
-      editable: edit?.status === "ready" && (column?.known ?? false) && !cell.deleted,
-      reason: edit?.status === "refused" ? edit.reason : "",
+      editor: column?.editor,
+      editable: edit?.status === "ready" && (column?.known ?? false) && !fixed && !cell.deleted,
+      reason: fixed || (edit?.status === "refused" ? edit.reason : ""),
     };
   };
 

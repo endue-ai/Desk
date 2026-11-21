@@ -103,7 +103,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(52);
+    expect(ids).toHaveLength(59);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -121,9 +121,24 @@ describe("plugin.json", () => {
     expect(Object.keys(contributes?.settings ?? {})).toEqual(SETTING_KEYS);
   });
 
+  it("ships the vendored SQL parser its worker loads, with its licences and pins", () => {
+    const vendored =
+      "libpg-query.mjs libpg-query.wasm LICENSE LICENSE.libpg_query COPYRIGHT.postgresql";
+    for (const name of [...vendored.split(" "), "VERSIONS"])
+      expect(existsSync(join(folder, "ui/vendor", name)), name).toBe(true);
+    expect(readFileSync(join(folder, "ui/sql/parse/worker.js"), "utf8")).toContain(
+      'new URL("../../vendor/libpg-query.wasm", import.meta.url)',
+    );
+  });
+
   it("keeps every source and document under 400 lines and the README under 40", () => {
     const docs = existsSync(join(folder, "docs")) ? files(join(folder, "docs")) : [];
-    for (const path of [...files(join(folder, "ui")), ...files(join(folder, "tests")), ...docs]) {
+    // ui/vendor holds a vendored build as it was published (ADR 0283), not the plugin's source.
+    const vendor = join(folder, "ui", "vendor");
+    const sources = [...files(join(folder, "ui")), ...files(join(folder, "tests")), ...docs].filter(
+      (path) => !path.startsWith(vendor),
+    );
+    for (const path of sources) {
       const text = readFileSync(path, "utf8");
       const lines = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
       expect(lines, path).toBeLessThanOrEqual(400);
