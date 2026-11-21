@@ -167,7 +167,7 @@ export function createLibrary({ bridge }) {
      * is missing or refused.
      * @returns {Promise<Array<{ path: string, name: string, title: string, modifiedAt?: string }>>}
      */
-    async notes() {
+    async shelved() {
       const notes = await onDisk().catch(() => /** @type {OnDisk[]} */ ([]));
       return [...notes]
         .sort((a, b) => timeOf(b) - timeOf(a) || a.name.localeCompare(b.name))
@@ -180,6 +180,9 @@ export function createLibrary({ bridge }) {
           return { path, name, title, ...(modifiedAt ? { modifiedAt } : {}) };
         });
     },
+
+    /** Every note under ~/Notes with its text, for agents (agent.js). */
+    notes: () => onDisk(),
 
     /** Where a new note goes: ~/Notes/2026-11-08.md, else the first free 2026-11-08-<n>.md. */
     async fresh(/** @type {Date} */ now) {

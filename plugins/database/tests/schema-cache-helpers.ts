@@ -1,4 +1,4 @@
-// The schema cache over the scripted psql and a store in memory, for its tests: every statement it
+// The schema cache over the scripted server and a store in memory, for its tests: every statement it
 // runs is recorded (`sqls`), every step of a pass it reports (`steps`), and a test may hold the
 // server back (`gate`) or act after a statement (`after`).
 import type { Connection } from "../ui/engines/common.js";

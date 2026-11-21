@@ -5,12 +5,17 @@
 // SDK's test host runs it with a recording view. A note the desk lists and the frame lost (it slept,
 // or its page loaded again) opens again from what the sleep kept (keep.js), or from disk.
 
+import { agentCommands } from "./agent.js";
 import { createDialogs } from "./dialogs.js";
 import { createDrops } from "./drops.js";
 import { createGrants } from "./grants.js";
 import { keptText, openFiles, readEdit, readPlace } from "./keep.js";
 import { createLibrary } from "./library.js";
 import { createSearch } from "./search.js";
+
+/** A command's arguments as an object. */
+const asArgs = (/** @type {unknown} */ value) =>
+  /** @type {Record<string, unknown>} */ (value && typeof value === "object" ? value : {});
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -127,8 +132,9 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   const answer = (name, handler) =>
     commands.on(name, async (args) => {
       try {
-        await handler(args);
+        const result = await handler(args);
         say(notice);
+        return result;
       } catch (error) {
         say(error instanceof Error ? error.message : String(error));
         throw error;
@@ -243,7 +249,19 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
 
   // ~/Notes on disk: a new dated note, opened as any file is, and the palette's Notes group.
   const library = createLibrary({ bridge });
-  answer("endue.notes.new", async () => {
+  const agent = agentCommands({
+    bridge,
+    commands,
+    open: () => [...notes.values()],
+    all: library.notes,
+    now: () => new Date(),
+  });
+  for (const [id, run] of Object.entries(agent))
+    if (id !== "endue.notes.new") answer(id, (args) => run(asArgs(args)));
+  answer("endue.notes.new", async (args) => {
+    const a = asArgs(args);
+    // An agent's new note, with its text, name or open: answers where it went.
+    if (["text", "name", "open"].some((k) => k in a)) return agent["endue.notes.new"]?.(a);
     const path = await library.fresh(new Date());
     const content = "";
     await withGrant(

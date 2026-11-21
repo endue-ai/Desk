@@ -1,7 +1,7 @@
 // The server's activity as the view holds it: the sessions and locks read from the rows sql.js's
 // statements answer, what the person's filters leave and in which order, what a role cannot see,
 // ages in words, and the answer agents get (who waits for whom from tree.js). A NULL is no value,
-// never 0 or "", and the scripted psql's empty text reads as NULL too. No DOM.
+// never 0 or "", and the fixture server's empty text reads as NULL too. No DOM.
 
 import { formatCount } from "../../format.js";
 import { OWN_APPLICATION } from "./sql.js";

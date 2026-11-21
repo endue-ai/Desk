@@ -10,7 +10,7 @@ import { countSql, engineOf, pageSql } from "./engines/index.js";
 import { objectsOf, partsOf, RELATIONS } from "./schema/common.js";
 import { diagramOf, diagramQueries } from "./schema/diagram.js";
 import { schemaOf } from "./schema/index.js";
-import { createSchemaCache, ranDdl } from "./schema-cache/index.js";
+import { createSchemaCache, DATABASE, ranDdl } from "./schema-cache/index.js";
 import { qualified } from "./sql/quote.js";
 
 /**
@@ -159,12 +159,15 @@ export function createCatalog(execute, systemSchemas, options = {}) {
       }));
     });
 
+  /** A schema's objects; DATABASE's are the database's and the server's, only cached (PG-50). */
   /** @returns {Promise<SchemaObject[]>} */
   const objects = async (
     /** @type {Connection} */ conn,
     /** @type {string} */ schema,
     quiet = false,
-  ) => (await held(conn, quiet))?.objects(schema) ?? readObjects(conn, schema, quiet);
+  ) =>
+    (await held(conn, quiet))?.objects(schema) ??
+    (schema === DATABASE ? [] : readObjects(conn, schema, quiet));
 
   /** @returns {Promise<Column[]>} */
   const columns = async (
@@ -259,6 +262,12 @@ export function createCatalog(execute, systemSchemas, options = {}) {
         columns: (/** @type {string} */ schema, /** @type {string} */ table) =>
           view?.columns(schema, table) ??
           /** @type {Column[] | undefined} */ (get(["columns", schema, table])),
+        /** A schema's own types (PG-50), what kind each is as its type. */
+        types: (/** @type {string} */ schema) =>
+          view
+            ?.objects(schema)
+            ?.filter((o) => o.kind === "type")
+            .map((o) => ({ name: o.name, type: o.detail })),
       };
     },
     /** The schema cache's answers and state for a connection (PostgreSQL), or undefined. */
@@ -274,7 +283,8 @@ export function createCatalog(execute, systemSchemas, options = {}) {
       if (schema === undefined) forget(connection);
       else if (table !== undefined)
         for (const what of ["columns", "parts"]) forget(connection, [what, schema, table]);
-      else for (const what of ["objects", "columns", "parts"]) forget(connection, [what, schema]);
+      else if (schema !== DATABASE)
+        for (const what of ["objects", "columns", "parts"]) forget(connection, [what, schema]);
       for (const conn of cache.opened())
         if (connection === undefined || conn.id === connection)
           cache

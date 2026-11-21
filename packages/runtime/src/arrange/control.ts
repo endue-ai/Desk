@@ -3,7 +3,9 @@
  * (ADR 0269): float it above the canvas or put it back on it, pin it, bring it back from the
  * drawer, move it to another desktop or a new one, open a new window, and open a tab or close one (ADR 0270).
  * Each runs what the person's button, key or drag runs (`shell/actions.ts`, `shell/windows.ts`,
- * `desktops/actions.ts`); the window manager does the rest (crates/desk-wm, #83).
+ * `desktops/actions.ts`); the window manager does the rest (crates/desk-wm, #83). A window popped
+ * out into an OS window of its own is pinned above other OS windows, takes a new tab as a further
+ * OS window of its plugin and closes its one tab as it closes (ADR 0294).
  */
 
 import { moveToNew, moveWindowTo } from "../desktops/actions";
@@ -11,16 +13,21 @@ import { idAt } from "../desktops/model";
 import { type Ctx, desktopsOf, raise, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { closeTab, newTab, newWindow, toggleFloating } from "../shell/windows";
+import { outWindows } from "../surface/placed";
 import { tabsOf } from "../surface/tree";
+import { closeOutTab, newOutTab } from "./out-tabs";
 import {
   type Args,
   argsOf,
   FRAME,
   failed,
   frameOf,
+  outFrameOf,
+  runOut,
   sayOf,
   WINDOW_ARG,
   windowInFront,
+  windowTarget,
 } from "./target";
 
 export const FLOAT = "desk.windows.float";
@@ -88,13 +95,16 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       owner: "desk",
       run: async (args) => {
         const a = argsOf(args);
-        const p = windowInFront(ctx, a);
-        if (on(a, "pinned") !== (p.pinned === true)) await togglePin(ctx, p.id);
+        const target = windowTarget(ctx, a);
+        const p = target.p;
+        const pinned = on(a, "pinned");
+        if (target.out) return outFrameOf(ctx, p, await runOut(ctx, p.id, { op: "pin", pinned }));
+        if (pinned !== (p.pinned === true)) await togglePin(ctx, p.id);
         return frameOf(ctx, p.id);
       },
       agent: {
         description:
-          "Pin a window of the current desktop (pinned: true), drawing it above the windows of its kind that are not pinned and below the one in use, or unpin it (false), as its window menu's Pin does.",
+          "Pin a window of the current desktop (pinned: true), drawing it above the windows of its kind that are not pinned and below the one in use, or unpin it (false), as its window menu's Pin does. A window popped out into an OS window of its own stays above the other OS windows while pinned.",
         args: flag("pinned", "Pin (true) or unpin (false)."),
         result: FRAME,
       },
@@ -136,6 +146,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
         const a = argsOf(args);
         const s = ctx.store.get();
         const given = typeof a.window === "string" ? a.window : s.focused;
+        if (outWindows(s).some((p) => p.id === given)) throw failed(say("isOut"));
         const holds = desktopsOf(s).some((d) => windowsOf(s, d.id).some((p) => p.id === given));
         if (!given || !holds) throw failed(say(given ? "notHere" : "noWindow"));
         if (a.desktop === "new") {
@@ -196,14 +207,16 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       owner: "desk",
       run: async (args) => {
         const a = argsOf(args);
-        const p = windowInFront(ctx, a);
+        const target = windowTarget(ctx, a);
+        if (target.out) return newOutTab(ctx, target.p);
+        const p = target.p;
         const tab = await newTab(ctx, p.id);
         if (!tab) throw failed(say("noTabs"));
         return { window: p.id, tab };
       },
       agent: {
         description:
-          "Open a new tab in a window of the current desktop (the one in use unless named), as its window menu's New tab and Mod+D do: another window of the plugin the window shows, which takes the focus, and its id is answered (desk.windows.list lists a window's tabs as its panes). A window takes only tabs of its own plugin (ADR 0270); a window of the launcher or an agent takes none.",
+          "Open a new tab in a window of the current desktop (the one in use unless named), as its window menu's New tab and Mod+D do: another window of the plugin the window shows, which takes the focus, and its id is answered (desk.windows.list lists a window's tabs as its panes). A window takes only tabs of its own plugin (ADR 0270); a window of the launcher or an agent takes none. A window popped out into an OS window of its own has no tab strip: there the plugin's next window opens in an OS window of its own (out: true), and window and tab name it.",
         args: {
           type: "object",
           properties: { window: WINDOW_ARG },
@@ -211,7 +224,11 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
         },
         result: {
           type: "object",
-          properties: { window: { type: "string" }, tab: { type: "string" } },
+          properties: {
+            window: { type: "string" },
+            tab: { type: "string" },
+            out: { type: "boolean" },
+          },
           required: ["window", "tab"],
         },
       },
@@ -222,7 +239,9 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       owner: "desk",
       run: async (args) => {
         const a = argsOf(args);
-        const p = windowInFront(ctx, a);
+        const target = windowTarget(ctx, a);
+        if (target.out) return closeOutTab(ctx, target.p, a.tab);
+        const p = target.p;
         const tab = a.tab;
         if (typeof tab !== "string" || !tabsOf(p).some((t) => t.id === tab)) {
           throw failed(say("noTab"));
@@ -234,7 +253,7 @@ export function defineControlCommands(ctx: ShellCtx): () => void {
       },
       agent: {
         description:
-          "Close one tab of a window of the current desktop, by its id (desk.windows.list lists a window's tabs as its panes). Closing a window's last tab closes the window, asking about unsaved changes first; the tab stays when the person keeps them (closed: false).",
+          "Close one tab of a window of the current desktop, by its id (desk.windows.list lists a window's tabs as its panes). Closing a window's last tab closes the window, asking about unsaved changes first; the tab stays when the person keeps them (closed: false). A window popped out into an OS window of its own has one tab, so closing it closes that OS window.",
         args: {
           type: "object",
           properties: {

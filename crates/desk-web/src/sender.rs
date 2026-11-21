@@ -50,6 +50,8 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_wm",
     "compositor_edit",
     "compositor_snapshot",
+    // The desk's window commands on a window out of the canvas move its OS window (ADR 0294).
+    "app_window",
     // A desk.edit.* command: the Edit menu's command where the keys are (ADR 0296).
     "compositor_edit_command",
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
@@ -260,6 +262,7 @@ mod tests {
             "compositor_input_state",
             "compositor_grab",
             "compositor_wm",
+            "app_window",
             "compositor_edit_command",
             "compositor_a11y",
             "compositor_clock",

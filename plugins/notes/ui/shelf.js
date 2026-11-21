@@ -10,7 +10,7 @@ import { ROOT } from "./library.js";
  * @typedef {{ path: string, name: string, title: string, modifiedAt?: string }} Shelved
  * @typedef {{ list(items: Shelved[], current: string | undefined, filter: string): void, confirming(on: boolean): void }} ShelfView
  * @typedef {{ save(buffer: string): Promise<unknown>, current(): { buffer: string, path: string, name: string, modified: boolean } | undefined, grants: ReturnType<typeof import("./grants.js").createGrants>, say(text: string): void }} NotesApp
- * @typedef {{ notes(): Promise<Shelved[]> }} Library
+ * @typedef {{ shelved(): Promise<Shelved[]> }} Library
  */
 
 /** How long typing pauses before a note in ~/Notes saves itself. */
@@ -80,7 +80,7 @@ export function createShelf({ bridge, commands }, app, library, view, options = 
   };
 
   const refresh = async () => {
-    items = await library.notes();
+    items = await library.shelved();
     draw();
     if (items.length > 0) await follow();
   };

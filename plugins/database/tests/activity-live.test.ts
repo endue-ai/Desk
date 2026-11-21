@@ -1,23 +1,28 @@
-// The activity view against a real PostgreSQL, through the plugin's commands and the real psql. It
-// runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database it may write in, for example
-// postgresql://postgres:pw@db/scratch: a session that holds a row and sleeps blocks a second one on
-// that row; the view lists both and draws who waits for whom; cancel stops the sleep and leaves the
-// session; end ends it, and the second one goes on. A role of its own (dropped after) without
-// pg_read_all_stats or pg_signal_backend is told what it cannot see, and why it may not cancel.
-import { spawn, spawnSync } from "node:child_process";
+// The activity view against a real PostgreSQL, through the plugin's commands on the desk core's
+// sessions (core-bridge.ts). It runs when ENDUE_DB_TEST_POSTGRES holds the URI of a scratch database
+// it may write in, for example postgresql://postgres:pw@db/scratch: a session that holds a row and
+// sleeps blocks a second one on that row; the view lists both and draws who waits for whom; cancel
+// stops the sleep and leaves the session; end ends it, and the second one goes on. A role of its own
+// (dropped after) without pg_read_all_stats or pg_signal_backend is told what it cannot see, and why
+// it may not cancel.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import { blockingTree, hiddenOf } from "../ui/features/activity/model.js";
-import { type Handlers, type Mounted, mount } from "./harness";
+import { type Mounted, mount } from "./harness";
+import { databaseOf, liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const TABLE = "endue_activity_live";
-const ROLE = "t487_viewer";
+// Other runs use the same server at once, each in a database of its own: the role is this
+// database's, and only this database's sessions are looked up and ended.
+const DATABASE = databaseOf(uri);
+const ROLE = `t487_viewer_${DATABASE.toLowerCase().replace(/[^a-z0-9_]/gu, "_")}`.slice(0, 63);
 
 type Seen = {
   pid: number;
+  database: string | null;
   application: string | null;
   state: string | null;
   wait: string | null;
@@ -29,36 +34,12 @@ type Summary = {
   hidden: number;
 };
 
-/** psql on the scratch database as the URI's role, unaligned, for what the test sets up. */
-const admin = (sql: string) => {
-  const done = spawnSync(
-    "psql",
-    ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", uri, "-c", sql],
-    {
-      encoding: "utf8",
-    },
-  );
-  if (done.status !== 0) throw new Error(done.stderr);
-  return done.stdout.trim();
-};
-
-const children: Array<ReturnType<typeof spawn>> = [];
-/** A session of its own, named, fed statements on its standard input; `close` ends that input. */
-function session(name: string, sql: string, close = false) {
-  const child = spawn("psql", ["-X", "-q", "-d", uri], {
-    env: { ...process.env, PGAPPNAME: name },
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  children.push(child);
-  let err = "";
-  child.stderr?.on("data", (chunk) => {
-    err += String(chunk);
-  });
-  child.stdin?.write(`${sql}\n`);
-  if (close) child.stdin?.end();
-  const exited = new Promise<number | null>((resolve) => child.on("exit", resolve));
-  return { exited, err: () => err };
-}
+const live = liveSessions(uri, "activity");
+const { admin } = live;
+const session = (name: string, sqls: string[], close = false) =>
+  live.session(name.replace(/^activity /u, ""), sqls, close);
+/** End this database's sessions the tests started, and the role's: before a drop or a setup. */
+const endSessions = () => live.end(`usename = '${ROLE}'`);
 
 /** Read again until `ok` holds, every 200 ms, for 15 s at most. */
 async function until<T>(read: () => Promise<T>, ok: (value: T) => boolean): Promise<T> {
@@ -81,57 +62,47 @@ async function plugin(as?: { user: string; password: string }) {
     name: "live",
   });
   const secret = as?.password ?? password;
-  const procs = realProcs();
-  const spawnReal = procs.handlers["proc.spawn"] as unknown as (
-    params: Record<string, unknown>,
-    caller?: string,
-  ) => unknown;
-  const handlers = {
-    ...procs.handlers,
-    // The password reaches psql as the person's typed one would, never through the store.
-    "proc.spawn": (params: Record<string, unknown>, caller?: string) =>
-      spawnReal(
-        {
-          ...params,
-          env: { ...(params.env as object), ...(secret ? { PGPASSWORD: secret } : {}) },
-        },
-        caller,
-      ),
-  } as unknown as Handlers;
+  const procs = realProcs(secret ? { password: secret } : {});
+  const handlers = procs.handlers;
   const m = await mount({ store: { connections: [conn] }, handlers, pick: () => "yes" });
   procs.attach((event) => m.host.emit(event));
   return m;
 }
 const activity = (m: Mounted) =>
   m.host.command("endue.database.activity", { connection: "live" }) as Promise<Summary>;
-const named = (a: Summary, name: string) => a.sessions.find((s) => s.application === name);
+// The server's other databases have runs of their own with the same names.
+const named = (a: Summary, name: string) =>
+  a.sessions.find((s) => s.application === name && s.database === DATABASE);
 
-afterAll(() => {
-  for (const child of children) child.kill();
+afterAll(async () => {
   if (!uri) return;
-  admin(`DROP TABLE IF EXISTS ${TABLE}`);
-  // A killed psql leaves its backend asleep in pg_sleep: end the tests' sessions by name too.
-  admin(
-    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '${ROLE}' OR application_name LIKE 'activity %'`,
-  );
-  admin(`DROP ROLE IF EXISTS ${ROLE}`);
+  // Before the drop: the table's row lock is held by the holder's session until it ends.
+  await endSessions();
+  await admin(`DROP TABLE IF EXISTS ${TABLE}`);
+  await admin(`DROP ROLE IF EXISTS ${ROLE}`);
 });
 
 describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
   it("lists a session in pg_sleep that blocks another on a row lock, shows the tree, cancels its statement and ends it", async () => {
-    admin(`DROP TABLE IF EXISTS ${TABLE}`);
-    admin(`CREATE TABLE ${TABLE} (id int PRIMARY KEY, v int)`);
-    admin(`INSERT INTO ${TABLE} VALUES (1, 0)`);
-    const holder = session(
-      "activity holder",
-      `BEGIN;\nUPDATE ${TABLE} SET v = v + 1 WHERE id = 1;\nSELECT pg_sleep(600);`,
-    );
+    await endSessions();
+    await admin(`DROP TABLE IF EXISTS ${TABLE}`);
+    await admin(`CREATE TABLE ${TABLE} (id int PRIMARY KEY, v int)`);
+    await admin(`INSERT INTO ${TABLE} VALUES (1, 0)`);
+    const holder = session("activity holder", [
+      "BEGIN",
+      `UPDATE ${TABLE} SET v = v + 1 WHERE id = 1`,
+      "SELECT pg_sleep(600)",
+    ]);
     const m = await plugin();
     await until(
       () => activity(m),
       (a) => named(a, "activity holder")?.wait === "Timeout: PgSleep",
     );
-    const waiter = session("activity waiter", `UPDATE ${TABLE} SET v = v + 10 WHERE id = 1;`, true);
+    const waiter = session(
+      "activity waiter",
+      [`UPDATE ${TABLE} SET v = v + 10 WHERE id = 1`],
+      true,
+    );
     const seen = await until(
       () => activity(m),
       (a) => a.waits.some((w) => w.pid === named(a, "activity waiter")?.pid),
@@ -166,7 +137,7 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
       (a) => named(a, "activity holder")?.state === "idle in transaction (aborted)",
     );
     expect(holder.err()).toMatch(/canceling statement due to user request/u);
-    expect(await waiter.exited).toBe(0);
+    expect(await waiter.done).toBe("");
     const freed = await until(
       () => activity(m),
       (a) => !a.waits.some((w) => w.pid === waiterPid),
@@ -181,14 +152,15 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
       () => activity(m),
       (a) => !a.sessions.some((s) => s.pid === holderPid),
     );
-    expect(admin(`SELECT v FROM ${TABLE} WHERE id = 1`)).toBe("10");
+    expect(await admin(`SELECT v FROM ${TABLE} WHERE id = 1`)).toBe("10");
   }, 60_000);
 
   it("says the server's refusal and what is hidden for a role without the privileges", async () => {
     const password = randomUUID();
-    admin(`DROP ROLE IF EXISTS ${ROLE}`);
-    admin(`CREATE ROLE ${ROLE} LOGIN PASSWORD '${password}'`);
-    session("activity sleeper", "SELECT pg_sleep(600);");
+    await endSessions();
+    await admin(`DROP ROLE IF EXISTS ${ROLE}`);
+    await admin(`CREATE ROLE ${ROLE} LOGIN PASSWORD '${password}'`);
+    session("activity sleeper", ["SELECT pg_sleep(600)"]);
     const m = await plugin({ user: ROLE, password });
     const seen = await until(
       () => activity(m),

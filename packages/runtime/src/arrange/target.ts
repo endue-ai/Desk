@@ -3,14 +3,15 @@
  * The window named, or the one in use; on the desktop in front, since the window manager moves
  * only those (crates/desk-wm `Wm::run`). Where it is comes from the desk the window manager
  * published last, in the space desk.windows.list answers: whole CSS pixels from the desk's top
- * left, halves up.
+ * left, halves up. A window popped out into an OS window of its own (issue 235) is moved, sized,
+ * filled and pinned in that OS window, in points of the OS's screens (ADR 0294).
  */
 import { CommandError } from "../commands";
 import type { SurfacePlacement } from "../modes/types";
 import { type Ctx, desktopId, desktopsOf, edit, windowsOf } from "../shell/actions";
 import type { DeskState } from "../shell/state";
 import { outWindows } from "../surface/placed";
-import type { WindowOp } from "../wm/host";
+import type { OutAsk, OutFrame, WindowOp } from "../wm/host";
 import type { Fill, Rect } from "../wm/types";
 import { rectIn } from "../wm/view";
 import { type ArrangeCopyKey, arrangeText } from "./copy";
@@ -38,7 +39,22 @@ export interface Frame {
   fill?: Fill;
   floating: boolean;
   pinned: boolean;
+  /** In an OS window of its own (ADR 0294): x, y, w, h are that window's frame, in points. */
+  out?: boolean;
+  /** Then the work area of the display it is on, in points. */
+  screen?: Rect;
 }
+
+const RECT = {
+  type: "object",
+  properties: {
+    x: { type: "number" },
+    y: { type: "number" },
+    w: { type: "number" },
+    h: { type: "number" },
+  },
+  required: ["x", "y", "w", "h"],
+};
 
 /** What every one of these commands answers: `Frame` as JSON Schema. */
 export const FRAME = {
@@ -68,6 +84,15 @@ export const FRAME = {
     },
     floating: { type: "boolean" },
     pinned: { type: "boolean" },
+    out: {
+      type: "boolean",
+      description:
+        "True for a window popped out into an OS window of its own: then x, y, w, h are that OS window's frame in points of the OS's screens (from the main display's top left), not CSS pixels of the desk.",
+    },
+    screen: {
+      ...RECT,
+      description: "For a window out: the work area of the display its OS window is on, in points.",
+    },
   },
   required: ["window", "desktop", "x", "y", "w", "h", "state", "floating", "pinned"],
 };
@@ -98,6 +123,51 @@ export function windowInFront(ctx: Pick<Ctx, "store">, args: Args): SurfacePlace
   const there = desktopsOf(s).find((d) => windowsOf(s, d.id).some((p) => p.id === id));
   if (there) throw failed(say("onOther", { desktop: there.name }));
   throw failed(say("notHere"));
+}
+
+/** What a command acts on: a window of the desktop in front, or one out in an OS window. */
+export type Target = { out: false; p: SurfacePlacement } | { out: true; p: SurfacePlacement };
+
+/**
+ * The window `args` names, else the one in use: one of the desktop in front, or one popped out of
+ * the canvas into an OS window (ADR 0294), whatever desktop it docks back to.
+ */
+export function windowTarget(ctx: Pick<Ctx, "store">, args: Args): Target {
+  const s = ctx.store.get();
+  const id = typeof args.window === "string" ? args.window : s.focused;
+  const out = id ? outWindows(s).find((p) => p.id === id) : undefined;
+  return out ? { out: true, p: out } : { out: false, p: windowInFront(ctx, args) };
+}
+
+/** The desktop out window `id` docks back to. */
+function outDesktop(s: DeskState, id: string): string {
+  const docks = Object.entries(s.wm.layouts).find(([, l]) => l.surfaces.some((p) => p.id === id));
+  return docks?.[0] ?? String(desktopId(s));
+}
+
+/** Ask the OS window of out window `id` for `ask`; refused on a desk that has no OS windows. */
+export function runOut(ctx: Pick<Ctx, "store" | "wm">, id: string, ask: OutAsk): Promise<OutFrame> {
+  if (!ctx.wm.outWindow) return Promise.reject(failed(sayOf(ctx)("noOs")));
+  return ctx.wm.outWindow(id, ask);
+}
+
+/** Where out window `p` is, its OS window at `f`, as these commands answer it. */
+export function outFrameOf(ctx: Pick<Ctx, "store">, p: SurfacePlacement, f: OutFrame): Frame {
+  const state: FrameState = f.fill === "full" ? "filled" : f.fill ? "snapped" : "normal";
+  return {
+    window: p.id,
+    desktop: outDesktop(ctx.store.get(), p.id),
+    x: whole(f.x),
+    y: whole(f.y),
+    w: whole(f.w),
+    h: whole(f.h),
+    state,
+    ...(f.fill ? { fill: f.fill } : {}),
+    floating: false,
+    pinned: f.pinned,
+    out: true,
+    screen: f.screen,
+  };
 }
 
 /** Where window `p` of the desktop in front is drawn now, unrounded. */

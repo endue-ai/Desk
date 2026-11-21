@@ -1,13 +1,10 @@
-// Each engine's plan and reading, on output captured from the real clients (psql 17, mysql 8.4 and
-// mariadb 11, sqlite3 3.50).
+// Each client engine's plan and reading, on output captured from the real clients (mysql 8.4 and
+// mariadb 11, sqlite3 3.50). PostgreSQL has no client: pg-session.test.ts.
 import { describe, expect, it } from "vitest";
 import type { Connection, Invocation, Outcome } from "../ui/engines/common.js";
 import { mysql, sslArgs } from "../ui/engines/mysql.js";
-import { postgres } from "../ui/engines/postgres.js";
 import { sqlite } from "../ui/engines/sqlite.js";
-import { readCsv } from "../ui/output/csv.js";
 import { readMysql } from "../ui/output/mysql.js";
-import { readPostgres, sqlError } from "../ui/output/postgres.js";
 import { readMysqlXml, readQuoted } from "../ui/output/readers.js";
 import { readSqlite, sqliteError } from "../ui/output/sqlite.js";
 import { split } from "../ui/sql/split.js";
@@ -40,7 +37,7 @@ const outcome = (fields: Partial<Outcome>): Outcome => ({
   ...fields,
 });
 const plan = (
-  engine: typeof postgres | typeof mysql | typeof sqlite,
+  engine: typeof mysql | typeof sqlite,
   c: Connection,
   sql: string,
   single = false,
@@ -54,121 +51,6 @@ const plan = (
     nonce: "n0nce",
     single,
   });
-
-describe("postgres", () => {
-  it("passes each statement as its own -c, connection values as environment, never as options", () => {
-    const run = plan(
-      postgres,
-      conn({ readOnly: true, ssl: "require", host: "-oops" }),
-      "select 1; select 2",
-    );
-    expect(run.args).toEqual([
-      "-X",
-      "-w",
-      "-q",
-      "--csv",
-      "-P",
-      "null=@@null:n0nce",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-v",
-      "FETCH_COUNT=3",
-      "-c",
-      "select 1",
-      "-c",
-      "\\echo @@endue:n0nce:0 :ROW_COUNT",
-      "-c",
-      "\\warn @@endue:n0nce:0",
-      "-c",
-      "select 2",
-      "-c",
-      "\\echo @@endue:n0nce:1 :ROW_COUNT",
-      "-c",
-      "\\warn @@endue:n0nce:1",
-    ]);
-    expect(run.env).toMatchObject({
-      PGHOST: "-oops",
-      PGPASSWORD: "pw",
-      PGSSLMODE: "require",
-      PGOPTIONS: "-c default_transaction_read_only=on",
-    });
-  });
-
-  it("reads rows, NULL apart from '', notices by statement, and the error with its position", () => {
-    const run = plan(
-      postgres,
-      conn({}),
-      "select 1 as a, null as b, '' as c, 'x,\"y\"' as d;\nupdate t set a = 1;\nselec 1;\nselect 4",
-    );
-    const read = readPostgres(
-      outcome({
-        code: 1,
-        stdout: 'a,b,c,d\n1,@@null:n0nce,,"x,""y"""\n@@endue:n0nce:0 1\n@@endue:n0nce:1 7\n',
-        stderr:
-          '@@endue:n0nce:0\nNOTICE:  touched\n@@endue:n0nce:1\nERROR:  syntax error at or near "selec"\nLINE 1: selec 1\n        ^\n',
-      }),
-      run,
-      0,
-    );
-    const [select, update, wrong, after] = read.statements;
-    expect(select?.sets[0]).toEqual({
-      columns: ["a", "b", "c", "d"],
-      rows: [["1", null, "", 'x,"y"']],
-      truncated: false,
-    });
-    expect(update).toMatchObject({ affected: 7, notices: ["NOTICE:  touched"] });
-    expect(wrong?.error).toEqual({
-      kind: "sql",
-      message: 'syntax error at or near "selec"',
-      position: 0,
-    });
-    expect(after?.ran).toBe(false);
-  });
-
-  it("finds the caret in a later line and keeps DETAIL and HINT", () => {
-    const error = sqlError(
-      'ERROR:  column "nope" does not exist\nLINE 2:   where nope = 1\n                ^\nHINT:  Perhaps you meant "note".\n',
-      "select *\n  where nope = 1",
-    );
-    expect(error).toEqual({
-      kind: "sql",
-      message: 'column "nope" does not exist',
-      detail: 'HINT:  Perhaps you meant "note".',
-      position: 17,
-    });
-  });
-
-  it("says a connection that never stood up, and an authentication failure as such", () => {
-    const run = plan(postgres, conn({}), "select 1");
-    const read = readPostgres(
-      outcome({
-        code: 2,
-        stderr:
-          'psql: error: connection to server at "db" (10.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "me"\n',
-      }),
-      run,
-      0,
-    );
-    expect(read.error).toMatchObject({ kind: "auth" });
-    expect(read.statements[0]?.ran).toBe(false);
-  });
-
-  it("keeps the rows of a single read it stopped, marked as more", () => {
-    const run = plan(postgres, conn({}), "select g from big", true);
-    expect(run.stopAfter).toBe(4);
-    const read = readPostgres(
-      outcome({ code: null, signal: "int", stopped: true, stdout: "g\n1\n2\n3\n4" }),
-      run,
-      0,
-    );
-    expect(read.statements[0]?.sets[0]).toEqual({
-      columns: ["g"],
-      rows: [["1"], ["2"]],
-      truncated: true,
-    });
-    expect(read.statements[0]?.error).toBeUndefined();
-  });
-});
 
 describe("mysql", () => {
   const xml = [
@@ -319,15 +201,5 @@ describe("sqlite", () => {
       message: "UNIQUE constraint failed: t.id",
       code: "19",
     });
-  });
-});
-
-describe("readCsv", () => {
-  it("keeps quoted line breaks and drops a cut record when asked", () => {
-    expect(readCsv('a,b\n"x\ny",2\n')).toEqual([
-      ["a", "b"],
-      ["x\ny", "2"],
-    ]);
-    expect(readCsv('a\n1\n"cut', true)).toEqual([["a"], ["1"]]);
   });
 });

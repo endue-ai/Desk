@@ -6,23 +6,62 @@
   "entry": "ui/index.html",
   "description": "Opens iCalendar (RFC 5545) files in month, week, day and agenda views: repeating events, time zones, reminders, and an editor that writes back everything it read. The system calendar's events show beside them, read-only.",
   "permissions": [
-    { "permission": "fs:read", "paths": ["${home}/Calendar/**"] },
-    { "permission": "fs:write", "paths": ["${home}/Calendar/**"] },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/Calendar/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/Calendar/**"]
+    },
     {
       "permission": "cmd:invoke",
-      "ids": ["desk.files.changed", "desk.files.open", "desk.buffers.update", "desk.palette.pick"]
+      "ids": [
+        "desk.files.changed",
+        "desk.files.open",
+        "desk.buffers.update",
+        "desk.palette.pick",
+        "desk.files.save"
+      ]
     },
-    { "permission": "ui:notify" },
-    { "permission": "data:read", "kinds": ["event"], "sources": ["desk.calendar"] },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "fs:write", "paths": ["/**"] }
+    {
+      "permission": "ui:notify"
+    },
+    {
+      "permission": "data:read",
+      "kinds": ["event"],
+      "sources": ["desk.calendar"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    }
   ],
-  "surfaces": [{ "id": "main", "title": "Calendar", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Calendar",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "files": [
-      { "pattern": "*.ics", "plugin": "endue.calendar" },
-      { "pattern": "*.ical", "plugin": "endue.calendar" },
-      { "pattern": "*.ifb", "plugin": "endue.calendar" }
+      {
+        "pattern": "*.ics",
+        "plugin": "endue.calendar"
+      },
+      {
+        "pattern": "*.ical",
+        "plugin": "endue.calendar"
+      },
+      {
+        "pattern": "*.ifb",
+        "plugin": "endue.calendar"
+      }
     ],
     "commands": [
       {
@@ -30,7 +69,11 @@
         "title": "Open my calendar",
         "keywords": ["calendar", "schedule", "events", "ics"]
       },
-      { "id": "endue.calendar.today", "title": "Calendar: go to today", "keywords": ["calendar"] },
+      {
+        "id": "endue.calendar.today",
+        "title": "Calendar: go to today",
+        "keywords": ["calendar"]
+      },
       {
         "id": "endue.calendar.next",
         "title": "Calendar: next",
@@ -41,9 +84,21 @@
         "title": "Calendar: previous",
         "keywords": ["calendar", "back"]
       },
-      { "id": "endue.calendar.month", "title": "Calendar: month view", "keywords": ["calendar"] },
-      { "id": "endue.calendar.week", "title": "Calendar: week view", "keywords": ["calendar"] },
-      { "id": "endue.calendar.day", "title": "Calendar: day view", "keywords": ["calendar"] },
+      {
+        "id": "endue.calendar.month",
+        "title": "Calendar: month view",
+        "keywords": ["calendar"]
+      },
+      {
+        "id": "endue.calendar.week",
+        "title": "Calendar: week view",
+        "keywords": ["calendar"]
+      },
+      {
+        "id": "endue.calendar.day",
+        "title": "Calendar: day view",
+        "keywords": ["calendar"]
+      },
       {
         "id": "endue.calendar.agenda",
         "title": "Calendar: agenda",
@@ -63,9 +118,271 @@
         "id": "endue.calendar.layer",
         "title": "Calendar: show or hide the system calendar",
         "keywords": ["calendar", "system", "macos", "layer", "hide", "show"]
+      },
+      {
+        "id": "endue.calendar.events",
+        "title": "Calendar: list events",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "The events between from and to in the open calendars (or the default calendar file), as specs/item/v0 event items, earliest first: id, title, start, end, allDay, location, body, recurrence and raw.uid. text narrows to events whose title, place or notes hold it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); today when absent"
+            },
+            "to": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); seven days after from when absent"
+            },
+            "text": {
+              "type": "string",
+              "description": "Only events whose title, place or notes hold this text"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "timeZone": {
+              "type": "string"
+            },
+            "items": {
+              "type": "array"
+            }
+          }
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.conflicts",
+        "title": "Calendar: find overlapping events",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "Pairs of busy events between from and to that overlap, with when the overlap starts and ends and for how many minutes.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); today when absent"
+            },
+            "to": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); seven days after from when absent"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "timeZone": {
+              "type": "string"
+            },
+            "conflicts": {
+              "type": "array"
+            }
+          }
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.add",
+        "title": "Calendar: add an event",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "Add an event to the calendar on screen (or the default calendar file) and answer it as an item. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "start": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30)"
+            },
+            "end": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); the default length after start when absent"
+            },
+            "allDay": {
+              "type": "boolean"
+            },
+            "timeZone": {
+              "type": "string",
+              "description": "An IANA zone for local times; the person's zone when absent"
+            },
+            "location": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "rrule": {
+              "type": "string",
+              "description": "An RFC 5545 RRULE value, FREQ=WEEKLY;BYDAY=MO; empty to stop repeating"
+            },
+            "reminder": {
+              "type": "integer",
+              "description": "Minutes before the start"
+            }
+          },
+          "required": ["title", "start"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.update",
+        "title": "Calendar: change an event",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "Change an event of the calendar on screen: the fields given take the place of its own, the rest stay; newStart moves it. A repeating event changes as scope says. Answers it as an item. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "The event item's id"
+            },
+            "start": {
+              "type": "string",
+              "description": "The event item's start, as events answered it"
+            },
+            "scope": {
+              "enum": ["one", "following", "all"],
+              "description": "For an instance of a repeating event: it alone, it and the later ones, or all; one when absent"
+            },
+            "newStart": {
+              "type": "string",
+              "description": "Where the event starts now"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "end": {
+              "type": "string",
+              "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); the default length after start when absent"
+            },
+            "allDay": {
+              "type": "boolean"
+            },
+            "timeZone": {
+              "type": "string",
+              "description": "An IANA zone for local times; the person's zone when absent"
+            },
+            "location": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "rrule": {
+              "type": "string",
+              "description": "An RFC 5545 RRULE value, FREQ=WEEKLY;BYDAY=MO; empty to stop repeating"
+            },
+            "reminder": {
+              "type": "integer",
+              "description": "Minutes before the start"
+            }
+          },
+          "required": ["id", "start"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.delete",
+        "title": "Calendar: delete an event",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "Delete an event of the calendar on screen, after the person says yes; a repeating event as scope says. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "The event item's id"
+            },
+            "start": {
+              "type": "string",
+              "description": "The event item's start, as events answered it"
+            },
+            "scope": {
+              "enum": ["one", "following", "all"],
+              "description": "For an instance of a repeating event: it alone, it and the later ones, or all; one when absent"
+            }
+          },
+          "required": ["id", "start"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "deleted": {
+              "type": "string"
+            }
+          }
+        },
+        "irreversible": true,
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.save",
+        "title": "Calendar: save the calendar",
+        "keywords": ["calendar", "agenda", "event"],
+        "description": "Save the calendar on screen to its file, as the person's save does; the desk keeps what it replaced as a version. Answers the path, or null when nothing was unsaved.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "agent": true
       }
     ],
-    "keys": [{ "key": "Mod+Shift+C", "command": "endue.calendar.open" }],
+    "keys": [
+      {
+        "key": "Mod+Shift+C",
+        "command": "endue.calendar.open"
+      }
+    ],
     "settings": {
       "endue.calendar.file": {
         "kind": "string",

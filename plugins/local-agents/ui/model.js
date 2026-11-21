@@ -2,6 +2,7 @@
 // messages (an answer that is still streaming reads from its run), the comparison's columns, the
 // board's columns and the activity. Plain data, so a recording view in tests holds it as it is.
 
+import { sessionKey } from "@endue-ai/ui/elements";
 import { COLUMN_TITLES, COLUMNS } from "./board.js";
 import { agentById } from "./catalog.js";
 
@@ -10,7 +11,7 @@ import { agentById } from "./catalog.js";
  * @typedef {import("./runs.js").Run} Run
  * @typedef {{ name: string, detail: string }} Tool
  * @typedef {{ id: string, role: "user" | "agent", text: string, status: string, error: string,
- *   tools: Tool[], meta: string }} MessageModel
+ *   tools: Tool[], meta: string, at: number, parts?: import("./parse.js").Reply["parts"] }} MessageModel
  * @typedef {{ agent: string, name: string, status: string, text: string, error: string,
  *   tools: Tool[], meta: string }} PaneModel
  * @typedef {{ id: string, title: string, prompt: string, agent: string, agentName: string,
@@ -23,6 +24,7 @@ import { agentById } from "./catalog.js";
  *   agents: import("./detect.js").Status[], found: number,
  *   chat: { agent: string, name: string, ready: boolean, model: string, session: string,
  *     resumes: boolean, running: boolean, messages: MessageModel[] },
+ *   conversations: ReturnType<typeof conversationRow>[], native: ReturnType<App["native"]["snapshot"]>,
  *   compare: { prompt: string, picked: string[], panes: PaneModel[], running: boolean },
  *   board: { columns: { id: string, title: string, cards: CardModel[] }[], selected: string,
  *     open: CardModel | undefined, parallel: number },
@@ -74,9 +76,8 @@ export function runModel(app, run) {
   };
 }
 
-/** @param {App} app @returns {ViewModel["chat"]} */
-function chatModel(app) {
-  const id = app.ui.chatAgent;
+/** @param {App} app @param {string} [id] @returns {ViewModel["chat"]} */
+export function chatModel(app, id = app.ui.chatAgent) {
   const agent = agentById(id);
   const conversation = app.chats.peek(id);
   const messages = conversation.messages.map((m) => {
@@ -86,6 +87,8 @@ function chatModel(app) {
       id: m.id,
       role: m.role,
       text: live ? run.answer : m.text,
+      at: m.at,
+      parts: live ? run.parts : m.parts,
       status: m.status ?? "done",
       error: m.error ?? "",
       tools: (live ? run.tools : (m.tools ?? [])).slice(-10),
@@ -106,6 +109,33 @@ function chatModel(app) {
     resumes: agent?.resumes ?? false,
     running: messages.some((m) => m.status === "running"),
     messages,
+  };
+}
+
+/** Session metadata comes from the bounded per-agent store value. Format only a selected or previewed conversation. */
+function conversationRow(app, agent) {
+  const chat = app.chats.peek(agent.id),
+    last = chat.messages.at(-1);
+  const first = chat.messages.find((m) => m.role === "user" && m.text.trim());
+  const run = last?.run ? app.runs.find(last.run) : undefined;
+  const date = last && new Date(last.at);
+  return {
+    key: sessionKey(agent.id, "plugin"),
+    agent: agent.id,
+    agentName: agent.name,
+    title: first?.text.slice(0, 96) || agent.name,
+    sources: ["plugin"],
+    nativeId: (agent.resumes && chat.session) || undefined,
+    model: chat.model,
+    updatedAt: date && Number.isFinite(date.getTime()) ? date.toISOString() : undefined,
+    status:
+      run?.ending === "running"
+        ? "working"
+        : agent.state !== "ready"
+          ? "missing"
+          : last?.role === "agent" && ["done", "stopped", "failed"].includes(last.status)
+            ? last.status
+            : undefined,
   };
 }
 
@@ -164,6 +194,8 @@ export function viewModel(app) {
     agents,
     found: agents.filter((a) => a.state === "ready").length,
     chat: chatModel(app),
+    conversations: agents.map((a) => conversationRow(app, a)),
+    native: app.native.snapshot(),
     compare: compareModel(app),
     board: {
       columns: cards,

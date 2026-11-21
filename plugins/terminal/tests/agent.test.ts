@@ -65,8 +65,13 @@ describe("the terminal for agents (ADR 0088)", () => {
     );
     expect(flags).toEqual({
       "endue.terminal.new": "acts",
+      "endue.terminal.focus": "acts",
       "endue.terminal.close": "acts",
+      "endue.terminal.split": "acts",
+      "endue.terminal.clear": "acts",
       "endue.terminal.interrupt": "acts",
+      "endue.terminal.restart": "acts",
+      "endue.terminal.rename": "acts",
       "endue.terminal.run": "irreversible",
       "endue.terminal.sessions": "reads",
       "endue.terminal.output": "reads",

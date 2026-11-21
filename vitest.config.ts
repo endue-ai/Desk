@@ -7,6 +7,10 @@ export default defineConfig({
     // /endue.formats/lib/, and each consumer's page maps @endue-ai/formats/ there (#181).
     alias: [
       {
+        find: "@endue-ai/ui/elements",
+        replacement: fileURLToPath(new URL("./packages/ui/src/elements/index.ts", import.meta.url)),
+      },
+      {
         find: /^@endue-ai\/formats\//,
         replacement: fileURLToPath(new URL("./plugins/formats/lib/", import.meta.url)),
       },

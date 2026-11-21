@@ -1,10 +1,11 @@
-// The overview against a real PostgreSQL through psql (ENDUE_DB_TEST_POSTGRES holds a URI of a
+// The overview against a real PostgreSQL on the core's sessions (ENDUE_DB_TEST_POSTGRES holds a URI of a
 // scratch database, as live.test.ts): a table with an unused index and dead rows shows both, every
 // section reads as the URI's role, pg_stat_statements is explained while it is not created here,
 // and, when the server loads it, lists the heaviest statements once it is. Skipped without the URI.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClients } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { type OverviewState, type Read, readOverview } from "../ui/features/overview/read.js";
 import { createRunner } from "../ui/run.js";
@@ -17,12 +18,14 @@ const uri = process.env.ENDUE_DB_TEST_POSTGRES;
 function harness(link: string) {
   const { fields, password } = parseUri(link);
   const conn = normalize({ ...fields, id: "c-live", name: "live" });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({ "endue.database.max-rows": 1000 });
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
@@ -123,12 +126,14 @@ describe.skipIf(!uri)("the overview of a real server", () => {
       await run("CREATE EXTENSION IF NOT EXISTS pg_stat_statements");
       created = true;
     }
-    // A shared test server keeps other runs' heavier statements in this database's top 20: count
-    // from nothing, for this database only (pg_stat_statements 1.7+, PostgreSQL 12+).
+    // The section lists this database's 20 statements that took the most time, and other live test
+    // files run in the same database at once: count from nothing (pg_stat_statements 1.7+), and make
+    // the test's own statement take long enough (5 × 0.3 s) to be among them.
     await run(
       "SELECT pg_stat_statements_reset(0, (SELECT oid FROM pg_database WHERE datname = current_database()), 0)",
     ).catch(() => undefined);
-    for (let i = 0; i < 5; i++) await run("SELECT count(*) FROM endue_ov_orders WHERE id > 500");
+    for (let i = 0; i < 5; i++)
+      await run("SELECT count(*), pg_sleep(0.3) FROM endue_ov_orders WHERE id > 500");
     const state = await readUntil(read, (s) => (sectionOf(s, "statements").rows?.length ?? 0) > 0);
     const statements = sectionOf(state, "statements");
     expect(statements.failed).toBeUndefined();

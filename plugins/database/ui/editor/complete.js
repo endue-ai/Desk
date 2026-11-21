@@ -1,7 +1,8 @@
 // Autocomplete from the introspected schema. The statement around the caret is read with the same
 // lexer statements are cut with: after FROM, JOIN, INTO or UPDATE it offers tables, views and
-// schemas; after `alias.` or `table.` that table's columns; after `schema.` its tables; elsewhere
-// the columns of every table the statement names (with their aliases), functions and keywords.
+// schemas; after `alias.` or `table.` that table's columns; after `schema.` its tables and types;
+// elsewhere the columns of every table the statement names (with their aliases), the default
+// schema's types (PG-50), functions and keywords.
 // Tables whose columns are not read yet come back in `wants`, so the caller reads them and asks
 // again. Inside a string or a comment nothing is offered. Pure.
 
@@ -18,8 +19,10 @@ import { functionsOf, keywordsOf, RESERVED } from "./words.js";
  *   schemas(): string[],
  *   tables(schema: string): Named[] | undefined,
  *   columns(schema: string, table: string): Named[] | undefined,
+ *   types?(schema: string): Named[] | undefined,
  * }} SchemaView
- * @typedef {"column" | "alias" | "table" | "view" | "schema" | "function" | "keyword"} ItemKind
+ *   `types` are a schema's own (enums, domains ...), where the engine's cache holds them.
+ * @typedef {"column" | "alias" | "table" | "view" | "schema" | "type" | "function" | "keyword"} ItemKind
  * @typedef {{ label: string, kind: ItemKind, detail: string, insert: string }} Item
  * @typedef {{ schema: string, name: string, alias: string, start: number }} Ref
  * @typedef {{ from: number, to: number, items: Item[], wants: { schema: string, table: string }[] }} Completion
@@ -47,7 +50,16 @@ const FROM_ENDS = new Set([
   "SELECT",
 ]);
 /** Kinds in the order they are offered; tables and views together. */
-const RANK = { column: 0, alias: 1, table: 2, view: 2, schema: 3, function: 4, keyword: 5 };
+const RANK = {
+  column: 0,
+  alias: 1,
+  table: 2,
+  view: 2,
+  schema: 3,
+  type: 4,
+  function: 4,
+  keyword: 5,
+};
 const WORD = /[A-Za-z0-9_$\u0080-￿]/u;
 const LIMIT = 100;
 
@@ -106,14 +118,25 @@ export function complete(text, caret, dialect, schema) {
         insert: ident(dialect, t.name),
       });
   };
+  const typesOf = (/** @type {string} */ s) => {
+    for (const t of schema.types?.(s) ?? [])
+      items.push({
+        label: t.name,
+        kind: "type",
+        detail: `${t.type} · ${s}`,
+        insert: ident(dialect, t.name),
+      });
+  };
   const names = qualifier.names;
   if (names.length === 1) {
     const q = fold(names[0] ?? "");
     const ref = refs.find((r) => fold(r.alias) === q) ?? refs.find((r) => fold(r.name) === q);
     if (ref) columnsOf(ref.schema, ref.name, ref.alias || ref.name);
-    else if (schema.schemas().some((s) => fold(s) === q))
-      tablesOf(schema.schemas().find((s) => fold(s) === q) ?? "");
-    else if (schema.tables(schema.defaultSchema)?.some((t) => fold(t.name) === q))
+    else if (schema.schemas().some((s) => fold(s) === q)) {
+      const named = schema.schemas().find((s) => fold(s) === q) ?? "";
+      tablesOf(named);
+      typesOf(named);
+    } else if (schema.tables(schema.defaultSchema)?.some((t) => fold(t.name) === q))
       columnsOf(schema.defaultSchema, names[0] ?? "", names[0] ?? "");
   } else if (names.length === 2) columnsOf(names[0] ?? "", names[1] ?? "", names[1] ?? "");
   else if (wantsTable(before)) {
@@ -132,6 +155,7 @@ export function complete(text, caret, dialect, schema) {
         insert: ident(dialect, label),
       });
     }
+    typesOf(schema.defaultSchema);
     for (const f of functionsOf(dialect))
       items.push({ label: f, kind: "function", detail: "function", insert: f });
     const lower = prefix !== "" && prefix === prefix.toLowerCase();

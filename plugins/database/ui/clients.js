@@ -1,14 +1,15 @@
-// Which client runs an engine, and whether it is new enough. A client is found on the desk's PATH,
-// or else in the folders the settings add and where package managers install them (Homebrew keeps
-// libpq and mysql-client out of PATH). `--version` says which client it is (mysql or mariadb) and
-// whether it has what the plugin uses: psql 13 (--csv, \warn), mysql 8.0.19 or mariadb 10.5
-// (--binary-as-hex), sqlite3 3.37 (-safe).
+// Which client runs an engine, and whether it is new enough. PostgreSQL needs none: its sessions are
+// the core's (engines/pg-session.js, ADR 0281). A client is found on the desk's PATH, or else in the
+// folders the settings add and where package managers install them (Homebrew keeps mysql-client out
+// of PATH). `--version` says which client it is (mysql or mariadb) and whether it has what the
+// plugin uses: mysql 8.0.19 or mariadb 10.5 (--binary-as-hex), sqlite3 3.37 (-safe).
 
 /**
  * @typedef {import("./engines/common.js").EngineId} EngineId
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"mac" | "linux" | "windows"} Platform
  * @typedef {{ command: string, flavor: "postgresql" | "mysql" | "mariadb" | "sqlite", version: string }} Client
+ *   PostgreSQL's is BUILT_IN: no command, no version.
  * @typedef {{ run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> }} Runner
  */
 
@@ -16,15 +17,12 @@
 export const INSTALL_FOLDERS = {
   mac: [
     "/opt/homebrew/bin",
-    "/opt/homebrew/opt/libpq/bin",
     "/opt/homebrew/opt/mysql-client/bin",
     "/opt/homebrew/opt/mariadb/bin",
     "/opt/homebrew/opt/sqlite/bin",
     "/usr/local/bin",
-    "/usr/local/opt/libpq/bin",
     "/usr/local/opt/mysql-client/bin",
     "/usr/local/opt/sqlite/bin",
-    "/Applications/Postgres.app/Contents/Versions/latest/bin",
     "/usr/bin",
     "/bin",
   ],
@@ -34,15 +32,13 @@ export const INSTALL_FOLDERS = {
 
 /** The oldest client each flavor needs, and what it needs it for. */
 export const MINIMUM = {
-  postgresql: { version: "13", why: "--csv and \\warn" },
   mysql: { version: "8.0.19", why: "--binary-as-hex" },
   mariadb: { version: "10.5", why: "--binary-as-hex" },
   sqlite: { version: "3.37", why: "-safe" },
 };
 
 /** How to install each engine's client, said when it is missing. */
-export const INSTALL_HINTS = /** @type {Record<EngineId, string>} */ ({
-  postgresql: "Install psql: brew install libpq, or apt install postgresql-client.",
+export const INSTALL_HINTS = /** @type {Partial<Record<EngineId, string>>} */ ({
   mysql:
     "Install mysql: brew install mysql-client, or apt install mysql-client (or mariadb-client).",
   sqlite: "Install sqlite3: brew install sqlite, or apt install sqlite3.",
@@ -60,9 +56,12 @@ export function searchPath(/** @type {Platform} */ platform, /** @type {string[]
   return [...extra, ...INSTALL_FOLDERS[platform]].join(platform === "windows" ? ";" : ":");
 }
 
-/** The programs to try for an engine, in order. */
+/** PostgreSQL's "client": the core's sessions, nothing to find or run. @type {Client} */
+export const BUILT_IN = Object.freeze({ command: "", flavor: "postgresql", version: "" });
+
+/** The programs to try for an engine, in order; none for PostgreSQL. */
 export function candidates(/** @type {EngineId} */ engine, /** @type {Settings} */ settings) {
-  if (engine === "postgresql") return [settings.psql || "psql"];
+  if (engine === "postgresql") return [];
   if (engine === "sqlite") return [settings.sqlite3 || "sqlite3"];
   return settings.mysql ? [settings.mysql] : ["mysql", "mariadb"];
 }
@@ -73,8 +72,6 @@ export function candidates(/** @type {EngineId} */ engine, /** @type {Settings} 
  * @returns {Omit<Client, "command"> | undefined}
  */
 export function parseVersion(line) {
-  const psql = /\(PostgreSQL\) (\d+(?:\.\d+)*)/u.exec(line);
-  if (psql) return { flavor: "postgresql", version: psql[1] ?? "" };
   const maria = /(\d+\.\d+\.\d+)-MariaDB/u.exec(line);
   if (maria) return { flavor: "mariadb", version: maria[1] ?? "" };
   const mysql = /\bVer (\d+\.\d+\.\d+)/u.exec(line);
@@ -98,7 +95,8 @@ export function compareVersions(/** @type {string} */ a, /** @type {string} */ b
 
 /** The sentence for a client older than the plugin needs, or "". */
 export function tooOld(/** @type {Client} */ client) {
-  const need = MINIMUM[client.flavor];
+  const need = client.flavor === "postgresql" ? undefined : MINIMUM[client.flavor];
+  if (!need) return "";
   if (compareVersions(client.version, need.version) >= 0) return "";
   return `${client.command} ${client.version} is too old: ${need.version} or newer is needed (for ${need.why}).`;
 }
@@ -148,14 +146,18 @@ export function createClients(runner, settings) {
     }
     const message = failure instanceof Error ? failure.message : String(failure);
     const missing = /** @type {{ kind?: string }} */ (failure)?.kind === "missing";
-    throw Object.assign(new Error(missing ? `${message} ${INSTALL_HINTS[engine]}` : message), {
-      kind: missing ? "missing" : "client",
-    });
+    throw Object.assign(
+      new Error(missing ? `${message} ${INSTALL_HINTS[engine] ?? ""}`.trim() : message),
+      {
+        kind: missing ? "missing" : "client",
+      },
+    );
   };
 
   return {
     /** The client for an engine, found once per session (a failure is tried again next time). */
     get(/** @type {EngineId} */ engine) {
+      if (engine === "postgresql") return Promise.resolve(BUILT_IN);
       let entry = found.get(engine);
       if (!entry) {
         entry = find(engine);

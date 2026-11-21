@@ -36,7 +36,10 @@ describe("a line on its way into Eris, and what she does with it", () => {
   /** Each animation's last frame, after its update saw every t it would. */
   const frames: number[] = [];
 
+  /** What follows on every frame: the sparks out on the desk. */
+  const ticks = new Set<(now: number) => unknown>();
   beforeEach(() => {
+    ticks.clear();
     frames.length = 0;
     store = new Store(sampleState("en", 0));
     shell = document.createElement("div");
@@ -60,6 +63,11 @@ describe("a line on its way into Eris, and what she does with it", () => {
           update(1);
           frames.push(ms);
           return Promise.resolve();
+        },
+        add: (tick: (now: number) => unknown) => {
+          ticks.add(tick);
+          tick(0);
+          return () => ticks.delete(tick);
         },
       },
       reduced: () => false,
