@@ -44,7 +44,8 @@ import { createTools } from "./tools.js";
  *   importer(model: import("./importer.js").ImportModel | null): void,
  *   nodeAt(target: unknown): Node | undefined,
  *   focus(where: "explorer" | "editor" | "grid"): void,
- *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][] } | undefined,
+ *   selection(): { tab: number, rows?: number[], columns?: number[], sorted?: (string | null)[][], visible?: number[] } | undefined,
+ *   grid?(op: string, args?: Record<string, unknown>): unknown,
  * }} View
  */
 

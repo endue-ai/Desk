@@ -1,6 +1,6 @@
 // Test page: endue.database (plugins/database) over the desk.* policies on the browser stub, with a
 // saved SQLite connection and proc.spawn answered by the plugin's scripted sqlite3 over a fixture
-// database (plugins/database/tests/fixtures.ts: two tables, people and orders). Never shipped.
+// database (plugins/database/tests/fixtures.ts: people, orders, and staff with a team). Never shipped.
 import type { BridgeEvent, PluginManifest } from "@endue-ai/bridge";
 import databaseManifest from "../../../../plugins/database/plugin.json";
 import {

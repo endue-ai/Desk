@@ -1,7 +1,7 @@
 import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // The result grid of endue.database (plugins/database, #469) on the browser stub with the scripted
-// sqlite3 over the fixture tables (plugins/database/tests/fixtures.ts: people with id, name, note and
+// sqlite3 over the fixture tables (plugins/database/tests/fixtures.ts: staff with id, name, note and
 // team): columns hidden, moved, pinned and resized by key and by the pointer, a quick filter and a
 // sort by two columns in a console's result and on the server in a table view, find with Mod+F, and
 // a table view's columns again after the plugin's page loads again.
@@ -42,17 +42,17 @@ async function query(page: Page, frame: Frame) {
   await run(page, "endue.database.console", { connection: "fixture" });
   const editor = frame.locator("#editor");
   await editor.click();
-  await editor.fill("select * from people;");
+  await editor.fill("select * from staff;");
   await editor.press("ControlOrMeta+Enter");
   await expect(frame.locator("#summary")).toContainText("Done");
   await expect(frame.locator("#result [role=gridcell]").first()).toHaveText("1");
 }
 
-async function people(page: Page, frame: Frame) {
+async function staff(page: Page, frame: Frame) {
   await run(page, "endue.database.open-table", {
     connection: "fixture",
     schema: "main",
-    table: "people",
+    table: "staff",
   });
   await expect(frame.locator("#page")).toHaveText("1–4");
 }
@@ -147,7 +147,7 @@ test("a quick filter and a sort by two columns, on the rows held and on the serv
   await expect(header(frame, "team")).toHaveAttribute("aria-sort", "ascending");
   await expect(header(frame, "name").locator(".sort")).toHaveText("▼2");
   // A table view asks the server: the filter joins the WHERE, the keys are the ORDER BY.
-  await people(page, frame);
+  await staff(page, frame);
   await cell(frame, "red").first().click();
   await grid.press("=");
   await expect(frame.locator("#page")).toHaveText("1–2");
@@ -199,7 +199,7 @@ test("find in the result with Mod+F: next, previous and the count", async ({ pag
 
 test("a table view's columns come back after the plugin's page loads again", async ({ page }) => {
   let frame = await open(page);
-  await people(page, frame);
+  await staff(page, frame);
   await cell(frame, "first").click();
   await frame.locator("#result [role=grid]").press("h");
   expect(await headers(frame)).toEqual(["id", "name", "team"]);
@@ -207,6 +207,6 @@ test("a table view's columns come back after the plugin's page loads again", asy
   await page.waitForTimeout(600);
   await frame.evaluate(() => location.reload());
   frame = await frameOf(page);
-  await people(page, frame);
+  await staff(page, frame);
   await expect.poll(() => headers(frame)).toEqual(["id", "name", "team"]);
 });

@@ -3,9 +3,9 @@
 // screen. The worker answers the same over the columns it was sent.
 import { describe, expect, it } from "vitest";
 import { addRow, editCell, emptyChanges, targetOf } from "../ui/edit/pending.js";
-import { orderOf } from "../ui/grid-model.js";
 import { findMatches, nextMatch, orderRows } from "../ui/grid/rows.js";
 import { answer } from "../ui/grid/worker.js";
+import { orderOf } from "../ui/grid-model.js";
 
 const rows: (string | null)[][] = [
   ["3", "Cy", "b"],

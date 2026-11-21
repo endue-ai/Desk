@@ -42,7 +42,8 @@ export function createDropView(doc, dnd, app, view) {
         if (!cell || !line) return undefined;
         return app.rowsDrag({
           row: Number(line.getAttribute("aria-rowindex")) - 2,
-          col: Number(cell.getAttribute("aria-colindex")) - 1,
+          // The result's column: the grid's columns can be hidden and moved (grid/screen.js).
+          col: Number(cell.getAttribute("data-col") ?? -1),
           record: doc.getElementById("record")?.getAttribute("aria-pressed") === "true",
         });
       },

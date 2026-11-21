@@ -21,7 +21,11 @@ import { show, summaryOf } from "./tabs.js";
  * @typedef {import("./execute.js").Mode} Mode
  * @typedef {import("./sql/split.js").Statement} Statement
  * @typedef {import("./tabs.js").Shown} Shown
- * @typedef {{ schema: string, name: string, where: string, order: string, offset: number, count: number | null }} TablePage
+ * @typedef {{
+ *   schema: string, name: string, where: string, order: string, offset: number, count: number | null,
+ *   sort?: import("./grid/filters.js").SortKey[], filters?: import("./grid/filters.js").Filter[],
+ * }} TablePage
+ *   `sort` and `filters` are the grid's sort keys and quick filters, run on the server (pages.js).
  * @typedef {{
  *   id: string, kind: string, connection: string, name: string, text: string,
  *   table: TablePage | null, execution: Execution | null, shown: Shown | null, running: boolean,
@@ -93,7 +97,9 @@ export function createConsoles(deps) {
               : c.kind === "console"),
         );
     if (found) return buffers.show(found);
-    const page = table ? { ...table, where: "", order: "", offset: 0, count: null } : null;
+    const page = table
+      ? { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters: [] }
+      : null;
     const text = page ? "" : await texts.load(conn.id);
     const name = nameOf(conn, page);
     const target = buffers.show(

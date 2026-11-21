@@ -54,8 +54,11 @@ describe("the grid's columns", () => {
     grid.render(tab(), true, console1);
     expect(headers()).toEqual(["id", "name", "team"]);
     expect(gridEl().getAttribute("aria-colcount")).toBe("3");
+    gridEl().focus();
     press("h");
     expect(headers()).toEqual(["name", "team"]);
+    // The grid is drawn again in place: it keeps the focus.
+    expect(document.activeElement).toBe(gridEl());
     expect(gridEl().getAttribute("aria-colcount")).toBe("2");
     expect(
       [...host().querySelectorAll("[role=columnheader]")].map((h) =>
@@ -208,7 +211,7 @@ describe("quick filters", () => {
     grid.render(tab(), true, table);
     press("ArrowRight");
     press("=");
-    const asked = { key: "name", name: "name", op: "eq", value: "Cy", numeric: false };
+    const asked = { key: "name", name: "name", op: "eq" as const, value: "Cy", numeric: false };
     expect(acts).toContainEqual(["filters", [asked]]);
     expect(column(1)).toHaveLength(4);
     grid.render(tab(), false, { ...table, filters: [asked] });
@@ -237,9 +240,12 @@ describe("find in the grid", () => {
     press("Enter", { shiftKey: true }, findInput());
     expect(count()).toBe("3 of 3");
     expect(at()).toMatchObject({ row: 2, col: 2 });
-    click(findBar().querySelector('[data-find="case"]') as Element);
-    expect(count()).toMatch(/of 2$/u);
+    // Whole cell leaves "Bob" out; match case keeps both "b" cells.
+    click(findBar().querySelector('[data-find="whole"]') as Element);
+    expect(count()).toBe("2 of 2");
     expect(host().querySelectorAll(".cell.found").length).toBe(2);
+    click(findBar().querySelector('[data-find="case"]') as Element);
+    expect(count()).toBe("2 of 2");
     press("Escape", {}, findInput());
     expect(findBar().hidden).toBe(true);
     expect(document.activeElement).toBe(gridEl());

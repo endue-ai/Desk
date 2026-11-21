@@ -16,7 +16,9 @@ defineUiPlugin({
   mount(ctx) {
     /** @type {Record<string, (...args: unknown[]) => unknown> | undefined} */
     let app;
-    const view = createView(document, (action, ...args) => app?.[action]?.(...args));
+    const view = createView(document, (action, ...args) => app?.[action]?.(...args), undefined, {
+      startWorker,
+    });
     const database = createDatabase(ctx, view, {
       cancelled: (message) => new CommandFailed("endue.database.run", "cancelled", message),
       platform: platformOf(navigator.platform),

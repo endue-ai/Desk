@@ -125,9 +125,10 @@ describe("the grid's column layout", () => {
       ],
       truncated: false,
     };
-    // Chars as the default widths count them (name + 2, a value + 1), 17 px of padding and border.
+    // Chars as the default widths count them (name + 3, room for a sort key's arrow and number; a
+    // value + 1), 17 px of padding and border.
     expect(fitWidth(set, 0, 10)).toBe(67);
-    expect(fitWidth(set, 1, 10)).toBe(87);
+    expect(fitWidth(set, 1, 10)).toBe(97);
     const long = { columns: ["a"], rows: [["y".repeat(5000)]], truncated: false };
     expect(fitWidth(long, 0, 10)).toBe(1017);
   });

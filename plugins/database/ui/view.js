@@ -33,9 +33,11 @@ import { createValueViewer } from "./view-value.js";
  * @param {Document} doc
  * @param {Act} act Runs one of the controller's actions by name.
  * @param {import("./feature-host.js").Feature[]} [features] features/index.js's unless given.
+ * @param {{ startWorker?: import("./grid/rows-client.js").StartWorker }} [options] The SDK's
+ *   worker starter, for the grid's large results (main.js); without it they are ordered here.
  * @returns {View}
  */
-export function createView(doc, act, features = Object.values(all)) {
+export function createView(doc, act, features = Object.values(all), options = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const input = (/** @type {string} */ id) => /** @type {HTMLInputElement} */ (byId(id));
   const editorEl = /** @type {HTMLTextAreaElement} */ (byId("editor"));
@@ -62,18 +64,24 @@ export function createView(doc, act, features = Object.values(all)) {
     action === "filter" ? filter.focus() : act(action, ...args),
   );
   const copy = (/** @type {string} */ text) => copyText(doc, text);
-  const grid = createGrid(doc, byId("result"), (action, ...args) => {
-    if (action === "say") say(String(args[0]));
-    else if (action === "editor") editorEl.focus();
-    else if (action === "previousTab" || action === "nextTab")
-      act("tab", (shown?.tab ?? 0) + (action === "nextTab" ? 1 : -1));
-    else if (action === "value") values.open(/** @type {never} */ (args[0]));
-    else if (action === "quick") quick.focus();
-    else if (action === "sort") act("page", { sort: args[0] });
-    else if (action === "recordChanged") record.setAttribute("aria-pressed", String(args[0]));
-    else return act(action, ...args);
-    return undefined;
-  });
+  const grid = createGrid(
+    doc,
+    byId("result"),
+    (action, ...args) => {
+      if (action === "say") say(String(args[0]));
+      else if (action === "editor") editorEl.focus();
+      else if (action === "previousTab" || action === "nextTab")
+        act("tab", (shown?.tab ?? 0) + (action === "nextTab" ? 1 : -1));
+      else if (action === "value") values.open(/** @type {never} */ (args[0]));
+      else if (action === "quick") quick.focus();
+      else if (action === "sort") act("page", { sort: args[0] });
+      else if (action === "filters") act("page", { filters: args[0] });
+      else if (action === "recordChanged") record.setAttribute("aria-pressed", String(args[0]));
+      else return act(action, ...args);
+      return undefined;
+    },
+    options,
+  );
   const values = createValueViewer(doc, act, copy, () => grid.focus());
   const editor = createEditor(
     doc,
@@ -206,10 +214,15 @@ export function createView(doc, act, features = Object.values(all)) {
     const key = `${model.id}:${model.execution?.at ?? 0}:${model.tab}`;
     const fresh = key !== drawn;
     if (fresh && quick.value) quick.value = "";
+    const page = model.kind === "table" ? model.table : null;
     grid.render(model.shown.tabs[model.tab] ?? null, fresh, {
       edit: model.edit,
-      server: model.kind === "table",
-      ordered: Boolean(model.table?.order),
+      server: Boolean(page),
+      ordered: Boolean(page?.order),
+      // A table view's columns are the table's (kept across restarts), a result's its own.
+      key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
+      sort: page?.sort ?? [],
+      filters: page?.filters ?? [],
     });
     drawn = key;
     if (fresh) record.setAttribute("aria-pressed", String(grid.recording()));
@@ -271,5 +284,7 @@ export function createView(doc, act, features = Object.values(all)) {
       const picked = grid.selection();
       return picked ? { tab: shown?.tab ?? 0, ...picked } : undefined;
     },
+    /** An operation of the grid on screen by name, for the grid's commands (features/grid/). */
+    grid: (op, args) => grid.command(op, args),
   };
 }

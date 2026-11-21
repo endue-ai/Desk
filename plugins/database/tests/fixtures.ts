@@ -23,6 +23,14 @@ export const FIXTURE_CONNECTION: Connection = {
 };
 
 const PEOPLE = [
+  ["id", "name", "note"],
+  ["1", "Ada", "first"],
+  ["2", "Bob", "second"],
+  ["3", "Cy", "third"],
+  ["4", "Dee", "fourth"],
+];
+/** The people again with a team each, so a sort by two columns has ties to break (#469). */
+const STAFF = [
   ["id", "name", "note", "team"],
   ["1", "Ada", "first", "red"],
   ["2", "Bob", "second", "blue"],
@@ -34,7 +42,7 @@ const ORDERS = [
   ["1", "1", "12"],
   ["2", "2", "30"],
 ];
-const TABLES: Record<string, string[][]> = { people: PEOPLE, orders: ORDERS };
+const TABLES: Record<string, string[][]> = { people: PEOPLE, orders: ORDERS, staff: STAFF };
 
 /** name, type, nullable, default, primary: as the SQLite catalog query reads them. */
 const columnsOf = (rows: string[][]) => [
