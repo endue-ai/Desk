@@ -3,8 +3,9 @@
 // database (plugins/database/tests/fixtures.ts: two tables, people and orders), a saved PostgreSQL
 // connection whose scripted psql has one table of typed columns (items, fixtures-pg.ts), one whose
 // scripted psql answers the activity view (activity-fixture.ts) and EXPLAIN with fixture plans
-// (fixture-plans.ts), and fs.* over a folder in memory with one .sql file (`window.__files`, what
-// saves wrote). Never shipped.
+// (fixture-plans.ts), the reads and DDL of the explorer's operations on objects (objects-fixture.ts),
+// and fs.* over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never
+// shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -22,6 +23,7 @@ import {
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
+import { objectsServer } from "../../../../plugins/database/tests/objects-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -65,7 +67,9 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    ...procHandlers(activityServer(fixtureScript).script, (event) => emit(event)),
+    ...procHandlers(objectsServer(activityServer(fixtureScript).script).script, (event) =>
+      emit(event),
+    ),
     ...fsHandlers,
   },
   open: () => {},
