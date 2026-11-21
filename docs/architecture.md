@@ -76,7 +76,8 @@ approvals are answered in Desk. Shown notices can also reach the OS according to
 `desk.notify.system` (ADR 0240).
 
 A window of the desk can also live in an OS window of its own (ADR 0205, #235). Any window that shows
-one plugin pops out of the canvas into a windowed browser and docks back to its place. `crates/desk-wm`
+a plugin pops out of the canvas into a windowed browser and docks back to its place, whatever the
+plugin; a window of tabs leaves with the tab it shows, and its other tabs stay on the canvas. `crates/desk-wm`
 keeps one id for it in or out, so `desk.windows.*` and Eris's tools act on both; a window out keeps its
 place per display and leaves tile, cascade, the spread and the map. A move in or out loads the plugin's
 page again with the state it kept. A plugin's manifest says how its window opens (ADR 0226, #239): a

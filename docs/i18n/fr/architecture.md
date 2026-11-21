@@ -79,7 +79,9 @@ traitent dans le bureau. Les notifications affichées peuvent aussi être transm
 `desk.notify.system` (ADR 0240).
 
 Une fenêtre du bureau peut aussi vivre dans une fenêtre du système à elle (ADR 0205, #235). Toute
-fenêtre qui montre un seul plugin sort du canevas dans un navigateur fenêtré et revient à sa place.
+fenêtre qui montre un plugin sort du canevas dans un navigateur fenêtré et revient à sa place, quel que
+soit le plugin ; une fenêtre à onglets emporte l'onglet qu'elle montre, et ses autres onglets restent sur
+le canevas.
 `crates/desk-wm` lui garde un seul id, dedans comme dehors, si bien que `desk.windows.*` et les outils
 d'Eris agissent sur les deux ; une fenêtre sortie garde sa place par écran et quitte la mosaïque, la
 cascade, l'étalement et la carte. Chaque sortie ou retour recharge la page du plugin avec l'état

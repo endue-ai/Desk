@@ -7,7 +7,8 @@
 //! that desktop to the front and gives it the focus.
 
 use crate::desktops::DesktopId;
-use crate::types::{Placement, Rect};
+use crate::tabs;
+use crate::types::{Placement, Rect, Tab};
 
 use super::Desk;
 
@@ -29,13 +30,59 @@ impl Desk {
     }
 
     /// Window `id` of the desktop in front leaves the canvas for an OS window at `frame`; a plugin
-    /// window in its slot is placed on that desktop first. Whether it did.
+    /// window in its slot is placed on that desktop first. A window of tabs (ADR 0270) leaves with
+    /// the tab it shows: an OS window shows one page (`leave_tabs`). Whether it did.
     pub fn pop_out(&mut self, id: &str, frame: Rect) -> bool {
-        if self.window(id).is_none() {
+        let Some(p) = self.window(id) else {
             return false;
+        };
+        if p.tabs().len() > 1 {
+            self.leave_tabs(id);
         }
         self.update(id, |p| p.out = Some(frame));
         true
+    }
+
+    /// Window `id` keeps only the tab it shows; its other tabs stay on the canvas where it is, in
+    /// a window of their own (`window-<n>`, as ⌘N names one) at its place and size, showing the
+    /// tab beside the one that left. Each tab names its view outright (`plugin:<key>`), as a tab
+    /// named after its window shows that window's plugin only in it.
+    fn leave_tabs(&mut self, id: &str) {
+        self.ensure_placed(id);
+        let Some(p) = self.layout().surfaces.into_iter().find(|p| p.id == id) else {
+            return;
+        };
+        let shown = p.shown();
+        let named = |tab: &Tab| Tab::new(tab.id.clone(), self.resolve(&p, &tab.view));
+        let Some((rest, beside)) = tabs::close(&p.tabs(), &shown.id) else {
+            return;
+        };
+        let rest: Vec<Tab> = rest.iter().map(named).collect();
+        let kept = named(&shown);
+        let taken = self.window_ids();
+        let Some(stays) = (1..)
+            .map(|n: u64| format!("window-{n}"))
+            .find(|id| !taken.contains(id))
+        else {
+            return;
+        };
+        let left = Placement {
+            id: stays.clone(),
+            tabs: Some(rest),
+            tab: Some(beside),
+            out: None,
+            ..p.clone()
+        };
+        self.edit(|l| {
+            if let Some(q) = l.surfaces.iter_mut().find(|q| q.id == id) {
+                q.tabs = Some(vec![kept.clone()]);
+                q.tab = Some(kept.id.clone());
+            }
+            l.surfaces.push(left);
+        });
+        // Under the window that leaves in the order of use, where the window stood.
+        self.used.touch(&stays);
+        self.used.touch(id);
     }
 
     /// Out window `id`'s OS window is at `frame` now. Whether it is out.

@@ -78,8 +78,9 @@ Berechtigungsanfragen und Freigaben für Agenten werden im Desk beantwortet. Ang
 können gemäß `desk.notify.system` auch das Betriebssystem erreichen (ADR 0240).
 
 Ein Fenster des Desks kann auch in einem eigenen Fenster des Betriebssystems leben (ADR 0205, #235).
-Jedes Fenster, das ein einzelnes Plugin zeigt, geht aus dem Canvas in einen Browser mit eigenem Fenster
-und kehrt an seinen Platz zurück. `crates/desk-wm` behält dafür eine ID, drinnen wie draußen, sodass
+Jedes Fenster, das ein Plugin zeigt, geht aus dem Canvas in einen Browser mit eigenem Fenster
+und kehrt an seinen Platz zurück, gleich welches Plugin; ein Fenster mit Tabs nimmt den gezeigten Tab
+mit, und seine anderen Tabs bleiben auf dem Canvas. `crates/desk-wm` behält dafür eine ID, drinnen wie draußen, sodass
 `desk.windows.*` und die Werkzeuge von Eris auf beide wirken; ein Fenster draußen behält seinen Platz
 je Bildschirm und verlässt Kacheln, Kaskade, die Auffächerung und die Karte. Jeder Wechsel hinein oder
 hinaus lädt die Seite des Plugins mit dem Zustand neu, den sie behalten hat. Das Manifest eines Plugins

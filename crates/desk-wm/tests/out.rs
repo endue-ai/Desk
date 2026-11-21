@@ -223,3 +223,61 @@ fn showing_a_plugin_whose_window_is_out_puts_that_window_in_use_and_opens_no_oth
     assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
     assert!(desk.windows().is_empty());
 }
+
+/// Terminal's window holding a second Terminal as a tab (ADR 0270), the second shown.
+fn tabbed() -> Desk {
+    let mut desk = desk();
+    desk.adopt("endue.terminal@2", "Terminal", desk_wm::FREE);
+    (desk.add_tab("endue.terminal", "plugin:endue.terminal@2")).expect("a tab");
+    desk
+}
+
+fn views(p: &desk_wm::Placement) -> Vec<String> {
+    p.tabs().into_iter().map(|t| t.view).collect()
+}
+
+/// The window on the canvas that is neither Notes nor `but`.
+fn other(desk: &Desk, but: &str) -> Vec<desk_wm::Placement> {
+    (desk.windows().into_iter())
+        .filter(|p| p.id != "endue.notes" && p.id != but)
+        .collect()
+}
+
+/// A window of tabs pops out with the tab it shows; its other tabs stay where it was, in a window
+/// of their own, so the OS window shows one plugin's page and no tab is left without a window.
+#[test]
+fn a_window_of_tabs_pops_out_with_the_tab_it_shows_and_leaves_the_others_in_its_place() {
+    let mut desk = tabbed();
+    assert!(desk.pop_out("endue.terminal", OS));
+    let (_, out) = desk.out_window("endue.terminal").expect("out");
+    assert_eq!(views(&out), ["plugin:endue.terminal@2"]);
+    assert_eq!(desk.plugins_of(&out), ["endue.terminal@2"]);
+    let left = other(&desk, "endue.terminal");
+    assert_eq!(left.len(), 1, "the other tabs stay on the canvas");
+    assert_eq!(views(&left[0]), ["plugin:endue.terminal"]);
+    assert_eq!(left[0].rect(), Rect::new(100.0, 100.0, 500.0, 300.0));
+    assert_eq!(desk.plugins_of(&left[0]), ["endue.terminal"]);
+    // The window out is still the one in use, and docks back alone.
+    assert_eq!(desk.focused.as_deref(), Some("endue.terminal"));
+    assert!(desk.dock("endue.terminal"));
+    let back = desk.window("endue.terminal").expect("docked");
+    assert_eq!(views(&back), ["plugin:endue.terminal@2"]);
+}
+
+/// The window's own tab shown, it goes out as that one; the plan hands the OS window one page.
+#[test]
+fn the_windows_own_tab_shown_goes_out_alone_and_the_plan_lists_one_plugin() {
+    let mut desk = tabbed();
+    desk.focus_tab("endue.terminal", Some("p1"));
+    assert!(desk.pop_out("endue.terminal", OS));
+    let plan = desk.host_plan(W, H, TopChrome::default(), &Unseen);
+    assert_eq!(plan.out.len(), 1);
+    assert_eq!(plan.out[0].plugins, ["endue.terminal"]);
+    assert_eq!(
+        plan.windows.len(),
+        2,
+        "Notes and the window of the other tab"
+    );
+    let left = other(&desk, "endue.terminal");
+    assert_eq!(views(&left[0]), ["plugin:endue.terminal@2"]);
+}

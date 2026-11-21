@@ -34,6 +34,7 @@ import {
   run,
   until,
   type Window,
+  windowNow,
   windowUntil,
 } from "../support/windows";
 
@@ -296,6 +297,27 @@ const mac = process.platform === "darwin";
       const desk = await deskNow();
       expect(byId(desk, NOTES)).toBeDefined();
       expect(desk.windows.filter((w) => w.out)).toEqual([]);
+    });
+
+    it("a window of tabs pops out with the tab it shows; its other tabs stay where it was", async () => {
+      const at = await show(NOTES);
+      const added = (await run("desk.windows.new-tab", { window: NOTES })) as { tab?: string };
+      expect(added.tab).toBeDefined();
+      const tabbed = await windowUntil(NOTES, (w) => w.panes.length === 2, "two tabs");
+      // A pane names its plugin; its view names which window of the plugin it shows.
+      const second = tabbed.panes.find((p) => p.focused)?.view;
+      expect(second).toMatch(/^plugin:endue\.notes@\d+$/);
+      const out = await popOut(NOTES);
+      expect(out.panes.map((p) => p.view)).toEqual([second]);
+      expect(`plugin:${(await appWindow(NOTES))?.plugin}`).toBe(second);
+      // The first tab stays on the canvas where the window was, in a window of its own.
+      const left = onScreen(await deskNow()).find(
+        (w) => w.id !== NOTES && w.panes.some((p) => p.view === `plugin:${NOTES}`),
+      );
+      expect(left && rectOf(left)).toEqual(rectOf(at));
+      await run(DOCK, { window: NOTES });
+      await appWindowUntil(NOTES, false);
+      expect((await windowNow(NOTES)).panes.map((p) => p.view)).toEqual([second]);
     });
   },
 );
