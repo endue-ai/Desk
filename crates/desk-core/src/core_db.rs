@@ -64,7 +64,7 @@ impl Core {
             let why = format!("the desk speaks {POSTGRESQL}, not {}", params.engine);
             return Err(error(ErrorCode::Unsupported, why));
         }
-        let config = self.db_config(&params, port)?;
+        let config = self.db_config(caller, &params, port)?;
         let id = self.db_reserve(caller, scope, &params, port)?;
         let sink = event(
             id.clone(),
@@ -117,10 +117,16 @@ impl Core {
         })
     }
 
-    /// The session's config: the password file under the desk's home, the limits checked.
-    fn db_config(&self, params: &DbOpenParams, port: u16) -> Result<Config, BridgeError> {
+    /// The session's config: the password given or kept (ADR 0311), the password file under the
+    /// desk's home, the limits checked.
+    fn db_config(
+        &self,
+        caller: &str,
+        params: &DbOpenParams,
+        port: u16,
+    ) -> Result<Config, BridgeError> {
         let mut config = Config::new(&params.host, port, &params.database, &params.user);
-        config.password = params.password.clone();
+        config.password = self.db_password(caller, params, port)?;
         config.password_file = Some(desk_pg::pgpass::default_file(self.home()));
         if let Some(tls) = &params.tls {
             config.tls = tls_mode(tls.mode);

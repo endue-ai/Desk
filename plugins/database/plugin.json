@@ -135,6 +135,11 @@
         "keywords": ["forget password", "sign out"]
       },
       {
+        "id": "endue.database.forget-password",
+        "title": "Database: forget the remembered password",
+        "keywords": ["keychain", "password", "forget", "disconnect"]
+      },
+      {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
         "keywords": ["url", "dsn"]
