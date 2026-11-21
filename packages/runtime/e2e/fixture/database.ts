@@ -7,7 +7,9 @@
 // (fixture-plans.ts) and the reads and DDL of the explorer's operations on objects
 // (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), the
 // routine forms' functions and procedures on every PostgreSQL connection (routine-fixture.ts), and
-// fs.* over a folder in memory with one .sql file (`window.__files`, what saves wrote). Never shipped.
+// fs.* over a folder in memory with one .sql file (`window.__files`, what saves wrote). A backup's
+// save and open dialogs, and the scripted pg_dump and pg_restore, are backup-fixture.ts's. Never
+// shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -19,6 +21,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import {
   dbHandlers,
   FIXTURE_CONNECTION,
@@ -67,6 +70,8 @@ const fsHandlers: StubHandlers = {
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
 };
+// sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
+const procs = procHandlers(fixtureScript, (event) => emit(event));
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -81,7 +86,7 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    ...procHandlers(fixtureScript, (event) => emit(event)),
+    ...procs,
     // The routine forms and the overview answer their own statements exactly, then the
     // maintenance form its own and the objects feature its own, before the activity view's
     // looser matches.
@@ -94,6 +99,7 @@ const core = browserCore({
       (event) => emit(event),
     ),
     ...fsHandlers,
+    ...backupHandlers(files, procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>),
   },
   open: () => {},
 });

@@ -67,7 +67,7 @@
   align-items: center;
   gap: 6px;
   padding-left: 8px;
-  border-left: 2px solid var(--desk-warning-border);
+  border-left: 2px solid var(--desk-warning);
   color: var(--desk-warning-text);
 }
 
@@ -82,10 +82,11 @@
 }
 
 /* The diff of pending changes: a changed cell, a row to add, a row to delete. Each also has a
-   title or a label, so the change is said as well as shown. */
+   title or a label, so the change is said as well as shown; a changed cell's bar is the solid
+   warning colour, which stands 3:1 where its tint does not. */
 .cell.changed {
   background: var(--desk-warning-soft);
-  box-shadow: inset 2px 0 0 var(--desk-warning-border);
+  box-shadow: inset 2px 0 0 var(--desk-warning);
 }
 
 .grid-row.inserted .cell {

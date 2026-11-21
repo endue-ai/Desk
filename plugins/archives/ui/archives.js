@@ -8,6 +8,7 @@
 // so the SDK's test host runs it.
 
 import { createActions } from "./actions.js";
+import { answerAgents } from "./agent.js";
 import { createExtractor } from "./extract.js";
 import { createFiles, nameOf } from "./files.js";
 import { createJobs } from "./jobs.js";
@@ -307,6 +308,8 @@ export function createArchives({ bridge, commands, surface }, view, sdk) {
     render();
     view.preview(null);
   });
+
+  answerAgents(commands, { open: () => [...held.values()], shown: () => shown });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

@@ -316,6 +316,25 @@ Modules: `features/maintenance/`.
   history. The arguments are remembered per connection and routine for the session, never across a restart.
 
 Modules: `features/routines/`.
+## Backup and restore
+
+- Back up a PostgreSQL database with `pg_dump` from a form (ADR 0313): format (custom, directory, tar, plain),
+  the whole database, schemas or tables, data or schema only, without owners or privileges, compression
+  (custom and directory; lz4 and zstd from pg_dump 16), jobs (directory) and INSERTs (plain, on by default so
+  the file runs as a script). The save dialog names the file or folder and its grant is asked for there.
+- Restore from a file or folder from the open dialog into any PostgreSQL connection's database: clean,
+  if-exists, create, data or schema only, without owners or privileges, jobs (not tar), one transaction (one
+  job, no create), and the entries `pg_restore --list` reads, filtered and chosen (a list file in the
+  plugin's folder). A plain SQL file runs as a script through run-file, on a session. A read-only connection refuses it and
+  production is always asked first.
+- Both forms show the exact command line, never the password; it goes in `PGPASSWORD` of the program's own
+  environment when typed this session, else libpq reads `~/.pgpass`. Each program must be at least the
+  server's major version (read through a session) and is found by its own setting (`.pg-dump`,
+  `.pg-restore`), on the desk's PATH or in the `path` setting's folders.
+- The run has a log panel: the verbose lines as they come, tables written or entries restored, Cancel
+  (SIGINT, then SIGKILL), and what came of it with the size written.
+
+Modules: `features/backup/`.
 
 ## Agents
 
@@ -337,5 +356,6 @@ Modules: `features/routines/`.
 - `.routine` opens a function's or procedure's form with its arguments (by name or in order) and answers
   the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
   the result's first 50 rows and the notices.
+- `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
 
 Modules: `agent.js`.

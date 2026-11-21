@@ -26,10 +26,8 @@ export const OFF_MAIN = {
       modules: [
         "ui/output-worker.js",
         "ui/output/index.js",
-        "ui/output/postgres.js",
         "ui/output/mysql.js",
         "ui/output/sqlite.js",
-        "ui/output/csv.js",
         "ui/output/readers.js",
       ],
     },

@@ -161,6 +161,26 @@ export function createLibrary({ bridge }) {
       };
     },
 
+    /**
+     * Every note under ~/Notes for the list beside the note, newest first: its path, file name, the
+     * first line of its text as a title (without Markdown's #) and when it changed. None when ~/Notes
+     * is missing or refused.
+     * @returns {Promise<Array<{ path: string, name: string, title: string, modifiedAt?: string }>>}
+     */
+    async shelved() {
+      const notes = await onDisk().catch(() => /** @type {OnDisk[]} */ ([]));
+      return [...notes]
+        .sort((a, b) => timeOf(b) - timeOf(a) || a.name.localeCompare(b.name))
+        .map(({ path, name, text, modifiedAt }) => {
+          const first = text.split("\n").find((line) => line.trim() !== "") ?? "";
+          const title = first
+            .replace(/^#+\s*/, "")
+            .trim()
+            .slice(0, LINE);
+          return { path, name, title, ...(modifiedAt ? { modifiedAt } : {}) };
+        });
+    },
+
     /** Every note under ~/Notes with its text, for agents (agent.js). */
     notes: () => onDisk(),
 
