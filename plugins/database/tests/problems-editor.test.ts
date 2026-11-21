@@ -55,7 +55,7 @@ function setup(
   const byId = (id: string) => document.getElementById(id) as HTMLElement;
   const box = byId("editor-box");
   const context = { syntax, names };
-  const act = vi.fn((action: string) =>
+  const act = vi.fn((action: string, ..._args: unknown[]) =>
     action === "problemsContext"
       ? Promise.resolve(
           dialect === "postgresql"
@@ -123,9 +123,7 @@ describe("problems in the console editor", () => {
     expect(box.querySelector(".cm-gutter-lint .cm-lint-marker-error")).not.toBeNull();
 
     // Fixed, the underline goes after the pause.
-    view.dispatch({
-      changes: { from: view.state.doc.length - 2, to: view.state.doc.length, insert: "ople" },
-    });
+    view.dispatch({ changes: { from: view.state.doc.length - 3, insert: "o" } });
     await vi.waitFor(() => expect(drawn(view).map(([text]) => text)).toEqual(["emial"]));
 
     // While an IME composes nothing new is drawn; once it ends, the problems come.

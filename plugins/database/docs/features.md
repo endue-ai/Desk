@@ -111,6 +111,27 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
 
+## SQL problems
+
+- A PostgreSQL console underlines what the server would refuse, 300 ms after typing stops (ADR 0294): a
+  statement the parser cannot read, at the token PostgreSQL's own grammar names, and a table, view, sequence,
+  column or schema the schema cache does not have, with the message the server would give and the search path
+  it looked in. Also an ambiguous column, a FROM entry used where it is not visible, a select-list alias used
+  in WHERE, and an INSERT whose columns and values do not match. A hint names the nearest name, or the schemas
+  off the path that hold it.
+- The check runs in the parse worker and parses again only the statements that changed. SET search_path,
+  set_config, and the tables, columns and schemas the script creates, renames or moves count for the statements
+  after them.
+- Nothing is told where the cache cannot tell: a schema it did not read, a function, a schema with partitioned
+  tables, after DO, CALL or CREATE EXTENSION, psql's meta-commands and `:name` and `?` statements. The catalog is
+  never queried for it. Once a statement runs, the server's answer replaces the check's until its text changes.
+- The underline, a mark in the gutter and the message on hover. `F8` and `Shift+F8` go to the next and previous
+  problem and say it on the status line; `Mod+.` opens the list (Database: list the SQL problems), read by a
+  screen reader. `problems-syntax` and `problems-names` turn each kind off. MySQL and SQLite consoles are not
+  checked.
+
+Modules: `diagnose/`, `features/problems/`, `sql/parse/`, `view-editor.js`.
+
 ## Results
 
 - A tab per result set and a Messages tab with a line per statement (rows, rows affected, the error with its

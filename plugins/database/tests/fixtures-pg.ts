@@ -1,11 +1,9 @@
 // The fixture's PostgreSQL connection (fixtures.ts): its scripted psql answers the catalog of one
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
-// a time zone), to the explorer and to the schema cache's statements (pg-catalog.ts), the types
-// query of the typed cell editors (ui/cell-editors/pg-types.js), the table's page and its count.
-// Every other statement gets nothing back. Fixture data only.
+// a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
+// page and its count. Every other statement gets nothing back. Fixture data only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer } from "./clients";
-import { answer, type PgCatalog } from "./pg-catalog";
 
 /** The saved PostgreSQL connection the fixture page starts with, after `fixture`. */
 export const FIXTURE_PG_CONNECTION: Connection = {
@@ -38,30 +36,8 @@ const ROWS = [
   ["3", "so so", "[1, 2, 3]", "t", '{"c d"}', "2026-11-19 07:15:00+00"],
 ];
 
-/** The same table as the schema cache reads it. */
-const CATALOG: PgCatalog = {
-  information_schema: { mark: "1.-", system: true, tables: [{ name: "tables", kind: "v" }] },
-  pg_catalog: { mark: "2.-", system: true, tables: [{ name: "pg_class" }] },
-  public: {
-    mark: "10.1:100",
-    tables: [
-      {
-        name: "items",
-        estimate: "3",
-        columns: COLUMNS.map(([name, type, , , , , , nullable]) => [
-          name ?? "",
-          type ?? "",
-          `${nullable === "NO" ? "n" : ""}${name === "id" ? "p" : ""}`,
-        ]),
-      },
-    ],
-  },
-};
-
 export function pgFixtureScript(sql: string): Answer {
   const text = sql.trim();
-  const cached = answer(CATALOG, text);
-  if (cached) return { rows: cached };
   if (/^SELECT nspname FROM pg_catalog\.pg_namespace/u.test(text))
     return { rows: [["nspname"], ["public"]] };
   if (/^SELECT c\.relname, CASE c\.relkind/u.test(text))

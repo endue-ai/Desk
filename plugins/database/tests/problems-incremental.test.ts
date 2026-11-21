@@ -39,7 +39,7 @@ describe("SQL problems as the person types", () => {
     list[10] = "select id, emial from people where id = 10";
     const edited = c.check({ sql: list.join(";\n") });
     expect(edited.parsed).toBe(1);
-    expect(c.parsed).toEqual([list[10]]);
+    expect(c.parsed.map((text) => text.trim())).toEqual([list[10]]);
     expect(edited.problems.map((p) => p.message.split("\n")[0])).toEqual([
       'column "emial" does not exist',
     ]);

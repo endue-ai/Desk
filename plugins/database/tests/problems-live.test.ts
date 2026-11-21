@@ -47,6 +47,20 @@ const RUNS = [
   "create temp table tt (b int);\nselect b from tt",
   "set search_path to pg_catalog;\nselect relname from pg_class limit 1",
   `select * from ${S}.people`,
+  "create index on people (name)",
+  "comment on column people.name is 'Full name'",
+  "alter table people add column age int;\nselect age from people",
+  "alter table people rename column name to full_name;\nselect full_name from people",
+  "alter table people rename to persons;\nselect * from persons",
+  "create view v as select id, email from people;\nselect email from v",
+  "create schema t460_more;\ncreate table t460_more.t (a int);\nselect a from t460_more.t",
+  "do $$ begin execute 'create table made_inside (z int)'; end $$;\nselect z from made_inside",
+  "truncate orders",
+  "drop table if exists ghost",
+  "insert into orders (id, person, total) values (1, 1, 2) on conflict (id) do update set total = excluded.total",
+  "update orders o set total = p.id from people p where p.id = o.person",
+  "select count(*) filter (where total > 1) from orders",
+  "select o.* from orders o where exists (select 1 from people p where p.id = o.person)",
   "select * from pg_catalog.pg_class limit 1",
   "select * from information_schema.tables limit 1",
 ];
@@ -74,10 +88,27 @@ const CAUGHT = [
   "insert into people (id, nope) values (1, 2)",
   "update people set nope = 1",
   "select * from people where id = 1 and emial = 'x'",
+  "select people.id from people p",
+  "insert into people (id, name) values (1, 'a'), (2)",
+  "alter table ghost add column x int",
+  "create index on ghost (a)",
+  "with t as (select 1 a) select b from t",
+  "select o.nope from orders o join people p on p.id = o.person",
+  "delete from peple",
+  "update orders set total = 1 where persn = 1",
+  "select emial from (select email from people) s",
+  "select * from big_orders where totl > 1",
+  "create table made (a int);\nselect b from made",
+];
+
+/** Statements the server refuses where the check cannot tell: a schema the cache did not read. */
+const UNTOLD = [
+  "set search_path to public;\nselect * from t460_ghost",
+  "select * from public.t460_ghost",
 ];
 
 describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
-  const { fields, password } = parseUri(pgUri ?? "postgresql://localhost/x");
+  const { fields, password } = parseUri(pgUri ?? "postgres://");
   const conn = normalize({ ...fields, id: "c-live-460", name: "live" });
   const runner = createRunner(nodeBridge());
   const settings = fromValues({});
@@ -147,7 +178,10 @@ describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
         .find((s) => s.name === S)
         ?.relations?.map((r) => r.name)
         .sort(),
-    ).toEqual(["big_orders", "events", "orders", "people", "people_id_seq"]);
+    ).toEqual(["big_orders", "orders", "people", "people_id_seq"]);
+    expect(model?.schemas.find((s) => s.name === P)?.relations).toEqual([
+      { name: "events", kind: "table", columns: expect.any(Array), partitioned: true },
+    ]);
     const c = await checker();
     const check = (sql: string) => c.check({ sql, searchPath: [S], user: "" }, model).problems;
     for (const sql of RUNS) {
@@ -167,6 +201,10 @@ describe.skipIf(!pgUri)("SQL problems on a real PostgreSQL", () => {
         true,
       ]);
       if (refused?.at !== undefined) expect([sql, first?.from]).toEqual([sql, refused.at]);
+    }
+    for (const sql of UNTOLD) {
+      expect([sql, (await refusal(sql)) === null]).toEqual([sql, false]);
+      expect([sql, check(sql)]).toEqual([sql, []]);
     }
   }, 120_000);
 });

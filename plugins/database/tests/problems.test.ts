@@ -61,7 +61,7 @@ describe("SQL problems", () => {
     expect(await problemsOf("select * from people", { searchPath: ["nowhere"] })).toEqual([
       [
         "people",
-        'relation "people" does not exist (search path: nowhere)\nThere is one in public: public.people.',
+        'relation "people" does not exist (search path: nowhere)\nOff the search path: app.people, public.people.',
       ],
     ]);
     expect(await problemsOf("select x.id from people p")).toEqual([
@@ -73,6 +73,8 @@ describe("SQL problems", () => {
     expect(await problemsOf("update people set nope = 1")).toEqual([
       ["nope", 'column "nope" of relation "people" does not exist'],
     ]);
+    // A cast is not one of psql's variables: the statement is checked.
+    expect(await problemsOf("select emial::text from people")).toHaveLength(1);
     // Offsets count in the editor's units past characters outside ASCII.
     const wide = "select '😀 한';\nselect emial from people";
     const c = await checker();
@@ -125,12 +127,13 @@ describe("SQL problems", () => {
       "alter table if exists ghost add column x int",
       "\\set id 1",
       "select * from ghost where id = :id",
+      "select * from ghost where name = :'name' and :\"column\" > 1",
       "select * from ghost where doc ? 'k'",
       // The cache leaves out aggregates, window functions and what extensions bring: a function
       // is never told missing, only its schema.
       "select nope(1)",
       "select public.nope(1), public.touch()",
-      "create table t (a int);\nselect a, b from t",
+      "create table if not exists t (a int);\nselect a, b from t",
       "create view v as select 1 as one;\nselect one, two from v",
       "create schema s;\ncreate table s.t (a int);\nselect * from s.t, s.u",
       "create extension postgis;\nselect * from spatial_ref_sys",
@@ -155,9 +158,13 @@ describe("SQL problems", () => {
     expect(await problemsOf("select emial from metrics.events")).toEqual([
       ["emial", 'column "emial" does not exist'],
     ]);
+    // A table the script creates has the columns it was given.
+    expect(await problemsOf("create table t (a int);\nselect a, b from t")).toEqual([
+      ["b", 'column "b" does not exist'],
+    ]);
     // A typo after a definition is still one.
-    expect(await problemsOf("create table t (a int);\nselect * from tx")).toEqual([
-      ["tx", `relation "tx" does not exist ${PATH}\nPerhaps you meant "t".`],
+    expect(await problemsOf("create table things (a int);\nselect * from thigns")).toEqual([
+      ["thigns", `relation "thigns" does not exist ${PATH}\nPerhaps you meant "things".`],
     ]);
     // Without a model only syntax is told.
     const c = await checker();
@@ -182,7 +189,7 @@ describe("SQL problems", () => {
     ).toEqual([
       [
         "people",
-        'relation "people" does not exist (search path is empty)\nThere is one in public: public.people.',
+        'relation "people" does not exist (search path is empty)\nOff the search path: app.people, public.people.',
       ],
     ]);
     expect(await problemsOf("select name from people", { searchPath: ["app", "public"] })).toEqual([

@@ -66,6 +66,16 @@ export const OFF_MAIN = {
         "ui/sql/layout/tokens.js",
       ],
     },
+    // The editor's SQL problems check (ADR 0294), in the same worker; the page holds diagnose/editor.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/diagnose/check.js",
+        "ui/diagnose/script.js",
+        "ui/diagnose/names.js",
+        "ui/diagnose/insert.js",
+      ],
+    },
   ],
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
   player: {

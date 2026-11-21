@@ -2,10 +2,10 @@
 // Node, a schema model as the cache answers it (a partitioned table, a sequence without columns, an
 // unread schema), and the problems of a script as [underlined text, message] pairs to read.
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createChecker } from "../ui/diagnose/check.js";
 import { indexModel, type SchemaModel } from "../ui/sql/parse/model.js";
 import { loadLibpgQuery } from "../ui/sql/parse/wasm.js";
-import { WASM } from "./pg-parser";
 
 const columns = (...names: string[]) => names.map((name) => ({ name, type: "integer" }));
 
@@ -75,9 +75,9 @@ export type Check = {
 type Raw = Awaited<ReturnType<typeof loadLibpgQuery>>;
 let raw: Promise<Raw> | undefined;
 
-/** The vendored parser, loaded once per test file. */
+/** The vendored parser, loaded once per test file (a jsdom file too: its URL is not Node's). */
 export const loadRaw = () => {
-  raw ??= loadLibpgQuery(readFileSync(WASM));
+  raw ??= loadLibpgQuery(readFileSync(join(import.meta.dirname, "../ui/vendor/libpg-query.wasm")));
   return raw;
 };
 

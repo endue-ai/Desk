@@ -55,6 +55,9 @@ const state = (name: string, held: boolean, system = false): State => ({
   kept: held,
 });
 
+/** The editor's context action, as the view's `act` reaches it. */
+const contextOf = (m: Mounted) =>
+  (m.app as unknown as { problemsContext(): Promise<unknown> }).problemsContext();
 const row = (m: Mounted, label: string) => m.view.trees.at(-1)?.find((r) => r.label === label);
 async function until(m: Mounted, test: () => unknown) {
   for (let i = 0; i < 60 && !test(); i++) await m.settle();
@@ -113,7 +116,7 @@ describe("what SQL problems bind against", () => {
     await until(m, () => row(m, "Shop"));
     m.app.toggle(row(m, "Shop") as Node, true);
     await until(m, () => row(m, "public"));
-    const context = (await m.app.problemsContext()) as {
+    const context = (await contextOf(m)) as {
       doc: string;
       model: { schemas: Array<{ name: string; relations?: Array<{ name: string }> }> };
       searchPath: string[];
@@ -132,11 +135,11 @@ describe("what SQL problems bind against", () => {
     expect(context.model.schemas[0]?.relations?.map((r) => r.name)).toContain("people");
     const before = m.clients.spawned.length;
     for (let i = 0; i < 100; i++)
-      expect(((await m.app.problemsContext()) as typeof context).model).toBe(context.model);
+      expect(((await contextOf(m)) as typeof context).model).toBe(context.model);
     expect(m.clients.spawned.length).toBe(before);
 
     await m.host.command("endue.database.console", { connection: "Notes" });
-    expect(await m.app.problemsContext()).toBeUndefined();
+    expect(await contextOf(m)).toBeUndefined();
   });
 
   it("each kind of problem has a setting", async () => {
@@ -146,7 +149,7 @@ describe("what SQL problems bind against", () => {
       settings: { "problems-names": false },
     });
     await m.host.command("endue.database.console", { connection: "Shop" });
-    expect(await m.app.problemsContext()).toMatchObject({
+    expect(await contextOf(m)).toMatchObject({
       syntax: true,
       names: false,
       model: null,
