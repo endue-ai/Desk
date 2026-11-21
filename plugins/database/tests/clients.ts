@@ -1,7 +1,8 @@
 // The scripted psql and sqlite3: what a run would print, in each client's real protocol (markers read
 // from the arguments, CSV or quote mode), from a script that answers each statement. The unit tests'
 // harness and the runtime e2e page (packages/runtime/e2e/fixture/database.ts) share them, so this
-// file imports nothing the browser cannot load.
+// file imports nothing the browser cannot load. pg_dump and pg_restore are backup-fixture.ts's.
+import { programReply } from "./backup-fixture";
 
 /**
  * What a scripted statement gives back: rows (the first is the header), changes, or an error, and
@@ -90,6 +91,8 @@ export function scriptedReply(
   script: Script,
   env: Record<string, string>,
 ): Reply {
+  const program = programReply(command, args);
+  if (program) return program;
   if (args[0] === "--version") return { stdout: VERSIONS[command] ?? "", stderr: "", code: 0 };
   return command === "psql" ? psqlRun(args, script, env) : sqliteRun(args, script, env);
 }

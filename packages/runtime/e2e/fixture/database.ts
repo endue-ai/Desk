@@ -5,7 +5,8 @@
 // one whose scripted psql answers the maintenance form (maintenance-fixture.ts), the activity view
 // (activity-fixture.ts) and EXPLAIN with fixture plans (fixture-plans.ts), one whose scripted psql
 // answers the server overview (overview-fixture.ts), and fs.* over a folder in memory with one .sql
-// file (`window.__files`, what saves wrote). Never shipped.
+// file (`window.__files`, what saves wrote). A backup's save and open dialogs, and the scripted
+// pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -17,6 +18,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import {
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
@@ -62,6 +64,12 @@ const fsHandlers: StubHandlers = {
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
 };
+// The overview answers its own statements exactly, then the maintenance form its own, before the
+// activity view's looser matches.
+const procs = procHandlers(
+  overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
+  (event) => emit(event),
+);
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -76,13 +84,9 @@ const core = browserCore({
     "sql-files": [{ path: "~/queries/report.sql", connection: FIXTURE_CONNECTION.id }],
   }),
   handlers: {
-    // The overview answers its own statements exactly, then the maintenance form its own, before
-    // the activity view's looser matches.
-    ...procHandlers(
-      overviewServer(maintenanceServer(activityServer(fixtureScript).script).script),
-      (event) => emit(event),
-    ),
+    ...procs,
     ...fsHandlers,
+    ...backupHandlers(files, procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>),
   },
   open: () => {},
 });
