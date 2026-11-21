@@ -330,6 +330,34 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.overview",
+        "title": "Database: server overview",
+        "keywords": [
+          "health",
+          "statistics",
+          "sizes",
+          "unused indexes",
+          "vacuum",
+          "replication",
+          "pg_stat_statements"
+        ]
+      },
+      {
+        "id": "endue.database.refresh-overview",
+        "title": "Database: refresh the server overview",
+        "keywords": ["reload", "statistics", "health"]
+      },
+      {
+        "id": "endue.database.overview-result",
+        "title": "Database: open an overview section in the console",
+        "keywords": ["result", "copy", "export", "statistics"]
+      },
+      {
+        "id": "endue.database.overview-statement",
+        "title": "Database: open a heavy statement in the console",
+        "keywords": ["pg_stat_statements", "slow query", "top queries"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]
