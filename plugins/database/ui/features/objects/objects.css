@@ -78,8 +78,9 @@
   gap: var(--desk-space-1);
   max-height: 9em;
   margin: 0;
-  padding: 0 0 0 var(--desk-space-3);
+  padding: 0;
   overflow: auto;
+  list-style: none;
   font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
 }
 
