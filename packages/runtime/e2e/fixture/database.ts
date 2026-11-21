@@ -7,7 +7,8 @@
 // (fixture-plans.ts) and the reads and DDL of the explorer's operations on objects
 // (objects-fixture.ts), one whose server answers the server overview (overview-fixture.ts), and fs.*
 // over a folder in memory with one .sql file (`window.__files`, what saves wrote). A backup's save
-// and open dialogs, and the scripted pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
+// and open dialogs, and the scripted pg_dump and pg_restore, are backup-fixture.ts's. fixture-pg's
+// server has more databases (databases-fixture.ts, PG-13). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -20,6 +21,7 @@ import {
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
+import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   dbHandlers,
   FIXTURE_CONNECTION,
@@ -87,8 +89,10 @@ const core = browserCore({
     // The overview answers its own statements exactly, then the maintenance form its own and the
     // objects feature its own, before the activity view's looser matches.
     ...dbHandlers(
-      overviewServer(
-        maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
+      withDatabases(
+        overviewServer(
+          maintenanceServer(objectsServer(activityServer(fixtureScript).script).script).script,
+        ),
       ),
       (event) => emit(event),
     ),
