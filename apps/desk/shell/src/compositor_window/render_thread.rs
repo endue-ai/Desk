@@ -5,16 +5,18 @@
 //! import holds up to that long past a slot loses no frame: the main thread draws nothing, and a
 //! frame it laid out is drawn on time whatever it does next. A frame from rest is drawn at once, so
 //! a key's paint waits for no tick, and each frame of a run after it an eighth of an interval
-//! further behind, at most, so the cadence never jumps. A scene handed before the one waiting was
-//! drawn replaces it; a frame of the pictures alone (`scene: None`) draws the last scene again, and
-//! keeps a scene that waits.
+//! further behind, at most, so the cadence never jumps. A scene handed for the slot of the one
+//! waiting replaces it; one for the next slot waits behind it, so a frame this thread is late for
+//! is drawn at once, not dropped; a frame of the pictures alone (`scene: None`) draws the last scene
+//! again, and keeps a scene that waits.
 //!
 //! It owns the window's swapchain (`gpu::Swapchain`), and waits for an image the OS withholds or
 //! hands out late; the main thread reads when to ask again (`State`). Headless it renders each frame
 //! off screen while a frame trace runs, so the gate's frames cost the GPU what shown ones do. It
 //! locks the compositor's state (`composed::Shared`) only to render, as an import does; the
-//! textures a laid-out scene draws keep their sizes until the next layout (`composed_waiting.rs`).
+//! textures a laid-out scene draws keep their sizes while it waits (`composed_retired.rs`).
 
+use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -22,6 +24,7 @@ use std::time::{Duration, Instant};
 use desk_compositor::Scene;
 use desk_compositor::headless::Target as Offscreen;
 
+use super::clock::Behind;
 use super::composed::Shared;
 use super::gpu::{PAUSED, Swapchain};
 use crate::frame_trace::{self, Timed};
@@ -30,6 +33,8 @@ use crate::frame_trace::{self, Timed};
 const SLOW_IMAGE: Duration = Duration::from_millis(250);
 /// So many late images in a row and the window presents nothing for a while (`gpu::PAUSED`).
 const SLOW_IMAGES: u32 = 3;
+/// The most frames waiting: the one due, and the next slot's.
+const WAITING: usize = 2;
 
 /// A frame the main thread laid out, for the render thread to draw.
 pub struct Handed {
@@ -66,41 +71,9 @@ pub struct State {
     pub presenting: bool,
 }
 
-/// How far behind its slot a frame is drawn: none from rest, then an eighth of a display interval
-/// more each frame of a run, up to `most`.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Behind {
-    last: Option<Instant>,
-    behind: Duration,
-}
-
-impl Behind {
-    /// The most a frame is drawn behind its slot: the slack a late main thread has.
-    pub fn most(every: Duration) -> Duration {
-        every * 3 / 4
-    }
-
-    /// When to draw the frame laid out on `slot`, seen at `now`, the display's frames `every`
-    /// apart: never before the last drawn by half an interval, and at once when late.
-    pub fn draw_at(&mut self, slot: Instant, now: Instant, every: Duration) -> Instant {
-        let in_a_row = (self.last).is_some_and(|t| now.saturating_duration_since(t) < every * 2);
-        self.behind = if in_a_row {
-            (self.behind + every / 8).min(Self::most(every))
-        } else {
-            Duration::ZERO
-        };
-        let mut at = (slot + self.behind).max(now);
-        if let Some(last) = self.last {
-            at = at.max(last + every / 2);
-        }
-        self.last = Some(at);
-        at
-    }
-}
-
 /// What the main thread and the render thread share.
 struct Mail {
-    pending: Option<Handed>,
+    pending: VecDeque<Handed>,
     every: Duration,
     /// The window shows again, or a frame the OS withheld is due to be asked for again.
     resume: bool,
@@ -132,7 +105,7 @@ impl RenderThread {
         };
         let mail = Arc::new((
             Mutex::new(Mail {
-                pending: None,
+                pending: VecDeque::new(),
                 every,
                 resume: false,
                 stop: false,
@@ -157,15 +130,21 @@ impl RenderThread {
         lock(&self.mail.0)
     }
 
-    /// A frame to draw: it replaces one waiting, save that a frame of the pictures alone keeps a
-    /// scene still waiting (drawn now, it shows the newest pictures too).
+    /// A frame to draw: it replaces the one waiting for its slot, or waits behind it; a frame of
+    /// the pictures alone keeps a scene still waiting (drawn now, it shows the newest pictures too).
     pub fn hand(&self, handed: Handed) {
         let mut mail = self.lock();
-        let waits = (mail.pending.as_ref()).is_some_and(|p| p.scene.is_some());
+        let waits = mail.pending.iter().any(|p| p.scene.is_some());
         if handed.scene.is_none() && waits {
             return;
         }
-        mail.pending = Some(handed);
+        if mail.pending.back().is_some_and(|p| p.slot == handed.slot) {
+            mail.pending.pop_back();
+        }
+        mail.pending.push_back(handed);
+        while mail.pending.len() > WAITING {
+            mail.pending.pop_front();
+        }
         self.mail.1.notify_all();
     }
 
@@ -259,7 +238,7 @@ impl Drawer {
             if m.stop {
                 return None;
             }
-            let Some(slot) = m.pending.as_ref().map(|p| p.slot) else {
+            let Some(slot) = m.pending.front().map(|p| p.slot) else {
                 m = wake.wait(m).unwrap_or_else(|e| e.into_inner());
                 continue;
             };
@@ -276,7 +255,7 @@ impl Drawer {
             if m.stop {
                 return None;
             }
-            if let Some(handed) = m.pending.take() {
+            if let Some(handed) = m.pending.pop_front() {
                 return Some((handed, std::mem::take(&mut m.resume)));
             }
         }
