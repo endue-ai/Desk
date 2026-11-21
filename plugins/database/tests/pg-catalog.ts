@@ -1,8 +1,8 @@
 // A PostgreSQL catalog for the schema cache's tests: schemas with their fingerprint, tables (with
 // columns, constraints, indexes, triggers) and routines, answered to the cache's statements in the
-// columns PostgreSQL 17 gives them (ui/schema-cache/kinds.js), through the scripted psql. A test
+// columns PostgreSQL 17 gives them (ui/schema-cache/kinds.js), through the scripted server. A test
 // changes the model and its marks to play a DDL statement in another session. NULL is printed as
-// '' (the scripted psql has no null marker), which the cache reads as absent. Nothing needs Node.
+// '' (as the psql path printed it), which the cache reads as absent. Nothing needs Node.
 import type { Script } from "./clients";
 
 export interface PgTable {
@@ -107,7 +107,7 @@ export function answer(model: PgCatalog, sql: string): string[][] | undefined {
   return [Array.from({ length: out[0]?.length ?? 1 }, (_, i) => `c${i}`), ...out];
 }
 
-/** The scripted psql over the model; `other` answers every statement that is not the cache's. */
+/** The scripted server over the model; `other` answers every statement that is not the cache's. */
 export function catalogScript(
   model: () => PgCatalog,
   other: Script = () => ({}),
@@ -117,7 +117,7 @@ export function catalogScript(
     const rows = answer(model(), sql);
     if (!rows) return other(sql, env);
     seen.push(sql);
-    // Fields as they are: the scripted psql (clients.ts) quotes them as --csv does.
+    // Fields as they are: the scripted server (clients.ts) hands them over as text.
     return { rows };
   };
 }

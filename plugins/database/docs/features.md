@@ -15,18 +15,22 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 ## Connections
 
-- PostgreSQL, MySQL / MariaDB and SQLite, each through its own client and never a shell, in a mode that cannot
-  reach past the database (ADR 0038): `psql -X -w` with a `-c` per statement,
-  `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
+  opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
+  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
+  file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
+- MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
+  database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
   install them; a setting may name another client or its full path. Check the clients says which one runs and
-  whether it is new enough (psql 13, mysql 8.0.19, mariadb 10.5, sqlite3 3.37).
+  whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), and its URI copied back without the password.
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
-- Passwords are never kept: `~/.pgpass` and `~/.my.cnf` work, else the person types one for the session.
+- Passwords are never kept: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else the person types one
+  for the session.
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
 
@@ -65,12 +69,14 @@ Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`,
 - Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
   (`Ctrl+Space`), Format SQL (`Mod+Shift+F`: only space and the case of keywords change), and parameters
   (`:name`, `?`, `$1`) asked for before the run and remembered for the console.
-- Guards: a read-only connection refuses writes before the client starts, and on the server too; with
+- Guards: a read-only connection refuses writes before anything runs, and on the server too
+  (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
   anywhere, ask first.
-- Cancel, or Escape while a run goes on, sends SIGINT (psql and mysql cancel the query on the server, sqlite3
-  interrupts it), then SIGKILL a second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on
-  the server.
+- Cancel, or Escape while a run goes on, cancels PostgreSQL's statement on the server (`db.cancel`), and sends
+  the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
+  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
+  (`statement_timeout`).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.

@@ -76,7 +76,7 @@ describe("reading the activity", () => {
       [4250, "ExclusiveLock on virtual transaction 5/12", true, null],
       [4300, "RowExclusiveLock on stock", true, null],
     ]);
-    // A real psql prints NULL as null; a NULL age is no age there too.
+    // A real server sends NULL as null; a NULL age is no age there too.
     const real = readOf(
       ["170006", "17.6", "1", "w"],
       [

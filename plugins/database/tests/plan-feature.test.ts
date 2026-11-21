@@ -23,9 +23,9 @@ const script = (sql: string) => {
   return answer(sql.includes("status = 'open'") ? pg17.loops : pg17.join);
 };
 /** Each PostgreSQL run's statements (a session each), in order. */
-const psql = (m: Awaited<ReturnType<typeof mount>>) => m.sessions().map((args) => ({ args }));
+const runs = (m: Awaited<ReturnType<typeof mount>>) => m.sessions().map((args) => ({ args }));
 const explains = (m: Awaited<ReturnType<typeof mount>>) =>
-  psql(m).flatMap((s) => s.args.filter((a) => a.startsWith("EXPLAIN")));
+  runs(m).flatMap((s) => s.args.filter((a) => a.startsWith("EXPLAIN")));
 
 async function shop(options: Parameters<typeof mount>[0] = {}) {
   const m = await mount({ store: { connections: SAVED }, script, ...options });
@@ -71,7 +71,7 @@ describe("the plans feature", () => {
       `EXPLAIN (VERBOSE, FORMAT JSON) ${JOIN}`,
       `EXPLAIN (ANALYZE, VERBOSE, WAL, TIMING, SUMMARY FALSE, FORMAT JSON) ${JOIN}`,
     ]);
-    expect(psql(m).filter((s) => s.args.includes("SHOW server_version_num"))).toHaveLength(1);
+    expect(runs(m).filter((s) => s.args.includes("SHOW server_version_num"))).toHaveLength(1);
 
     m.view.answerDialog = () => undefined;
     await expect(m.host.command("endue.database.explain-options")).rejects.toThrow(
@@ -89,7 +89,7 @@ describe("the plans feature", () => {
     const m = await shop();
     m.view.text = write;
     await m.host.command("endue.database.explain-options", { on: ["ANALYZE", "BUFFERS", "WAL"] });
-    const ran = psql(m).at(-1)?.args ?? [];
+    const ran = runs(m).at(-1)?.args ?? [];
     const at = ran.indexOf(
       `EXPLAIN (ANALYZE, BUFFERS, WAL, TIMING FALSE, SUMMARY FALSE, FORMAT JSON) ${write}`,
     );

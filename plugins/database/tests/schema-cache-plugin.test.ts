@@ -10,7 +10,7 @@ import { catalogScript, kindOf, type PgCatalog, schemasOf, shop } from "./pg-cat
 const PASS = ["marks", "relations", "columns", "constraints", "indexes", "triggers", "routines"];
 
 /** The SQL of every PostgreSQL run (a session each), in order. */
-const psql = (m: Mounted) => m.sessions().map((sqls) => sqls[0] ?? "");
+const ran = (m: Mounted) => m.sessions().map((sqls) => sqls[0] ?? "");
 const row = (m: Mounted, label: string, kind?: string) =>
   m.view.trees.at(-1)?.find((r) => r.label === label && (!kind || r.kind === kind));
 async function until(m: Mounted, test: () => unknown) {
@@ -46,17 +46,17 @@ describe("the schema cache in the plugin", () => {
     expect(row(m, "Keys")?.detail).toBe("1");
     expect(row(m, "Triggers")?.detail).toBe("1");
     expect(row(m, "sales")?.detail).toBe("");
-    expect(psql(m).map(kindOf)).toEqual(PASS);
+    expect(ran(m).map(kindOf)).toEqual(PASS);
 
     m.app.refresh("c-prod", row(m, "Shop"));
-    await until(m, () => psql(m).length === 14 && row(m, "joined"));
-    expect(psql(m).slice(7).map(kindOf)).toEqual(PASS);
-    for (const sql of psql(m).slice(8)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
+    await until(m, () => ran(m).length === 14 && row(m, "joined"));
+    expect(ran(m).slice(7).map(kindOf)).toEqual(PASS);
+    for (const sql of ran(m).slice(8)) expect(schemasOf(sql)).toEqual(["public", "sales"]);
 
     // g on a schema reads that schema.
     m.app.refresh("c-prod", row(m, "sales", "schema"));
-    await until(m, () => psql(m).length === 21);
-    for (const sql of psql(m).slice(15)) expect(schemasOf(sql)).toEqual(["sales"]);
+    await until(m, () => ran(m).length === 21);
+    for (const sql of ran(m).slice(15)) expect(schemasOf(sql)).toEqual(["sales"]);
   });
 
   it("a DDL statement run from a console refreshes what it touched", async () => {
@@ -74,14 +74,14 @@ describe("the schema cache in the plugin", () => {
       },
     });
     await open(m, "Shop");
-    await until(m, () => psql(m).length === 7);
+    await until(m, () => ran(m).length === 7);
     await m.host.command("endue.database.console", { connection: "Shop" });
     m.view.text = "select * from people";
     await m.host.command("endue.database.run");
     m.view.text = "alter table public.people add column age integer";
     await m.host.command("endue.database.run");
-    await until(m, () => psql(m).length === 16);
-    const after = psql(m).slice(9);
+    await until(m, () => ran(m).length === 16);
+    const after = ran(m).slice(9);
     expect(after.map(kindOf)).toEqual(PASS);
     for (const sql of after.slice(1)) expect(schemasOf(sql)).toEqual(["public"]);
     await open(m, "public", "Tables", "people", "Columns");
@@ -97,7 +97,7 @@ describe("the schema cache in the plugin", () => {
     const model = shop();
     const first = await shopMounted(model);
     await open(first, "Shop");
-    await until(first, () => psql(first).length === 7 && row(first, "public"));
+    await until(first, () => ran(first).length === 7 && row(first, "public"));
     const m = await shopMounted(model, { store: { ...first.store } });
     await open(m, "Shop", "public", "Tables");
     await until(m, () => row(m, "people"));
@@ -115,7 +115,7 @@ describe("the schema cache in the plugin", () => {
       "name",
     ]);
     await m.settle();
-    expect(psql(m).map(kindOf)).toEqual(["marks"]);
+    expect(ran(m).map(kindOf)).toEqual(["marks"]);
   });
 
   it("Database: choose the schemas to read and Database: read the schema again", async () => {
@@ -127,12 +127,12 @@ describe("the schema cache in the plugin", () => {
       pick: () => picked,
     });
     await m.host.command("endue.database.reload-schema", { connection: "Shop" });
-    expect(psql(m).map(kindOf)).toEqual(PASS);
+    expect(ran(m).map(kindOf)).toEqual(PASS);
     expect(m.view.said.at(-1)).toBe("Read 2 schemas of Shop in 7 statements.");
 
     await m.host.command("endue.database.choose-schemas", { connection: "Shop", schema: "sales" });
     expect(m.store[indexKey("c-prod")]).toMatchObject({ chosen: ["public"] });
-    expect(psql(m)).toHaveLength(8);
+    expect(ran(m)).toHaveLength(8);
     await open(m, "Shop");
     await until(m, () => row(m, "sales"));
     expect(row(m, "sales")?.detail).toBe("not cached");
@@ -148,7 +148,7 @@ describe("the schema cache in the plugin", () => {
       "✓ public",
       "sales",
     ]);
-    expect(psql(m).slice(-6).map(schemasOf)).toEqual(Array(6).fill(["pg_catalog"]));
+    expect(ran(m).slice(-6).map(schemasOf)).toEqual(Array(6).fill(["pg_catalog"]));
     await until(m, () => row(m, "pg_catalog"));
 
     picked = "\u0000default";

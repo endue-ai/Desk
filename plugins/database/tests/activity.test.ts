@@ -29,7 +29,7 @@ async function start(
 }
 const acts = (m: Mounted) =>
   m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
-const psqlRuns = (m: Mounted) => m.sessions().length;
+const runs = (m: Mounted) => m.sessions().length;
 
 describe("the activity panel", () => {
   it("opens a PostgreSQL connection's activity panel and answers its sessions and waits for agents", async () => {
@@ -84,10 +84,10 @@ describe("the activity panel", () => {
       system: false,
       database: "",
     });
-    const before = psqlRuns(m);
+    const before = runs(m);
     await m.host.command("endue.database.activity-refresh");
     await m.settle();
-    expect(psqlRuns(m)).toBe(before + 1);
+    expect(runs(m)).toBe(before + 1);
     expect(m.shown()?.activity).toMatchObject({
       filters: { idle: false, own: true },
       sort: { key: "pid", desc: false },
