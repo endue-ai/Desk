@@ -56,8 +56,13 @@ fn the_tray_is_built_in_each_language() {
     }
 }
 
-/// Each section's title, then its entries as (what it is, its words, its key); separators as "-".
-fn shape(language: Language) -> Vec<(String, Vec<(String, String, Option<&'static str>)>)> {
+/// One row: what it is, its words and its key; a separator is "-".
+type Row = (String, String, Option<&'static str>);
+/// A menu: its title and its rows.
+type Shape = Vec<(String, Vec<Row>)>;
+
+/// Each section's title, then its rows.
+fn shape(language: Language) -> Shape {
     menu::bar(language)
         .into_iter()
         .map(|section| {
@@ -78,7 +83,7 @@ fn the_menu_bar_is_built_in_each_language() {
     let titles = |bar: &[(String, Vec<_>)]| bar.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>();
     assert_eq!(titles(&english), ["endue Desk", "Edit", "Window"]);
     assert_eq!(titles(&korean), ["endue Desk", "편집", "윈도우"]);
-    let words = |bar: &[(String, Vec<(String, String, Option<&str>)>)], at: usize| {
+    let words = |bar: &[(String, Vec<Row>)], at: usize| {
         bar[at]
             .1
             .iter()
@@ -138,7 +143,7 @@ fn the_menu_bar_is_built_in_each_language() {
         ["최소화", "데스크로 되돌리기", "윈도우 닫기"]
     );
     // The same items, in the same places and with the same keys, in either language.
-    let kinds = |bar: &[(String, Vec<(String, String, Option<&'static str>)>)]| {
+    let kinds = |bar: &[(String, Vec<Row>)]| {
         let rows = bar.iter().flat_map(|(_, entries)| entries.iter());
         rows.map(|(kind, _, keys)| (kind.clone(), *keys))
             .collect::<Vec<_>>()
