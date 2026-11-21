@@ -26,7 +26,7 @@ import { createImporter } from "./importer.js";
 import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
-import { DEFAULTS, loadSettings } from "./settings.js";
+import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
 
@@ -39,7 +39,7 @@ import { createTools } from "./tools.js";
  *   busy(running: number): void,
  *   reading?(reads: number): void,
  *   insert(text: string): void,
- *   copy(text: string): boolean,
+ *   copy(text: string): Promise<boolean>,
  *   preview(sql: string): void,
  *   importer(model: import("./importer.js").ImportModel | null): void,
  *   nodeAt(target: unknown): Node | undefined,
@@ -49,7 +49,7 @@ import { createTools } from "./tools.js";
  */
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands" | "state">} ctx
+ * @param {Pick<PluginContext, "bridge" | "commands" | "state"> & Partial<Pick<PluginContext, "settings">>} ctx
  * @param {View} view
  * @param {{
  *   cancelled?(message: string): Error,
@@ -62,7 +62,7 @@ import { createTools } from "./tools.js";
  *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38);
  *   `features` are features/index.js's unless given.
  */
-export function createDatabase({ bridge, commands, state }, view, options) {
+export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
@@ -263,7 +263,12 @@ export function createDatabase({ bridge, commands, state }, view, options) {
     const saved = /** @type {{ current?: string | null, expanded?: string[] } | undefined} */ (
       state.get()
     );
-    settings = await loadSettings(bridge);
+    const values = await loadValues(bridge);
+    settings = fromValues(values);
+    followSettings(source, values, (next, found) => {
+      settings = next;
+      if (found) clients.reset();
+    });
     manager.replace(await loadConnections(bridge));
     explorer.restore(saved?.expanded ?? []);
     changed();

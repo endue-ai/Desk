@@ -16,8 +16,7 @@ needs a compositor. What changes:
 
 - **Any window pops out** into an OS window of its own, beside the OS's apps, and docks back; endue
   manages it in or out with one identity (#235).
-- **The island** floats over every app while the desk is not in front: what agents do, what waits for
-  an answer, Eris (#238). **The hub** keeps running with no window (#237).
+- **The hub** keeps running with no window (#237). Eris opens in Desk (ADR 0280).
 - **The compositor reaches an OS's quality by structure**, under a motion gate that judges rendered
   pixels while windows move (#247 to #252).
 - **The end state**: on Linux endue is the session's Wayland compositor and places every app's
@@ -26,7 +25,6 @@ needs a compositor. What changes:
 | Track | Issues | What is true after it | Serves |
 | --- | --- | --- | --- |
 | Pop out and dock | #235 | Any window moves out to an OS window and back, managed by endue in both | M1 |
-| Island | #238 | The island floats over every app; the floating Eris retires | M2 · M4 |
 | Resident hub | #237 | endue runs with no window and starts at login | M1 · M2 |
 | Motion gate | #247 | Every compositor change is judged on pixels in motion | M1 |
 | Compositor quality | #248 to #252 | No lost frame, the display's clock, whole pixels, one owner of focus, resizes without guesses | M1 |

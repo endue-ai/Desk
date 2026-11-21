@@ -10,7 +10,7 @@
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { icon } from "../shell/icons";
-import { erisText } from "./float-copy";
+import { erisText } from "./copy";
 import { prose } from "./prose";
 
 /** A line longer than this, or of more than one line, is kept in the card as text. */

@@ -18,7 +18,7 @@
       "endue.eris.shortcut": {
         "kind": "string",
         "default": "Alt+Enter",
-        "description": "The key that summons Eris from any app (Option+Enter on macOS): on the island over other apps, in the desk while it is in front. DESK_ERIS_SHORTCUT overrides it. The tray's Talk to Eris works whatever the key."
+        "description": "The shortcut that brings Desk forward and opens the talk line (Option+Enter on macOS). With Desk in front, it toggles the talk line. DESK_ERIS_SHORTCUT overrides it. Talk to Eris in the tray works with any shortcut."
       }
     }
   }

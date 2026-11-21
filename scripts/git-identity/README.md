@@ -10,7 +10,7 @@ folder of a machine. `install.sh` sets, through an `includeIf` in the global git
 
 | Repository | Refused |
 | --- | --- |
-| remote on GitHub `endue-ai/*`, or no remote | any author, committer or email in a message other than `team@endue.ai` and Claude (`noreply@anthropic.com`), and any `endue.block` string |
+| remote on GitHub `endue-ai/*`, or no remote | any author, committer or email in a message other than `team@endue.ai` and Claude (`noreply@anthropic.com`), and any `endue.block` string; a pushed commit may have `GitHub <noreply@github.com>` as its committer, who commits a pull request's squash merge |
 | any other (GitLab) | only identities git guessed from the host name (`…@<host>.local`) |
 
 `pre-push` checks every commit and annotated tag the push sends that the remote does not hold. For a

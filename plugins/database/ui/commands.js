@@ -65,7 +65,7 @@ export function registerCommands(deps) {
     const conn = await manager.choose(connection, "Database: copy which connection's URI?");
     if (!conn) return undefined;
     const uri = formatUri(conn);
-    view.say(view.copy(uri) ? `Copied ${uri}` : uri);
+    view.say((await view.copy(uri)) ? `Copied ${uri}` : uri);
     return uri;
   });
   answer("endue.database.run", () => consoles.run("statement"));

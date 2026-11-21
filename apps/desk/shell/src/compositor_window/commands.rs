@@ -222,7 +222,7 @@ fn main_window(
     args: &Value,
 ) -> Result<Value, String> {
     // A global shortcut's action, without the machine's keyboard, and which of the shell's
-    // windows show right after it, before a window that loses the keys hides or folds (#237).
+    // windows show right after it, before the palette hides on losing the keys (#237).
     let shortcut = args.get("shortcut").and_then(Value::as_str);
     match shortcut {
         Some("search") => crate::palette::toggle(shell),
@@ -232,11 +232,8 @@ fn main_window(
     }
     if shortcut.is_some() || args.get("seen").is_some() {
         let seen = |role| shell.pane(role).is_some_and(crate::pane::Pane::visible);
-        let [main, palette, island] = [Role::Main, Role::Palette, Role::Island].map(seen);
-        let open = crate::island::is_open(shell);
-        return Ok(serde_json::json!(
-            { "main": main, "palette": palette, "island": island, "islandOpen": open }
-        ));
+        let [main, palette] = [Role::Main, Role::Palette].map(seen);
+        return Ok(serde_json::json!({ "main": main, "palette": palette }));
     }
     let main = shell.pane(Role::Main).ok_or("no main window")?;
     if let Some(occluded) = args.get("occluded").and_then(Value::as_bool) {
@@ -254,10 +251,7 @@ fn main_window(
     }
     match args.get("to").and_then(Value::as_str).unwrap_or_default() {
         "closed" => shell.hide_main(),
-        "minimized" => {
-            main.window.set_minimized(true);
-            crate::eris_window::main_changed(shell);
-        }
+        "minimized" => main.window.set_minimized(true),
         "front" => crate::palette::reveal_main(shell),
         other => return Err(format!("not a way to show the main window: {other}")),
     }

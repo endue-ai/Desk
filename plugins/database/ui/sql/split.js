@@ -2,8 +2,8 @@
 // except inside the BEGIN ... END body of CREATE [OR REPLACE] FUNCTION or PROCEDURE (psql's rule,
 // CASE counted inside it). MySQL and MariaDB: the current delimiter, which DELIMITER lines change;
 // under `;`, the BEGIN ... END body of CREATE PROCEDURE, FUNCTION, TRIGGER or EVENT (and MariaDB's
-// BEGIN NOT ATOMIC) stays whole, as DataGrip keeps it, since the plugin sends the script under a
-// delimiter of its own. SQLite: a `;`, except inside the BEGIN ... END of CREATE TRIGGER. Each
+// BEGIN NOT ATOMIC) stays one statement without a DELIMITER line, since the plugin sends the script
+// under a delimiter of its own. SQLite: a `;`, except inside the BEGIN ... END of CREATE TRIGGER. Each
 // statement keeps where it stands in the script, so a client's error position lands in the editor.
 
 import { tokenize } from "./lexer.js";

@@ -139,7 +139,7 @@ export function createTools(deps) {
       if (!chosen) return undefined;
       const text = formatRows(set, chosen, { ...options, ...picked() });
       view.say(
-        view.copy(text)
+        (await view.copy(text))
           ? `Copied as ${label(chosen)}.`
           : "The clipboard refused: select the grid and press Mod+C.",
       );

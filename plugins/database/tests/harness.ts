@@ -130,7 +130,7 @@ export function recordingView(): RecordingView {
     importer: (model) => void view.imports.push(model ? structuredClone(model) : null),
     nodeAt: () => undefined,
     insert: (text) => void view.inserted.push(text),
-    copy: (text) => {
+    copy: async (text) => {
       view.copied.push(text);
       return true;
     },
@@ -158,6 +158,8 @@ export async function mount(
     commands?: Commands;
     store?: Record<string, unknown>;
     init?: Record<string, unknown>;
+    /** Settings the person set, by the plugin's own key (`confirm`), as settings.list names them. */
+    settings?: Record<string, unknown>;
     /** Bridge methods served instead of the scripted clients' (the real processes, for one). */
     handlers?: Handlers;
     pick?: (args: { title: string; items: Array<{ id: string; label: string }> }) => string;
@@ -173,6 +175,7 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.database",
+    ...(options.settings ? { settings: options.settings } : {}),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
       "store.set": ({ key, value }) => {

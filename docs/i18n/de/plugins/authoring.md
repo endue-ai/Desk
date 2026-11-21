@@ -214,7 +214,7 @@ ebenso, was `surface.onUnload` behalten hat. Außerhalb des Canvas ist dreierlei
   beginnt, erreicht kein Betriebssystemfenster.
 * Was der Desk die Person fragt, erscheint im Fenster des Desks, nicht in Ihrem. `desk.palette.pick`
   holt den Desk nach vorn, und die Antwort kommt zu Ihrer Seite zurück; die Frage einer Berechtigung
-  wartet im Desk, oder in der Insel, solange der Desk nicht vorn ist.
+  wartet im Desk.
 * Eine Webansicht (`web.*`) erscheint nur im Desk: Sie endet, wenn ihr Fenster herausgeht.
 
 `desk.files.*` und `desk.buffers.*` arbeiten wie auf dem Canvas: Eine Datei, die in Ihrem Öffner

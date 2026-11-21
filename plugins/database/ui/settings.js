@@ -39,13 +39,33 @@ const KEYS = /** @type {Record<keyof Settings, { key: string, min?: number, max?
 /** The setting keys as the manifest declares them, in order. */
 export const SETTING_KEYS = Object.values(KEYS).map((entry) => entry.key);
 
+const PREFIX = "endue.database.";
+
+/** A key as the manifest names it: settings.list and settings.changed name it without the prefix. */
+export const fullKey = (/** @type {string} */ key) =>
+  key.startsWith(PREFIX) ? key : `${PREFIX}${key}`;
+
+/**
+ * The values in force by manifest key: init.yaml's (init.get), under what settings.list resolves
+ * (the default, init.yaml, then what the person set), when the core serves it.
+ * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function loadValues(bridge) {
+  const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
+  /** @type {Record<string, unknown>} */
+  const values = { ...(init.settings ?? {}) };
+  const listed = await bridge.call("settings.list", {}).catch(() => ({ settings: [] }));
+  for (const { key, value } of listed.settings ?? []) values[fullKey(key)] = value;
+  return values;
+}
+
 /**
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
  * @returns {Promise<Settings>}
  */
 export async function loadSettings(bridge) {
-  const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
-  return fromValues(init.settings ?? {});
+  return fromValues(await loadValues(bridge));
 }
 
 /**
@@ -71,4 +91,26 @@ export function fromValues(values) {
     } else if (typeof value === typeof fallback && value !== undefined) settings[name] = value;
   }
   return /** @type {Settings} */ (settings);
+}
+
+/** The settings that change which client runs: what was found is found again. */
+const CLIENT_KEYS = new Set([KEYS.psql.key, KEYS.mysql.key, KEYS.sqlite3.key, KEYS.path.key]);
+
+/**
+ * Follow the settings while the plugin runs (settings.changed for its own keys): each change
+ * goes to `apply` with the settings now in force and whether the clients are to be found again.
+ * @param {{ onChange(listener: (setting: { key: string, value: unknown }) => void): () => void } | undefined} source
+ * @param {Record<string, unknown>} values the values in force at the start (loadValues)
+ * @param {(settings: Settings, clients: boolean) => void} apply
+ * @returns {() => void} stops following
+ */
+export function followSettings(source, values, apply) {
+  let current = { ...values };
+  return (
+    source?.onChange(({ key, value }) => {
+      const name = fullKey(key);
+      current = { ...current, [name]: value };
+      apply(fromValues(current), CLIENT_KEYS.has(name));
+    }) ?? (() => {})
+  );
 }

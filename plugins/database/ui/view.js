@@ -6,6 +6,7 @@
 // and a status live region at the bottom. Mod chords other than the surface's own are never
 // prevented, so the desk's keymap gets them.
 
+import { copyText } from "./clipboard.js";
 import { el } from "./dom.js";
 import { engineOf } from "./engines/index.js";
 import { panelsOf } from "./feature-host.js";
@@ -61,20 +62,7 @@ export function createView(doc, act, features = Object.values(all)) {
   const tree = createTree(doc, byId("tree"), (action, ...args) =>
     action === "filter" ? filter.focus() : act(action, ...args),
   );
-  const copyText = (/** @type {string} */ text) => {
-    const scratch = el(doc, "textarea", { class: "offscreen", "aria-hidden": "true" });
-    scratch.textContent = text;
-    doc.body.append(scratch);
-    /** @type {HTMLTextAreaElement} */ (scratch).select();
-    let done = false;
-    try {
-      done = doc.execCommand("copy");
-    } catch {
-      done = false;
-    }
-    scratch.remove();
-    return done;
-  };
+  const copy = (/** @type {string} */ text) => copyText(doc, text);
   const grid = createGrid(doc, byId("result"), (action, ...args) => {
     if (action === "say") say(String(args[0]));
     else if (action === "editor") editorEl.focus();
@@ -87,7 +75,7 @@ export function createView(doc, act, features = Object.values(all)) {
     else return act(action, ...args);
     return undefined;
   });
-  const values = createValueViewer(doc, act, copyText, () => grid.focus());
+  const values = createValueViewer(doc, act, copy, () => grid.focus());
   const editor = createEditor(
     doc,
     { box: editorBox, editor: editorEl, layer: byId("highlight"), list: byId("complete") },
@@ -266,7 +254,7 @@ export function createView(doc, act, features = Object.values(all)) {
       editor.repaint();
       act("edited", editorEl.value);
     },
-    copy: copyText,
+    copy,
     preview(sql) {
       byId("preview-sql").textContent = sql;
       previewForm.hidden = false;

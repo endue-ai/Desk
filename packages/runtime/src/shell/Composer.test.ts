@@ -132,6 +132,22 @@ describe("the talk line", () => {
     ]);
   });
 
+  it("keeps the empty talk line open when the Desk window loses focus", () => {
+    input.focus();
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    try {
+      input.dispatchEvent(new FocusEvent("blur"));
+      expect(store.get().composer.open).toBe(true);
+    } finally {
+      hasFocus.mockRestore();
+    }
+
+    const button = document.createElement("button");
+    root.append(button);
+    button.focus();
+    expect(store.get().composer.open).toBe(false);
+  });
+
   it("navigates options with arrows and closes with Escape outside composition", () => {
     commands.mockReturnValue([{ id: "hello", title: "Hello", keywords: ["hello"] }]);
     type("hello");
