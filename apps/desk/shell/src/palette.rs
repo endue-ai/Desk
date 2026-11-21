@@ -145,7 +145,8 @@ fn register(shell: &mut Shell) {
         eprintln!("Search Desk: what its key is was not said to Settings ({why})");
     }
     if let Some(why) = refused {
-        *lock(&PENDING) = Some(shortcut::taken(&wanted, MAC, &why));
+        let language = crate::language::in_force();
+        *lock(&PENDING) = Some(shortcut::taken(language, &wanted, MAC, &why));
         if READY.load(Relaxed) {
             notice(&shell.desk.core);
         }

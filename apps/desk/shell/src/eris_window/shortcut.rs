@@ -1,6 +1,8 @@
 //! The key that summons Eris anywhere (ADR 0121): `Alt+Enter` (⌥↩ on macOS) unless
 //! `DESK_ERIS_SHORTCUT` or the setting `endue.eris.shortcut` names another, how people read it,
-//! and what the desk says when another app holds it.
+//! and what the desk says when another app holds it, in the desk's language (ADR 0276).
+
+use crate::words::{Language, filled};
 
 /// The default, which the person asked for. Slack and Excel use ⌥↩ for a new line; ADR 0121.
 pub const DEFAULT: &str = "Alt+Enter";
@@ -75,15 +77,13 @@ fn plain(key: &str) -> String {
     }
 }
 
-/// The notice when the shortcut cannot be registered: which key, why, and the two ways to reach
-/// her still (the tray, another key).
-pub fn taken(shortcut: &str, mac: bool, why: &str) -> (String, String) {
+/// The notice when the shortcut cannot be registered, in `language`: which key, why, and the two
+/// ways to reach her still (the tray, another key).
+pub fn taken(language: Language, shortcut: &str, mac: bool, why: &str) -> (String, String) {
     let key = label(shortcut, mac);
-    let title = format!("{key} cannot summon Eris");
-    let body = format!(
-        "The desk could not take {key} for Eris ({why}); another app may use it. Talk to Eris \
-         from the tray, or choose another key with endue.eris.shortcut in init.yaml or \
-         DESK_ERIS_SHORTCUT."
-    );
-    (title, body)
+    let words = [("key", key.as_str()), ("why", why)];
+    (
+        filled(language, "desk.eris.keyTaken", &words),
+        filled(language, "desk.eris.keyTakenBody", &words),
+    )
 }

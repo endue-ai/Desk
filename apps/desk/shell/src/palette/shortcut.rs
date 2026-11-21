@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use crate::eris_window::shortcut::label;
 use crate::hotkeys::PALETTE_DEFAULT;
+use crate::words::{Language, filled};
 
 /// Whose setting it is: the runtime's (`desk_web::sender::RUNTIME`).
 pub const OWNER: &str = "desk";
@@ -45,14 +46,14 @@ pub fn chosen(env: Option<&str>, setting: Option<&str>) -> String {
         .to_owned()
 }
 
-/// The notice when the key cannot be held: which key, why, and the two ways to search still.
-pub fn taken(shortcut: &str, mac: bool, why: &str) -> (String, String) {
+/// The notice when the key cannot be held, in `language`: which key, why, and the two ways to
+/// search still.
+pub fn taken(language: Language, shortcut: &str, mac: bool, why: &str) -> (String, String) {
     let key = label(shortcut, mac);
+    let words = [("key", key.as_str()), ("why", why)];
     (
-        format!("Search Desk can't use {key}"),
-        format!(
-            "{why}. Choose another key in Settings › Keyboard, or use Search Desk in the tray."
-        ),
+        filled(language, "desk.palette.keyTaken", &words),
+        filled(language, "desk.palette.keyTakenBody", &words),
     )
 }
 
@@ -60,6 +61,7 @@ pub fn taken(shortcut: &str, mac: bool, why: &str) -> (String, String) {
 mod tests {
     use super::{chosen, from_env, held_report, taken};
     use crate::hotkeys::{Action, PALETTE_DEFAULT, Table, parse};
+    use crate::words::Language;
     use serde_json::json;
 
     #[test]
@@ -120,9 +122,16 @@ mod tests {
 
     #[test]
     fn a_key_another_app_holds_is_said_in_words() {
-        let (title, body) = taken("CommandOrControl+Shift+Space", true, "another app holds it");
+        let key = "CommandOrControl+Shift+Space";
+        let (title, body) = taken(Language::En, key, true, "another app holds it");
         assert_eq!(title, "Search Desk can't use ⌘⇧Space");
         assert!(body.starts_with("another app holds it."), "{body}");
         assert!(body.contains("Settings › Keyboard"), "{body}");
+        let (title, body) = taken(Language::Ko, key, true, "another app holds it");
+        assert_eq!(title, "Desk 검색에 ⌘⇧Space 를 쓸 수 없습니다");
+        assert!(
+            body.contains("설정 › 키보드") && body.contains("Desk 검색"),
+            "{body}"
+        );
     }
 }
