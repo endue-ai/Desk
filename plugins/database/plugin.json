@@ -259,6 +259,61 @@
         "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
       },
       {
+        "id": "endue.database.er-neighbours",
+        "title": "Database: ER diagram of a table and its neighbours",
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"]
+      },
+      {
+        "id": "endue.database.er-arrange",
+        "title": "Database: auto layout of the ER diagram",
+        "keywords": ["arrange", "layout", "tidy", "erd"]
+      },
+      {
+        "id": "endue.database.er-columns",
+        "title": "Database: columns shown in the ER diagram",
+        "keywords": ["keys only", "hide columns", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-table",
+        "title": "Database: add a table to the ER diagram",
+        "keywords": ["show table", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-table",
+        "title": "Database: remove a table from the ER diagram",
+        "keywords": ["hide table", "erd"]
+      },
+      {
+        "id": "endue.database.er-expand",
+        "title": "Database: add a table's neighbours to the ER diagram",
+        "keywords": ["related tables", "foreign keys", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-schema",
+        "title": "Database: add a schema to the ER diagram",
+        "keywords": ["several schemas", "erd"]
+      },
+      {
+        "id": "endue.database.er-relation",
+        "title": "Database: draw a relation in the ER diagram",
+        "keywords": ["virtual foreign key", "not in the database", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-relation",
+        "title": "Database: remove a drawn relation from the ER diagram",
+        "keywords": ["virtual foreign key", "erd"]
+      },
+      {
+        "id": "endue.database.er-export",
+        "title": "Database: export the ER diagram as an image",
+        "keywords": ["svg", "png", "save", "picture", "erd"]
+      },
+      {
+        "id": "endue.database.er-copy-image",
+        "title": "Database: copy the ER diagram as an image",
+        "keywords": ["png", "clipboard", "picture", "erd"]
+      },
+      {
         "id": "endue.database.activity",
         "title": "Database: server activity (sessions and locks)",
         "keywords": [

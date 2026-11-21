@@ -1,10 +1,53 @@
-/* The ER diagram (item 9): boxes in the card's colours, the head tinted, links in the border
-   colour. Every colour, font, size and radius comes from the theme's --desk-* tokens; the feature
-   links this sheet itself (features/README.md). */
+/* The ER diagram (item 9, PG-55): a bar of tools over a stage that fills the panel box, its map in
+   a corner, boxes in the card's colours with the head tinted, lines and their ends in the muted
+   text colour, a drawn relation dashed. Every colour, font, size and radius comes from the theme's
+   --desk-* tokens; the feature links this sheet itself (features/README.md). */
+
+.diagram {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.er-bar {
+  flex-wrap: wrap;
+  row-gap: var(--desk-space-1);
+  padding-block: var(--desk-space-1);
+}
+
+.er-columns {
+  display: inline-flex;
+}
+
+.er-count {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.er-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-background);
+}
 
 .er {
   display: block;
+  width: 100%;
+  height: 100%;
   font: var(--desk-text-xs) var(--desk-font-mono);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.er.er-panning {
+  cursor: grabbing;
 }
 
 .er-box {
@@ -25,32 +68,92 @@
   fill: var(--desk-text);
 }
 
-.er-key {
+.er-key,
+.er-tag {
   fill: var(--desk-primary-text);
   font-weight: 600;
+}
+
+.er-tag {
+  font-size: 0.85em;
 }
 
 .er-type {
   fill: var(--desk-text-muted);
 }
 
-.er-link {
+.er-wire,
+.er-end {
   fill: none;
   stroke: var(--desk-text-muted);
   stroke-width: 1.5;
 }
 
-.er-arrow {
-  fill: var(--desk-text-muted);
+.er-ring {
+  fill: var(--desk-card);
+  stroke: var(--desk-text-muted);
+  stroke-width: 1.5;
+}
+
+.er-drawn .er-wire {
+  stroke-dasharray: 6 4;
+}
+
+/* Far out, the rows and the ends' marks are too small to read: only boxes, names and lines. */
+.er-far .er-rows,
+.er-far .er-end,
+.er-far .er-ring {
+  display: none;
 }
 
 .er-table {
   outline: none;
-  cursor: default;
+  cursor: move;
 }
 
 .er-table:focus-visible .er-box,
 .er-table:hover .er-box {
   stroke: var(--desk-ring);
   stroke-width: 2;
+}
+
+.er-link:hover .er-wire {
+  stroke: var(--desk-text);
+}
+
+.er-map {
+  position: absolute;
+  right: var(--desk-space-3);
+  bottom: var(--desk-space-3);
+  width: 180px;
+  height: 120px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  cursor: crosshair;
+}
+
+.er-map-boxes {
+  fill: var(--desk-text-muted);
+  opacity: 0.6;
+}
+
+.er-map-view {
+  fill: color-mix(in srgb, var(--desk-ring) 15%, transparent);
+  stroke: var(--desk-ring);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.er-probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.diagram > .empty {
+  margin: 0;
+  padding: var(--desk-space-3);
+  color: var(--desk-text-muted);
 }
