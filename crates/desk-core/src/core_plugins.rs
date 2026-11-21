@@ -26,8 +26,9 @@ impl Core {
         self
     }
 
-    /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares;
-    /// others ask with perm.request like anyone else. Plugins init.yaml disables start disabled.
+    /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares,
+    /// but those that only say what may be asked (`grant_installed`); others ask with perm.request
+    /// like anyone else. Plugins init.yaml disables start disabled.
     pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {
         let mut info = self.registry().install(dir, built_in);
         if self.init_disables(&info.id) {
@@ -41,9 +42,7 @@ impl Core {
                 .as_ref()
                 .and_then(|m| m.permissions.clone())
                 .unwrap_or_default();
-            for permission in permissions {
-                self.grant(&info.id, permission);
-            }
+            self.grant_installed(&info.id, permissions);
         }
         // A pack's nested plugins install with it (ADR 0108).
         info = self.install_pack(info, dir, built_in);

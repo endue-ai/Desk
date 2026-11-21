@@ -23,7 +23,9 @@
         "desk.buffers.close",
         "desk.files.reveal"
       ]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "proc:spawn", "commands": ["*"] }
   ],
   "surfaces": [
     {

@@ -120,9 +120,16 @@ On main:
 - Scopes are never widened implicitly. A scope wider than every grant is denied; the only way to add a
   grant is `perm.request`, which the person answers in the permissions plugin's prompt (with nobody
   holding `perm:manage`, the core's default prompter refuses every request). Built-in plugins hold the
-  permissions their manifests declare (`crates/desk-core/src/core_plugins.rs`), and the runtime holds
-  `plugin:manage`. The one wider scope a prompt can grant is the parent folder the core offers (below),
-  and only when the person picks that button.
+  permissions their manifests declare (`crates/desk-core/src/core_plugins.rs`), but for those holding a
+  `*` host or program or a `/**` path, and the runtime holds `plugin:manage`. The one wider scope a
+  prompt can grant is the parent folder the core offers (below), and only when the person picks that
+  button.
+- A plugin's manifest bounds it (ADR 0260, `crates/desk-core/src/declared.rs`). An installed plugin is
+  asked for, granted and allowed only scopes its `permissions` cover: anything else is refused without a
+  prompt (`perm.request` answers `undeclared`), at ask time and at every call, so a grant kept from an
+  earlier version or made by the host allows nothing undeclared. A declared `*` host or program, or
+  `/**` path, lets any value be asked at run time, never `*` itself. Callers that are not installed
+  plugins (the runtime, the CLI, agents, MCP servers) keep their own rules.
 - The prompt policy (CORE-03, `crates/desk-core/src/prompt_policy.rs`) keeps a caller from wearing the
   person down. Identical requests waiting at once share one prompt; a request one of the caller's
   lasting grants covers is answered without one; a refusal the person makes is remembered for the

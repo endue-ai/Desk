@@ -36,7 +36,7 @@
       "enum": ["once", "session", "always"]
     },
     "PermRequestResult": {
-      "description": "Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist.",
+      "description": "Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist, or a plugin and its manifest does not declare it.",
       "type": "object",
       "properties": {
         "granted": { "type": "boolean" },
@@ -47,9 +47,9 @@
       "additionalProperties": false
     },
     "RefusalReason": {
-      "description": "Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request.",
+      "description": "Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). undeclared: the caller is a plugin and no permission its manifest declares covers the request, or the request itself holds a * host or command; a plugin is never asked for, granted or allowed anything its manifest does not declare (ADR 0260). Absent from a result means the person (or the core's own prompter) refused this request.",
       "type": "string",
-      "enum": ["refused-earlier", "outside-allowlist"]
+      "enum": ["refused-earlier", "outside-allowlist", "undeclared"]
     },
     "PermQueryRequest": {
       "description": "List the caller's current grants.",
@@ -120,7 +120,7 @@
       "additionalProperties": false
     },
     "PermGrantParams": {
-      "description": "Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied.",
+      "description": "Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist, nor a plugin anything its manifest does not declare: that is permission_denied.",
       "type": "object",
       "properties": {
         "caller": {

@@ -5,7 +5,13 @@
  */
 import type { UniversalView } from "@endue-ai/bridge";
 import { defineElements } from "@endue-ai/ui/elements";
+import { moduleText } from "../../i18n/messages";
 import type { ShellCtx } from "../../shell/context";
+import en from "../messages/en.json";
+import ko from "../messages/ko.json";
+
+/** The surfaces' words; a view formats dates and numbers in `surface.locale` (ADR 0250). */
+const text = moduleText("surface", { en, ko });
 
 export function universalBody(ctx: ShellCtx, view: UniversalView): HTMLElement {
   defineElements();
@@ -14,7 +20,7 @@ export function universalBody(ctx: ShellCtx, view: UniversalView): HTMLElement {
   element.view = shown;
   element.data = "data" in source ? source.data : null;
   element.className = "sample-view";
-  element.setAttribute("locale", ctx.store.get().lang === "ko" ? "ko-KR" : "en-US");
+  element.setAttribute("locale", text(ctx.store.get().lang, "locale"));
   element.setAttribute("now", new Date(ctx.wall()).toISOString());
   element.setAttribute("state", "ready");
   return element;

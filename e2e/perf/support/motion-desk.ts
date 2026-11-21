@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, dataDir, freePort, launchCef } from "../../support/cef.ts";
 import { type BundleProcess, ofBundle } from "../lib/bundle-processes.ts";
+import { gripOf, swingRoom } from "../lib/motion.ts";
 import { session, shell, targets, until } from "./devtools.ts";
 
 export interface MotionDesk {
@@ -135,6 +136,38 @@ export async function drag(port: number, from: number[], to: number[]): Promise<
   }
   await feed([{ type: "pointerButton", button: "left", pressed: false }]);
   await delay(800);
+}
+
+/**
+ * Drag window `id` by its title bar to where a shake of ±`amp` px stays on the desk, on whole
+ * pixels (`swingRoom`), and say where to grip it then. A drop near a neighbour's edge may pull it
+ * flush (desk-wm's `MAGNET`, 10 px), so its place is read again after each drag. Throws when it
+ * has no title bar to grip or no such place.
+ */
+export async function placeToSwing(
+  port: number,
+  id: string,
+  amp: number,
+): Promise<{ at: number[] }> {
+  const read = async () => {
+    const { screen: [sw = 0] = [], windows: all } = await windows(port);
+    const w = all.find((w) => w.id === id);
+    if (!w) throw new Error(`no window ${id} on the desk: ${all.map((w) => w.id)}`);
+    const grip = gripOf(w.rect, w.titleInsets);
+    if (!grip) throw new Error(`${id} has no title bar to grip: ${w.rect}`);
+    return { rect: w.rect, sw, grip, move: swingRoom(w.rect, sw, amp) };
+  };
+  let now = await read();
+  for (let tries = 0; tries < 2 && now.move && (now.move[0] || now.move[1]); tries++) {
+    const [gx, gy] = now.grip;
+    await drag(port, now.grip, [gx + now.move[0], gy + now.move[1]]);
+    now = await read();
+  }
+  if (!now.move || Math.abs(now.move[0]) >= 1)
+    throw new Error(
+      `${id} cannot swing ±${amp} px: it is at ${now.rect.map(Math.round)} on a screen ${now.sw} wide`,
+    );
+  return { at: now.grip };
 }
 
 /** Run one shake and wait for its end in the trace. */

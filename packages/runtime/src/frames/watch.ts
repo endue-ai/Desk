@@ -38,6 +38,12 @@ export interface FrameResponses {
    */
   crashed(id: string): boolean;
   /**
+   * The CEF shell loaded its page again by itself, as it does a page that stopped painting (#157,
+   * #378): the frame is left as the shell loaded it, and what the page before it started ends as on
+   * any reload (its plugin's captures, ADR 0245). The frames installer answers it (`install.ts`).
+   */
+  loadedAgain(id: string): void;
+  /**
    * Hear every change of a surface's response, with its state: late, stopped, responding again, and
    * a frame watched from its first answer (still responding). Returns a function that stops.
    */
@@ -56,7 +62,7 @@ export interface WatchDeps {
 }
 
 export interface FrameWatch {
-  readonly responses: Omit<FrameResponses, "asleep">;
+  readonly responses: Omit<FrameResponses, "asleep" | "loadedAgain">;
   track(id: string): void;
   untrack(id: string): void;
   dispose(): void;

@@ -19,7 +19,7 @@ once, nothing sent, asked per device with `perm.request`. Results stay in the pl
 | Permission | Why |
 | --- | --- |
 | `proc:spawn` (six programs by path) | The ARP table, pings, the default route, the interface, mDNS names, the Wi-Fi report |
-| `net:connect` (one device's ports, asked each time) | The port check; not in the manifest, `perm.request` per device |
+| `net:connect` (`*`: one device's ports, asked each time) | The port check, `perm.request` per device |
 | `ui:notify` · `brain:ask` | Say a new device joined; "Explain simply" with kind, manufacturer and ports only |
 
 | Files | Purpose |

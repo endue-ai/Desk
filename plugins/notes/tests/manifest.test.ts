@@ -60,6 +60,9 @@ describe("plugin.json", () => {
           "desk.buffers.switch",
         ],
       },
+      // A note opened, chosen or saved elsewhere: asked for at run time, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
   });
 

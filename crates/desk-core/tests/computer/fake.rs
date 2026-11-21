@@ -137,12 +137,14 @@ pub fn runs(core: &Core) -> Vec<Value> {
     page.unwrap()["items"].as_array().unwrap().clone()
 }
 
-/// `example.computer` providing the agent command `example.computer.click`, holding computer:control.
+/// `example.computer` providing the agent command `example.computer.click`, declaring and holding
+/// computer:control.
 pub fn computer_plugin(core: &Core, home: &Path) {
     let dir = home.join("plugins/computer");
     fs::create_dir_all(dir.join("ui")).unwrap();
     fs::write(dir.join("ui/index.html"), "<p>computer</p>").unwrap();
     let manifest = json!({ "id": PLUGIN, "version": "0.1.0", "kind": "ui", "entry": "ui/index.html",
+        "permissions": [{ "permission": "computer:control" }],
         "contributes": { "commands": [{ "id": "example.computer.click", "title": "Click",
             "description": "Clicks.", "agent": true }] } });
     fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();

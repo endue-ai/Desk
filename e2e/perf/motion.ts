@@ -28,7 +28,6 @@ import { decodePng } from "../support/png.ts";
 import { described } from "./lib/bundle-processes.ts";
 import {
   captured,
-  gripOf,
   type Line,
   parseTrace,
   type Rect,
@@ -52,13 +51,12 @@ import { analyzeLoop, type LoopConfig, runLoop } from "./motion-loop.ts";
 import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
 import {
   bundleProcesses,
-  drag,
   endBundle,
+  placeToSwing,
   poke,
   shake,
   startDesk,
   stopDesk,
-  windows,
 } from "./support/motion-desk.ts";
 import { openFiles } from "./support/openers.ts";
 
@@ -154,25 +152,8 @@ async function once(n: number): Promise<{
   try {
     const opened = open ? await openFiles(desk, root, config.window) : undefined;
     const { amp, periodMs, stepMs, durationMs, captures, drop } = config.shake;
-    const { screen: [sw = 0] = [], windows: all } = await windows(desk.port);
-    const w = all.find((w) => w.id === config.window);
-    if (!w) throw new Error(`no window ${config.window} on the desk: ${all.map((w) => w.id)}`);
-    const [x = 0, y = 0, width = 0] = w.rect;
-    // Its title bar, clear of the icon and the tools; the window to whole pixels first.
-    const grip = gripOf(w.rect, w.titleInsets);
-    if (!grip) throw new Error(`${config.window} has no title bar to grip: ${w.rect}`);
-    const whole = [Math.round(x) - x, Math.round(y) - y];
-    if (whole[0] || whole[1]) {
-      await drag(desk.port, grip, [
-        (grip[0] ?? 0) + (whole[0] ?? 0),
-        (grip[1] ?? 0) + (whole[1] ?? 0),
-      ]);
-    }
-    const at = [Math.round(grip[0] ?? 0), Math.round(grip[1] ?? 0)];
-    if (x - amp < 0 || x + width + amp > sw)
-      throw new Error(
-        `${config.window} cannot swing ±${amp} px: it is at ${w.rect.map(Math.round)} on a screen ${sw} wide`,
-      );
+    // Its title bar, clear of the icon and the tools, where the swing has room, on whole pixels.
+    const { at } = await placeToSwing(desk.port, config.window, amp);
     const swing = { x: at[0], y: at[1], amp, periodMs, stepMs, durationMs };
     await shake(desk, { ...swing, tag: "timed" });
     const path = (name: string) => join(dir, `${name}.png`);

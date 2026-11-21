@@ -238,7 +238,7 @@ fn a_requester_that_unloads_withdraws_its_prompts() {
     let home = home("prompt-unload");
     let (core, deliveries) = prompted(&home, &["desk"]);
     grant(&core, "desk", plugin_manage());
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([notes_read()]));
     let (asked, id) = std::thread::scope(|s| {
         let asking = s.spawn(|| ask(&core, "example.hello", None));
         let prompt = wait_for(&deliveries, "perm.prompt");
