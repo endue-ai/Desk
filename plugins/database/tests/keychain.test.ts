@@ -1,8 +1,9 @@
 // A connection's password kept in the OS keychain (#443, ADR 0311), on the SDK's test host, whose
-// stub keeps db.passwords.* as the core does: the choice per connection, off by default and only for
-// PostgreSQL; a typed password kept once it works; a URI's on Save; forgotten by the command, by
-// unticking, by a new server and with the connection; the list's mark; the name db.open takes; and no
-// store key, state or answer holding the password.
+// stub keeps db.passwords.* as the core does and whose scripted server asks for a password: the
+// choice per connection, off by default and only for PostgreSQL; a typed password kept once it
+// works; a URI's on Save; a session signed in with it by name, with no prompt; forgotten by the
+// command, by unticking, by a new server and with the connection; the list's mark; and no store
+// key, state or answer holding the password.
 import { describe, expect, it } from "vitest";
 import type { Feature } from "../ui/feature-host.js";
 import * as builtins from "../ui/features/index.js";
@@ -14,8 +15,7 @@ type Deps = Parameters<NonNullable<Feature["commands"]>>[0];
 const PASSWORD = "fixture-keychain-password";
 const SHOP = SAVED[1] as (typeof SAVED)[number];
 const KEPT = { name: "c-prod", host: "db.example", port: 5432, user: "app" };
-const asks = (_sql: string, env: Record<string, string>) =>
-  env.PGPASSWORD === PASSWORD ? { rows: [["?column?"], ["1"]] } : ("auth" as const);
+const one = () => ({ rows: [["?column?"], ["1"]] });
 
 /** The plugin with a feature that hands back the deps every feature gets. */
 async function mounted(options: Parameters<typeof mount>[0] = {}) {
@@ -29,7 +29,8 @@ async function mounted(options: Parameters<typeof mount>[0] = {}) {
   };
   const m = await mount({
     store: { connections: SAVED },
-    script: asks,
+    script: one,
+    password: PASSWORD,
     pick: () => "yes",
     ...options,
     features: [...Object.values(builtins), probe],
@@ -51,6 +52,15 @@ async function typed(m: Mounted, password: string, remember: boolean) {
   await running;
   await m.settle();
 }
+
+/** The sign-ins the plugin asked the core for: whether each named a password, kept or typed. */
+const signIns = (m: Mounted) =>
+  m.host.calls
+    .filter((c) => c.method === "db.open")
+    .map((c) => {
+      const params = c.params as { password?: string; passwordRef?: string };
+      return { typed: params.password !== undefined, ref: params.passwordRef };
+    });
 
 async function edit(m: Mounted, changes: Record<string, unknown>) {
   await m.host.command("endue.database.edit-connection", { connection: "Shop" });
@@ -132,6 +142,27 @@ describe("a password kept in the keychain", () => {
     expect(await kept(removed.deps)).toEqual([]);
   });
 
+  it("signs a session in with the kept password by name, so no prompt comes once memory forgot it", async () => {
+    const { m } = await mounted();
+    await typed(m, PASSWORD, true);
+    await m.host.command("endue.database.disconnect", { connection: "Shop" });
+    const prompts = m.view.passwords.filter(Boolean).length;
+    m.view.text = "select 1";
+    await m.host.command("endue.database.run");
+    await m.settle();
+    expect(m.view.passwords.filter(Boolean)).toHaveLength(prompts);
+    expect(signIns(m).at(-1)).toEqual({ typed: false, ref: "c-prod" });
+    expect(m.shown()?.shown?.tabs[0]?.set?.rows).toEqual([["1"]]);
+    // Another server or user: the kept one is not named, and the person is asked.
+    await edit(m, { port: 6432 });
+    const asked = m.host.command("endue.database.run");
+    await m.settle();
+    expect(m.view.passwords.at(-1)).toMatchObject({ connection: "Shop" });
+    expect(signIns(m).at(-1)).toEqual({ typed: false, ref: undefined });
+    m.app.password(undefined);
+    await asked.catch(() => {});
+  });
+
   it("marks the connections whose password the keychain holds", async () => {
     const { m } = await mounted();
     const detail = (label: string) => m.view.trees.at(-1)?.find((r) => r.label === label)?.detail;
@@ -142,7 +173,7 @@ describe("a password kept in the keychain", () => {
   });
 
   it("names the kept password for db.open and never holds it: no store key, no state, no answer", async () => {
-    const { m, deps } = await mounted({ db: { password: PASSWORD, statements: [] } });
+    const { m, deps } = await mounted();
     expect(deps.manager.passwords.ref(SHOP)).toBeUndefined();
     await typed(m, PASSWORD, true);
     expect(deps.manager.passwords.ref(SHOP)).toBe("c-prod");
@@ -167,7 +198,7 @@ describe("a password kept in the keychain", () => {
     expect(JSON.stringify(m.host.state)).not.toContain(PASSWORD);
     const carriers = m.host.calls.filter((c) => JSON.stringify(c.params).includes(PASSWORD));
     expect(new Set(carriers.map((c) => c.method))).toEqual(
-      new Set(["proc.spawn", "db.passwords.set"]),
+      new Set(["db.open", "db.passwords.set"]),
     );
   });
 });
