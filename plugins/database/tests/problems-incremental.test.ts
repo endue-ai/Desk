@@ -1,6 +1,7 @@
 // The SQL problems as the person types (PG-30, ADR 0294): the worker parses only the statements that
 // changed, the page never sends a stale request, the server's answer wins over the check, and 1 MB
-// of SQL is checked in the real parse worker (in a Node worker thread) within budget.
+// of SQL is checked in the real parse worker (in a Node worker thread); its budget is
+// e2e/perf/database/script.perf.ts's.
 import { Worker } from "node:worker_threads";
 import { describe, expect, it, vi } from "vitest";
 import type { StubDatabase } from "../../../packages/bridge/src/index";
@@ -196,7 +197,8 @@ describe("SQL problems as the person types", () => {
     ]);
   });
 
-  it("1 MB of SQL is checked in the worker within budget", async () => {
+  // Its time is held by `just perf-database` (e2e/perf/database/script.perf.ts, ADR 0362).
+  it("1 MB of SQL is checked in the worker, and again only the statement edited", async () => {
     const unit = (n: number) =>
       [
         `select p.id, p.name, sum(o.total) as total from people p join orders o on o.person = p.id where p.email is not null and o.total > ${n} group by p.id, p.name order by total desc limit 10`,
@@ -210,25 +212,12 @@ describe("SQL problems as the person types", () => {
     const parser = createSqlParser(threadWorker);
     try {
       const options = { doc: "big", syntax: true, names: true };
-      const first: number[] = [];
-      const again: number[] = [];
-      for (let run = 0; run < 3; run++) {
-        const doc = `${options.doc}-${run}`;
-        let at = performance.now();
-        const done = await parser.check(script, PROBLEM_MODEL, { ...options, doc });
-        first.push(performance.now() - at);
-        expect(done.problems).toEqual([]);
-        const edited = script.replace("o.total > 7 ", "o.totl > 7 ");
-        at = performance.now();
-        const next = await parser.check(edited, PROBLEM_MODEL, { ...options, doc });
-        again.push(performance.now() - at);
-        expect(next.parsed).toBe(1);
-        expect(next.problems).toHaveLength(1);
-      }
-      const best = { first: Math.min(...first), again: Math.min(...again) };
-      console.log(`problems, 1 MB in the worker: ${JSON.stringify(best)}`);
-      expect(best.first).toBeLessThan(2000);
-      expect(best.again).toBeLessThan(300);
+      const done = await parser.check(script, PROBLEM_MODEL, options);
+      expect(done.problems).toEqual([]);
+      const edited = script.replace("o.total > 7 ", "o.totl > 7 ");
+      const next = await parser.check(edited, PROBLEM_MODEL, options);
+      expect(next.parsed).toBe(1);
+      expect(next.problems).toHaveLength(1);
     } finally {
       parser.close();
     }
