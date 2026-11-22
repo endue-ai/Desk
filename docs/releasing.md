@@ -36,9 +36,10 @@ suffixes as GitHub prereleases. Existing installer-only tags are skipped by the 
 
 ### Move installed Desk clients to endue
 
-1. Publish a signed transition build from the Desk repository. Set its `minFrom` to a supported
-   update-capable Desk version and make it available to all of those installations before the rename.
-   Keep the tag, signatures and the old GitHub repository redirect available throughout the
+1. Publish the signed transition build in the original repository, now named `endue-ai/endue`.
+   Set its `minFrom` to a supported update-capable Desk version and make it available to all of
+   those installations before publishing the first branded app. Verify the signed index and
+   manifest through the old Desk URLs. Keep the tag, signatures and GitHub redirect throughout the
    compatibility window in [ADR 0333](adr/0333-endue-product-and-installation-identity.md).
 2. For the first endue tag, set `minFrom` to the transition version. On **both tags** the signed
    `UPGRADE_PATH.json` must point to `https://github.com/endue-ai/Desk/releases/download/v<V>/release.json`.
