@@ -179,7 +179,8 @@ jobs:
         run: |
           pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build
           pnpm --filter @endue-ai/desk-app build
-          cargo build -p desk-shell -p desk-cli --bins --release --target "${{ matrix.rust }}"
+          cargo build -p desk-shell --bins --release --target "${{ matrix.rust }}"
+          cargo build -p desk-cli --bins --release --target "${{ matrix.rust }}"
       - name: Package the CEF desk with cargo-packager
         if: inputs.shell == 'cef'
         env:

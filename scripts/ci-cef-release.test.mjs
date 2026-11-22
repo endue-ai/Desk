@@ -43,7 +43,15 @@ test("release-build builds the CEF desk and refuses any other", () => {
     /node scripts\/cef-fetch\.mjs --target "\$\{\{ matrix\.rust \}\}"/u,
     "CEF by its pin and hash",
   );
-  assert.match(runs, /cargo build -p desk-shell -p desk-cli --bins --release --target/u);
+  for (const crate of ["desk-shell", "desk-cli"]) {
+    const command = `cargo build -p ${crate} --bins --release`;
+    assert.ok(runs.split("\n").includes(`${command} --target "${expr("matrix.rust")}"`));
+    assert.ok(
+      read("justfile")
+        .split("\n")
+        .some((line) => line.trim() === command),
+    );
+  }
   assert.match(
     runs,
     /cargo install cargo-packager --version 0\.11\.8 --locked/u,
