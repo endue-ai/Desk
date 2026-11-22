@@ -82,6 +82,20 @@ test("release-build builds the CEF desk and refuses any other", () => {
   );
 });
 
+test("local and hosted releases remap desktop paths before building and preserve old tags", () => {
+  const run = workflow("release-build").jobs.build.steps.find((step) =>
+    step.run?.includes("cargo build -p desk-shell"),
+  ).run;
+  for (const recipe of [run, read("justfile").split("package-shell version=")[1]]) {
+    const desktop = recipe.indexOf("source scripts/package-build-env.sh");
+    const shell = recipe.indexOf("cargo build -p desk-shell");
+    const cliEnv = recipe.indexOf("source scripts/package-cli-build-env.sh");
+    const cli = recipe.indexOf("cargo build -p desk-cli");
+    assert.ok(desktop >= 0 && desktop < shell && shell < cliEnv && cliEnv < cli);
+  }
+  assert.match(run, /if \[ -f scripts\/package-build-env\.sh \]; then/u);
+});
+
 test("a line's candidate and its final build the desk the line's commit names; canary the default, CEF", () => {
   const release = workflow("release");
   assert.match(scripts(release.jobs.gate), /\.github\/release-shell/u);
