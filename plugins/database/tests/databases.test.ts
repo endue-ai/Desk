@@ -1,10 +1,10 @@
 // PG-13: one PostgreSQL connection shows every database of its server. The explorer lists them
 // under the connection (its own first and open, templates only on request) from the schema cache's
 // pass, reads another one only when it opens, with the same password, and a database that refuses
-// says so on its own row. A console and a table view say which database they are on and switch;
-// history, starred queries and the keychain's password stay with the connection, each entry naming
-// its database; agents name a database; another database's cache is kept apart and goes with the
-// connection.
+// says so on its own row. A console and a table view say which database they are on and switch,
+// which closes the buffer's session (PG-02), asking first in a transaction; history, starred
+// queries and the keychain's password stay with the connection, each entry naming its database;
+// agents name a database; another database's cache is kept apart and goes with the connection.
 import { describe, expect, it } from "vitest";
 import { storeIdOf } from "../ui/databases.js";
 import type { Node } from "../ui/explorer.js";
@@ -15,6 +15,7 @@ import type { Script } from "./clients";
 import { databasesScript, REFUSED } from "./databases-fixture";
 import { type Mounted, mount, SAVED } from "./harness";
 import { kindOf } from "./pg-catalog";
+import { closed, run, sessionOf } from "./session-helpers";
 
 /** A first pass: the fingerprints, the nine per-schema readers, the database level's two. */
 const PASS = [
@@ -32,6 +33,7 @@ const PASS = [
   "server",
 ];
 const ANALYTICS = "c-prod/analytics";
+const table = { connection: "Shop", schema: "public", table: "people" };
 type Deps = Parameters<NonNullable<Feature["commands"]>>[0];
 
 const tree = (m: Mounted) => m.view.trees.at(-1) ?? [];
@@ -75,6 +77,7 @@ function server() {
   const seen: [string, string][] = [];
   const other: Script = (sql, who) => {
     seen.push([who.database ?? "", sql]);
+    if (sql === "select current_database()") return { rows: [["db"], [who.database ?? ""]] };
     return /^select \d/u.test(sql) ? { rows: [["n"], ["1"]] } : {};
   };
   return { seen, script: databasesScript(other) };
@@ -207,6 +210,39 @@ describe("one PostgreSQL connection shows every database of its server", () => {
     await m.host.command("endue.database.switch-database");
     expect(m.picks.at(-1)?.items.map((i) => i.label)).toEqual(["shop", "✓ analytics", "locked"]);
     expect(m.shown()).toMatchObject({ connection: "c-prod", name: "db: Shop" });
+  });
+
+  it("a switch closes the console's or table view's session, asking first in a transaction", async () => {
+    const answers: string[] = [];
+    const { m } = await mounted({ pick: () => answers.shift() ?? "" });
+    await m.host.command("endue.database.console", { connection: "Shop" });
+    await run(m, "begin");
+    const old = sessionOf(m, "begin");
+    const to = (database: string) => m.host.command("endue.database.switch-database", { database });
+    answers.push("no");
+    await expect(to("analytics")).rejects.toThrow(/Not moved/u);
+    expect(m.picks.at(-1)?.title).toBe("Move it to Shop/analytics?");
+    expect(closed(m)).not.toContain(old);
+    answers.push("yes");
+    await to("analytics");
+    await m.settle();
+    expect(closed(m)).toContain(old);
+    await run(m, "select current_database()");
+    expect(m.shown()?.shown?.tabs[0]?.set?.rows).toEqual([["analytics"]]);
+    expect(sessionOf(m, "select current_database()")).not.toBe(old);
+
+    // A table view's session closes too, without a question when it is idle.
+    await m.host.command("endue.database.open-table", table);
+    await m.settle();
+    const page = m.host.calls.find(
+      (c) =>
+        c.method === "db.run" && String((c.params as { sql: string }).sql).includes('"people"'),
+    )?.params as { sessionId: string } | undefined;
+    const asks = m.picks.length;
+    await to("analytics");
+    await m.settle();
+    expect(m.picks).toHaveLength(asks);
+    expect(closed(m)).toContain(page?.sessionId);
   });
 
   it("history and starred queries stay with the connection, the database recorded", async () => {
