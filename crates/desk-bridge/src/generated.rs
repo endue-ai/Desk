@@ -7436,6 +7436,16 @@ pub struct DbPage {
     pub data: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    /// The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event. At most 10,000 a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notices: Option<Vec<DbServerError>>,
+    /// Notices past the 10,000 a page keeps, counted and left out.
+    #[serde(
+        rename = "noticesSkipped",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub notices_skipped: Option<u64>,
 }
 
 /// One row: each value the server's text, or null.
@@ -7556,7 +7566,7 @@ pub struct DbServerError {
     pub other: Option<BTreeMap<String, String>>,
 }
 
-/// A notice the server sent, as it arrived, also while a statement runs.
+/// A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbNoticeEvent {

@@ -13,7 +13,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use crate::cancel;
 use crate::conn::{Conn, Read};
 use crate::error::{Error, ServerError, protocol};
-use crate::page::{Limits, Page, Row, Transaction};
+use crate::page::{Limits, MAX_NOTICES, Page, Row, Transaction};
 use crate::select::{Either, select};
 use crate::session::{CloseReason, CopyInput, Event, Sink, Statement};
 
@@ -115,6 +115,8 @@ pub(crate) struct Task {
     /// A message over the limit was skipped: the result it belongs to cannot be answered whole.
     pub(crate) too_large: bool,
     encoding: bool,
+    /// While a call runs, the notices it hears (they go with its page) and how many past the cap.
+    heard: Option<(Vec<ServerError>, u64)>,
 }
 
 impl Task {
@@ -135,6 +137,7 @@ impl Task {
             fatal: None,
             too_large: false,
             encoding: false,
+            heard: None,
         }
     }
 
@@ -192,6 +195,7 @@ impl Task {
     }
 
     async fn serve(&mut self, command: Command) -> Result<(), End> {
+        self.heard = Some((Vec::new(), 0));
         let (reply, outcome) = match command {
             Command::Run(statement, limits, reply) => {
                 (reply, self.run_statement(statement, limits).await)
@@ -201,15 +205,9 @@ impl Task {
         };
         let open = !matches!(self.open, Open::None);
         self.shared.open.store(open, Ordering::SeqCst);
-        match outcome {
-            Ok(page) => {
-                let _ = reply.send(Ok(page));
-                Ok(())
-            }
-            Err(Fail::Call(error)) => {
-                let _ = reply.send(Err(error));
-                Ok(())
-            }
+        let (end, answer) = match outcome {
+            Ok(page) => (None, Ok(page)),
+            Err(Fail::Call(error)) => (None, Err(error)),
             Err(Fail::End(end)) => {
                 // A statement the server ended the session over answers with the server's error.
                 let answer = match (&end, &self.fatal) {
@@ -220,14 +218,34 @@ impl Task {
                     (End::Io(why), _) => Err(Error::Io(why.clone())),
                     _ => Err(Error::Closed),
                 };
-                let _ = reply.send(answer);
-                Err(end)
+                (Some(end), answer)
+            }
+        };
+        let _ = reply.send(self.with_notices(answer));
+        end.map_or(Ok(()), Err)
+    }
+
+    /// The call's answer with the notices it heard; an answer with no page sends them to the sink
+    /// first, as the session's own, so none is lost.
+    fn with_notices(&mut self, answer: Result<Page, Error>) -> Result<Page, Error> {
+        let (notices, skipped) = self.heard.take().unwrap_or_default();
+        match answer {
+            Ok(mut page) => {
+                page.notices = notices;
+                page.notices_skipped = skipped;
+                Ok(page)
+            }
+            Err(error) => {
+                for notice in notices {
+                    (self.sink)(Event::Notice(notice));
+                }
+                Err(error)
             }
         }
     }
 
-    /// The next message that answers what was sent: notices, notifications and parameters go to
-    /// the sink as they come; a stop ends the wait.
+    /// The next message that answers what was sent: notices go with the call's page, notifications
+    /// and parameters to the sink as they come; a stop ends the wait.
     pub(crate) async fn next(&mut self) -> Result<Message, Fail> {
         loop {
             if self.shared.stopping.load(Ordering::SeqCst) {
@@ -258,13 +276,18 @@ impl Task {
         }
     }
 
-    /// Hand what arrives unasked to the sink; answer everything else. A FATAL error is kept for
-    /// the `Closed` event and still answered.
+    /// Hand what arrives unasked to the sink (a notice while a call runs to the call, ADR 0334);
+    /// answer everything else. A FATAL error is kept for the `Closed` event and still answered.
     fn absorb(&mut self, message: Message) -> Option<Message> {
         let text = |r: std::io::Result<&str>| r.map(str::to_owned).unwrap_or_default();
         match message {
             Message::NoticeResponse(body) => {
-                (self.sink)(Event::Notice(ServerError::read(body.fields())))
+                let notice = ServerError::read(body.fields());
+                match &mut self.heard {
+                    Some((kept, _)) if kept.len() < MAX_NOTICES => kept.push(notice),
+                    Some((_, skipped)) => *skipped += 1,
+                    None => (self.sink)(Event::Notice(notice)),
+                }
             }
             Message::NotificationResponse(body) => (self.sink)(Event::Notification {
                 pid: body.process_id(),

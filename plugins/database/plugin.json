@@ -1534,7 +1534,7 @@
       },
       {
         "id": "endue.database.compare-schemas",
-        "title": "Database: compare two schemas\u2026",
+        "title": "Database: compare two schemas…",
         "keywords": [
           "diff",
           "schema compare",
@@ -1609,7 +1609,7 @@
       },
       {
         "id": "endue.database.dump-schema",
-        "title": "Database: dump a schema to a folder\u2026",
+        "title": "Database: dump a schema to a folder…",
         "keywords": ["export ddl", "version control", "one file per object", "git", "schema files"],
         "args": {
           "type": "object",
@@ -1635,7 +1635,7 @@
       },
       {
         "id": "endue.database.save-schema-snapshot",
-        "title": "Database: save a schema's snapshot\u2026",
+        "title": "Database: save a schema's snapshot…",
         "keywords": ["baseline", "compare later", "schema json"],
         "args": {
           "type": "object",
@@ -2476,6 +2476,21 @@
           "additionalProperties": false
         },
         "agent": true
+      },
+      {
+        "id": "endue.database.find-objects",
+        "title": "Database: find objects by name",
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
+      },
+      {
+        "id": "endue.database.copy-name",
+        "title": "Database: copy a qualified name",
+        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
+      },
+      {
+        "id": "endue.database.palette-hide",
+        "title": "Database: hide a connection from the palette, or show it again",
+        "keywords": ["palette", "hide", "show", "search", "connection"]
       }
     ],
     "keys": [
@@ -2635,6 +2650,12 @@
         "maximum": 1440,
         "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
-    }
+    },
+    "paletteProviders": [
+      {
+        "command": "endue.database.find-objects",
+        "title": "Database objects"
+      }
+    ]
   }
 }

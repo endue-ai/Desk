@@ -106,3 +106,17 @@ export function refusedOf(/** @type {ServerError} */ error) {
 export function noticeOf(/** @type {ServerError} */ notice) {
   return [...`${notice.severity}:  ${notice.message}`.split("\n"), ...linesOf(notice)];
 }
+
+/**
+ * The lines of the notices a page carries (ADR 0334: the notices the server sent while that call
+ * ran), and how many the core left out past the 10,000 a page keeps.
+ */
+export function pageNotices(/** @type {import("@endue-ai/bridge").DbPage | undefined} */ page) {
+  const lines = (page?.notices ?? []).flatMap(noticeOf);
+  const skipped = page?.noticesSkipped ?? 0;
+  if (skipped > 0)
+    lines.push(
+      `${skipped} more notice${skipped === 1 ? " was" : "s were"} left out: a page keeps 10,000.`,
+    );
+  return lines;
+}

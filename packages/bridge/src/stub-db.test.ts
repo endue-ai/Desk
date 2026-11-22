@@ -64,6 +64,13 @@ const SCRIPT: StubDatabase = {
     },
     { sql: /pg_sleep/, waits: true },
     {
+      sql: "COMMIT WORK",
+      notices: [{ severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "during" }],
+      afterwards: [
+        { severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "from a trigger" },
+      ],
+    },
+    {
       sql: "SELECT 1/0",
       error: {
         severity: "ERROR",
@@ -142,8 +149,9 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
       ["3", "NULL"],
     ]);
     expect([first.rows.length, first.more, first.columns?.[0]?.typeOid]).toEqual([10, true, 23]);
+    expect(first.notices?.map((n) => n.message)).toEqual(["hello"]);
     await settle();
-    expect(events.find((e) => e.event === "db.notice")).toBeDefined();
+    expect(events.find((e) => e.event === "db.notice")).toBeUndefined();
     const listed = await client.call("db.list", {}, DB);
     expect(valid("DbListResult", listed) && listed.sessions[0]?.more).toBe(true);
     await client.call("db.fetch", { sessionId, pageRows: 10 }, DB);
@@ -280,6 +288,20 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
     });
     await expect(run("SELECT 1/0")).rejects.toMatchObject({ code: "not_found" });
     expect((await run("SELECT 1/0", other)).transaction).toBe("idle");
+  });
+
+  it("a statement's notices come with its page, and a notice after the answer is a db.notice event", async () => {
+    const { client, open, events, settle } = setup();
+    const sessionId = await open();
+    const done = await client.call("db.run", { sessionId, sql: "COMMIT WORK" }, DB);
+    expect(valid("DbPage", done) && done.notices?.map((n) => n.message)).toEqual(["during"]);
+    expect(events.filter((e) => e.event === "db.notice")).toEqual([]);
+    await settle();
+    await settle();
+    const late = events.filter((e) => e.event === "db.notice");
+    expect(late.map((e) => valid("BridgeEvent", e) && e.data)).toEqual([
+      { sessionId, notice: expect.objectContaining({ message: "from a trigger" }) },
+    ]);
   });
 
   it("without a scripted server, db.open is an io_error", async () => {
