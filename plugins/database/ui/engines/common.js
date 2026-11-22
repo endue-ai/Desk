@@ -18,8 +18,9 @@
  *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
  *   (ADR 0331); paths only. `searchPath` to `startup`: a PostgreSQL connection's session options,
  *   each only when set (pg-options.js).
- * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[] }} ResultSet
- *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription).
+ * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[], origins?: { table: number, column: number }[] }} ResultSet
+ *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription); `origins` each
+ *   column's table OID and column number there (0 and 0 for an expression; ctid is column -1).
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
  * @typedef {{ kind: ErrorKind, message: string, code?: string, detail?: string, position?: number }} DbError
  *   `position` is an offset in the statement's text.

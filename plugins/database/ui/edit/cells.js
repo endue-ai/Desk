@@ -46,7 +46,7 @@ function valueFor(target, col, value, inserting) {
   const column = target.columns[col];
   const name = column?.name ?? "This column";
   if (!column?.known)
-    return { error: `${name} is not a column of ${target.name}: it cannot change.` };
+    return { error: column?.why || `${name} is not a column of ${target.name}: it cannot change.` };
   const editor = column.editor;
   if (editor?.fixed) return { error: `${editor.fixed} Hide the column (h) to leave it out.` };
   if (isDefault(value)) {
