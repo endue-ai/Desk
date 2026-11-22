@@ -20,6 +20,10 @@ async function shop(pick?: Pick) {
     script: stockScript(t1),
     ...(pick ? { pick } : {}),
     handlers: {
+      "dialog.save": ({ suggestedName }) => ({
+        cancelled: false,
+        path: `~/Chosen/${suggestedName}`,
+      }),
       "fs.write": ({ path, content }) => {
         written.push({ path, content });
         return { bytesWritten: content.length };
@@ -135,7 +139,7 @@ describe("two results compared through the plugin", () => {
     // From the console, the last comparison.
     await m.host.command("endue.database.console", { connection: "Notes" });
     const path = await m.host.command("endue.database.export-difference", { format: "json" });
-    expect(path).toMatch(/^~\/Downloads\/difference-\d{8}-\d{6}\.json$/u);
+    expect(path).toMatch(/^~\/Chosen\/difference-\d{8}-\d{6}\.json$/u);
     const written = m.written.at(-1);
     expect(written?.path).toBe(path);
     expect(JSON.parse(written?.content ?? "[]").map((r: { change: string }) => r.change)).toEqual([
