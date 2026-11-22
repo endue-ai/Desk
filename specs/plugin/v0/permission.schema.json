@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/plugin/v0/permission.schema.json",
-  "title": "Desk permission vocabulary v0",
+  "title": "endue permission vocabulary v0",
   "description": "Every primitive a plugin or agent can reach, and the scope each one is limited to. Everything not granted is denied.",
   "$defs": {
     "Permission": {

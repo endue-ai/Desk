@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/update.schema.json",
-  "title": "Desk bridge v0: update",
+  "title": "endue bridge v0: update",
   "description": "The desk's own updates (ADR 0054). The desk finds the next build on its channel, downloads and verifies it at once, keeps it on disk, and switches to it only when asked. Every call needs update:manage and answers the same UpdateStatus; work runs in the background and reports through update.changed. A build that does not update itself answers unsupported.",
   "$defs": {
     "UpdateChannel": {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/shell.schema.json",
-  "title": "Desk bridge v0: shell",
+  "title": "endue bridge v0: shell",
   "description": "Hand a link to the system: open an http, https or mailto URL in its default app, or show a file in the file manager. Scoped by shell:open schemes and paths.",
   "$defs": {
     "ShellOpenRequest": {

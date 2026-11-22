@@ -1,4 +1,4 @@
-# Desk view v0
+# endue view v0
 
 A view is a surface that shows items, written as data instead of code (ADR 0032). Like a policy plugin
 (ADR 0017) it is validated at install and shared without review. A person's views are YAML files,

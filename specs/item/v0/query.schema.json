@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/item/v0/query.schema.json",
-  "title": "Desk item v0: queries",
+  "title": "endue item v0: queries",
   "description": "How items are asked for and handed over: a query (kinds, sources, full-text search, conditions, sort, cursor paging), a page of items, and the change of one item (ADR 0032).",
   "$defs": {
     "ItemQuery": {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/accessibility.schema.json",
-  "title": "Desk surface protocol v0: accessibility",
+  "title": "endue surface protocol v0: accessibility",
   "description": "Each surface exports its accessibility tree in the shape of AccessKit's TreeUpdate; the compositor grafts every surface's tree under its window's node and feeds AccessKit, so the OS sees one tree. Actions a screen reader asks for come back to the surface. See accessibility.md.",
   "$defs": {
     "SurfaceA11yNodeId": {

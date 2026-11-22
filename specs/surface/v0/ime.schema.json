@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/ime.schema.json",
-  "title": "Desk surface protocol v0: input methods",
+  "title": "endue surface protocol v0: input methods",
   "description": "The OS input method (IME) belongs to the compositor's window; the focused surface holds the text. The compositor relays the composition and the commit; the surface says when it takes text and where its caret is, for the candidate window. Ranges count UTF-16 code units. See ime.md.",
   "$defs": {
     "SurfaceUnderlineStyle": {

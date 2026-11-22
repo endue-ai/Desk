@@ -20,7 +20,7 @@ export interface CreateSessionRequest {
   client: ClientInfo;
 }
 
-/** The Desk build that talks to the brain. */
+/** The endue build that talks to the brain. */
 export interface ClientInfo {
   name: string;
   version: string;
@@ -36,7 +36,7 @@ export interface TurnRequest {
   context?: TurnContext;
 }
 
-/** What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words. */
+/** What the desk tells the brain before a turn, in the same shape for every brain (endue ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words. */
 export interface TurnContext {
   facts?: ContextFact[];
   episodes?: ContextEpisode[];
@@ -66,7 +66,7 @@ export interface WorkingContext {
   commands?: string[];
 }
 
-/** A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs. */
+/** A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; endue decides whether it runs. */
 export interface ToolDefinition {
   /** Unique among the turn's tools, for example propose_theme. */
   name: string;
@@ -128,7 +128,7 @@ export interface TextDeltaEvent {
   text: string;
 }
 
-/** The brain wants Desk to run a tool and send the result with submitToolResult. */
+/** The brain wants endue to run a tool and send the result with submitToolResult. */
 export interface ToolCallEvent {
   type: "tool.call";
   turnId: string;
@@ -141,7 +141,7 @@ export interface ToolCall {
   name: string;
   /** Tool arguments as a JSON object. */
   arguments: Record<string, unknown>;
-  /** The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool. */
+  /** The agent that asks for the tool. endue runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it endue runs only the echo tool. */
   agentId?: string;
 }
 
@@ -181,7 +181,7 @@ export interface Lease {
   ttlSeconds: number;
 }
 
-/** The Desk that holds a lease. */
+/** The endue client that holds a lease. */
 export interface LeaseHolder {
   deskId: string;
   name?: string;
@@ -206,7 +206,7 @@ export interface BrainError {
   holder?: LeaseHolder;
 }
 
-/** Whether an agent takes work. Desk shows inactive agents waiting at the edge. */
+/** Whether an agent takes work. endue shows inactive agents waiting at the edge. */
 export type AgentStatus = "active" | "inactive" | "archived";
 
 /** An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is ownerUserId, personal_color is personalColor, created_at is createdAt). */
@@ -295,7 +295,7 @@ export interface A2ATask {
   depth: number;
   maxDepth: number;
   messageCount: number;
-  /** How far the task is, from 0 to 1, when the brain knows (a Desk addition). */
+  /** How far the task is, from 0 to 1, when the brain knows (an endue addition). */
   progress?: number;
   /** Anything else the brain keeps with the task. */
   metadata?: Record<string, unknown>;
@@ -344,7 +344,7 @@ export type BrainErrorCode =
 export const brainSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://endue.ai/specs/brain/v0/brain.schema.json",
-  title: "Desk brain API 0.0.0: component schemas",
+  title: "endue brain API 0.0.0: component schemas",
   description: "Generated from specs/brain/v0/openapi.yaml components.schemas.",
   $defs: {
     Session: {
@@ -396,7 +396,7 @@ export const brainSchema = {
       additionalProperties: false,
     },
     ClientInfo: {
-      description: "The Desk build that talks to the brain.",
+      description: "The endue build that talks to the brain.",
       type: "object",
       properties: {
         name: {
@@ -443,7 +443,7 @@ export const brainSchema = {
     },
     TurnContext: {
       description:
-        "What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
+        "What the desk tells the brain before a turn, in the same shape for every brain (endue ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
       type: "object",
       properties: {
         facts: {
@@ -535,7 +535,7 @@ export const brainSchema = {
     },
     ToolDefinition: {
       description:
-        "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.",
+        "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; endue decides whether it runs.",
       type: "object",
       properties: {
         name: {
@@ -695,7 +695,7 @@ export const brainSchema = {
       additionalProperties: false,
     },
     ToolCallEvent: {
-      description: "The brain wants Desk to run a tool and send the result with submitToolResult.",
+      description: "The brain wants endue to run a tool and send the result with submitToolResult.",
       type: "object",
       properties: {
         type: {
@@ -730,7 +730,7 @@ export const brainSchema = {
         },
         agentId: {
           description:
-            "The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.",
+            "The agent that asks for the tool. endue runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it endue runs only the echo tool.",
           type: "string",
           pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$",
         },
@@ -834,7 +834,7 @@ export const brainSchema = {
       additionalProperties: false,
     },
     LeaseHolder: {
-      description: "The Desk that holds a lease.",
+      description: "The endue client that holds a lease.",
       type: "object",
       properties: {
         deskId: {
@@ -897,7 +897,7 @@ export const brainSchema = {
       additionalProperties: false,
     },
     AgentStatus: {
-      description: "Whether an agent takes work. Desk shows inactive agents waiting at the edge.",
+      description: "Whether an agent takes work. endue shows inactive agents waiting at the edge.",
       type: "string",
       enum: ["active", "inactive", "archived"],
     },
@@ -1122,7 +1122,8 @@ export const brainSchema = {
           minimum: 0,
         },
         progress: {
-          description: "How far the task is, from 0 to 1, when the brain knows (a Desk addition).",
+          description:
+            "How far the task is, from 0 to 1, when the brain knows (an endue addition).",
           type: "number",
           minimum: 0,
           maximum: 1,

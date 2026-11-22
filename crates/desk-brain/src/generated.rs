@@ -39,7 +39,7 @@ pub struct CreateSessionRequest {
     pub client: ClientInfo,
 }
 
-/// The Desk build that talks to the brain.
+/// The endue build that talks to the brain.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ClientInfo {
@@ -67,7 +67,7 @@ pub struct TurnRequest {
     pub context: Option<TurnContext>,
 }
 
-/// What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.
+/// What the desk tells the brain before a turn, in the same shape for every brain (endue ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TurnContext {
@@ -110,7 +110,7 @@ pub struct WorkingContext {
     pub commands: Option<Vec<String>>,
 }
 
-/// A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.
+/// A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; endue decides whether it runs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolDefinition {
@@ -199,7 +199,7 @@ pub struct TextDeltaEvent {
     pub text: String,
 }
 
-/// The brain wants Desk to run a tool and send the result with submitToolResult.
+/// The brain wants endue to run a tool and send the result with submitToolResult.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolCallEvent {
@@ -218,7 +218,7 @@ pub struct ToolCall {
     pub name: String,
     /// Tool arguments as a JSON object.
     pub arguments: serde_json::Map<String, serde_json::Value>,
-    /// The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.
+    /// The agent that asks for the tool. endue runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it endue runs only the echo tool.
     #[serde(rename = "agentId", default, skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
 }
@@ -288,7 +288,7 @@ pub struct Lease {
     pub ttl_seconds: u64,
 }
 
-/// The Desk that holds a lease.
+/// The endue client that holds a lease.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LeaseHolder {
@@ -331,7 +331,7 @@ pub struct BrainError {
     pub holder: Option<LeaseHolder>,
 }
 
-/// Whether an agent takes work. Desk shows inactive agents waiting at the edge.
+/// Whether an agent takes work. endue shows inactive agents waiting at the edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AgentStatus {
     #[serde(rename = "active")]
@@ -477,7 +477,7 @@ pub struct A2ATask {
     pub max_depth: u64,
     #[serde(rename = "messageCount")]
     pub message_count: u64,
-    /// How far the task is, from 0 to 1, when the brain knows (a Desk addition).
+    /// How far the task is, from 0 to 1, when the brain knows (an endue addition).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub progress: Option<f64>,
     /// Anything else the brain keeps with the task.
@@ -635,7 +635,7 @@ pub enum TurnErrorEventType {
 pub const BRAIN_SCHEMA_JSON: &str = r##"{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/brain/v0/brain.schema.json",
-  "title": "Desk brain API 0.0.0: component schemas",
+  "title": "endue brain API 0.0.0: component schemas",
   "description": "Generated from specs/brain/v0/openapi.yaml components.schemas.",
   "$defs": {
     "Session": {
@@ -697,7 +697,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "ClientInfo": {
-      "description": "The Desk build that talks to the brain.",
+      "description": "The endue build that talks to the brain.",
       "type": "object",
       "properties": {
         "name": {
@@ -749,7 +749,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "TurnContext": {
-      "description": "What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
+      "description": "What the desk tells the brain before a turn, in the same shape for every brain (endue ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
       "type": "object",
       "properties": {
         "facts": {
@@ -849,7 +849,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "ToolDefinition": {
-      "description": "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.",
+      "description": "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; endue decides whether it runs.",
       "type": "object",
       "properties": {
         "name": {
@@ -1031,7 +1031,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "ToolCallEvent": {
-      "description": "The brain wants Desk to run a tool and send the result with submitToolResult.",
+      "description": "The brain wants endue to run a tool and send the result with submitToolResult.",
       "type": "object",
       "properties": {
         "type": {
@@ -1069,7 +1069,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
           "type": "object"
         },
         "agentId": {
-          "description": "The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.",
+          "description": "The agent that asks for the tool. endue runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it endue runs only the echo tool.",
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
         }
@@ -1200,7 +1200,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "LeaseHolder": {
-      "description": "The Desk that holds a lease.",
+      "description": "The endue client that holds a lease.",
       "type": "object",
       "properties": {
         "deskId": {
@@ -1271,7 +1271,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "additionalProperties": false
     },
     "AgentStatus": {
-      "description": "Whether an agent takes work. Desk shows inactive agents waiting at the edge.",
+      "description": "Whether an agent takes work. endue shows inactive agents waiting at the edge.",
       "type": "string",
       "enum": [
         "active",
@@ -1532,7 +1532,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
           "minimum": 0
         },
         "progress": {
-          "description": "How far the task is, from 0 to 1, when the brain knows (a Desk addition).",
+          "description": "How far the task is, from 0 to 1, when the brain knows (an endue addition).",
           "type": "number",
           "minimum": 0,
           "maximum": 1

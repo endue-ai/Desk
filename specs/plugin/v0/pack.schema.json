@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/plugin/v0/pack.schema.json",
-  "title": "Desk pack v0",
+  "title": "endue pack v0",
   "description": "A pack (ADR 0108): a data-only plugin that brings a service's connector, views and layout as one. It runs no code: its pack block names the plugins it brings, the commands its Apply runs and the profile it lays out.",
   "$defs": {
     "PackBlock": {

@@ -1,6 +1,6 @@
 {
   "target": "SpaceOverviewEnvelope",
-  "description": "a space's counts, its two agents (one removed), the work going on and the newest result; lists Desk does not name are ignored",
+  "description": "a space's counts, its two agents (one removed), the work going on and the newest result; lists endue does not name are ignored",
   "instance": {
     "data": {
       "counts": { "active_work_items": 1, "open_attention_items": 1, "results": 3 },

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/studio-spaces.schema.json",
-  "title": "Desk bridge v0: studio spaces",
+  "title": "endue bridge v0: studio spaces",
   "description": "The endue AI spaces the person can open, read through endue AI's platform API (/api/v1/spaces, specs/platform/v0) with the desk's endue ID token, as endue.ai's Spaces page does (ADR 0129). studio.spaces.list lists them with their summary; studio.spaces.get reads what one space is doing: its counts, the agents taking part, the work going on, its newest results and its rooms. Read only. Every call needs studio:manage, and fails as studio.* does (signed_out, offline, forbidden, not_found). The bridge carries no person's id, no room member and no billing: the core leaves them on endue AI.",
   "$defs": {
     "StudioSpaceId": {

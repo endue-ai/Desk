@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/agents.schema.json",
-  "title": "Desk bridge v0: agents",
+  "title": "endue bridge v0: agents",
   "description": "The agent programs on this computer, served by the core (ADR 0110): Claude Code and Codex, found by their own data folders and programs, their sessions read from the files the programs keep, imported into the desk, and asked for work through their non-interactive modes. agents.list, agents.sessions and agents.transcript only read; agents.import copies sessions into the desk's own folder; agents.ask runs the program, read-only unless the call asks for agent access, and reports the run as agents.run events. Every call needs agents:manage, which the desk grants to the runtime only; agents.run and agents.changed go to its holders. Not the brain's agent directory, which brain.agents.* serves.",
   "$defs": {
     "LocalAgentId": {

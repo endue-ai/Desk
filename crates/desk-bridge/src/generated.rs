@@ -136,7 +136,7 @@ pub struct PaletteResult {
 #[serde(deny_unknown_fields)]
 pub struct PaletteAction {
     pub command: CommandId,
-    /// Shown under the results: Open in Desk.
+    /// Shown under the results: Open in endue.
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<CommandArgs>,
@@ -2936,7 +2936,7 @@ pub struct ConnectorManifest {
     pub instance_settings: Option<BTreeMap<String, ConnectorSetting>>,
 }
 
-/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).
+/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the endue profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ConnectorBinding {
     #[serde(rename = "wasm")]
@@ -3462,7 +3462,7 @@ pub struct MarketEntry {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MarketEngines {
-    /// The Desk versions, as a minimum: >=0.1.0.
+    /// The endue versions, as a minimum: >=0.1.0.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub desk: Option<String>,
 }
@@ -3491,7 +3491,7 @@ pub type BundleData = String;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InitDocument {
-    /// The format version. Default 0. Desk refuses a file with a version newer than it reads.
+    /// The format version. Default 0. endue refuses a file with a version newer than it reads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3515,7 +3515,7 @@ pub type InitProfile = String;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InitPlugins {
-    /// Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start.
+    /// Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while endue runs; the list applies again at the next start.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disabled: Option<Vec<PluginId>>,
 }
@@ -3583,7 +3583,7 @@ pub struct InitSync {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KeysFile {
-    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    /// The format version. Default 0. endue ignores a file with a version newer than it reads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u64>,
     /// The person's bindings, in order: a later one of the same key sequence wins, and "command": "" takes a sequence away from the plugins. A binding that shadows another (one sequence a prefix of the other) wins over the plugins' and the core's, and the desk lists what it shadows with this file's line (ADR 0118). Default none.
@@ -3595,7 +3595,7 @@ pub struct KeysFile {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginsLock {
-    /// The format version. Desk refuses a lock newer than it reads.
+    /// The format version. endue refuses a lock newer than it reads.
     pub version: u64,
     /// Every installed plugin that validates, sorted by id.
     pub plugins: Vec<LockedPlugin>,
@@ -3614,14 +3614,14 @@ pub struct LockedPlugin {
     pub enabled: bool,
 }
 
-/// Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).
+/// Where the plugin came from: builtin (shipped with endue), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).
 pub type LockSource = String;
 
 /// The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfileFile {
-    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    /// The format version. Default 0. endue ignores a file with a version newer than it reads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u64>,
     /// What the profile switcher shows. Default: the file name.
@@ -9175,7 +9175,7 @@ pub struct PermRequestParams {
     pub again: Option<bool>,
 }
 
-/// How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.
+/// How long a grant lasts. once: the next call it allows, then it expires. session: until endue quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GrantDuration {
     #[serde(rename = "once")]
@@ -9653,7 +9653,7 @@ pub struct PluginInfo {
     pub id: PluginId,
     pub status: PluginStatus,
     pub enabled: bool,
-    /// Shipped with Desk.
+    /// Shipped with endue.
     #[serde(rename = "builtIn")]
     pub built_in: bool,
     /// Increases every time the plugin's files change.
