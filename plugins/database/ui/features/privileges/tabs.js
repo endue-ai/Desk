@@ -4,7 +4,7 @@
 // or may only SET ROLE to, and every object it may use with where each privilege comes from.
 
 import { el } from "../../dom.js";
-import { attributeWords, grantsLine, throughWords } from "./effective.js";
+import { attributeWords, grantsLine } from "./effective.js";
 import { membersOf } from "./model.js";
 
 /**
@@ -184,12 +184,12 @@ export function roleTab(
     { class: "privileges-role" },
     top,
     v.note ? said(doc, v.note, true) : undefined,
-    powers.length ? el(doc, "h3", {}, `${s.role}…`) : undefined,
+    powers.length ? el(doc, "h3", {}, `What ${s.role} is`) : undefined,
     powers.length ? list(powers) : undefined,
     el(doc, "h3", {}, "Has the privileges of"),
     list([
       `PUBLIC, as every role does`,
-      ...inherits.map((m) => `${m.role} ${throughWords(m.path)}`),
+      ...inherits.map((m) => `${m.role} (${m.path.join(" → ")})`),
     ]),
     sets.length ? el(doc, "h3", {}, "May SET ROLE to, without inheriting") : undefined,
     sets.length ? list(sets.map((m) => `${m.role} (${m.path.join(" → ")})`)) : undefined,
@@ -197,39 +197,46 @@ export function roleTab(
     view.objects.length === 0
       ? said(doc, "Nothing is granted to it, to PUBLIC or to a role it inherits.")
       : undefined,
-    ...[...byKind].map(([kind, objects]) =>
-      el(
-        doc,
-        "table",
-        { class: "desk-table privileges-reach", "aria-label": kind },
-        el(
+    view.objects.length
+      ? el(
           doc,
-          "thead",
-          {},
+          "table",
+          { class: "desk-table privileges-reach", "aria-label": "May use" },
           el(
             doc,
-            "tr",
+            "thead",
             {},
-            el(doc, "th", { scope: "col" }, kind),
-            el(doc, "th", { scope: "col" }, "What it may do, and why"),
-          ),
-        ),
-        el(
-          doc,
-          "tbody",
-          {},
-          ...objects.map((o) =>
             el(
               doc,
               "tr",
               {},
-              el(doc, "th", { scope: "row" }, o.schema ? `${o.schema}.${o.name}` : o.name),
-              el(doc, "td", {}, grantsLine(o)),
+              el(doc, "th", { scope: "col" }, "Object"),
+              el(doc, "th", { scope: "col" }, "What it may do, and why"),
             ),
           ),
-        ),
-      ),
-    ),
+          el(
+            doc,
+            "tbody",
+            {},
+            ...[...byKind].flatMap(([kind, objects]) =>
+              objects.map((o) =>
+                el(
+                  doc,
+                  "tr",
+                  {},
+                  el(
+                    doc,
+                    "th",
+                    { scope: "row" },
+                    `${kind} ${o.schema ? `${o.schema}.${o.name}` : o.name}`,
+                  ),
+                  el(doc, "td", {}, grantsLine(o)),
+                ),
+              ),
+            ),
+          ),
+        )
+      : undefined,
     view.total > view.listed
       ? said(doc, `${view.listed} of ${view.total} grants are listed.`)
       : undefined,

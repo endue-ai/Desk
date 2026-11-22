@@ -3,8 +3,8 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 // Roles and privileges in endue.database (plugins/database/ui/features/privileges/) on the
 // fixture's scripted PostgreSQL connection `fixture-pg` (answered by privileges-fixture.ts): `p` on a
 // table opens its privileges as a matrix whose cells name their grantors, a pressed cell is counted
-// for review and its dialog shows the exact GRANT; and a new role's password is typed in a field that
-// hides it while the script shows a mask. Nothing is run: the dialogs are left with Escape.
+// for review, and its dialog shows the exact GRANT and runs it; and a new role's password is typed in a field that
+// hides it while the script shows a mask, left with Escape.
 const SURFACE = '[data-surface="endue.database"]';
 const LARGE = { width: 898, height: 558 };
 
@@ -71,9 +71,13 @@ test("p opens a table's privileges; a pressed cell is reviewed as the exact GRAN
   await expect(dialog.locator(".privileges-script")).toHaveText(
     'GRANT SELECT ON TABLE "public"."orders" TO "ana";',
   );
-  await page.keyboard.press("Escape");
+  await dialog.getByRole("button", { name: "Grant" }).focus();
+  await page.keyboard.press("Enter");
   await expect(dialog).toHaveCount(0);
-  await expect(ana).toHaveAttribute("data-state", "granted");
+  await expect(frame.locator("#status")).toHaveText("Ran 1 statement on fixture-pg.");
+  // Read again from the server, whose scripted ACL keeps what it had.
+  await expect(ana).toHaveAttribute("data-state", "none");
+  await expect(review).toHaveText("Review changes…");
 });
 
 test("a new role's password is typed in a field that hides it, and the script shows a mask", async ({

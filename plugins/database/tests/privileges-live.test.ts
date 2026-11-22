@@ -126,6 +126,22 @@ describe.skipIf(!uri)("roles and privileges on a real PostgreSQL", () => {
     expect(view.reach.map((r) => r.role)).toContain(GROUP);
     const orders = view.objects.find((o) => o.schema === "priv478" && o.name === "orders");
     expect(orders && grantsLine(orders)).toBe(`SELECT through ${GROUP} (${READER} → ${GROUP})`);
+    expect(
+      view.objects.some(
+        (o) => o.kind === "database" && /^CONNECT, TEMPORARY to PUBLIC$/u.test(grantsLine(o)),
+      ),
+    ).toBe(true);
+    await m.host.command("endue.database.change-privileges", {
+      ...on,
+      schema: "priv478",
+      name: "orders",
+      kind: "table",
+      grantee: GROUP,
+      revoke: ["SELECT"],
+    });
+    expect(
+      await value(`select has_table_privilege('${READER}', 'priv478.orders', 'SELECT')::text`),
+    ).toBe("false");
   });
 
   it("sets default privileges a new table gets, and creates and changes a policy", async () => {
