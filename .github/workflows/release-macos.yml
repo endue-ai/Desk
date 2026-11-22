@@ -168,7 +168,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-darwin-*
+          pattern: endue-app-darwin-*
           path: dist
           merge-multiple: true
       - uses: actions/download-artifact@v8
@@ -176,9 +176,14 @@ jobs:
         with:
           name: endue-linux-cli
           path: dist
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Attach the disk images and their checksums
         run: |
-          (cd dist && sha256sum endue-desk_*.dmg > SHA256SUMS-macos)
+          (cd dist && sha256sum "$DESKTOP_PREFIX"*.dmg > SHA256SUMS-macos)
           cli=()
           if [ "$CLI" = true ]; then cli+=(--cli); fi
           files="$(node scripts/release-assets.mjs files dist --version "$VERSION" "${cli[@]}")"
