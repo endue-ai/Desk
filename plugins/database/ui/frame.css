@@ -1,10 +1,12 @@
 /* The page's frame at every size (QA 06 #6, #16): the header's one row (the title, its tags and the
-   actions that fit; view-actions.js puts the rest behind More), dialogs that stay inside the page,
+   actions that fit; view-actions.js puts the rest behind More; a second row for the actions only when
+   the title's side leaves them no room), dialogs that stay inside the page,
    and the footer's one line. Every colour, font, size and radius comes from the theme's --desk-*
    tokens. */
 
 header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 6px 12px 5px;
@@ -67,7 +69,9 @@ header .tag {
 }
 
 /* The actions take the room the title leaves; the ones that do not fit are behind More, so the
-   row's width never depends on them. They are the design system's buttons at its smallest size. */
+   row's width never depends on them. When the title's side leaves them less than room for More (a
+   narrow window with a session's state, its transaction and Reconnect, PG-105), they take a row of
+   their own under it instead of sliding out of the header. They are the design system's buttons at its smallest size. */
 nav {
   --desk-button-height: var(--desk-control-xs);
   --desk-button-padding-x: var(--desk-space-2);
@@ -75,7 +79,7 @@ nav {
   flex: 1 1 0;
   justify-content: flex-end;
   gap: 4px;
-  min-width: 0;
+  min-width: calc(var(--desk-control-xs) * 4);
   overflow: hidden;
 }
 

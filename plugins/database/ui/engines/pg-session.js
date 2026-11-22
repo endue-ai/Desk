@@ -9,9 +9,14 @@
 // db.cancel, for the runs of the console on screen, or of one run its signal stops (a kept session
 // stays open); the statement timeout is the server's statement_timeout, which a kept session takes
 // again with SET when the setting changed. Every session signs in with the connection's session
-// options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). No DOM.
+// options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). A connection's
+// password command gives each new session its password, run again once when the server refuses it;
+// one through a pooler signs in with its application name alone and keeps nothing with SET (PG-14,
+// ADR 0354: auth/). No DOM.
 
-import { endpoint } from "../keychain.js";
+import { commandFor } from "../auth/fields.js";
+import { pooled, pooledSettings } from "../auth/pooler.js";
+import { keptPassword, signInWithCommand } from "../auth/sign-in.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { failedRun } from "./common.js";
@@ -65,12 +70,15 @@ export function targetOf(/** @type {Connection} */ conn) {
 export const settingsOf = (
   /** @type {number} */ timeoutMs,
   /** @type {Connection | undefined} */ conn = undefined,
-) => ({
-  application_name: APPLICATION,
-  DateStyle: "ISO",
-  ...(timeoutMs > 0 ? { statement_timeout: String(timeoutMs) } : {}),
-  ...(conn ? sessionSettings(conn) : {}),
-});
+) =>
+  conn && pooled(conn)
+    ? pooledSettings(conn, APPLICATION)
+    : {
+        application_name: APPLICATION,
+        DateStyle: "ISO",
+        ...(timeoutMs > 0 ? { statement_timeout: String(timeoutMs) } : {}),
+        ...(conn ? sessionSettings(conn) : {}),
+      };
 
 /**
  * @param {Bridge} bridge
@@ -79,12 +87,12 @@ export const settingsOf = (
  *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
  *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
  *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
- *   passphrases?: import("./pg-tls.js").Passphrases,
+ *   passphrases?: import("./pg-tls.js").Passphrases, helper?: import("../auth/helper.js").Helper,
  * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
  *   with the status line's words for its label; `idleMs` closes a session no run used that long
  *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
  *   password the keychain keeps (manager.passwords.ref, ADR 0311); `passphrases` holds and asks for
- *   key files' passphrases (ADR 0331).
+ *   key files' passphrases (ADR 0331); `helper` runs a connection's password command (ADR 0354).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
@@ -126,20 +134,6 @@ export function createSessions(bridge, options = {}) {
     return open();
   };
 
-  /** The password db.open takes: the one typed, else the kept one's name when it is for this
-   * host, port and user (endpoint(conn)), else none and the core reads the password file. */
-  const signIn = (
-    /** @type {Connection} */ conn,
-    /** @type {{ host: string, port: number, user: string }} */ target,
-    /** @type {Plan} */ plan,
-  ) => {
-    if (plan.password !== undefined) return { password: plan.password };
-    const name = kept(conn);
-    const at = endpoint(conn);
-    const fits = at.host === target.host && at.port === target.port && at.user === target.user;
-    return name && fits ? { passwordRef: name } : {};
-  };
-
   /**
    * Sign in; the session's id, or the error the run ends with.
    * @param {Connection} conn @param {Exclude<ReturnType<typeof targetOf>, string>} target @param {Plan} plan
@@ -155,26 +149,33 @@ export function createSessions(bridge, options = {}) {
       return { error: { kind: "connect", message: textOf(error) } };
     }
     const scope = /** @type {const} */ ({ permission: "db:connect", hosts: [where] });
+    const helper = commandFor(conn) && plan.password === undefined ? options.helper : undefined;
     const params = {
       engine: "postgresql",
       ...target,
-      ...signIn(conn, target, plan),
+      ...(helper ? {} : keptPassword(plan.password, kept(conn), conn, target)),
       settings: settingsOf(plan.timeoutMs, conn),
-      ...(conn.readOnly ? { readOnly: true } : {}),
+      ...(conn.readOnly && !pooled(conn) ? { readOnly: true } : {}),
       timeoutMs: SIGN_IN_MS,
       scope,
     };
     try {
-      const opened = /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
-        await granted(
-          () =>
-            tls.open(conn, secure, plan.quiet === true, (t) =>
-              call("db.open", { ...params, ...(t ? { tls: t } : {}) }),
-            ),
-          scope,
-          conn,
-        )
-      );
+      const attempt = async (/** @type {{ password?: string }} */ given) =>
+        /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
+          await granted(
+            () =>
+              tls.open(conn, secure, plan.quiet === true, (t) =>
+                call("db.open", { ...params, ...given, ...(t ? { tls: t } : {}) }),
+              ),
+            scope,
+            conn,
+          )
+        );
+      const signed = helper
+        ? await signInWithCommand(helper, (password) => attempt({ password }), conn, where)
+        : { opened: await attempt({}) };
+      if ("error" in signed) return { error: signed.error };
+      const { opened } = signed;
       if (opened.sessionId) {
         own.add(opened.sessionId);
         const failed = await runStartup(first, conn, opened.sessionId, plan.timeoutMs);
@@ -277,8 +278,10 @@ export function createSessions(bridge, options = {}) {
         if (job.cancelled) return failedRun(plan.statements, cancelled());
         job.sessionId = entry.sessionId;
         job.transaction = entry.transaction;
-        // A changed statement timeout reaches the session outside a transaction, where SET stays.
-        if (entry.timeoutMs !== plan.timeoutMs && entry.transaction === "idle") {
+        // A changed statement timeout reaches the session outside a transaction, where SET stays;
+        // through a pooler nothing stays, and the plugin's own stop holds the timeout.
+        if (pooled(conn)) entry.timeoutMs = plan.timeoutMs;
+        else if (entry.timeoutMs !== plan.timeoutMs && entry.transaction === "idle") {
           const ran = await script(job, {
             ...plan,
             mode: "run",

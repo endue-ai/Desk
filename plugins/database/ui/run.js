@@ -135,7 +135,7 @@ export function createRunner(bridge, options = {}) {
       const decision = await bridge
         .call("perm.request", {
           permission: scope,
-          reason: `To run ${command}, the database client`,
+          reason: invocation.reason ?? `To run ${command}, the database client`,
         })
         .catch(() => ({ granted: false }));
       if (!decision.granted) throw new RunError(`Not allowed to run ${command}.`, "refused");
