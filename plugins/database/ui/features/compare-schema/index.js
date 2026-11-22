@@ -8,7 +8,7 @@
 
 import { createSchemaCompare, summaryOf, TYPE } from "./controller.js";
 import { dumpOf } from "./dump.js";
-import { saveSnapshot, pickFolder, writeFolder } from "./files.js";
+import { pickFolder, saveSnapshot, writeFolder } from "./files.js";
 import { schemaComparePanel } from "./panel.js";
 import { readSchema } from "./read.js";
 import { schemaSide, sideOf } from "./sides.js";

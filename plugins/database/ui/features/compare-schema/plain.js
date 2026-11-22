@@ -15,9 +15,19 @@ import { addConstraint } from "./parse-table.js";
  */
 export function plainOf(design, schema) {
   const ctx = { schema, ours: new Set(), seq: { n: 0 } };
-  const empty = { ...design, primaryKey: null, uniques: [], checks: [], foreignKeys: [], others: [] };
+  const empty = {
+    ...design,
+    primaryKey: null,
+    uniques: [],
+    checks: [],
+    foreignKeys: [],
+    others: [],
+  };
   /** The plain part a kept one reads as, under its own id and name; undefined when it does not. */
-  const read = (/** @type {{ id: string, name: string, kept?: string }} */ part, /** @type {"primaryKey" | "uniques" | "checks" | "foreignKeys"} */ list) => {
+  const read = (
+    /** @type {{ id: string, name: string, kept?: string }} */ part,
+    /** @type {"primaryKey" | "uniques" | "checks" | "foreignKeys"} */ list,
+  ) => {
     if (part.kept === undefined) return part;
     /** @type {Design} */
     const scratch = structuredClone(empty);

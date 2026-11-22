@@ -143,11 +143,17 @@ export function rebaseText(
 }
 
 /** The tokens from i on without space and comments, the token at i first. */
-const solidAfter = (/** @type {import("../../sql/lexer.js").Token[]} */ tokens, /** @type {number} */ i) =>
-  tokens.slice(i, i + 8).filter((t) => t.type !== "space" && t.type !== "comment");
+const solidAfter = (
+  /** @type {import("../../sql/lexer.js").Token[]} */ tokens,
+  /** @type {number} */ i,
+) => tokens.slice(i, i + 8).filter((t) => t.type !== "space" && t.type !== "comment");
 
 /** A `'from.name'` regclass literal written as `'to.name'`. */
-function movedLiteral(/** @type {string} */ literal, /** @type {string} */ from, /** @type {string} */ to) {
+function movedLiteral(
+  /** @type {string} */ literal,
+  /** @type {string} */ from,
+  /** @type {string} */ to,
+) {
   const inner = literal.slice(1, -1).replaceAll("''", "'");
   const parts = inner.match(/"(?:[^"]|"")*"|[^.]+/gu) ?? [inner];
   const first = parts[0] ?? "";

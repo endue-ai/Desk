@@ -17,7 +17,13 @@ type Asked = { title: string; items: Array<{ id: string; label: string; detail?:
 async function mounted() {
   const server = schemaCompareServer();
   const files: Record<string, string> = {};
-  const state = { confirm: "yes", asked: [] as Asked[], folder: "/work/schema", snapshot: "/work/prod.schema.json", onRead: (_key: string) => {} };
+  const state = {
+    confirm: "yes",
+    asked: [] as Asked[],
+    folder: "/work/schema",
+    snapshot: "/work/prod.schema.json",
+    onRead: (_key: string) => {},
+  };
   const m = await mount({
     store: { connections: [DEV, SHOP, LOCKED] },
     script: (sql, who) => {
@@ -31,7 +37,10 @@ async function mounted() {
       return state.confirm;
     },
     handlers: {
-      "dialog.open": ({ kind }) => ({ cancelled: false, paths: [kind === "folders" ? state.folder : state.snapshot] }),
+      "dialog.open": ({ kind }) => ({
+        cancelled: false,
+        paths: [kind === "folders" ? state.folder : state.snapshot],
+      }),
       "dialog.save": () => ({ cancelled: false, path: state.snapshot }),
       "fs.list": ({ path }) => {
         const prefix = `${path.replace(/\/+$/u, "")}/`;
@@ -43,10 +52,14 @@ async function mounted() {
           }
         return { entries: [...names].map(([name, kind]) => ({ name, kind })) };
       },
-      "fs.read": ({ path }) => ({ content: files[path] ?? "", size: (files[path] ?? "").length }),
+      "fs.read": ({ path }) => ({
+        content: files[path] ?? "",
+        encoding: "utf8" as const,
+        size: (files[path] ?? "").length,
+      }),
       "fs.write": ({ path, content }) => {
         files[path] = content;
-        return {};
+        return { bytesWritten: content.length };
       },
       "fs.trash": ({ path }) => {
         delete files[path];
@@ -59,22 +72,40 @@ async function mounted() {
 
 const panel = (m: Mounted) => m.shown() as unknown as { id: string; schemaCompare: SchemaState };
 const act = (m: Mounted, name: string) =>
-  (m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)[name] as (...args: unknown[]) => Promise<unknown>;
+  (m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)[name] as (
+    ...args: unknown[]
+  ) => Promise<unknown>;
 const compare = (m: Mounted, left: object, right: object) =>
-  m.host.command("endue.database.compare-schemas", { left, right }) as Promise<Record<string, unknown>>;
+  m.host.command("endue.database.compare-schemas", { left, right }) as Promise<
+    Record<string, unknown>
+  >;
 const drawn = (m: Mounted) =>
-  m.view.consoles.map((c) => (c.model as unknown as { schemaCompare?: SchemaState } | null)?.schemaCompare).filter((s): s is SchemaState => Boolean(s));
+  m.view.consoles
+    .map((c) => (c.model as unknown as { schemaCompare?: SchemaState } | null)?.schemaCompare)
+    .filter((s): s is SchemaState => Boolean(s));
 
 describe("two schemas compared in the plugin", () => {
   it("compares two schemas of a connection in a panel, with progress and Cancel", async () => {
     const { m, state } = await mounted();
-    const got = await compare(m, { connection: "Dev", schema: "dev" }, { connection: "Dev", schema: "prod" });
-    expect(got).toMatchObject({ left: "Dev · dev", right: "Dev · prod", onlyLeft: 1, onlyRight: 0, differ: 4 });
+    const got = await compare(
+      m,
+      { connection: "Dev", schema: "dev" },
+      { connection: "Dev", schema: "prod" },
+    );
+    expect(got).toMatchObject({
+      left: "Dev · dev",
+      right: "Dev · prod",
+      onlyLeft: 1,
+      onlyRight: 0,
+      differ: 4,
+    });
     const s = panel(m).schemaCompare;
     expect(s).toMatchObject({ status: "done", target: "right", same: 2 });
     expect(s.chosen).toEqual(s.items.map((i) => i.key));
     expect(s.script?.text).toContain('CREATE TABLE "prod"."tags"');
-    expect(drawn(m).some((d) => d.status === "reading" && d.progress.what.startsWith("Dev · dev"))).toBe(true);
+    expect(
+      drawn(m).some((d) => d.status === "reading" && d.progress.what.startsWith("Dev · dev")),
+    ).toBe(true);
     expect(drawn(m).some((d) => d.status === "comparing")).toBe(true);
 
     // Cancel while the right side is read: nothing is compared.
@@ -82,17 +113,33 @@ describe("two schemas compared in the plugin", () => {
       if (key === "views" && panel(m).schemaCompare.progress.what.startsWith("Dev · prod"))
         void act(m, "schemaCompareCancel")(panel(m).id);
     };
-    await expect(m.host.command("endue.database.schema-compare-refresh")).rejects.toThrow("Not compared.");
-    expect(panel(m).schemaCompare).toMatchObject({ status: "cancelled", items: [], error: "Cancelled: nothing was compared." });
-    await expect(m.host.command("endue.database.schema-compare-run")).rejects.toThrow("Compare first");
+    await expect(m.host.command("endue.database.schema-compare-refresh")).rejects.toThrow(
+      "Not compared.",
+    );
+    expect(panel(m).schemaCompare).toMatchObject({
+      status: "cancelled",
+      items: [],
+      error: "Cancelled: nothing was compared.",
+    });
+    await expect(m.host.command("endue.database.schema-compare-run")).rejects.toThrow(
+      "Compare first",
+    );
   });
 
   it("the script never runs by itself and runs only through the guards", async () => {
     const { m, server, state } = await mounted();
-    await compare(m, { connection: "Dev", schema: "dev" }, { connection: "Locked", schema: "prod" });
+    await compare(
+      m,
+      { connection: "Dev", schema: "dev" },
+      { connection: "Locked", schema: "prod" },
+    );
     expect(server.ran).toEqual([]);
-    expect(panel(m).schemaCompare.refused).toBe("Locked is read-only: the panel shows the script and runs nothing.");
-    await expect(m.host.command("endue.database.schema-compare-run")).rejects.toThrow("Locked is read-only");
+    expect(panel(m).schemaCompare.refused).toBe(
+      "Locked is read-only: the panel shows the script and runs nothing.",
+    );
+    await expect(m.host.command("endue.database.schema-compare-run")).rejects.toThrow(
+      "Locked is read-only",
+    );
     expect(server.ran).toEqual([]);
 
     await compare(m, { connection: "Dev", schema: "dev" }, { connection: "Shop", schema: "prod" });
@@ -107,8 +154,14 @@ describe("two schemas compared in the plugin", () => {
     await compare(m, { connection: "Dev", schema: "dev" }, { connection: "Dev", schema: "prod" });
     state.confirm = "yes";
     const asked = state.asked.length;
-    const done = (await m.host.command("endue.database.schema-compare-dry-run")) as { ok: boolean; message: string };
-    expect(done).toMatchObject({ ok: true, message: expect.stringContaining("The dry run went through and rolled back") });
+    const done = (await m.host.command("endue.database.schema-compare-dry-run")) as {
+      ok: boolean;
+      message: string;
+    };
+    expect(done).toMatchObject({
+      ok: true,
+      message: expect.stringContaining("The dry run went through and rolled back"),
+    });
     expect(state.asked).toHaveLength(asked);
     const ran = m.sessions().at(-1) ?? [];
     expect(ran[0]).toBe("BEGIN");
@@ -142,7 +195,10 @@ describe("two schemas compared in the plugin", () => {
     const { m, files, state } = await mounted();
     files["/work/schema/tables/stale.sql"] = "CREATE TABLE stale (id int);\n";
     files["/work/schema/notes.sql"] = "-- kept: not a kind's folder\n";
-    const dumped = (await m.host.command("endue.database.dump-schema", { connection: "Dev", schema: "prod" })) as { files: string[]; trashed: string[] };
+    const dumped = (await m.host.command("endue.database.dump-schema", {
+      connection: "Dev",
+      schema: "prod",
+    })) as { files: string[]; trashed: string[] };
     expect(dumped.files).toEqual([
       "functions/total_of(integer).sql",
       "sequences/people_id_seq.sql",
@@ -162,18 +218,32 @@ describe("two schemas compared in the plugin", () => {
       "/work/schema/views/big_orders.sql",
     ]);
     delete files["/work/schema/notes.sql"];
-    const saved = (await m.host.command("endue.database.save-schema-snapshot", { connection: "Dev", schema: "prod" })) as { path: string };
+    const saved = (await m.host.command("endue.database.save-schema-snapshot", {
+      connection: "Dev",
+      schema: "prod",
+    })) as { path: string };
     expect(saved).toEqual({ path: state.snapshot, objects: 6 });
-    expect(JSON.parse(files[state.snapshot] ?? "{}")).toMatchObject({ format: "endue.database.schema", version: 1, schema: "prod", from: "Dev" });
+    expect(JSON.parse(files[state.snapshot] ?? "{}")).toMatchObject({
+      format: "endue.database.schema",
+      version: 1,
+      schema: "prod",
+      from: "Dev",
+    });
 
     // prod against its folder and its snapshot: the same; dev against the folder differs.
-    expect(await compare(m, { connection: "Dev", schema: "prod" }, { folder: state.folder })).toMatchObject({ onlyLeft: 0, onlyRight: 0, differ: 0 });
-    expect(await compare(m, { snapshot: state.snapshot }, { connection: "Dev", schema: "prod" })).toMatchObject({ differ: 0, onlyLeft: 0 });
+    expect(
+      await compare(m, { connection: "Dev", schema: "prod" }, { folder: state.folder }),
+    ).toMatchObject({ onlyLeft: 0, onlyRight: 0, differ: 0 });
+    expect(
+      await compare(m, { snapshot: state.snapshot }, { connection: "Dev", schema: "prod" }),
+    ).toMatchObject({ differ: 0, onlyLeft: 0 });
     const dev = await compare(m, { connection: "Dev", schema: "dev" }, { folder: state.folder });
     expect(dev).toMatchObject({ onlyLeft: 1, differ: 4 });
     expect(panel(m).schemaCompare.target).toBe("left");
     expect(panel(m).schemaCompare.refused).toContain("Type dev.mood loses glad");
     await act(m, "schemaCompareDirection")(panel(m).id);
-    expect(panel(m).schemaCompare.refused).toBe("schema (folder) is not a connection's schema: open the script in a console to keep it.");
+    expect(panel(m).schemaCompare.refused).toBe(
+      "schema (folder) is not a connection's schema: open the script in a console to keep it.",
+    );
   });
 });

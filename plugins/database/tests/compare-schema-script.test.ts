@@ -11,7 +11,8 @@ import { alterSteps } from "../ui/features/table-design/alter.js";
 import type { Design } from "../ui/features/table-design/model.js";
 import { shopFacts } from "./table-design-fixture";
 
-const files = (schema: string, text: string) => modelOfFiles(schema, [{ path: "schema.sql", text }]);
+const files = (schema: string, text: string) =>
+  modelOfFiles(schema, [{ path: "schema.sql", text }]);
 const BASE = `
   CREATE TABLE people (id int PRIMARY KEY, name text NOT NULL);
   CREATE TABLE gone (id int PRIMARY KEY, person int REFERENCES people);
@@ -31,7 +32,13 @@ const NEXT = `
 const heads = (text: string) =>
   text
     .split(/;\n/u)
-    .map((s) => s.split("\n").filter((l) => !l.startsWith("--")).join(" ").trim())
+    .map((s) =>
+      s
+        .split("\n")
+        .filter((l) => !l.startsWith("--"))
+        .join(" ")
+        .trim(),
+    )
     .filter((s) => s && s !== "BEGIN" && s !== "COMMIT" && !s.startsWith("SET LOCAL"))
     .map((s) => s.replace(/\s*\(.*$/su, "").replace(/ AS$/u, ""));
 
@@ -89,15 +96,27 @@ describe("the migration script", () => {
   });
 
   it("marks the destructive steps and holds what it cannot write", () => {
-    const source = files("app", `CREATE TYPE mood AS ENUM ('ok', 'glad'); CREATE DOMAIN positive AS int CHECK (VALUE > 0);
-      CREATE TABLE people (id int PRIMARY KEY);`);
-    const target = files("app", `CREATE TYPE mood AS ENUM ('sad', 'ok'); CREATE DOMAIN positive AS int CHECK (VALUE >= 0);
-      CREATE TABLE people (id int PRIMARY KEY, name text); CREATE TABLE gone (id int); CREATE VIEW v AS SELECT 1;`);
+    const source = files(
+      "app",
+      `CREATE TYPE mood AS ENUM ('ok', 'glad'); CREATE DOMAIN positive AS int CHECK (VALUE > 0);
+      CREATE TABLE people (id int PRIMARY KEY);`,
+    );
+    const target = files(
+      "app",
+      `CREATE TYPE mood AS ENUM ('sad', 'ok'); CREATE DOMAIN positive AS int CHECK (VALUE >= 0);
+      CREATE TABLE people (id int PRIMARY KEY, name text); CREATE TABLE gone (id int); CREATE VIEW v AS SELECT 1;`,
+    );
     const keys = compareModels(source, target).items.map((i) => i.key);
     const m = migrationOf(source, target, keys);
-    expect(m.text).toContain('-- Drops column name and its data for good.\nALTER TABLE "app"."people" DROP COLUMN "name";');
-    expect(m.text).toContain('-- Drops table app.gone and its rows for good.\nDROP TABLE "app"."gone";');
-    expect(m.text).toContain('-- Drops view app.v; anything built on it must go first.\nDROP VIEW "app"."v";');
+    expect(m.text).toContain(
+      '-- Drops column name and its data for good.\nALTER TABLE "app"."people" DROP COLUMN "name";',
+    );
+    expect(m.text).toContain(
+      '-- Drops table app.gone and its rows for good.\nDROP TABLE "app"."gone";',
+    );
+    expect(m.text).toContain(
+      '-- Drops view app.v; anything built on it must go first.\nDROP VIEW "app"."v";',
+    );
     expect(m.text).toContain("ADD VALUE 'glad' AFTER 'ok'");
     expect(m.held).toEqual([
       "Type app.mood loses sad: PostgreSQL cannot drop an enum's value. Write it in a console (a new type, the columns moved to it).",
@@ -105,23 +124,39 @@ describe("the migration script", () => {
     ]);
     expect(m.text.startsWith("-- Not written: Type app.mood loses sad")).toBe(true);
     // A type change with no cast needs USING (the table form's words); a file that did not read is held.
-    const typed = migrationOf(files("app", "CREATE TABLE t (a date);"), files("app", "CREATE TABLE t (a integer);"), ["table t"], shopFacts());
-    expect(typed.held[0]).toContain("PostgreSQL has no automatic cast from integer to date for column a");
+    const typed = migrationOf(
+      files("app", "CREATE TABLE t (a date);"),
+      files("app", "CREATE TABLE t (a integer);"),
+      ["table t"],
+      shopFacts(),
+    );
+    expect(typed.held[0]).toContain(
+      "PostgreSQL has no automatic cast from integer to date for column a",
+    );
     const unread = files("app", "CREATE TABLE t (a integer) WITH (fillfactor = 70);");
     expect(unread.notes?.[0]).toContain("schema.sql: table t: it cannot read WITH");
-    expect(migrationOf(unread, files("app", "CREATE TABLE t (a integer);"), ["table t"]).held).toEqual([
+    expect(
+      migrationOf(unread, files("app", "CREATE TABLE t (a integer);"), ["table t"]).held,
+    ).toEqual([
       "app.t is not changed by the script: schema.sql did not read (table t: it cannot read WITH (fillfactor = 70)).",
     ]);
   });
 
   it("a changed table is altered with the table form's writer", () => {
     const was = files("app", "CREATE TABLE t (id int PRIMARY KEY, code varchar(10), qty int);");
-    const now = files("app", `CREATE TABLE t (id int PRIMARY KEY, code varchar(20) NOT NULL, qty int CHECK (qty > 0), note text);
-      CREATE INDEX t_code ON t (code);`);
+    const now = files(
+      "app",
+      `CREATE TABLE t (id int PRIMARY KEY, code varchar(20) NOT NULL, qty int CHECK (qty > 0), note text);
+      CREATE INDEX t_code ON t (code);`,
+    );
     const m = migrationOf(now, was, ["table t"], shopFacts());
     const w = was.objects[0]?.table as Design;
     const facts = factsFor([...was.objects, ...now.objects], shopFacts());
-    const steps = alterSteps(w, align(w, now.objects[0]?.table as Design, { source: "app", target: "app" }), facts).steps;
+    const steps = alterSteps(
+      w,
+      align(w, now.objects[0]?.table as Design, { source: "app", target: "app" }),
+      facts,
+    ).steps;
     expect(m.steps.slice(1)).toEqual(steps);
     expect(steps.map((s) => s.sql)).toEqual([
       'ALTER TABLE "app"."t" ALTER COLUMN "code" TYPE character varying(20)',

@@ -92,7 +92,7 @@ export function schemaComparePanel(doc, s, act, buffer) {
       ),
     );
   if (s.status === "done" && s.items.length)
-    parts.push(body(doc, s, act, id), ...script(doc, s, act, id, button));
+    parts.push(body(doc, s, act, id), ...script(doc, s, button));
   return el(doc, "div", { class: "sc", "data-part": "schema-compare" }, ...parts);
 }
 
@@ -195,8 +195,6 @@ function body(
 function script(
   /** @type {Document} */ doc,
   /** @type {SchemaState} */ s,
-  /** @type {Act} */ act,
-  /** @type {string} */ id,
   /** @type {(action: string, label: string, cls?: string, off?: boolean) => HTMLElement} */ button,
 ) {
   const [source, target] = s.target === "right" ? [s.left, s.right] : [s.right, s.left];

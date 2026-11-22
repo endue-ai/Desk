@@ -115,6 +115,12 @@
   white-space: pre;
 }
 
+/* Side by side, a long statement wraps so both sides read whole. */
+.sc-ddl pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .sc-script {
   margin: 0 var(--desk-space-3);
   max-height: 40%;

@@ -9,9 +9,30 @@ import { modelOfRows } from "../ui/features/compare-schema/read.js";
 import { snapshotModel, snapshotText } from "../ui/features/compare-schema/snapshot.js";
 import { devRows, readRows } from "./compare-schema-fixture";
 
-const KEYS = ["server.version", "server.types", "server.casts", "server.roles", "server.methods", "tables", "table.table", "table.columns", "table.constraints", "table.indexes", "views", "sequences", "routines", "types", "triggers"];
+const KEYS = [
+  "server.version",
+  "server.types",
+  "server.casts",
+  "server.roles",
+  "server.methods",
+  "tables",
+  "table.table",
+  "table.columns",
+  "table.constraints",
+  "table.indexes",
+  "views",
+  "sequences",
+  "routines",
+  "types",
+  "triggers",
+];
 const served = (rows = devRows()) =>
-  modelOfRows("dev", Object.fromEntries(KEYS.map((k) => [k, (readRows(k, rows).rows ?? []).slice(1) as (string | null)[][]]))).model;
+  modelOfRows(
+    "dev",
+    Object.fromEntries(
+      KEYS.map((k) => [k, (readRows(k, rows).rows ?? []).slice(1) as (string | null)[][]]),
+    ),
+  ).model;
 
 describe("a schema in files", () => {
   it("dumps a schema to a folder, one file per object in a stable order and format", () => {
@@ -43,14 +64,21 @@ describe("a schema in files", () => {
         "",
       ].join("\n"),
     );
-    expect(files.find((f) => f.path === "types/mood.sql")?.text).toBe(`CREATE TYPE "dev"."mood" AS ENUM ('sad', 'ok', 'glad');\n`);
+    expect(files.find((f) => f.path === "types/mood.sql")?.text).toBe(
+      `CREATE TYPE "dev"."mood" AS ENUM ('sad', 'ok', 'glad');\n`,
+    );
     // The same twice, whatever order the server read them in.
     const shuffled = devRows();
     shuffled.tables = Object.fromEntries(Object.entries(shuffled.tables).reverse());
     expect(dumpOf(served(shuffled))).toEqual(files);
     // A name that is not plain lower case keeps its own file.
-    const mixed = modelOfFiles("dev", [{ path: "a.sql", text: 'CREATE TABLE "People" (id int); CREATE TABLE people (id int);' }]);
-    expect(dumpOf(mixed).map((f) => f.path)).toEqual([expect.stringMatching(/^tables\/People-[a-z0-9]+\.sql$/u), "tables/people.sql"]);
+    const mixed = modelOfFiles("dev", [
+      { path: "a.sql", text: 'CREATE TABLE "People" (id int); CREATE TABLE people (id int);' },
+    ]);
+    expect(dumpOf(mixed).map((f) => f.path)).toEqual([
+      expect.stringMatching(/^tables\/People-[a-z0-9]+\.sql$/u),
+      "tables/people.sql",
+    ]);
   });
 
   it("a dumped folder and a saved snapshot read back compare equal to the schema", () => {

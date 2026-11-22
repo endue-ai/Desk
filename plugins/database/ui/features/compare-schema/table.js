@@ -5,8 +5,8 @@
 // PostgreSQL makes up for a constraint or an index. Pure.
 
 import { qualified, quoteName } from "../../sql/quote.js";
-import { constraintSql } from "../table-design/ddl.js";
 import { createSteps } from "../table-design/create.js";
+import { constraintSql } from "../table-design/ddl.js";
 import { nameOf } from "../table-design/model.js";
 import { norm } from "./normalize.js";
 
@@ -92,7 +92,10 @@ export const tableDdl = (/** @type {Obj} */ obj, /** @type {Facts} */ facts) =>
     .join("\n\n")}\n`;
 
 /** A column's type as compared: the schema's own types without the schema. */
-const typeText = (/** @type {import("../table-design/model.js").Column} */ c, /** @type {string} */ schema) =>
+const typeText = (
+  /** @type {import("../table-design/model.js").Column} */ c,
+  /** @type {string} */ schema,
+) =>
   `${c.type.startsWith(`${schema}.`) ? c.type.slice(schema.length + 1) : c.type}${c.length.trim() ? `(${c.length.replace(/\s+/gu, "")})` : ""}${c.array ? "[]" : ""}`;
 
 /** What a constraint or an index holds, by its columns' names, without its name. */

@@ -5,13 +5,13 @@
 // panel's state. No DOM.
 
 import { compareIn } from "./client.js";
+import { openSnapshot, readFolder } from "./files.js";
 import { modelOfFiles, schemaOfFiles } from "./folder.js";
 import { migrationOf } from "./migrate.js";
 import { readSchema } from "./read.js";
 import { createRun, refusalOf } from "./run.js";
-import { snapshotModel } from "./snapshot.js";
-import { openSnapshot, readFolder } from "./files.js";
 import { connectionOf } from "./sides.js";
+import { snapshotModel } from "./snapshot.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps

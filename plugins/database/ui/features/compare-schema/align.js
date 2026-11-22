@@ -5,8 +5,8 @@
 // formatting becomes the target's text; columns keep the target's order (PostgreSQL moves none) and
 // new ones come after. The source's schema becomes the target's. Pure.
 
-import { generatedName, partKey } from "./table.js";
 import { norm } from "./normalize.js";
+import { generatedName, partKey } from "./table.js";
 
 /**
  * @typedef {import("../table-design/model.js").Design} Design

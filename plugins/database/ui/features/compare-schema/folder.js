@@ -171,7 +171,8 @@ export function modelOfFiles(schema, files) {
       } else if (/^create (or replace )?(function|procedure) /u.test(h)) {
         c.take("create");
         c.take("or", "replace");
-        const routine = c.take("procedure") ? "procedure" : (c.take("function"), "function");
+        const routine = c.take("procedure") ? "procedure" : "function";
+        c.take("function");
         const name = c.qualified();
         objects.push(
           routineObj(name.name, argTypes(c.group() ?? "", { own: schema, ours }), routine, st.text),
@@ -221,7 +222,7 @@ export function modelOfFiles(schema, files) {
           if (col) col.comment = cm.value;
         }
       } else if (h.startsWith("create")) {
-        const ix = parseIndex(st.text, ctx);
+        const ix = parseIndex(st.text);
         const t = tables.get(ix.table.name)?.read.design;
         if (!t || !own(ix.table))
           throw new Error(`an index on ${ix.table.name}, which no file creates`);

@@ -12,7 +12,7 @@ import { insideText } from "../table-design/script.js";
 import { MARKS as TABLE_MARKS } from "../table-design/words.js";
 import { align } from "./align.js";
 import { factsFor, keyOf } from "./model.js";
-import { rebaseText, norm } from "./normalize.js";
+import { norm, rebaseText } from "./normalize.js";
 import { sequenceClauses } from "./objects.js";
 import { createOrder, dropOrder } from "./order.js";
 import { foreignSteps, tableSteps } from "./table.js";

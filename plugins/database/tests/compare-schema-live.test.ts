@@ -54,7 +54,9 @@ async function setUp() {
   for (const s of [AHEAD, BEHIND]) await admin(`DROP SCHEMA IF EXISTS ${s} CASCADE`);
   await many(AHEAD_SQL);
   await many(COMMON(BEHIND));
-  await many(`INSERT INTO ${BEHIND}.people (name) VALUES ('Ada'); INSERT INTO ${BEHIND}.orders (person, total) VALUES (1, 12.5)`);
+  await many(
+    `INSERT INTO ${BEHIND}.people (name) VALUES ('Ada'); INSERT INTO ${BEHIND}.orders (person, total) VALUES (1, 12.5)`,
+  );
 }
 
 async function plugin() {
@@ -68,7 +70,7 @@ async function plugin() {
       ...procs.handlers,
       "fs.list": ({ path }) => {
         const prefix = `${path}/`;
-        const names = new Map<string, string>();
+        const names = new Map<string, "file" | "dir">();
         for (const p of Object.keys(files))
           if (p.startsWith(prefix)) {
             const [first, ...rest] = p.slice(prefix.length).split("/");
@@ -76,17 +78,18 @@ async function plugin() {
           }
         return { entries: [...names].map(([name, kind]) => ({ name, kind })) };
       },
-      "fs.read": ({ path }) => ({ content: files[path] ?? "" }),
+      "fs.read": ({ path }) => ({ content: files[path] ?? "", encoding: "utf8" as const }),
       "fs.write": ({ path, content }) => {
         files[path] = content;
-        return {};
+        return { bytesWritten: content.length };
       },
     },
   });
   procs.attach((event) => m.host.emit(event));
   return { m, files };
 }
-const state = (m: Mounted) => (m.shown() as unknown as { schemaCompare: SchemaState }).schemaCompare;
+const state = (m: Mounted) =>
+  (m.shown() as unknown as { schemaCompare: SchemaState }).schemaCompare;
 
 afterAll(async () => {
   if (!uri) return;
@@ -117,7 +120,10 @@ describe.skipIf(!uri)("two schemas compared on a real PostgreSQL", () => {
       "left trigger orders.orders_touch",
     ]);
     expect(state(m).script?.held).toEqual([]);
-    const ran = (await m.host.command("endue.database.schema-compare-run")) as { ok: boolean; message: string };
+    const ran = (await m.host.command("endue.database.schema-compare-run")) as {
+      ok: boolean;
+      message: string;
+    };
     expect(ran).toMatchObject({ ok: true });
     expect(ran.message).toContain("No difference is left.");
     expect(state(m)).toMatchObject({ status: "done", items: [] });
@@ -125,7 +131,11 @@ describe.skipIf(!uri)("two schemas compared on a real PostgreSQL", () => {
     expect(await admin(`SELECT name FROM ${BEHIND}.people`)).toBe("Ada");
 
     // Dumped to a folder, the schema compares equal to it.
-    const dumped = (await m.host.command("endue.database.dump-schema", { connection: "live", schema: AHEAD, folder: "/dump" })) as { files: string[] };
+    const dumped = (await m.host.command("endue.database.dump-schema", {
+      connection: "live",
+      schema: AHEAD,
+      folder: "/dump",
+    })) as { files: string[] };
     expect(dumped.files).toContain("tables/people.sql");
     expect(Object.keys(files)).toHaveLength(dumped.files.length);
     const back = await m.host.command("endue.database.compare-schemas", {

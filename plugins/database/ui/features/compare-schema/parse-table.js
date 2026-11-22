@@ -28,7 +28,6 @@ const COLUMN_STOP = new Set([
   "generated",
   "collate",
 ]);
-const FK_STOP = new Set(["on", "deferrable", "not", "initially", "match"]);
 const next = (/** @type {Ctx} */ ctx, /** @type {string} */ p) => `${p}${++ctx.seq.n}`;
 
 /** A referential action: `ON DELETE SET NULL`. */
@@ -212,7 +211,7 @@ const plainKey = (/** @type {string} */ key) =>
     (cursor(key).one() !== "" && cursor(key).peek(1) === ""));
 
 /** CREATE INDEX: its table, and the index (kept as written when the form cannot write it). */
-export function parseIndex(/** @type {string} */ text, /** @type {Ctx} */ ctx) {
+export function parseIndex(/** @type {string} */ text) {
   const c = cursor(text);
   c.take("create");
   const unique = c.take("unique");

@@ -4,10 +4,10 @@
 // `schema.name` (the table form's labels, features/table-design/types.js). A routine's arguments
 // read as their types, as DROP FUNCTION takes them (the schema's own types unqualified). Pure.
 
+import { tokenize } from "../../sql/lexer.js";
+import { typeSql } from "../table-design/types.js";
 import { factsFor } from "./model.js";
 import { nameOf } from "./normalize.js";
-import { typeSql } from "../table-design/types.js";
-import { tokenize } from "../../sql/lexer.js";
 
 /** What each alias is, as format_type writes it. */
 const ALIASES = /** @type {Record<string, string>} */ ({

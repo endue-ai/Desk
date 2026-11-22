@@ -3,7 +3,7 @@
 // views, a trigger's table and function), the kinds' order where nothing decides, and a cycle broken
 // at the first object by kind and name. Drops go in the reverse order. Pure.
 
-import { keyOf, KINDS } from "./model.js";
+import { KINDS, keyOf } from "./model.js";
 import { namesIn } from "./normalize.js";
 
 /** @typedef {import("./model.js").Obj} Obj */

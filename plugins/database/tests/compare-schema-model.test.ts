@@ -7,11 +7,33 @@ import { modelOfFiles } from "../ui/features/compare-schema/folder.js";
 import { modelOfRows } from "../ui/features/compare-schema/read.js";
 import { devRows, prodRows, readRows } from "./compare-schema-fixture";
 
-const KEYS = ["server.version", "server.types", "server.casts", "server.roles", "server.methods", "tables", "table.table", "table.columns", "table.constraints", "table.indexes", "views", "sequences", "routines", "types", "triggers"];
+const KEYS = [
+  "server.version",
+  "server.types",
+  "server.casts",
+  "server.roles",
+  "server.methods",
+  "tables",
+  "table.table",
+  "table.columns",
+  "table.constraints",
+  "table.indexes",
+  "views",
+  "sequences",
+  "routines",
+  "types",
+  "triggers",
+];
 /** A fixture schema read as the server answers it. */
 const served = (schema: string, rows: ReturnType<typeof prodRows>) =>
-  modelOfRows(schema, Object.fromEntries(KEYS.map((k) => [k, (readRows(k, rows).rows ?? []).slice(1) as (string | null)[][]]))).model;
-const files = (schema: string, text: string) => modelOfFiles(schema, [{ path: "schema.sql", text }]);
+  modelOfRows(
+    schema,
+    Object.fromEntries(
+      KEYS.map((k) => [k, (readRows(k, rows).rows ?? []).slice(1) as (string | null)[][]]),
+    ),
+  ).model;
+const files = (schema: string, text: string) =>
+  modelOfFiles(schema, [{ path: "schema.sql", text }]);
 
 describe("two schemas compared", () => {
   it("lists objects on one side only and objects that differ, each with its DDL on both sides", () => {
@@ -65,14 +87,22 @@ describe("two schemas compared", () => {
     );
     expect(compareModels(a, b).items).toEqual([]);
     // The schema's own name is no difference either.
-    const c = files("live", `CREATE TABLE live.people (id int PRIMARY KEY, name text NOT NULL, code varchar(12) UNIQUE, CHECK (length(name) > 0));
+    const c = files(
+      "live",
+      `CREATE TABLE live.people (id int PRIMARY KEY, name text NOT NULL, code varchar(12) UNIQUE, CHECK (length(name) > 0));
       CREATE INDEX people_name ON live.people (name); CREATE INDEX people_lower ON live.people (lower(name));
-      CREATE VIEW live.named AS SELECT name FROM live.people;`);
+      CREATE VIEW live.named AS SELECT name FROM live.people;`,
+    );
     expect(compareModels(a, c).items).toEqual([]);
     // A name chosen for a constraint is: renamed, it differs.
-    const d = files("app", `CREATE TABLE people (id int CONSTRAINT people_id PRIMARY KEY, name text NOT NULL, code varchar(12) UNIQUE, CHECK (length(name) > 0));
+    const d = files(
+      "app",
+      `CREATE TABLE people (id int CONSTRAINT people_id PRIMARY KEY, name text NOT NULL, code varchar(12) UNIQUE, CHECK (length(name) > 0));
       CREATE INDEX people_name ON people (name); CREATE INDEX people_lower ON people (lower(name));
-      CREATE VIEW named AS SELECT name FROM people;`);
-    expect(compareModels(a, d).items.map((i) => [i.name, i.state])).toEqual([["people", "differs"]]);
+      CREATE VIEW named AS SELECT name FROM people;`,
+    );
+    expect(compareModels(a, d).items.map((i) => [i.name, i.state])).toEqual([
+      ["people", "differs"],
+    ]);
   });
 });

@@ -8,7 +8,10 @@ import { CASTS, column, METHODS, ROLES, TYPES } from "./table-design-fixture";
 
 type Row = (string | null)[];
 export interface SchemaRows {
-  tables: Record<string, { oid: string; table: Row; columns: Row[]; constraints: Row[]; indexes: Row[] }>;
+  tables: Record<
+    string,
+    { oid: string; table: Row; columns: Row[]; constraints: Row[]; indexes: Row[] }
+  >;
   views: Row[];
   sequences: Row[];
   routines: Row[];
@@ -16,7 +19,15 @@ export interface SchemaRows {
   triggers: Row[];
 }
 
-const con = (oid: string, type: string, name: string, cols: string, expr: string, def: string, ref: [string, string, string] = ["", "", "[]"]): Row => [oid, type, name, cols, expr, ...ref, "a", "a", "false", def, "false"];
+const con = (
+  oid: string,
+  type: string,
+  name: string,
+  cols: string,
+  expr: string,
+  def: string,
+  ref: [string, string, string] = ["", "", "[]"],
+): Row => [oid, type, name, cols, expr, ...ref, "a", "a", "false", def, "false"];
 
 const FN = (schema: string) =>
   `CREATE OR REPLACE FUNCTION ${schema}.total_of(p integer)\n RETURNS numeric\n LANGUAGE sql\nAS $function$ select sum(total) from ${schema}.orders where person = p $function$\n`;
@@ -24,7 +35,10 @@ const FN = (schema: string) =>
 /** prod: people, orders, a sequence, an enum, a view, a function and a trigger. */
 export function prodRows(schema = "prod"): SchemaRows {
   const peopleCols = [
-    column(1, "id", "integer", { notNull: true, expression: `nextval('${schema}.people_id_seq'::regclass)` }),
+    column(1, "id", "integer", {
+      notNull: true,
+      expression: `nextval('${schema}.people_id_seq'::regclass)`,
+    }),
     column(2, "name", "text", { notNull: true }),
     column(3, "joined", "timestamp with time zone", { expression: "now()" }),
   ];
@@ -35,21 +49,53 @@ export function prodRows(schema = "prod"): SchemaRows {
         table: ["20001", "r", "app", "Who buys", "", "false"],
         columns: peopleCols,
         constraints: [con("20010", "p", "people_pkey", "[1]", "", "PRIMARY KEY (id)")],
-        indexes: [["20011", "people_name", "btree", "false", '[[2,""]]', "", "false", `CREATE INDEX people_name ON ${schema}.people USING btree (name)`]],
+        indexes: [
+          [
+            "20011",
+            "people_name",
+            "btree",
+            "false",
+            '[[2,""]]',
+            "",
+            "false",
+            `CREATE INDEX people_name ON ${schema}.people USING btree (name)`,
+          ],
+        ],
       },
       orders: {
         oid: "20002",
         table: ["20002", "r", "app", "", "", "false"],
-        columns: [column(1, "id", "integer", { notNull: true, identity: "a" }), column(2, "person", "integer"), column(3, "total", "numeric", { length: "10,2" })],
+        columns: [
+          column(1, "id", "integer", { notNull: true, identity: "a" }),
+          column(2, "person", "integer"),
+          column(3, "total", "numeric", { length: "10,2" }),
+        ],
         constraints: [
-          con("20020", "c", "orders_total_check", "[3]", "total >= 0::numeric", "CHECK (total >= 0::numeric)"),
-          con("20021", "f", "orders_person_fkey", "[2]", "", "FOREIGN KEY (person) REFERENCES people(id)", [schema, "people", '["id"]']),
+          con(
+            "20020",
+            "c",
+            "orders_total_check",
+            "[3]",
+            "total >= 0::numeric",
+            "CHECK (total >= 0::numeric)",
+          ),
+          con(
+            "20021",
+            "f",
+            "orders_person_fkey",
+            "[2]",
+            "",
+            "FOREIGN KEY (person) REFERENCES people(id)",
+            [schema, "people", '["id"]'],
+          ),
           con("20022", "p", "orders_pkey", "[1]", "", "PRIMARY KEY (id)"),
         ],
         indexes: [],
       },
     },
-    views: [["big_orders", "v", " SELECT id,\n    total\n   FROM orders\n  WHERE total > 100::numeric;"]],
+    views: [
+      ["big_orders", "v", " SELECT id,\n    total\n   FROM orders\n  WHERE total > 100::numeric;"],
+    ],
     sequences: [["people_id_seq", "integer", "1", "1", "1", "2147483647", "1", "false"]],
     routines: [["total_of", "p integer", "f", FN(schema)]],
     types: [["mood", "e", '["sad","ok"]', "", "false", "[]"]],
@@ -64,15 +110,39 @@ export function devRows(schema = "dev"): SchemaRows {
   const orders = rows.tables.orders;
   if (!people || !orders) throw new Error("fixture");
   people.columns.push(column(4, "email", "text", { comment: "Where receipts go" }));
-  orders.constraints[0] = con("20020", "c", "orders_total_check", "[3]", "total > 0::numeric", "CHECK (total > 0::numeric)");
+  orders.constraints[0] = con(
+    "20020",
+    "c",
+    "orders_total_check",
+    "[3]",
+    "total > 0::numeric",
+    "CHECK (total > 0::numeric)",
+  );
   rows.tables.tags = {
     oid: "20003",
     table: ["20003", "r", "app", "", "", "false"],
-    columns: [column(1, "id", "integer", { notNull: true }), column(2, "person", "integer"), column(3, "label", "text", { notNull: true })],
-    constraints: [con("20030", "f", "tags_person_fkey", "[2]", "", "FOREIGN KEY (person) REFERENCES people(id)", [schema, "people", '["id"]']), con("20031", "p", "tags_pkey", "[1]", "", "PRIMARY KEY (id)")],
+    columns: [
+      column(1, "id", "integer", { notNull: true }),
+      column(2, "person", "integer"),
+      column(3, "label", "text", { notNull: true }),
+    ],
+    constraints: [
+      con(
+        "20030",
+        "f",
+        "tags_person_fkey",
+        "[2]",
+        "",
+        "FOREIGN KEY (person) REFERENCES people(id)",
+        [schema, "people", '["id"]'],
+      ),
+      con("20031", "p", "tags_pkey", "[1]", "", "PRIMARY KEY (id)"),
+    ],
     indexes: [],
   };
-  rows.views = [["big_orders", "v", " SELECT id,\n    total\n   FROM orders\n  WHERE total > 500::numeric;"]];
+  rows.views = [
+    ["big_orders", "v", " SELECT id,\n    total\n   FROM orders\n  WHERE total > 500::numeric;"],
+  ];
   rows.types = [["mood", "e", '["sad","ok","glad"]', "", "false", "[]"]];
   return rows;
 }
@@ -91,7 +161,10 @@ export function readOf(sql: string) {
 export function readRows(key: string, s: SchemaRows | undefined): Answer {
   const tables = Object.entries(s?.tables ?? {});
   const own = (rows: (t: SchemaRows["tables"][string]) => Row[], n: number) =>
-    answer(tables.flatMap(([, t]) => rows(t).map((r) => [...r, t.oid])), n + 1);
+    answer(
+      tables.flatMap(([, t]) => rows(t).map((r) => [...r, t.oid])),
+      n + 1,
+    );
   switch (key) {
     case "server.version":
       return answer([["170006"]], 1);
@@ -100,11 +173,20 @@ export function readRows(key: string, s: SchemaRows | undefined): Answer {
     case "server.casts":
       return answer(CASTS, 3);
     case "server.roles":
-      return answer(ROLES.map((r) => [r]), 1);
+      return answer(
+        ROLES.map((r) => [r]),
+        1,
+      );
     case "server.methods":
-      return answer(METHODS.map((m) => [m]), 1);
+      return answer(
+        METHODS.map((m) => [m]),
+        1,
+      );
     case "tables":
-      return answer(tables.map(([name, t]) => [t.oid, name]), 2);
+      return answer(
+        tables.map(([name, t]) => [t.oid, name]),
+        2,
+      );
     case "table.table":
       return own((t) => [t.table], 6);
     case "table.columns":
@@ -132,7 +214,10 @@ export function readRows(key: string, s: SchemaRows | undefined): Answer {
  * The scripted server: the comparison's reads of `schemas`, and the DDL a run sends recorded in
  * `ran`; `other` answers the rest.
  */
-export function schemaCompareServer(other: Script = () => ({}), schemas: Record<string, SchemaRows> = { dev: devRows(), prod: prodRows() }) {
+export function schemaCompareServer(
+  other: Script = () => ({}),
+  schemas: Record<string, SchemaRows> = { dev: devRows(), prod: prodRows() },
+) {
   const ran: string[] = [];
   const script: Script = (sql, who) => {
     const read = readOf(sql);

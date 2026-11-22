@@ -44,7 +44,10 @@ export const SERVER_READS = /** @type {Read[]} */ ([
 /** The reads of an existing table, after the server's. */
 export function tableReads(/** @type {string} */ schema, /** @type {string} */ name) {
   const rel = `pg_catalog.to_regclass(${quoteText(PG, qualified(PG, schema, name))})`;
-  return relationReads((column) => `${column} = ${rel}`, () => "");
+  return relationReads(
+    (column) => `${column} = ${rel}`,
+    () => "",
+  );
 }
 
 /**

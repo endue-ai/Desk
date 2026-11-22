@@ -3,7 +3,7 @@
 // difference (normalize.js, table.js) leaves an object out: formatting, order, the schema's own name,
 // names PostgreSQL makes up. Pure; the worker (worker.js) runs it past a few thousand objects.
 
-import { keyOf, KINDS, sorted } from "./model.js";
+import { KINDS, keyOf, sorted } from "./model.js";
 import { norm } from "./normalize.js";
 import { tableSignature } from "./table.js";
 
