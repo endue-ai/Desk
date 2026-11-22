@@ -7,11 +7,11 @@ feature adds its line to the area it belongs to, or a section for a new area; it
 The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
 what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
-Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
-a change to a client's program or the `path` setting finds the clients again.
+Settings are read through `settings.get` and followed through `settings.changed`, in force with no reload; a
+wrong value keeps its default and is said once (`settings-follow.js` says what each change does at once).
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
-`keys.js`, `settings.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
+`keys.js`, `settings.js`, `settings-follow.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
 
 ## Connections
 

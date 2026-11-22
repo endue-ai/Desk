@@ -1,8 +1,9 @@
-// The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
-// manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
-// default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
-// whether Save lays a bound .sql file out first (`format-on-save`). The `session*` settings bound the
-// PostgreSQL sessions consoles and table views keep (PG-02, ADR 0320).
+// The plugin's settings, each read through `settings.get` (the core's default < init.yaml < set
+// value, ADR 0031) over `init.get`'s for a host that serves no settings.*, then checked: a value of
+// the wrong type, out of range or not one of its choices keeps the default, and says why
+// (settings-follow.js tells the person once). The `format-*` settings hold Format SQL's style
+// (ui/sql/layout/style.js, ADR 0292) and whether Save lays a bound .sql file out first (`format-on-save`).
+// The `session*` settings bound the PostgreSQL sessions consoles and table views keep (PG-02, ADR 0320).
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -86,13 +87,14 @@ export const SETTING_KEYS = Object.values(KEYS).map((entry) => entry.key);
 
 const PREFIX = "endue.database.";
 
-/** A key as the manifest names it: settings.list and settings.changed name it without the prefix. */
+/** A key as the manifest names it: settings.get and settings.changed name it without the prefix. */
 export const fullKey = (/** @type {string} */ key) =>
   key.startsWith(PREFIX) ? key : `${PREFIX}${key}`;
 
 /**
- * The values in force by manifest key: init.yaml's (init.get), under what settings.list resolves
- * (the default, init.yaml, then what the person set), when the core serves it.
+ * The values in force by manifest key: each through settings.get, which resolves the default,
+ * init.yaml and what the person set; init.get's (init.yaml as in force) under them, for a host that
+ * answers settings.get with nothing.
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
  * @returns {Promise<Record<string, unknown>>}
  */
@@ -100,45 +102,100 @@ export async function loadValues(bridge) {
   const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
   /** @type {Record<string, unknown>} */
   const values = { ...(init.settings ?? {}) };
-  const listed = await bridge.call("settings.list", {}).catch(() => ({ settings: [] }));
-  for (const { key, value } of listed.settings ?? []) values[fullKey(key)] = value;
+  const read = await Promise.all(
+    SETTING_KEYS.map((key) =>
+      bridge
+        .call("settings.get", { key: key.slice(PREFIX.length) })
+        .then((answer) => /** @type {{ value?: unknown }} */ (answer))
+        .catch(() => ({})),
+    ),
+  );
+  SETTING_KEYS.forEach((key, i) => {
+    if (read[i] && "value" in read[i]) values[key] = read[i].value;
+  });
   return values;
 }
 
 /**
- * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
- * @returns {Promise<Settings>}
+ * @typedef {{ key: string, value: unknown, expected: string, fallback: unknown }} Fallback
+ *   A value that failed its check: what it should have been, and the default in force instead.
  */
-export async function loadSettings(bridge) {
-  return fromValues(await loadValues(bridge));
+
+/**
+ * The settings in force from values by manifest key, and every value that fell back.
+ * @param {Record<string, unknown>} values
+ * @returns {{ settings: Settings, fallbacks: Fallback[] }}
+ */
+export function checked(values) {
+  /** @type {Record<string, unknown>} */
+  const settings = { ...DEFAULTS };
+  /** @type {Fallback[]} */
+  const fallbacks = [];
+  for (const [name, { key, min, max, choices }] of Object.entries(KEYS)) {
+    if (!(key in values)) continue;
+    const value = values[key];
+    const fallback = /** @type {Record<string, unknown>} */ (DEFAULTS)[name];
+    const low = min ?? 0;
+    const high = max ?? Number.MAX_SAFE_INTEGER;
+    /** @type {[boolean, string]} */
+    const [fits, expected] = Array.isArray(fallback)
+      ? [
+          Array.isArray(value) && value.every((v) => typeof v === "string" && v !== ""),
+          "a list of folders",
+        ]
+      : typeof fallback === "number"
+        ? [
+            typeof value === "number" && Number.isInteger(value) && value >= low && value <= high,
+            `a whole number from ${low} to ${high}`,
+          ]
+        : choices
+          ? [typeof value === "string" && choices.includes(value), `one of ${choices.join(", ")}`]
+          : typeof fallback === "boolean"
+            ? [typeof value === "boolean", "true or false"]
+            : [typeof value === "string", "text"];
+    if (fits) settings[name] = value;
+    else fallbacks.push({ key, value, expected, fallback });
+  }
+  return { settings: /** @type {Settings} */ (settings), fallbacks };
 }
 
 /**
  * @param {Record<string, unknown>} values
  * @returns {Settings}
  */
-export function fromValues(values) {
-  /** @type {Record<string, unknown>} */
-  const settings = { ...DEFAULTS };
-  for (const [name, { key, min, max, choices }] of Object.entries(KEYS)) {
-    const value = values[key];
-    const fallback = /** @type {Record<string, unknown>} */ (DEFAULTS)[name];
-    if (Array.isArray(fallback)) {
-      if (Array.isArray(value) && value.every((v) => typeof v === "string" && v !== ""))
-        settings[name] = value;
-    } else if (typeof value === "number" && typeof fallback === "number") {
-      if (
-        Number.isInteger(value) &&
-        value >= (min ?? 0) &&
-        value <= (max ?? Number.MAX_SAFE_INTEGER)
-      )
-        settings[name] = value;
-    } else if (choices) {
-      if (typeof value === "string" && choices.includes(value)) settings[name] = value;
-    } else if (typeof value === typeof fallback && value !== undefined) settings[name] = value;
-  }
-  return /** @type {Settings} */ (settings);
+export const fromValues = (values) => checked(values).settings;
+
+/** A value as the person wrote it, kept short for the footer. */
+const shown = (/** @type {unknown} */ value) => {
+  const text = JSON.stringify(value) ?? String(value);
+  return text.length > 60 ? `${text.slice(0, 59)}…` : text;
+};
+
+/** The sentence that says a value fell back. */
+export const fallbackText = (/** @type {Fallback} */ f) =>
+  `The setting ${f.key} is ${shown(f.value)}, not ${f.expected}, so its default ${shown(f.fallback)} is in force.`;
+
+/**
+ * The sentence for a value the core says fell back (settings.invalid): where it is written, why,
+ * and the value in force now.
+ * @param {{ key: string, reason: string, file?: string, line?: number }} invalid
+ * @param {Settings} settings
+ */
+export function invalidText(invalid, settings) {
+  const key = fullKey(invalid.key);
+  const name = Object.entries(KEYS).find(([, entry]) => entry.key === key)?.[0];
+  const file = invalid.file?.split(/[\\/]/u).at(-1);
+  const where = file ? ` (${file}${invalid.line ? ` line ${invalid.line}` : ""})` : "";
+  const now = name ? /** @type {Record<string, unknown>} */ (settings)[name] : undefined;
+  const tail = now === undefined ? "" : `, so ${shown(now)} is in force`;
+  return `The setting ${key}${where}: ${invalid.reason}${tail}.`;
 }
+
+/** The settings whose value differs between two, by name. */
+export const changedNames = (/** @type {Settings} */ before, /** @type {Settings} */ after) =>
+  /** @type {Array<keyof Settings>} */ (Object.keys(KEYS)).filter(
+    (name) => JSON.stringify(before[name]) !== JSON.stringify(after[name]),
+  );
 
 /** The style Format SQL lays PostgreSQL out by, from the settings. */
 export const formatStyle = (/** @type {Settings} */ settings) =>
@@ -152,29 +209,3 @@ export const formatStyle = (/** @type {Settings} */ settings) =>
     oneLine: settings.formatOneLine,
     lists: settings.formatLists,
   });
-
-/** The settings that change which client runs: what was found is found again. */
-const CLIENT_KEYS = new Set(
-  ["mysql", "sqlite3", "path", "pgDump", "pgRestore"].map(
-    (name) => KEYS[/** @type {keyof Settings} */ (name)].key,
-  ),
-);
-
-/**
- * Follow the settings while the plugin runs (settings.changed for its own keys): each change
- * goes to `apply` with the settings now in force and whether the clients are to be found again.
- * @param {{ onChange(listener: (setting: { key: string, value: unknown }) => void): () => void } | undefined} source
- * @param {Record<string, unknown>} values the values in force at the start (loadValues)
- * @param {(settings: Settings, clients: boolean) => void} apply
- * @returns {() => void} stops following
- */
-export function followSettings(source, values, apply) {
-  let current = { ...values };
-  return (
-    source?.onChange(({ key, value }) => {
-      const name = fullKey(key);
-      current = { ...current, [name]: value };
-      apply(fromValues(current), CLIENT_KEYS.has(name));
-    }) ?? (() => {})
-  );
-}
