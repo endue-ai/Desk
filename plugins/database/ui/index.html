@@ -28,6 +28,7 @@
         <button type="button" id="tx-rollback" data-act="rollbackTransaction" title="Roll back the console's transaction (Mod+Shift+S)" class="desk-btn desk-btn-quiet" hidden>Rollback</button>
       </span>
       <button type="button" id="database" data-act="switchDatabase" title="The database it runs on: pick another of its server" class="desk-btn desk-btn-quiet" hidden></button>
+      <span id="session-options" title="The role and the search path each session of this connection starts with" hidden></span>
       <nav id="actions" aria-label="Run" hidden>
         <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)" class="desk-btn desk-btn-quiet">Run</button>
         <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)" class="desk-btn desk-btn-quiet">Run all</button>
@@ -132,6 +133,19 @@
         <label>Colour <select id="f-color" class="desk-field"></select></label>
         <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
         <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> Remember the password in the keychain</label>
+        <details id="f-options" data-for="postgresql">
+          <summary>Session options</summary>
+          <div class="options">
+            <label>Search path <input id="f-searchPath" placeholder="app, public" spellcheck="false" class="desk-field" /></label>
+            <label>Role <input id="f-role" placeholder="reporting" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label>Time zone <input id="f-timeZone" placeholder="UTC" spellcheck="false" class="desk-field" /></label>
+            <label>Lock timeout <input id="f-lockTimeout" placeholder="5s" spellcheck="false" class="desk-field" /></label>
+            <label>Idle in transaction <input id="f-idleTimeout" placeholder="10min" spellcheck="false" class="desk-field" /></label>
+            <label>Application name <input id="f-applicationName" placeholder="endue Desk" spellcheck="false" class="desk-field" /></label>
+            <label>Startup script <textarea id="f-startup" rows="3" placeholder="SET work_mem = '64MB';" spellcheck="false" class="desk-field"></textarea></label>
+            <p class="hint">Every session of this connection signs in with these and runs the startup script first. Empty fields keep the server's own.</p>
+          </div>
+        </details>
         <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it.</p>
         <p id="form-error" class="error" role="alert"></p>
         <p id="form-note" class="note" role="status"></p>

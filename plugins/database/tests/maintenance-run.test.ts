@@ -139,7 +139,9 @@ describe("running", () => {
       },
     });
     const read = sent.at(-1)?.find((a) => a.includes("pg_stat_progress_cluster")) ?? "";
-    expect(read).toContain("a.application_name = 'endue Desk' AND a.usename = current_user");
+    expect(read).toContain(
+      "a.application_name = pg_catalog.current_setting('application_name') AND a.usename = session_user",
+    );
     expect(read).toContain("starts_with('VACUUM (FULL, VERBOSE) public.orders', a.query)");
     // Then writing the table anew (VACUUM FULL reports in pg_stat_progress_cluster).
     server.progress = [

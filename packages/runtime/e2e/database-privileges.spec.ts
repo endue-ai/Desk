@@ -84,8 +84,9 @@ test("a new role's password is typed in a field that hides it, and the script sh
   page,
 }) => {
   const frame = await open(page);
-  // Escape cancels the command: its rejection is the answer, not a failure.
-  void page.evaluate(() =>
+  // Escape cancels the command: its rejection is the answer, not a failure. The call is awaited
+  // before the test ends, so it never outlives the page ("page.evaluate: Test ended").
+  const created = page.evaluate(() =>
     window.__desk.runtime.commands
       .run("endue.database.create-role", { connection: "fixture-pg", name: "zoe", login: true })
       .catch(() => {}),
@@ -100,4 +101,5 @@ test("a new role's password is typed in a field that hides it, and the script sh
   await expect(dialog).not.toContainText("fixture secret");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+  await created;
 });

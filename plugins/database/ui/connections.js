@@ -4,7 +4,8 @@
 // session, and a URI's password is handed back separately for that. Whether the desk keeps it in the
 // OS keychain is: `keychain: true`, on a PostgreSQL connection only (keychain.js, ADR 0311). A
 // PostgreSQL connection may name a client certificate and its key file (`sslcert`, `sslkey`, ADR
-// 0331): only the paths are kept, never a key's passphrase.
+// 0331): only the paths are kept, never a key's passphrase. Its session options (search path, role,
+// time zone, timeouts, application name, startup script) are engines/pg-options.js's.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -13,6 +14,8 @@
  * @typedef {import("./engines/common.js").Tag} Tag
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
  */
+
+import { OPTIONS, optionsOf, readOptions, writeOptions } from "./engines/pg-options.js";
 
 export const ENGINE_IDS = /** @type {const} */ (["postgresql", "mysql", "sqlite"]);
 export const TAGS = /** @type {const} */ (["none", "development", "staging", "production"]);
@@ -120,6 +123,7 @@ export function normalize(raw, others = []) {
     conn.port = null;
   }
   conn.name = text("Name", conn.name, 80).trim() || defaultName(conn);
+  Object.assign(conn, optionsOf(/** @type {Record<string, unknown>} */ (raw), conn));
   const taken = others.find(
     (o) => o.id !== conn.id && o.name.toLowerCase() === conn.name.toLowerCase(),
   );
@@ -225,6 +229,7 @@ export function parseUri(uri) {
   // A client certificate and its key, named only when the URI names them (ADR 0331).
   if (engine === "postgresql" && query.has("sslcert")) fields.sslCert = query.get("sslcert") ?? "";
   if (engine === "postgresql" && query.has("sslkey")) fields.sslKey = query.get("sslkey") ?? "";
+  if (engine === "postgresql") Object.assign(fields, readOptions(query));
   const password = url.password ? decodeURIComponent(url.password) : undefined;
   return password === undefined ? { fields } : { fields, password };
 }
@@ -243,6 +248,7 @@ export function formatUri(/** @type {Connection} */ conn) {
   if (conn.sslCa) params.set(conn.engine === "postgresql" ? "sslrootcert" : "ssl-ca", conn.sslCa);
   if (conn.engine === "postgresql" && conn.sslCert) params.set("sslcert", conn.sslCert);
   if (conn.engine === "postgresql" && conn.sslKey) params.set("sslkey", conn.sslKey);
+  writeOptions(conn, params);
   const query = params.size ? `?${params}` : "";
   return `${scheme}://${user}${host}${port}${db}${query}`;
 }
@@ -296,4 +302,5 @@ export const SIGN_IN = /** @type {const} */ ([
   "sslCert",
   "sslKey",
   "readOnly",
+  ...OPTIONS,
 ]);

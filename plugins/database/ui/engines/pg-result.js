@@ -1,7 +1,8 @@
 // What a PostgreSQL session answers (db.*, ADR 0281) as a run's result: a statement's pages as one
-// result set with its columns' type OIDs, the rows the command tag counts, the server's error with
-// its SQLSTATE and its DETAIL, HINT, QUERY and CONTEXT lines as psql printed them, its position
-// (characters from 1) as an offset into the statement, and notices as psql's lines. Pure.
+// result set with its columns' type OIDs and tables of origin, the rows the command tag counts, the
+// server's error with its SQLSTATE and its DETAIL, HINT, QUERY and CONTEXT lines as psql printed
+// them, its position (characters from 1) as an offset into the statement, and notices as psql's
+// lines. Pure.
 
 /**
  * @typedef {import("@endue-ai/bridge").DbServerError} ServerError
@@ -32,11 +33,16 @@ const LINES = /** @type {const} */ ([
  * @returns {ResultSet}
  */
 export function setOf(columns, rows, maxRows, more) {
+  // Each column's table and column number, when the server names a table for any (PG-45).
+  const named = columns.some((c) => c.tableOid);
   return {
     columns: columns.map((c) => c.name),
     rows: rows.length > maxRows ? rows.slice(0, maxRows) : rows,
     truncated: more || rows.length > maxRows,
     types: columns.map((c) => c.typeOid),
+    ...(named
+      ? { origins: columns.map((c) => ({ table: c.tableOid, column: c.columnNumber })) }
+      : {}),
   };
 }
 
