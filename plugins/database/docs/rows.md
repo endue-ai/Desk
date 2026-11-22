@@ -43,7 +43,8 @@ frame's memory (ADR 0352). Modules: `ui/engines/pg-cursor.js` (the cursor on the
   fetches every row first, as Fetch every row does, and the grid's result is whole after it. Past
   100,000 rows they draw the rows held and say so (the map's row picker reads Rows held).
 - Compare results and the assistant's sample take the rows held; compare says the result is partial.
-- Export and copy cover the rows held and say the result is partial (PG-61); exporting every row is PG-64.
+- Export and copy cover the rows held and say the result is partial (PG-61); Database: export every row to a file writes all of them
+  ([`export-all.md`](export-all.md)).
 
 ## Transactions
 

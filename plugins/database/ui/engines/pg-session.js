@@ -18,6 +18,7 @@
 import { commandFor } from "../auth/fields.js";
 import { pooled, pooledSettings } from "../auth/pooler.js";
 import { keptPassword, signInWithCommand } from "../auth/sign-in.js";
+import { answering, hearEvents } from "../session/events.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { createTunnel, scopeOf } from "../tunnel/open.js";
@@ -25,7 +26,7 @@ import { failedRun } from "./common.js";
 import { createCursors, own as own_ } from "./pg-cursor.js";
 import { codeOf, openFailed, textOf } from "./pg-open-failed.js";
 import { sessionSettings } from "./pg-options.js";
-import { noticeOf, refusedOf } from "./pg-result.js";
+import { refusedOf } from "./pg-result.js";
 import { cursorRows } from "./pg-rows.js";
 import { createScript } from "./pg-script.js";
 import { runStartup } from "./pg-startup.js";
@@ -89,12 +90,15 @@ export const settingsOf = (
  *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
  *   passphrases?: import("./pg-tls.js").Passphrases, helper?: import("../auth/helper.js").Helper,
  *   tunnel?: ReturnType<typeof createTunnel>,
- * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
+ *   holds?(owner: string): boolean, ended?(owner: string): void,
+ * } & import("../session/events.js").Hears} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
  *   with the status line's words for its label; `idleMs` closes a session no run used that long
  *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
  *   password the keychain keeps (manager.passwords.ref, ADR 0311); `passphrases` holds and asks for
  *   key files' passphrases (ADR 0331); `helper` runs a connection's password command (ADR 0354);
- *   `tunnel` asks what a connection's SSH tunnel needs (ADR 0359).
+ *   `tunnel` asks what a connection's SSH tunnel needs (ADR 0359); `holds` keeps a session the
+ *   idle timer would close (one that listens), `ended` hears one go, `onRaised` and
+ *   `onNotification` what a kept session hears (session/events.js, ADR 0358).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
@@ -115,8 +119,10 @@ export function createSessions(bridge, options = {}) {
   const sinks = /** @type {Map<string, string[]>} */ (new Map());
   const slots = createSlots();
 
-  /** @param {string} method @param {Record<string, unknown>} params @returns {Promise<any>} */
-  const call = (method, params) => bridge.call(/** @type {never} */ (method), params);
+  /** The last call each session answered, so a late db.call.notice is known (ADR 0358). */
+  const answered = /** @type {Map<string, number>} */ (new Map());
+  /** @type {(method: string, params: Record<string, unknown>) => Promise<any>} */
+  const call = answering(bridge, answered);
 
   /** A call under the plugin's db:connect grant; refused, ask once for the server and call again. */
   const granted = async (
@@ -213,24 +219,15 @@ export function createSessions(bridge, options = {}) {
     onState: options.onState ?? (() => {}),
     onLost: options.onLost ?? (() => {}),
     idleMs: options.idleMs ?? (() => 0),
+    ...(options.holds ? { holds: options.holds } : {}),
+    ...(options.ended ? { ended: options.ended } : {}),
     limit: options.limit ?? (() => PER_CONNECTION),
     now,
     setTimer,
     clearTimer,
   });
 
-  bridge.onEvent((event) => {
-    if (event.event === "db.notice") {
-      const id = event.data.sessionId;
-      if (!sinks.has(id) && own.has(id)) sinks.set(id, []);
-      sinks.get(id)?.push(...noticeOf(event.data.notice));
-    }
-    if (event.event === "db.closed") {
-      sinks.delete(event.data.sessionId);
-      cursors.closed(event.data.sessionId);
-      keeper.closed(event.data);
-    }
-  });
+  hearEvents(bridge, { own, sinks, answered, keeper, cursors, ...options });
 
   /** A run on a short session of its own, opened and closed around it. */
   const short = async (

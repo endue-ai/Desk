@@ -2,7 +2,8 @@
 // affected, the error with its code and detail, not run), the notices, and a summary. The tab that
 // opens is the error's, else the first result's. A result set with a column of shapes gets a Map
 // tab right after its own (PG-46, geo/detect.js); the console's pinned tabs follow, kept through its
-// runs (compare/pins.js, PG-26). Pure, so the tests read it without a DOM.
+// runs (compare/pins.js, PG-26), and a console that listens gets its Notifications tab last (PG-25,
+// session/listen-tabs.js). Pure, so the tests read it without a DOM.
 
 import { oneLine } from "./execute.js";
 import { formatCount, formatDuration } from "./format.js";
@@ -15,11 +16,13 @@ import { offerOf } from "./session/connect-gate.js";
  * @typedef {import("./engines/common.js").DbError} DbError
  * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number, act?: { action: string, args: unknown[], label: string } }} Line
  *   `act`: a press beside the line (Allow connecting to a refused server, ADR 0335).
- * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned" | "chart", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin, chart?: import("./chart/model.js").ChartTab }} Tab
+ * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned" | "chart" | "notifications", set?: ResultSet, note?: string, stopped?: boolean, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin, chart?: import("./chart/model.js").ChartTab }} Tab
  *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn;
  *   a map tab (`geo`) the set before it and the columns that hold its shapes. A pinned tab holds a
  *   result of an earlier run as it was, `statement` -1: it is no run's. A chart tab (opened on
- *   request, features/chart/) the result it draws and how.
+ *   request, features/chart/) the result it draws and how. A notifications tab (PG-25,
+ *   session/listen-tabs.js) is what the console's session heard after LISTEN, as a result, with a
+ *   `note` and whether it `stopped` listening.
  * @typedef {{ tabs: Tab[], open: number, summary: string, error?: { statement: number, offset: number } }} Shown
  *   `error.offset` is where the first error is in the editor's text, when the client said.
  */

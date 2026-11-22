@@ -187,7 +187,7 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 | --- | --- | --- |
 | `notes` | 마크다운 메모 표면, 폴더에 파일로 저장 | 2 |
 | `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
-| `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
+| `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 데이터 편집 · 가져오기 · 내보내기 · 읽기 전용과 운영 DB 보호. PostgreSQL 은 코어의 세션으로 프로그램 없이(`db.*`, ADR 0281): 열어 둔 트랜잭션 · 크기 무관 결과와 COPY · SQL 을 아는 편집기 · 스키마 도구 · 서버 보기. 다른 엔진은 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md`(A~D 단계) | 2 |
 | `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
 | `network` | 우리 집 네트워크 표면: 지금 붙은 사설 대역에 누가 있는지(공유기를 가운데 둔 지도 · IP 주소 · MAC 주소 · 제조사 · 핑), 얼마나 안전한지(100점 점수와 할 일 카드 · 포트 점검), Wi-Fi 가 왜 느린지(대역별 채널 혼잡도와 권장 채널), 오가는 기기의 일지와 알림. macOS 기본 프로그램만 셸 없이, 관리자라고 답한 네트워크만 훑는다. 요구사항은 `network-plugin-requirements.md`, 이유는 ADR 0266 | 2 |
 | `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043). 큰 통합 문서는 범위 읽기와 워커 파싱, `<desk-progress>` 와 취소 | 2 |

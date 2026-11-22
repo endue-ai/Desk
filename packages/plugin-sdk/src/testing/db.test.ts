@@ -70,7 +70,8 @@ describe("the test host's database sessions (ADR 0281)", () => {
       rowCount: 1,
       notices: [expect.objectContaining({ message: "hi" })],
     });
-    expect(seen).toEqual(["db.closed"]);
+    // The notice comes as it is raised (db.call.notice, ADR 0358) and again in its page (ADR 0334).
+    expect(seen).toEqual(["db.call.notice", "db.closed"]);
     expect(refused).toBe("permission_denied");
   });
 

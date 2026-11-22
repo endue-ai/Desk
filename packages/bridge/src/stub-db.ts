@@ -1,13 +1,14 @@
 /**
- * The browser stub's database sessions: db.* (ADR 0281) answered from a script instead of a
- * server, with the core's rules (specs/bridge/v0/README.md): db:connect checked against the host
- * and port, agents refused, postgresql alone, reserved settings and page limits, 16 sessions a
- * caller, sessions their caller's alone, pages whose `more` is exact and whose last page counts
- * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
- * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A
- * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311);
- * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344); db.describe
- * answers a statement's parameter types and columns without running it (stub-db-describe.ts, ADR 0353).
+ * The browser stub's database sessions: db.* (ADR 0281) answered from a script instead of a server,
+ * with the core's rules (specs/bridge/v0/README.md): db:connect checked against the host and port,
+ * agents refused, postgresql alone, reserved settings and page limits, 16 sessions a caller,
+ * sessions their caller's alone, pages whose `more` is exact and whose last page counts every page,
+ * one statement at a time, cancel, COPY, and db.closed when the session ends; a transaction as the
+ * server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A password kept with
+ * db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311); db.script runs several
+ * statements as db.run runs each (stub-db-script.ts, ADR 0344); db.describe answers a statement's
+ * parameter types and columns without running it (stub-db-describe.ts, ADR 0353); LISTEN, NOTIFY
+ * and live notices are stub-db-listen.ts's (ADR 0358).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -24,6 +25,7 @@ import type {
 import { covers } from "./stub-covers";
 import { stubDbCursorRun } from "./stub-db-cursor-run";
 import { stubDbDescribe } from "./stub-db-describe";
+import { type Listening, stubDbListen } from "./stub-db-listen";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
   bytes,
@@ -57,8 +59,7 @@ export type DbServed =
 
 /** The stub's grant check: throws permission_denied unless a grant covers `scope` and `fits`. */
 type Check = (caller: string | undefined, scope: Permission, fits: boolean) => void;
-
-interface Session {
+interface Session extends Listening {
   caller: string;
   scope: DbConnectPermission;
   signed: StubSession;
@@ -79,6 +80,7 @@ export function stubDb(
   /** Every session's caller, kept after it ends so its db.closed still finds it. */
   const owners = new Map<string, string>();
   const kept = stubDbPasswords();
+  const listening = stubDbListen(() => sessions.values(), later);
   const ssh = stubDbSsh(script, check);
   let next = 0;
 
@@ -134,17 +136,14 @@ export function stubDb(
     if (session.transaction === "open") session.transaction = "failed";
     return { rows: [], more: false, error, transaction: session.transaction };
   };
-
   const answer = async (
     session: Session,
     statement: StubStatement,
     pageRows: number,
     pageBytes: number,
   ) => {
-    const sessionId = session.info.sessionId;
-    for (const notice of statement.afterwards ?? [])
-      setTimeout(() => later({ event: "db.notice", data: { sessionId, notice } }), 0);
-    const done = await first(session, statement, pageRows, pageBytes);
+    const call = listening.call(session, statement);
+    const done = { ...(await first(session, statement, pageRows, pageBytes)), call };
     return statement.notices?.length ? { ...done, notices: [...statement.notices] } : done;
   };
   const first = async (
@@ -185,7 +184,6 @@ export function stubDb(
     session.result = { rows, at: 0, tag: tagOf(statement, rows.length) };
     return { ...page(session, pageRows, pageBytes), columns: statement.columns };
   };
-
   /** The script's statement for `sql`: one of its statements, else its `answer`. */
   const scripted = (session: Session, sql: string, bound?: StubBound) => {
     const matches = (s: StubStatement) =>
@@ -193,7 +191,6 @@ export function stubDb(
     return script?.statements.find(matches) ?? script?.answer?.(sql, session.signed, bound);
   };
   const cursors = stubDbCursorRun<Session, StubBound>({ scripted, first, failed, last, page });
-
   /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
   const respond = (
     session: Session,
@@ -203,15 +200,16 @@ export function stubDb(
     bound?: StubBound,
   ) => {
     if (cursors.is(sql)) return cursors.respond(session, sql, pageRows, pageBytes, bound);
+    const listened = listening.answer(session, sql);
     const statement = scripted(session, sql, bound);
     if (statement) return answer(session, statement, pageRows, pageBytes);
+    if (listened) return { ...last(session, listened), call: listening.call(session) };
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
     const pids = [...sessions.values()].map((s) => s.info.pid);
     const ended = terminateAnswer(sql, pids);
     if (ended) return last(session, "SELECT 1", ended);
     return failed(session, failure("0A000", "the stub's script has no answer for this statement"));
   };
-
   /** One statement on an idle session, as db.run answers it. */
   const run = async (session: Session, params: DbRunParams): Promise<DbPage> => {
     const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);
@@ -237,7 +235,6 @@ export function stubDb(
         end(id, "server", TERMINATED);
     return done;
   };
-
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
     ...kept.handlers,
     ...ssh.handlers,
@@ -385,7 +382,6 @@ export function stubDb(
       };
     },
   };
-
   return {
     handlers,
     /** A db.* event goes to the session's caller alone. */

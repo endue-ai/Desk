@@ -82,7 +82,7 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
- *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows" | "rowsGone">,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows" | "rowsGone"> & { decorate?(owner: string, model: Console): void },
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
@@ -115,6 +115,7 @@ export function createConsoles(deps) {
       const owner = who(model)?.owner;
       if (owner && deps.sessions) model.session = deps.sessions.state(owner);
       else delete model.session;
+      if (owner && model.kind === "console") deps.sessions?.decorate?.(owner, model);
       if (owner && deps.sessions?.rowsGone) lapse(model, deps.sessions.rowsGone);
     },
     gone: (target) => release(target),
@@ -126,7 +127,6 @@ export function createConsoles(deps) {
   /** The values typed for parameters this session, by console and name. */
   /** @type {Map<string, string>} */
   const typed = new Map();
-
   const tableName = (/** @type {Connection} */ conn, /** @type {TablePage} */ table) =>
     `db: ${conn.name} · ${table.schema ? `${table.schema}.` : ""}${table.name}`;
 
