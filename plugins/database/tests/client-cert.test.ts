@@ -97,8 +97,8 @@ describe("a client certificate on a PostgreSQL connection", () => {
     ]);
     expect(connectionEnv(PG, undefined)).toMatchObject({
       PGSSLMODE: "verify-full",
-      PGSSLCERT: "~/certs/client.crt",
-      PGSSLKEY: "~/certs/client.key",
+      PGSSLCERT: "./certs/client.crt",
+      PGSSLKEY: "./certs/client.key",
     });
     expect(connectionEnv({ ...PG, sslCert: "", sslKey: "" }, undefined)).not.toHaveProperty(
       "PGSSLCERT",
