@@ -10,8 +10,8 @@
 // its next run (wake.js, PG-105, ADR 0355): one that does not answer is lost, and a run whose open
 // transaction went with it does not run. No DOM.
 
-import { KEPT_MAX } from "./slots.js";
 import { lostLine, SLEPT, SLEPT_REFUSED } from "./lost-words.js";
+import { KEPT_MAX } from "./slots.js";
 import { monotonic, probe, slept } from "./wake.js";
 import { closedWhy, idleWhy, modelOf, newSession } from "./words.js";
 
