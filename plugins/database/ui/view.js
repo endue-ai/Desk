@@ -317,5 +317,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
     cell: () => grid.cursorCell(),
     /** The SQL problems of the console on screen: list them, or go to the next or previous. */
     problems: (/** @type {"list" | "next" | "previous"} */ what) => editor.problems(what),
+    /** The signature help and `*` written out in the console on screen (features/completion/). */
+    signatures: () => editor.signatures(),
+    expandStar: () => editor.expandStar(),
   };
 }

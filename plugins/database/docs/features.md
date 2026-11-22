@@ -115,9 +115,9 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   in one transaction or as a dry run rolled back at the end, and a statement as EXPLAIN or EXPLAIN ANALYZE.
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
-- Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
-  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before
-  the run and remembered for the console.
+- Highlighting with the lexer that cuts the statements, completion from the schema (`Ctrl+Space`, below),
+  Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before the run and
+  remembered for the console.
 - Guards: a read-only connection refuses writes before anything runs, and on the server too
   (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
@@ -142,9 +142,9 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `engines/pg-session.js`, `history.js`, `tools.js`, `sql/`,
 `editor/`, `view-editor.js`.
 
-## Format SQL and SQL problems
+## Format SQL, SQL problems and completion
 
-How the console lays SQL out and underlines what the server would refuse: [`editor.md`](editor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md).
 
 ## Results
 
