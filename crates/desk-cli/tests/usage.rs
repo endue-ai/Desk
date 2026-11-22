@@ -3,6 +3,38 @@
 
 use std::process::{Command, Output};
 
+#[test]
+fn endue_help_distinguishes_local_commands_from_commands_for_the_running_app() {
+    let executable = env!("CARGO_BIN_EXE_endue");
+    let help = Command::new(executable)
+        .arg("--help")
+        .output()
+        .expect("the endue command is built");
+    assert!(help.status.success());
+    let text = String::from_utf8(help.stdout).unwrap();
+    assert!(text.starts_with("usage: endue [--json] <command>"));
+    assert!(text.contains("endue plugin validate"));
+    assert!(text.contains("endue cmd list"));
+    assert!(text.contains("running app"));
+    let version = Command::new(executable).arg("--version").output().unwrap();
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8(version.stdout).unwrap(),
+        format!("endue {}\n", desk_cli::version())
+    );
+    let wrong = Command::new(executable)
+        .arg("unknown-command")
+        .output()
+        .unwrap();
+    assert_eq!(wrong.status.code(), Some(2));
+    assert!(wrong.stdout.is_empty());
+    assert!(
+        String::from_utf8(wrong.stderr)
+            .unwrap()
+            .contains("endue --help")
+    );
+}
+
 fn desk(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_desk"))
         .args(args)

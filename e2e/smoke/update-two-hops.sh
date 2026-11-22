@@ -24,6 +24,20 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ "$#" == 1 && "$1" == --github-rename ]]; then
+  # The revision that shipped GitHub tag discovery (#516). Only the test driver is added to it.
+  revision=bd831d7d34abfb4e011686d0aa1baa5949430ec9
+  work="$(mktemp -d)"
+  trap 'rm -rf "$work"' EXIT
+  mkdir "$work/old" "$work/catalog"
+  git -C "$root" archive "$revision" Cargo.toml Cargo.lock crates apps/desk/shell examples/plugin-native-wgpu | tar -x -C "$work/old"
+  cp "$root/crates/desk-update/tests/repository_rename.rs" "$work/old/crates/desk-update/tests/"
+  export DESK_RENAME_SMOKE_DIR="$work/catalog"
+  export DESK_RENAME_SMOKE_PUBLISHER="$root/scripts/github-upgrade-path.mjs"
+  DESK_RENAME_SMOKE_HOP=old CARGO_TARGET_DIR="$work/old-target" cargo test --locked --manifest-path "$work/old/Cargo.toml" -p desk-update --test repository_rename
+  DESK_RENAME_SMOKE_HOP=new cargo test --locked --manifest-path "$root/Cargo.toml" -p desk-update --test repository_rename
+  exit 0
+fi
 port="${DESK_SMOKE_PORT:-19846}"
 base="http://127.0.0.1:$port/desk"
 pubkey="${DESK_UPDATER_PUBKEY:-}"

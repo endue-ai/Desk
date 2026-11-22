@@ -4,8 +4,8 @@ import { pathToFileURL } from "node:url";
 import { entryFor, readDist, releaseManifest } from "./release-manifest.mjs";
 import { parse } from "./release-version.mjs";
 
-const releases = "https://github.com/endue-ai/Desk/releases";
-const download = `${releases}/download`;
+// Old installations compare every tagged manifest URL literally, even above their version floor.
+const legacyDownload = "https://github.com/endue-ai/Desk/releases/download";
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 function checkedVersion(version) {
@@ -14,14 +14,14 @@ function checkedVersion(version) {
 }
 
 /** The selected release's current listing, or an empty signed path after a withdrawal. */
-export function tagPath(index, version, base = download) {
+export function tagPath(index, version) {
   checkedVersion(version);
   const entries = index.releases.filter((entry) => entry.version === version);
   return {
     ...index,
     releases: entries.map((entry) => ({
       ...entry,
-      release: `${base}/v${version}/release.json`,
+      release: `${legacyDownload}/v${version}/release.json`,
     })),
   };
 }
@@ -37,11 +37,15 @@ export function previewPath(index, base) {
   };
 }
 
-export function githubManifest(dist, version, commit, minFrom) {
+export function githubManifest(dist, version, commit, minFrom, repository = "endue-ai/endue") {
   checkedVersion(version);
+  if (repository !== "endue-ai/Desk" && repository !== "endue-ai/endue") {
+    throw new Error("unexpected repository for the signed endue release feed");
+  }
+  const releases = `https://github.com/${repository}/releases`;
   return releaseManifest({
     version,
-    downloadBase: `${download}/v${version}`,
+    downloadBase: `${releases}/download/v${version}`,
     commit,
     notes: `${releases}/tag/v${version}`,
     date: new Date().toISOString(),
@@ -51,7 +55,10 @@ export function githubManifest(dist, version, commit, minFrom) {
 }
 
 function main([mode, file, ...args]) {
-  if (mode === "manifest") return githubManifest(file, ...args);
+  if (mode === "manifest") {
+    const [version, commit, minFrom] = args;
+    return githubManifest(file, version, commit, minFrom, process.env.GITHUB_REPOSITORY);
+  }
   if (mode === "tag") return tagPath(read(file), args[0]);
   if (mode === "preview") return previewPath(read(file), args[0]);
   if (mode === "manual") {

@@ -43,7 +43,15 @@ test("release-build builds the CEF desk and refuses any other", () => {
     /node scripts\/cef-fetch\.mjs --target "\$\{\{ matrix\.rust \}\}"/u,
     "CEF by its pin and hash",
   );
-  assert.match(runs, /cargo build -p desk-shell --bins --release --target/u);
+  for (const crate of ["desk-shell", "desk-cli"]) {
+    const command = `cargo build -p ${crate} --bins --release`;
+    assert.ok(runs.split("\n").includes(`${command} --target "${expr("matrix.rust")}"`));
+    assert.ok(
+      read("justfile")
+        .split("\n")
+        .some((line) => line.trim() === command),
+    );
+  }
   assert.match(
     runs,
     /cargo install cargo-packager --version 0\.11\.8 --locked/u,
@@ -107,4 +115,18 @@ test("the release dry run rehearses the CEF desk, and runs when packaging change
   }
   const ci = scripts(workflow("ci").jobs.changes);
   assert.ok(ci.includes("apps/desk/shell/packager/"), "ci runs it for a release pull request too");
+});
+
+test("workspace, support and release metadata use the public endue name", () => {
+  const url = "https://github.com/endue-ai/endue";
+  const workspace = JSON.parse(read("package.json"));
+  assert.equal(workspace.name, "endue");
+  assert.equal(workspace.repository, url);
+  assert.ok(read("Cargo.toml").includes(`repository = "${url}"`));
+  const contact = parse(read("specs/platform/v0/openapi.yaml")).info.contact;
+  assert.equal(contact.url, url);
+  for (const file of [".github/ISSUE_TEMPLATE/config.yml", ".github/SUPPORT.md"]) {
+    assert.ok(read(file).includes(`${url}/discussions`));
+  }
+  assert.ok(read(".github/workflows/release-final.yml").includes('--title "endue $VERSION"'));
 });

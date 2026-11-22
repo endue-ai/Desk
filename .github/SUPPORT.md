@@ -2,7 +2,7 @@
 
 | You want to | Go to |
 | --- | --- |
-| Ask a question, share an idea or show a plugin | [GitHub Discussions](https://github.com/endue-ai/Desk/discussions) (Q&A, Ideas, Plugin showcase) |
+| Ask a question, share an idea or show a plugin | [GitHub Discussions](https://github.com/endue-ai/endue/discussions) (Q&A, Ideas, Plugin showcase) |
 | Report a bug | New issue → "Bug report" |
 | Propose a feature | New issue → "Feature request" |
 | Hand a task to the AI work cycle | New issue → "Task" (maintainers) |

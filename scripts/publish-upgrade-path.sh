@@ -34,7 +34,7 @@ case "$1" in
       node scripts/github-upgrade-path.mjs preview "$2" "${BASE:?missing preview artifact origin}" > "$path"
       if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null; then
         gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-          --title "Desk $channel updates" --notes "Signed upgrade path for the $channel channel." --prerelease --latest=false
+          --title "endue $channel updates" --notes "Signed upgrade path for the $channel channel." --prerelease --latest=false
       fi
     fi
     ;;

@@ -25,13 +25,17 @@ export function findView(doc, actions, back) {
   let resting;
 
   const below = () => toggle.getAttribute("aria-pressed") === "true";
-  const run = () => {
+  const cancelTimer = () => {
     clearTimeout(resting);
+    resting = undefined;
+  };
+  const run = () => {
+    cancelTimer();
     if (below()) void actions.below(query.value);
     else void actions.filter(query.value);
   };
   query.addEventListener("input", () => {
-    clearTimeout(resting);
+    cancelTimer();
     if (below()) resting = setTimeout(run, REST_MS);
     else run();
   });
@@ -53,7 +57,7 @@ export function findView(doc, actions, back) {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      clearTimeout(resting);
+      cancelTimer();
       if (model?.busy) void actions.stop();
       else {
         void actions.close();
@@ -124,17 +128,25 @@ export function findView(doc, actions, back) {
     /** Show the bar for `next`, or hide it; it takes the focus when it opens. */
     render(/** @type {FindModel | null} */ next) {
       const opening = model === null && next !== null;
+      // A previous search can finish while newer input is waiting for the typing delay.
+      const keepEdit =
+        resting !== undefined &&
+        next?.below &&
+        model?.below &&
+        next.folder === model.folder &&
+        next.query === model.query &&
+        !next.busy;
+      if (!keepEdit) cancelTimer();
       model = next;
       bar.hidden = next === null;
       if (next === null) {
-        clearTimeout(resting);
         query.value = "";
         toggle.setAttribute("aria-pressed", "false");
         results.hidden = true;
         results.replaceChildren();
         return;
       }
-      if (query.value !== next.query) query.value = next.query;
+      if (!keepEdit && query.value !== next.query) query.value = next.query;
       toggle.setAttribute("aria-pressed", String(next.below));
       results.hidden = !next.below;
       results.setAttribute("aria-busy", String(next.busy === true));

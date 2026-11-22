@@ -223,7 +223,13 @@ function collectOutputs(r) {
 export function packageCef(r) {
   for (const [path, what] of [
     [r.paths.cef, `the pinned CEF (node scripts/cef-fetch.mjs --target ${r.target})`],
-    [join(r.paths.binaries, MAIN), "the shell's release build"],
+    [
+      join(r.paths.binaries, r.os === "windows" ? `${MAIN}.exe` : MAIN),
+      "the shell's release build",
+    ],
+    ...r.config.resources
+      .filter(({ target }) => target.startsWith("cli/"))
+      .map(({ src, target }) => [src, `packaged ${target}`]),
     [join(r.paths.dist, "index.html"), "the built shell (pnpm --filter @endue-ai/desk-app build)"],
   ]) {
     need(path, what);
