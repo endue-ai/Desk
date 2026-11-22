@@ -58,7 +58,9 @@ export function actOf(/** @type {Statement} */ statement) {
 /** Whether a statement listens or stops listening (what an agent's run may not hold). */
 export const listens = (/** @type {Statement} */ statement) => {
   const op = actOf(statement)?.op;
-  return op === "listen" || op === "unlisten" || (op === "all" && /^\s*UNLISTEN/iu.test(statement.text));
+  return (
+    op === "listen" || op === "unlisten" || (op === "all" && /^\s*UNLISTEN/iu.test(statement.text))
+  );
 };
 
 /** @param {{ now(): number }} deps */

@@ -9,7 +9,7 @@ import { createAgentCommands } from "./agent.js";
 import { answerer, guarded } from "./answer.js";
 import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
-import { createClients, searchPath } from "./clients.js";
+import { createClients, runsOn } from "./clients.js";
 import { registerCommands } from "./commands.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
@@ -92,7 +92,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
         running = count;
         busy();
       },
-      searchPath: () => searchPath(options.platform ?? "mac", settings.path),
+      ...runsOn(options.platform ?? "mac", () => settings.path),
     });
   const output = options.output((reads) => {
     reading = reads;
@@ -122,7 +122,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     pg.cancel(held.scope());
     output.cancel();
   };
-  const clients = createClients(runner, () => settings);
+  const clients = createClients(runner, () => settings, options.platform ?? "mac");
   const { pick, confirm } = createAsk(commands);
   const list = options.features ?? Object.values(features);
 

@@ -4,9 +4,11 @@
 // once for the certificate and the key together); a file that cannot be read is said with its
 // field's name before anything connects. An encrypted key's passphrase is asked when db.open
 // answers keyPassword, held in memory by `passphrases` (never in the store, the keychain, a log or
-// the history) and forgotten when it is wrong. No DOM.
+// the history) and forgotten when it is wrong. A path typed on Windows is read with slashes, as the
+// bridge reads paths (platform.js). No DOM.
 
 import { readScope, withGrant } from "../console-files.js";
+import { bridgePath } from "../platform.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
@@ -82,8 +84,8 @@ export function createTls(bridge, passphrases = NONE) {
 
   /** The client certificate and key files' PEM, checked for what each must hold. */
   const client = async (/** @type {Connection} */ conn) => {
-    const cert = /** @type {string} */ (conn.sslCert);
-    const key = /** @type {string} */ (conn.sslKey);
+    const cert = bridgePath(/** @type {string} */ (conn.sslCert));
+    const key = bridgePath(/** @type {string} */ (conn.sslKey));
     // One grant for both files: each read names its own file first, so a failure names it.
     const scope = (/** @type {string} */ first) => ({
       ...readScope(first),
@@ -112,7 +114,7 @@ export function createTls(bridge, passphrases = NONE) {
     /** @type {Tls} */
     const tls = { mode, ...cert };
     if (conn.ssl !== "disable" && conn.sslCa) {
-      const path = conn.sslCa;
+      const path = bridgePath(conn.sslCa);
       const scope = readScope(path);
       const fetch = () => call("fs.read", { path, encoding: "utf8", scope });
       const file = await withGrant(bridge, scope, fetch, `To trust ${conn.name}'s certificates`);

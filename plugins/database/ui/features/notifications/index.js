@@ -37,7 +37,8 @@ function clear(/** @type {Deps} */ deps) {
 async function again(/** @type {Deps} */ deps) {
   const { target, conn, owner, listening } = here(deps);
   const channels = listening.model(owner)?.stopped ?? [];
-  if (!channels.length) throw new Error("Nothing to listen to again: no session stopped listening.");
+  if (!channels.length)
+    throw new Error("Nothing to listen to again: no session stopped listening.");
   const sql = channels.map((c) => `LISTEN ${quoted(c)}`).join(";\n");
   const said = await deps.consoles.runIn(target, conn, sql, {});
   deps.say(String(said ?? `Listening again on ${channels.join(", ")}.`));

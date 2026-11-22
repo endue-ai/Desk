@@ -3228,6 +3228,7 @@ export type BridgeRequest =
   | DbOpenRequest
   | DbRunRequest
   | DbScriptRequest
+  | DbDescribeRequest
   | DbFetchRequest
   | DbCopyRequest
   | DbCancelRequest
@@ -4621,6 +4622,33 @@ export interface DbScriptResult {
   cancelled?: boolean;
   /** What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error). */
   failure?: BridgeError;
+}
+
+/** Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first. */
+export interface DbDescribeRequest {
+  id: RequestId;
+  method: "db.describe";
+  params: DbDescribeParams;
+}
+
+/** Parameters of db.describe. */
+export interface DbDescribeParams {
+  sessionId: DbSessionId;
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+}
+
+/** Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it. */
+export interface DbDescribeResult {
+  /** The type OID of $1, $2, ..., as the server infers them; empty with an error. */
+  paramTypes: number[];
+  columns?: DbColumn[];
+  transaction?: DbTransaction;
+  error?: DbServerError;
+  /** The notices the server sent while this call ran. */
+  notices?: DbServerError[];
 }
 
 /** The next page of the session's open result, or close it without reading on. */
@@ -8157,6 +8185,7 @@ export interface BridgeMethodMap {
   "db.open": { params: DbOpenParams; result: DbOpenResult };
   "db.run": { params: DbRunParams; result: DbRunResult };
   "db.script": { params: DbScriptParams; result: DbScriptResult };
+  "db.describe": { params: DbDescribeParams; result: DbDescribeResult };
   "db.fetch": { params: DbFetchParams; result: DbFetchResult };
   "db.copy": { params: DbCopyParams; result: DbCopyResult };
   "db.cancel": { params: DbCancelParams; result: DbCancelResult };
@@ -8359,6 +8388,7 @@ export const BRIDGE_METHODS = [
   "db.open",
   "db.run",
   "db.script",
+  "db.describe",
   "db.fetch",
   "db.copy",
   "db.cancel",

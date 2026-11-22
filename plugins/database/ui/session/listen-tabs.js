@@ -33,7 +33,11 @@ export const stoppedLine = (/** @type {string[]} */ channels) =>
 
 /** A run's Messages while it goes on: the notices heard so far. @returns {Shown} */
 export function liveShown(/** @type {{ lines: string[], dropped: number }} */ run) {
-  const lines = run.lines.map((text) => ({ level: /** @type {const} */ ("notice"), text, statement: -1 }));
+  const lines = run.lines.map((text) => ({
+    level: /** @type {const} */ ("notice"),
+    text,
+    statement: -1,
+  }));
   if (run.dropped)
     lines.unshift({
       level: "notice",

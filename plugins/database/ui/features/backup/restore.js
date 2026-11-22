@@ -31,13 +31,14 @@ import { readToc } from "./toc-reader.js";
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
  * @typedef {import("../../engines/common.js").Connection} Connection
+ * @typedef {import("../../clients.js").Platform} Platform
  * @typedef {import("../../clients.js").Client} Client
  * @typedef {import("./toc.js").Toc} Toc
  * @typedef {ReturnType<typeof import("./job.js").createJobs>} Jobs
  * @typedef {{ id: string, name: string, tag: string, readOnly: boolean, database: string, env: Record<string, string> }} Target
  * @typedef {{
  *   file: string, format: Toc["format"] | "plain", database: string, from: string, by: string,
- *   program: { command: string, version: string }, connections: Target[], connection: string,
+ *   program: { command: string, version: string, platform?: Platform }, connections: Target[], connection: string,
  *   entries: Array<Omit<import("./toc.js").Entry, "line">>, options: import("./args.js").RestoreOptions,
  * }} RestoreModel
  * @typedef {{ connection: string, options?: Record<string, unknown>, chosen?: number[] | null }} RestoreAnswer
@@ -153,9 +154,11 @@ export async function restore(deps, jobs, args) {
     database: toc?.database ?? "",
     from: toc?.from ?? "",
     by: toc?.by ?? "",
-    program: client
-      ? { command: client.command, version: client.version }
-      : { command: "", version: "" },
+    program: {
+      command: client?.command ?? "",
+      version: client?.version ?? "",
+      platform: deps.clients.platform,
+    },
     connections: targets.map((c) => ({
       id: c.id,
       name: c.name,
@@ -208,8 +211,13 @@ export async function restore(deps, jobs, args) {
     {
       kind: "restore",
       title: `Restore ${fileName(path)} into ${conn.name}`,
-      command: commandLine(restorer.command, argv, connectionEnv(conn, undefined)),
-      password: passwordNote(password),
+      command: commandLine(
+        restorer.command,
+        argv,
+        connectionEnv(conn, undefined),
+        deps.clients.platform,
+      ),
+      password: passwordNote(password, deps.clients.platform),
       noun: "entries",
       total,
     },

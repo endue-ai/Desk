@@ -21,7 +21,8 @@ const until = async (test: () => boolean, ms = 3000) => {
 const tabs = (m: Mounted) => m.shown()?.shown?.tabs ?? [];
 const notifications = (m: Mounted) => tabs(m).find((t) => t.kind === "notifications");
 const rows = (m: Mounted) => notifications(m)?.set?.rows ?? [];
-const go = (m: Mounted, name: string) => m.host.command("endue.database.consoles", { console: name });
+const go = (m: Mounted, name: string) =>
+  m.host.command("endue.database.consoles", { console: name });
 /** Draw the console on screen again, after the plugin's 100 ms coalescing. */
 const drawn = async (m: Mounted) => {
   await new Promise((resolve) => setTimeout(resolve, 130));
@@ -87,14 +88,23 @@ describe("a console that listens", () => {
     const m = await shop({ handlers: granted });
     await run(m, "LISTEN jobs; LISTEN orders");
     const first = sessionOf(m, "LISTEN jobs");
-    m.host.emit({ event: "db.closed", data: { sessionId: first ?? "", reason: "io", message: "reset" } });
+    m.host.emit({
+      event: "db.closed",
+      data: { sessionId: first ?? "", reason: "io", message: "reset" },
+    });
     await m.settle();
     expect(m.view.said.at(-1)).toMatch(/stopped listening on jobs, orders: Listen again/u);
     await until(() => m.shown()?.session?.state === "idle");
     await drawn(m);
-    expect(m.host.calls.filter((c) => c.method === "db.run").map((c) => (c.params as { sql: string }).sql)).not.toContain('LISTEN "jobs"');
+    expect(
+      m.host.calls
+        .filter((c) => c.method === "db.run")
+        .map((c) => (c.params as { sql: string }).sql),
+    ).not.toContain('LISTEN "jobs"');
     expect(notifications(m)).toMatchObject({ stopped: true });
-    expect(notifications(m)?.note).toMatch(/^Stopped listening on jobs, orders: the session ended/u);
+    expect(notifications(m)?.note).toMatch(
+      /^Stopped listening on jobs, orders: the session ended/u,
+    );
     await m.host.command("endue.database.listen-again");
     await m.settle();
     const again = m.host.calls
@@ -111,7 +121,12 @@ describe("a console that listens", () => {
       .command("endue.database.query", { connection: "Shop", sql: "LISTEN jobs" })
       .then(JSON.stringify, (e: Error) => e.message);
     expect(said).toMatch(/Nothing listens on an agent's behalf/u);
-    expect(m.host.calls.some((c) => JSON.stringify(c.params ?? {}).includes("LISTEN jobs") && c.method.startsWith("db.run"))).toBe(false);
+    expect(
+      m.host.calls.some(
+        (c) =>
+          JSON.stringify(c.params ?? {}).includes("LISTEN jobs") && c.method.startsWith("db.run"),
+      ),
+    ).toBe(false);
   });
 
   it("the idle timer leaves a listening console's session open", async () => {
@@ -133,7 +148,13 @@ describe("a console that listens", () => {
       holds: () => listening,
     });
     const conn = { id: "c-pg", name: "Shop" } as never;
-    await keeper.use({ owner: "console:a", kind: "console" }, conn, 0, async () => ({ sessionId: "d-1", pid: 1 }), async () => undefined);
+    await keeper.use(
+      { owner: "console:a", kind: "console" },
+      conn,
+      0,
+      async () => ({ sessionId: "d-1", pid: 1 }),
+      async () => undefined,
+    );
     now = 5000;
     timers.shift()?.();
     expect(calls).toEqual([]);
@@ -148,10 +169,15 @@ describe("a console that listens", () => {
     await run(m, "LISTEN jobs");
     const sessionId = sessionOf(m, "LISTEN jobs") ?? "";
     for (let i = 0; i < 5000; i++)
-      m.host.emit({ event: "db.notification", data: { sessionId, pid: 9, channel: "jobs", payload: String(i) } });
+      m.host.emit({
+        event: "db.notification",
+        data: { sessionId, pid: 9, channel: "jobs", payload: String(i) },
+      });
     await drawn(m);
     expect(rows(m)).toHaveLength(1000);
     expect(rows(m)[0]?.[2]).toBe("4000");
-    expect(notifications(m)?.note).toBe("Listening on jobs. Keeps the latest 1,000: 4,000 older dropped.");
+    expect(notifications(m)?.note).toBe(
+      "Listening on jobs. Keeps the latest 1,000: 4,000 older dropped.",
+    );
   });
 });

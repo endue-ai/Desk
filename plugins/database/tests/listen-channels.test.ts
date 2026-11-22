@@ -31,7 +31,12 @@ function ran(sql: string, failing: number[] = []) {
 
 function listening() {
   const l = createListening({ now: () => 0 });
-  const run = (sql: string, mode: Mode = "run", before: "idle" | "open" | "failed" = "idle", failing: number[] = []) => {
+  const run = (
+    sql: string,
+    mode: Mode = "run",
+    before: "idle" | "open" | "failed" = "idle",
+    failing: number[] = [],
+  ) => {
     const { statements, result } = ran(sql, failing);
     l.ran(OWNER, statements, result, mode, before);
     return l.model(OWNER)?.channels ?? [];
@@ -44,7 +49,7 @@ describe("the channels a console listens to", () => {
     const { run } = listening();
     expect(run('LISTEN Jobs; listen "Orders"; LISTEN jobs')).toEqual(["Orders", "jobs"]);
     expect(run("UNLISTEN jobs")).toEqual(["Orders"]);
-    expect(run('LISTEN a; UNLISTEN *')).toEqual([]);
+    expect(run("LISTEN a; UNLISTEN *")).toEqual([]);
     expect(run("LISTEN a; LISTEN b; DISCARD ALL")).toEqual([]);
   });
 
@@ -73,7 +78,8 @@ describe("the channels a console listens to", () => {
   it("keeps the latest 1,000, counts what it dropped and what is unseen, and Clear empties it", () => {
     const { l, run } = listening();
     run("LISTEN jobs");
-    for (let i = 0; i < KEEP + 250; i++) l.heard(OWNER, { channel: "jobs", payload: String(i), pid: 7 });
+    for (let i = 0; i < KEEP + 250; i++)
+      l.heard(OWNER, { channel: "jobs", payload: String(i), pid: 7 });
     const model = l.model(OWNER);
     expect(model?.heard).toHaveLength(KEEP);
     expect(model?.heard[0]?.payload).toBe("250");

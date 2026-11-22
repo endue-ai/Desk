@@ -9,7 +9,10 @@ import { messages, sessionOf, shop, start } from "./session-helpers";
 const SLOW = "select restock_all()";
 const script: Script = (sql) => {
   if (sql === SLOW)
-    return { waits: true, notices: ["NOTICE:  batch 1 of 3", "WARNING:  batch 2 is slow", "NOTICE:  batch 3 of 3"] };
+    return {
+      waits: true,
+      notices: ["NOTICE:  batch 1 of 3", "WARNING:  batch 2 is slow", "NOTICE:  batch 3 of 3"],
+    };
   return {};
 };
 const drawn = () => new Promise((resolve) => setTimeout(resolve, 150));

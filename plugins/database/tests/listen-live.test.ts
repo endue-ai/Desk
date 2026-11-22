@@ -37,7 +37,8 @@ const until = async (test: () => boolean, ms = 15_000) => {
 };
 const notifications = (m: Mounted) =>
   (m.shown()?.shown?.tabs ?? []).find((t) => t.kind === "notifications");
-const go = (m: Mounted, name: string) => m.host.command("endue.database.consoles", { console: name });
+const go = (m: Mounted, name: string) =>
+  m.host.command("endue.database.consoles", { console: name });
 const done = (m: Mounted) => m.host.command("endue.database.disconnect", { connection: "live" });
 
 describe.skipIf(!uri)("live notices and LISTEN on a real server", () => {

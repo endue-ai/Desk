@@ -1,0 +1,15 @@
+{
+  "target": "DbDescribeResult",
+  "description": "db.describe of a statement the server cannot parse: its error with the position",
+  "instance": {
+    "paramTypes": [],
+    "transaction": "idle",
+    "error": {
+      "severity": "ERROR",
+      "localSeverity": "ERROR",
+      "code": "42P01",
+      "message": "relation \"missing\" does not exist",
+      "position": 15
+    }
+  }
+}

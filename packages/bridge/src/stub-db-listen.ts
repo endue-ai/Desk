@@ -4,9 +4,10 @@
  * pg_notify send `db.notification` to every session of the same database that listens, with the
  * sender's pid, a turn later, as the server does at the end of the sender's statement (the stub
  * keeps no transaction's queue). Each call a session answers has a number; the notices its
- * statement raises come as `db.call.notice` with it before the answer, which carries it too.
+ * statement raises come as `db.call.notice` with it before the answer, which carries it too, and
+ * those it sends after (`afterwards`) as db.notice events a turn later.
  */
-import type { BridgeEvent, DbPage, DbServerError } from "./generated";
+import type { BridgeEvent, DbServerError } from "./generated";
 
 /** What a session holds for these. */
 export interface Listening {
@@ -21,8 +22,12 @@ const nameOf = (raw: string) =>
   raw.startsWith('"') ? raw.slice(1, -1).replaceAll('""', '"') : raw.toLowerCase();
 const NAME = String.raw`("(?:[^"]|"")+"|[A-Za-z_][\w$]*)`;
 const LISTEN = new RegExp(String.raw`^\s*(LISTEN|UNLISTEN)\s+(\*|${NAME})\s*;?\s*$`, "iu");
-const NOTIFY = new RegExp(String.raw`^\s*NOTIFY\s+${NAME}\s*(?:,\s*'((?:[^']|'')*)')?\s*;?\s*$`, "iu");
-const PG_NOTIFY = /^\s*SELECT\s+pg_notify\s*\(\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*\)\s*;?\s*$/iu;
+const NOTIFY = new RegExp(
+  String.raw`^\s*NOTIFY\s+${NAME}\s*(?:,\s*'((?:[^']|'')*)')?\s*;?\s*$`,
+  "iu",
+);
+const PG_NOTIFY =
+  /^\s*SELECT\s+pg_notify\s*\(\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*\)\s*;?\s*$/iu;
 const text = (raw = "") => raw.replaceAll("''", "'");
 
 export function stubDbListen<S extends Listening>(
@@ -65,15 +70,20 @@ export function stubDbListen<S extends Listening>(
       }
       return "";
     },
-    /** A new call on the session: its notices go out now, and its answer will carry its number. */
-    call(session: S, notices: DbServerError[] = []): number {
+    /** A new call on the session: its statement's notices go out now, those it sends after a turn
+     * later; its answer carries the number this answers. */
+    call(
+      session: S,
+      statement?: { notices?: DbServerError[]; afterwards?: DbServerError[] },
+    ): number {
       const call = (session.calls ?? 0) + 1;
+      const sessionId = session.info.sessionId;
       session.calls = call;
-      for (const notice of notices)
-        later({ event: "db.call.notice", data: { sessionId: session.info.sessionId, call, notice } });
+      for (const notice of statement?.notices ?? [])
+        later({ event: "db.call.notice", data: { sessionId, call, notice } });
+      for (const notice of statement?.afterwards ?? [])
+        setTimeout(() => later({ event: "db.notice", data: { sessionId, notice } }), 0);
       return call;
     },
-    /** The page with its call's number. */
-    numbered: (page: DbPage, call: number): DbPage => ({ ...page, call }),
   };
 }

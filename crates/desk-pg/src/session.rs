@@ -171,6 +171,11 @@ impl Session {
         self.call(|reply| Command::Script(statements, limits, go_on, reply))
     }
 
+    /// What `statement` takes and answers, without running it: Parse and Describe (ADR 0353).
+    pub fn describe(&self, statement: Statement) -> Result<crate::describe::Described, Error> {
+        self.call(|reply| Command::Describe(statement, reply))
+    }
+
     /// The next page of the open result; with `close`, end it without reading on.
     pub fn fetch(&self, limits: Limits, close: bool) -> Result<Page, Error> {
         self.call(|reply| Command::Fetch(limits, close, reply))

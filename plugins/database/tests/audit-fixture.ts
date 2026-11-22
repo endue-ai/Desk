@@ -91,12 +91,19 @@ const SESSIONS = [
 ];
 
 /** What each statement saw: its text and who ran it (readOnly "on" for a read-only session). */
-export type Seen = Array<{ sql: string; who: Record<string, string> }>;
+export type Seen = Array<{ sql: string; who: Record<string, string>; describe?: true }>;
 
 /** The scripted server; every statement it answers is pushed to `seen`. */
 export function auditScript(seen: Seen): Script {
-  return (sql, who) => {
-    seen.push({ sql, who });
+  return (sql, who, bound) => {
+    seen.push({ sql, who, ...(bound?.describe ? { describe: true } : {}) });
+    // A check (db.describe, ADR 0353): what the statement takes and answers, or the server's error.
+    if (bound?.describe)
+      return /nosuch/u.test(sql)
+        ? { error: 'relation "nosuch" does not exist', code: "42P01", position: 15 }
+        : /^insert/iu.test(sql)
+          ? { paramTypes: [] }
+          : { rows: [["id"]], types: [23] };
     const sample = /^SELECT \* FROM "public"\."people" LIMIT (\d+) OFFSET 0$/u.exec(sql);
     if (sample) return { rows: PEOPLE.slice(0, Number(sample[1]) + 1) };
     if (/^SELECT \* FROM "public"\."nosuch"/u.test(sql))
@@ -140,11 +147,13 @@ export function auditScript(seen: Seen): Script {
     if (/FROM pg_stat_activity/u.test(sql)) return { rows: SESSIONS };
     if (/^EXPLAIN \((ANALYZE, BUFFERS, )?FORMAT TEXT\) /u.test(sql))
       return { rows: [["QUERY PLAN"], ["Seq Scan on people  (cost=0.00..1.03 rows=3 width=40)"]] };
-    if (/^PREPARE endue_agent_check AS /u.test(sql))
-      return /nosuch/u.test(sql)
-        ? { error: 'relation "nosuch" does not exist', code: "42P01", position: 44 }
-        : {};
-    if (/^DEALLOCATE /u.test(sql)) return {};
+    if (/format_type/u.test(sql))
+      return {
+        rows: [
+          ["oid", "format_type"],
+          ["23", "integer"],
+        ],
+      };
     if (/nextval/u.test(sql) && who.readOnly === "on")
       return { error: "cannot execute nextval() in a read-only transaction", code: "25006" };
     if (/^(insert|update|delete)/iu.test(sql))

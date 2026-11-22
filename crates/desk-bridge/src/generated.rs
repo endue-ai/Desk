@@ -5199,6 +5199,7 @@ pub enum BridgeRequest {
     DbOpen(DbOpenRequest),
     DbRun(DbRunRequest),
     DbScript(DbScriptRequest),
+    DbDescribe(DbDescribeRequest),
     DbFetch(DbFetchRequest),
     DbCopy(DbCopyRequest),
     DbCancel(DbCancelRequest),
@@ -7243,6 +7244,50 @@ pub struct DbScriptResult {
     /// What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<BridgeError>,
+}
+
+/// Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeRequest {
+    pub id: RequestId,
+    pub method: DbDescribeRequestMethod,
+    pub params: DbDescribeParams,
+}
+
+/// Parameters of db.describe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// One statement; two are the server's 42601.
+    pub sql: String,
+    /// The parameters' type OIDs; 0, or a missing one, is the server's inference.
+    #[serde(
+        rename = "paramTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub param_types: Option<Vec<u64>>,
+}
+
+/// Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeResult {
+    /// The type OID of $1, $2, ..., as the server infers them; empty with an error.
+    #[serde(rename = "paramTypes")]
+    pub param_types: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<Vec<DbColumn>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction: Option<DbTransaction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<DbServerError>,
+    /// The notices the server sent while this call ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notices: Option<Vec<DbServerError>>,
 }
 
 /// The next page of the session's open result, or close it without reading on.
@@ -13818,6 +13863,14 @@ pub enum DbScriptRequestMethod {
     #[default]
     #[serde(rename = "db.script")]
     DbScript,
+}
+
+/// The `method` of [`DbDescribeRequest`]: always `"db.describe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbDescribeRequestMethod {
+    #[default]
+    #[serde(rename = "db.describe")]
+    DbDescribe,
 }
 
 /// The `method` of [`DbFetchRequest`]: always `"db.fetch"`.
