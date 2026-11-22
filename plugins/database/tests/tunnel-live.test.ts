@@ -96,7 +96,7 @@ describe.skipIf(!ready)("a PostgreSQL connection through a real SSH tunnel", () 
     expect(answer(await typed.execute(viaPassword, "select 2"))).toBe("2");
     expect(typed.asked).toHaveLength(1);
 
-    const dir = mkdtempSync(join(tmpdir(), "t447-"));
+    const dir = mkdtempSync(join(tmpdir(), "endue-tunnel-"));
     try {
       const stranger = join(dir, "not-authorised");
       writeFileSync(stranger, "not a key\n", { mode: 0o600 });
