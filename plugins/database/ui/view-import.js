@@ -7,8 +7,8 @@
 
 import { sizeText } from "./console-files.js";
 import { el } from "./dom.js";
-import { formatCount } from "./format.js";
 import { createCopyView } from "./import-copy/view.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./importer.js").ImportModel} ImportModel
@@ -21,15 +21,9 @@ const shown = (/** @type {string | null | undefined} */ value) =>
 
 /** What a COPY import will do, in a sentence. @param {NonNullable<ImportModel["copy"]>} c */
 const copySummary = (c) => {
-  const how =
-    c.batch > 0
-      ? `committed every ${formatCount(c.batch)} rows`
-      : "in one transaction: if it fails, nothing is kept";
-  const errors =
-    c.onError === "skip"
-      ? " A row the server refuses goes to a reject file with its reason."
-      : " The first row the server refuses stops it.";
-  return `The whole file goes in by COPY, ${how}.${errors}`;
+  const how = c.batch > 0 ? t("import.copyBatch", { count: c.batch }) : t("import.copyOne");
+  const errors = t(c.onError === "skip" ? "import.copySkip" : "import.copyStop");
+  return t("import.copySummary", { how, errors });
 };
 
 /**
@@ -71,12 +65,17 @@ export function createImportView(doc, act) {
       doc,
       "tr",
       {},
-      el(doc, "th", { scope: "col" }, "In the file"),
-      el(doc, "th", { scope: "col" }, "First row"),
-      el(doc, "th", { scope: "col" }, m.copy?.target === "new" ? "Column and type" : "Goes to"),
+      el(doc, "th", { scope: "col" }, t("import.inFile")),
+      el(doc, "th", { scope: "col" }, t("import.firstRow")),
+      el(
+        doc,
+        "th",
+        { scope: "col" },
+        t(m.copy?.target === "new" ? "import.columnAndType" : "import.goesTo"),
+      ),
     );
     const choices = /** @type {Array<[string, string]>} */ ([
-      ["", "Leave out"],
+      ["", t("import.leaveOut")],
       ...m.columns.map((c) => [c.name, c.type ? `${c.name} (${c.type})` : c.name]),
     ]);
     const rows = m.fileColumns.map((name, index) => {
@@ -93,7 +92,7 @@ export function createImportView(doc, act) {
         el(doc, "select", {
           class: "desk-field",
           "data-index": String(index),
-          "aria-label": `${name} goes to`,
+          "aria-label": t("import.goesToOf", { name }),
         })
       );
       options(pick, choices, m.mapping[index] ?? "");
@@ -139,11 +138,12 @@ export function createImportView(doc, act) {
       if (closing) byId("tree").focus();
       return;
     }
-    byId("import-title").textContent = `Import ${next.file}`;
-    const columns = `${next.fileColumns.length} column${next.fileColumns.length === 1 ? "" : "s"}`;
+    byId("import-title").textContent = t("import.title", { file: next.file });
+    const columns = t("import.columns", { count: next.fileColumns.length });
+    const format = next.format.toUpperCase();
     byId("import-file").textContent = next.copy
-      ? `${next.format.toUpperCase()}, ${sizeText(next.copy.size)}, ${columns}; the first ${formatCount(next.rows)} rows are shown.`
-      : `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} of ${next.format.toUpperCase()}, ${columns}.`;
+      ? t("import.fileCopy", { format, size: sizeText(next.copy.size), columns, count: next.rows })
+      : t("import.fileRows", { rows: t("import.rows", { count: next.rows }), format, columns });
     options(
       connection,
       next.connections.map((c) => [c.id, c.name]),
@@ -156,7 +156,10 @@ export function createImportView(doc, act) {
     );
     options(
       table,
-      [["", "Pick a table"], ...next.tables.map((t) => /** @type {[string, string]} */ ([t, t]))],
+      [
+        ["", t("import.pickTable")],
+        ...next.tables.map((name) => /** @type {[string, string]} */ ([name, name])),
+      ],
       next.table,
     );
     header.checked = next.header;
@@ -174,11 +177,14 @@ export function createImportView(doc, act) {
       ? ""
       : next.copy
         ? copySummary(next.copy)
-        : `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} in ${next.statements} INSERT statement${next.statements === 1 ? "" : "s"}, run in one transaction: if one fails, none is kept.`;
+        : t("import.summaryInsert", {
+            rows: t("import.rows", { count: next.rows }),
+            statements: t("import.statements", { count: next.statements }),
+          });
     byId("import-sql").textContent = next.sql;
     byId("import-problem").textContent = next.problem;
     run.disabled = next.running || next.problem !== "";
-    run.textContent = next.running ? "Importing…" : "Import";
+    run.textContent = t(next.running ? "import.running" : "import.run");
     const first = /** @type {HTMLElement | null} */ (map.querySelector("select"));
     if (opening) (next.table && first ? first : table).focus();
   };

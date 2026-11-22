@@ -2,6 +2,8 @@
 // the page's main area beside the built-in dialogs, its first field focused; Escape cancels, and
 // the focus goes back to where it was when it closes. One opened while another shows cancels it.
 
+import { t } from "./strings/index.js";
+
 /** @typedef {import("./feature-host.js").Dialog} Dialog */
 
 /**
@@ -17,7 +19,7 @@ export function createDialogs(doc, host, dialogs) {
     /** Show a dialog; resolves with its answer, or undefined when it was cancelled. */
     show(/** @type {string} */ type, /** @type {unknown} */ model) {
       const dialog = Object.hasOwn(dialogs, type) ? dialogs[type] : undefined;
-      if (!dialog) return Promise.reject(new Error(`No feature draws a ${type} dialog.`));
+      if (!dialog) return Promise.reject(new Error(t("dialog.none", { type })));
       shown?.close(undefined);
       const before = /** @type {HTMLElement | null} */ (doc.activeElement);
       return new Promise((resolve) => {

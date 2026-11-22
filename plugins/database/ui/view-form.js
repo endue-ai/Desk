@@ -9,6 +9,7 @@
 
 import { COLORS, SSL_MODES, TAGS } from "./connections.js";
 import { OPTIONS } from "./engines/pg-options.js";
+import { t } from "./strings/index.js";
 import { TUNNEL } from "./tunnel/fields.js";
 
 /**
@@ -19,7 +20,6 @@ import { TUNNEL } from "./tunnel/fields.js";
  */
 
 const PORTS = { postgresql: "5432", mysql: "3306", sqlite: "" };
-const DEFAULT_SSL = "the client's default";
 const TEXT_FIELDS = /** @type {const} */ ([
   "name",
   "host",
@@ -64,10 +64,12 @@ export function createForms(doc, act) {
   const rememberLabel = /** @type {HTMLElement} */ (remember.closest("label"));
 
   for (const mode of SSL_MODES)
-    ssl.append(new Option(mode === "default" ? DEFAULT_SSL : mode, mode));
+    ssl.append(new Option(mode === "default" ? t("form.sslDefault") : mode, mode));
   for (const value of TAGS) tag.append(new Option(value, value));
   COLORS.forEach((value, i) => {
-    color.append(new Option(value ? `Colour ${i}` : "none", value));
+    color.append(
+      new Option(value ? t("form.colour", { n: String(i) }) : t("form.colourNone"), value),
+    );
   });
 
   /** Show the fields the engine uses: `sqlite`, `server` (the others) or one engine's own. */
@@ -82,8 +84,7 @@ export function createForms(doc, act) {
     // The desk's own PostgreSQL sessions use TLS when the server offers it; MySQL's client decides.
     const first = ssl.options[0];
     if (first)
-      first.text =
-        engine.value === "postgresql" ? "default: TLS when the server offers it" : DEFAULT_SSL;
+      first.text = t(engine.value === "postgresql" ? "form.sslDefaultPostgres" : "form.sslDefault");
   };
 
   /** @returns {Partial<Connection>} */
@@ -163,7 +164,8 @@ export function createForms(doc, act) {
       const opening = form.hidden;
       form.hidden = model === null;
       if (!model) return;
-      title.textContent = model.mode === "edit" ? `Change ${model.fields.name}` : "New connection";
+      title.textContent =
+        model.mode === "edit" ? t("form.change", { name: model.fields.name }) : t("form.new");
       const conn = model.fields;
       if (opening) {
         for (const name of TEXT_FIELDS)

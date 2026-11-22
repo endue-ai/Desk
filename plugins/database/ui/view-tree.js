@@ -7,6 +7,7 @@
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./explorer.js").Node} Node
@@ -87,8 +88,7 @@ export function createTree(doc, tree, act, moved = () => {}) {
       return node;
     });
     tree.replaceChildren(...els);
-    if (rows.length === 0)
-      tree.append(el(doc, "p", { class: "empty" }, "No connections yet. Press n to add one."));
+    if (rows.length === 0) tree.append(el(doc, "p", { class: "empty" }, t("tree.empty")));
     if (hadFocus) els[cursor]?.focus();
     moved(connectionRow());
   };

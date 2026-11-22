@@ -5,7 +5,7 @@
 // draws again and is told (`chartChanged`), so the feature keeps it with a starred query.
 
 import { el } from "../dom.js";
-import { formatCount } from "../format.js";
+import { t } from "../strings/index.js";
 import { chartClient } from "./client.js";
 import { drawChart, tokenPalette } from "./draw.js";
 import {
@@ -34,18 +34,13 @@ export function chartNote(
   /** @type {{ rows: unknown[], truncated: boolean }} */ set,
 ) {
   const out = [];
-  if (set.truncated)
-    out.push(
-      `Drawn from the ${formatCount(set.rows.length)} rows fetched: the result has more that were not loaded.`,
-    );
+  if (set.truncated) out.push(t("chart.truncated", { count: set.rows.length }));
   const { categories, series, points } = data.dropped;
-  if (categories) out.push(`${formatCount(categories)} more ${settings.x} values are not drawn.`);
-  if (series) out.push(`${formatCount(series)} more series are not drawn.`);
-  if (points) out.push(`${formatCount(points)} more points are not drawn.`);
-  if (data.skipped)
-    out.push(`${formatCount(data.skipped)} values that are not numbers are left out.`);
-  if (settings.type === "scatter" && data.points.length === 0)
-    out.push("A scatter needs numbers in both its columns.");
+  if (categories) out.push(t("chart.moreCategories", { count: categories, column: settings.x }));
+  if (series) out.push(t("chart.moreSeries", { count: series }));
+  if (points) out.push(t("chart.morePoints", { count: points }));
+  if (data.skipped) out.push(t("chart.skipped", { count: data.skipped }));
+  if (settings.type === "scatter" && data.points.length === 0) out.push(t("chart.scatterNeeds"));
   return out.join(" ");
 }
 
@@ -128,7 +123,7 @@ export function createCharts(doc, act, startWorker) {
     if ("then" in got) {
       box.setAttribute("aria-busy", "true");
       void got.then(done, (error) => {
-        if (id === asked) note.textContent = `The chart was not drawn: ${error.message}`;
+        if (id === asked) note.textContent = t("chart.failed", { error: error.message });
       });
     } else done(got);
   };
@@ -142,19 +137,19 @@ export function createCharts(doc, act, startWorker) {
     return el(
       doc,
       "div",
-      { class: "chart-bar", role: "toolbar", "aria-label": "Chart" },
+      { class: "chart-bar", role: "toolbar", "aria-label": t("chart.label") },
       select(
         "type",
-        "Chart",
-        TYPES.map((t) => [t, TYPE_NAMES[t]]),
+        t("chart.type"),
+        TYPES.map((type) => [type, TYPE_NAMES[type]]),
         s.type,
       ),
-      select("x", "X", names, s.x),
-      select("y", "Y", [["", "Rows"], ...names], s.y),
-      select("series", "Series", [["", "None"], ...names], s.series),
+      select("x", t("chart.x"), names, s.x),
+      select("y", t("chart.y"), [["", t("chart.rows")], ...names], s.y),
+      select("series", t("chart.series"), [["", t("chart.none")], ...names], s.series),
       select(
         "aggregate",
-        "As",
+        t("chart.as"),
         AGGREGATES.map((a) => [a, AGGREGATE_NAMES[a]]),
         s.aggregate,
       ),
@@ -166,9 +161,9 @@ export function createCharts(doc, act, startWorker) {
           type: "button",
           class: "desk-btn desk-btn-quiet",
           "data-chart": "export",
-          title: "Export the chart as a PNG image",
+          title: t("chart.exportTitle"),
         },
-        "Export",
+        t("chart.export"),
       ),
     );
   };

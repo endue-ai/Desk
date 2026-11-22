@@ -109,7 +109,7 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 | DB-13 | 테이블 보기: 탐색기의 테이블 → `SELECT * … WHERE … ORDER BY … LIMIT … OFFSET …` 페이지, 앞뒤, 개수(요청 시), 열 머리글로 서버 정렬. 필터 · 정렬은 식 하나(`;` · 주석 · 짝 안 맞는 괄호 거절) | 있음 (정렬하지 않은 PostgreSQL 테이블은 PK 순, 없으면 `ctid`) | A |
 | DB-14 | 데이터 편집(ADR 0115): 테이블 보기 또는 테이블 하나의 단순 SELECT 결과에서 셀 고치기 · 행 추가 · 삭제를 대기 변경으로 모아 diff 로 그리고, SQL 미리 보기(`p`) 뒤 Submit(`Mod+Enter`)으로 한 트랜잭션에. PK 로 행을 짚고 값은 열 타입의 리터럴. PK 없음 · PK 열이 결과에 없음 · 읽기 전용 연결은 거절, 실패하면 전부 롤백, 맞는 행이 없던 변경은 말한다 | 있음 (PostgreSQL 은 조인 · PK 없는 테이블 · 뷰도 열의 출처로, PG-45; 붙여 넣기 · 복제 · 되돌리기, PG-43) | B |
 | DB-15 | 기록: 연결마다 최근 `history-max`(200) 문장 · 시각 · 결과 요약. 비밀번호를 담은 듯한 문장(`PASSWORD` · `IDENTIFIED BY` …)은 남기지 않는다. 팔레트로 검색해 골라 편집기에. 별표한 쿼리(이름 · 문장, 연결마다 store `saved:<id>`): 별표 · 목록 · 해제 | 있음 | A · B |
-| DB-16 | 복사 · 내보내기: 결과(또는 블록)를 TSV · CSV · JSON(정확히 돌아오는 숫자만 숫자) · Markdown · SQL INSERT · SQL UPDATE(PK 로, 없으면 모든 열로) 로 복사. 파일은 데스크의 저장 대화상자가 정한 곳에(ADR 0341) `<테이블>-<시각>.<확장자>` 를 제안해 쓰고 파일 관리자에서 보여 준다 | 있음 (열 가지 형식, `.xlsx` 포함, PG-61; 팔레트에서 부른 Copy as 는 D1 · PG-109 전까지 실패할 수 있다) | A · B |
+| DB-16 | 복사 · 내보내기: 결과(또는 블록)를 TSV · CSV · JSON(정확히 돌아오는 숫자만 숫자) · Markdown · SQL INSERT · SQL UPDATE(PK 로, 없으면 모든 열로) 로 복사. 파일은 데스크의 저장 대화상자가 정한 곳에(ADR 0341) `<테이블>-<시각>.<확장자>` 를 제안해 쓰고 파일 관리자에서 보여 준다 | 있음 (열 가지 형식, `.xlsx` 포함, PG-61; 팔레트에서 부른 Copy as 도 클립보드에 닿는다, PG-109 · D1) | A · B |
 | DB-17 | 에이전트: `endue.database.connections`(비밀번호 없이) · `.schema` · `.query`(maxRows ≤ 1000). 쓰기는 태그와 무관하게 사람에게 묻고, 비밀번호 입력은 띄우지 않는다 | 있음 (읽기 도구 · 닫힌 연결 · 가린 열 · 감사 목록, PG-91, ADR 0346) | A |
 | DB-18 | 파일 열기: `*.sqlite` `*.sqlite3` `*.db3` 를 데스크가 열면 그 파일의 연결(처음이면 추가)과 콘솔이, `*.sql` 은 그 파일에 묶인 콘솔이 그 버퍼에(ADR 0286) | 있음 | A |
 | DB-19 | 객체: 테이블 · 뷰 · 머티리얼라이즈드 뷰 · 외부 테이블 · 시퀀스 · 함수 · 프로시저 · 이벤트, 테이블의 키(PK · UNIQUE · CHECK · EXCLUDE) · 외래 키 · 인덱스 · 트리거. 각각의 DDL(`d`): MySQL 은 `SHOW CREATE`, SQLite 는 `sqlite_master.sql`, PG 는 `pg_get_*def` 와 카탈로그로 | 있음 (PostgreSQL 의 나머지 종류, PG-50) | B |
@@ -133,7 +133,7 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 | NF-03 | 성능: 클라이언트 엔진은 실행당 출력 64 MiB 상한, 행 상한(DB-10), 그리드는 보이는 행만, 탐색기 지연 로딩 · 캐시, 무거운 일은 워커. PostgreSQL 은 커서 · COPY 로 크기 무관 | 있음 (예산 `just perf-database`: 백만 행 · 테이블 1만 · 열 1000 · SQL 1 MB, PG-103, ADR 0362) | A |
 | NF-04 | 접근성: 키보드만으로 전부. 탐색기 `role=tree`, 결과 `role=grid` + `aria-rowcount` · `aria-colcount` · `aria-sort`, 탭 `role=tablist`, 상태 줄 live region. 편집기는 `Mod+Enter` · `Mod+Shift+Enter` 만 가로채고 Escape 는 실행 중일 때만 | 있음 | A |
 | NF-05 | 테마: `--desk-*` 토큰, 환경 색 셋은 플러그인 소유, production 은 표면 위 띠. 두 테마 대비 검사 | 있음 (`tests/contrast.test.ts`, PG-107) | A · B |
-| NF-06 | 국제화: 문자열은 영어 한 곳에. RT-13 번들이 오면 `locales` | 없음 (PG-108 #503 열림) | C |
+| NF-06 | 국제화: 문자열은 영어 한 곳에. RT-13 번들이 오면 `locales` | 있음 (뷰 모듈의 문자열은 `ui/strings/en.json` 카탈로그 하나에, 데스크가 주는 언어로 읽고 언어는 파일 하나로 더한다; `scripts/strings-lint.mjs`, ADR 0366, PG-108) | C |
 | NF-07 | 최소 버전: PostgreSQL 서버 15~19 를 지원하고 컨테이너로 시험한다(ADR 0351). mysql 8.0.19 · mariadb 10.5(`--binary-as-hex`), sqlite3 3.37(`-safe`), `pg_dump` · `pg_restore` 는 서버의 메이저 이상. 낮으면 무엇 때문인지 말한다 | 있음 | A |
 | NF-08 | Windows · Linux: `.exe` · 경로 · 신호 · 비밀번호 파일 · 키체인 | 일부 (PostgreSQL 은 세 시스템 모두, PG-102; MySQL · SQLite 클라이언트의 Windows 탐색 폴더는 비어 있다) | C |
 | NF-09 | 테스트: lexer · 분류 · 엔진 계획과 읽기(실제 출력 고정) · URI · 결과 · 컨트롤러(PostgreSQL 은 `StubDatabase`, 다른 엔진은 가짜 클라이언트가 실제 프로토콜로 답한다) · 매니페스트(Ajv · `desk plugin validate`). 실제 서버 통합(`*-live.test.ts`): PostgreSQL 은 코어 브리지로, `ENDUE_DB_TEST_*` URI 가 있으면 | 있음 (런타임 e2e `packages/runtime/e2e/database*.spec.ts`; PostgreSQL 15~19 `just test-pg-versions`, PG-101) | A · B |
@@ -216,8 +216,8 @@ ID 는 에픽의 것이고 `#` 은 그 Task 이슈다. 영역별 설명은 `plug
 | PG-105 · #500 | 연결이 끊겨도 일을 잃지 않고 세션이 돌아온다 | 있음 (다시 돌리지 않는다, ADR 0355) | D |
 | PG-106 · #501 | 이 문서가 이 단계를 얻고 코드와 맞는다 | 있음 (`tests/requirements-doc.test.ts`) | D |
 | PG-107 · #502 | 두 테마에서 색 대비 검사 | 있음 (`tests/contrast.test.ts`) | D |
-| PG-108 · #503 | 문자열을 카탈로그 하나에, 로캘 준비 | 없음 (NF-06) | D |
-| PG-109 · #504 | 팔레트에서 부른 Copy as 도 클립보드에 닿는다 | 없음 (PR #613 열림, D1) | D |
+| PG-108 · #503 | 문자열을 카탈로그 하나에, 로캘 준비 | 있음 (`ui/strings/`, 복수형 · 수 · 날짜는 `Intl`, 서버의 말은 그대로 표시해 구분; ADR 0366, NF-06) | D |
+| PG-109 · #504 | 팔레트에서 부른 Copy as 도 클립보드에 닿는다 | 있음 (ADR 0318, D1) | D |
 
 ## 의존: Desk 쪽에서 해야 하는 것
 
@@ -225,7 +225,7 @@ A~C 단계의 플러그인은 공개 API 만 썼다. D 단계는 코어 · 스�
 
 | ID | 무엇 | 어디 | 상태 |
 | --- | --- | --- | --- |
-| D1 | 런타임이 플러그인 페이지에 클립보드 쓰기를 허용 (보안 판단과 함께) | 셸 · `packages/runtime` | 아직 (PG-109, PR #613). 플러그인은 Clipboard API 를 먼저, 거절되면 copy 명령을 쓴다(`ui/clipboard.js`); 그리드의 `Mod+C`(copy 이벤트)와 값 보기의 Copy 는 된다 |
+| D1 | 런타임이 플러그인 페이지에 클립보드 쓰기를 허용 (보안 판단과 함께) | 셸 · `packages/runtime` | 있음 (PG-109, ADR 0318): 팔레트의 명령은 그 플러그인 페이지에서 사람이 한 동작이라 셸이 페이지에 포커스와 활성화를 빌려주고, 플러그인은 클립보드 길 하나로 쓴다(`ui/clipboard.js`), 큰 복사는 먼저 묻는다 |
 | D2 | 비밀 보관(SYS-06 키체인): 플러그인이 비밀번호를 코어에 맡기고 다시 꺼내지 못하는 길 | `specs/bridge` · 코어 | 됨 (PG-03, ADR 0311: `passwordRef` 로 세션이 로그인한다) |
 | D3 | 좁게 묻는 `fs:write`, 또는 플러그인이 여는 저장 대화상자 | `specs/plugin` · 코어 | 됨 (`dialog.save` · `dialog.open` 이 고른 경로를 허가, ADR 0341; `fs.write` `append`, ADR 0356) |
 | D4 | `browserStub` 의 가짜 `proc`(BR-07)과 가짜 세션 | `packages/bridge` | 됨: 런타임 e2e 의 테스트 페이지가 `proc.spawn` 을 스크립트 sqlite3 로, `db.*` 를 `StubDatabase` 로 답한다 |
@@ -241,7 +241,7 @@ A~C 단계의 플러그인은 공개 API 만 썼다. D 단계는 코어 · 스�
 | A | 연결을 만들고(URI 포함) 시험하고, 스키마를 펼치고, 콘솔에서 문장 · 스크립트를 돌리고(트랜잭션 · 시험 실행 · EXPLAIN), 결과를 정확히 보고 정렬 · 복사하고, 테이블을 페이지로 보고, 운영 DB 에서 막히거나 묻는다. 에이전트가 읽고, 쓰기는 사람이 허락한다 | DB-01~13 · 15 · 16(복사) · 17 · 18, NF-01~05 · 07 · 09(단위 · 실제 클라이언트) · 10 |
 | B | 날마다 쓰는 나머지: 데이터 편집, 파일로 내보내기, 객체 더 보기 · DDL, 구문 강조 · 자동 완성, 대비 검사, 런타임 e2e | DB-14 · 16(파일) · 19 · 20, NF-05 대비, NF-09 e2e |
 | C | 세션 유지, SSH 터널, 가져오기 · 덤프, Windows, 국제화 | DB-21~23 · 28, NF-06 · 08 |
-| D | PostgreSQL 클라이언트 계획(#438): 코어의 세션, 열어 둔 트랜잭션, 크기 무관 결과 · COPY, SQL 을 아는 편집기, 스키마 도구, 대량 데이터, 서버 보기, 같은 가드 아래의 Eris 와 에이전트 | PG-00~109 (위 표). 남은 것: PG-108 · 109 |
+| D | PostgreSQL 클라이언트 계획(#438): 코어의 세션, 열어 둔 트랜잭션, 크기 무관 결과 · COPY, SQL 을 아는 편집기, 스키마 도구, 대량 데이터, 서버 보기, 같은 가드 아래의 Eris 와 에이전트 | PG-00~109 (위 표). 모두 있음 |
 
 ## 가정과 결정 (뒤집으려면 거절에 한 줄로)
 
@@ -290,4 +290,4 @@ A~C 단계의 플러그인은 공개 API 만 썼다. D 단계는 코어 · 스�
 - MySQL / MariaDB · SQLite 의 세션 유지 · SSH 터널: #438 은 PostgreSQL 만 다룬다. 코어에 드라이버를 더할지, 클라이언트 세션 프로세스로 갈지.
 - 백업 · 복원(`pg_dump` · `pg_restore`)이 SSH 터널을 타는 길: 지금은 서버에 바로 간다.
 - PostgreSQL 세션의 소켓 폴더 · IPv6 주소 연결: `db.open` 이 아직 받지 않는다.
-- 국제화(NF-06 · PG-108): 문자열 카탈로그의 모양과 RT-13 번들과의 관계.
+- 국제화(NF-06 · PG-108): 뷰 모듈 밖(기능 폴더 · `index.html` · 명령 제목)의 문자열도 카탈로그로 옮길지, 그리고 RT-13 번들과의 관계.

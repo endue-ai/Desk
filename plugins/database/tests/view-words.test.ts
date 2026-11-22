@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Node } from "../ui/explorer.js";
+import { t } from "../ui/strings/index.js";
 import { createView } from "../ui/view.js";
 import { SAVED } from "./harness";
 
@@ -43,16 +44,12 @@ describe("the work pane with nothing open", () => {
       row("connection", "warehouse", 1, "c-2"),
     ]);
     expect(byId("empty").hidden).toBe(false);
-    expect(byId("empty").textContent).toBe(
-      "No console is open on fixture: Enter or a double click on it opens one.",
-    );
+    expect(byId("empty").textContent).toBe(t("view.noConsole", { name: "fixture" }));
     // The cursor moves to the other connection: the pane follows it.
     const tree = byId("tree");
     const items = tree.querySelectorAll<HTMLElement>("[role=treeitem]");
     items[3]?.click();
-    expect(byId("empty").textContent).toBe(
-      "No console is open on warehouse: Enter or a double click on it opens one.",
-    );
+    expect(byId("empty").textContent).toBe(t("view.noConsole", { name: "warehouse" }));
     items[2]?.click();
     expect(byId("empty").textContent).toContain("on fixture:");
     // A group holds no connection of its own: the pane asks to pick one.
@@ -69,11 +66,11 @@ describe("the TLS choice", () => {
     view.form({ mode: "new", fields: { ...pg, ssl: "default" }, error: "", note: "" } as never);
     const ssl = byId("f-ssl") as HTMLSelectElement;
     expect(ssl.value).toBe("default");
-    expect(ssl.selectedOptions[0]?.textContent).toBe("default: TLS when the server offers it");
-    expect([...ssl.options].some((o) => /client's default/u.test(o.textContent ?? ""))).toBe(false);
+    expect(ssl.selectedOptions[0]?.textContent).toBe(t("form.sslDefaultPostgres"));
+    expect([...ssl.options].some((o) => o.textContent === t("form.sslDefault"))).toBe(false);
     const engine = byId("f-engine") as HTMLSelectElement;
     engine.value = "mysql";
     engine.dispatchEvent(new Event("change"));
-    expect(ssl.selectedOptions[0]?.textContent).toBe("the client's default");
+    expect(ssl.selectedOptions[0]?.textContent).toBe(t("form.sslDefault"));
   });
 });

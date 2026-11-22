@@ -4,6 +4,7 @@
 // with Commit, and Rollback (a failed transaction offers only Rollback); and Reconnect beside a lost
 // session (PG-105). The words are transaction-words.js's.
 
+import { t } from "../strings/index.js";
 import { transactionLine } from "./transaction-words.js";
 
 /** @typedef {import("./transaction-words.js").TransactionModel} TransactionModel */
@@ -44,7 +45,9 @@ export function createTransactionHeader(doc, now = () => Date.now()) {
     bar.hidden = !model?.mode;
     const mode = byId("tx-mode");
     if (mode) {
-      mode.textContent = model?.mode === "manual" ? "Manual commit" : "Auto commit";
+      mode.textContent = t(
+        model?.mode === "manual" ? "session.manualCommit" : "session.autoCommit",
+      );
       mode.setAttribute("aria-pressed", String(model?.mode === "manual"));
     }
     const line = tick();

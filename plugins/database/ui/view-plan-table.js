@@ -5,6 +5,7 @@
 import { el } from "./dom.js";
 import { flatten } from "./explain/plan.js";
 import { buffersText, costText, count, ms } from "./explain/words.js";
+import { t } from "./strings/index.js";
 import { marksView } from "./view-plan-marks.js";
 
 /** @typedef {import("./explain/plan.js").PlanNode} PlanNode */
@@ -21,30 +22,36 @@ export function tableView(doc, root) {
   const timed = root.time !== null;
   /** @type {Column[]} */
   const columns = [
-    { name: "Est. rows", value: (n) => n.rows, text: (n) => num(n.rows, count) },
-    { name: "Rows", value: (n) => n.actualRows, text: (n) => num(n.actualRows, count) },
+    { name: "plan.columnEstRows", value: (n) => n.rows, text: (n) => num(n.rows, count) },
+    { name: "plan.columnRows", value: (n) => n.actualRows, text: (n) => num(n.actualRows, count) },
     {
-      name: "Misestimate",
+      name: "plan.columnMisestimate",
       value: (n) => (n.misestimate === null ? null : Math.max(n.misestimate, 1 / n.misestimate)),
       text: (n) => {
         if (n.misestimate === null) return "";
         const ratio = Math.max(n.misestimate, 1 / n.misestimate);
         // Within half again of the estimate is no miss worth a word.
         if (ratio < 1.5) return "×1";
-        return `×${count(ratio)} ${n.misestimate >= 1 ? "more" : "fewer"}`;
+        return t(n.misestimate >= 1 ? "plan.misestimateMore" : "plan.misestimateFewer", {
+          ratio: count(ratio),
+        });
       },
     },
-    { name: "Loops", value: (n) => n.loops, text: (n) => num(n.loops, count) },
+    { name: "plan.columnLoops", value: (n) => n.loops, text: (n) => num(n.loops, count) },
     timed
-      ? { name: "Own", value: (n) => n.ownTime, text: (n) => num(n.ownTime, ms) }
-      : { name: "Own cost", value: (n) => n.self, text: (n) => costText(n.self) },
+      ? { name: "plan.columnOwn", value: (n) => n.ownTime, text: (n) => num(n.ownTime, ms) }
+      : { name: "plan.columnOwnCost", value: (n) => n.self, text: (n) => costText(n.self) },
     timed
-      ? { name: "Total", value: (n) => n.time, text: (n) => num(n.time, ms) }
-      : { name: "Cost", value: (n) => n.cost, text: (n) => num(n.cost, costText) },
-    { name: "Share", value: (n) => n.share, text: (n) => `${Math.round(n.share * 100)}%` },
+      ? { name: "plan.columnTotal", value: (n) => n.time, text: (n) => num(n.time, ms) }
+      : { name: "plan.columnCost", value: (n) => n.cost, text: (n) => num(n.cost, costText) },
+    {
+      name: "plan.columnShare",
+      value: (n) => n.share,
+      text: (n) => `${Math.round(n.share * 100)}%`,
+    },
   ];
   const nodes = flatten(root).map(({ node }) => node);
-  let by = columns.findIndex((c) => c.name === "Share");
+  let by = columns.findIndex((c) => c.name === "plan.columnShare");
   const body = el(doc, "tbody");
   const draw = () => {
     const column = columns[by];
@@ -75,9 +82,9 @@ export function tableView(doc, root) {
       {
         type: "button",
         class: "desk-btn desk-btn-quiet",
-        title: `Sort by ${c.name.toLowerCase()}, largest first`,
+        title: t("plan.sortBy", { column: t(c.name).toLowerCase() }),
       },
-      c.name,
+      t(c.name),
     );
     sort.addEventListener("click", () => {
       by = i;
@@ -90,10 +97,10 @@ export function tableView(doc, root) {
     doc,
     "tr",
     {},
-    el(doc, "th", { scope: "col" }, "Node"),
+    el(doc, "th", { scope: "col" }, t("plan.columnNode")),
     ...heads,
-    el(doc, "th", { scope: "col" }, "Marks"),
-    el(doc, "th", { scope: "col" }, "Buffers"),
+    el(doc, "th", { scope: "col" }, t("plan.columnMarks")),
+    el(doc, "th", { scope: "col" }, t("plan.columnBuffers")),
   );
   draw();
   return el(
@@ -103,7 +110,7 @@ export function tableView(doc, root) {
       class: "plan-table-box",
       tabindex: "0",
       role: "region",
-      "aria-label": "The plan's nodes, as a table",
+      "aria-label": t("plan.tableLabel"),
     },
     el(doc, "table", { class: "desk-table plan-table" }, el(doc, "thead", {}, head), body),
   );

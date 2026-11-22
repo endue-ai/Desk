@@ -15,6 +15,7 @@ import { provideImager } from "./features/diagram/imager.js";
 import { provideLayoutWorker } from "./features/diagram/layout-client.js";
 import { createOutputReader } from "./output-client.js";
 import { provideSqlParser } from "./sql/parse/client.js";
+import { loadLanguage } from "./strings/index.js";
 import { createView } from "./view.js";
 import { createDropView } from "./view-dnd.js";
 
@@ -26,7 +27,10 @@ provideImager(createImager(document));
 provideChartPage(createChartPage(document));
 
 defineUiPlugin({
-  mount(ctx) {
+  async mount(ctx) {
+    // The words in the desk's language (ui/strings/, PG-108): what is drawn after a change follows it.
+    await loadLanguage(ctx.messages.language());
+    ctx.messages.onChange((language) => void loadLanguage(language));
     /** @type {Record<string, (...args: unknown[]) => unknown> | undefined} */
     let app;
     const view = createView(document, (action, ...args) => app?.[action]?.(...args), undefined, {

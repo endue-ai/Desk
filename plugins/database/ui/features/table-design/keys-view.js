@@ -5,6 +5,7 @@
 // the form cannot write shows its definition and can be renamed or removed.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { columnsPick, itemList, selectField, textField } from "./bits.js";
 import { addPart, removePart, setPart } from "./edits.js";
 import { ACTIONS, living, nextId } from "./model.js";
@@ -17,18 +18,33 @@ import { ACTIONS, living, nextId } from "./model.js";
  * }} Ctx
  */
 
-const KEPT_WORDS =
-  "The form does not write this one (DEFERRABLE, NOT VALID, INCLUDE ... ): it is kept as it is. Rename or remove it here; change it in a console.";
-
 /** Every constraint of the keys section, with the list it is in. */
 function keysOf(/** @type {Design} */ d) {
   return [
     ...(d.primaryKey
-      ? [{ list: /** @type {List} */ ("primaryKey"), part: d.primaryKey, what: "Primary key" }]
+      ? [
+          {
+            list: /** @type {List} */ ("primaryKey"),
+            part: d.primaryKey,
+            what: t("tableDesign.primaryKey"),
+          },
+        ]
       : []),
-    ...d.uniques.map((part) => ({ list: /** @type {List} */ ("uniques"), part, what: "Unique" })),
-    ...d.checks.map((part) => ({ list: /** @type {List} */ ("checks"), part, what: "Check" })),
-    ...d.others.map((part) => ({ list: /** @type {List} */ ("others"), part, what: "Exclusion" })),
+    ...d.uniques.map((part) => ({
+      list: /** @type {List} */ ("uniques"),
+      part,
+      what: t("tableDesign.unique"),
+    })),
+    ...d.checks.map((part) => ({
+      list: /** @type {List} */ ("checks"),
+      part,
+      what: t("tableDesign.check"),
+    })),
+    ...d.others.map((part) => ({
+      list: /** @type {List} */ ("others"),
+      part,
+      what: t("tableDesign.exclusion"),
+    })),
   ];
 }
 
@@ -43,9 +59,9 @@ function common(
     doc,
     {
       key: `${list}:${part.id}:name`,
-      label: "Name",
+      label: t("tableDesign.name"),
       value: part.name,
-      placeholder: "the server names it",
+      placeholder: t("tableDesign.serverNames"),
     },
     (v) => ctx.set((d) => setPart(d, list, part.id, { name: v }), false),
   );
@@ -53,7 +69,7 @@ function common(
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-danger", "data-key": `${list}:${part.id}:remove` },
-    "Remove",
+    t("tableDesign.remove"),
   );
   remove.addEventListener("click", () => {
     ctx.set((d) => removePart(d, list, part.id), false);
@@ -62,7 +78,7 @@ function common(
   const kept = part.kept
     ? [
         el(doc, "pre", { class: "td-kept" }, part.kept),
-        el(doc, "p", { class: "td-note" }, KEPT_WORDS),
+        el(doc, "p", { class: "td-note" }, t("tableDesign.keyKept")),
       ]
     : [];
   return { name, kept, remove: el(doc, "div", { class: "td-buttons" }, remove) };
@@ -78,12 +94,12 @@ export function keysView(/** @type {Ctx} */ ctx) {
     doc,
     {
       key: "keys",
-      label: "Keys",
+      label: t("tableDesign.keys"),
       items: all.map(({ part, what }) => ({
         id: part.id,
-        title: part.name || "(named by the server)",
+        title: part.name || t("tableDesign.namedByServer"),
         detail: what,
-        ...(part.kept ? { badge: "kept" } : {}),
+        ...(part.kept ? { badge: t("tableDesign.badgeKept") } : {}),
       })),
       selected: shown?.part.id ?? "",
     },
@@ -105,16 +121,16 @@ export function keysView(/** @type {Ctx} */ ctx) {
     adds.push(b);
   };
   if (!design.primaryKey)
-    add("Add primary key", (d) => {
+    add(t("tableDesign.addPrimaryKey"), (d) => {
       const made = nextId(d);
       return {
         design: { ...made.design, primaryKey: { id: made.id, name: "", columns: [] } },
         id: made.id,
       };
     });
-  add("Add unique", (d) => addPart(d, "uniques"));
-  add("Add check", (d) => addPart(d, "checks"));
-  let body = el(doc, "p", { class: "td-hint" }, "No keys yet.");
+  add(t("tableDesign.addUnique"), (d) => addPart(d, "uniques"));
+  add(t("tableDesign.addCheck"), (d) => addPart(d, "checks"));
+  let body = el(doc, "p", { class: "td-hint" }, t("tableDesign.noKeys"));
   if (shown) {
     const { list: where, part } = shown;
     const { name, kept, remove } = common(ctx, where, part);
@@ -125,7 +141,7 @@ export function keysView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `${where}:${part.id}:cols`,
-            label: "Columns",
+            label: t("tableDesign.columns"),
             ids: /** @type {{ columns: string[] }} */ (part).columns,
             columns,
           },
@@ -138,9 +154,9 @@ export function keysView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `checks:${part.id}:expr`,
-            label: "Check",
+            label: t("tableDesign.check"),
             value: /** @type {{ expression: string }} */ (part).expression,
-            placeholder: "total >= 0",
+            placeholder: t("tableDesign.checkExample"),
             mono: true,
           },
           (v) => ctx.set((d) => setPart(d, "checks", part.id, { expression: v }), false),
@@ -165,19 +181,19 @@ export function foreignView(/** @type {Ctx} */ ctx) {
     doc,
     {
       key: "fks",
-      label: "Foreign keys",
+      label: t("tableDesign.foreignKeys"),
       items: design.foreignKeys.map((f) => ({
         id: f.id,
-        title: f.name || "(named by the server)",
+        title: f.name || t("tableDesign.namedByServer"),
         detail: f.self
-          ? "this table"
+          ? t("tableDesign.thisTable")
           : f.refTable
             ? `${f.refSchema}.${f.refTable}`
-            : "references nothing yet",
-        ...(f.kept ? { badge: "kept" } : {}),
+            : t("tableDesign.referencesNothing"),
+        ...(f.kept ? { badge: t("tableDesign.badgeKept") } : {}),
       })),
       selected: shown?.id ?? "",
-      add: "Add foreign key",
+      add: t("tableDesign.addForeignKey"),
     },
     (id) => ctx.select(id),
     () => {
@@ -191,7 +207,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
       "div",
       { class: "td-split" },
       el(doc, "div", { class: "td-side" }, list),
-      el(doc, "p", { class: "td-hint" }, "No foreign keys yet."),
+      el(doc, "p", { class: "td-hint" }, t("tableDesign.noForeignKeys")),
     );
   const fk = shown;
   const put = (/** @type {Record<string, unknown>} */ patch) =>
@@ -208,12 +224,17 @@ export function foreignView(/** @type {Ctx} */ ctx) {
     const schemas = [...new Set([...ctx.refs.schemas, fk.refSchema].filter(Boolean))];
     const options = [
       ...(fk.refSchema === design.schema
-        ? [{ value: SELF, label: `${design.name || "this table"} (this table)` }]
+        ? [
+            {
+              value: SELF,
+              label: t("tableDesign.self", { name: design.name || t("tableDesign.thisTable") }),
+            },
+          ]
         : []),
-      { value: "", label: "Pick a table…" },
+      { value: "", label: t("tableDesign.pickTable") },
       ...tables
-        .filter((t) => fk.refSchema !== design.schema || t !== design.name)
-        .map((t) => ({ value: `t:${t}`, label: t })),
+        .filter((name) => fk.refSchema !== design.schema || name !== design.name)
+        .map((name) => ({ value: `t:${name}`, label: name })),
     ];
     const refColumns = fk.self
       ? columns
@@ -224,7 +245,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
     parts.push(
       columnsPick(
         doc,
-        { key: `fk:${fk.id}:cols`, label: "Columns", ids: fk.columns, columns },
+        { key: `fk:${fk.id}:cols`, label: t("tableDesign.columns"), ids: fk.columns, columns },
         (ids) => put({ columns: ids }),
       ),
       el(
@@ -235,7 +256,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `fk:${fk.id}:schema`,
-            label: "Schema",
+            label: t("tableDesign.schema"),
             value: fk.refSchema,
             options: schemas.map((s) => ({ value: s, label: s })),
           },
@@ -248,7 +269,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `fk:${fk.id}:table`,
-            label: "Table",
+            label: t("tableDesign.table"),
             value: fk.self ? SELF : fk.refTable ? `t:${fk.refTable}` : "",
             options,
           },
@@ -262,7 +283,12 @@ export function foreignView(/** @type {Ctx} */ ctx) {
       ),
       columnsPick(
         doc,
-        { key: `fk:${fk.id}:refs`, label: "References", ids: fk.refColumns, columns: refColumns },
+        {
+          key: `fk:${fk.id}:refs`,
+          label: t("tableDesign.references"),
+          ids: fk.refColumns,
+          columns: refColumns,
+        },
         (ids) => put({ refColumns: ids }),
       ),
       el(
@@ -273,7 +299,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `fk:${fk.id}:delete`,
-            label: "On delete",
+            label: t("tableDesign.onDelete"),
             value: fk.onDelete,
             options: ACTIONS.map((a) => ({ value: a, label: a })),
           },
@@ -283,7 +309,7 @@ export function foreignView(/** @type {Ctx} */ ctx) {
           doc,
           {
             key: `fk:${fk.id}:update`,
-            label: "On update",
+            label: t("tableDesign.onUpdate"),
             value: fk.onUpdate,
             options: ACTIONS.map((a) => ({ value: a, label: a })),
           },

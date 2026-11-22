@@ -14,6 +14,7 @@ import * as all from "./features/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
 import { rowsLine, whole } from "./rows/window.js";
+import { t } from "./strings/index.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
 import { createDialogs } from "./view-dialog.js";
@@ -71,9 +72,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     byId("tree"),
     (action, ...args) => (action === "filter" ? filter.focus() : act(action, ...args)),
     (row) => {
-      empty.textContent = row
-        ? `No console is open on ${row.label}: Enter or a double click on it opens one.`
-        : pick;
+      empty.textContent = row ? t("view.noConsole", { name: row.label }) : pick;
     },
   );
   const copy = (/** @type {string} */ text, /** @type {string | undefined} */ html) =>
@@ -219,12 +218,14 @@ export function createView(doc, act, features = Object.values(all), options = {}
       if (doc.activeElement !== order) order.value = model.table.order;
       const rows = model.shown?.tabs[0]?.set?.rows.length ?? 0;
       const from = rows ? model.table.offset + 1 : 0;
-      const count = model.table.count === null ? "" : ` of ${formatCount(model.table.count)}`;
+      const to = model.table.offset + rows;
       byId("page").textContent =
-        `${formatCount(from)}–${formatCount(model.table.offset + rows)}${count}`;
+        model.table.count === null
+          ? t("view.page", { from, to })
+          : t("view.pageOf", { from, to, total: model.table.count });
     }
     const summary = byId("summary");
-    summary.textContent = model?.running ? "Running…" : (model?.shown?.summary ?? "");
+    summary.textContent = model?.running ? t("view.running") : (model?.shown?.summary ?? "");
     summary.title = summary.textContent;
     if (!model?.shown) {
       bars.tabs(null);

@@ -3,6 +3,7 @@
 // keys and routines; `objects(DATABASE)` the database's and the server's (PG-50). Undefined means
 // "not held here": the caller reads it from the catalog. Pure.
 
+import { clock, day, t } from "../strings/index.js";
 import { DATABASE } from "./kinds.js";
 import { lookupOf } from "./model.js";
 
@@ -96,16 +97,13 @@ export function viewOf(held, systemSchemas) {
  */
 export function readAtText(/** @type {number} */ readAt, now = Date.now(), seconds = false) {
   const at = new Date(readAt);
-  const day = new Date(now);
-  const two = (/** @type {number} */ n) => String(n).padStart(2, "0");
-  const time = `${two(at.getHours())}:${two(at.getMinutes())}${seconds ? `:${two(at.getSeconds())}` : ""}`;
+  const today = new Date(now);
+  const time = clock(at, seconds);
   const same =
-    at.getFullYear() === day.getFullYear() &&
-    at.getMonth() === day.getMonth() &&
-    at.getDate() === day.getDate();
-  return same
-    ? `read ${time}`
-    : `read ${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} ${time}`;
+    at.getFullYear() === today.getFullYear() &&
+    at.getMonth() === today.getMonth() &&
+    at.getDate() === today.getDate();
+  return same ? t("cache.readToday", { time }) : t("cache.readBefore", { date: day(at), time });
 }
 
 /**
@@ -118,13 +116,24 @@ export function labelsOf(view, now = Date.now()) {
   if (!view) return undefined;
   const { status } = view;
   const reading =
-    status.state === "reading" ? `${status.label}, ${status.step} of ${status.steps}` : "";
+    status.state === "reading"
+      ? t("cache.step", { label: status.label, step: status.step, steps: status.steps })
+      : "";
   const failed = status.state === "error" || status.state === "cancelled";
   return {
-    detail: reading ? `reading ${reading}` : view.readAt ? readAtText(view.readAt, now) : "",
-    progress: reading ? `Reading ${reading}… (Database: cancel stops it)` : undefined,
-    stale: failed && view.readAt ? `Not refreshed: ${status.message ?? "failed"}` : "",
+    detail: reading
+      ? t("cache.reading", { what: reading })
+      : view.readAt
+        ? readAtText(view.readAt, now)
+        : "",
+    progress: reading ? t("cache.progress", { what: reading }) : undefined,
+    stale:
+      failed && view.readAt ? t("cache.stale", { why: status.message ?? t("cache.failed") }) : "",
     schema: (/** @type {string} */ name) =>
-      !view.chosen(name) ? "not cached" : view.held(name) && !view.kept(name) ? "not kept" : "",
+      !view.chosen(name)
+        ? t("cache.notCached")
+        : view.held(name) && !view.kept(name)
+          ? t("cache.notKept")
+          : "",
   };
 }
