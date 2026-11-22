@@ -6,6 +6,7 @@
 
 mod support;
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use desk_core::Core;
@@ -133,15 +134,17 @@ fn a_real_server_through_a_real_tunnel() {
     select_one(&core, &live.open(&core, live.hop(key)));
 
     // A cancel reaches the server through the same tunnel.
-    let opened = live.open(&core, live.hop(json!({ "keyFile": live.key })));
+    // A second core on the same data folder trusts the key the first kept.
+    let shared = Arc::new(live.core(&home));
+    let opened = live.open(&shared, live.hop(json!({ "keyFile": live.key })));
     let session = opened["sessionId"].as_str().unwrap().to_owned();
-    let (other, id) = (core.clone(), session.clone());
+    let (other, id) = (Arc::clone(&shared), session.clone());
     let sleeper = std::thread::spawn(move || {
         let params = json!({ "sessionId": id, "sql": "SELECT pg_sleep(30)" });
         call(&other, DATABASE, "db.run", params).unwrap()
     });
     let running =
-        || call(&core, DATABASE, "db.list", json!({})).unwrap()["sessions"][0]["running"] == true;
+        || call(&shared, DATABASE, "db.list", json!({})).unwrap()["sessions"][0]["running"] == true;
     let deadline = Instant::now() + Duration::from_secs(10);
     while !running() {
         assert!(Instant::now() < deadline, "the statement runs");
@@ -149,14 +152,20 @@ fn a_real_server_through_a_real_tunnel() {
     }
     std::thread::sleep(Duration::from_millis(300));
     call(
-        &core,
+        &shared,
         DATABASE,
         "db.cancel",
         json!({ "sessionId": session }),
     )
     .unwrap();
     assert_eq!(sleeper.join().unwrap()["error"]["code"], "57014");
-    call(&core, DATABASE, "db.close", json!({ "sessionId": session })).unwrap();
+    call(
+        &shared,
+        DATABASE,
+        "db.close",
+        json!({ "sessionId": session }),
+    )
+    .unwrap();
 
     // A password signs in too.
     let password = json!({ "password": live.ssh.3 });
