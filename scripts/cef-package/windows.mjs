@@ -17,7 +17,9 @@ export function nsisIdentity(template) {
   return template
     .replaceAll('${PRODUCTNAME}"', (match, offset, source) => {
       const line = source.slice(source.lastIndexOf("\n", offset) + 1, offset);
-      return /UNINSTKEY|MANUPRODUCTKEY|MULTIUSER_INSTALLMODE_INSTDIR|StrCpy \$INSTDIR/u.test(line)
+      return /^\s*(?:!define (?:UNINSTKEY|MANUPRODUCTKEY|MULTIUSER_INSTALLMODE_INSTDIR)\b|StrCpy \$INSTDIR\b)/u.test(
+        line,
+      )
         ? `${legacy}"`
         : match;
     })
