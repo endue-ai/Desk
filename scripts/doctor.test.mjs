@@ -4,9 +4,9 @@ import { checkSession, report } from "./doctor.mjs";
 
 const fine = {
   platform: "darwin",
-  userInfo: () => ({ username: "me" }),
-  lookup: async () => ({ address: "140.82.121.4" }),
-  resolve4: async () => ["140.82.121.4"],
+  userInfo: () => ({ username: "endue-fixture" }),
+  lookup: async () => ({ address: "192.0.2.1" }),
+  resolve4: async () => ["192.0.2.1"],
 };
 const fail = async () => {
   throw Object.assign(new Error("getaddrinfo ENOTFOUND github.com"), { code: "ENOTFOUND" });
@@ -14,6 +14,15 @@ const fail = async () => {
 
 test("a healthy session passes", async () => {
   assert.equal((await checkSession(fine)).state, "healthy");
+});
+
+test("checking a session never reports the account or numeric identity it probes", async () => {
+  for (const username of ["endue-fixture-account", "987654"]) {
+    const result = await checkSession({ ...fine, userInfo: () => ({ username }) });
+    assert.equal(result.ok, username === "endue-fixture-account");
+    assert.ok(!result.detail.includes(username));
+    assert.ok(!report(result).includes(username));
+  }
 });
 
 test("no network at all is offline, not a broken session", async () => {
