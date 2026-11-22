@@ -27,7 +27,7 @@ fn main() -> std::process::ExitCode {
     let info = BundleInfo::new(
         "endue-desk",
         "ai.endue.desk",
-        "endue Desk",
+        "endue",
         "English",
         semver::Version::new(0, 0, 0),
     );

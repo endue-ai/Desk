@@ -41,7 +41,7 @@ export function reportCrashes(win: Window, invoke: Invoke): () => void {
 }
 
 /**
- * The card for last time's crash, when there is a report not shown yet: "Desk crashed last time."
+ * The card for last time's crash, when there is a report not shown yet: "endue crashed last time."
  * with Show report (the redacted JSON), Copy and a close button. Resolves with whether it showed.
  */
 export async function showLastCrash(
@@ -68,7 +68,7 @@ export async function showLastCrash(
     role: "alertdialog",
     "aria-labelledby": "crash-title",
   });
-  const title = el("p", { id: "crash-title", class: "crash-title" }, "Desk crashed last time.");
+  const title = el("p", { id: "crash-title", class: "crash-title" }, "endue crashed last time.");
   const detail = el(
     "p",
     { class: "crash-detail" },

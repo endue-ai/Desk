@@ -1,6 +1,6 @@
 [package]
 name = "desk-shell"
-description = "The endue Desk app: its shell on winit and CEF (ADR 0143), which replaced the Tauri shell when Stage 1 of #32 ended."
+description = "The endue app: its shell on winit and CEF (ADR 0143), which replaced the Tauri shell when Stage 1 of #32 ended."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

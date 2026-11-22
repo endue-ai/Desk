@@ -1,4 +1,4 @@
-//! The key that opens Search Desk from any app (#304, ADR 0238): `DESK_PALETTE_SHORTCUT`, else the
+//! The key that opens Search endue from any app (#304, ADR 0238): `DESK_PALETTE_SHORTCUT`, else the
 //! person's `desk.palette.shortcut` (in the core the runtime's own setting `palette.shortcut`, which
 //! Settings › Keyboard writes), else ⌘⇧Space. The shell follows the setting while it runs, so a
 //! change applies without a restart (`palette.rs`), says so when another app holds the key, and
@@ -124,13 +124,13 @@ mod tests {
     fn a_key_another_app_holds_is_said_in_words() {
         let key = "CommandOrControl+Shift+Space";
         let (title, body) = taken(Language::En, key, true, "another app holds it");
-        assert_eq!(title, "Search Desk can't use ⌘⇧Space");
+        assert_eq!(title, "Search endue can't use ⌘⇧Space");
         assert!(body.starts_with("another app holds it."), "{body}");
         assert!(body.contains("Settings › Keyboard"), "{body}");
         let (title, body) = taken(Language::Ko, key, true, "another app holds it");
-        assert_eq!(title, "Desk 검색에 ⌘⇧Space 를 쓸 수 없습니다");
+        assert_eq!(title, "endue 검색에 ⌘⇧Space 를 쓸 수 없습니다");
         assert!(
-            body.contains("설정 › 키보드") && body.contains("Desk 검색"),
+            body.contains("설정 › 키보드") && body.contains("endue 검색"),
             "{body}"
         );
     }

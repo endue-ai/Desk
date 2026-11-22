@@ -1,13 +1,24 @@
 // Exercise the installer against real, signed miniature bundles in a disposable Applications folder.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import { PACKAGER } from "./config.mjs";
 
-it("installs once, updates a user-renamed Desk, and leaves a foreign endue.app alone", { skip: process.platform !== "darwin" }, () => {
+it("installs once, updates a user-renamed Desk, and leaves a foreign endue.app alone", {
+  skip: process.platform !== "darwin",
+}, () => {
   const root = mkdtempSync(join(tmpdir(), "endue-install-"));
   try {
     const apps = join(root, "Applications");
@@ -16,18 +27,34 @@ it("installs once, updates a user-renamed Desk, and leaves a foreign endue.app a
       const contents = join(dir, "Contents");
       mkdirSync(join(contents, "MacOS"), { recursive: true });
       execFileSync("cp", ["/usr/bin/true", join(contents, "MacOS/endue-desk")]);
-      writeFileSync(join(contents, "Info.plist"), `<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>${id}</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleExecutable</key><string>endue-desk</string></dict></plist>`);
+      writeFileSync(
+        join(contents, "Info.plist"),
+        `<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>${id}</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleExecutable</key><string>endue-desk</string></dict></plist>`,
+      );
     };
     const source = join(root, "endue.app");
     bundle(source, "ai.endue.desk");
     const resources = join(source, "Contents/Resources");
     mkdirSync(resources);
     const helper = join(resources, "install-endue");
-    execFileSync("xcrun", ["clang", "-fobjc-arc", "-framework", "Foundation", "-framework", "Security", join(PACKAGER, "macos/install.m"), "-o", helper]);
+    execFileSync("xcrun", [
+      "clang",
+      "-fobjc-arc",
+      "-framework",
+      "Foundation",
+      "-framework",
+      "Security",
+      join(PACKAGER, "macos/install.m"),
+      "-o",
+      helper,
+    ]);
     execFileSync("codesign", ["--force", "-s", "-", helper]);
     execFileSync("codesign", ["--force", "-s", "-", source]);
     const run = (...args) => spawnSync(helper, ["--apps-dir", apps, ...args], { encoding: "utf8" });
-    const ok = (...args) => { const result = run(...args); assert.equal(result.status, 0, result.stderr); };
+    const ok = (...args) => {
+      const result = run(...args);
+      assert.equal(result.status, 0, result.stderr);
+    };
     ok();
     const canonical = join(apps, "endue.app");
     assert.ok(existsSync(join(canonical, "Contents/MacOS/endue-desk")));

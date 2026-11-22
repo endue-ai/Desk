@@ -10,6 +10,7 @@ nothing here is read at run time.
 | `cef.json` | The CEF build: exact version, each target's minimal archive (size, the CDN's SHA-1, our SHA-256), the files Windows and Linux carry beside the executable |
 | `packager.json` | What every target's cargo-packager config shares: name, identifier, icons (`../icons`), the `.dmg`, NSIS, `.deb` and AppImage options |
 | `macos/Info.plist` | Keys merged into the app's Info.plist: usage descriptions, CEF's keys, the files Finder opens with the desk |
+| `macos/install.m`, `Install-endue.command` | Double-click **Install endue.command** on the disk image to update a verified Desk bundle in place. Use `--apps-dir` to select a folder or `--to` to choose an available app path. |
 | `macos/helper.plist` | The five helper apps' Info.plist (`endue-desk Helper`, `(Alerts)`, `(GPU)`, `(Plugin)`, `(Renderer)`) |
 | `macos/entitlements/` | Hardened-runtime entitlements: the app, the base Helper, GPU, Renderer; Alerts and Plugin have none |
 | `linux/launcher.sh` | `/usr/bin/endue-desk`: starts the desk in `/usr/lib/endue-desk`, beside `libcef.so`; a Tauri desk restarts here after its update |

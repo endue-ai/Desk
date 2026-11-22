@@ -19,6 +19,10 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 results="$root/e2e/test-results"
+if [[ "${1:-}" == "--upgrade-from" ]]; then
+  shift
+  exec "$root/scripts/cef-package/upgrade-smoke.sh" "$@"
+fi
 package="${1:-${DESK_SMOKE_PACKAGE:-}}"
 ready_within=60
 quit_within=10
@@ -61,7 +65,11 @@ install_package() {
         fail "hdiutil could not attach $package"
       local found=("$work/mnt/"*.app)
       [ -d "${found[0]}" ] || fail "no .app on the disk image"
-      ditto "${found[0]}" "$work/Applications/$(basename "${found[0]}")"
+      if [[ -x "$work/mnt/Install endue.command" ]]; then
+        "$work/mnt/Install endue.command" --apps-dir "$work/Applications" || fail "installing endue"
+      else
+        ditto "${found[0]}" "$work/Applications/$(basename "${found[0]}")"
+      fi
       hdiutil detach "$work/mnt" >/dev/null || fail "hdiutil could not detach the disk image"
       ;;
     *.app.tar.gz)

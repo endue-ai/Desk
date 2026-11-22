@@ -117,7 +117,7 @@ export function rowFor(status: UpdateStatus, lang: Lang): UpdateRow | null {
   }
 }
 
-/** About Desk: the running build, the channel it follows and a build waiting to install. */
+/** About endue: the running build, the channel it follows and a build waiting to install. */
 export function aboutText(status: UpdateStatus, lang: Lang): { title: string; body: string } {
   const copy = COPY[lang];
   const { version, commit } = status.current;
@@ -205,10 +205,10 @@ export function installUpdates(host: UpdatesHost): () => void {
         if (event.event === "update.changed") show(event.data);
       }),
     );
-    define("desk.update.check", "Check for Desk updates", () => call("update.check"));
-    define("desk.update.download", "Download the Desk update", () => call("update.download"));
-    define("desk.update.apply", "Restart to update Desk", async (from) => {
-      if (!(await confirmed(from))) throw new Error("The person did not agree to restart Desk");
+    define("desk.update.check", "Check for endue updates", () => call("update.check"));
+    define("desk.update.download", "Download the endue update", () => call("update.download"));
+    define("desk.update.apply", "Restart to update endue", async (from) => {
+      if (!(await confirmed(from))) throw new Error("The person did not agree to restart endue");
       return call("update.apply");
     });
     define("desk.update.on-restart", copy.onRestart, async (from, args) => {
@@ -221,13 +221,13 @@ export function installUpdates(host: UpdatesHost): () => void {
       await host.core.call("settings.set", { key: "update.on-restart", value: version });
       host.notify({ caller: "desk", title: fill(copy.scheduled, { v: version }), level: "info" });
     });
-    define("desk.update.later", "Install the Desk update later", async () => latest);
-    define("desk.update.about", "About Desk", async () => {
+    define("desk.update.later", "Install the endue update later", async () => latest);
+    define("desk.update.about", "About endue", async () => {
       const shown = aboutText(latest ?? status, host.lang);
       host.notify({ caller: "desk", ...shown, level: "info" });
       return latest ?? status;
     });
-    define("desk.update.notes", "Show the Desk release notes", async () => {
+    define("desk.update.notes", "Show the endue release notes", async () => {
       const target = latest?.release?.notes;
       if (!target) throw new Error("There are no release notes to show");
       return host.core.call("shell.open", {

@@ -19,12 +19,14 @@ const plist = (entries) =>
     .map(([k, v]) => `<key>${k}</key><string>${v}</string>`)
     .join("")}</dict></plist>\n`;
 
-/** `endue Desk.app` with `helpers` of the five helper apps. */
+/** `endue.app` with `helpers` of the five helper apps. */
 function bundle(helpers = 5) {
   const dir = mkdtempSync(join(tmpdir(), "cef-sign-"));
-  const app = join(dir, "endue Desk.app");
+  const app = join(dir, "endue.app");
   const contents = join(app, "Contents");
   mkdirSync(join(contents, "MacOS"), { recursive: true });
+  mkdirSync(join(contents, "Resources"), { recursive: true });
+  copyFileSync("/usr/bin/true", join(contents, "Resources/install-endue"));
   writeFileSync(
     join(contents, "Info.plist"),
     plist({
@@ -80,7 +82,7 @@ describe("cef-sign-macos", { skip }, () => {
     assert.notEqual(verify(app).status, 0, "copied in, the bundle does not verify");
     const signed = sh(SIGN, ["app", app]);
     assert.equal(signed.code, 0, signed.out);
-    assert.match(signed.out, /signed endue Desk\.app as ad-hoc/u);
+    assert.match(signed.out, /signed endue\.app as ad-hoc/u);
     assert.match(signed.out, /not notarised: ad-hoc signed/u);
     assert.equal(verify(app).status, 0, verify(app).stderr);
     const helper = (suffix) => join(app, "Contents/Frameworks", `endue-desk Helper${suffix}.app`);
@@ -107,6 +109,7 @@ describe("cef-sign-macos", { skip }, () => {
     );
     for (const path of [
       app,
+      join(app, "Contents/Resources/install-endue"),
       helper(" (Renderer)"),
       join(app, "Contents/Frameworks/Chromium Embedded Framework.framework"),
       // Each helper opens it to enter Chromium's sandbox before the framework loads (ADR 0148).
