@@ -27,6 +27,9 @@ export const WARNINGS = Object.freeze([
   "function-on-indexed-column",
   "insert-without-columns",
   "server-signal",
+  // A PL/pgSQL body's (plpgsql-checks.js, ADR 0343).
+  "unused-variable",
+  "unreachable-code",
 ]);
 
 const RULES = [

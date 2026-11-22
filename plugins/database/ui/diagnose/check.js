@@ -8,12 +8,16 @@
 // word instead. Statements with psql's meta-commands or its `:name` and `?` parameters are skipped.
 // The warnings (warnings.js, ADR 0328) are found with the same parse and kept in the same entry; a
 // setting's identifiers and the ignore comments (ignore.js) drop them, and a run keeps them.
+// Completion (ADR 0327) reads the same state: `stateAt` replays what the statements before an offset
+// did, from the last check's, without parsing them again. A routine's PL/pgSQL body is checked by
+// PL/pgSQL's own grammar (plpgsql.js, ADR 0343).
 import { createPositions } from "../sql/parse/positions.js";
 import { resolve } from "../sql/parse/resolve.js";
 import { split } from "../sql/split.js";
 import { ignoredLines } from "./ignore.js";
 import { insertProblems } from "./insert.js";
 import { nameProblems } from "./names.js";
+import { plpgsqlProblems } from "./plpgsql.js";
 import { apply, createState, DEFAULT_PATH, effectsOf, searchPathOf } from "./script.js";
 import { endOf } from "./text.js";
 import { warningsOf } from "./warnings.js";
@@ -94,6 +98,9 @@ function dropIgnored(
 export function createChecker(raw) {
   /** @type {Map<string, Map<string, Entry>>} */
   const docs = new Map();
+  /** Per console, the statements of the last check that change what follows, in order. */
+  /** @type {Map<string, Array<{ end: number, effects: Effect[] }>>} */
+  const steps = new Map();
   const ids = new WeakMap();
   let nextId = 0;
   const idOf = (/** @type {object | undefined} */ index) => {
@@ -149,6 +156,8 @@ export function createChecker(raw) {
         const input = { tree, text, positions, names, state, tokens, start: piece.start, raw };
         entry.problems.push(...warningsOf(input));
       }
+      if (tree.CreateFunctionStmt || tree.DoStmt)
+        entry.problems.push(...plpgsqlProblems(raw, piece.text, kinds));
       const effects = effectsOf(tree);
       entry.effects.push(...effects);
       for (const effect of effects) apply(state, effect);
@@ -178,11 +187,16 @@ export function createChecker(raw) {
       /** @type {Problem[]} */
       const problems = [];
       const pieces = split(request.sql, "postgresql");
+      /** @type {Array<{ end: number, effects: Effect[] }>} */
+      const changes = [];
       let parsed = 0;
       for (const piece of pieces) {
         if (state.stopped) break;
         const skip = skipOf(piece);
-        if (skip === "elsewhere") state.opaque = true;
+        if (skip === "elsewhere") {
+          state.opaque = true;
+          changes.push({ end: piece.end, effects: [{ type: "opaque" }] });
+        }
         if (skip) continue;
         const key = [
           piece.text,
@@ -202,6 +216,7 @@ export function createChecker(raw) {
           parsed++;
         }
         next.set(key, entry);
+        if (entry.effects.length) changes.push({ end: piece.end, effects: entry.effects });
         // The server's answer replaces the check's errors; the warnings stay.
         const answer = answers.get(piece.text);
         const shown = (/** @type {Problem} */ p) => p.kind !== "warning" || !off.has(p.rule ?? "");
@@ -216,11 +231,35 @@ export function createChecker(raw) {
       }
       if (kinds.warnings) dropIgnored(request.sql, pieces, problems);
       docs.set(request.doc, next);
-      while (docs.size > KEPT_DOCS) docs.delete(/** @type {string} */ (docs.keys().next().value));
+      steps.set(request.doc, changes);
+      while (docs.size > KEPT_DOCS) {
+        const oldest = /** @type {string} */ (docs.keys().next().value);
+        docs.delete(oldest);
+        steps.delete(oldest);
+      }
       problems.sort((a, b) => a.from - b.from || a.to - b.to);
       return { problems: problems.slice(0, MAX_PROBLEMS), statements: pieces.length, parsed };
     },
+    /**
+     * What the statements of a console's last check that end before `offset` left: the search path,
+     * the role and the relations they made, over `index`. A console never checked starts afresh.
+     * @param {string} doc
+     * @param {number} offset
+     * @param {ModelIndex | undefined} index
+     * @param {{ searchPath?: string[], user?: string }} [start]
+     */
+    stateAt(doc, offset, index, start = {}) {
+      const state = createState(index, start.searchPath ?? [...DEFAULT_PATH], start.user ?? "");
+      for (const step of steps.get(doc) ?? []) {
+        if (step.end > offset) break;
+        for (const effect of step.effects) apply(state, effect);
+      }
+      return state;
+    },
     /** Forget a console's statements. */
-    forget: (/** @type {string} */ doc) => void docs.delete(doc),
+    forget: (/** @type {string} */ doc) => {
+      docs.delete(doc);
+      steps.delete(doc);
+    },
   };
 }

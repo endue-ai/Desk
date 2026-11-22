@@ -7048,6 +7048,19 @@ pub struct DbTls {
     /// The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ca: Option<String>,
+    /// The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cert: Option<String>,
+    /// The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    /// The passphrase of an encrypted key: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
 }
 
 /// disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.
@@ -7065,7 +7078,7 @@ pub enum DbTlsMode {
     VerifyFull,
 }
 
-/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbOpenResult {
@@ -7089,6 +7102,21 @@ pub struct DbOpenResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub needs_password: Option<True>,
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<DbKeyPassword>,
+}
+
+/// tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbKeyPassword {
+    #[serde(rename = "needed")]
+    Needed,
+    #[serde(rename = "wrong")]
+    Wrong,
 }
 
 /// How the session signed in.
@@ -7408,6 +7436,16 @@ pub struct DbPage {
     pub data: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    /// The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event. At most 10,000 a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notices: Option<Vec<DbServerError>>,
+    /// Notices past the 10,000 a page keeps, counted and left out.
+    #[serde(
+        rename = "noticesSkipped",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub notices_skipped: Option<u64>,
 }
 
 /// One row: each value the server's text, or null.
@@ -7528,7 +7566,7 @@ pub struct DbServerError {
     pub other: Option<BTreeMap<String, String>>,
 }
 
-/// A notice the server sent, as it arrived, also while a statement runs.
+/// A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbNoticeEvent {
@@ -8826,6 +8864,9 @@ pub struct PermRequestParams {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
+    /// The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub again: Option<bool>,
 }
 
 /// How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.

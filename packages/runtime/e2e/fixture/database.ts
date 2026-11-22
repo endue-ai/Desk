@@ -9,7 +9,8 @@
 // whose server answers the schema cache with a small store and a schema of 500 tables and 1,000
 // foreign keys for the ER diagram (diagram-fixture.ts), the routine forms' functions and
 // procedures on every PostgreSQL connection (routine-fixture.ts), one whose server answers the
-// value search over two schemas of tables (search-fixture.ts), the map's parcels and twenty
+// value search over two schemas of tables (search-fixture.ts) and the source search's definitions
+// there (source-search-fixture.ts), the map's parcels and twenty
 // thousand squares as geometry values on every PostgreSQL connection (geo-fixture.ts), the roles,
 // ACLs, policies and default privileges of the privileges panel on every PostgreSQL connection
 // (privileges-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`,
@@ -31,6 +32,7 @@ import {
 } from "../../../../plugins/database/tests/activity-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
+import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
 import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   DIAGRAM_CONNECTION,
@@ -53,6 +55,7 @@ import {
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
+import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
@@ -138,24 +141,31 @@ const core = browserCore({
     // connection and the value search's, each by its database; the table form, the routine forms
     // and the overview answer their own statements exactly, then the maintenance form its own and
     // the objects feature its own, before the activity view's looser matches.
-    // fixture-pg's other databases answer before all of them (PG-13).
+    // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
+    // reads, which carry their own marker (PG-53).
     ...dbHandlers(
       withDatabases(
-        privilegesServer(
-          geoServer(
-            diagramServer(
-              searchServer(
-                tableDesignServer(
-                  routineServer(
-                    overviewServer(
-                      maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                        .script,
-                    ),
-                  ).script,
-                ).script,
+        schemaCompareServer(
+          privilegesServer(
+            geoServer(
+              diagramServer(
+                sourceServer(
+                  searchServer(
+                    tableDesignServer(
+                      routineServer(
+                        overviewServer(
+                          maintenanceServer(
+                            objectsServer(activityServer(fixtureScript).script).script,
+                          ).script,
+                        ),
+                      ).script,
+                    ).script,
+                  ),
+                  { materialized: false },
+                ),
               ),
             ),
-          ),
+          ).script,
         ).script,
       ),
       (event) => emit(event),

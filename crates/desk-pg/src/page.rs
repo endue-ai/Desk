@@ -1,6 +1,7 @@
 //! What a statement answers, a page at a time: its columns as RowDescription describes them, rows
 //! of the server's text, and with its last page the command tag, the row count and the transaction
-//! state; or the bytes of a COPY out. The limits say how much one page holds.
+//! state; or the bytes of a COPY out; and the notices the call heard. The limits say how much one
+//! page holds.
 
 use fallible_iterator::FallibleIterator;
 use postgres_protocol::message::backend::{DataRowBody, RowDescriptionBody};
@@ -105,7 +106,14 @@ pub struct Page {
     pub copy: Option<Copy>,
     /// A COPY out's bytes.
     pub data: Option<Vec<u8>>,
+    /// The notices the server sent while this call ran, in order (ADR 0334); at most
+    /// `MAX_NOTICES`, and `notices_skipped` counts the rest.
+    pub notices: Vec<ServerError>,
+    pub notices_skipped: u64,
 }
+
+/// The notices one page keeps.
+pub const MAX_NOTICES: usize = 10_000;
 
 /// How much one page holds: rows, or bytes of values, whichever comes first; always one row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

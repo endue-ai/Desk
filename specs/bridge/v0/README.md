@@ -259,9 +259,11 @@ is not an error); **db.passwords.list** answers the caller's, each `name` with i
 `user`, never the password, without reading the keychain. A caller reaches only its own; removing a
 plugin forgets every password it kept. An agent is `permission_denied` (ADR 0311).
 
-A session's events go to its caller alone: `db.notice` as each notice arrives, also while a statement
-runs; `db.notification` for a NOTIFY, also while idle; `db.parameter` for each ParameterStatus; and
-`db.closed`, the session's last, with `reason` `closed`, `server` (with its FATAL `error` when it sent
+A page carries `notices`, every notice the server sent while that call ran, in order (at most 10,000;
+`noticesSkipped` counts the rest), so a statement's notices stay with it whatever order the frame hears
+things in. A session's events go to its caller alone: `db.notice` for a notice sent outside any call
+(with the sign-in, or while idle); `db.notification` for a NOTIFY, also while idle; `db.parameter`
+for each ParameterStatus; and `db.closed`, the session's last, with `reason` `closed`, `server` (with its FATAL `error` when it sent
 one), `io`, `encoding` (the server's `client_encoding` stopped being `UTF8`), `unloaded` (its plugin
 stopped), `revoked` (the grant that covers it went) or `desk`. The core keeps no timer on a session.
 Another caller's session is `not_found`.
@@ -323,7 +325,8 @@ grants (`session` or `always`) already covers is granted at once with that grant
 answer answers them all; a `once` answer gives each its own grant. A refusal the person makes is
 remembered for the session for that caller and that permission: asking again answers `granted: false`
 with `reason: "refused-earlier"` at once, without a prompt, until the caller is granted a permission
-that covers it. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
+that covers it, or until the caller sends `again: true`, which it does only from the person's own press
+(an Allow button beside the refusal, ADR 0335): that request is asked again. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
 manifest does not declare answers `reason: "undeclared"` at once (ADR 0260).
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.

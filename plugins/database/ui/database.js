@@ -13,7 +13,6 @@ import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
 import { createClients, searchPath } from "./clients.js";
 import { registerCommands } from "./commands.js";
-import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
@@ -24,6 +23,7 @@ import { createDropped } from "./dropped.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
+import { createCompletion } from "./features/completion/controller.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
@@ -113,6 +113,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
     kept: (conn) => manager.passwords.ref(conn),
+    askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
   const pg = held.pg;
   const cancel = () => {
@@ -303,25 +304,6 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   });
 
   const guard = guarded(view);
-  const builtins = {
-    ...builtinActions({
-      guard,
-      view,
-      manager,
-      consoles,
-      explorer,
-      tools,
-      importer,
-      dropped,
-      complete: createCompletions({ consoles, manager, catalog }),
-      cancel,
-    }),
-    ...createDrags({
-      current: () => consoles.current(),
-      connection: (id) => manager.get(id),
-      selection: () => view.selection(),
-    }),
-  };
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
   // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
@@ -368,6 +350,25 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     guard,
     cancelled,
     dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
+  };
+  const builtins = {
+    ...builtinActions({
+      guard,
+      view,
+      manager,
+      consoles,
+      explorer,
+      tools,
+      importer,
+      dropped,
+      complete: createCompletion(featureDeps).complete,
+      cancel,
+    }),
+    ...createDrags({
+      current: () => consoles.current(),
+      connection: (id) => manager.get(id),
+      selection: () => view.selection(),
+    }),
   };
   const taken = new Set(Object.keys(builtins));
   const featureActions = registerFeatures(list, featureDeps, { answer, taken });

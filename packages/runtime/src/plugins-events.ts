@@ -7,6 +7,7 @@
  * (ADR 0212).
  */
 import type {
+  BridgeClient,
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
@@ -18,6 +19,7 @@ import { type PluginInstances, pluginOf } from "./instances";
 import { eventKey, type Owners } from "./owners";
 import type { PluginCommands } from "./plugin-commands";
 import { recipientsOf } from "./plugin-messages";
+import { closeLate } from "./plugins-db";
 
 export interface EventRoutes {
   owners: Owners;
@@ -26,6 +28,8 @@ export interface EventRoutes {
   mounted: ReadonlyMap<string, PluginInfo>;
   /** Post a message to one window. */
   post(key: string, message: unknown): void;
+  /** Closes the database sessions of a window that is gone (`plugins-db.ts`). */
+  bridge: BridgeClient;
 }
 
 /** Route a core event to the windows it is for. False for plugin.changed, which the host acts on. */
@@ -106,6 +110,9 @@ export function claim(
   for (const event of routes.owners.claim(request, response, owner)) {
     routes.post(owner, { type: "desk:event", event });
   }
+  // The window closed while its call ran: a database session it opened has nobody to use it.
+  if (!routes.instances.has(owner))
+    closeLate(request, response, owner, routes.owners, routes.bridge);
 }
 
 /** What a plugin's change (plugin.changed) asks of the host. */

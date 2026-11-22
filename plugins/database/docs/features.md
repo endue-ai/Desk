@@ -17,8 +17,8 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 - PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
   table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
-  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
-  client certificate is not supported yet, nor a socket folder or an IPv6 host.
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file, and
+  presents a client certificate (`docs/client-cert.md`); a socket folder or an IPv6 host is not supported yet.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
@@ -98,7 +98,7 @@ Modules: `features/objects/`.
 
 ## Table design
 
-A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
+A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md). Two schemas compared and the migration script between them: [`schema-compare.md`](schema-compare.md).
 
 ## Roles and privileges
 
@@ -115,9 +115,9 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   in one transaction or as a dry run rolled back at the end, and a statement as EXPLAIN or EXPLAIN ANALYZE.
 - A script is cut into statements the way each client cuts it (dollar quotes, comments, DELIMITER, routine
   bodies), and an error's position lands in the editor.
-- Highlighting with the lexer that cuts the statements, autocomplete from the schema with aliases
-  (`Ctrl+Space`), Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before
-  the run and remembered for the console.
+- Highlighting with the lexer that cuts the statements, completion from the schema (`Ctrl+Space`, below),
+  Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before the run and
+  remembered for the console.
 - Guards: a read-only connection refuses writes before anything runs, and on the server too
   (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
@@ -142,9 +142,9 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 `console-run.js`, `features/consoles/`, `execute.js`, `engines/pg-session.js`, `history.js`, `tools.js`, `sql/`,
 `editor/`, `view-editor.js`.
 
-## Format SQL and SQL problems
+## Format SQL, SQL problems and completion
 
-How the console lays SQL out and underlines what the server would refuse: [`editor.md`](editor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md).
 
 ## Results
 
@@ -244,8 +244,7 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
-  an earlier one, and show it in the file manager.
+- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
   like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
   Read-only connections refuse it and production asks.
@@ -331,7 +330,7 @@ Modules: `features/maintenance/`.
 
 ## Value search
 
-Looking for a value across a connection's tables, with its limits: [`search.md`](search.md).
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md); for an object by its name from the desk's palette: [`palette.md`](palette.md). Text in the source of routines, views and table parts: [`source-search.md`](source-search.md).
 
 ## Routines
 

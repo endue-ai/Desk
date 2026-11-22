@@ -32,7 +32,9 @@ import { split, statementAt } from "./sql/split.js";
  *   execute(target: Console, conn: Connection, sql: string, options: { mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean }): Promise<string>,
  *   render(): void,
  *   typed: Map<string, string>,
+ *   pages: Pick<ReturnType<typeof import("./pages.js").createPages>, "refresh">,
  * }} Inner
+ *   `pages` reads a table view's page again: a run while one is on screen does what Refresh does.
  */
 
 const MORE_MAX = 100_000;
@@ -84,7 +86,7 @@ export async function formatText(text, engine, settings) {
 }
 
 /** @param {Inner} inner */
-export function createRunning({ deps, active, execute, render, typed }) {
+export function createRunning({ deps, active, execute, render, typed, pages }) {
   const serverVersion = createVersions(deps.execute);
   let explains = 0;
 

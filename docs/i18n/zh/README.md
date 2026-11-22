@@ -21,7 +21,11 @@ endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/end
 - 在 Windows 或 Linux 上，如果发布页提供与原安装包相同的格式，请选择该格式。Windows 会沿用安装目录，Debian 的软件包名仍为 `endue-desk`。
 - 重新打开应用即可沿用 `~/.desk` 中的配置和 `plugins.lock`，以及原来的设置、授权和凭据引用。像 v0.3.0 这样只提供安装包的 Desk 版本需要运行新安装程序手动升级。
 
-官方命令为 `endue`。可以在源码目录运行 `cargo run -p desk-cli -- --help` 试用。v0.3.0 磁盘映像未附带 CLI。在当前主版本中，现有脚本可以继续使用 `desk`。Linux 服务器的独立 CLI 发布后将作为单独的下载项列出。
+官方命令为 `endue`。可以在源码目录运行 `cargo run -p desk-cli -- --help` 试用。v0.3.0 磁盘映像未附带 CLI。在当前主版本中，现有脚本可以继续使用 `desk`。
+
+### Linux x86_64 服务器
+
+当发布页面列出 **endue CLI for Linux x86_64** 时，将压缩包、签名和 `SHA256SUMS-cli` 下载到一个空目录。运行 `sha256sum -c SHA256SUMS-cli` 校验，再用 `tar -xzf endue-cli_*_linux-x86_64.tar.gz` 解压。将 `ENDUE_BRAIN_URL` 设为你的 brain v0 服务地址，然后运行 `./endue-cli_*/bin/endue run "hello"`。v0.3.0 仅提供 macOS 应用。 [验证发布者签名](../../releasing.md#verify-a-linux-cli-download)
 
 ## 为什么是 endue
 

@@ -179,7 +179,11 @@ jobs:
         run: |
           pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build
           pnpm --filter @endue-ai/desk-app build
+          if [ -f scripts/package-build-env.sh ]; then source scripts/package-build-env.sh; fi
           cargo build -p desk-shell --bins --release --target "${{ matrix.rust }}"
+          if [ "$RUNNER_OS" = Linux ] && [ -f scripts/package-cli-build-env.sh ]; then
+            source scripts/package-cli-build-env.sh
+          fi
           cargo build -p desk-cli --bins --release --target "${{ matrix.rust }}"
       - name: Package the CEF desk with cargo-packager
         if: inputs.shell == 'cef'
@@ -222,6 +226,22 @@ jobs:
           args=(--bundle target/packager/bundle --version "$VERSION" --target "${{ matrix.target }}" --out dist --shell cef)
           if [ "$INSTALLERS_ONLY" = true ]; then args+=(--installers); fi
           node scripts/release-collect.mjs "${args[@]}"
+      - name: Package the same Linux CLI that shipped in the app
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        run: |
+          python3 -B scripts/package-cli-licenses/test_archive.py
+          python3 -B scripts/package-cli.py "target/${{ matrix.rust }}/release/endue" "$VERSION" --out dist
+      - name: Sign the standalone CLI
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      - name: Download and install the signed CLI on minimal Debian
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        env:
+          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
       - name: Check the .deb against the updater key
         if: runner.os == 'Linux'
         env:

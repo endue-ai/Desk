@@ -30,6 +30,7 @@ import { createShaping } from "./grid/shaping.js";
 import { createStrip } from "./grid/strip.js";
 import { defaultWidths } from "./grid-model.js";
 import { createGridLinks } from "./links/grid-links.js";
+import { lineOf } from "./message-line.js";
 import { numericColumns } from "./results.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
@@ -197,9 +198,7 @@ export function createGrid(doc, host, act, options = {}) {
     if (next.kind === "map") return maps.show(host, next);
     if (fresh) goto = maps.take(next.set);
     if (next.kind === "messages" || !next.set) {
-      const lines = (next.lines ?? []).map((line) =>
-        el(doc, "li", { class: `line ${line.level}` }, line.text),
-      );
+      const lines = (next.lines ?? []).map((line) => lineOf(doc, line, act));
       strip.draw([], false);
       return host.replaceChildren(el(doc, "ul", { class: "messages" }, ...lines));
     }

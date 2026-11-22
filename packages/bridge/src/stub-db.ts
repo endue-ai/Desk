@@ -23,6 +23,15 @@ import type {
 import { covers } from "./stub-covers";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
+  bytes,
+  failure,
+  limits,
+  MAX_SESSIONS,
+  RESERVED,
+  refuseAgents,
+  tagOf,
+} from "./stub-db-rules";
+import {
   controlTag,
   endsFailed,
   IGNORED,
@@ -47,8 +56,10 @@ export interface StubStatement {
   tag?: string;
   /** The server's error, which ends the statement. */
   error?: DbServerError;
-  /** Notices it raises, as db.notice events, before its answer. */
+  /** Notices it raises while it runs: they come with its first page (ADR 0334). */
   notices?: DbServerError[];
+  /** Notices the session sends after its answer, outside any call: db.notice events a turn later. */
+  afterwards?: DbServerError[];
   /** It runs until db.cancel, then answers 57014. */
   waits?: boolean;
   /** A COPY: `in` waits for db.copy; `out` answers `data`. */
@@ -71,6 +82,9 @@ export interface StubDatabase {
   /** The password the sign-in needs: a wrong one is refused (28P01), none answers needsPassword.
    * Without it every sign-in is let in. */
   password?: string;
+  /** The passphrase of every encrypted client key (a key whose PEM says ENCRYPTED): none given
+   * answers keyPassword "needed", another "wrong" (ADR 0331). */
+  keyPassword?: string;
   /** What the server reports at the sign-in; server_version and client_encoding by default. */
   parameters?: Record<string, string>;
   statements: StubStatement[];
@@ -96,37 +110,6 @@ interface Session {
   result?: { rows: DbValue[][]; at: number; tag: string };
   copying?: { lines: number };
   running?: () => void;
-}
-
-const MAX_SESSIONS = 16;
-const RESERVED = ["client_encoding", "user", "database", "replication"];
-const bytes = (value: DbValue) => (value === null ? 0 : new TextEncoder().encode(value).length);
-const failure = (code: string, message: string): DbServerError => ({
-  severity: "ERROR",
-  localSeverity: "ERROR",
-  code,
-  message,
-});
-
-function limits(pageRows = 1000, pageBytes = 4 * 1024 * 1024) {
-  if (pageRows < 1 || pageRows > 10_000)
-    throw new StubError("invalid_params", "pageRows is 1 to 10000");
-  if (pageBytes < 65_536 || pageBytes > 16_777_216)
-    throw new StubError("invalid_params", "pageBytes is 65536 to 16777216");
-  return { pageRows, pageBytes };
-}
-
-function refuseAgents(caller: string | undefined) {
-  if (caller?.startsWith("agent:"))
-    throw new StubError("permission_denied", "agents reach databases through the plugin");
-}
-
-/** The tag a scripted statement ends with. */
-function tagOf(statement: StubStatement, rows: number): string {
-  if (statement.tag) return statement.tag;
-  if (statement.columns) return `SELECT ${rows}`;
-  const sql = typeof statement.sql === "string" ? statement.sql : "";
-  return (sql.trim().split(/\s+/)[0] ?? "").toUpperCase();
 }
 
 export function stubDb(
@@ -198,8 +181,18 @@ export function stubDb(
     pageRows: number,
     pageBytes: number,
   ) => {
-    for (const notice of statement.notices ?? [])
-      later({ event: "db.notice", data: { sessionId: session.info.sessionId, notice } });
+    const sessionId = session.info.sessionId;
+    for (const notice of statement.afterwards ?? [])
+      setTimeout(() => later({ event: "db.notice", data: { sessionId, notice } }), 0);
+    const done = await first(session, statement, pageRows, pageBytes);
+    return statement.notices?.length ? { ...done, notices: [...statement.notices] } : done;
+  };
+  const first = async (
+    session: Session,
+    statement: StubStatement,
+    pageRows: number,
+    pageBytes: number,
+  ): Promise<DbPage> => {
     if (statement.waits) {
       await new Promise<void>((resolve) => {
         session.running = resolve;
@@ -265,6 +258,13 @@ export function stubDb(
           "invalid_value",
           `${me} already holds ${MAX_SESSIONS} database sessions`,
         );
+      const tls = params.tls;
+      if ((tls?.cert === undefined) !== (tls?.key === undefined))
+        throw new StubError("invalid_params", "tls.cert and tls.key come together");
+      if (tls?.key?.includes("ENCRYPTED") && tls.mode !== "disable") {
+        if (!tls.keyPassword) return { keyPassword: "needed" };
+        if (tls.keyPassword !== script?.keyPassword) return { keyPassword: "wrong" };
+      }
       const password = kept.password(params, caller, port);
       if (!script) throw new StubError("io_error", `cannot connect to ${params.host}:${port}`);
       if (script.password !== undefined && password === undefined) return { needsPassword: true };

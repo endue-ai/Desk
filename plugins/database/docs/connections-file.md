@@ -18,7 +18,8 @@ how many it wrote, without passwords.
   "exported": "2026-11-22T09:00:00.000Z",
   "connections": [
     { "id": "c-0a1b2c3d4e", "name": "Shop", "engine": "postgresql", "host": "db.example", "port": 5432,
-      "database": "shop", "user": "app", "ssl": "require", "sslCa": "", "file": "", "tag": "production",
+      "database": "shop", "user": "app", "ssl": "require", "sslCa": "",
+      "sslCert": "", "sslKey": "", "file": "", "tag": "production",
       "readOnly": false, "group": "Shop", "color": "chart-2" }
   ]
 }
@@ -43,6 +44,7 @@ whose host, port or user changed is forgotten, and a change to how it signs in c
 (asked first while one is in a transaction), as Save does.
 
 A `pg_service.conf` imports too: each `[service]` a PostgreSQL connection named after it, from `host`
-(or `hostaddr`), `port`, `dbname`, `user`, `sslmode` (`allow` as `prefer`) and `sslrootcert`. Its
+(or `hostaddr`), `port`, `dbname`, `user`, `sslmode` (`allow` as `prefer`), `sslrootcert`, `sslcert` and
+`sslkey`. Its
 `password` and every other key are left out, and the preview names them; a list of hosts or a line that
 is not `key=value` refuses the file with its line.

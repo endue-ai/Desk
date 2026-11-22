@@ -2,8 +2,9 @@
 // (worker.js), started with the SDK's startWorker on the first request, so PostgreSQL's grammar never
 // runs on the frame's thread. `parse` answers the trees; `outline` and `resolve` leave them in the
 // worker, since moving a large script's trees to the page costs more than parsing it; `layout`
-// answers Format SQL's new text for a script or the statement at a caret (ADR 0292), and `check` a
-// script's problems for the editor (ADR 0294). A schema
+// answers Format SQL's new text for a script or the statement at a caret (ADR 0292), `check` a
+// script's problems for the editor (ADR 0294), and `complete` the candidates at a caret (ADR 0327).
+// A schema
 // model crosses once per object (pass a new object when the schema changes); the last few are kept.
 // Cancel stops the worker while something is in flight, failing it, and the next request starts a
 // fresh one; close stops it in any case.
@@ -21,6 +22,7 @@
  *   resolve(sql: string, model: SchemaModel, options?: { searchPath?: string[], user?: string }): Promise<Parsed & Resolution>,
  *   layout(sql: string, style: import("../layout/style.js").Style, options?: { at?: number }): Promise<Laid>,
  *   check(sql: string, model: SchemaModel | null, options: Omit<import("../../diagnose/check.js").CheckRequest, "sql">): Promise<import("../../diagnose/check.js").CheckResult>,
+ *   complete(sql: string, model: SchemaModel | null, options: Omit<import("../../editor/statement.js").CompleteRequest, "sql">): Promise<import("../../editor/complete.js").Completion>,
  *   cancel(): void,
  *   close(): void,
  *   busy(): number,
@@ -95,6 +97,8 @@ export function createSqlParser(startWorker) {
     layout: (sql, style, options = {}) => ask({ type: "layout", sql, style, ...options }),
     check: (sql, model, options) =>
       ask({ ...options, type: "check", sql, ...(model ? { model: keyOf(model) } : {}) }),
+    complete: (sql, model, options) =>
+      ask({ ...options, type: "complete", sql, ...(model ? { model: keyOf(model) } : {}) }),
     cancel: () => {
       if (pending.size > 0) stop(cancelledParse());
     },

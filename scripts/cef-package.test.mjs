@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -69,7 +70,9 @@ describe("cef-package", () => {
     t.after(() => rmSync(root, { recursive: true, force: true }));
     const app = join(root, "endue.app");
     mkdirSync(app);
-    writeFileSync(join(app, "payload"), "fixture");
+    const payload = join(app, "payload");
+    writeFileSync(payload, "fixture");
+    chmodSync(payload, 0o755);
     symlinkSync("payload", join(app, "link"));
     archiveMacApp(app);
     execFileSync("python3", [
@@ -79,6 +82,7 @@ import sys, tarfile
 with tarfile.open(sys.argv[1]) as archive:
     assert all(not m.uname and not m.gname and m.uid == m.gid == 0 for m in archive)
     assert archive.extractfile("endue.app/payload").read() == b"fixture"
+    assert archive.getmember("endue.app/payload").mode == 0o755
     link = archive.getmember("endue.app/link")
     assert link.issym() and link.linkname == "payload"
 `,

@@ -75,9 +75,14 @@ const open = (m: Mounted, ...labels: string[]) => openIn(m, undefined, ...labels
 async function openIn(m: Mounted, connection: string | undefined, ...labels: string[]) {
   let last: Node | undefined;
   for (const label of labels) {
-    await until(m, () => row(m, label, undefined, connection));
-    last = row(m, label, undefined, connection) as Node;
-    m.app.toggle(last, true);
+    // Found and opened in one step: a catalog read still going on (after a run's DDL) can draw
+    // the tree again on any await, and a row found before it is gone after.
+    const found = () => {
+      last = row(m, label, undefined, connection);
+      if (last) m.app.toggle(last, true);
+      return last;
+    };
+    await until(m, found);
     await m.settle();
   }
   return last as Node;

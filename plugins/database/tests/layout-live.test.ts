@@ -69,13 +69,8 @@ async function treeOf(live: ReturnType<typeof harness>, sql: string) {
   const done = await live.run(
     `begin;\nset local search_path = endue_layout;\nset local client_min_messages = log;\nset local debug_print_parse = on;\n${sql};\nrollback`,
   );
-  // The server's LOG comes as notices, a line each. A notice can still reach the statement after
-  // the one that raised it (#541), so read every notice from the statement on, in order; the
-  // rollback's own tree comes after it the same way each time.
-  const tree = done.result.statements
-    .slice(4)
-    .flatMap((s) => s.notices ?? [])
-    .join("\n");
+  // The server's LOG comes as notices, a line each, with the statement that raised them (ADR 0334).
+  const tree = (done.result.statements[4]?.notices ?? []).join("\n");
   if (!tree.includes("parse tree:")) return null;
   return tree.replace(/:(?:stmt_)?location -?\d+|:stmt_len \d+/gu, "").replace(/\s+/gu, " ");
 }

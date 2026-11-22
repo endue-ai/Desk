@@ -7,7 +7,8 @@
 //! are served on threads of their own, so a `db.cancel` reaches a statement that runs. The core's
 //! home is the second argument (its `.pgpass` is the password file), else a fresh folder under the
 //! temp folder, removed at the end. Passwords kept with `db.passwords.*` (ADR 0311) live in an
-//! in-memory keychain for as long as it runs. It ends when standard input does.
+//! in-memory keychain for as long as it runs. It ends when standard input does, as the desk quits:
+//! every session ends, a running statement cancelled first (ADR 0339).
 
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
@@ -82,6 +83,7 @@ fn main() {
             }
         });
     }
+    core.quit_databases(std::time::Duration::from_secs(5));
     if made {
         // Gone already or still held open: the temp folder is the system's to clear then.
         let _ = std::fs::remove_dir_all(&home);

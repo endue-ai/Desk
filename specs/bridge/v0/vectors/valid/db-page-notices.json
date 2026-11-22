@@ -1,0 +1,21 @@
+{
+  "target": "DbRunResult",
+  "description": "a statement's answer with the notices the server sent while it ran, in order",
+  "instance": {
+    "rows": [],
+    "more": false,
+    "tag": "DO",
+    "transaction": "idle",
+    "notices": [
+      {
+        "severity": "NOTICE",
+        "localSeverity": "NOTICE",
+        "code": "00000",
+        "message": "restocking bolt",
+        "where": "PL/pgSQL function inline_code_block line 1 at RAISE"
+      },
+      { "severity": "WARNING", "localSeverity": "WARNING", "code": "01000", "message": "low stock" }
+    ],
+    "noticesSkipped": 3
+  }
+}

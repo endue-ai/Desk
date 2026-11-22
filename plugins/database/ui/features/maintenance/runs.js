@@ -106,7 +106,7 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
     let after = null;
     let note = "";
     try {
-      after = await reader.stats(conn, state.target);
+      after = await reader.stats(conn, state.target, true);
       // The form's facts line shows the target as it is now.
       const now = stateOf(id)?.read;
       if (now) update(id, { read: { ...now, stats: after } });

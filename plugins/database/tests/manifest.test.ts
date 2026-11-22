@@ -84,10 +84,12 @@ const covers = (declared: Scope, asked: Scope) => {
 const coveredBy = (asked: Scope) => declarations().filter((d) => covers(d, asked));
 
 /** A bridge that refuses every call and every ask, keeping what was asked for. */
-function refusing() {
+function refusing(answers: Record<string, () => unknown> = {}) {
   const asked: Scope[] = [];
   const bridge = {
     call: async (method: string, params: { permission?: Scope }) => {
+      const answer = answers[method];
+      if (answer) return answer();
       if (method !== "perm.request")
         throw Object.assign(new Error("no"), { code: "permission_denied" });
       if (params.permission) asked.push(params.permission);
@@ -116,7 +118,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(156);
+    expect(ids).toHaveLength(175);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -223,7 +225,8 @@ describe("permissions", () => {
         permission: "proc:spawn",
         commands: ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"],
       },
-      // An export (export.js): granted at install.
+      // A cell's bytes saved (features/cell-values/): granted at install. An export needs no
+      // declaration of its own: the save dialog grants the path the person chooses (export.js).
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/Downloads/**"] },
       // Ask in the palette, a buffer per console and table, show an export: granted at install.
@@ -258,7 +261,7 @@ describe("permissions", () => {
 
   it("asks at run time only for scopes its declarations cover", async () => {
     // The named programs are each engine's default client and the backup's two programs; the
-    // export folder is export.js's.
+    // Downloads folder is where a cell's bytes go.
     const engines = ["postgresql", "mysql", "sqlite"] as const;
     const programs = Object.keys(PROGRAMS) as Array<keyof typeof PROGRAMS>;
     expect(declarations()[0]?.commands).toEqual([
@@ -317,12 +320,15 @@ describe("permissions", () => {
     expect(pg.asked).toEqual([{ permission: "db:connect", hosts: ["db.example:6543"] }]);
     expect(coveredBy(pg.asked[0] as Scope)).toEqual([declarations()[8]]);
 
-    // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
-    const out = refusing();
+    // An export: only the path the save dialog answered, which no declaration grants (`/**` only
+    // lets it ask), and nothing under ~/Downloads.
+    const out = refusing({
+      "dialog.save": () => ({ cancelled: false, path: "~/Reports/orders.csv" }),
+    });
     const set = { columns: ["id"], rows: [["1"]], truncated: false };
     await exportResult(out.bridge, { set, format: "csv", name: "orders" }).catch(() => {});
-    expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Downloads/**"] }]);
-    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1], declarations()[5]]);
+    expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Reports/orders.csv"] }]);
+    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[5]]);
 
     // A .sql file saved anywhere: only `/**` covers it. A console's long text: the plugin's folder,
     // granted at install, besides `/**`, which only lets it ask.

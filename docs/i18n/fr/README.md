@@ -23,7 +23,11 @@ Dès la parution de la première version de bureau nommée **endue app**, choisi
 - Sous Windows et Linux, utilisez le même format de paquet que pour votre installation actuelle s’il est proposé. Windows conserve le dossier d’installation. Le paquet Debian s’appelle toujours `endue-desk`.
 - Au prochain lancement, l’application retrouve les profils et `plugins.lock` dans `~/.desk`, ainsi que les réglages, les autorisations et les références aux identifiants. Pour une version de Desk distribuée uniquement sous forme d’installeur, comme v0.3.0, effectuez la mise à jour manuellement avec le nouvel installeur.
 
-La commande officielle est `endue`. Depuis les sources, essayez `cargo run -p desk-cli -- --help`. Les images disque de la version v0.3.0 sont antérieures à l’intégration de la CLI. Les scripts existants peuvent continuer à utiliser `desk` pendant la version majeure actuelle. La CLI autonome pour serveur Linux fera l’objet d’un téléchargement distinct dès sa publication.
+La commande officielle est `endue`. Depuis les sources, essayez `cargo run -p desk-cli -- --help`. Les images disque de la version v0.3.0 sont antérieures à l’intégration de la CLI. Les scripts existants peuvent continuer à utiliser `desk` pendant la version majeure actuelle.
+
+### Serveurs Linux x86_64
+
+Si une version propose **endue CLI for Linux x86_64**, téléchargez l’archive, sa signature et `SHA256SUMS-cli` dans un répertoire vide. Exécutez `sha256sum -c SHA256SUMS-cli`, puis `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Donnez à `ENDUE_BRAIN_URL` l’adresse du service brain v0 et lancez `./endue-cli_*/bin/endue run "hello"`. La version v0.3.0 fournit uniquement l’application macOS. [Vérifier la signature de l’éditeur](../../releasing.md#verify-a-linux-cli-download)
 
 ## Pourquoi endue
 

@@ -124,7 +124,8 @@ and `transaction` from ReadyForQuery (`idle`, `open`, `failed`). A page holds `p
 row; a row over 64 MiB ends the result with `invalid_value`. `copy` is `{ direction, format, columns }`.
 
 **Events**, to the session's caller only: `db.notice { sessionId, notice }` as each arrives, also
-while a statement runs; `db.notification { sessionId, pid, channel, payload }`, also while idle;
+while a statement runs (amended by ADR 0334: a notice raised while a call runs comes in its page's
+`notices` instead, and `db.notice` is for those outside any call); `db.notification { sessionId, pid, channel, payload }`, also while idle;
 `db.parameter { sessionId, name, value }` for each ParameterStatus; `db.closed { sessionId, reason,
 message?, error? }`, the session's last event, `reason` one of `closed`, `server` (with its FATAL
 `error` when it sent one), `io`, `encoding`, `unloaded`, `revoked`, `desk`.
@@ -148,7 +149,8 @@ the plugin's commands, whose read-only, production and agent guards hold.
 
 **Lifetime.** A session belongs to the plugin that opened it. It ends at `db.close`, when the server
 or the network ends it, when the plugin stops (turned off, removed, the desk quits) and when its grant
-goes; never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
+goes (amended by ADR 0339: also when the window that opened it closes, and every end cancels a
+running statement before Terminate); never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
 on). A window whose frame sleeps (ADR 0134) keeps its sessions and finds them again with `db.list`;
 what was notified meanwhile is lost. A caller holds 16 sessions at most.
 
