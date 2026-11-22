@@ -1,19 +1,31 @@
 // Completion in the console editor through the component's completion hooks: the controller's
-// `complete` (complete.js) answers what to offer, from the statement around the caret only (with
-// a DELIMITER line before it when MySQL's delimiter is not `;`), so a 5 MB script costs what its
-// statement does. The list opens by itself after `.` or two letters of a name, or on Ctrl+Space;
-// asked for and empty, it says so. It keeps the controller's order and filtering.
+// `complete` (features/completion/) answers what to offer, from the statement around the caret only
+// (with a DELIMITER line before it when MySQL's delimiter is not `;`), so a 5 MB script costs what its
+// statement does. The list opens by itself after `.`, two letters of a name, or INSERT's `(` after
+// its table, or on Ctrl+Space; asked for and empty, it says so. It keeps the controller's order and
+// filtering. A candidate shows its type or kind beside it and its comment in the info box; one
+// with tab stops is inserted as a snippet (Tab and Shift+Tab move between them), one with a range
+// replaces that span (`*` written out), and each pick is told to the controller (`picked`).
 
-import { autocompletion } from "../vendor/editor/editor-component.mjs";
+import {
+  autocompletion,
+  insertCompletionText,
+  pickedCompletion,
+  snippet,
+} from "../vendor/editor/editor-component.mjs";
 import { lexedField } from "./lexing.js";
 
 /**
  * @typedef {import("./complete.js").Completion} Completion
+ * @typedef {import("./rank.js").Item} Item
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  * @typedef {import("../vendor/editor/editor-component.mjs").CompletionContext} Context
+ * @typedef {import("../vendor/editor/editor-component.mjs").EditorView} View
  */
 
 const WORD = /[A-Za-z0-9_$\u0080-￿]/u;
+/** INSERT INTO a table, its column list just opened. */
+const INSERT_LIST = /\binto\s+(?:[\w$]+|"[^"]*")(?:\.(?:[\w$]+|"[^"]*"))?\s*\($/iu;
 
 /** What the controller gets: the statement at `at`, and `at` inside it. */
 export function statementWindow(
@@ -30,14 +42,70 @@ export function statementWindow(
   };
 }
 
-/** Whether typing has reached a place the list opens by itself: after `.` or two letters. */
+/** Whether typing has reached a place the list opens by itself. */
 function wanted(/** @type {Context} */ context) {
   const { state, pos } = context;
-  const before = state.doc.sliceString(Math.max(0, pos - 64), pos);
-  if (before.endsWith(".")) return true;
+  const before = state.doc.sliceString(Math.max(0, pos - 160), pos);
+  if (before.endsWith(".") || INSERT_LIST.test(before)) return true;
   let n = 0;
   for (let i = before.length - 1; i >= 0 && WORD.test(before[i] ?? ""); i--) n++;
   return n >= 2;
+}
+
+/**
+ * How a candidate is inserted, telling the controller it was picked.
+ * @param {Item} item
+ * @param {number} offset where the statement starts in the editor
+ * @param {Act} act
+ */
+export function applyOf(item, offset, act) {
+  return (
+    /** @type {View} */ view,
+    /** @type {unknown} */ completion,
+    /** @type {number} */ from,
+    /** @type {number} */ to,
+  ) => {
+    const start = item.range ? item.range.from + offset : from;
+    const end = item.range ? Math.max(item.range.to + offset, to) : to;
+    if (item.snippet) snippet(item.insert)(view, completion, start, end);
+    else
+      view.dispatch({
+        ...insertCompletionText(view.state, item.insert, start, end),
+        ...(completion ? { annotations: pickedCompletion.of(completion) } : {}),
+      });
+    act("picked", item.key);
+  };
+}
+
+/** A candidate as the component lists it. */
+export const optionOf = (
+  /** @type {Item} */ item,
+  /** @type {number} */ offset,
+  /** @type {Act} */ act,
+) => ({
+  label: item.label,
+  detail: item.detail,
+  ...(item.info ? { info: item.info } : {}),
+  type: item.kind,
+  apply: applyOf(item, offset, act),
+});
+
+/**
+ * Write out the `*` at the caret as its columns; false when there is none to write out.
+ * @param {View} view
+ * @param {Act} act
+ */
+export async function expandStar(view, act) {
+  const at = view.state.selection.main.head;
+  const doc = view.state.doc;
+  const { text, caret, offset } = statementWindow(view.state, at);
+  const found = /** @type {Completion | undefined} */ (
+    await act("complete", text, caret, offset, "star")
+  );
+  const item = found?.items[0];
+  if (!item || view.state.doc !== doc) return false;
+  applyOf(item, offset, act)(view, null, found.from + offset, found.to + offset);
+  return true;
 }
 
 /**
@@ -49,7 +117,9 @@ export function sqlCompletion(act) {
   const source = async (context) => {
     if (!context.explicit && !wanted(context)) return null;
     const { text, caret, offset } = statementWindow(context.state, context.pos);
-    const found = /** @type {Completion | undefined} */ (await act("complete", text, caret));
+    const found = /** @type {Completion | undefined} */ (
+      await act("complete", text, caret, offset)
+    );
     if (context.aborted) return null;
     if (!found || found.items.length === 0) {
       if (context.explicit) act("say", "Nothing to complete here.");
@@ -59,12 +129,7 @@ export function sqlCompletion(act) {
       from: found.from + offset,
       to: found.to + offset,
       filter: false,
-      options: found.items.map((item) => ({
-        label: item.label,
-        detail: item.detail,
-        type: item.kind,
-        apply: item.insert,
-      })),
+      options: found.items.map((item) => optionOf(item, offset, act)),
     };
   };
   return autocompletion({

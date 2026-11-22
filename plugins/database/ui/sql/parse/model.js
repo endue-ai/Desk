@@ -5,17 +5,20 @@
 
 /**
  * @typedef {import("../../schema/common.js").SchemaObject} SchemaObject
- * @typedef {{ name: string, type?: string }} ModelColumn
- * @typedef {{ name: string, kind: string, columns?: ModelColumn[] }} ModelRelation
- * @typedef {{ name: string, kind: string, args: string, result?: string }} ModelRoutine
- * @typedef {{ name: string, relations?: ModelRelation[], routines?: ModelRoutine[] }} ModelSchema
+ * @typedef {{ name: string, type?: string, comment?: string, default?: boolean }} ModelColumn
+ * @typedef {{ columns: string[], schema: string, table: string, refColumns: string[] }} ModelKey
+ * @typedef {{ name: string, kind: string, columns?: ModelColumn[], comment?: string, foreignKeys?: ModelKey[] }} ModelRelation
+ * @typedef {{ name: string, kind: string, args: string, result?: string, comment?: string }} ModelRoutine
+ * @typedef {{ name: string, relations?: ModelRelation[], routines?: ModelRoutine[], types?: Array<{ name: string, type: string }> }} ModelSchema
+ *   Comments, defaults, foreign keys and types are completion's (ADR 0327); the resolver reads
+ *   names and types alone.
  * @typedef {{ schemas: ModelSchema[] }} SchemaModel
  * @typedef {{
  *   relation: ModelRelation, columns: Map<string, ModelColumn> | null,
  * }} IndexedRelation
  * @typedef {{
  *   name: string, relations: Map<string, IndexedRelation> | null,
- *   routines: Map<string, ModelRoutine[]> | null,
+ *   routines: Map<string, ModelRoutine[]> | null, types?: Array<{ name: string, type: string }>,
  * }} IndexedSchema
  * @typedef {Map<string, IndexedSchema>} ModelIndex
  */
@@ -98,6 +101,7 @@ export function indexModel(/** @type {SchemaModel} */ model) {
           )
         : null,
       routines,
+      ...(schema.types ? { types: schema.types } : {}),
     });
   }
   return index;

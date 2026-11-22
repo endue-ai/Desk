@@ -5,6 +5,7 @@
 export { feature as activity } from "./activity/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
+export { feature as completion } from "./completion/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as diagram } from "./diagram/index.js";
 export { feature as format } from "./format/index.js";

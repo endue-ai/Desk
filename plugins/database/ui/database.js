@@ -13,7 +13,6 @@ import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
 import { createClients, searchPath } from "./clients.js";
 import { registerCommands } from "./commands.js";
-import { createCompletions } from "./completions.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
@@ -24,6 +23,7 @@ import { createSessions } from "./engines/pg-session.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
+import { createCompletion } from "./features/completion/controller.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
@@ -301,7 +301,13 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       tools,
       importer,
       dropped,
-      complete: createCompletions({ consoles, manager, catalog }),
+      complete: createCompletion({
+        consoles,
+        manager,
+        catalog,
+        bridge,
+        settings: () => settings,
+      }).complete,
       cancel,
     }),
     ...createDrags({

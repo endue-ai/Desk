@@ -1496,6 +1496,16 @@
         "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
       },
       {
+        "id": "endue.database.signatures",
+        "title": "Database: show the arguments of the function at the caret",
+        "keywords": ["signature", "parameters", "overloads", "help", "Ctrl+Shift+Space"]
+      },
+      {
+        "id": "endue.database.expand-star",
+        "title": "Database: write out the columns of * at the caret",
+        "keywords": ["star", "asterisk", "columns", "expand", "select list"]
+      },
+      {
         "id": "endue.database.follow-key",
         "title": "Database: go to the row this key points at",
         "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
@@ -1642,6 +1652,11 @@
         "kind": "string",
         "default": "",
         "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
+      },
+      "endue.database.snippets": {
+        "kind": "object",
+        "default": {},
+        "description": "Your own completion snippets: a name (letters, digits and _) to a template, at most 100. ${name} marks a place Tab moves to; the same name is edited together. One named like a built-in snippet (sel, ins, upd, del, upsert, with, ctab, idx, txn, case) replaces it."
       }
     }
   }

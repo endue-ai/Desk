@@ -39,8 +39,11 @@ import { listOf, stringOf } from "./tree.js";
  * @typedef {{ name: string, position: Position | null }} Output
  * @typedef {{ parent: Scope | null, entries: Entry[], ctes: Map<string, Cte>,
  *   merged: Map<string, Entry>, outputs: Output[] | null }} Scope
+ * @typedef {{ at: number, hit?: { scope: Scope, before?: Entry[] } }} Probe
+ *   Completion's (ADR 0327): the byte a ColumnRef or a RangeVar of the placeholder starts at, and
+ *   the scope the resolver met it in.
  * @typedef {{ sql: string, positions: Positions, index: ModelIndex, path: string[],
- *   statement: number, names: Name[] }} Context
+ *   statement: number, names: Name[], probe?: Probe }} Context
  */
 
 /** A query level inside `parent`. */

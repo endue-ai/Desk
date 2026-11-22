@@ -6,6 +6,8 @@
 // again only when its text, the model, the search path or what came before it changed: each console
 // keeps the last check's statements. A statement the server answered (a run) takes the server's
 // word instead. Statements with psql's meta-commands or its `:name` and `?` parameters are skipped.
+// Completion (ADR 0327) reads the same state: `stateAt` replays what the statements before an offset
+// did, from the last check's, without parsing them again.
 import { createPositions } from "../sql/parse/positions.js";
 import { resolve } from "../sql/parse/resolve.js";
 import { split } from "../sql/split.js";
@@ -73,6 +75,9 @@ function serverProblem(
 export function createChecker(raw) {
   /** @type {Map<string, Map<string, Entry>>} */
   const docs = new Map();
+  /** Per console, the statements of the last check that change what follows, in order. */
+  /** @type {Map<string, Array<{ end: number, effects: Effect[] }>>} */
+  const steps = new Map();
   const ids = new WeakMap();
   let nextId = 0;
   const idOf = (/** @type {object | undefined} */ index) => {
@@ -143,11 +148,16 @@ export function createChecker(raw) {
       /** @type {Problem[]} */
       const problems = [];
       const pieces = split(request.sql, "postgresql");
+      /** @type {Array<{ end: number, effects: Effect[] }>} */
+      const changes = [];
       let parsed = 0;
       for (const piece of pieces) {
         if (state.stopped) break;
         const skip = skipOf(piece);
-        if (skip === "elsewhere") state.opaque = true;
+        if (skip === "elsewhere") {
+          state.opaque = true;
+          changes.push({ end: piece.end, effects: [{ type: "opaque" }] });
+        }
         if (skip) continue;
         const key = [
           piece.text,
@@ -166,17 +176,42 @@ export function createChecker(raw) {
           parsed++;
         }
         next.set(key, entry);
+        if (entry.effects.length) changes.push({ end: piece.end, effects: entry.effects });
         const answer = answers.get(piece.text);
         if (answer && "ok" in answer) continue;
         for (const p of answer ? [serverProblem(piece, answer)] : entry.problems)
           problems.push({ ...p, from: p.from + piece.start, to: p.to + piece.start });
       }
       docs.set(request.doc, next);
-      while (docs.size > KEPT_DOCS) docs.delete(/** @type {string} */ (docs.keys().next().value));
+      steps.set(request.doc, changes);
+      while (docs.size > KEPT_DOCS) {
+        const oldest = /** @type {string} */ (docs.keys().next().value);
+        docs.delete(oldest);
+        steps.delete(oldest);
+      }
       problems.sort((a, b) => a.from - b.from || a.to - b.to);
       return { problems: problems.slice(0, MAX_PROBLEMS), statements: pieces.length, parsed };
     },
+    /**
+     * What the statements of a console's last check that end before `offset` left: the search path,
+     * the role and the relations they made, over `index`. A console never checked starts afresh.
+     * @param {string} doc
+     * @param {number} offset
+     * @param {ModelIndex | undefined} index
+     * @param {{ searchPath?: string[], user?: string }} [start]
+     */
+    stateAt(doc, offset, index, start = {}) {
+      const state = createState(index, start.searchPath ?? [...DEFAULT_PATH], start.user ?? "");
+      for (const step of steps.get(doc) ?? []) {
+        if (step.end > offset) break;
+        for (const effect of step.effects) apply(state, effect);
+      }
+      return state;
+    },
     /** Forget a console's statements. */
-    forget: (/** @type {string} */ doc) => void docs.delete(doc),
+    forget: (/** @type {string} */ doc) => {
+      docs.delete(doc);
+      steps.delete(doc);
+    },
   };
 }

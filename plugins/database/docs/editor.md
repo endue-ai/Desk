@@ -48,3 +48,44 @@ Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
   checked.
 
 Modules: `diagnose/`, `features/problems/`, `sql/parse/`, `view-editor.js`.
+
+## Completion
+
+- The list opens after `.`, two letters of a name, or INSERT's `(` after its table, and on `Ctrl+Space`. In a
+  PostgreSQL console with a schema cache it is worked out in the parse worker (ADR 0327): the statement at the
+  caret is parsed by PostgreSQL's grammar and bound by the same resolver as the problems check, over what the
+  cache holds and what the script before the statement did (SET search_path, the tables it created). A statement
+  that does not parse yet is mended for it (its tail cut back, parentheses closed, a JOIN given its ON); when it
+  cannot be, the FROM items are read from the tokens. Nothing is asked of the server. MySQL, SQLite and a
+  connection whose cache lists nothing yet complete on the page from the catalog.
+- After JOIN, the tables a foreign key links to the tables before it come first, one candidate per key and both
+  ways; taking one writes its ON condition (`orders on orders.customer_id = c.id`), all columns of a key of two
+  or more. The condition names the joined table, or an alias made of its initials when that name is taken (a
+  key to the table itself). A table already in FROM is not offered again; CROSS and NATURAL joins get none.
+- INSERT INTO t ( offers every column with a VALUES row of tab stops, and the columns without a default (an
+  identity column cannot be told from the cache and is listed); VALUES ( offers a row for the columns listed.
+  `Ctrl+Space` after `*` in a select list, or Database: write out the columns of * at the caret, writes the
+  columns of every FROM item in reach (qualified when more than one), or of `t.*`'s alone.
+- Columns come from every level in reach: the nearest FROM first, then the queries around a correlated subquery;
+  CTEs, subquery aliases and set-returning functions (a function's TABLE or SETOF result, a scalar one under its
+  alias) with theirs. A candidate shows its type or kind beside it and its comment in the info box; a name that
+  needs quotes is quoted (PostgreSQL's reserved words, and any name that does not read back the same).
+- Order: the word's match (whole, start, then inside from three letters), then scope (joins, lists and `*`; the
+  nearest columns; outer ones; FROM names and CTEs; tables; schemas; functions and types; snippets; keywords),
+  then the type a slot expects (the other side of `=`, a function's argument, SET's column, a VALUES slot), then
+  the person's picks: how often and how lately each candidate was picked, kept in the plugin's store under
+  `completion-picks` (200 at most, the oldest first to go), then the name.
+- Snippets: `sel`, `selc`, `ins`, `upd`, `del`, `upsert`, `with`, `ctab`, `idx`, `txn` where a statement starts,
+  `case` in an expression, each in the console's dialect; Tab and Shift+Tab move between the places to fill. The
+  `snippets` setting adds the person's own (a name to a template, `${name}` a place to fill; at most 100, 4000
+  characters each), offered in both places; one named like a built-in replaces it.
+- Signature help: typing `(` after a function or `,` inside a call shows its overloads over the `(`, from the cache
+  or PostgreSQL's built-in functions, the argument at the caret in bold and the first overload that takes it.
+  `Ctrl+Shift+Space` and Database: show the arguments of the function at the caret open it; `ArrowUp` and
+  `ArrowDown` step through the overloads while the list is closed; it closes on `Escape`, on the `)` that ends the
+  call or when the caret leaves it.
+- On a 1 MB script, a completion parses the statement at the caret alone and replays the check's state before it:
+  about 4 ms in the worker; the page only sends the statement.
+
+Modules: `editor/` (`complete.js`, `caret.js`, `statement.js`, `rank.js`, `joins.js`, `lists.js`, `snippets.js`,
+`signatures.js`, `completion.js`, `signature-help.js`), `features/completion/`, `diagnose/check.js`, `sql/parse/`.

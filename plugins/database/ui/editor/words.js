@@ -14,6 +14,25 @@ export const RESERVED = new Set(
   ).split(" "),
 );
 
+/**
+ * The words PostgreSQL's scanner reserves, or keeps for type and function names (its keyword kinds 4
+ * and 3): a column or table of one of these names is written quoted. Its other keywords read back
+ * as names unquoted. tests/complete-statement.test.ts holds this list to the vendored scanner's.
+ */
+export const PG_RESERVED = new Set(
+  (
+    "all analyse analyze and any array as asc asymmetric authorization binary both case cast check " +
+    "collate collation column concurrently constraint create cross current_catalog current_date " +
+    "current_role current_schema current_time current_timestamp current_user default deferrable " +
+    "desc distinct do else end except false fetch for foreign freeze from full grant group having " +
+    "ilike in initially inner intersect into is isnull join lateral leading left like limit " +
+    "localtime localtimestamp natural not notnull null offset on only or order outer overlaps " +
+    "placing primary references returning right select session_user similar some symmetric " +
+    "system_user table tablesample then to trailing true union unique user using variadic verbose " +
+    "when where window with"
+  ).split(" "),
+);
+
 /** Words above that MySQL does not reserve, so an unquoted table there may be called one. */
 const MYSQL_FREE = new Set(["ANY", "END", "FULL", "OFFSET", "RETURNING"]);
 /** More words MySQL reserves. */

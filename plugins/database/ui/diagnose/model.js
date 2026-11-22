@@ -4,7 +4,8 @@
 // a system schema it did not read is left out (the resolver knows pg_catalog's own names); sequences
 // have no column list. Partitions, which the cache reads under their root table (PG-50, ADR 0295),
 // are relations of the schema each lives in, with the root's columns. The model is kept per
-// connection while the cache does not change, so the worker gets it once.
+// connection while the cache does not change, so the worker gets it once. Completion (ADR 0327) reads
+// the same model, so it also carries comments, which columns have a default, foreign keys and types.
 
 /**
  * @typedef {import("../sql/parse/model.js").SchemaModel} SchemaModel
@@ -17,25 +18,50 @@ const RELATIONS = new Set(["table", "view", "materialized view", "foreign table"
 /** @type {Map<string, { key: string, model: SchemaModel | null }>} */
 const kept = new Map();
 
-/** One held schema's relations and routines. @returns {ModelSchema} */
+/** A column as the model holds it: completion also shows its comment and whether it has a default. */
+const columnOf = (/** @type {import("../schema-cache/model.js").Column} */ c) => ({
+  name: c.name,
+  type: c.type,
+  ...(c.comment ? { comment: c.comment } : {}),
+  ...(c.default != null ? { default: true } : {}),
+});
+
+/** One held schema's relations, routines and types, with completion's comments and keys. @returns {ModelSchema} */
 function schemaOf(/** @type {CacheView} */ view, /** @type {string} */ name) {
   const relations = (view.objects(name) ?? [])
     .filter((o) => RELATIONS.has(o.kind))
     .map((o) => {
       const columns = o.kind === "sequence" ? undefined : view.columns(name, o.name);
+      const keys = view.foreignKeys?.(name, o.name) ?? [];
+      const comment = view.comment?.(name, o.name);
       return {
         name: o.name,
         kind: o.kind,
-        ...(columns ? { columns: columns.map((c) => ({ name: c.name, type: c.type })) } : {}),
+        ...(columns ? { columns: columns.map(columnOf) } : {}),
+        ...(comment ? { comment } : {}),
+        ...(keys.length
+          ? {
+              foreignKeys: keys.map((k) => ({
+                columns: k.columns,
+                schema: k.schema,
+                table: k.table,
+                refColumns: k.refColumns,
+              })),
+            }
+          : {}),
       };
     });
-  const routines = (view.routines(name) ?? []).map((r) => ({
+  const routines = (view.routines?.(name) ?? []).map((r) => ({
     name: r.name,
     kind: r.kind,
     args: r.args,
     result: r.result,
+    ...(r.comment ? { comment: r.comment } : {}),
   }));
-  return { name, relations, routines };
+  const types = (view.objects(name) ?? [])
+    .filter((o) => o.kind === "type")
+    .map((o) => ({ name: o.name, type: o.detail }));
+  return { name, relations, routines, ...(types.length ? { types } : {}) };
 }
 
 /**

@@ -1,7 +1,9 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
 // default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
-// whether Save lays a bound .sql file out first (`format-on-save`).
+// whether Save lays a bound .sql file out first (`format-on-save`); `snippets` the person's own
+// completion snippets, name to template (editor/snippets.js, ADR 0327).
+import { ownSnippets } from "./editor/snippets.js";
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -11,7 +13,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
- *   pgDump: string, pgRestore: string,
+ *   pgDump: string, pgRestore: string, snippets: Record<string, string>,
  * }} Settings
  */
 
@@ -39,6 +41,7 @@ export const DEFAULTS = Object.freeze({
   problemsNames: true,
   pgDump: "",
   pgRestore: "",
+  snippets: Object.freeze({}),
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -74,6 +77,7 @@ const KEYS =
     problemsNames: { key: "endue.database.problems-names" },
     pgDump: { key: "endue.database.pg-dump" },
     pgRestore: { key: "endue.database.pg-restore" },
+    snippets: { key: "endue.database.snippets" },
   });
 
 /** The setting keys as the manifest declares them, in order. */
@@ -118,7 +122,9 @@ export function fromValues(values) {
   for (const [name, { key, min, max, choices }] of Object.entries(KEYS)) {
     const value = values[key];
     const fallback = /** @type {Record<string, unknown>} */ (DEFAULTS)[name];
-    if (Array.isArray(fallback)) {
+    if (name === "snippets") {
+      if (value !== undefined) settings[name] = ownSnippets(value);
+    } else if (Array.isArray(fallback)) {
       if (Array.isArray(value) && value.every((v) => typeof v === "string" && v !== ""))
         settings[name] = value;
     } else if (typeof value === "number" && typeof fallback === "number") {
