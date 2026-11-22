@@ -135,7 +135,6 @@ describe("the Map tab", () => {
     const viewer = createValueViewer(
       document,
       () => undefined,
-      async () => true,
       () => {},
     );
     const cell = { row: 0, col: 2, name: "geom", type: "", editable: false, reason: "" };

@@ -12,6 +12,7 @@
 
 mod app_surfaces;
 pub mod client;
+pub mod clipboard;
 pub mod clock;
 mod copy_wake;
 pub mod cursor;

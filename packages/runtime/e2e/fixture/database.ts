@@ -13,8 +13,9 @@
 // there (source-search-fixture.ts), the map's parcels and twenty
 // thousand squares as geometry values on every PostgreSQL connection (geo-fixture.ts), the roles,
 // ACLs, policies and default privileges of the privileges panel on every PostgreSQL connection
-// (privileges-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`,
-// what saves and exports wrote). dialog.save answers a place in ~/Pictures for an image and the
+// (privileges-fixture.ts), `select * from many` on the SQLite one with 500 rows of 240 columns
+// (120,000 cells, past the 100,000 a copy asks first at: database-clipboard.spec.ts), and fs.* over a
+// folder in memory with one .sql file (`window.__files`, what saves and exports wrote). dialog.save answers a place in ~/Pictures for an image and the
 // backup's place otherwise; a backup's save and open dialogs, and the scripted pg_dump and
 // pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
 // open dialog answers it; an export's save dialog answers a place there. fixture-pg's server has more
@@ -34,6 +35,7 @@ import {
 } from "../../../../plugins/database/tests/activity-fixture";
 import { assistAnswer } from "../../../../plugins/database/tests/assist-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
+import type { Script } from "../../../../plugins/database/tests/clients";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
 import {
@@ -138,11 +140,21 @@ const fsHandlers: StubHandlers = {
     return {};
   },
 };
+// Built when it is first asked for: 500 rows (a console's default limit) of 240 columns (#504).
+let many: string[][] | undefined;
+const manyRows: (next: Script) => Script = (next) => (sql, env) => {
+  if (!/^select \* from many\b/iu.test(sql.trim())) return next(sql, env);
+  many ??= [
+    ["n", ...Array.from({ length: 239 }, (_, c) => `c${c + 2}`)],
+    ...Array.from({ length: 500 }, (_, i) => [`${i + 1}`, ...Array(239).fill(`${i % 10}`)]),
+  ];
+  return { rows: many };
+};
 // sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
 // `stock` changes from one read to the next, for the comparison (compare-fixture.ts).
 // A join of orders and people with its columns' origins (edit-joins-fixture.ts, PG-45).
 const joins = editJoinsScript(fixtureScript);
-const procs = procHandlers(stockScript(fixtureScript), (event) => emit(event));
+const procs = procHandlers(stockScript(manyRows(fixtureScript)), (event) => emit(event));
 const backup = backupHandlers(
   files,
   procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>,

@@ -76,7 +76,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
         : pick;
     },
   );
-  const copy = (/** @type {string} */ text) => copyText(doc, text);
+  const copy = (/** @type {string} */ text, /** @type {string | undefined} */ html) =>
+    copyText(doc, text, html);
   const grid = createGrid(
     doc,
     byId("result"),
@@ -97,7 +98,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     },
     options,
   );
-  const values = createValueViewer(doc, act, copy, () => grid.focus(), options.startWorker);
+  const values = createValueViewer(doc, act, () => grid.focus(), options.startWorker);
   /** The value viewer on a cell, with its column's type OID (a built-in geometric type's shape). */
   const openValue = (/** @type {ReturnType<typeof grid.cursorCell>} */ cell) =>
     values.open(cell && { ...cell, oid: shown?.shown?.tabs[shown.tab]?.set?.types?.[cell.col] });

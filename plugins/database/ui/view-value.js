@@ -1,7 +1,8 @@
 // The value viewer: one cell's whole value in a dialog, as text, as JSON laid out, or as a hex dump
-// of its bytes (value.js), with its type and size. Copy takes what is shown; when the result can be
-// changed, Change keeps the text as the cell's pending value once its type's editor takes it (the
-// reason is said when it does not), Set NULL makes it NULL and Set DEFAULT its default (PG-40).
+// of its bytes (value.js), with its type and size. Copy takes what is shown (the controller's
+// copyValue, which asks first past copy-size.js's limits); when the result can be changed, Change
+// keeps the text as the cell's pending value once its type's editor takes it (the reason is said
+// when it does not), Set NULL makes it NULL and Set DEFAULT its default (PG-40).
 // A geometry opens on its Shape, drawn with its type, SRID and vertex count (PG-46,
 // geo/value-shape.js); Copy there copies the value as it came. Escape or Close gives the grid its
 // focus back.
@@ -24,11 +25,10 @@ import { describeValue } from "./value.js";
 /**
  * @param {Document} doc
  * @param {Act} act
- * @param {(text: string) => Promise<boolean>} copy
  * @param {() => void} back Gives the grid its focus back.
  * @param {import("./geo/client.js").StartWorker} [startWorker] The map's worker, for a shape.
  */
-export function createValueViewer(doc, act, copy, back, startWorker) {
+export function createValueViewer(doc, act, back, startWorker) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const form = /** @type {HTMLFormElement} */ (byId("value"));
   const title = byId("value-title");
@@ -129,14 +129,7 @@ export function createValueViewer(doc, act, copy, back, startWorker) {
   text.addEventListener("input", () => {
     error.hidden = true;
   });
-  byId("value-copy").addEventListener("click", async () => {
-    act(
-      "say",
-      (await copy(text.value))
-        ? "Copied the value."
-        : "The clipboard refused: select the text and press Mod+C.",
-    );
-  });
+  byId("value-copy").addEventListener("click", () => act("copyValue", text.value));
   byId("value-close").addEventListener("click", close);
   form.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {

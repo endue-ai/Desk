@@ -355,7 +355,6 @@ export function createGrid(doc, host, act, options = {}) {
     pinned: st.layout.pinned,
     widths: [...st.layout.widths],
   });
-
   scroller.addEventListener("scroll", screen.paint);
   const windowing = attachWindow(scroller, st, act); // a read its cursor keeps (PG-22)
   attachHeader(doc, head, grid, {
@@ -372,6 +371,7 @@ export function createGrid(doc, host, act, options = {}) {
     openMenu,
     selection,
     cursorRow: () => st.cursor.row,
+    copyLarge: () => act("copy", "tsv"),
     follow: () => act("followKey"),
   });
 

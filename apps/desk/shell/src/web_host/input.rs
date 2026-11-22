@@ -180,8 +180,14 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
                 host.ime_commit_text(Some(&c.text.as_str().into()), Some(&replacement(None)), 0);
             }
         }
-        M::SurfaceFocusIn(_) => host.set_focus(1),
-        M::SurfaceFocusOut(_) => host.set_focus(0),
+        M::SurfaceFocusIn(_) | M::SurfaceFocusOut(_) => {
+            let into = matches!(message, M::SurfaceFocusIn(_));
+            // The clipboard lends a page the focus only while its surface has no keys (#504).
+            if let Some(browser) = host.browser() {
+                super::clipboard::held(browser.identifier(), into);
+            }
+            host.set_focus(i32::from(into));
+        }
         M::SurfaceImeComposition(c) => {
             let underlines: Vec<CompositionUnderline> = c
                 .underlines
