@@ -1,4 +1,4 @@
-# Releasing endue Desk
+# Releasing endue
 
 How a build reaches installed desks, and what a maintainer does at each step. The decisions are ADR
 0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where), ADR 0092 (release
@@ -12,7 +12,7 @@ Publishing a version tag builds both macOS disk images. Configuring the updater 
 the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
-   `gh release create v0.1.0 --target <commit> --title "endue Desk 0.1.0" --generate-notes`, or
+   `gh release create v0.1.0 --target <commit> --title "endue 0.1.0" --generate-notes`, or
    Releases → Draft a new release → Publish.
 2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
    and Intel (`release-build.yml`), runs the install smoke on each package, and
@@ -56,7 +56,11 @@ suffixes as GitHub prereleases. Existing installer-only tags are skipped by the 
    installer-only release can install the official endue package over its existing installation
    and reopen its workspace. Keep its application data in place.
 
-Desk checks the public release list on startup and periodically. It verifies the available package
+New installations discover releases at `https://github.com/endue-ai/endue/releases`. If a renamed
+release fails verification, keep the signed transition tag available. Withdraw the new offer using
+the signed empty tag path below and verify both repository addresses before resuming rollout.
+
+The app checks the public release list on startup and periodically. It verifies the available package
 and offers **Restart to update**, **Install on next restart** and **Later**. The restart choice
 belongs to that exact version and is consumed before installation. The staged package works offline.
 The beta and canary feeds are signed snapshots on the `desk-updates-beta` and `desk-updates-canary`

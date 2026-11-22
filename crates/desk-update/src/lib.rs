@@ -7,8 +7,8 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub(crate) const LEGACY_RELEASES: &str = "https://github.com/endue-ai/Desk/releases";
 pub(crate) const RENAMED_RELEASES: &str = "https://github.com/endue-ai/endue/releases";
-/// Packaged builds use the existing repository address through the transition release.
-pub const GITHUB_RELEASES: &str = LEGACY_RELEASES;
+/// New installations discover releases at the canonical repository.
+pub const GITHUB_RELEASES: &str = RENAMED_RELEASES;
 
 pub mod generated;
 #[cfg(feature = "https")]
