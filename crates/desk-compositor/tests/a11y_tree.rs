@@ -40,7 +40,16 @@ fn two_windows() -> (DeskA11y, Adapter) {
 
 #[test]
 fn the_window_list_its_title_bars_and_a_plugins_content_are_one_tree() {
-    let (_, adapter) = two_windows();
+    let (mut a11y, adapter) = two_windows();
+    let root_update = a11y
+        .full()
+        .into_iter()
+        .find(|update| update.tree_id == TreeId::ROOT)
+        .unwrap();
+    assert_eq!(
+        root_update.tree.unwrap().toolkit_name.as_deref(),
+        Some("endue")
+    );
     let root = adapter.seen();
     assert_eq!(root.role, Role::Window);
     assert_eq!(root.label.as_deref(), Some("endue Desk"));
