@@ -24,7 +24,7 @@ const plugin = (id: string, name: string, over: Partial<PluginInfo> = {}): Plugi
   }) as PluginInfo;
 
 const REGISTRY: CommandInfo[] = [
-  { id: "desk.palette.open", title: "Search Desk and this computer", keywords: [], provider: "x" },
+  { id: "desk.palette.open", title: "Search endue and this computer", keywords: [], provider: "x" },
   { id: "endue.launcher.open", title: "Launcher: Show every plugin", keywords: [], provider: "x" },
   { id: "desk.windows.tile", title: "Tile windows", keywords: ["arrange"], provider: "desk" },
 ];
