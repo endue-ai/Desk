@@ -139,7 +139,7 @@
 }
 
 #editor-box .cm-diagnosticAction {
-  margin: 4px 0 0;
+  margin: 0 0 0 8px;
   padding: 2px 8px;
   border: 1px solid var(--desk-border);
   border-radius: var(--desk-radius-sm);
