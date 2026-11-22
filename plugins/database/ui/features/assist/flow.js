@@ -187,6 +187,7 @@ export function createAssist(deps, { brain, choices }) {
       server,
       sent: prompt,
     };
+    deps.say("");
     const taken = /** @type {{ text?: unknown } | undefined} */ (
       await deps.dialog("assist-proposal", model)
     );
