@@ -7,6 +7,7 @@ export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as chart } from "./chart/index.js";
 export { feature as compare } from "./compare/index.js";
+export { feature as compareSchema } from "./compare-schema/index.js";
 export { feature as connectionsFile } from "./connections-file/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as databases } from "./databases/index.js";

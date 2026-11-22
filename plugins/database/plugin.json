@@ -298,21 +298,6 @@
         "keywords": ["schema", "cache", "system schemas", "catalog"]
       },
       {
-        "id": "endue.database.find-objects",
-        "title": "Database: find objects by name",
-        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
-      },
-      {
-        "id": "endue.database.copy-name",
-        "title": "Database: copy a qualified name",
-        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
-      },
-      {
-        "id": "endue.database.palette-hide",
-        "title": "Database: hide a connection from the palette, or show it again",
-        "keywords": ["palette", "hide", "show", "search", "connection"]
-      },
-      {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
         "keywords": ["find", "search", "objects"]
@@ -1548,6 +1533,153 @@
         "keywords": ["reload", "discard changes", "design", "columns"]
       },
       {
+        "id": "endue.database.compare-schemas",
+        "title": "Database: compare two schemas…",
+        "keywords": [
+          "diff",
+          "schema compare",
+          "migration",
+          "dev and production",
+          "drift",
+          "version control"
+        ],
+        "description": "Compares two PostgreSQL schemas (of a connection, another connection or database, a folder of DDL files or a saved snapshot) and opens the panel of the objects on one side only and the ones that differ, with their DDL side by side, and the migration script for the person to choose, read and run there.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "left": {
+              "type": "object",
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+                },
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The schema; with a folder, the schema its files are of."
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A folder of DDL files, one file per object as a dump writes them."
+                },
+                "snapshot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A snapshot file saved by Database: save a schema's snapshot."
+                }
+              },
+              "additionalProperties": false,
+              "description": "The left side; asked for when absent."
+            },
+            "right": {
+              "type": "object",
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+                },
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The schema; with a folder, the schema its files are of."
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A folder of DDL files, one file per object as a dump writes them."
+                },
+                "snapshot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A snapshot file saved by Database: save a schema's snapshot."
+                }
+              },
+              "additionalProperties": false,
+              "description": "The right side; asked for when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.dump-schema",
+        "title": "Database: dump a schema to a folder…",
+        "keywords": ["export ddl", "version control", "one file per object", "git", "schema files"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The folder; the person picks one when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.save-schema-snapshot",
+        "title": "Database: save a schema's snapshot…",
+        "keywords": ["baseline", "compare later", "schema json"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.schema-compare-run",
+        "title": "Database: run the schema comparison's script",
+        "keywords": ["apply migration", "sync schema", "execute"]
+      },
+      {
+        "id": "endue.database.schema-compare-dry-run",
+        "title": "Database: dry-run the schema comparison's script",
+        "keywords": ["try migration", "rollback", "check the script"]
+      },
+      {
+        "id": "endue.database.schema-compare-console",
+        "title": "Database: open the schema comparison's script in a console",
+        "keywords": ["edit migration", "copy", "sql"]
+      },
+      {
+        "id": "endue.database.schema-compare-refresh",
+        "title": "Database: compare the two schemas again",
+        "keywords": ["reload", "diff again"]
+      },
+      {
+        "id": "endue.database.schema-compare-cancel",
+        "title": "Database: cancel the schema comparison",
+        "keywords": ["stop reading", "abort"]
+      },
+      {
         "id": "endue.database.history",
         "title": "Database: history",
         "keywords": ["recent", "earlier queries"]
@@ -2344,9 +2476,23 @@
           "additionalProperties": false
         },
         "agent": true
+      },
+      {
+        "id": "endue.database.find-objects",
+        "title": "Database: find objects by name",
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
+      },
+      {
+        "id": "endue.database.copy-name",
+        "title": "Database: copy a qualified name",
+        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
+      },
+      {
+        "id": "endue.database.palette-hide",
+        "title": "Database: hide a connection from the palette, or show it again",
+        "keywords": ["palette", "hide", "show", "search", "connection"]
       }
     ],
-    "paletteProviders": [{ "command": "endue.database.find-objects", "title": "Database objects" }],
     "keys": [
       {
         "key": "Mod+Shift+B",
@@ -2504,6 +2650,12 @@
         "maximum": 1440,
         "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
-    }
+    },
+    "paletteProviders": [
+      {
+        "command": "endue.database.find-objects",
+        "title": "Database objects"
+      }
+    ]
   }
 }
