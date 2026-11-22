@@ -4516,12 +4516,18 @@ export interface DbTls {
   mode: DbTlsMode;
   /** The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too. */
   ca?: string;
+  /** The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key. */
+  cert?: string;
+  /** The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert. */
+  key?: string;
+  /** The passphrase of an encrypted key: used once to decrypt it and dropped. */
+  keyPassword?: string;
 }
 
 /** disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name. */
 export type DbTlsMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
-/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
+/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
 export interface DbOpenResult {
   sessionId?: DbSessionId;
   /** The server process of the session. */
@@ -4532,7 +4538,11 @@ export interface DbOpenResult {
   parameters?: Record<string, string>;
   error?: DbServerError;
   needsPassword?: true;
+  keyPassword?: DbKeyPassword;
 }
+
+/** tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected. */
+export type DbKeyPassword = "needed" | "wrong";
 
 /** How the session signed in. */
 export type DbAuth = "scram-sha-256" | "scram-sha-256-plus" | "md5" | "password" | "none";

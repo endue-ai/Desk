@@ -18,6 +18,8 @@ import { entryOf, FIELDS } from "./file.js";
 const LABELS = /** @type {Record<string, string>} */ ({
   ssl: "SSL",
   sslCa: "CA file",
+  sslCert: "certificate file",
+  sslKey: "key file",
   tag: "environment",
   readOnly: "read-only",
   color: "colour",

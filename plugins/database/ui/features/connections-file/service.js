@@ -1,8 +1,8 @@
 // PostgreSQL's connection service file (pg_service.conf) read for an import (PG-15): each
 // `[service]` a PostgreSQL connection named after it, from `host` (or `hostaddr`), `port`,
-// `dbname`, `user`, `sslmode` and `sslrootcert`. A password is left out, as every other key is, and
-// the entry's notes say so. A line or value that fails refuses the file with its line and field.
-// No DOM.
+// `dbname`, `user`, `sslmode`, `sslrootcert`, `sslcert` and `sslkey`. A password is left out, as
+// every other key is, and the entry's notes say so. A line or value that fails refuses the file
+// with its line and field. No DOM.
 
 import { newId, normalize } from "../../connections.js";
 
@@ -11,7 +11,17 @@ import { newId, normalize } from "../../connections.js";
  * @typedef {import("./file.js").Read} Read
  */
 
-const READ = new Set(["host", "hostaddr", "port", "dbname", "user", "sslmode", "sslrootcert"]);
+const READ = new Set([
+  "host",
+  "hostaddr",
+  "port",
+  "dbname",
+  "user",
+  "sslmode",
+  "sslrootcert",
+  "sslcert",
+  "sslkey",
+]);
 /** libpq's modes as the connection keeps them; `allow` tries both, as `prefer` does. */
 const SSL = /** @type {Record<string, string>} */ ({
   disable: "disable",
@@ -86,6 +96,8 @@ function connectionOf(
       user: v.get("user") ?? "",
       ssl: /** @type {any} */ (mode ? (SSL[mode] ?? mode) : "default"),
       sslCa: v.get("sslrootcert") ?? "",
+      sslCert: v.get("sslcert") ?? "",
+      sslKey: v.get("sslkey") ?? "",
     });
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);

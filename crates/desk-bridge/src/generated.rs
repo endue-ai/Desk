@@ -7048,6 +7048,19 @@ pub struct DbTls {
     /// The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ca: Option<String>,
+    /// The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cert: Option<String>,
+    /// The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    /// The passphrase of an encrypted key: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
 }
 
 /// disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.
@@ -7065,7 +7078,7 @@ pub enum DbTlsMode {
     VerifyFull,
 }
 
-/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbOpenResult {
@@ -7089,6 +7102,21 @@ pub struct DbOpenResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub needs_password: Option<True>,
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<DbKeyPassword>,
+}
+
+/// tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbKeyPassword {
+    #[serde(rename = "needed")]
+    Needed,
+    #[serde(rename = "wrong")]
+    Wrong,
 }
 
 /// How the session signed in.
