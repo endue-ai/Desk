@@ -35,4 +35,5 @@ export const feature = {
   actions: (deps) => ({
     reconnectSession: () => reconnect(deps),
   }),
+  styles: [new URL("./reconnect.css", import.meta.url).href],
 };

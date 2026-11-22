@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // A lost connection loses no work (PG-105, ADR 0355), on the browser stub: the fixture's connection
 // `fixture-pg` (plugins/database/tests/fixtures-pg.ts). A manual console holds a transaction of two
@@ -27,6 +27,26 @@ async function open(page: Page) {
   await expect(frame.locator("#tree [role=treeitem]").nth(1)).toContainText("fixture-pg");
   return frame;
 }
+
+/** The header's shown buttons that stick out of the header's box, or out of the actions' row. */
+const outside = (frame: Frame) =>
+  frame.evaluate(() => {
+    const box = document.querySelector("header")?.getBoundingClientRect();
+    const nav = document.getElementById("actions")?.getBoundingClientRect();
+    if (!box || !nav) return ["no header"];
+    const within = (r: DOMRect, b: DOMRect) =>
+      r.left >= b.left - 0.5 &&
+      r.right <= b.right + 0.5 &&
+      r.top >= b.top - 0.5 &&
+      r.bottom <= b.bottom + 0.5;
+    return [...document.querySelectorAll<HTMLElement>("header button")]
+      .filter((b) => b.offsetParent !== null && b.getClientRects().length > 0)
+      .filter((b) => {
+        const r = b.getBoundingClientRect();
+        return !within(r, box) || (b.closest("#actions") !== null && !within(r, nav));
+      })
+      .map((b) => b.textContent?.trim() ?? b.id);
+  });
 
 const command = (page: Page, id: string, args: Record<string, unknown>) =>
   page.evaluate(([id, args]) => window.__desk.runtime.commands.run(id, args), [id, args] as const);
@@ -66,6 +86,19 @@ test("a manual console's transaction ended by the server is said with its statem
   await expect(session).toHaveAttribute("title", /select 1.*select 2/su);
   await expect(editor).toHaveText("select 2");
   await expect(reconnect).toBeVisible();
+  // Reconnect fits the header at 1100 px and at the narrowest window (400 px): no button sticks out,
+  // and the actions that do not fit are behind More.
+  const iframe = page.locator(`${SURFACE} iframe`);
+  for (const width of [1100, 400]) {
+    await iframe.evaluate((el, w) => {
+      el.style.cssText += `;width:${w}px!important`;
+    }, width);
+    await expect.poll(() => outside(frame)).toEqual([]);
+    await expect(reconnect).toBeVisible();
+  }
+  await iframe.evaluate((el, w) => {
+    el.style.cssText += `;width:${w}px!important`;
+  }, LARGE.width);
   await reconnect.click();
   await expect(session).toHaveText("Idle");
   await expect(reconnect).toBeHidden();
