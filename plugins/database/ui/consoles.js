@@ -314,6 +314,8 @@ export function createConsoles(deps) {
     restoreConsoles: many.restore,
     /** Run SQL in a console as a run of its own does (features/consoles/run-file.js). */
     runIn: execute,
+    /** The PostgreSQL sessions: a console's transaction (features/transactions/, PG-20). */
+    sessions: deps.sessions,
     page: (/** @type {Parameters<typeof pages.page>[2]} */ change) =>
       withActive((shown, conn) => pages.page(shown, conn, change)),
     edits: {

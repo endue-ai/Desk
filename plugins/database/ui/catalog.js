@@ -9,6 +9,7 @@
 
 import { baseOf, homeOf, listedDatabases } from "./databases.js";
 import { countSql, engineOf, pageSql } from "./engines/index.js";
+import { pathOf } from "./engines/pg-options.js";
 import { objectsOf, partsOf, RELATIONS } from "./schema/common.js";
 import { diagramOf, diagramQueries } from "./schema/diagram.js";
 import { schemaOf } from "./schema/index.js";
@@ -30,10 +31,12 @@ import { qualified } from "./sql/quote.js";
 const CATALOG_ROWS = 10_000;
 const SEP = "\u0000";
 
-/** The schema a name without one is in: PostgreSQL's public, MySQL's database, SQLite's main. */
+/** The schema a name without one is in: on PostgreSQL the first its search path names (public by
+ * default), MySQL's database, SQLite's main. */
 export function defaultSchema(/** @type {Connection} */ conn) {
   if (conn.engine === "sqlite") return "main";
-  return conn.engine === "mysql" ? conn.database : "public";
+  if (conn.engine === "mysql") return conn.database;
+  return pathOf(conn).searchPath.find((s) => s !== "$user") ?? "public";
 }
 
 /** An Error with the kind of the client's failure. */

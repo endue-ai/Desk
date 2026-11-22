@@ -7,6 +7,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { fileName } from "../../platform.js";
 import { commandLine, listPath, restoreArgs, restoreOptions } from "./args.js";
 
 /** @typedef {import("./restore.js").RestoreModel} RestoreModel */
@@ -231,7 +232,12 @@ export function restoreDialog(doc, model, done) {
           database: into.database,
           ...(some ? { list: listPath(into.id) } : {}),
         });
-        command.textContent = commandLine(model.program.command, argv, into.env);
+        command.textContent = commandLine(
+          model.program.command,
+          argv,
+          into.env,
+          model.program.platform,
+        );
       }
       problem.textContent = "";
       submit.disabled = false;
@@ -273,12 +279,7 @@ export function restoreDialog(doc, model, done) {
       doc,
       "form",
       { class: "dialog wide backup-form restore-form", "aria-labelledby": "restore-title" },
-      el(
-        doc,
-        "h2",
-        { id: "restore-title" },
-        `Restore ${model.file.split("/").at(-1) ?? model.file}`,
-      ),
+      el(doc, "h2", { id: "restore-title" }, `Restore ${fileName(model.file)}`),
       el(doc, "p", { class: "hint" }, about),
       labelled("Into", target, "into"),
       ...options,

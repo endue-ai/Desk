@@ -72,7 +72,9 @@ async function treeOf(live: ReturnType<typeof harness>, sql: string) {
   // The server's LOG comes as notices, a line each, with the statement that raised them (ADR 0334).
   const tree = (done.result.statements[4]?.notices ?? []).join("\n");
   if (!tree.includes("parse tree:")) return null;
-  return tree.replace(/:(?:stmt_)?location -?\d+|:stmt_len \d+/gu, "").replace(/\s+/gu, " ");
+  return tree
+    .replace(/:(?:stmt_)?location -?\d+|:stmt_len \d+|:list_(?:start|end) -?\d+/gu, "")
+    .replace(/\s+/gu, " ");
 }
 
 describe.skipIf(!uri)("Format SQL against PostgreSQL", () => {

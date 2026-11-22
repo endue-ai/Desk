@@ -28,6 +28,7 @@ pub(crate) enum Command {
     Fetch(Limits, bool, Reply),
     Copy(CopyInput, Reply),
     Script(Vec<Statement>, Limits, bool, Reply<crate::script::Script>),
+    Describe(Statement, Reply<crate::describe::Described>),
 }
 
 /// Why the connection is done.
@@ -181,6 +182,9 @@ impl Task {
         let (reply, outcome) = match command {
             Command::Script(statements, limits, go_on, reply) => {
                 return self.script(statements, limits, go_on, reply).await;
+            }
+            Command::Describe(statement, reply) => {
+                return self.serve_describe(statement, reply).await;
             }
             Command::Run(statement, limits, reply) => {
                 (reply, self.run_statement(statement, limits).await)

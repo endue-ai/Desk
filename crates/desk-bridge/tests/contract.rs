@@ -406,6 +406,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "DbOpenResult" => roundtrip::<desk_bridge::DbOpenResult>(vector),
                 "DbRunResult" => roundtrip::<desk_bridge::DbRunResult>(vector),
                 "DbScriptResult" => roundtrip::<desk_bridge::DbScriptResult>(vector),
+                "DbDescribeResult" => roundtrip::<desk_bridge::DbDescribeResult>(vector),
                 "DbFetchResult" => roundtrip::<desk_bridge::DbFetchResult>(vector),
                 "DbCopyResult" => roundtrip::<desk_bridge::DbCopyResult>(vector),
                 "DbListResult" => roundtrip::<desk_bridge::DbListResult>(vector),
