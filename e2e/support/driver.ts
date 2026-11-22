@@ -6,9 +6,17 @@
 // relaunch (browser.reloadSession) quits the app and starts it again with the same HOME and port:
 // wdio.conf.ts wraps the command with relaunchApp.
 import { type ChildProcess, spawn } from "node:child_process";
-import { cpSync, createWriteStream, existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  createWriteStream,
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { type CefDesk, cefBinary, dataDir, freePort, launchCef } from "./cef";
 import { ensureChromedriver } from "./chrome-for-testing";
@@ -193,10 +201,22 @@ async function answering(command: string): Promise<void> {
   throw new Error(`${command} did not answer on port ${PORT} within 15 s`);
 }
 
-/** Copy the app's data folder (store.json, plugins.json, ...) next to a failed test's screenshot. */
+/** Keep the app state used by the failure checks alongside the screenshot. */
 export function saveData(to: string, data = home && dataDir(home)): void {
-  if (data && existsSync(data))
-    cpSync(data, to, { recursive: true, filter: (from) => !from.endsWith(".sock") });
+  if (!data || !lstatSync(data, { throwIfNoEntry: false })?.isDirectory()) return;
+  const stage = mkdtempSync(join(dirname(to), ".endue-failure-"));
+  try {
+    for (const name of ["store.json", "plugins.json", "last-start.json"]) {
+      const from = join(data, name);
+      if (lstatSync(from, { throwIfNoEntry: false })?.isFile()) {
+        copyFileSync(from, join(stage, name));
+      }
+    }
+    rmSync(to, { recursive: true, force: true });
+    renameSync(stage, to);
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+  }
 }
 
 /** End the spec's app and driver and remove its HOME. */
