@@ -113,6 +113,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
     kept: (conn) => manager.passwords.ref(conn),
+    askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
   const pg = held.pg;
   const cancel = () => {

@@ -32,7 +32,8 @@ async function open(page: Page) {
   // The explorer opens the connection's schema cache; typing alone never does.
   await row.click();
   await page.keyboard.press("ArrowRight");
-  await expect(frame.locator("#tree [role=treeitem]", { hasText: "public" })).toBeVisible();
+  // The connection lists its server's databases (PG-13): public is a schema of its own database.
+  await expect(frame.getByRole("treeitem", { level: 3, name: /^public(?:\s|$)/u })).toBeVisible();
   await page.evaluate(() =>
     window.__desk.runtime.commands.run("endue.database.console", { connection: "fixture-pg" }),
   );

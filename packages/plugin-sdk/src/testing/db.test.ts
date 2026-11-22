@@ -63,8 +63,14 @@ describe("the test host's database sessions (ADR 0281)", () => {
       host.transport,
     );
     await host.settle();
-    expect(page).toMatchObject({ rows: [["1"]], more: false, tag: "SELECT 1", rowCount: 1 });
-    expect(seen).toEqual(["db.notice", "db.closed"]);
+    expect(page).toMatchObject({
+      rows: [["1"]],
+      more: false,
+      tag: "SELECT 1",
+      rowCount: 1,
+      notices: [expect.objectContaining({ message: "hi" })],
+    });
+    expect(seen).toEqual(["db.closed"]);
     expect(refused).toBe("permission_denied");
   });
 

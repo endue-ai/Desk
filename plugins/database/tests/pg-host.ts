@@ -13,6 +13,7 @@ import {
   stubCommands,
 } from "../../../packages/bridge/src/index";
 import { createSessions } from "../ui/engines/pg-session.js";
+import type { Passphrases } from "../ui/engines/pg-tls.js";
 import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
 
@@ -68,10 +69,14 @@ export function sessionExecutor(
     typed?: string;
     files?: StubFiles;
     prompt?: (data: PermPromptData) => boolean;
+    passphrases?: Passphrases;
   } = {},
 ) {
   const { bridge, calls, core } = dbBridge(db, options);
-  const sessions = createSessions(bridge);
+  const sessions = createSessions(
+    bridge,
+    options.passphrases ? { passphrases: options.passphrases } : {},
+  );
   const settings = fromValues(options.settings ?? {});
   const asked: string[] = [];
   const kept: string[] = [];

@@ -15,8 +15,9 @@ import { programReply } from "./backup-fixture";
 /**
  * What a scripted statement gives back: rows (the first is the header; on PostgreSQL a value may be
  * null), changes, or an error; on PostgreSQL also the columns' type OIDs (text by default), the
- * error's fields, notices before the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
- * lines), or a statement that runs until it is cancelled.
+ * error's fields, notices with the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
+ * lines), notices the session sends after it (`afterwards`, db.notice events a turn later, ADR 0334),
+ * or a statement that runs until it is cancelled.
  */
 export interface Answer {
   rows?: (string | null)[][];
@@ -28,6 +29,7 @@ export interface Answer {
   position?: number;
   types?: number[];
   notices?: string[];
+  afterwards?: string[];
   waits?: boolean;
 }
 /** Who asks: sqlite3's environment, or the session's database, host, port, user and settings. */
@@ -103,21 +105,12 @@ const tagOf = (sql: string, changes?: number) => {
 
 /** A script's answer as the scripted server's statement. */
 export function statementOf(sql: string, answer: Answer): StubStatement {
-  // A line with no severity goes on the message before it, as a server's message of many lines.
-  const notices: ReturnType<typeof serverError>[] = [];
-  for (const text of answer.notices ?? []) {
-    const [, severity, message = text] = /^([A-Z]+):\s+(.*)$/su.exec(text) ?? [];
-    const before = notices.at(-1);
-    if (!severity && before) before.message += `\n${text}`;
-    else
-      notices.push({
-        ...serverError(message),
-        severity: severity ?? "NOTICE",
-        localSeverity: severity ?? "NOTICE",
-        code: "00000",
-      });
-  }
-  const more = notices.length ? { notices } : {};
+  const notices = noticesOf(answer.notices);
+  const afterwards = noticesOf(answer.afterwards);
+  const more = {
+    ...(notices.length ? { notices } : {}),
+    ...(afterwards.length ? { afterwards } : {}),
+  };
   if (answer.waits) return { sql, waits: true, ...more };
   if (answer.error) {
     const { code = "", detail, hint, position } = answer;
@@ -134,6 +127,25 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
     return { sql, columns, rows, ...more };
   }
   return { sql, tag: tagOf(sql, answer.changes), ...more };
+}
+
+/** `SEVERITY:  message` lines as the server's notices; a line with no severity goes on the one
+ * before it, as a server's message of many lines. */
+function noticesOf(lines: string[] = []) {
+  const notices: ReturnType<typeof serverError>[] = [];
+  for (const text of lines) {
+    const [, severity, message = text] = /^([A-Z]+):\s+(.*)$/su.exec(text) ?? [];
+    const before = notices.at(-1);
+    if (!severity && before) before.message += `\n${text}`;
+    else
+      notices.push({
+        ...serverError(message),
+        severity: severity ?? "NOTICE",
+        localSeverity: severity ?? "NOTICE",
+        code: "00000",
+      });
+  }
+  return notices;
 }
 
 /** Who a session is, as a script reads it. */

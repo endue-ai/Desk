@@ -13,6 +13,8 @@ user=app
 password=service-secret
 sslmode=verify-full
 sslrootcert=~/certs/ca.pem
+sslcert=~/certs/client.crt
+sslkey=~/certs/client.key
 connect_timeout=10
 
 [local]
@@ -34,6 +36,8 @@ describe("a pg_service.conf", () => {
         user: "app",
         ssl: "verify-full",
         sslCa: "~/certs/ca.pem",
+        sslCert: "~/certs/client.crt",
+        sslKey: "~/certs/client.key",
         tag: "none",
       },
       { name: "local", host: "127.0.0.1", port: null, ssl: "prefer" },

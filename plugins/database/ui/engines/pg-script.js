@@ -3,11 +3,14 @@
 // close), and the run's mode: BEGIN and COMMIT or ROLLBACK around the script, or, on a console's
 // session already in a transaction (PG-02, ADR 0320), a savepoint, so neither ends the person's
 // transaction; inside a failed transaction those modes are refused. Each page's ReadyForQuery state
-// goes to the job, and a session the run found gone is noted on it. No DOM.
+// goes to the job, and a session the run found gone is noted on it. A statement's notices are the
+// ones its pages carry (ADR 0334), whatever order events arrive in; the plugin's own statements'
+// notices and the session's own (db.notice events, which pg-session.js gathers in `sinks`) are the
+// run's. No DOM.
 
 import { ROLLBACK_FIRST } from "../session/words.js";
 import { endedBy, notRun } from "./common.js";
-import { affectedOf, CANCELED, errorOf, setOf } from "./pg-result.js";
+import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.js";
 
 /**
  * @typedef {import("./common.js").DbError} DbError
@@ -20,10 +23,12 @@ import { affectedOf, CANCELED, errorOf, setOf } from "./pg-result.js";
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
  *   mode: "run" | "transaction" | "dry-run",
  *   session?: import("../session/keeper.js").Owner, agent?: boolean, signal?: AbortSignal,
+ *   quiet?: boolean,
  * }} Plan
  *   `session` runs on that owner's kept session (a console's, a table view's); `agent` is an
  *   agent's run, which the console's Cancel leaves alone; `signal` cancels this run alone: its
- *   statement on its session, nothing after it (a kept session stays open).
+ *   statement on its session, nothing after it (a kept session stays open); `quiet` asks for no
+ *   key passphrase (ADR 0331).
  * @typedef {{
  *   sessionId?: string, running: boolean, cancelled: boolean, timedOut: boolean,
  *   owner?: string, agent: boolean, transaction?: Transaction, ended?: string,
@@ -57,10 +62,16 @@ const textOf = (/** @type {unknown} */ error) =>
  * }} deps
  */
 export function createScript({ call, sinks, setTimer, clearTimer }) {
-  /** A page's state, and whether its error ends the session (the server's FATAL). */
-  const heard = (/** @type {Job} */ job, /** @type {Page | undefined} */ page) => {
+  /** A page's state, whether its error ends the session (the server's FATAL), and its notices
+   * into `notices`. */
+  const heard = (
+    /** @type {Job} */ job,
+    /** @type {Page | undefined} */ page,
+    /** @type {string[]} */ notices,
+  ) => {
     if (page?.transaction) job.transaction = page.transaction;
     if (page?.error?.severity === "FATAL") job.ended = page.error.message;
+    notices.push(...pageNotices(page));
     return page;
   };
   /** A call that failed: the session gone is noted on the job. */
@@ -87,7 +98,6 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     const sessionId = job.sessionId;
     /** @type {string[]} */
     const notices = [];
-    sinks.set(/** @type {string} */ (sessionId), notices);
     const rowsOf = (/** @type {number} */ have) => Math.max(1, Math.min(PAGE_ROWS, maxRows - have));
     const ended = (/** @type {"cancelled" | "timedOut"} */ flag) =>
       /** @type {DbError} */ (endedBy(/** @type {never} */ ({ [flag]: true }), timeoutMs));
@@ -99,11 +109,13 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
       let page = heard(
         job,
         await call("db.run", { sessionId, sql: statement.text, pageRows: rowsOf(0) }),
+        notices,
       );
       const columns = page.columns;
       const rows = [...page.rows];
       while (page.more && !page.copy && rows.length < maxRows && !job.cancelled) {
-        page = heard(job, await call("db.fetch", { sessionId, pageRows: rowsOf(rows.length) }));
+        const next = await call("db.fetch", { sessionId, pageRows: rowsOf(rows.length) });
+        page = heard(job, next, notices);
         for (const row of page.rows) rows.push(row);
       }
       // COPY ... FROM STDIN is refused before it is sent (sql/classify.js); one that comes anyway
@@ -112,9 +124,14 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         page = heard(
           job,
           await call("db.copy", { sessionId, fail: "COPY FROM STDIN does not run here" }),
+          notices,
         );
       if (page.more)
-        heard(job, await call("db.fetch", { sessionId, close: true }).catch(() => undefined));
+        heard(
+          job,
+          await call("db.fetch", { sessionId, close: true }).catch(() => undefined),
+          notices,
+        );
       const sets = columns ? [setOf(columns, rows, maxRows, page.more)] : [];
       const base = { index, ran: true, sets, warnings: 0, notices };
       const failure = page.error;
@@ -145,10 +162,15 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     }
   };
 
-  /** A statement of the plugin's own (BEGIN, COMMIT, a savepoint); its error, if any. */
-  const own = async (/** @type {Job} */ job, /** @type {string} */ sql) => {
+  /** A statement of the plugin's own (BEGIN, COMMIT, a savepoint); its error, if any. Its notices
+   * (a deferred trigger's at COMMIT) go in `notices`, the run's. */
+  const own = async (
+    /** @type {Job} */ job,
+    /** @type {string} */ sql,
+    /** @type {string[]} */ notices,
+  ) => {
     try {
-      const page = heard(job, await call("db.run", { sessionId: job.sessionId, sql }));
+      const page = heard(job, await call("db.run", { sessionId: job.sessionId, sql }), notices);
       return page?.error ? errorOf(page.error, sql) : undefined;
     } catch (failure) {
       failed(job, failure);
@@ -162,9 +184,23 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
    * @returns {Promise<RunResult>}
    */
   const script = async (job, plan, before = "idle") => {
+    const sessionId = /** @type {string} */ (job.sessionId);
+    // The session's own notices heard since its last run, and those that come while this one runs.
+    const notices = sinks.get(sessionId) ?? [];
+    sinks.set(sessionId, notices);
+    try {
+      return await steps(job, plan, before, notices);
+    } finally {
+      if (sinks.get(sessionId) === notices) sinks.set(sessionId, []);
+    }
+  };
+
+  /**
+   * @param {Job} job @param {Plan} plan @param {Transaction} before @param {string[]} notices
+   * @returns {Promise<RunResult>}
+   */
+  const steps = async (job, plan, before, notices) => {
     const outcomes = plan.statements.map((_, index) => notRun(index));
-    /** @type {string[]} */
-    const notices = [];
     const result = (/** @type {DbError | undefined} */ error) => ({
       statements: outcomes,
       notices,
@@ -177,7 +213,7 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     const nested = wrapped && before === "open";
     const sql = nested ? NESTED : PLAIN;
     if (wrapped) {
-      const begun = await own(job, sql.begin);
+      const begun = await own(job, sql.begin, notices);
       if (begun) return result(begun);
     }
     let failed = false;
@@ -192,8 +228,8 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     let error;
     const back =
       plan.mode === "dry-run" || (plan.mode === "transaction" && (failed || job.cancelled));
-    if (back) for (const step of sql.rollback) await own(job, step);
-    else if (wrapped) for (const step of sql.commit) error ??= await own(job, step);
+    if (back) for (const step of sql.rollback) await own(job, step, notices);
+    else if (wrapped) for (const step of sql.commit) error ??= await own(job, step, notices);
     if (nested)
       notices.push(
         back
