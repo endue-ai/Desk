@@ -12,6 +12,7 @@ import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
 import type { Notice } from "./notify";
 import type { SurfacePages } from "./pages/types";
+import { personalOf, pluginSettings } from "./plugin-settings";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import { anotherWindow, defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
@@ -282,7 +283,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   if (options.plugins) {
     const host = new PluginHost(
       {
-        bridge,
+        bridge: pluginSettings(bridge, personalOf(hub, preferences)),
         win,
         open: openSurface,
         close: closeSurface,

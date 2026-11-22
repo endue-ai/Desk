@@ -23,7 +23,7 @@ function setup(kept: string[] = ["endue.calendar.view"]) {
       const value = core[`${whose}/${key}`];
       return value === undefined ? {} : { value };
     },
-    "settings.list": (_params, caller) => ({
+    "settings.list": (_params, caller = "") => ({
       settings: Object.entries(core)
         .filter(([name]) => name.startsWith(`${caller}/`))
         .map(([name, value]) => ({ owner: caller, key: name.split("/")[1] ?? "", value })),
