@@ -6,22 +6,25 @@
 // goes to the job, and a session the run found gone is noted on it. A statement's notices are the
 // ones its pages carry (ADR 0334), whatever order events arrive in; the plugin's own statements'
 // notices and the session's own (db.notice events, which pg-session.js gathers in `sinks`) are the
-// run's. No DOM.
+// run's. A statement's bound values go with its text (ADR 0353); the "describe" mode runs nothing
+// and answers what each statement takes and returns (pg-describe.js). No DOM.
 
+import { placed, wireOf } from "../editor/bind.js";
 import { ROLLBACK_FIRST } from "../session/words.js";
 import { endedBy, notRun } from "./common.js";
+import { createDescribe } from "./pg-describe.js";
 import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.js";
 
 /**
  * @typedef {import("./common.js").DbError} DbError
  * @typedef {import("./common.js").RunResult} RunResult
  * @typedef {import("./common.js").StatementOutcome} StatementOutcome
- * @typedef {import("../sql/split.js").Statement} Statement
+ * @typedef {import("../editor/bind.js").Bound} Statement
  * @typedef {import("@endue-ai/bridge").DbPage} Page
  * @typedef {import("@endue-ai/bridge").DbTransaction} Transaction
  * @typedef {{
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
- *   mode: "run" | "transaction" | "dry-run",
+ *   mode: "run" | "transaction" | "dry-run" | "describe",
  *   session?: import("../session/keeper.js").Owner, agent?: boolean, signal?: AbortSignal,
  *   quiet?: boolean, background?: boolean,
  * }} Plan
@@ -191,9 +194,10 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         const first = await call("db.run", {
           sessionId: job.sessionId,
           sql: statement.text,
+          ...wireOf(statement),
           pageRows,
         });
-        return await finish(job, statement, index, plan, first, notices);
+        return placed(statement, await finish(job, statement, index, plan, first, notices));
       } catch (failure) {
         return caught(job, index, failure, notices, plan.timeoutMs);
       }
@@ -209,7 +213,7 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     running(job, plan, group.length, async () => {
       /** @type {StatementOutcome[]} */
       const done = [];
-      const statements = group.map((statement) => ({ sql: statement.text }));
+      const statements = group.map((statement) => ({ sql: statement.text, ...wireOf(statement) }));
       const params = { sessionId: job.sessionId, statements, pageRows: rowsOf(plan.maxRows, 0) };
       /** @type {import("@endue-ai/bridge").DbScriptResult} */
       let answer;
@@ -223,7 +227,7 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         const notices = [];
         const statement = /** @type {Statement} */ (group[at]);
         try {
-          done.push(await finish(job, statement, start + at, plan, page, notices));
+          done.push(placed(statement, await finish(job, statement, start + at, plan, page, notices)));
         } catch (failure) {
           done.push(caught(job, start + at, failure, notices, plan.timeoutMs));
           return done;
@@ -263,6 +267,8 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     }
   };
 
+  const { describe } = createDescribe({ call, own });
+
   /**
    * The plan's statements on the job's session, in its mode, the session's transaction `before`.
    * @param {Job} job @param {Plan} plan @param {Transaction} [before]
@@ -292,6 +298,8 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
       ms: 0,
       ...(error ? { error } : {}),
     });
+    // A check runs nothing: each statement is described (pg-describe.js, ADR 0353).
+    if (plan.mode === "describe") return result(await describe(job, plan, before, notices, outcomes));
     const wrapped = plan.mode !== "run";
     if (wrapped && before === "failed")
       return result({ kind: "sql", code: "25P02", message: ROLLBACK_FIRST });

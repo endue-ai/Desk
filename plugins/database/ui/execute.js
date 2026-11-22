@@ -2,7 +2,9 @@
 // writes on a read-only connection, a dry run that could not roll back), ask the person before what
 // is hard to undo, then run them: PostgreSQL on a session of the core's (engines/pg-session.js, ADR
 // 0281), the other engines by their client, whose output the result worker reads (#38). When the
-// server or the client says a password is missing or wrong, ask for one once and run again. No DOM.
+// server or the client says a password is missing or wrong, ask for one once and run again. The
+// "describe" mode runs nothing: PostgreSQL says what each statement takes and returns (ADR 0353),
+// asking no one and on any connection, a read-only one too. No DOM.
 
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
@@ -18,7 +20,8 @@ import { split } from "./sql/split.js";
  * @typedef {import("./sql/split.js").Statement} Statement
  * @typedef {import("./sql/classify.js").Class} Class
  * @typedef {import("./settings.js").Settings} Settings
- * @typedef {"run" | "transaction" | "dry-run"} Mode
+ * @typedef {"run" | "transaction" | "dry-run" | "describe"} Mode
+ *   `describe` runs nothing: PostgreSQL answers what each statement takes and returns (ADR 0353).
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
  * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
@@ -67,8 +70,11 @@ export function createExecutor(deps) {
     if (statements.length === 0)
       throw new Refusal("Nothing to run: the editor holds no statement.");
     const classes = statements.map((statement) => classify(statement, engine.dialect));
+    const describe = mode === "describe";
+    if (describe && !("session" in engine))
+      throw new Refusal("Only PostgreSQL checks a statement without running it.");
     check(conn, engine.ddlCommits, classes, mode);
-    if (!options.catalog && !options.asked)
+    if (!options.catalog && !options.asked && !describe)
       await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
@@ -84,7 +90,9 @@ export function createExecutor(deps) {
         if (!deps.sessions)
           return failedRun(statements, { kind: "client", message: "No database sessions here." });
         const typed = password !== undefined ? { password } : {};
-        return deps.sessions.run(conn, {
+        // A check on a session of its own opens it read-only: nothing it does can write.
+        const on = describe && !options.session ? { ...conn, readOnly: true } : conn;
+        return deps.sessions.run(on, {
           statements,
           maxRows,
           timeoutMs,
@@ -178,7 +186,8 @@ export function createExecutor(deps) {
 }
 
 /**
- * What no run may do: a statement a client must not see, a write on a read-only connection, a dry
+ * What no run may do (a check, which executes nothing, only the first): a statement a client must
+ * not see, a write on a read-only connection, a dry
  * run holding its own transaction (or DDL that commits at once), a transaction run holding its own.
  * @param {Connection} conn
  * @param {boolean} ddlCommits
@@ -189,6 +198,8 @@ export function check(conn, ddlCommits, classes, mode) {
   const at = (/** @type {(c: Class) => unknown} */ test) => classes.findIndex(test);
   const refused = at((c) => c.refused !== "");
   if (refused >= 0) throw new Refusal(`Statement ${refused + 1}: ${classes[refused]?.refused}`);
+  // A check executes nothing, so a read-only connection checks a write as well as a read.
+  if (mode === "describe") return;
   if (conn.readOnly && !readsOnly(classes)) {
     const index = at((c) => c.kind === "write" || c.kind === "ddl" || c.opensWrite);
     const verb = classes[index]?.verb ?? "it";

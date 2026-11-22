@@ -37,6 +37,8 @@ export function stubDbScript<S extends { scripting?: Scripting }>(deps: {
           const page = await deps.run(session, {
             sessionId: params.sessionId,
             sql: statement.sql,
+            ...(statement.params ? { params: statement.params } : {}),
+            ...(statement.paramTypes ? { paramTypes: statement.paramTypes } : {}),
             pageRows,
             pageBytes,
           });

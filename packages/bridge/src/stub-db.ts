@@ -6,7 +6,8 @@
  * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
  * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A
  * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311);
- * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344).
+ * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344); db.describe
+ * answers a statement's parameter types and columns without running it (stub-db-describe.ts, ADR 0353).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -42,12 +43,13 @@ import {
   terminated,
   transactionAfter,
 } from "./stub-db-transaction";
-import type { StubDatabase, StubSession, StubStatement } from "./stub-db-types";
+import { stubDbDescribe } from "./stub-db-describe";
+import type { StubBound, StubDatabase, StubSession, StubStatement } from "./stub-db-types";
 
 export type { StubDbOptions } from "./stub-db-types";
 
 export type DbServed =
-  | `db.${"open" | "run" | "script" | "fetch" | "copy" | "cancel" | "close" | "list"}`
+  | `db.${"open" | "run" | "script" | "describe" | "fetch" | "copy" | "cancel" | "close" | "list"}`
   | DbPasswordsServed;
 
 /** The stub's grant check: throws permission_denied unless a grant covers `scope` and `fits`. */
@@ -180,11 +182,22 @@ export function stubDb(
     return { ...page(session, pageRows, pageBytes), columns: statement.columns };
   };
 
-  /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
-  const respond = (session: Session, sql: string, pageRows: number, pageBytes: number) => {
+  /** The script's statement for `sql`: one of its statements, else its `answer`. */
+  const scripted = (session: Session, sql: string, bound?: StubBound) => {
     const matches = (s: StubStatement) =>
       typeof s.sql === "string" ? s.sql === sql : s.sql.test(sql);
-    const statement = script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
+    return script?.statements.find(matches) ?? script?.answer?.(sql, session.signed, bound);
+  };
+
+  /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
+  const respond = (
+    session: Session,
+    sql: string,
+    pageRows: number,
+    pageBytes: number,
+    bound?: StubBound,
+  ) => {
+    const statement = scripted(session, sql, bound);
     if (statement) return answer(session, statement, pageRows, pageBytes);
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
     const pids = [...sessions.values()].map((s) => s.info.pid);
@@ -200,7 +213,11 @@ export function stubDb(
     const { sql } = params;
     const before = session.transaction;
     if (before === "failed" && !endsFailed(sql)) return failed(session, IGNORED);
-    const done = await respond(session, sql, pageRows, pageBytes);
+    const bound = {
+      ...(params.params ? { params: params.params } : {}),
+      ...(params.paramTypes ? { paramTypes: params.paramTypes } : {}),
+    };
+    const done = await respond(session, sql, pageRows, pageBytes, bound);
     // The last page of a statement that succeeded carries the state ReadyForQuery reports.
     if (!done.error && done.transaction) {
       session.transaction = transactionAfter(sql, before);
@@ -298,6 +315,15 @@ export function stubDb(
         return session;
       },
       run,
+    }),
+    ...stubDbDescribe({
+      idle: (caller, sessionId) => {
+        const session = mine(caller, sessionId);
+        idle(session);
+        session.result = undefined;
+        return session;
+      },
+      scripted: (session, sql) => scripted(session, sql, { describe: true }),
     }),
     "db.fetch": (params, caller) => {
       const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);

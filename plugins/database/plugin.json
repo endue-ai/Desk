@@ -186,6 +186,11 @@
         "keywords": ["rollback", "preview", "test"]
       },
       {
+        "id": "endue.database.check",
+        "title": "Database: check the statement without running it",
+        "keywords": ["check", "validate", "describe", "parameters", "types", "columns", "syntax"]
+      },
+      {
         "id": "endue.database.explain",
         "title": "Database: explain the statement",
         "keywords": ["plan", "query plan"]

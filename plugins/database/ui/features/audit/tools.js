@@ -1,18 +1,19 @@
 // The agents' read tools (PG-91): explain a statement (ANALYZE only where the person allows it, and
 // only of a read), an object's DDL, a table's first rows, a table's statistics, the server's
-// sessions, and a check of a statement without running it. Each runs as an agent's read (run.js:
+// sessions, and a check of a statement without running it (the server's Parse and Describe, the
+// plugin's one check without running: engines/pg-describe.js, ADR 0353). Each runs as an agent's read (run.js:
 // read-only, limited, masked) and answers plain data; the gate (gate.js) refuses a connection closed
 // to agents before any of them starts. No DOM.
 
 import { onDatabase } from "../../databases.js";
+import { numbered } from "../../editor/bind.js";
+import { paramsOf } from "../../editor/params.js";
 import { engineOf } from "../../engines/index.js";
 import { classify, readsOnly } from "../../sql/classify.js";
 import { split } from "../../sql/split.js";
 import { MASK, namesOn } from "./mask.js";
 import { readOnly } from "./run.js";
 import {
-  checkPosition,
-  checkSql,
   explainSql,
   objectsOf,
   PREPARED,
@@ -198,24 +199,35 @@ export function agentTools(deps, agents) {
           checked: false,
           why: `PostgreSQL checks without running only ${[...PREPARED].join(", ")}: this statement is ${statement.class.verb || "unknown"}.`,
         };
-      const done = await agents.runs.read(conn, checkSql(statement.text).join(";\n"), {
+      const sent = numbered(statement.text, paramsOf(statement.text, "postgresql"));
+      const done = await agents.runs.read(conn, statement.text, {
         args,
         command: "endue.database.check-statement",
-        single: true,
         limits: { timeoutSeconds: args.timeoutSeconds },
         names: new Set(),
+        mode: "describe",
+        statements: [{ text: sent.text, keys: sent.keys, shifts: sent.shifts, start: 0, end: 0, line: 1, column: 1, tokens: [] }],
       });
-      const outcome = done.result.statements[0];
+      const outcome = /** @type {{ described?: import("../../engines/pg-describe.js").Described, error?: import("../../engines/common.js").DbError } | undefined} */ (
+        done.result.statements[0]
+      );
       const error = done.result.error ?? outcome?.error;
-      if (!error) return { checked: true, ok: true };
-      const position = checkPosition(error.position);
+      if (!error) {
+        const described = outcome?.described;
+        return {
+          checked: true,
+          ok: true,
+          params: (described?.params ?? []).map((p) => ({ name: p.key, type: p.type })),
+          columns: (described?.columns ?? []).map((c) => ({ name: c.name, type: c.type })),
+        };
+      }
       return {
         checked: true,
         ok: false,
         error: error.message,
         ...(error.code ? { code: error.code } : {}),
         ...(error.detail ? { detail: error.detail } : {}),
-        ...(position !== undefined ? { position } : {}),
+        ...(error.position !== undefined ? { position: error.position } : {}),
       };
     },
   };
