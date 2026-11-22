@@ -1,12 +1,13 @@
 //! PostgreSQL sessions for the core's `db.*` (ADR 0281): protocol 3.0 with the messages and SCRAM
 //! of `postgres-protocol`, over tokio and rustls (ring). A session signs in with SCRAM-SHA-256
-//! (SCRAM-SHA-256-PLUS over TLS), md5 or the password over TLS, or the password file's; runs one
+//! (SCRAM-SHA-256-PLUS over TLS), md5 or the password over TLS, or the password file's, presenting a client certificate when one is given (ADR 0331); runs one
 //! statement at a time by the extended protocol with text results, in pages whose `more` is exact;
 //! cancels on a connection of its own; copies in and out; and reports notices, notifications,
 //! parameter changes and its end as events. Every session's task runs on one runtime thread.
 
 mod binding;
 mod cancel;
+mod client_cert;
 mod config;
 mod conn;
 mod copy;
@@ -20,6 +21,7 @@ mod statement;
 mod task;
 mod tls;
 
+pub use client_cert::{ClientCert, KeyError};
 pub use config::{APPLICATION_NAME, Config, DEFAULT_PORT, MAX_OPEN_TIMEOUT, OPEN_TIMEOUT, TlsMode};
 pub use conn::TlsInfo;
 pub use error::{Error, ServerError};

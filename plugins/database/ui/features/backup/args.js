@@ -227,7 +227,9 @@ export function restoreArgs(o, { path, database, list }) {
 
 /**
  * The environment a program connects with: libpq's PG* variables, the password only when one was
- * typed this session (else libpq reads the person's ~/.pgpass).
+ * typed this session (else libpq reads the person's ~/.pgpass). The client certificate and key go
+ * as paths; libpq has no variable for a key's passphrase, so an encrypted key works on the
+ * session path only (ADR 0331).
  * @param {Connection} conn
  * @param {string | undefined} password
  */
@@ -244,6 +246,8 @@ export function connectionEnv(conn, password) {
   set("PGPASSWORD", password);
   set("PGSSLMODE", conn.ssl === "default" ? "" : conn.ssl);
   set("PGSSLROOTCERT", conn.sslCa);
+  set("PGSSLCERT", conn.sslCert);
+  set("PGSSLKEY", conn.sslKey);
   set("PGCONNECT_TIMEOUT", "10");
   set("PGAPPNAME", "endue Desk");
   set("LC_ALL", "C");

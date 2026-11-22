@@ -1,7 +1,7 @@
 // A maintenance form's run (panel.js draws it below the form): while it goes on, how long it has
 // run, the phase and blocks from the server's progress views as a bar, and the lock it waits for
 // and who holds it; when it ends, how it ended in a sentence (the server's words on a failure),
-// the server's output (VERBOSE and notices, which today's runner hands over at the end), and the
+// the server's output (VERBOSE and notices, which come with the statement's answer, ADR 0334), and the
 // statistics before and after, the rows that changed marked.
 
 import { el } from "../../dom.js";

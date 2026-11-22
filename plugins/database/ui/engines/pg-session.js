@@ -3,20 +3,20 @@
 // first run and kept, so what one run sets the next sees; any other run (the catalog, a feature's
 // read, an agent's query) opens a short session of its own and closes it. The statements run as
 // pg-script.js says. A session asks for db:connect on the connection's host and port once the grant
-// is missing (ADR 0260), reads a CA file for the TLS modes that check certificates, hands over the
-// password the person typed (else names the one the keychain keeps, `passwordRef`, ADR 0311; the
-// core reads the password file first), and starts read-only for a read-only connection. Cancel is
+// is missing (ADR 0260), takes its TLS from pg-tls.js (a CA file, a client certificate and key, ADR
+// 0331), hands over the password the person typed (else names the one the keychain keeps,
+// `passwordRef`, ADR 0311; the core reads the password file first), and starts read-only for a read-only connection. Cancel is
 // db.cancel, for the runs of the console on screen, or of one run its signal stops (a kept session
 // stays open); the statement timeout is the server's statement_timeout, which a kept session takes
 // again with SET when the setting changed. No DOM.
 
-import { readScope, withGrant } from "../console-files.js";
 import { endpoint } from "../keychain.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { failedRun } from "./common.js";
 import { noticeOf, refusedOf } from "./pg-result.js";
 import { createScript } from "./pg-script.js";
+import { createTls } from "./pg-tls.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
@@ -71,14 +71,17 @@ export const settingsOf = (/** @type {number} */ timeoutMs) => ({
  *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
  *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
  *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
+ *   passphrases?: import("./pg-tls.js").Passphrases,
  * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
  *   with the status line's words for its label; `idleMs` closes a session no run used that long
  *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
- *   password the keychain keeps (manager.passwords.ref, ADR 0311).
+ *   password the keychain keeps (manager.passwords.ref, ADR 0311); `passphrases` holds and asks for
+ *   key files' passphrases (ADR 0331).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
   const kept = options.kept ?? (() => undefined);
+  const tls = createTls(bridge, options.passphrases);
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -88,7 +91,8 @@ export function createSessions(bridge, options = {}) {
   const jobs = new Set();
   /** Every session this frame opened, so a frame that wakes closes only another's. */
   const own = new Set();
-  /** Where each session's notices go: the statement that runs, by session id. */
+  /** Each session's own notices (db.notice: raised outside any call, ADR 0334) not shown yet, by
+   * session id: a run on it shows them as the run's (pg-script.js). */
   const sinks = /** @type {Map<string, string[]>} */ (new Map());
   const slots = createSlots();
 
@@ -114,17 +118,6 @@ export function createSessions(bridge, options = {}) {
     return open();
   };
 
-  /** db.open's tls: none for the default (the core's prefer), the CA file's PEM when one is set. */
-  const tlsOf = async (/** @type {Connection} */ conn) => {
-    if (conn.ssl === "default") return undefined;
-    if (conn.ssl === "disable" || !conn.sslCa) return { mode: conn.ssl };
-    const path = conn.sslCa;
-    const scope = readScope(path);
-    const read = () => call("fs.read", { path, encoding: "utf8", scope });
-    const file = await withGrant(bridge, scope, read, `To trust ${conn.name}'s certificates`);
-    return { mode: conn.ssl, ca: String(file.content) };
-  };
-
   /** The password db.open takes: the one typed, else the kept one's name when it is for this
    * host, port and user (endpoint(conn)), else none and the core reads the password file. */
   const signIn = (
@@ -146,10 +139,10 @@ export function createSessions(bridge, options = {}) {
    */
   const open = async (conn, target, plan) => {
     const where = `${target.host}:${target.port}`;
-    /** @type {{ mode: string, ca?: string } | undefined} */
-    let tls;
+    /** @type {import("./pg-tls.js").Tls | undefined} */
+    let secure;
     try {
-      tls = await tlsOf(conn);
+      secure = await tls.of(conn);
     } catch (error) {
       return { error: { kind: "connect", message: textOf(error) } };
     }
@@ -158,7 +151,6 @@ export function createSessions(bridge, options = {}) {
       engine: "postgresql",
       ...target,
       ...signIn(conn, target, plan),
-      ...(tls ? { tls } : {}),
       settings: settingsOf(plan.timeoutMs),
       ...(conn.readOnly ? { readOnly: true } : {}),
       timeoutMs: SIGN_IN_MS,
@@ -166,12 +158,20 @@ export function createSessions(bridge, options = {}) {
     };
     try {
       const opened = /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
-        await granted(() => call("db.open", params), scope, conn)
+        await granted(
+          () =>
+            tls.open(conn, secure, plan.quiet === true, (t) =>
+              call("db.open", { ...params, ...(t ? { tls: t } : {}) }),
+            ),
+          scope,
+          conn,
+        )
       );
       if (opened.sessionId) {
         own.add(opened.sessionId);
         return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
       }
+      if (opened.keyPassword) return { error: tls.refused(conn, opened.keyPassword) };
       if (opened.error) return { error: refusedOf(opened.error) };
       const message =
         "passwordRef" in params
@@ -209,9 +209,15 @@ export function createSessions(bridge, options = {}) {
   });
 
   bridge.onEvent((event) => {
-    if (event.event === "db.notice")
-      sinks.get(event.data.sessionId)?.push(...noticeOf(event.data.notice));
-    if (event.event === "db.closed") keeper.closed(event.data);
+    if (event.event === "db.notice") {
+      const id = event.data.sessionId;
+      if (!sinks.has(id) && own.has(id)) sinks.set(id, []);
+      sinks.get(id)?.push(...noticeOf(event.data.notice));
+    }
+    if (event.event === "db.closed") {
+      sinks.delete(event.data.sessionId);
+      keeper.closed(event.data);
+    }
   });
 
   /** A run on a short session of its own, opened and closed around it. */
@@ -267,7 +273,6 @@ export function createSessions(bridge, options = {}) {
         }
         const done = await script(job, { ...plan, timeoutMs: entry.timeoutMs }, entry.transaction);
         entry.transaction = job.transaction ?? entry.transaction;
-        sinks.delete(entry.sessionId);
         if (job.ended) keeper.lost(entry.sessionId, job.ended);
         return { ...done, notices: [...notes, ...done.notices] };
       },

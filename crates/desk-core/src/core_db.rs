@@ -18,7 +18,10 @@ use desk_bridge::{
 use desk_pg::{CloseReason, Config, CopyInput, Limits, Session, Statement};
 
 use crate::agents::agent_of;
-use crate::db_wire::{auth, event, page, server_error, tls_info, tls_mode, transaction};
+use crate::db_wire::{
+    KeyCheck, auth, client_cert, empty_open, event, page, server_error, tls_info, tls_mode,
+    transaction,
+};
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 
@@ -64,7 +67,18 @@ impl Core {
             let why = format!("the desk speaks {POSTGRESQL}, not {}", params.engine);
             return Err(error(ErrorCode::Unsupported, why));
         }
-        let config = self.db_config(caller, &params, port)?;
+        let mut config = self.db_config(caller, &params, port)?;
+        config.client_cert = match client_cert(params.tls.as_ref()) {
+            Ok(client) => client,
+            Err(KeyCheck::Answer(key_password)) => {
+                let key_password = Some(key_password);
+                return json(DbOpenResult {
+                    key_password,
+                    ..empty_open()
+                });
+            }
+            Err(KeyCheck::Refused(refused)) => return Err(refused),
+        };
         let id = self.db_reserve(caller, scope, &params, port)?;
         let sink = event(
             id.clone(),
@@ -118,7 +132,7 @@ impl Core {
     }
 
     /// The session's config: the password given or kept (ADR 0311), the password file under the
-    /// desk's home, the limits checked.
+    /// desk's home, the limits checked; the client certificate is `client_cert`'s (ADR 0331).
     fn db_config(
         &self,
         caller: &str,
@@ -352,18 +366,6 @@ fn refuse_agents(caller: &str) -> Result<(), BridgeError> {
 
 fn limits(rows: Option<u64>, bytes: Option<u64>) -> Result<Limits, BridgeError> {
     Limits::new(rows, bytes).map_err(db_error)
-}
-
-fn empty_open() -> DbOpenResult {
-    DbOpenResult {
-        session_id: None,
-        pid: None,
-        auth: None,
-        tls: None,
-        parameters: None,
-        error: None,
-        needs_password: None,
-    }
 }
 
 /// A session's failure as the bridge says it.

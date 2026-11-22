@@ -19,6 +19,8 @@ const DRESSED: Connection[] = [
     readOnly: true,
     ssl: "verify-full",
     sslCa: "~/certs/ca.pem",
+    sslCert: "~/certs/client.crt",
+    sslKey: "~/certs/client.key",
     keychain: true,
   } as Connection,
   { ...NOTES, group: "Local", color: "chart-5", tag: "development" },
@@ -58,7 +60,7 @@ describe("the connections file", () => {
     const imported = await into.m.host.command("endue.database.import-connections");
     expect(imported).toEqual({ added: 2, changed: 0, skipped: 0 });
     const { keychain: _keychain, ...shop } = DRESSED[0] as Connection & { keychain?: boolean };
-    expect(into.stored()).toEqual([shop, DRESSED[1]]);
+    expect(into.stored()).toEqual([shop, { ...DRESSED[1], sslCert: "", sslKey: "" }]);
     expect(
       into.m.host.calls.some((c) => ["db.open", "db.run", "proc.spawn"].includes(c.method)),
     ).toBe(false);
