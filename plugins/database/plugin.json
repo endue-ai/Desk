@@ -208,6 +208,36 @@
         "keywords": ["plan", "explain", "text", "json"]
       },
       {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
+      },
+      {
         "id": "endue.database.compare-plans",
         "title": "Database: compare two query plans",
         "keywords": ["plan", "diff", "before and after", "regression"]
@@ -1718,6 +1748,30 @@
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.show-map",
+        "title": "Database: show the result on a map",
+        "keywords": [
+          "geometry",
+          "geography",
+          "spatial",
+          "shapes",
+          "map",
+          "point",
+          "polygon",
+          "srid"
+        ]
+      },
+      {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
       }
     ],
     "keys": [
@@ -1730,11 +1784,15 @@
       "endue.database.max-rows": {
         "kind": "integer",
         "default": 500,
+        "minimum": 1,
+        "maximum": 100000,
         "description": "Rows a result keeps (1 to 100000); More rows loads four times as many."
       },
       "endue.database.timeout-seconds": {
         "kind": "integer",
         "default": 0,
+        "minimum": 0,
+        "maximum": 86400,
         "description": "Stop a run that takes longer, in seconds; 0 waits as long as it takes. PostgreSQL ends the statement on the server (statement_timeout)."
       },
       "endue.database.confirm": {
@@ -1750,6 +1808,8 @@
       "endue.database.history-max": {
         "kind": "integer",
         "default": 200,
+        "minimum": 0,
+        "maximum": 1000,
         "description": "How many statements each connection's history keeps (0 to 1000)."
       },
       "endue.database.system-schemas": {
