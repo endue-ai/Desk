@@ -29,7 +29,7 @@ plugin is in [`features.md`](features.md); a change to pinning or comparing adds
   rows than it loaded is compared on the rows loaded, and the panel says so.
 - Comparing runs in a worker of its own past 20,000 cells (`compare/worker.js`), so two large results are
   never paired on the frame's thread; a comparison takes at most 2,000,000 cells a side and refuses past
-  that with how to narrow it. It keeps the first 1,000 differences, with exact counts of all.
+  that with how to narrow it. It keeps the first 2,000 differences, with exact counts of all.
 - Database: copy the difference and Database: export the difference (Copy and Export in the panel) write
   it in the plugin's formats (TSV, CSV, JSON, Markdown, INSERT, UPDATE) as a result of its own: a column
   `change` (`added`, `removed`, `changed (before)`, `changed (after)`; `_change` when a result has its own

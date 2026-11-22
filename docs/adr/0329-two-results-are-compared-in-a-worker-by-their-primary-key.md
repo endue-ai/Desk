@@ -37,7 +37,7 @@ has.
 * A comparison past 20,000 cells (both results together) runs in a worker started for it and let go when it
   answers (`ui/compare/worker.js`); smaller ones run in place, where a worker costs more. It takes at most
   2,000,000 cells a side and refuses past that with how to narrow the queries. It answers exact counts and the
-  first 1,000 differences with their values, so what returns to the frame is bounded.
+  first 2,000 differences with their values, so what returns to the frame is bounded.
 * Rows pair by the primary key when both results carry the same one: the catalog's, for the one table a plain
   SELECT or a table view reads (as editing finds it), kept with a pin. Otherwise by row position. Compare asks,
   the primary key first, then position, then any shared column; run again and compare takes the primary key,

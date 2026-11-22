@@ -25,7 +25,7 @@ import { columnKeys } from "../grid/columns.js";
  */
 
 export const MAX_CELLS = 2_000_000;
-export const KEEP = 1_000;
+export const KEEP = 2_000;
 export const CHANGE = {
   added: "added",
   removed: "removed",
