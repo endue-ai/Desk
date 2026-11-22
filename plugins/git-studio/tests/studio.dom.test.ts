@@ -35,11 +35,7 @@ function realBridge() {
         inputs.delete(procId);
         const { code, stdout, stderr } = await gitOutput(params.args as string[], {
           cwd: params.cwd as string,
-          env: {
-            ...process.env,
-            ...(params.env as NodeJS.ProcessEnv),
-            GIT_CONFIG_GLOBAL: "/dev/null",
-          },
+          env: { ...process.env, ...(params.env as NodeJS.ProcessEnv) },
           input,
         }).catch((error: Error) => ({
           code: 1,
@@ -137,8 +133,12 @@ describe("the window on a real repository", () => {
       all: true,
     })) as { committed: string };
     expect(done.committed).toMatch(/^[0-9a-f]{40}$/);
-    const subject = (await repo.git("log", "-1", "--format=%s")).stdout.trim();
-    expect(subject).toBe("Change a");
+    const commit = await repo.git("log", "-1", "--format=%s%n%an <%ae>%n%cn <%ce>");
+    expect(commit.stdout.trim().split("\n")).toEqual([
+      "Change a",
+      "endue-team <team@endue.ai>",
+      "endue-team <team@endue.ai>",
+    ]);
   });
 
   it("keeps endue.git-studio.state short in a repository of many branches", async () => {

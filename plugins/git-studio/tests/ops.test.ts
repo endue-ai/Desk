@@ -56,7 +56,7 @@ describe("the working copy", () => {
     const amended = await ops.commit({ message: "Second, amended", amend: true, signOff: true });
     detail = await loadCommit(realGit, repo.root, amended);
     expect(detail.parents).toHaveLength(1);
-    expect(detail.body).toContain("Signed-off-by: Test <test@example.com>");
+    expect(detail.body).toContain("Signed-off-by: endue-team <team@endue.ai>");
   });
 
   it("stashes with untracked files and pops them back", async () => {
