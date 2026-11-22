@@ -4,8 +4,10 @@
 // run's result; a run that starts with the person's own transaction control is left alone. Every
 // run of a console in a transaction, in either mode, is followed: when the transaction began, the
 // statements it holds, when its last run ended and its savepoints, which the header model carries.
-// No DOM.
+// A transaction lost with its session (PG-105, ADR 0355) keeps its statements' text until the next
+// run of the console says them, and the header lists them meanwhile; none is run again. No DOM.
 
+import { lostDetail, lostNotice } from "./lost-words.js";
 import { AUTO, beginSql, controlOf, nextLabel } from "./transaction-words.js";
 
 /**
@@ -15,7 +17,9 @@ import { AUTO, beginSql, controlOf, nextLabel } from "./transaction-words.js";
  * @typedef {import("./words.js").SessionModel} SessionModel
  * @typedef {import("./transaction-words.js").Chosen} Chosen
  * @typedef {import("./transaction-words.js").TransactionModel} TransactionModel
- * @typedef {{ since: number, at: number, statements: number, savepoints: string[] }} Held
+ * @typedef {import("./lost-words.js").Lost} Lost
+ * @typedef {{ since: number, at: number, statements: number, savepoints: string[], texts: string[] }} Held
+ *   `texts` are the statements' text, the first TEXTS of them, each cut at TEXT characters.
  * @typedef {{
  *   chosen(owner: string): Chosen | undefined,
  *   held(owner: string): boolean,
@@ -26,6 +30,14 @@ import { AUTO, beginSql, controlOf, nextLabel } from "./transaction-words.js";
  *   session is in a transaction, open or failed, now; `flagMs` the idle time a transaction is
  *   flagged after (0: never).
  */
+
+/** The statements' text a transaction keeps, and how long each. */
+const TEXTS = 50;
+const TEXT = 200;
+const short = (/** @type {string} */ text) => {
+  const one = text.replace(/\s+/gu, " ").trim();
+  return one.length > TEXT ? `${one.slice(0, TEXT)}…` : one;
+};
 
 /** A statement of the plugin's own, as the split gives one. */
 const statementOf = (/** @type {string} */ text) => ({
@@ -55,6 +67,8 @@ function withoutBegin(/** @type {RunResult} */ result) {
 export function createTransactions(deps) {
   /** The open transactions, by owner. @type {Map<string, Held>} */
   const open = new Map();
+  /** The transactions lost with their sessions, not said by a run yet, by owner. @type {Map<string, Lost>} */
+  const dropped = new Map();
 
   /** What a run did to its owner's transaction: began, ended, held more statements, savepoints. */
   const follow = (
@@ -67,17 +81,25 @@ export function createTransactions(deps) {
       open.delete(owner);
       return;
     }
-    const held = open.get(owner) ?? { since: started, at: 0, statements: 0, savepoints: [] };
+    const held = open.get(owner) ?? {
+      since: started,
+      at: 0,
+      statements: 0,
+      savepoints: [],
+      texts: [],
+    };
     open.set(owner, held);
     for (const outcome of result.statements) {
       if (!outcome.ran) continue;
-      const { does, name } = controlOf(statements[outcome.index]?.text ?? "");
+      const text = statements[outcome.index]?.text ?? "";
+      const { does, name } = controlOf(text);
       if (does === "begin" || does === "end") {
-        Object.assign(held, { since: started, statements: 0, savepoints: [] });
+        Object.assign(held, { since: started, statements: 0, savepoints: [], texts: [] });
         continue;
       }
       if (does === "none") {
         held.statements++;
+        if (held.texts.length < TEXTS) held.texts.push(short(text));
         continue;
       }
       if (outcome.error || !name) continue;
@@ -86,6 +108,18 @@ export function createTransactions(deps) {
       else if (at >= 0) held.savepoints.splice(does === "release" ? at : at + 1);
     }
     held.at = deps.now();
+  };
+
+  /** A run's result, with the transaction lost with the last session said once, after its notes. */
+  const said = (/** @type {string} */ owner, /** @type {RunResult} */ result) => {
+    const lost = dropped.get(owner);
+    if (!lost) return result;
+    dropped.delete(owner);
+    if (!lost.statements) return result;
+    const at = result.notices.findIndex((n) => n.startsWith("A new session")) + 1;
+    const notices = [...result.notices];
+    notices.splice(at, 0, lostNotice(lost));
+    return { ...result, notices };
   };
 
   return {
@@ -118,7 +152,19 @@ export function createTransactions(deps) {
           )
         : await go(conn, plan);
       follow(owner, plan.statements, result, started);
-      return result;
+      return said(owner, result);
+    },
+    /**
+     * The owner's session was lost: its open transaction, if any, is kept to be said, and given back.
+     * @returns {Lost | undefined}
+     */
+    lose(/** @type {string} */ owner) {
+      const held = open.get(owner);
+      open.delete(owner);
+      if (!held) return undefined;
+      const lost = { statements: held.statements, texts: [...held.texts] };
+      dropped.set(owner, lost);
+      return lost;
     },
     /**
      * The header's model of an owner's session: a console's mode and next transaction's options,
@@ -130,10 +176,13 @@ export function createTransactions(deps) {
       const chosen = deps.chosen(owner);
       if (!chosen) return base;
       const holds = base.state === "open" || base.state === "failed" || base.state === "running";
-      if (!holds) open.delete(owner);
+      // A lost one's stays until lose() takes it: onState comes before onLost.
+      if (!holds && base.state !== "lost") open.delete(owner);
       const held = holds ? open.get(owner) : undefined;
+      const lost = base.state === "lost" ? dropped.get(owner) : undefined;
       return {
         ...base,
+        ...(lost?.statements ? { detail: `${base.detail}${lostDetail(lost)}` } : {}),
         mode: chosen.mode,
         next: nextLabel(chosen),
         flagMs: deps.flagMs(),

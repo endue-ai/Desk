@@ -3112,6 +3112,11 @@
         "id": "endue.database.qualify-names",
         "title": "Database: qualify every name of the statement at the caret",
         "keywords": ["qualify", "schema", "alias", "names", "refactor"]
+      },
+      {
+        "id": "endue.database.reconnect",
+        "title": "Database: reconnect the lost session",
+        "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
       }
     ],
     "keys": [

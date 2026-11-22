@@ -9,8 +9,9 @@
  * @typedef {"none" | "idle" | "running" | "open" | "failed" | "lost"} State
  * @typedef {{ state: State, label: string, tone: string, detail: string, pid?: number }} SessionModel
  *   What the header draws: `tone` is the status dot's (`data-tone`), `detail` its title.
- * @typedef {{ why: string, transaction: Transaction, lost: boolean }} Gone
- *   How the last session of an owner ended without the person: lost, or closed while idle.
+ * @typedef {{ why: string, transaction: Transaction, lost: boolean, reason?: string }} Gone
+ *   How the last session of an owner ended without the person: lost, or closed while idle;
+ *   `reason` is db.closed's, "run" for one a run found gone, "slept" for one the wake check found.
  */
 
 /** @type {Record<State, string>} */
@@ -104,10 +105,6 @@ export const idleWhy = (/** @type {number} */ ms) => {
   const minutes = Math.round(ms / 60_000);
   return `Closed after ${minutes} minute${minutes === 1 ? "" : "s"} idle`;
 };
-
-/** The status line's words when an owner's session is lost. */
-export const lostLine = (/** @type {string} */ label, /** @type {Gone} */ gone) =>
-  `${label}: the session was lost (${gone.why}).${rolledBack(gone.transaction)} The next run opens a new one.`;
 
 const lower = (/** @type {string} */ text) => text.charAt(0).toLowerCase() + text.slice(1);
 
