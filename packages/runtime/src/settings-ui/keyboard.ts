@@ -46,7 +46,7 @@ export interface KeyboardOptions {
   language: SettingsLanguage;
   /** A plugin's name, by its id: the list's groups and who set a conflicting key. */
   plugin?: (id: string) => string;
-  /** The core, where the key that opens Search Desk from any app is kept (`global-key.ts`). */
+  /** The core, where the key that opens Search endue from any app is kept (`global-key.ts`). */
   bridge?: GlobalKeyOptions["bridge"];
 }
 
@@ -107,7 +107,7 @@ export function mountKeyboard(options: KeyboardOptions): KeyboardPane {
   );
   // Off: a chord ends the key unless keys in force continue it (Emacs). On: chords until Enter.
   const several = h("input", { type: "checkbox", class: "desk-check", "data-key": "keys-several" });
-  // The key that opens Search Desk from any app, above the desk's own (#304).
+  // The key that opens Search endue from any app, above the desk's own (#304).
   const global = options.bridge
     ? globalKeyRow({
         bridge: options.bridge,

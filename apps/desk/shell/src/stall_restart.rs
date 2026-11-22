@@ -34,7 +34,7 @@ pub fn mark(now: SystemTime) -> String {
 
 /// Start a new desk for a stall, once `release` let go of what it needs first, and end this one.
 pub fn relaunch(release: impl FnOnce()) {
-    eprintln!("endue Desk: starting a new desk, as this one's page stopped painting (ADR 0202)");
+    eprintln!("endue: starting a new desk, as this one's page stopped painting (ADR 0202)");
     desk_boot::start::relaunch_with(release, &[(ENV, mark(SystemTime::now()))]);
 }
 

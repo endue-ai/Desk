@@ -156,7 +156,7 @@ pub fn keep(shell: &Shell) {
     match saved {
         Ok(()) => *kept = Some(frame),
         Err(why) => eprintln!(
-            "endue Desk: the window's frame was not kept in {} ({why})",
+            "endue: the window's frame was not kept in {} ({why})",
             path.display()
         ),
     }
@@ -240,7 +240,7 @@ pub(crate) fn debounce(run: impl Fn() + Send + 'static) -> Sender<()> {
             }
         });
     if let Err(why) = spawned {
-        eprintln!("endue Desk: the window's frame is not kept ({why})");
+        eprintln!("endue: the window's frame is not kept ({why})");
     }
     nudge
 }

@@ -232,7 +232,7 @@ impl NativeHost {
             matches!(running.queue.try_send(bytes), Err(TrySendError::Full(_)))
         };
         if full {
-            eprintln!("endue Desk: native plugin {plugin} stopped reading; it is stopped");
+            eprintln!("endue: native plugin {plugin} stopped reading; it is stopped");
             if let Some(running) = self.inner().running.get(plugin) {
                 running.process.kill();
             }
@@ -245,7 +245,7 @@ impl NativeHost {
             return;
         }
         if let Err(why) = self.start(plugin) {
-            eprintln!("endue Desk: native plugin {plugin} did not start: {why}");
+            eprintln!("endue: native plugin {plugin} did not start: {why}");
             self.died(surface, SurfaceDeathReason::LaunchFailed, None);
         }
     }

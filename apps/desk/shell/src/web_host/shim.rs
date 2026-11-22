@@ -29,7 +29,7 @@ pub fn install(context: &V8Context) {
         let why = exception
             .map(|e| CefString::from(&e.message()).to_string())
             .unwrap_or_default();
-        eprintln!("endue Desk: the surface shim did not run ({why})");
+        eprintln!("endue: the surface shim did not run ({why})");
     }
 }
 

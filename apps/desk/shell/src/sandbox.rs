@@ -65,7 +65,7 @@ pub fn drop_weakening(command_line: &mut cef::CommandLine) {
     let given: Vec<String> = map.into_iter().map(|(name, _)| name).collect();
     for name in ignored(&given, RELEASE, no_sandbox() == 0) {
         command_line.remove_switch(Some(&name.into()));
-        eprintln!("endue Desk: a release build ignores --{name} (ADR 0148)");
+        eprintln!("endue: a release build ignores --{name} (ADR 0148)");
     }
 }
 
@@ -189,12 +189,12 @@ mod tests {
     #[test]
     fn the_library_is_in_the_frameworks_folder_beside_the_helper_apps() {
         let helper = Path::new(
-            "/A/endue Desk.app/Contents/Frameworks/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer)",
+            "/endue fixture/endue.app/Contents/Frameworks/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer)",
         );
         assert_eq!(
             library_path(helper).unwrap(),
             Path::new(
-                "/A/endue Desk.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries/libcef_sandbox.dylib"
+                "/endue fixture/endue.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries/libcef_sandbox.dylib"
             )
         );
         assert_eq!(library_path(Path::new("/helper")), None);

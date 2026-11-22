@@ -8,7 +8,7 @@ const titles: Record<string, string> = {
   "desk.shell.move-to-desktop-3": "Window · To desktop 3",
   "example.a.open": "Open the list",
   "example.b.new": "New item",
-  "desk.palette.open": "Search Desk",
+  "desk.palette.open": "Search endue",
 };
 const words = (language: "en" | "ko" = "en"): ConflictWords => ({
   platform: "mac",
@@ -77,7 +77,7 @@ describe("the conflicts panel", () => {
     expect(taken?.querySelector("summary")?.textContent).toBe("Taken over by another shortcut (1)");
     expect(rows(taken as HTMLElement)[0]).toMatchObject({
       title: "Open the list",
-      why: "“Search Desk” has this key too and runs instead (set by you).",
+      why: "“Search endue” has this key too and runs instead (set by you).",
       who: "Built in",
     });
   });

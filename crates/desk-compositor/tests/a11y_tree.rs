@@ -52,9 +52,9 @@ fn the_window_list_its_title_bars_and_a_plugins_content_are_one_tree() {
     );
     let root = adapter.seen();
     assert_eq!(root.role, Role::Window);
-    assert_eq!(root.label.as_deref(), Some("endue Desk"));
+    assert_eq!(root.label.as_deref(), Some("endue"));
     assert_eq!(root.roles(), [Role::Group, Role::List]);
-    assert_eq!(root.labels(), ["Desk", "Windows"]);
+    assert_eq!(root.labels(), ["endue", "Windows"]);
     // The page's tree is the desk's system layer.
     let desk = &root.children[0];
     assert_eq!(desk.children[0].role, Role::RootWebArea);
@@ -106,7 +106,7 @@ fn the_focus_is_the_focused_node_of_the_surface_with_the_keys() {
     adapter.apply(a11y.flush());
     assert_eq!(
         adapter.focus().and_then(|f| f.label).as_deref(),
-        Some("endue Desk")
+        Some("endue")
     );
     chrome.focus = None;
     a11y.set_chrome(chrome);

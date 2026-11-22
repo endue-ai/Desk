@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Settings › Keyboard's row for the key that opens Search Desk from any app (#304): the runtime's
+// Settings › Keyboard's row for the key that opens Search endue from any app (#304): the runtime's
 // own core setting `palette.shortcut` (the person's `desk.palette.shortcut`), recorded as any other
 // key and saved in the shell's shortcut syntax, which the shell follows without a restart. The row
 // shows the key the shell says it holds (`palette.shortcut.held`), not the one saved: a key another

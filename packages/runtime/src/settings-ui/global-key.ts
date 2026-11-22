@@ -1,5 +1,5 @@
 /**
- * Settings › Keyboard's row for the key that opens Search Desk from any app (#304, ADR 0238). It is
+ * Settings › Keyboard's row for the key that opens Search endue from any app (#304, ADR 0238). It is
  * the person's `desk.palette.shortcut`: in the core, the runtime's own setting `palette.shortcut`
  * (as `desk.update.channel` is `update.channel`), which the shell reads and follows without a
  * restart (`apps/desk/shell/src/palette.rs`); `DESK_PALETTE_SHORTCUT` still wins there. It is

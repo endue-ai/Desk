@@ -19,7 +19,7 @@ fn main() -> ExitCode {
         let exe = std::env::current_exe().unwrap_or_default();
         let loader = cef::library_loader::LibraryLoader::new(&exe, false);
         if !loader.load() {
-            eprintln!("endue Desk: the CEF framework did not load (run the bundle: just dev)");
+            eprintln!("endue: the CEF framework did not load (run the bundle: just dev)");
             return ExitCode::FAILURE;
         }
         loader
@@ -58,7 +58,7 @@ fn main() -> ExitCode {
     let event_loop = match builder.build() {
         Ok(event_loop) => event_loop,
         Err(why) => {
-            eprintln!("endue Desk: no event loop ({why})");
+            eprintln!("endue: no event loop ({why})");
             return ExitCode::FAILURE;
         }
     };
@@ -73,7 +73,7 @@ fn main() -> ExitCode {
         Ok(Some(instance)) => Some(instance),
         Ok(None) => return ExitCode::SUCCESS,
         Err(why) => {
-            eprintln!("endue Desk: {why}; starting anyway");
+            eprintln!("endue: {why}; starting anyway");
             None
         }
     };
@@ -105,7 +105,7 @@ fn main() -> ExitCode {
     ) != 1
     {
         eprintln!(
-            "endue Desk: CEF did not start (another desk may hold {})",
+            "endue: CEF did not start (another desk may hold {})",
             root.display()
         );
         return ExitCode::FAILURE;
@@ -140,7 +140,7 @@ fn main() -> ExitCode {
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
         Err(why) => {
-            eprintln!("endue Desk: the event loop failed ({why})");
+            eprintln!("endue: the event loop failed ({why})");
             ExitCode::FAILURE
         }
     }
@@ -159,7 +159,7 @@ fn claim(pump: &Pump) -> std::io::Result<Option<Instance>> {
     match claimed {
         Claim::First(instance) => Ok(Some(instance)),
         Claim::HandedOff => {
-            eprintln!("endue Desk: the desk already running took this start's files");
+            eprintln!("endue: the desk already running took this start's files");
             Ok(None)
         }
     }

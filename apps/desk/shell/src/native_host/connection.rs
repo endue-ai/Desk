@@ -171,7 +171,7 @@ impl Reader {
         self.refused += 1;
         if self.refused == 1 || self.refused.is_power_of_two() {
             eprintln!(
-                "endue Desk: a frame of native plugin {} was refused ({} so far): {why}",
+                "endue: a frame of native plugin {} was refused ({} so far): {why}",
                 self.plugin, self.refused
             );
         }

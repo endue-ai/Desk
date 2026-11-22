@@ -10,7 +10,7 @@ fn main() -> ExitCode {
     let _sandbox = match desk_shell::sandbox::enter(&args) {
         Ok(sandbox) => sandbox,
         Err(why) => {
-            eprintln!("endue Desk helper: Chromium's sandbox did not start: {why}");
+            eprintln!("endue helper: Chromium's sandbox did not start: {why}");
             return ExitCode::FAILURE;
         }
     };
