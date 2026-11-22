@@ -26,8 +26,8 @@ describe("a local agent's screen, without the DOM", () => {
   });
 
   it("shows a folder by its last two parts, on any system", () => {
-    expect(folderOf("/Users/you/work/atlas")).toBe("work/atlas");
-    expect(folderOf("C:\\Users\\you\\code\\lumen")).toBe("code/lumen");
+    expect(folderOf("/endue/work/endue")).toBe("work/endue");
+    expect(folderOf("C:\\endue\\code\\endue")).toBe("code/endue");
     expect(folderOf(undefined)).toBe("");
   });
 
@@ -39,7 +39,7 @@ describe("a local agent's screen, without the DOM", () => {
     expect(ago("en", "not a time", NOW)).toBe("");
   });
 
-  it("says where the program runs from, or that the desk only reads its sessions", () => {
+  it("says where the program runs from, or that endue only reads its sessions", () => {
     expect(
       programLine("en", { ...CLAUDE, program: "/usr/local/bin/claude", version: "2.4.1" }),
     ).toBe("Anthropic · v2.4.1 · /usr/local/bin/claude");
@@ -48,10 +48,10 @@ describe("a local agent's screen, without the DOM", () => {
 
   it("says what an import did", () => {
     expect(importLine("en", { imported: 3, unchanged: 1, failed: 0 })).toBe(
-      "Imported 3 into the desk · 1 already up to date",
+      "Imported 3 into endue · 1 already up to date",
     );
     expect(importLine("ko", { imported: 0, unchanged: 2, failed: 1 })).toBe(
-      "0개를 데스크로 가져왔습니다 · 2개는 그대로입니다 · 1개는 읽지 못했습니다",
+      "0개를 endue로 가져왔습니다 · 2개는 그대로입니다 · 1개는 읽지 못했습니다",
     );
   });
 
