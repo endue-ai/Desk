@@ -9,7 +9,7 @@ import { asAgent, auditMount, SHOP } from "./audit-fixture";
 const opens = (m: Awaited<ReturnType<typeof auditMount>>["m"]) =>
   m.host.calls
     .filter((c) => c.method === "db.open")
-    .map((c) => c.params as Record<string, unknown>);
+    .map((c) => c.params as unknown as Record<string, unknown>);
 
 describe("explain-statement", () => {
   it("answers the plan of a statement on a read-only session", async () => {

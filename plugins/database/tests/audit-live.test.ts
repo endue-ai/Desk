@@ -129,7 +129,7 @@ describe.skipIf(!uri)("agents' tools on a real PostgreSQL", () => {
     expect(await admin(`SELECT count(*) FROM ${SCHEMA}.people WHERE name = 'checked'`)).toBe("1");
 
     const list = auditOf(m, "c-live");
-    expect(list.map((e) => [e.command.replace("endue.database.", ""), e.outcome])).toEqual([
+    expect(list.map((e) => [String(e.command).replace("endue.database.", ""), e.outcome])).toEqual([
       ["query", "ran"],
       ["query", "refused"],
       ["query", "failed"],

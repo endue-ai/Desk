@@ -186,7 +186,7 @@ type Declared = {
   title: string;
   keywords?: string[];
   description?: string;
-  args?: object;
+  args?: Record<string, unknown>;
   agent?: boolean;
   readOnly?: boolean;
 };
