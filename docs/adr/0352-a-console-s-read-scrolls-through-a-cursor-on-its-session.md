@@ -74,6 +74,9 @@ is what the single-page read already does with one statement fewer.
 * Bad, because the server's own views name what runs as the cursor's statements: while a page is read,
   `pg_stat_activity.query` of the console's session reads `FETCH FORWARD ... FROM endue_desk_rows`,
   not the read as typed.
+* Bad, because a view that draws the whole result (the Map, the Chart) must read every row first: it
+  fetches them as Fetch every row does when it opens, up to 100,000, and past that draws the rows held
+  and says so.
 * Bad, because through a pooler a result past one page scrolls only inside a transaction the person
   holds; outside one it reads one page, as before PG-22.
 * Bad, because a SCROLL cursor over a plan that cannot run backwards makes the server materialize the rows
@@ -81,7 +84,7 @@ is what the single-page read already does with one statement fewer.
 
 ### Confirmation
 
-`plugins/database/tests/rows-cursor.test.ts`, `rows-lost.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
+`plugins/database/tests/rows-cursor.test.ts`, `rows-lost.test.ts`, `rows-views.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
 `packages/bridge/src/stub-db-cursor.test.ts` on the stub; `rows-live.test.ts` on a real server through the
 core; `packages/runtime/e2e/database-rows.spec.ts` in the runtime page.
 

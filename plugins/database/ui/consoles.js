@@ -352,7 +352,7 @@ export function createConsoles(deps) {
     /** Pick a result tab. */
     tab(/** @type {number} */ index) {
       const target = buffers.current();
-      if (target?.shown && index >= 0 && index < target.shown.tabs.length) target.tab = index;
+      if (target) pages.pick(target, deps.connection(target.connection), index);
       render();
     },
     show: buffers.showId,

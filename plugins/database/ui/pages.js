@@ -160,5 +160,16 @@ export function createPages(deps) {
     return refresh(target, conn);
   };
 
-  return { refresh, page };
+  /** Pick a result tab; a map or chart of a read its cursor keeps reads every row first (PG-22). */
+  const pick = (
+    /** @type {Console} */ target,
+    /** @type {Connection | undefined} */ conn,
+    /** @type {number} */ index,
+  ) => {
+    if (!target.shown || index < 0 || index >= target.shown.tabs.length) return;
+    target.tab = index;
+    if (conn && target.kind === "console" && windowed(target)) void rows.drawn(target, conn);
+  };
+
+  return { refresh, page, pick };
 }

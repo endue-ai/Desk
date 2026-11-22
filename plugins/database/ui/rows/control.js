@@ -4,7 +4,9 @@
 // sorts in the frame), and the grid's sort keys and quick filters put into the statement, which runs
 // again with ORDER BY and WHERE around it, since sorting a result not fully read needs every row.
 // A fetch that fails leaves the rows held and says the rest cannot be read; so does a cursor whose
-// session was lost (PG-105), as soon as the console is drawn, with no fetch tried. No DOM.
+// session was lost (PG-105), as soon as the console is drawn, with no fetch tried. A map or a chart
+// draws a whole result, so opening one on a read not fully held fetches every row first, as Fetch
+// every row does (up to ALL_MAX); past it the view draws the rows held and says so. No DOM.
 
 import { engineOf } from "../engines/index.js";
 import { formatCount } from "../format.js";
@@ -45,7 +47,11 @@ function replace(
 ) {
   const outcome = target.execution?.result.statements[0];
   if (outcome) outcome.sets = outcome.sets.map((s) => (s === old ? next : s));
-  for (const tab of target.shown?.tabs ?? []) if (tab.set === old) tab.set = next;
+  for (const tab of target.shown?.tabs ?? []) {
+    if (tab.set === old) tab.set = next;
+    if (tab.geo?.set === old) tab.geo = { ...tab.geo, set: next };
+    if (tab.chart?.set === old) tab.chart.set = next;
+  }
 }
 
 /** A console's read whose cursor is gone (`gone` says why) says so, without asking the server. */
@@ -200,7 +206,23 @@ export function createRowsControl(deps) {
     return said;
   };
 
-  return { scroll, count, all, shape };
+  /** The map or chart tab on screen is of a read not fully held: every row first, as `all`. */
+  const drawn = async (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
+    const tab = target.shown?.tabs[target.tab];
+    const set = windowed(target);
+    const of = tab?.geo?.set ?? tab?.chart?.set;
+    if (!tab || !set?.window || of !== set || whole(set) || set.window.gone) return "";
+    // A page the grid is reading first: then every row.
+    await busy.get(target)?.catch(() => "");
+    const said = await all(target, conn).catch((/** @type {Error} */ error) => error.message);
+    if (!said || said.startsWith("Fetched every row")) return said;
+    const view = tab.kind === "map" ? "Map" : "Chart";
+    const line = `${view}: drawn from the ${formatCount(set.rows.length)} rows held. ${said}`;
+    deps.say?.(line);
+    return line;
+  };
+
+  return { scroll, count, all, shape, drawn };
 }
 
 const tooMany = () =>

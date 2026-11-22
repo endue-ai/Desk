@@ -38,6 +38,10 @@ frame's memory (ADR 0352). Modules: `ui/engines/pg-cursor.js` (the cursor on the
 - Database: fetch every row of the result holds them all, up to 100,000; the result is then whole, and
   sorts and filters in the frame. Past 100,000 it says to put ORDER BY or WHERE into the statement.
 - The typed filter (`/`) and find (Mod+F) look at the rows held.
+- The Map (PG-46) and the Chart (PG-44) draw a whole result: opening one on a result not fully read
+  fetches every row first, as Fetch every row does, and the grid's result is whole after it. Past
+  100,000 rows they draw the rows held and say so (the map's row picker reads Rows held).
+- Compare results and the assistant's sample take the rows held; compare says the result is partial.
 - Export and copy cover the rows held and say the result is partial (PG-61); exporting every row is PG-64.
 
 ## Transactions
