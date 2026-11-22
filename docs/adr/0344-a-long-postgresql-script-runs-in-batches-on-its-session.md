@@ -62,8 +62,8 @@ that answers it, and a notice or FATAL raised at that statement's commit, stay t
 ### Consequences
 
 * Good, because a script of many small statements crosses the bridge once per 200 statements: measured
-  in the pull request, 2,000 and 10,201 INSERTs run several times faster than before and no slower
-  than `psql`.
+  in the pull request, the 1 MB script of 10,201 INSERTs ran twice as fast as before and as fast as
+  `psql` in the least disturbed runs, and 2,000 INSERTs a quarter faster, level with `psql`.
 * Good, because the server sees what it saw before, so a statement's outcome, its notices and how it
   commits do not change.
 * Bad, because a statement's outcome reaches the frame with its batch, not as it finishes; nothing
