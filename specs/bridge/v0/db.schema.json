@@ -285,6 +285,59 @@
       "required": ["pages"],
       "additionalProperties": false
     },
+    "DbDescribeRequest": {
+      "description": "Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.describe" },
+        "params": { "$ref": "#/$defs/DbDescribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbDescribeParams": {
+      "description": "Parameters of db.describe.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        }
+      },
+      "required": ["sessionId", "sql"],
+      "additionalProperties": false
+    },
+    "DbDescribeResult": {
+      "description": "Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it.",
+      "type": "object",
+      "properties": {
+        "paramTypes": {
+          "description": "The type OID of $1, $2, ..., as the server infers them; empty with an error.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+        },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/DbColumn" } },
+        "transaction": { "$ref": "#/$defs/DbTransaction" },
+        "error": { "$ref": "#/$defs/DbServerError" },
+        "notices": {
+          "description": "The notices the server sent while this call ran.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbServerError" },
+          "maxItems": 10000
+        }
+      },
+      "required": ["paramTypes"],
+      "additionalProperties": false
+    },
     "DbFetchRequest": {
       "description": "The next page of the session's open result, or close it without reading on.",
       "type": "object",
