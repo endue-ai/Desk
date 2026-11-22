@@ -219,6 +219,20 @@ the server asks for one. A refused or unreachable host, or a certificate that fa
 `io_error`. A caller holds at most 16 sessions; another is `invalid_value`. An agent is
 `permission_denied`.
 
+`ssh` takes the session through an SSH tunnel (ADR 0359): `host`, `port` (22) and `user` of the SSH
+server, and one of `keyFile` (a path the core reads itself, never sent back; `keyPassword` decrypts it),
+`agent: true` (the person's SSH agent), `password` or `passwordRef` (a kept password for that SSH host,
+port and user); `jump` is a jump host of the same shape, reached first. One SSH connection carries the
+session and its cancel requests as channels inside the core, nothing listens on a port, and it closes
+with the session. `db:connect` must cover every hop's host and port as well as the database's, and is
+checked before anything connects. Host keys are trusted on first use per caller: a key not trusted yet
+answers `{ ssh: { hop, stage: "hostKey", hostKey: { status: "unknown", algorithm, fingerprint } } }`,
+and `hostKey` set to that fingerprint in the next `db.open` trusts it once the tunnel opens; a key that
+differs from the trusted one is `changed` (with `known`) and refused until **db.hostKeys.delete**
+`{ host, port }` forgets the trusted one. Any other hop that fails answers `ssh` with its `stage`
+(`connect`, `auth` with `keyPassword` or `needsPassword` when one is missing, `forward`) and a
+`message` naming the hop.
+
 **db.run** runs one statement by the extended protocol and answers its first page; an earlier result
 with pages left is closed first, and while a statement runs, `db.run`, `db.fetch` and `db.copy` are
 `invalid_params`. `params` are text or `null`, their types the server's inference unless `paramTypes`

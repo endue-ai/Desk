@@ -58,7 +58,8 @@
           "minimum": 1,
           "maximum": 120000
         },
-        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DbConnectPermission" }
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DbConnectPermission" },
+        "ssh": { "$ref": "#/$defs/DbSsh" }
       },
       "required": ["engine", "host", "database", "user", "scope"],
       "additionalProperties": false,
@@ -97,13 +98,163 @@
       "additionalProperties": false,
       "dependentRequired": { "cert": ["key"], "key": ["cert"], "keyPassword": ["key"] }
     },
+    "DbSsh": {
+      "description": "An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "The SSH server, a host name or an IPv4 address.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 },
+        "user": { "description": "Who signs in on the SSH server.", "type": "string", "minLength": 1, "maxLength": 256 },
+        "keyFile": {
+          "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "keyPassword": {
+          "description": "The passphrase of an encrypted keyFile: used once to decrypt it and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "agent": { "description": "Sign in with the keys the person's SSH agent holds.", "const": true },
+        "password": {
+          "description": "The SSH password: used once for the sign-in and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
+        "hostKey": { "$ref": "#/$defs/DbSshFingerprint" },
+        "jump": { "$ref": "#/$defs/DbSshHop" }
+      },
+      "required": ["host", "user"],
+      "additionalProperties": false,
+      "dependentRequired": { "keyPassword": ["keyFile"] }
+    },
+    "DbSshHop": {
+      "description": "A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "The SSH server, a host name or an IPv4 address.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 },
+        "user": { "description": "Who signs in on the SSH server.", "type": "string", "minLength": 1, "maxLength": 256 },
+        "keyFile": {
+          "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "keyPassword": {
+          "description": "The passphrase of an encrypted keyFile: used once to decrypt it and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "agent": { "description": "Sign in with the keys the person's SSH agent holds.", "const": true },
+        "password": {
+          "description": "The SSH password: used once for the sign-in and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
+        "hostKey": { "$ref": "#/$defs/DbSshFingerprint" }
+      },
+      "required": ["host", "user"],
+      "additionalProperties": false,
+      "dependentRequired": { "keyPassword": ["keyFile"] }
+    },
+    "DbSshFingerprint": {
+      "description": "An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens.",
+      "type": "string",
+      "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"
+    },
+    "DbSshAnswer": {
+      "description": "Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database).",
+      "type": "object",
+      "properties": {
+        "hop": { "$ref": "#/$defs/DbSshHopName" },
+        "stage": { "$ref": "#/$defs/DbSshStage" },
+        "message": { "description": "What failed, in words, naming the hop.", "type": "string" },
+        "hostKey": { "$ref": "#/$defs/DbSshHostKey" },
+        "keyPassword": { "$ref": "#/$defs/DbKeyPassword" },
+        "needsPassword": { "const": true }
+      },
+      "required": ["hop", "stage", "message"],
+      "additionalProperties": false
+    },
+    "DbSshHopName": {
+      "description": "Which hop: the jump host, or the SSH host the database is reached from.",
+      "type": "string",
+      "enum": ["jump", "host"]
+    },
+    "DbSshStage": {
+      "description": "Where the hop failed: connect, hostKey, auth or forward.",
+      "type": "string",
+      "enum": ["connect", "hostKey", "auth", "forward"]
+    },
+    "DbSshHostKeyStatus": {
+      "description": "unknown: not trusted yet. changed: differs from the trusted one.",
+      "type": "string",
+      "enum": ["unknown", "changed"]
+    },
+    "DbSshHostKey": {
+      "description": "The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one.",
+      "type": "object",
+      "properties": {
+        "status": { "$ref": "#/$defs/DbSshHostKeyStatus" },
+        "algorithm": { "description": "ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...", "type": "string" },
+        "fingerprint": { "$ref": "#/$defs/DbSshFingerprint" },
+        "known": { "$ref": "#/$defs/DbSshFingerprint" }
+      },
+      "required": ["status", "algorithm", "fingerprint"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteRequest": {
+      "description": "Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.hostKeys.delete" },
+        "params": { "$ref": "#/$defs/DbHostKeysDeleteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteParams": {
+      "description": "Parameters of db.hostKeys.delete.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 }
+      },
+      "required": ["host"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteResult": {
+      "description": "Result of db.hostKeys.delete.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "DbTlsMode": {
       "description": "disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.",
       "type": "string",
       "enum": ["disable", "prefer", "require", "verify-ca", "verify-full"]
     },
     "DbOpenResult": {
-      "description": "Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.",
+      "description": "Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.",
       "type": "object",
       "properties": {
         "sessionId": { "$ref": "#/$defs/DbSessionId" },
@@ -117,7 +268,8 @@
         },
         "error": { "$ref": "#/$defs/DbServerError" },
         "needsPassword": { "const": true },
-        "keyPassword": { "$ref": "#/$defs/DbKeyPassword" }
+        "keyPassword": { "$ref": "#/$defs/DbKeyPassword" },
+        "ssh": { "$ref": "#/$defs/DbSshAnswer" }
       },
       "additionalProperties": false
     },
