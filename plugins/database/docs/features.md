@@ -141,8 +141,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 ## Format SQL, SQL problems and completion
 
-How the console lays SQL out, underlines what the server would refuse and completes the statement at the
-caret: [`editor.md`](editor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md).
 
 ## Results
 
