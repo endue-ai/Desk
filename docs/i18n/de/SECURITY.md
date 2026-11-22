@@ -25,7 +25,7 @@ Meldende werden in den Release Notes genannt, sofern sie nicht ausdrücklich dar
 
 ## Unterstützte Versionen
 
-Desk liegt vor Version 1.0. Nur das jeweils neueste Release jedes Kanals (stable, beta, canary) erhält
+endue liegt vor Version 1.0. Nur das jeweils neueste Release jedes Kanals (stable, beta, canary) erhält
 Sicherheitskorrekturen.
 
 ## Geltungsbereich
@@ -39,6 +39,6 @@ bitte unter derselben Adresse an endue melden).
 
 ## Bedrohungsmodell
 
-[docs/security/threat-model.md](../../security/threat-model.md) (auf Englisch) beschreibt, was Desk schützt,
+[docs/security/threat-model.md](../../security/threat-model.md) (auf Englisch) beschreibt, was endue schützt,
 welche Angreifer berücksichtigt werden und für jede Vertrauensgrenze die Schutzmaßnahme, die heute auf
 `main` besteht, oder die verbleibende Lücke mit dem Issue, das sie schließt.

@@ -62,7 +62,9 @@ clipboard = ["dep:objc2", "dep:objc2-app-kit", "dep:objc2-foundation"]
 ## Microphone capture: list input devices and capture one as mono 16-bit frames of 20 ms at 16 kHz
 ## (8 to 48 kHz) with a level meter, after the OS grants the microphone. cpal (CoreAudio, WASAPI,
 ## ALSA: Linux builds need libasound2-dev), AVFoundation's grant on macOS, and a fake.
-audio = ["dep:cpal", "dep:block2", "dep:objc2", "dep:objc2-av-foundation"]
+audio = ["audio-api", "dep:cpal", "dep:block2", "dep:objc2", "dep:objc2-av-foundation"]
+## Audio types, processing and the in-memory input used by the core.
+audio-api = []
 ## Secrets in the OS keychain: get, set and delete one string under a service and an account.
 ## keyring-core over the Keychain on macOS, Credential Manager on Windows, the Secret Service on
 ## Linux (zbus, pure Rust crypto), and a fake (ADR 0239).

@@ -2,13 +2,12 @@
 // The whole window on a real repository: the page as the desk serves it, mounted with a bridge
 // whose proc.spawn runs the real git, so the graph, the sidebar, the working copy panel and the
 // commands are checked end to end.
-import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFeatures } from "../ui/features.js";
 import { createStudio } from "../ui/studio.js";
-import { realGit, tempRepo } from "./real-git";
+import { gitOutput, realGit, tempRepo } from "./real-git";
 
 type Listener = (event: { event: string; data: Record<string, unknown> }) => void;
 
@@ -31,42 +30,33 @@ function realBridge() {
       }
       if (method !== "proc.spawn") throw Object.assign(new Error(method), { code: "unsupported" });
       const procId = `p${++next}`;
-      setTimeout(() => {
-        const child = execFile(
-          "git",
-          params.args as string[],
-          {
-            cwd: params.cwd as string,
-            env: { ...process.env, ...(params.env as object), GIT_CONFIG_GLOBAL: "/dev/null" },
-            encoding: "buffer",
-            maxBuffer: 8 << 20,
+      setTimeout(async () => {
+        const input = inputs.get(procId);
+        inputs.delete(procId);
+        const { code, stdout, stderr } = await gitOutput(params.args as string[], {
+          cwd: params.cwd as string,
+          env: {
+            ...process.env,
+            ...(params.env as NodeJS.ProcessEnv),
+            GIT_CONFIG_GLOBAL: "/dev/null",
           },
-          (error, stdout, stderr) => {
-            const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
-            if (stdout.length)
-              emit({
-                event: "proc.output",
-                data: {
-                  procId,
-                  stream: "stdout",
-                  data: stdout.toString("base64"),
-                  encoding: "base64",
-                },
-              });
-            if (stderr.length)
-              emit({
-                event: "proc.output",
-                data: {
-                  procId,
-                  stream: "stderr",
-                  data: stderr.toString("base64"),
-                  encoding: "base64",
-                },
-              });
-            emit({ event: "proc.exit", data: { procId, code, signal: null } });
-          },
-        );
-        child.stdin?.end(inputs.get(procId) ?? "");
+          input,
+        }).catch((error: Error) => ({
+          code: 1,
+          stdout: Buffer.alloc(0),
+          stderr: Buffer.from(error.message),
+        }));
+        for (const [stream, bytes] of [
+          ["stdout", stdout],
+          ["stderr", stderr],
+        ] as const) {
+          if (bytes.length)
+            emit({
+              event: "proc.output",
+              data: { procId, stream, data: bytes.toString("base64"), encoding: "base64" },
+            });
+        }
+        emit({ event: "proc.exit", data: { procId, code, signal: null } });
       }, 0);
       return { procId };
     },

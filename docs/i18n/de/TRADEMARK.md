@@ -12,8 +12,8 @@ Marken von Team endue.
 
 ## Was erlaubt ist
 
-- Wahrheitsgemäß auf endue Desk Bezug nehmen, zum Beispiel „ein Plugin für endue Desk“ oder „basiert auf
-  endue Desk“.
+- Wahrheitsgemäß auf endue Bezug nehmen, zum Beispiel „ein Plugin für endue“ oder „basiert auf
+  endue“.
 - Screenshots und die unveränderten Dateien in `brand/` in Rezensionen, Artikeln, Vorträgen und
   Plugin-Verzeichnissen verwenden, sofern klar erkennbar ist, dass man nicht selbst endue ist.
 - Den Code für sich selbst oder die eigene Organisation bauen, ausführen und ändern.

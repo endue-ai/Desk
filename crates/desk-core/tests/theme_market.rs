@@ -24,7 +24,7 @@ const BAD: &str = "https://bad.example.com/index.json";
 const PLAIN: &str = "http://plain.example.com/index.json";
 const DUSK: &str = "https://one.example.com/themes/dusk.desk-theme";
 const DEFAULT: &str =
-    "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json";
+    "https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json";
 
 type Answer = Result<Value, BridgeError>;
 
