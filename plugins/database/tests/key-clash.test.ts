@@ -5,8 +5,8 @@
 // runs the script.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { canonical } from "../../../packages/runtime/src/input";
 import { DEFAULT_KEYS } from "../../../packages/runtime/src/core/keys";
+import { canonical } from "../../../packages/runtime/src/input";
 import { actionFor, BINDINGS, hints } from "../ui/keys.js";
 
 const PLUGINS = new URL("../../", import.meta.url);

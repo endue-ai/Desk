@@ -314,7 +314,12 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       tools,
       importer,
       dropped,
-      complete: createCompletions({ consoles, manager, catalog, held: (c) => connectHeld(bridge, c) }),
+      complete: createCompletions({
+        consoles,
+        manager,
+        catalog,
+        held: (c) => connectHeld(bridge, c),
+      }),
       cancel,
     }),
     ...createDrags({

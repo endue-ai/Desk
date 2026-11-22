@@ -15,10 +15,10 @@ export function lineOf(doc, line, act) {
   const press = el(
     doc,
     "button",
-    { type: "button", class: "desk-btn desk-btn-quiet line-act" },
+    { type: "button", class: "desk-btn line-act" },
     offer.label,
   );
   press.addEventListener("click", () => act(offer.action, ...offer.args));
-  li.append(" ", press);
+  li.append(press);
   return li;
 }

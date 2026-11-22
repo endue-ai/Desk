@@ -13,7 +13,7 @@ import { dbBridge } from "./pg-host";
 import { PG, run, shop } from "./session-helpers";
 
 const db: StubDatabase = { statements: [{ sql: "select 1", tag: "SELECT 1" }] };
-const made = (calls: Array<{ method: string; params?: unknown }>, method: string) =>
+const made = (calls: ReadonlyArray<{ method: string; params?: unknown }>, method: string) =>
   calls.filter((c) => c.method === method).map((c) => (c.params ?? {}) as Record<string, unknown>);
 
 /** The executor over db.* with refusals worded, the person answering each question `granted`. */

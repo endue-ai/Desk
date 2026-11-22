@@ -36,7 +36,9 @@ export const refusedWords = (/** @type {string} */ where) =>
  */
 export function offerOf(conn, error) {
   const where = error.kind === "refused" ? whereOf(conn) : undefined;
-  return where ? { act: { action: "allowConnect", args: [conn.id], label: allowLabel(where) } } : {};
+  return where
+    ? { act: { action: "allowConnect", args: [conn.id], label: allowLabel(where) } }
+    : {};
 }
 
 /**
@@ -51,7 +53,9 @@ export function wordRefusals(pg) {
     async run(/** @type {Connection} */ conn, /** @type {any} */ plan) {
       const result = await pg.run(conn, plan);
       const where = result.error?.kind === "refused" ? whereOf(conn) : undefined;
-      return where ? { ...result, error: { kind: "refused", message: refusedWords(where) } } : result;
+      return where
+        ? { ...result, error: { kind: "refused", message: refusedWords(where) } }
+        : result;
     },
   };
 }

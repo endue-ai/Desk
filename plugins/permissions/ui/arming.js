@@ -2,7 +2,7 @@
 // plugin must not take the next key as its answer. For ARM_MS after a card shows, keys answer
 // nothing (Tab still moves the focus), and a key pressed then stays swallowed until it is released,
 // so its keyup or the click it makes cannot press a button after the delay either. A pointer press
-// answers at once. No DOM: the view asks with each key event.
+// (or a script's click) answers at once. No DOM: the view asks with each key event.
 
 /** How long after a card shows its keys answer nothing. */
 export const ARM_MS = 500;
@@ -33,9 +33,10 @@ export function createArming(options = {}) {
       held.add(key);
       return true;
     },
-    /** Whether a click made by a key (detail 0) must answer nothing; a pointer's always answers. */
+    /** Whether a click a swallowed key makes (detail 0, the key still down) must answer nothing; a
+     * pointer's, or a script's, answers. */
     ignores(/** @type {number} */ detail) {
-      return detail === 0 && (!armed() || held.size > 0);
+      return detail === 0 && held.size > 0;
     },
   };
 }

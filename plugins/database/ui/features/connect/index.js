@@ -11,7 +11,8 @@ import { allowConnect, whereOf } from "../../session/connect-gate.js";
  */
 async function allow(deps, conn) {
   const where = whereOf(conn);
-  if (!where) throw new Error(`${conn.name} connects through a client program, which asks nothing.`);
+  if (!where)
+    throw new Error(`${conn.name} connects through a client program, which asks nothing.`);
   const allowed = await allowConnect(deps.bridge, conn);
   deps.say(
     allowed
@@ -26,7 +27,10 @@ export const feature = {
   id: "connect",
   commands: (deps) => ({
     "endue.database.allow-connect": async ({ connection }) => {
-      const conn = await deps.manager.choose(connection, "Database: allow connecting for which connection?");
+      const conn = await deps.manager.choose(
+        connection,
+        "Database: allow connecting for which connection?",
+      );
       return conn ? allow(deps, conn) : undefined;
     },
   }),

@@ -55,7 +55,7 @@ describe("a refused connection offers to ask again (PG-01g)", () => {
     await m.settle();
     const asked = m.host.calls
       .filter((c) => c.method === "perm.request")
-      .map((c) => c.params as Record<string, unknown>);
+      .map((c) => c.params as unknown as Record<string, unknown>);
     expect(asked.at(-1)).toMatchObject({
       permission: { permission: "db:connect", hosts: ["db.example:5432"] },
       again: true,

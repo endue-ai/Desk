@@ -23,6 +23,9 @@ const model = {
   waiting: 0,
 };
 
+/** The view of the case before: its listeners stay on the document, so its card is put away. */
+let last: { prompt(model: null): void } | undefined;
+
 function opened() {
   let clock = 1000;
   const answers: string[] = [];
@@ -49,6 +52,7 @@ function opened() {
   );
   const timers: Array<{ at: number; fn: () => void }> = [];
   view.prompt(model as never);
+  last = view;
   const later = (ms: number) => {
     clock += ms;
     for (const timer of timers.splice(0)) if (timer.at <= clock) timer.fn();
@@ -71,6 +75,7 @@ function type(key: string) {
 
 describe("the question's arming delay (PG-01g)", () => {
   beforeEach(() => {
+    last?.prompt(null);
     document.body.innerHTML = body;
   });
 
@@ -91,7 +96,9 @@ describe("the question's arming delay (PG-01g)", () => {
   it("a key pressed in the delay stays swallowed until it is released", () => {
     const t = opened();
     const button = document.activeElement as HTMLElement;
-    button.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    button.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }),
+    );
     t.later(ARM_MS);
     const up = new KeyboardEvent("keyup", { key: " ", bubbles: true, cancelable: true });
     button.dispatchEvent(up);
@@ -110,6 +117,9 @@ describe("the question's arming delay (PG-01g)", () => {
   it("a click a key makes in the delay answers nothing", () => {
     const t = opened();
     const refuse = document.querySelector<HTMLButtonElement>("#prompt [data-answer=refuse]");
+    refuse?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }),
+    );
     refuse?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 }));
     expect(t.answers).toEqual([]);
   });
