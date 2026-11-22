@@ -7,6 +7,8 @@
 //! 0007).
 
 mod redact;
+#[cfg(test)]
+mod storage_tests;
 mod time;
 
 use std::fs;
@@ -166,8 +168,12 @@ impl Crashes {
 
     /// Write `report` as a new file and keep the newest `KEEP`.
     pub fn write(&self, report: &Report) -> io::Result<PathBuf> {
+        self.write_at(report, SystemTime::now())
+    }
+
+    fn write_at(&self, report: &Report, now: SystemTime) -> io::Result<PathBuf> {
         fs::create_dir_all(&self.dir)?;
-        let stamp = time::stamp(SystemTime::now());
+        let stamp = time::stamp(now);
         let mut path = self.dir.join(format!("{stamp}.json"));
         let mut n = 0;
         while path.exists() {
