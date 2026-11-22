@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Script } from "./harness";
 import { messages, sessionOf, shop, start } from "./session-helpers";
 
-const SLOW = "select restock_all()";
+const SLOW = "call restock_all()";
 const script: Script = (sql) => {
   if (sql === SLOW)
     return {
@@ -44,11 +44,11 @@ describe("notices while a statement runs", () => {
 
   it("a notice of a call already answered is late, and does not show", async () => {
     const m = await shop({ script });
-    m.view.text = "select 1";
-    m.app.edited("select 1");
+    m.view.text = "set search_path = public";
+    m.app.edited("set search_path = public");
     await m.host.command("endue.database.run-all");
     await m.settle();
-    const sessionId = sessionOf(m, "select 1") ?? "";
+    const sessionId = sessionOf(m, "set search_path = public") ?? "";
     const { done } = await start(m, SLOW);
     const notice = { severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "late" };
     m.host.emit({ event: "db.call.notice", data: { sessionId, call: 1, notice } });
