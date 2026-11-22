@@ -7,6 +7,7 @@
 
 import { el } from "./dom.js";
 import { cellText } from "./grid-model.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{ value: string | null, changed: boolean, inserted: boolean, deleted: boolean }} Cell
@@ -19,7 +20,16 @@ import { cellText } from "./grid-model.js";
  */
 
 export const ROW = 24;
-const ORDINAL = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
+const ORDINAL = [
+  "grid.ordinalFirst",
+  "grid.ordinalSecond",
+  "grid.ordinalThird",
+  "grid.ordinalFourth",
+  "grid.ordinalFifth",
+  "grid.ordinalSixth",
+  "grid.ordinalSeventh",
+  "grid.ordinalEighth",
+];
 
 /** A pinned cell's class and its sticky left. */
 const pinning = (/** @type {Lane} */ lane, /** @type {number} */ i) =>
@@ -82,18 +92,14 @@ export function drawRows(
             ...(cell.col === undefined ? {} : { "data-col": String(cell.col) }),
             ...(pin.style ? { style: pin.style } : {}),
             ...(chosen ? { "aria-selected": "true" } : {}),
-            ...(cell.changed
-              ? { title: "Changed, not submitted" }
-              : linked
-                ? { title: linked }
-                : {}),
+            ...(cell.changed ? { title: t("grid.changed") } : linked ? { title: linked } : {}),
           },
           cellText(cell.value),
         ),
       );
     });
     if (lane.cols.length === lane.pinned) cells.push(gap(doc));
-    const label = flags.trim() === "deleted" ? "To be deleted" : "To be added";
+    const label = t(flags.trim() === "deleted" ? "grid.toDelete" : "grid.toAdd");
     drawn.push(
       el(
         doc,
@@ -152,7 +158,10 @@ export function drawHeader(doc, heads, { lane, record, sort }) {
               doc,
               "span",
               { class: "sr-only" },
-              `, sorted ${ORDINAL[at] ?? `${at + 1}th`}, ${key.direction === "asc" ? "ascending" : "descending"}`,
+              t("grid.sorted", {
+                nth: ORDINAL[at] ? t(ORDINAL[at]) : t("grid.ordinalNth", { n: String(at + 1) }),
+                direction: t(key.direction === "asc" ? "grid.ascending" : "grid.descending"),
+              }),
             )
           : undefined,
         record ? undefined : el(doc, "span", { class: "grip", "aria-hidden": "true" }),

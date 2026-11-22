@@ -6,6 +6,7 @@
 // come back as GeoJSON from the viewer's own statement (`geoRead`, features/geo/), never the person's.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { geoClient } from "./client.js";
 import { createSurface } from "./map-canvas.js";
 import { wireInput } from "./map-input.js";
@@ -25,7 +26,6 @@ import { fitView, fixed, scaleBar, toData, unitsOf, zoomAt } from "./plane.js";
  * @typedef {{ key: string, view: View | null, summary: Summary | null, loading: Promise<void> | null, generation: number }} Layer
  */
 
-const count = (/** @type {number} */ n) => n.toLocaleString("en-US");
 let made = 0;
 
 /** @param {Document} doc @param {Act} act @param {import("./client.js").StartWorker} [startWorker] */
@@ -48,12 +48,12 @@ export function createMaps(doc, act, startWorker) {
     return b;
   };
   const column = /** @type {HTMLSelectElement} */ (
-    el(doc, "select", { class: "desk-field geo-column", "aria-label": "Column on the map" })
+    el(doc, "select", { class: "desk-field geo-column", "aria-label": t("map.column") })
   );
   const rowsTabs = el(doc, "div", {
     class: "desk-tabs geo-rows",
     role: "tablist",
-    "aria-label": "Rows on the map",
+    "aria-label": t("map.rows"),
   });
   const canvas = /** @type {HTMLCanvasElement} */ (
     el(doc, "canvas", { class: "geo-canvas", tabindex: "0", role: "img" })
@@ -62,7 +62,7 @@ export function createMaps(doc, act, startWorker) {
   const scaleText = el(doc, "span", { class: "geo-scale-text" });
   const coords = el(doc, "span", { class: "geo-at", "aria-hidden": "true" });
   const said = el(doc, "span", { class: "geo-said", role: "status", "aria-live": "polite" });
-  const inGrid = button("Show in grid", "The picked row in the grid (Enter)", () => showInGrid());
+  const inGrid = button(t("map.showInGrid"), t("map.showInGridTitle"), () => showInGrid());
   const note = el(doc, "p", { class: "geo-note", hidden: true });
   const root = el(
     doc,
@@ -71,13 +71,13 @@ export function createMaps(doc, act, startWorker) {
     el(
       doc,
       "div",
-      { class: "geo-bar", role: "toolbar", "aria-label": "Map" },
+      { class: "geo-bar", role: "toolbar", "aria-label": t("map.label") },
       column,
       rowsTabs,
       el(doc, "span", { class: "grow" }),
-      button("Fit", "Show every shape drawn (0)", () => refit()),
-      button("+", "Zoom in (+)", () => zoomBy(2)),
-      button("−", "Zoom out (−)", () => zoomBy(0.5)),
+      button(t("map.fit"), t("map.fitTitle"), () => refit()),
+      button(t("map.zoomIn"), t("map.zoomInTitle"), () => zoomBy(2)),
+      button(t("map.zoomOut"), t("map.zoomOutTitle"), () => zoomBy(0.5)),
     ),
     el(
       doc,
@@ -127,7 +127,7 @@ export function createMaps(doc, act, startWorker) {
       on.layer.summary = null;
       return void draw();
     }
-    act("say", `Map: ${error instanceof Error ? error.message : String(error)}`);
+    act("say", t("map.failed", { error: error instanceof Error ? error.message : String(error) }));
   };
 
   /** Read the column into the worker once (again after a worker stopped); the curves through the server. */
@@ -136,7 +136,7 @@ export function createMaps(doc, act, startWorker) {
     const spatial = geo.columns[link.column];
     if (layer.loading || !spatial) return layer.loading ?? Promise.resolve();
     root.setAttribute("aria-busy", "true");
-    said.textContent = `Reading ${count(geo.set.rows.length)} values…`;
+    said.textContent = t("map.reading", { count: geo.set.rows.length });
     layer.generation = client.generation;
     const values = geo.set.rows.map((row) => row[spatial.column] ?? null);
     layer.loading = (async () => {
@@ -201,30 +201,23 @@ export function createMaps(doc, act, startWorker) {
     scaleText.textContent = bar.label;
     const kinds = s
       ? Object.entries(s.types)
-          .map(([type, n]) => `${count(n)} ${type}`)
+          .map(([type, n]) => t("map.kind", { count: n, type }))
           .join(", ")
       : "";
-    const srid = s?.srid ? `SRID ${s.srid}` : "no SRID";
-    canvas.setAttribute(
-      "aria-label",
-      `Map of ${geo.columns[link.column]?.name ?? ""}: ${kinds || "no shapes"}, ${srid}`,
-    );
+    const srid = s?.srid ? t("map.srid", { srid: String(s.srid) }) : t("map.noSrid");
+    const name = geo.columns[link.column]?.name ?? "";
+    const shapes = kinds || t("map.noShapes");
+    canvas.setAttribute("aria-label", t("map.canvas", { column: name, kinds: shapes, srid }));
     const notes = [];
     const curves = s?.unread.length ?? 0;
-    if (curves)
-      notes.push(
-        `${count(curves)} curved value${curves === 1 ? " is" : "s are"} not drawn: the server did not read them as lines.`,
-      );
-    if (s?.failed)
-      notes.push(
-        `${count(s.failed)} value${s.failed === 1 ? "" : "s"} could not be read: ${s.why}`,
-      );
-    if (s && s.srids > 1)
-      notes.push("The shapes are in more than one SRID, drawn as their coordinates are.");
+    if (curves) notes.push(t("map.curves", { count: curves }));
+    if (s?.failed) notes.push(t("map.unread", { count: s.failed, why: s.why }));
+    if (s && s.srids > 1) notes.push(t("map.srids"));
     note.hidden = notes.length === 0;
     note.textContent = notes.join(" ");
     inGrid.hidden = link.picked < 0;
-    said.textContent = pickedWords(geo, link) || (s ? `${count(s.shapes)} shapes, ${srid}` : "");
+    said.textContent =
+      pickedWords(geo, link) || (s ? t("map.shapes", { count: s.shapes, srid }) : "");
   };
 
   /** The picked row: its number, up to three of its other values, its shape's type and vertices. */
@@ -236,10 +229,8 @@ export function createMaps(doc, act, startWorker) {
       .flatMap((name, c) => (spatial.has(c) ? [] : [`${name} ${row[c] ?? "NULL"}`]))
       .slice(0, 3);
     const f = link.facts;
-    const facts = f
-      ? [f.type, `${count(f.vertices)} ${f.vertices === 1 ? "vertex" : "vertices"}`]
-      : ["no shape"];
-    return [`Row ${count(link.picked + 1)}`, ...values, ...facts].join(" · ");
+    const facts = f ? [f.type, t("map.vertices", { count: f.vertices })] : [t("map.noShape")];
+    return [t("map.row", { count: link.picked + 1 }), ...values, ...facts].join(" · ");
   };
 
   const setView = (/** @type {View} */ view) => {
@@ -317,7 +308,10 @@ export function createMaps(doc, act, startWorker) {
       if (!view) return;
       const { width, height } = surface.size();
       const [x, y] = toData(view, px, py, width, height);
-      coords.textContent = `x ${fixed(x, 1 / (view.scale * view.kx))} · y ${fixed(y, 1 / view.scale)}`;
+      coords.textContent = t("map.at", {
+        x: fixed(x, 1 / (view.scale * view.kx)),
+        y: fixed(y, 1 / view.scale),
+      });
     },
   });
   column.addEventListener("change", () => {
@@ -344,8 +338,11 @@ export function createMaps(doc, act, startWorker) {
     );
     column.hidden = geo.columns.length < 2;
     const modes = /** @type {const} */ ([
-      ["all", `${geo.set.truncated ? "Rows held" : "All rows"} (${count(geo.set.rows.length)})`],
-      ["selected", `Selected rows (${count(link.selected.length)})`],
+      [
+        "all",
+        t(geo.set.truncated ? "map.rowsHeld" : "map.allRows", { count: geo.set.rows.length }),
+      ],
+      ["selected", t("map.selectedRows", { count: link.selected.length })],
     ]);
     rowsTabs.replaceChildren(
       ...modes.map(([mode, label]) =>

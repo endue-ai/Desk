@@ -7,7 +7,7 @@
 
 import { sizeText } from "../console-files.js";
 import { el } from "../dom.js";
-import { formatCount } from "../format.js";
+import { nodes, serverWords, t } from "../strings/index.js";
 import { TYPES } from "./infer.js";
 import { ENCODINGS } from "./wizard.js";
 
@@ -53,7 +53,7 @@ export function createCopyView(doc, act) {
   const onError = /** @type {HTMLSelectElement} */ (byId("i-on-error"));
   const batch = input("i-batch");
   byId("i-encodings").replaceChildren(...ENCODINGS.map((e) => el(doc, "option", { value: e })));
-  byId("i-types").replaceChildren(...TYPES.map((t) => el(doc, "option", { value: t })));
+  byId("i-types").replaceChildren(...TYPES.map((type) => el(doc, "option", { value: type })));
 
   const option = (/** @type {Record<string, unknown>} */ options) =>
     act("importChange", { options });
@@ -78,7 +78,12 @@ export function createCopyView(doc, act) {
 
   const drawServer = (/** @type {CopyModel} */ c) => {
     const answer = c.server;
-    serverError.textContent = answer && "error" in answer ? `The server: ${answer.error}` : "";
+    // What the server said stays its own words (PG-108).
+    serverError.replaceChildren(
+      ...(answer && "error" in answer
+        ? nodes("copyImport.server", { error: serverWords(doc, answer.error) })
+        : []),
+    );
     serverBox.hidden = !answer || "error" in answer;
     if (!answer || "error" in answer) return server.replaceChildren();
     const head = el(
@@ -142,15 +147,19 @@ export function createCopyView(doc, act) {
       onError.value = c.onError;
       set(batch, c.batch > 0 ? String(c.batch) : "");
       check.disabled = m.running || c.checking || m.problem !== "";
-      check.textContent = c.checking ? "Checking…" : "Check on the server";
+      check.textContent = t(c.checking ? "copyImport.checking" : "copyImport.check");
       drawServer(c);
       progress.hidden = !c.progress;
       if (c.progress) {
         const { rows, bytes, total } = c.progress;
-        progress.setAttribute("label", `Importing ${m.file}`);
+        progress.setAttribute("label", t("copyImport.progress", { file: m.file }));
         progress.setAttribute(
           "detail",
-          `${formatCount(rows)} rows, ${sizeText(bytes)}${total ? ` of ${sizeText(total)}` : ""} read`,
+          t("copyImport.read", {
+            rows,
+            bytes: sizeText(bytes),
+            total: total ? t("copyImport.readOf", { total: sizeText(total) }) : "",
+          }),
         );
         if (total) {
           progress.setAttribute("max", String(total));
@@ -167,7 +176,7 @@ export function createCopyView(doc, act) {
           class: "desk-field",
           "data-index": String(index),
           "data-part": "name",
-          "aria-label": `${m.fileColumns[index]}: column name (empty leaves it out)`,
+          "aria-label": t("copyImport.columnName", { column: m.fileColumns[index] }),
           autocomplete: "off",
           spellcheck: "false",
         })
@@ -178,7 +187,7 @@ export function createCopyView(doc, act) {
           list: "i-types",
           "data-index": String(index),
           "data-part": "type",
-          "aria-label": `${m.fileColumns[index]}: type`,
+          "aria-label": t("copyImport.columnType", { column: m.fileColumns[index] }),
           autocomplete: "off",
           spellcheck: "false",
         })

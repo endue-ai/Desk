@@ -3,6 +3,7 @@
 // (a read-only connection gets no Run), and the run's result. The text is the script as it runs.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { refusalOf } from "./runs.js";
 import { scriptOf, stepText } from "./script.js";
 
@@ -21,7 +22,7 @@ function scriptBlock(
     class: "td-script",
     "data-part": "script",
     tabindex: "0",
-    "aria-label": "Script",
+    "aria-label": t("tableDesign.script"),
   });
   const blocks = /** @type {(string | { text: string, step: number })[]} */ ([]);
   if (script.inside.length)
@@ -50,7 +51,7 @@ function scriptBlock(
     pre.append(span);
   });
   if (blocks.length) pre.append("\n");
-  else pre.append(el(doc, "span", { class: "td-empty" }, "Nothing changes yet."));
+  else pre.append(el(doc, "span", { class: "td-empty" }, t("tableDesign.nothing")));
   return pre;
 }
 
@@ -66,15 +67,13 @@ export function scriptParts(doc, s, act, id) {
   const script = scriptOf(s.read.original, s.design, s.read.facts);
   const running = s.run?.status === "running";
   const refused = refusalOf(s);
-  const how = script.after.length
-    ? "Runs in one transaction; the CONCURRENTLY indexes run after it commits, each on its own."
-    : "Runs in one transaction: a failing step leaves the table as it was.";
+  const how = t(script.after.length ? "tableDesign.runsAfter" : "tableDesign.runsOne");
   const parts = [
     el(
       doc,
       "div",
       { class: "td-script-head" },
-      el(doc, "h3", {}, "Script"),
+      el(doc, "h3", {}, t("tableDesign.script")),
       el(doc, "p", { class: "td-hint" }, how),
     ),
     scriptBlock(doc, script, s.run?.status === "failed" ? s.run.step : -1),
@@ -115,24 +114,26 @@ export function scriptParts(doc, s, act, id) {
           doc,
           "p",
           { class: "td-hint", "data-part": "read-only" },
-          `${s.conn.name} is read-only: the form shows the script and runs nothing.`,
+          t("tableDesign.readOnly", { name: s.conn.name }),
         ),
       ]
     : [
         button(
           "tableDesignRun",
-          running && !s.run?.dry ? "Running…" : "Run",
+          t(running && !s.run?.dry ? "tableDesign.running" : "tableDesign.run"),
           "desk-btn-primary",
           !can,
         ),
         button(
           "tableDesignDryRun",
-          running && s.run?.dry ? "Running…" : "Dry run",
+          t(running && s.run?.dry ? "tableDesign.running" : "tableDesign.dryRun"),
           "",
           !can || script.inside.length === 0,
         ),
       ];
-  actions.push(button("tableDesignConsole", "Open in console", "desk-btn-quiet", !script.text));
+  actions.push(
+    button("tableDesignConsole", t("tableDesign.openConsole"), "desk-btn-quiet", !script.text),
+  );
   if (!s.conn.readOnly && refused && !script.problems.length)
     actions.push(el(doc, "span", { class: "td-hint" }, refused));
   parts.push(el(doc, "div", { class: "td-actions" }, ...actions));

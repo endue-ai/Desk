@@ -3,7 +3,7 @@
 // keys, a routine's overloads, or a column's type and default. A status a screen reader reads.
 
 import { el } from "../dom.js";
-import { formatCount } from "../format.js";
+import { t } from "../strings/index.js";
 
 /** @typedef {import("./card.js").Card} Card */
 
@@ -22,15 +22,12 @@ export function renderCard(/** @type {Document} */ doc, /** @type {Card} */ card
   if (card.type)
     line(
       "nav-card-type",
-      `${card.type}${card.notNull ? " not null" : ""}${card.default ? ` default ${card.default}` : ""}`,
+      `${card.type}${card.notNull ? t("card.notNull") : ""}${card.default ? t("card.default", { value: card.default }) : ""}`,
     );
   if (card.detail) line("nav-card-detail", card.detail);
   if (card.comment) line("nav-card-comment", card.comment);
   if (card.estimate !== undefined)
-    line(
-      "nav-card-detail",
-      `about ${formatCount(card.estimate)} row${card.estimate === 1 ? "" : "s"}`,
-    );
+    line("nav-card-detail", t("card.estimate", { count: card.estimate }));
   if (card.columns) {
     const rows = card.columns.map((c) =>
       el(
@@ -43,12 +40,14 @@ export function renderCard(/** @type {Document} */ doc, /** @type {Card} */ card
           doc,
           "td",
           { class: "nav-card-key" },
-          [c.key, c.default && `default ${c.default}`].filter(Boolean).join(" · "),
+          [c.key, c.default && t("card.columnDefault", { value: c.default })]
+            .filter(Boolean)
+            .join(" · "),
         ),
       ),
     );
     root.append(el(doc, "table", { class: "nav-card-columns" }, el(doc, "tbody", {}, ...rows)));
-    if (card.more) line("nav-card-detail", `and ${card.more} more columns`);
+    if (card.more) line("nav-card-detail", t("card.more", { more: String(card.more) }));
   }
   for (const key of card.keys ?? []) line("nav-card-keys", key);
   for (const s of card.signatures ?? []) {

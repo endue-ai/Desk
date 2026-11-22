@@ -11,6 +11,7 @@ import { checkValue } from "./cell-editors/values.js";
 import { el } from "./dom.js";
 import { DEFAULT, isDefault } from "./edit/values.js";
 import { createShapeView, shapeKind } from "./geo/value-shape.js";
+import { t } from "./strings/index.js";
 import { describeValue } from "./value.js";
 
 /**
@@ -70,7 +71,15 @@ export function createValueViewer(doc, act, back, startWorker) {
             "aria-selected": String(v === view),
             "data-view": v,
           },
-          v === "json" ? "JSON" : v === "hex" ? "Bytes" : v === "shape" ? "Shape" : "Text",
+          t(
+            v === "json"
+              ? "value.json"
+              : v === "hex"
+                ? "value.bytes"
+                : v === "shape"
+                  ? "value.shape"
+                  : "value.text",
+          ),
         ),
       ),
     );
@@ -83,9 +92,15 @@ export function createValueViewer(doc, act, back, startWorker) {
     setNull.hidden = !cell.editable || cell.editor?.nullable === false;
     setDefault.hidden = !cell.editable || !cell.editor?.hasDefault;
     error.hidden = true;
-    const why = cell.editable ? "" : cell.reason ? ` · read-only: ${cell.reason}` : " · read-only";
+    const why = cell.editable
+      ? ""
+      : cell.reason
+        ? t("value.readOnlyWhy", { why: cell.reason })
+        : t("value.readOnly");
     const zone =
-      cell.editor?.zone && cell.editor.timeZone ? ` · time zone ${cell.editor.timeZone}` : "";
+      cell.editor?.zone && cell.editor.timeZone
+        ? t("value.timeZone", { zone: cell.editor.timeZone })
+        : "";
     meta.textContent = `${described.meta}${zone}${why}`;
     if (view !== "shape" || !kind || cell.value === null) return shape.hide();
     void shape.show(String(cell.value), kind).then(
@@ -94,7 +109,10 @@ export function createValueViewer(doc, act, back, startWorker) {
       },
       (failed) => {
         if (opened === cell)
-          meta.textContent = `Not drawn: ${failed instanceof Error ? failed.message : String(failed)} · ${meta.textContent}`;
+          meta.textContent = t("value.notDrawn", {
+            why: failed instanceof Error ? failed.message : String(failed),
+            meta: meta.textContent,
+          });
       },
     );
   };
@@ -146,7 +164,7 @@ export function createValueViewer(doc, act, back, startWorker) {
     open(/** @type {Opened | undefined} */ cell) {
       if (!cell) return;
       opened = cell;
-      title.textContent = cell.name || "Value";
+      title.textContent = cell.name || t("value.title");
       const first = shapeKind(cell)
         ? "shape"
         : (describeValue(cell.value, cell.type).views[0] ?? "text");

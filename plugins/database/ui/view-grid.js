@@ -33,6 +33,7 @@ import { defaultWidths } from "./grid-model.js";
 import { createGridLinks } from "./links/grid-links.js";
 import { lineOf } from "./message-line.js";
 import { numericColumns } from "./results.js";
+import { t } from "./strings/index.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
 import { planView } from "./view-plan.js";
@@ -116,11 +117,10 @@ export function createGrid(doc, host, act, options = {}) {
       row: Math.min(st.cursor.row, Math.max(0, count - 1)),
       col: Math.min(st.cursor.col, Math.max(0, cols - 1)),
     };
-    const why = s.columns.length
-      ? st.text || shaping.filters().length
-        ? "No row holds that."
-        : "No rows."
-      : "No rows (this client names no columns for an empty result).";
+    const filtered = st.text || shaping.filters().length;
+    const why = t(
+      s.columns.length ? (filtered ? "grid.noMatch" : "grid.noRows") : "grid.noColumns",
+    );
     // The scroller stays in the page, so the focused grid keeps its focus.
     if (host.firstChild !== scroller) host.replaceChildren(scroller);
     for (const old of host.querySelectorAll(":scope > .empty")) old.remove();

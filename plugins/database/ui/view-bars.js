@@ -10,8 +10,8 @@ import { labelOf } from "./console-list.js";
 import { ownDatabase } from "./databases.js";
 import { el } from "./dom.js";
 import { headerOf } from "./engines/pg-options.js";
-import { formatCount } from "./format.js";
 import { createTransactionHeader } from "./session/header-view.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./consoles.js").Console} Console
@@ -53,7 +53,7 @@ export function createBars(doc) {
             ? model
               ? model.name.replace(/^[\w-]+: /u, "")
               : conn.name
-            : "Database";
+            : t("bars.database");
       title.title = conn
         ? `${ENGINE[conn.engine]} · ${conn.engine === "sqlite" ? conn.file : conn.host}`
         : "";
@@ -68,7 +68,9 @@ export function createBars(doc) {
       options.hidden = !options.textContent;
       const tag = conn && conn.tag !== "none" ? conn.tag : "";
       badge.hidden = !tag && !conn?.readOnly;
-      badge.textContent = [tag, conn?.readOnly ? "read-only" : ""].filter(Boolean).join(" · ");
+      badge.textContent = [tag, conn?.readOnly ? t("bars.readOnly") : ""]
+        .filter(Boolean)
+        .join(" · ");
       badge.className = tag ? `tag tag-${tag}` : "tag";
       doc.body.dataset.tag = tag;
       doc.body.dataset.color = conn?.color ?? "";
@@ -90,7 +92,7 @@ export function createBars(doc) {
               class: `desk-tab tab-${tab.kind}`,
               "data-index": String(index),
               title: tab.pin
-                ? `Pinned: ${tab.pin.sql.replace(/\s+/gu, " ").slice(0, 200)}`
+                ? t("bars.pinned", { sql: tab.pin.sql.replace(/\s+/gu, " ").slice(0, 200) })
                 : undefined,
             },
             tab.label,
@@ -110,7 +112,7 @@ export function createBars(doc) {
         node.hidden = !ready;
       byId("changes").hidden = !edit?.count;
       byId("changes-count").textContent = edit?.count
-        ? `${formatCount(edit.count)} pending change${edit.count === 1 ? "" : "s"}`
+        ? t("bars.pendingChanges", { count: edit.count })
         : "";
       byId("edit-note").textContent =
         tab?.kind === "notifications" ? (tab.note ?? "") : (edit?.message ?? "");
@@ -119,14 +121,16 @@ export function createBars(doc) {
       // A console's result pins (features/compare/); a pinned one unpins.
       const pin = byId("pin");
       pin.hidden = model.kind !== "console";
-      pin.textContent = tab?.kind === "pinned" ? "Unpin" : "Pin";
+      pin.textContent = t(tab?.kind === "pinned" ? "bars.unpin" : "bars.pin");
       const pages = byId("console-pages");
       // A read its cursor keeps scrolls instead of paging (PG-22).
       pages.hidden = !(model.kind === "console" && model.page && !tab?.set?.window);
       if (model.page) {
         const rows = tab?.set?.rows.length ?? 0;
-        byId("console-page").textContent =
-          `${formatCount(model.page.offset + 1)}–${formatCount(model.page.offset + rows)}`;
+        byId("console-page").textContent = t("view.page", {
+          from: model.page.offset + 1,
+          to: model.page.offset + rows,
+        });
       }
     },
   };
