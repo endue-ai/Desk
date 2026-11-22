@@ -7,12 +7,14 @@
 import { oneLine } from "./execute.js";
 import { formatCount, formatDuration } from "./format.js";
 import { spatialColumns } from "./geo/detect.js";
+import { offerOf } from "./session/connect-gate.js";
 
 /**
  * @typedef {import("./execute.js").Execution} Execution
  * @typedef {import("./engines/common.js").ResultSet} ResultSet
  * @typedef {import("./engines/common.js").DbError} DbError
- * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number }} Line
+ * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number, act?: { action: string, args: unknown[], label: string } }} Line
+ *   `act`: a press beside the line (Allow connecting to a refused server, ADR 0335).
  * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned" | "chart", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin, chart?: import("./chart/model.js").ChartTab }} Tab
  *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn;
  *   a map tab (`geo`) the set before it and the columns that hold its shapes. A pinned tab holds a
@@ -36,7 +38,13 @@ export function show(execution, base = 0, pinned = []) {
   const lines = [];
   /** @type {Shown["error"]} */
   let error;
-  if (result.error) lines.push({ level: "error", text: errorText(result.error), statement: -1 });
+  if (result.error)
+    lines.push({
+      level: "error",
+      text: errorText(result.error),
+      statement: -1,
+      ...offerOf(execution.conn, result.error),
+    });
   result.statements.forEach((outcome, index) => {
     const verb = classes[index]?.verb || "Statement";
     const number = statements.length > 1 ? `${index + 1}. ` : "";

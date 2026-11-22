@@ -224,3 +224,11 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The press beside a Messages line: Allow connecting to a refused server (ADR 0335). */
+.messages .line-act {
+  display: block;
+  margin-block: 6px;
+  font-family: var(--desk-font-sans);
+  white-space: nowrap;
+}
