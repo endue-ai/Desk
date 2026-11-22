@@ -116,7 +116,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(170);
+    expect(ids).toHaveLength(177);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -253,6 +253,9 @@ describe("permissions", () => {
       // asked for each server; it also lets the plugin keep that server's password in the
       // keychain (keychain.js, ADR 0311).
       { permission: "db:connect", hosts: ["*"] },
+      // Eris's help in a console (features/assist/, ADR 0345): one question at a time through
+      // brain.ask, in a session of its own; granted at install.
+      { permission: "brain:ask" },
     ]);
   });
 
@@ -316,6 +319,9 @@ describe("permissions", () => {
     await sessions.run(conn, options).catch(() => {});
     expect(pg.asked).toEqual([{ permission: "db:connect", hosts: ["db.example:6543"] }]);
     expect(coveredBy(pg.asked[0] as Scope)).toEqual([declarations()[8]]);
+
+    // Eris's help in a console asks under brain:ask, which its own declaration covers.
+    expect(coveredBy({ permission: "brain:ask" })).toEqual([declarations()[9]]);
 
     // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
     const out = refusing();
