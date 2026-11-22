@@ -1,0 +1,39 @@
+#!/bin/sh
+# Expose the two packaged commands in an explicitly chosen directory.
+set -eu
+if [ "$#" -gt 1 ]; then
+  echo "Usage: activate [bin-directory]" >&2
+  exit 2
+fi
+cli=$(CDPATH= cd -P "$(dirname "$0")" && pwd -P)
+dest=${1:-"$HOME/.local/bin"}
+case $dest in
+  /*) ;;
+  *) dest=$PWD/$dest ;;
+esac
+
+for name in endue desk; do
+  source=$cli/$name
+  entry=$dest/$name
+  if [ ! -x "$source" ] || [ ! -f "$source" ]; then
+    echo "Missing packaged command: $source" >&2
+    exit 1
+  fi
+  active=$(command -v "$name" || true)
+  if [ -n "$active" ] && ! [ "$active" -ef "$source" ]; then
+    echo "$name already resolves to $active. Run $source directly." >&2
+    exit 1
+  fi
+  if { [ -e "$entry" ] || [ -L "$entry" ]; } && ! [ "$entry" -ef "$source" ]; then
+    echo "$entry already exists. Run $source directly." >&2
+    exit 1
+  fi
+done
+
+mkdir -p "$dest"
+for name in endue desk; do
+  if ! [ "$dest/$name" -ef "$cli/$name" ]; then
+    ln -s "$cli/$name" "$dest/$name"
+  fi
+done
+echo "CLI available in $dest. Add that directory to PATH to use endue and desk."

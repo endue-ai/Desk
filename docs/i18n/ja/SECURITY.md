@@ -24,7 +24,7 @@
 
 ## サポート対象のバージョン
 
-Desk は 1.0 より前の段階です。セキュリティ修正を受けるのは、各チャンネル（stable、beta、canary）の最新リリースのみです。
+endue は 1.0 より前の段階です。セキュリティ修正を受けるのは、各チャンネル（stable、beta、canary）の最新リリースのみです。
 
 ## 対象範囲
 
@@ -34,4 +34,4 @@ Desk は 1.0 より前の段階です。セキュリティ修正を受けるの�
 
 ## 脅威モデル
 
-[docs/security/threat-model.md](../../security/threat-model.md)（英語）に、Desk が守る資産、想定する攻撃者、そして信頼境界ごとに現在の `main` にある対策、または残っている課題とそれを解決する issue をまとめています。
+[docs/security/threat-model.md](../../security/threat-model.md)（英語）に、endue が守る資産、想定する攻撃者、そして信頼境界ごとに現在の `main` にある対策、または残っている課題とそれを解決する issue をまとめています。

@@ -14,7 +14,7 @@ The code in this repository is open source under Apache-2.0. The names and marks
 
 ## What you may do
 
-- Refer to endue Desk truthfully, for example "a plugin for endue Desk" or "based on endue Desk".
+- Refer to endue truthfully, for example "a plugin for endue" or "based on endue".
 - Use screenshots and the unmodified files in `brand/` in reviews, articles, talks and plugin listings,
   as long as it is clear that you are not endue.
 - Build, run and modify the code for yourself or your organisation.

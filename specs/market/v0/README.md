@@ -14,7 +14,7 @@ keeps serving themes and design systems as it does. v0 may break on any minor re
 - A desk reads the indexes the setting `desk.market.indexes` lists (default: this repository's
   `market/views/index.json`), and lists the theme markets' themes and design systems with them; the
   first index that lists an id wins.
-- The endue index is what `https://raw.githubusercontent.com/endue-ai/Desk/main/market/` serves. Code
+- The endue index is what `https://raw.githubusercontent.com/endue-ai/endue/main/market/` serves. Code
   (`plugin`) installs from it only; anything from another index is shown as not verified (signatures
   later, ADR 0005).
 - Before an install the desk shows the permissions the entry asks that the installed version was not
