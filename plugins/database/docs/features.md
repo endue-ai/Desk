@@ -397,4 +397,4 @@ Modules: `features/backup/`.
 - `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
   not agents' tools, so the person runs it (ADR 0324).
 
-Modules: `agent.js`.
+Modules: `agent.js`. More read tools, what agents may reach and their audit list: [`agents.md`](agents.md).
