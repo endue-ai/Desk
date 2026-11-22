@@ -27,6 +27,7 @@ export { feature as keychain } from "./keychain/index.js";
 export { feature as links } from "./links/index.js";
 export { feature as maintenance } from "./maintenance/index.js";
 export { feature as navigate } from "./navigate/index.js";
+export { feature as notifications } from "./notifications/index.js";
 export { feature as objects } from "./objects/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as palette } from "./palette/index.js";

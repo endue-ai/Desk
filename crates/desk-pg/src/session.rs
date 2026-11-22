@@ -24,7 +24,13 @@ use crate::task::{Command, Task};
 /// What a session reports without being asked.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
+    /// A notice outside any call: with the sign-in, or while the session is idle.
     Notice(ServerError),
+    /// A notice a call heard, sent as it arrives; that call's page (its `call`) carries it too.
+    CallNotice {
+        call: u64,
+        notice: ServerError,
+    },
     Notification {
         pid: i32,
         channel: String,
