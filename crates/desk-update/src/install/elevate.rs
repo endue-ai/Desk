@@ -146,7 +146,9 @@ pub fn declined(what: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Refusal, Step, osascript_command, pkexec_command, run, said};
+    #[cfg(target_os = "macos")]
+    use super::{Refusal, run};
+    use super::{Step, osascript_command, pkexec_command, said};
 
     fn step() -> Step {
         Step {
@@ -194,7 +196,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("desk-elevate-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("args");
-        let tricky = r#"/Applications/it's "endue" Desk $HOME `x` \.app"#;
+        let tricky = r#"/Applications/it's "endue" $HOME `x` \.app"#;
         let printf = "printf '%s\\n' \"$@\" > \"$0\"; [ \"$2\" = ok ] || { echo \"it said $2\" >&2; exit 3; }";
         let step = |second: &str| Step {
             why: "why".to_owned(),
