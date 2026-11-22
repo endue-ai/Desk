@@ -20,10 +20,12 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
  *   plugin's own reading and asks nothing; `asked` says the caller put its own question to the person
- *   (the guards still refuse); `signal` cancels this run alone, as Cancel does every run.
+ *   (the guards still refuse); `session` runs PostgreSQL on the session that console or table view
+ *   keeps (PG-02, ADR 0320), else on a short one of the run's own; `signal` cancels this run alone,
+ *   as Cancel does every run.
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
@@ -86,6 +88,8 @@ export function createExecutor(deps) {
           timeoutMs,
           mode,
           ...typed,
+          ...(options.session ? { session: options.session } : {}),
+          ...(options.agent ? { agent: true } : {}),
           ...signal,
         });
       }

@@ -5,6 +5,12 @@
   z-index: 3;
 }
 
+/* The scroller is a stacking context of its own, so the header's z-index stays inside the grid
+   and never draws over a dialog (#564). */
+.scroller {
+  isolation: isolate;
+}
+
 .header {
   display: flex;
   position: relative;
