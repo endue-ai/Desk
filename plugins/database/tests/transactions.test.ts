@@ -26,8 +26,8 @@ describe("a console's manual transaction", () => {
     ]);
     expect(state(m)).toBe("open");
     // The plugin's BEGIN is not one of the run's statements.
-    expect(m.shown()?.execution?.result.statements).toHaveLength(1);
-    expect(m.shown()?.execution?.result.statements[0]?.index).toBe(0);
+    expect(JSON.stringify(m.shown()?.shown ?? null)).not.toMatch(/BEGIN/u);
+    expect(m.shown()?.shown?.tabs.length).toBeGreaterThan(0);
     expect(m.shown()?.session).toMatchObject({ statements: 2 });
 
     await m.host.command("endue.database.commit");

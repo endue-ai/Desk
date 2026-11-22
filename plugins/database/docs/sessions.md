@@ -12,6 +12,8 @@ Which session a PostgreSQL run goes to, and what stays on it (ADR 0320). The res
   them and says ROLLBACK first.
 - Closing the console, Disconnect, a change to how the connection signs in and removing it close the session,
   asked first while a transaction is open; what was open is rolled back and said so.
+- A console can hold a transaction open in Manual commit, with Commit, Rollback, an isolation level and
+  savepoints, and closing it or Disconnect asks commit, roll back or stay: [`transactions.md`](transactions.md).
 - A session the server ended is said with its reason; the next run opens a new one, says that SET and
   temporary state are gone, and runs nothing again.
 - Agents, the explorer, counts, features and grid edits use short sessions, opened and closed around the run.

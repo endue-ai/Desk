@@ -1,6 +1,7 @@
 // The keys inside the Database surface, one table per area. The explorer and the grid take single
-// keys; the editor takes Mod+Enter (run the statement), Mod+Shift+Enter (run the script) and
-// Mod+Shift+F (format), and Escape only while a run goes on; the grid takes Mod+Enter (submit the
+// keys; the editor takes Mod+Enter (run the statement), Mod+Shift+Enter (run the script),
+// Mod+Shift+F (format), Mod+Shift+Y and Mod+Shift+H (commit and roll back the console's transaction,
+// PG-20), and Escape only while a run goes on; the grid takes Mod+Enter (submit the
 // pending changes), Mod+F (find in the result: the grid's own, never the editor's) and Mod+Z (undo a
 // pending change). Mod+V is listed for the hint line but left to the browser, whose paste event the
 // grid reads (grid/paste.js). Every other chord with Mod, Alt or Control is left to the desk, except
@@ -45,6 +46,8 @@ export const BINDINGS = {
     { chord: "Mod+Enter", action: "run", label: "run statement" },
     { chord: "Mod+Shift+Enter", action: "runAll", label: "run script" },
     { chord: "Mod+Shift+F", action: "format", label: "format" },
+    { chord: "Mod+Shift+Y", action: "commitTransaction", label: "" },
+    { chord: "Mod+Shift+H", action: "rollbackTransaction", label: "" },
     { chord: "Escape", action: "cancel", label: "cancel" },
   ],
   grid: [
@@ -100,7 +103,15 @@ export const BINDINGS = {
 };
 
 /** Chords this surface keeps from the desk, by area. */
-const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F", "Mod+Z"]);
+const CHORDS = new Set([
+  "Mod+Enter",
+  "Mod+Shift+Enter",
+  "Mod+Shift+F",
+  "Mod+Shift+Y",
+  "Mod+Shift+H",
+  "Mod+F",
+  "Mod+Z",
+]);
 
 /**
  * The action a key press runs in an area, or undefined when the desk (or the field) should have it.
