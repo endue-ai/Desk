@@ -7,6 +7,7 @@
 // record, and resolves the connection's open consoles, then lists them all in a panel. Nothing but
 // find usages asks the server anything. No DOM.
 import { problemModel } from "../diagnose/model.js";
+import { pathOf } from "../engines/pg-options.js";
 import { sqlParser } from "../sql/parse/client.js";
 import { cardOf } from "./card.js";
 import { findUsages } from "./find.js";
@@ -34,8 +35,6 @@ export const PANEL = "usages";
  */
 export const typePath = (/** @type {string[]} */ searchPath, /** @type {string} */ user) =>
   searchPath.flatMap((s) => (s === "$user" ? (user ? [user] : []) : [s]));
-/** The server's default search path; a role's or a database's own is not known until a session says. */
-const SEARCH_PATH = ["$user", "public"];
 const NOT_PG = "Go to definition, the card and usages read PostgreSQL consoles.";
 const NOTHING = "Put the caret on a name the schema holds, a CTE or an alias.";
 
@@ -63,9 +62,10 @@ export function createNavigator(deps, parser = sqlParser) {
     const model = problemModel(conn.id, view);
     const sql = parser();
     if (!view || !model || !sql) return "The schema of this connection is not read yet.";
-    const options = { searchPath: [...SEARCH_PATH], user: conn.user };
+    // The connection's search path and role (PG-12), else the server's default path.
+    const options = pathOf(conn);
     const resolve = (/** @type {string} */ text) => sql.resolve(text, model, options);
-    return { shown, conn, view, model, resolve, path: typePath(SEARCH_PATH, conn.user ?? "") };
+    return { shown, conn, view, model, resolve, path: typePath(options.searchPath, options.user) };
   };
 
   /** The aim at the window's caret, with what it was read from. */
