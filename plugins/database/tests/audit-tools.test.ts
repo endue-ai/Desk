@@ -154,15 +154,24 @@ describe("sessions-list", () => {
 });
 
 describe("check-statement", () => {
-  it("prepares a statement without running it, and answers an error at its own position", async () => {
+  it("describes a statement without running it, and answers an error at its own position", async () => {
     const { m, seen } = await auditMount();
     const ok = await asAgent(m, "endue.database.check-statement", {
       connection: "shop",
       sql: "insert into people (name) values ('Dee')",
     });
-    expect(ok).toEqual({ checked: true, ok: true });
-    expect(seen.map((s) => s.sql).filter((sql) => /^insert/iu.test(sql))).toEqual([]);
-    expect(seen.find((s) => s.sql.startsWith("PREPARE"))?.who).toMatchObject({ readOnly: "on" });
+    expect(ok).toEqual({ checked: true, ok: true, params: [], columns: [] });
+    const ran = seen.filter((s) => !s.describe).map((s) => s.sql);
+    expect(ran.filter((sql) => /^insert/iu.test(sql))).toEqual([]);
+    expect(seen.find((s) => s.describe)?.who).toMatchObject({ readOnly: "on" });
+    const read = await asAgent(m, "endue.database.check-statement", {
+      connection: "shop",
+      sql: "select id from people where id = :id",
+    });
+    expect(read).toMatchObject({ checked: true, ok: true, columns: [{ name: "id", type: "integer" }] });
+    expect(seen.find((s) => s.describe && /people where/u.test(s.sql))?.sql).toBe(
+      "select id from people where id = $1",
+    );
     const bad = await asAgent(m, "endue.database.check-statement", {
       connection: "shop",
       sql: "select * from nosuch",
