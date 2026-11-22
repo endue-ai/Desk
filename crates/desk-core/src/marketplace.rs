@@ -148,3 +148,26 @@ pub(crate) fn describe(permission: &Permission) -> String {
         format!("{name} ({})", rest.join(", "))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ENDUE_MARKET, verified};
+
+    #[test]
+    fn stored_official_indexes_keep_their_trust_only_in_the_official_market() {
+        let old = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/";
+        let custom = "https://market.example.test/";
+        for path in [
+            "views/index.json",
+            "themes/index.json",
+            "design-systems/index.json",
+        ] {
+            let index = format!("{old}{path}");
+            assert!(verified(&index, ENDUE_MARKET));
+            assert!(!verified(&index, custom));
+        }
+        assert!(!verified(&format!("{old}other/index.json"), ENDUE_MARKET));
+        assert!(!verified(custom, ENDUE_MARKET));
+        assert!(verified(custom, custom));
+    }
+}
