@@ -5,11 +5,21 @@
 // its table, or on Ctrl+Space; asked for and empty, it says so. It keeps the controller's order and
 // filtering. A candidate shows its type or kind beside it and its comment in the info box; one
 // with tab stops is inserted as a snippet (Tab and Shift+Tab move between them), one with a range
-// replaces that span (`*` written out), and each pick is told to the controller (`picked`).
+// replaces that span (`*` written out), and each pick is told to the controller (`picked`). Enter
+// while a list shows takes its option, even right after a newer answer replaced it; pressed while
+// the list is being asked again, it waits for the answer and takes its first option (a new line
+// when nothing is offered).
 
 import {
+  acceptCompletion,
   autocompletion,
+  completionStatus,
+  currentCompletions,
+  EditorView,
   insertCompletionText,
+  insertNewlineAndIndent,
+  keymap,
+  Prec,
   pickedCompletion,
   snippet,
 } from "../vendor/editor/editor-component.mjs";
@@ -132,14 +142,49 @@ export function sqlCompletion(act) {
       options: found.items.map((item) => optionOf(item, offset, act)),
     };
   };
-  return autocompletion({
-    override: [source],
-    icons: false,
-    activateOnTypingDelay: 120,
-    optionClass: (option) => `option kind-${option.type ?? "keyword"}`,
-    closeOnBlur: true,
-    maxRenderedOptions: 100,
-    // Its keys are in the editor's keymap (keymap.js), after the surface's.
-    defaultKeymap: false,
+  // Whether a list showed in this completion session, and an Enter that waits for the answer.
+  let shown = false;
+  let waiting = false;
+  /** @param {View} view */
+  const enter = (view) => {
+    if (acceptCompletion(view)) return true;
+    if (!shown || completionStatus(view.state) !== "pending") return false;
+    waiting = true;
+    return true;
+  };
+  const follow = EditorView.updateListener.of((update) => {
+    const status = completionStatus(update.state);
+    const typed = update.transactions.some((tr) => tr.isUserEvent("input"));
+    if (waiting && typed && update.docChanged) waiting = false;
+    if (status === "active" && currentCompletions(update.state).length > 0) shown = true;
+    if (status === "pending" || status === "active") {
+      if (waiting && status === "active") {
+        waiting = false;
+        setTimeout(() => acceptCompletion(update.view) || insertNewlineAndIndent(update.view));
+      }
+      return;
+    }
+    shown = false;
+    if (waiting) {
+      waiting = false;
+      setTimeout(() => insertNewlineAndIndent(update.view));
+    }
   });
+  return [
+    autocompletion({
+      override: [source],
+      icons: false,
+      activateOnTypingDelay: 120,
+      // Enter and Tab take the option shown even right after the list was replaced by a newer
+      // answer; the component's default (75 ms) let Enter fall through to a new line then.
+      interactionDelay: 0,
+      optionClass: (option) => `option kind-${option.type ?? "keyword"}`,
+      closeOnBlur: true,
+      maxRenderedOptions: 100,
+      // Its keys are in the editor's keymap (keymap.js), after the surface's.
+      defaultKeymap: false,
+    }),
+    Prec.high(keymap.of([{ key: "Enter", run: enter }])),
+    follow,
+  ];
 }
