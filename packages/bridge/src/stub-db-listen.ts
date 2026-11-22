@@ -48,7 +48,8 @@ export function stubDbListen<S extends Listening>(
       const listen = LISTEN.exec(sql);
       if (listen) {
         const [, verb = "", target = ""] = listen;
-        const channels = (session.channels ??= new Set());
+        session.channels ??= new Set();
+        const channels = session.channels;
         if (verb.toUpperCase() === "LISTEN") channels.add(nameOf(target));
         else if (target === "*") channels.clear();
         else channels.delete(nameOf(target));

@@ -4,8 +4,8 @@
 // what it dropped and what is unseen.
 import { describe, expect, it } from "vitest";
 import type { RunResult } from "../ui/engines/common.js";
-import { split } from "../ui/sql/split.js";
 import { createListening, KEEP, listens } from "../ui/session/listen.js";
+import { split } from "../ui/sql/split.js";
 
 type Mode = "run" | "transaction" | "dry-run";
 const OWNER = "console:c-pg:1";

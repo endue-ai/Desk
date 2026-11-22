@@ -5,9 +5,9 @@
 // on its own, Listen again does it; an agent's LISTEN does not run; the keeper's idle timer leaves a
 // listening session open; a burst keeps the latest 1,000 and says how many were dropped.
 import { describe, expect, it } from "vitest";
-import type { Mounted } from "./harness";
 import { createKeeper } from "../ui/session/keeper.js";
 import { createSlots } from "../ui/session/slots.js";
+import type { Mounted } from "./harness";
 import { run, sessionOf, shop } from "./session-helpers";
 
 const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) as never };

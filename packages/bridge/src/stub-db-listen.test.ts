@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  type BridgeEvent,
   BridgeClient,
+  type BridgeEvent,
   browserStub,
   type DbConnectPermission,
   type StubDatabase,
