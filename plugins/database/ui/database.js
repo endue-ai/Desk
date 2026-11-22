@@ -26,7 +26,7 @@ import { createAgents } from "./features/audit/agents.js";
 import { createCompletion } from "./features/completion/controller.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
-import { createImporter } from "./importer.js";
+import { importerFor } from "./import-copy/open.js";
 import { createKeychain } from "./keychain.js";
 import { createDatabasesManager } from "./manage-databases.js";
 import { answerRequests } from "./requests.js";
@@ -272,13 +272,11 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     await consoles.open(conn, null, buffer);
   };
 
-  const importer = createImporter({
-    manager,
-    catalog,
-    execute,
-    current: () => consoles.current(),
-    view,
-  });
+  const importer = importerFor(
+    { manager, catalog, execute, consoles, view, bridge, confirm, held },
+    () => settings,
+    options.startWorker,
+  );
   const dropped = createDropped({ bridge, manager, consoles, files, importer, view, visit });
 
   const answer = answerer(commands, view);
@@ -350,6 +348,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     guard,
     cancelled,
     dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
+    drop: (item) => dropped(item),
   };
   const builtins = {
     ...builtinActions({

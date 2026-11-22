@@ -126,6 +126,11 @@
         "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
       },
       {
+        "id": "endue.database.import-file",
+        "title": "Database: import a file into a table",
+        "keywords": ["csv", "xlsx", "json", "copy", "load"]
+      },
+      {
         "id": "endue.database.import-uri",
         "title": "Database: new connection from a URI",
         "keywords": ["url", "dsn", "connection string"]
@@ -159,11 +164,6 @@
         "id": "endue.database.forget-password",
         "title": "Database: forget the remembered password",
         "keywords": ["keychain", "password", "forget", "disconnect"]
-      },
-      {
-        "id": "endue.database.forget-ssh-host-key",
-        "title": "Database: forget the SSH host key",
-        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
       },
       {
         "id": "endue.database.copy-uri",
@@ -3152,6 +3152,11 @@
         "id": "endue.database.transfer-cancel",
         "title": "Database: cancel the copy",
         "keywords": ["copy", "transfer", "stop", "abort"]
+      },
+      {
+        "id": "endue.database.forget-ssh-host-key",
+        "title": "Database: forget the SSH host key",
+        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
       }
     ],
     "keys": [
