@@ -22,17 +22,17 @@ Publishing a version tag builds both macOS disk images. Configuring the updater 
 the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
-   `gh release create v0.1.0 --target <commit> --title "endue 0.1.0" --generate-notes`, or
+   `gh release create v0.4.0 --target <commit> --title "endue 0.4.0" --notes-file <reviewed-notes>`, or
    Releases → Draft a new release → Publish.
 2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
    and Intel (`release-build.yml`), runs the install smoke on each package, and
-   attaches `endue-desk_<version>_darwin-aarch64.dmg`, `endue-desk_<version>_darwin-x86_64.dmg` and
+   attaches `endue_<version>_darwin-aarch64.dmg`, `endue_<version>_darwin-x86_64.dmg` and
    `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
 3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
    notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
    ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
    and still attached: the run warns, and the notes tell the person to allow the app once in System
-   Settings > Privacy & Security, or to run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.
+   Settings > Privacy & Security.
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
 

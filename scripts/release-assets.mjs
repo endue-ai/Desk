@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { parse } from "./release-version.mjs";
+import { compare, parse } from "./release-version.mjs";
 
 export const MAC_TARGETS = [
   { target: "darwin-aarch64", label: "Apple silicon" },
@@ -29,9 +29,18 @@ export function tagVersion(tag) {
   return version;
 }
 
+/** The first branded line, including its prereleases. Published 0.3 artifacts keep their URLs. */
+function branded(version) {
+  return compare(tagVersion(`v${version}`), "0.4.0-0") >= 0;
+}
+
+export function desktopPrefix(version) {
+  return `${branded(version) ? "endue" : "endue-desk"}_${version}_`;
+}
+
 /** The disk images of `version`, one per macOS target. */
 export function macImages(version) {
-  return MAC_TARGETS.map(({ target }) => `endue-desk_${version}_${target}.dmg`);
+  return MAC_TARGETS.map(({ target }) => `${desktopPrefix(version)}${target}.dmg`);
 }
 
 export function cliFiles(version) {
@@ -65,9 +74,10 @@ export function macFiles(dist, version, exists = existsSync, cli = false) {
 export function macSection({ repo, tag, version, signed, cli = false }) {
   const url = (name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
   const images = macImages(version);
+  const endue = cli || branded(version);
   const lines = [
     START,
-    cli ? "## endue app for macOS" : "## macOS",
+    endue ? "## endue app for macOS" : "## macOS",
     "",
     ...MAC_TARGETS.map(({ label }, at) => `- ${label}: [${images[at]}](${url(images[at])})`),
     "",
@@ -78,7 +88,7 @@ export function macSection({ repo, tag, version, signed, cli = false }) {
       : [
           "This build is not signed with a Developer ID and not notarised, so macOS refuses to open it",
           "the first time. Open it once, then allow it in System Settings > Privacy & Security > Open",
-          cli
+          endue
             ? "Anyway."
             : 'Anyway, or run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.',
         ].join(" "),
@@ -108,6 +118,8 @@ function main(args) {
   if (subject === undefined) throw new Error("usage: release-assets.mjs version|files|notes <arg>");
   if (command === "version") {
     console.log(tagVersion(subject));
+  } else if (command === "desktop-prefix") {
+    console.log(desktopPrefix(subject));
   } else if (command === "files") {
     for (const name of macFiles(subject, value("--version"), existsSync, args.includes("--cli")))
       console.log(join(subject, name));

@@ -26,14 +26,16 @@ impl Core {
     pub(crate) fn prune_databases(&self, caller: &str) {
         let permissions = self.permissions();
         let lost = |entry: &DbEntry| {
-            let target = Target::Endpoint {
-                host: &entry.host,
-                port: entry.port,
-            };
+            // The database's host and port, and every hop of its SSH tunnel (ADR 0359).
+            let hops = entry.hops.iter().map(|(host, port)| (host.as_str(), *port));
+            let mut ends = std::iter::once((entry.host.as_str(), entry.port)).chain(hops);
             entry.caller == caller
-                && permissions
-                    .authorize(caller, &entry.scope, &target)
-                    .is_err()
+                && ends.any(|(host, port)| {
+                    let target = Target::Endpoint { host, port };
+                    permissions
+                        .authorize(caller, &entry.scope, &target)
+                        .is_err()
+                })
         };
         let ended = take(&mut lock(&self.databases), CloseReason::Revoked, lost);
         drop(permissions);

@@ -149,6 +149,8 @@ pub fn boot(input: BootInput) -> Booted {
     account.keychain = keychain.clone();
     // Database passwords a plugin keeps for db.open, in the same keychain (ADR 0311).
     core = core.with_db_passwords(keychain, Some(data.join("db-passwords.json")));
+    // The SSH host keys a plugin's tunnels trust, by host and port (ADR 0359).
+    core = core.with_db_ssh_hosts(Some(data.join("db-ssh-hosts.json")));
     let account = Account::open(account, NetIdClient);
     core = core.with_account(account.clone());
     // The agent programs on this computer (ADR 0110): Claude Code and Codex, their sessions read

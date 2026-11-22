@@ -16,7 +16,9 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - Databases (`db.*`, ADR 0281): PostgreSQL sessions on desk-pg, the host and port checked against
   `db:connect`; a caller's own, 16 at most (`database_count()`), closed as it stops or loses the grant.
   A password kept in the OS keychain (`db.passwords.*`, `with_db_passwords`, ADR 0311) signs in by
-  `passwordRef` and is never handed back.
+  `passwordRef` and is never handed back. `ssh` opens the session through an SSH tunnel (desk-ssh,
+  ADR 0359): every hop checked against `db:connect`, host keys trusted on first use per caller in
+  `db-ssh-hosts.json` (`with_db_ssh_hosts`), a changed one refused until `db.hostKeys.delete`.
 - A view's page read and acted in (`web.read`, `web.act`, ADR 0272): under `web:control`, apart from
   `web:browse`, at the address the shell last reported (`core_web_control.rs`)
 - Web views (`web.*`, ADR 0216): per caller under `web:browse`, the shell's `WebViews` (`set_web_views`),
