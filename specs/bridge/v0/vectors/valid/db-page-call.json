@@ -1,0 +1,14 @@
+{
+  "target": "DbRunResult",
+  "description": "a statement's answer with its call's number and the notices that also came as db.call.notice",
+  "instance": {
+    "rows": [],
+    "more": false,
+    "tag": "DO",
+    "transaction": "idle",
+    "call": 3,
+    "notices": [
+      { "severity": "NOTICE", "localSeverity": "NOTICE", "code": "00000", "message": "batch 2 of 5 done" }
+    ]
+  }
+}

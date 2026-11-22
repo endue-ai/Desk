@@ -3423,6 +3423,7 @@ export type BridgeEvent =
   | NetDataEvent
   | NetClosedEvent
   | DbNoticeEvent
+  | DbCallNoticeEvent
   | DbNotificationEvent
   | DbParameterEvent
   | DbClosedEvent
@@ -4803,10 +4804,12 @@ export interface DbPage {
   /** A COPY ... TO STDOUT's bytes. */
   data?: string;
   encoding?: Encoding;
-  /** The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event. At most 10,000 a page. */
+  /** The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event (each also came as a db.call.notice while the call ran). At most 10,000 a page. */
   notices?: DbServerError[];
   /** Notices past the 10,000 a page keeps, counted and left out. */
   noticesSkipped?: number;
+  /** The session's number for the call this page answers, counting from 1: a db.call.notice with this number or a lower one is already on a page. */
+  call?: number;
 }
 
 /** One row: each value the server's text, or null. */
@@ -4881,6 +4884,20 @@ export interface DbNoticeEvent {
 /** Payload of db.notice. */
 export interface DbNoticeData {
   sessionId: DbSessionId;
+  notice: DbServerError;
+}
+
+/** A notice the server sent while a call runs, sent as it arrives, so a long statement's progress can be shown before its answer. The call's page carries it too, and the page is the record (ADR 0334, ADR 0358): an event whose call is already answered is late. At most the 10,000 a page keeps. */
+export interface DbCallNoticeEvent {
+  event: "db.call.notice";
+  data: DbCallNoticeData;
+}
+
+/** Payload of db.call.notice. */
+export interface DbCallNoticeData {
+  sessionId: DbSessionId;
+  /** The number of the call that heard it, as that call's pages say (DbPage.call). */
+  call: number;
   notice: DbServerError;
 }
 
