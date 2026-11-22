@@ -1,5 +1,5 @@
-# endue init file. endue reads it at every start, like Emacs reads init.el.
-# The format is specs/init/v0. If the file does not parse, endue starts with the defaults and says why.
+# endue reads this file at startup.
+# If the file does not follow specs/init/v0, endue loads the defaults and reports the error.
 version: 0
 
 # The profile to start in: a set of plugins plus their settings.
