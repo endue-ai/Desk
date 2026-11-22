@@ -36,7 +36,7 @@ let onCopy: (() => void) | undefined;
 
 async function live(): Promise<Mounted> {
   const procs = realProcs(password ? { password } : {});
-  const copy = procs.handlers["db.copy"] as (params: never) => Promise<unknown>;
+  const copy = procs.handlers["db.copy"] as unknown as (params: unknown) => Promise<unknown>;
   const m = await mount({
     store: { connections: [A, B] },
     handlers: {
@@ -45,7 +45,7 @@ async function live(): Promise<Mounted> {
         const hook = onCopy;
         onCopy = undefined;
         hook?.();
-        return (await copy(params as never)) as never;
+        return (await copy(params)) as never;
       },
     },
     dialog: () => answer,
