@@ -8,6 +8,7 @@
 // notices and the session's own (db.notice events, which pg-session.js gathers in `sinks`) are the
 // run's. No DOM.
 
+import { COPY_CHUNK, streamCopy } from "../copy/stream.js";
 import { ROLLBACK_FIRST } from "../session/words.js";
 import { endedBy, notRun } from "./common.js";
 import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.js";
@@ -23,13 +24,14 @@ import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.j
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
  *   mode: "run" | "transaction" | "dry-run",
  *   session?: import("../session/keeper.js").Owner, agent?: boolean, signal?: AbortSignal,
- *   quiet?: boolean, background?: boolean,
+ *   quiet?: boolean, background?: boolean, copy?: import("../copy/stream.js").Copy,
  * }} Plan
  *   `session` runs on that owner's kept session (a console's, a table view's); `agent` is an
  *   agent's run, which the console's Cancel leaves alone; `signal` cancels this run alone: its
  *   statement on its session, nothing after it (a kept session stays open); `quiet` asks for no
  *   key passphrase (ADR 0331); `background` is work the plugin starts on its own, which a
- *   disconnected connection refuses (session/gate.js, ADR 0339).
+ *   disconnected connection refuses (session/gate.js, ADR 0339); `copy` is what a COPY through
+ *   standard input or output reads or writes (copy/stream.js, PG-23).
  * @typedef {{
  *   sessionId?: string, running: boolean, cancelled: boolean, timedOut: boolean,
  *   owner?: string, agent: boolean, transaction?: Transaction, ended?: string,
@@ -151,9 +153,20 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
       page = heard(job, next, notices);
       for (const row of page.rows) rows.push(row);
     }
-    // COPY ... FROM STDIN is refused before it is sent (sql/classify.js); one that comes anyway
-    // is ended, so the session is not left waiting for data.
-    if (page.copy?.direction === "in")
+    // A COPY through standard input or output streams with the run's file (copy/stream.js); a
+    // COPY ... FROM STDIN with none is ended, so the session is not left waiting for data.
+    if (page.copy && plan.copy) {
+      const stopped = () => job.cancelled;
+      const hear = (/** @type {Page} */ next) => heard(job, next, notices) ?? next;
+      page = await streamCopy({
+        call,
+        sessionId,
+        first: page,
+        copy: plan.copy,
+        stopped,
+        heard: hear,
+      });
+    } else if (page.copy?.direction === "in")
       page = heard(
         job,
         await call("db.copy", { sessionId, fail: "COPY FROM STDIN does not run here" }),
@@ -192,6 +205,7 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
           sessionId: job.sessionId,
           sql: statement.text,
           pageRows,
+          ...(plan.copy ? { pageBytes: COPY_CHUNK } : {}),
         });
         return await finish(job, statement, index, plan, first, notices);
       } catch (failure) {

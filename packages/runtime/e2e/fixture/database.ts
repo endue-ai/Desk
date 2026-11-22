@@ -19,7 +19,8 @@
 // pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
 // open dialog answers it; an export's save dialog answers a place there. fixture-pg's server has more
 // databases (databases-fixture.ts, PG-13) and answers a join of orders and people with its columns'
-// origins (edit-joins-fixture.ts, PG-45). Never shipped.
+// origins (edit-joins-fixture.ts, PG-45), and copies its items in and out through standard input
+// and output into ~/Downloads (copy-fixture.ts, PG-23). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -35,6 +36,11 @@ import { assistAnswer } from "../../../../plugins/database/tests/assist-fixture"
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
+import {
+  COPY_IN_FILE,
+  COPY_IN_TEXT,
+  copyScript,
+} from "../../../../plugins/database/tests/copy-fixture";
 import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   DIAGRAM_CONNECTION,
@@ -78,6 +84,7 @@ let emit: (event: BridgeEvent) => void = () => {};
 const TRANSFER = "~/Transfer/team-connections.json";
 const files: Record<string, string> = {
   "~/queries/report.sql": "select * from orders;\n",
+  [COPY_IN_FILE]: COPY_IN_TEXT,
   [TRANSFER]: `${JSON.stringify({
     format: "endue.database.connections",
     version: 1,
@@ -110,8 +117,10 @@ const fsHandlers: StubHandlers = {
       encoding === "base64" ? btoa(String.fromCharCode(...part)) : new TextDecoder().decode(part);
     return { content, encoding: encoding ?? "utf8", size: bytes.length };
   },
-  "fs.write": ({ path, content }) => {
-    files[path] = content;
+  // A chunk appends (ADR 0356); a write waits while `window.__copyHold` holds it (PG-23's shots).
+  "fs.write": async ({ path, content, append }) => {
+    await (window as unknown as { __copyHold?: Promise<void> }).__copyHold;
+    files[path] = append ? `${files[path] ?? ""}${content}` : content;
     return { bytesWritten: content.length };
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
@@ -163,8 +172,9 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(renameServer(showServer(joins))).script)
-                              .script,
+                            objectsServer(
+                              activityServer(renameServer(showServer(copyScript(joins)))).script,
+                            ).script,
                           ).script,
                         ),
                       ).script,
@@ -183,16 +193,21 @@ const core = browserCore({
     ...backup,
     // An exported image goes to ~/Pictures, exported connections to ~/Transfer; anything else is
     // the backup's to place.
+    // A COPY's rows go to ~/Downloads (PG-23).
     "dialog.save": (params, caller) =>
-      /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
-        ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
-        : /\.json$/u.test(params.suggestedName ?? "")
-          ? { cancelled: false, path: `~/Transfer/${params.suggestedName}` }
-          : backupSave(params, caller),
+      /^Save the rows of the COPY/u.test(params.title ?? "")
+        ? { cancelled: false, path: `~/Downloads/${params.suggestedName}` }
+        : /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
+          ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
+          : /\.json$/u.test(params.suggestedName ?? "")
+            ? { cancelled: false, path: `~/Transfer/${params.suggestedName}` }
+            : backupSave(params, caller),
     "dialog.open": (params, caller) =>
       /connections/u.test(params.title ?? "")
         ? { cancelled: false, paths: [TRANSFER] }
-        : backupOpen(params, caller),
+        : /the COPY on/u.test(params.title ?? "")
+          ? { cancelled: false, paths: [COPY_IN_FILE] }
+          : backupOpen(params, caller),
   },
   open: () => {},
   // Eris in a console answers from a script (assist-fixture.ts, PG-90).

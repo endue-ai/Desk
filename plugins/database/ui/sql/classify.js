@@ -1,10 +1,12 @@
 // What a statement does, from its words: read, write, ddl, transaction or session, whether it returns
 // rows, whether it is dangerous (DROP, TRUNCATE, UPDATE or DELETE without WHERE), and what no client
-// may run here (psql meta-commands, sqlite3 dot-commands, COPY through standard input or output).
+// may run here (psql meta-commands, sqlite3 dot-commands). COPY ... TO STDOUT reads unless its query
+// writes, and COPY ... FROM STDIN writes (copy/statement.js, PG-23).
 // Unknown statements count as writes, so a read-only connection refuses them, and so does a
 // PostgreSQL statement that signals a server session (pg_cancel_backend, pg_terminate_backend:
 // ADR 0328), which changes the server whatever its verb.
 
+import { copyOf, copyWrites } from "../copy/statement.js";
 import { wordsOf } from "./lexer.js";
 
 /**
@@ -81,7 +83,7 @@ const READ_ONLY_NAMES =
 export function classify(statement, dialect) {
   const significant = statement.tokens.filter((t) => t.type !== "space" && t.type !== "comment");
   const first = significant[0];
-  const refused = refusal(first?.text ?? "", statement, dialect);
+  const refused = refusal(statement, dialect);
   const words = wordsOf(statement.tokens);
   const top = wordsOf(statement.tokens, true);
   let verb = words[0] ?? (first?.text === "(" ? "SELECT" : "");
@@ -98,7 +100,10 @@ export function classify(statement, dialect) {
   if (verb === "EXPLAIN") return explained(words, top, dialect, refused, signals);
   // PRAGMA name = value sets something; PRAGMA name or name(arg) reads.
   const assigns = statement.tokens.some((t) => t.type === "op" && t.text === "=");
-  const kind = verb === "PRAGMA" ? (assigns ? "session" : "read") : kindOf(verb, rest, dialect);
+  const plain = verb === "PRAGMA" ? (assigns ? "session" : "read") : kindOf(verb, rest, dialect);
+  // COPY ... TO STDOUT reads, unless its query writes.
+  const out = dialect === "postgresql" && copyOf(statement) === "out" && !copyWrites(statement);
+  const kind = out ? "read" : plain;
   return {
     kind: signals && kind === "read" ? "write" : kind,
     verb,
@@ -182,20 +187,11 @@ function opensWrite(
 }
 
 /** What a client would do with this statement that it must not do here, or "". */
-function refusal(
-  /** @type {string} */ first,
-  /** @type {Statement} */ statement,
-  /** @type {Dialect} */ dialect,
-) {
+function refusal(/** @type {Statement} */ statement, /** @type {Dialect} */ dialect) {
   if (dialect === "postgresql" && statement.text.startsWith("\\"))
     return "psql meta-commands (\\...) do not run here; use the terminal.";
   if (dialect === "sqlite" && statement.text.startsWith("."))
     return "sqlite3 dot-commands (.tables, .import ...) do not run here; use the terminal.";
-  if (dialect === "postgresql" && first.toUpperCase() === "COPY") {
-    const top = wordsOf(statement.tokens, true);
-    if (top.includes("STDIN") || top.includes("STDOUT"))
-      return "COPY through standard input or output needs psql's terminal; use the terminal.";
-  }
   if (dialect === "mysql" && statement.text.startsWith("\\"))
     return "mysql client commands (\\...) do not run here; use the terminal.";
   return "";
