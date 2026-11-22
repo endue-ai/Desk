@@ -37,7 +37,7 @@ export function previewPath(index, base) {
   };
 }
 
-export function githubManifest(dist, version, commit, minFrom, repository = "endue-ai/Desk") {
+export function githubManifest(dist, version, commit, minFrom, repository = "endue-ai/endue") {
   checkedVersion(version);
   if (repository !== "endue-ai/Desk" && repository !== "endue-ai/endue") {
     throw new Error("unexpected repository for the signed endue release feed");

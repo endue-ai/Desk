@@ -15,7 +15,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import { mountMarket, permissionText } from "./market";
 
-const ENDUE = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json";
+const ENDUE = "https://raw.githubusercontent.com/endue-ai/endue/main/market/views/index.json";
 const ACME = "https://market.acme.test/index.json";
 const READ: Permission = { permission: "data:read", kinds: ["task"] };
 const FETCH: Permission = { permission: "net:fetch", hosts: ["api.acme.test"] };

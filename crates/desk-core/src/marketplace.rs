@@ -2,6 +2,7 @@
 //! bundle, which kind a manifest is, a theme market's entry as a market entry, which permissions an
 //! entry adds and which an install leaves unaccepted, and the record kept beside a market install.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
@@ -17,7 +18,8 @@ use serde_json::{Value, json};
 use crate::manifest::schema_registry;
 
 /// The endue index: what this repository's market folder serves. Code installs only from it.
-pub const ENDUE_MARKET: &str = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/";
+pub const ENDUE_MARKET: &str = "https://raw.githubusercontent.com/endue-ai/endue/main/market/";
+const DESK_MARKET: &str = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/";
 /// Where a market install's record lives in the market folder: hidden, so never a plugin.
 pub(crate) const RECORDS: &str = ".market";
 
@@ -120,6 +122,22 @@ pub(crate) fn theme_entry(theme: ThemeIndexEntry) -> MarketEntry {
 /// Whether an index is the endue market's (`endue` is its URL prefix).
 pub(crate) fn verified(market: &str, endue: &str) -> bool {
     market.starts_with(endue)
+        || (endue == ENDUE_MARKET
+            && matches!(
+                market.strip_prefix(DESK_MARKET),
+                Some("views/index.json" | "themes/index.json" | "design-systems/index.json")
+            ))
+}
+
+/// Read historical first-party indexes and bundles from the canonical source while retaining
+/// their original URLs in the user's settings, installation records and permission grants.
+pub(crate) fn fetch_url<'a>(url: &'a str, endue: &str) -> Cow<'a, str> {
+    if endue == ENDUE_MARKET
+        && let Some(path) = url.strip_prefix(DESK_MARKET)
+    {
+        return Cow::Owned(format!("{ENDUE_MARKET}{path}"));
+    }
+    Cow::Borrowed(url)
 }
 
 /// The permissions in `asked` that `given` does not hold, in `asked`'s order.

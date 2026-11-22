@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       min-from:
-        description: Oldest Desk version that can install this final directly
+        description: Oldest installed app version that can install this final directly
         required: false
         type: string
       soak-days:
@@ -206,7 +206,7 @@ jobs:
             echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Provenance: \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
             echo "Installed desks on the stable channel update themselves as the rollout widens."
           } > downloads.md
-          args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue Desk $VERSION" --generate-notes --notes-file downloads.md)
+          args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue $VERSION" --generate-notes --notes-file downloads.md)
           if [ -n "$NOTES_START" ]; then args+=(--notes-start-tag "$NOTES_START"); fi
           gh release create "v$VERSION" "${args[@]}"
       - name: Attach the signed packages and tag-local manifest
