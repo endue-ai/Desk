@@ -143,8 +143,9 @@ const core = browserCore({
     // the objects feature its own, before the activity view's looser matches.
     // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
     // reads, which carry their own marker (PG-53).
+    // `SHOW` answers each session's own settings first (session-options-fixture.ts, PG-12).
     ...dbHandlers(
-      withDatabases(
+      showServer(withDatabases(
         schemaCompareServer(
           privilegesServer(
             geoServer(
@@ -167,7 +168,7 @@ const core = browserCore({
             ),
           ).script,
         ).script,
-      ),
+      )),
       (event) => emit(event),
     ),
     ...fsHandlers,
