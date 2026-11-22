@@ -4,10 +4,9 @@ The features of `endue.database`, area by area, each with the modules that hold 
 [README](../README.md) keeps the purpose, the permissions, the commands and how to test. A change that adds a
 feature adds its line to the area it belongs to, or a section for a new area; it does not grow the README.
 
-The page has one header row (the connection on screen, its environment tag and read-only mark, a PostgreSQL
-buffer's session state, the buttons; what does not fit is behind More), the explorer on the left, the work area,
-and one footer line. Dialogs open inside the page. `Mod+Shift+B` opens it, and every operation is also a command
-`endue.database.*`.
+The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
+what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
+inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
 Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
 a change to a client's program or the `path` setting finds the clients again.
 
@@ -16,11 +15,10 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 ## Connections
 
-- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a
-  console and a table view keep one each (below, ADR 0320), any other run opens one and closes it; the plugin
-  asks for `db:connect` on a server's host and port at its first run. TLS follows the connection's mode
-  (`require`, `verify-ca`, `verify-full`) and CA file; a client certificate is not supported yet, nor a socket
-  folder or an IPv6 host.
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
+  table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
+  client certificate is not supported yet, nor a socket folder or an IPv6 host.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
