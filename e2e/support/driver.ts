@@ -194,8 +194,7 @@ async function answering(command: string): Promise<void> {
 }
 
 /** Copy the app's data folder (store.json, plugins.json, ...) next to a failed test's screenshot. */
-export function saveData(to: string): void {
-  const data = home && dataDir(home);
+export function saveData(to: string, data = home && dataDir(home)): void {
   if (data && existsSync(data))
     cpSync(data, to, { recursive: true, filter: (from) => !from.endsWith(".sock") });
 }
