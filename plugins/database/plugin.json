@@ -48,6 +48,9 @@
     {
       "permission": "db:connect",
       "hosts": ["*"]
+    },
+    {
+      "permission": "brain:ask"
     }
   ],
   "surfaces": [
@@ -256,6 +259,41 @@
         "id": "endue.database.format-preview",
         "title": "Database: preview the SQL format",
         "keywords": ["style", "settings", "sample", "layout", "pretty"]
+      },
+      {
+        "id": "endue.database.assist-write",
+        "title": "Database: Eris writes a statement from a sentence",
+        "keywords": ["ai", "brain", "generate", "natural language", "write", "sql"]
+      },
+      {
+        "id": "endue.database.assist-explain",
+        "title": "Database: Eris explains this statement",
+        "keywords": ["ai", "brain", "explain", "what does", "sql"]
+      },
+      {
+        "id": "endue.database.assist-fix",
+        "title": "Database: Eris fixes this error",
+        "keywords": ["ai", "brain", "fix", "error", "repair", "sql"]
+      },
+      {
+        "id": "endue.database.assist-plan",
+        "title": "Database: Eris explains this plan",
+        "keywords": ["ai", "brain", "explain", "plan", "slow", "index"]
+      },
+      {
+        "id": "endue.database.assist-sent",
+        "title": "Database: what this console sends to Eris",
+        "keywords": ["ai", "brain", "privacy", "sent", "sample", "prompt"]
+      },
+      {
+        "id": "endue.database.assist-close",
+        "title": "Database: close this connection to Eris",
+        "keywords": ["ai", "brain", "privacy", "off", "block"]
+      },
+      {
+        "id": "endue.database.assist-open",
+        "title": "Database: open this connection to Eris again",
+        "keywords": ["ai", "brain", "privacy", "on", "allow"]
       },
       {
         "id": "endue.database.cancel",

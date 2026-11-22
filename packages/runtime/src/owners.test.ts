@@ -65,6 +65,27 @@ describe("Owners", () => {
     expect(claimKey(brainSay, ok(3, { turnId: "t1" }))).toBe("turn:t1");
   });
 
+  it("sends a brain.ask's turn to the plugin that asked, and to no other", () => {
+    const brainAsk: BridgeRequest = {
+      id: 5,
+      method: "brain.ask",
+      params: {
+        prompt: "Explain this statement.",
+        tool: { name: "explain_sql", description: "Explain.", schema: { type: "object" } },
+        scope: { permission: "brain:ask" },
+      },
+    };
+    expect(claimKey(brainAsk, ok(5, { turnId: "a1" }))).toBe("turn:a1");
+    const owners = new Owners();
+    // The turn may end before the ask's answer names it: it waits for the claim.
+    expect(route(owners, turn("a1", "completed"))).toBeUndefined();
+    expect(owners.claim(brainAsk, ok(5, { turnId: "a1" }), "endue.database")).toEqual([
+      turn("a1", "completed"),
+    ]);
+    owners.claim(brainAsk, ok(5, { turnId: "a2" }), "endue.network");
+    expect(route(owners, turn("a2", "started"))).toBe("endue.network");
+  });
+
   it("sends a data subscription's changes to its subscriber until it unsubscribes", () => {
     const owners = new Owners();
     expect(claimKey(dataSubscribe, ok(4, { subscriptionId: "s1" }))).toBe("sub:s1");
