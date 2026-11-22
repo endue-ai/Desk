@@ -85,7 +85,8 @@ describe("check without running", () => {
       "ROLLBACK TO SAVEPOINT endue_desk_check",
       "RELEASE SAVEPOINT endue_desk_check",
     ]);
-    expect(open.shown()?.session).toMatchObject({ state: "open" });
+    // A check is not one of the transaction's statements (PG-20's count).
+    expect(open.shown()?.session).toMatchObject({ state: "open", statements: 0 });
   });
 
   it("says SQLite does not check without running", async () => {

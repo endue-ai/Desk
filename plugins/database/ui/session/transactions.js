@@ -98,6 +98,8 @@ export function createTransactions(deps) {
     async run(conn, plan, go) {
       const owner = plan.session?.kind === "console" ? plan.session.owner : undefined;
       const chosen = owner ? deps.chosen(owner) : undefined;
+      // A check runs nothing: it begins nothing and is none of the transaction's statements (PG-21).
+      if (plan.mode === "describe") return go(conn, plan);
       if (!owner || !chosen) return go(conn, plan);
       const started = deps.now();
       const [first] = plan.statements;
