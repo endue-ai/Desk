@@ -68,7 +68,7 @@ describe("COPY's text format", () => {
   });
 });
 
-const FORMATS: ExportFormat[] = [
+const FORMATS: Exclude<ExportFormat, "xlsx">[] = [
   "csv",
   "tsv",
   "json",
