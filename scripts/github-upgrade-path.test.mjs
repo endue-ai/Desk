@@ -20,11 +20,12 @@ test("both published tags keep the exact path Desk verifies before checking the 
   const dist = mkdtempSync(join(tmpdir(), "endue-tag-"));
   t.after(() => rmSync(dist, { recursive: true, force: true }));
   for (const [repo, version, floor] of [
-    ["endue-ai/Desk", "0.4.0", "0.1.0"],
-    [undefined, "0.5.0", "0.4.0"],
+    ["endue-ai/Desk", "0.3.1", "0.3.0"],
+    [undefined, "0.4.0", "0.3.1"],
     ["endue-ai/endue", "0.6.0", "0.5.0"],
   ]) {
-    const name = `endue-desk_${version}_linux-x86_64.deb`;
+    const prefix = version === "0.3.1" ? "endue-desk" : "endue";
+    const name = `${prefix}_${version}_linux-x86_64.deb`;
     writeFileSync(join(dist, name), version);
     writeFileSync(join(dist, `${name}.sig`), "test-signature");
     const manifest = githubManifest(dist, version, "c46d12b", floor, repo);
