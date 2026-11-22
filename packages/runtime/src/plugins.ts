@@ -9,6 +9,7 @@ import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import type { PluginMessage } from "./plugin-messages";
 import { named, surfaceUrl } from "./plugin-origins";
 import { PluginAsks } from "./plugins-asks";
+import { closeSessions } from "./plugins-db";
 import {
   broadcast,
   type ChangeHost,
@@ -40,7 +41,7 @@ export class PluginHost {
   readonly #instances = new PluginInstances();
   readonly #search = new WindowSearch(this.#instances, this.#mounted);
   readonly #state = new Map<string, unknown>();
-  /** Turns, watches, subscriptions and processes, by window: kept while one is put away (#160). */
+  /** Turns, watches, subscriptions, processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
   /** Commands delivered to plugins that wait for their reply. */
   readonly #asks = new PluginAsks();
@@ -70,6 +71,7 @@ export class PluginHost {
       instances: this.#instances,
       mounted: this.#mounted,
       post: (key, message) => this.#post(key, message),
+      bridge: deps.bridge,
     };
     this.#changes = {
       mounted: this.#mounted,
@@ -181,10 +183,8 @@ export class PluginHost {
     return this.#greetings.next(key);
   }
 
-  /**
-   * Take a window away for the session, as its `desk:close` does; its work goes on. A plugin's last
-   * window takes the plugin with it, as does a plugin id whose first window is closed.
-   */
+  /** Take a window away for the session, as `desk:close` does: its work goes on, its database
+   * sessions end (ADR 0339). A plugin's last window, or its first, takes the plugin with it. */
   unmount(id: string): void {
     const plugin = pluginOf(id);
     // A later window that is not open (a tab kept from an earlier session) takes nothing with it.
@@ -272,10 +272,8 @@ export class PluginHost {
     else this.#sleepers.load(key, open);
   }
 
-  /**
-   * Whether plugins of this manifest's kind get a surface: UI plugins, and native plugins on a
-   * desk whose compositor hosts their processes (#59, ADR 0154).
-   */
+  /** Whether this manifest's kind gets a surface: UI plugins, and native plugins on a desk whose
+   * compositor hosts their processes (#59, ADR 0154). */
   #mounts(manifest: PluginInfo["manifest"]): manifest is NonNullable<PluginInfo["manifest"]> {
     return (
       manifest?.kind === "ui" || (manifest?.kind === "native" && this.#options.native === true)
@@ -298,6 +296,7 @@ export class PluginHost {
     this.#sleepers.forget(key);
     this.#cancel(key, "stopped before it answered");
     this.#search.closed(key, this.#deps.bridge);
+    closeSessions(this.#owners, key, this.#deps.bridge);
     if (key !== pluginOf(key)) {
       this.#state.delete(key);
       this.#owners.drop(key);

@@ -35,6 +35,7 @@ import { chosen, offered, withChoice } from "./keychain.js";
  *   sessions?: {
  *     reasons(connection: string): string[],
  *     close(connection: string): void,
+ *     disconnect?(connection: string): void,
  *     forget?(connection: string): void,
  *   },
  *   cancelled?(message: string): Error,
@@ -345,6 +346,7 @@ export function createManager(deps) {
       const conn = await choose(ref, "Database: disconnect which connection?");
       if (!conn) return undefined;
       if (!(await letClose(conn, `Disconnect ${conn.name}?`))) throw refused("Not disconnected.");
+      deps.sessions?.disconnect?.(conn.id);
       deps.sessions?.close(conn.id);
       passwords.delete(conn.id);
       const closed = conn.engine === "postgresql" ? "its sessions are closed and " : "";

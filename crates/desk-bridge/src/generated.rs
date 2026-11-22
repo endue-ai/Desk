@@ -8864,6 +8864,9 @@ pub struct PermRequestParams {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
+    /// The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub again: Option<bool>,
 }
 
 /// How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.

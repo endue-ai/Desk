@@ -330,7 +330,7 @@ Modules: `features/maintenance/`.
 
 ## Value search
 
-Looking for a value across a connection's tables, with its limits: [`search.md`](search.md); for an object by its name from the desk's palette: [`palette.md`](palette.md).
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md); for an object by its name from the desk's palette: [`palette.md`](palette.md). Text in the source of routines, views and table parts: [`source-search.md`](source-search.md).
 
 ## Routines
 
