@@ -246,6 +246,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   const mic = watchMic(ctx, () => draw());
   /** The Arrange actions show because the pointer is on them: they go when it has left. */
   let hovered = false;
+  let onArrange = false;
   let leaving: number | undefined;
   const stay = () => {
     window.clearTimeout(leaving);
@@ -254,6 +255,9 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   /** The pointer came onto the Arrange button: its actions show, unless something else is open. */
   const hover = () => {
     stay();
+    // A redraw can put a new button under the same stationary pointer.
+    if (onArrange) return;
+    onArrange = true;
     const open = ctx.store.get().popover;
     if (open !== null) return;
     hovered = true;
@@ -261,6 +265,7 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   /** The pointer left the button or the actions: they go unless it comes back within `LEAVE_MS`. */
   const leave = () => {
+    onArrange = false;
     if (!hovered || leaving !== undefined) return;
     leaving = window.setTimeout(() => {
       leaving = undefined;
