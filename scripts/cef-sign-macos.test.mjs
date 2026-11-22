@@ -25,8 +25,11 @@ function bundle(helpers = 5) {
   const app = join(dir, "endue.app");
   const contents = join(app, "Contents");
   mkdirSync(join(contents, "MacOS"), { recursive: true });
-  mkdirSync(join(contents, "Resources"), { recursive: true });
+  mkdirSync(join(contents, "Resources/cli"), { recursive: true });
   copyFileSync("/usr/bin/true", join(contents, "Resources/install-endue"));
+  for (const name of ["endue", "desk"]) {
+    copyFileSync("/usr/bin/true", join(contents, "Resources/cli", name));
+  }
   writeFileSync(
     join(contents, "Info.plist"),
     plist({
@@ -110,6 +113,8 @@ describe("cef-sign-macos", { skip }, () => {
     for (const path of [
       app,
       join(app, "Contents/Resources/install-endue"),
+      join(app, "Contents/Resources/cli/endue"),
+      join(app, "Contents/Resources/cli/desk"),
       helper(" (Renderer)"),
       join(app, "Contents/Frameworks/Chromium Embedded Framework.framework"),
       // Each helper opens it to enter Chromium's sandbox before the framework loads (ADR 0148).

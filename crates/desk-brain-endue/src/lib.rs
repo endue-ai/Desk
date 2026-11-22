@@ -61,6 +61,11 @@ impl HttpBrain {
         self
     }
 
+    /// Whether a bearer can be transmitted over TLS or to a loopback development service.
+    pub fn is_secure_or_loopback(&self) -> bool {
+        self.endpoint.is_secure() || self.endpoint.is_loopback()
+    }
+
     pub fn base_url(&self) -> String {
         self.endpoint.url()
     }

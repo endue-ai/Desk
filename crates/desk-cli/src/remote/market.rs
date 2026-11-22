@@ -38,7 +38,8 @@ impl Session {
         }
         for problem in listed["problems"].as_array().into_iter().flatten() {
             eprintln!(
-                "desk: {}: {}",
+                "{}: {}: {}",
+                crate::name(),
                 text(problem, "market"),
                 text(problem, "message")
             );
@@ -98,6 +99,6 @@ impl Session {
 }
 
 fn failed(code: &str, message: &str) -> ExitCode {
-    eprintln!("desk: {code}: {message}");
+    eprintln!("{}: {code}: {message}", crate::name());
     ExitCode::from(1)
 }

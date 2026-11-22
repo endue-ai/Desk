@@ -3,8 +3,8 @@
 A PostgreSQL connection's schema, read once and kept (PG-06, ADR 0285). It holds the names, kinds and
 row estimates of relations, columns with their types, defaults and keys, constraints (primary, unique,
 check, foreign keys with both ends), indexes, triggers, routine signatures (never bodies) and comments;
-PG-50's kinds (`../schema/pg/`, ADR 0295), the database level's under the entry `DATABASE` (""). Never
-rows, never secrets. Anything that needs these asks the cache through `catalog.js`, never the
+PG-50's kinds (`../schema/pg/`, ADR 0295), the database level's under the entry `DATABASE` (""), with
+the server's databases. Never rows, never secrets. Anything that needs these asks the cache through `catalog.js`, never the
 catalog itself; what the cache does not hold answers `undefined`, and the caller reads it as before.
 
 ## API (`createSchemaCache({ execute, store, systemSchemas, changed })`, `index.js`)
@@ -29,9 +29,9 @@ catalog itself; what the cache does not hold answers `undefined`, and the caller
   pg_class, pg_attribute, pg_attrdef, pg_type, pg_constraint, pg_index, pg_trigger, pg_proc and
   pg_description. DDL writes new row versions; ANALYZE and VACUUM do not, so they read nothing. A
   table renamed under another schema's foreign key reads that schema again in the same pass.
-- `store.js`: `store.get` and `store.set`, an index `schema-cache.<id>` and compact JSON text chunks
-  `schema-cache.<id>.<n>` of at most 60 KiB, at most 16 a connection (about 960 KiB). Past the cap a
-  schema is held for the session only ("not kept") and read again at the next start.
+- `store.js`: an index `schema-cache.<id>` and JSON text chunks `schema-cache.<id>.<n>` of at most
+  60 KiB, 16 a database (about 960 KiB); past the cap a schema is held for the session only ("not
+  kept"). Another database (ADR 0321) is `<id>.d-<hash>`, listed in `schema-cache.<id>.databases`.
 - `model.js` turns rows into what `view.js` answers; `view.js` also has the explorer's labels.
 
 ## Test

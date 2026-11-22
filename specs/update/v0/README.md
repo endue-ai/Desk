@@ -1,6 +1,7 @@
 # Desk update v0
 
-Desk discovers updates in the published GitHub Releases of `endue-ai/Desk`. The same signed formats
+endue discovers updates in the published GitHub Releases of `endue-ai/endue`. Signed tag paths
+retain the original Desk manifest address for installed clients (ADR 0333). The same signed formats
 also serve earlier clients on R2 (ADR 0054). `index.schema.json` is a channel's index, and
 `release.schema.json` is one build's manifest. v0 may break on any minor release (ADR 0004).
 

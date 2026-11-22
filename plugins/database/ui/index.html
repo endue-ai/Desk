@@ -20,6 +20,8 @@
     <header>
       <h1 id="title">Database</h1>
       <span id="badge" class="tag" hidden></span>
+      <span id="session" role="status" hidden><span id="session-label"></span><span class="desk-dot"></span></span>
+      <button type="button" id="database" data-act="switchDatabase" title="The database it runs on: pick another of its server" class="desk-btn desk-btn-quiet" hidden></button>
       <nav id="actions" aria-label="Run" hidden>
         <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)" class="desk-btn desk-btn-quiet">Run</button>
         <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)" class="desk-btn desk-btn-quiet">Run all</button>
@@ -34,6 +36,7 @@
         <button type="button" data-act="starred" title="Starred queries of this connection" class="desk-btn desk-btn-quiet">Starred</button>
         <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown, SQL INSERT or SQL UPDATE" class="desk-btn desk-btn-quiet">Copy as…</button>
         <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
+        <button type="button" data-act="chart" title="Draw the result as a chart" class="desk-btn desk-btn-quiet">Chart</button>
         <button type="button" id="actions-more" title="The actions that do not fit in this row" class="desk-btn desk-btn-quiet" hidden>More</button>
       </nav>
       <desk-menu id="actions-menu" label="More actions"></desk-menu>
@@ -77,6 +80,8 @@
               <label class="quick"><span class="sr-only">Filter rows</span><input id="quick" type="search" placeholder="Filter rows (/)" spellcheck="false" class="desk-field" /></label>
               <button type="button" id="record" aria-pressed="false" title="One row as a record (t)" class="desk-btn desk-btn-quiet">Record</button>
               <button type="button" id="value-open" title="The whole value under the cursor (v)" class="desk-btn desk-btn-quiet">Value</button>
+              <button type="button" id="pin" data-act="togglePin" title="Keep this result through later runs" class="desk-btn desk-btn-quiet">Pin</button>
+              <button type="button" data-act="compareResults" title="Compare two results: the rows added, removed and changed" class="desk-btn desk-btn-quiet">Compare</button>
               <span id="console-pages" hidden>
                 <button type="button" data-console-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
                 <span id="console-page"></span>
@@ -189,6 +194,7 @@
     </main>
     <footer>
       <p id="hints"></p>
+      <p id="totals"></p>
       <p id="summary" aria-live="polite"></p>
       <p id="status" role="status"></p>
     </footer>

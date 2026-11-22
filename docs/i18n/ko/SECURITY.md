@@ -24,7 +24,7 @@
 
 ## 지원 버전
 
-Desk는 1.0 이전 단계입니다. 각 채널(stable, beta, canary)의 최신 릴리스만 보안 수정을 받습니다.
+endue는 1.0 이전 단계입니다. 각 채널(stable, beta, canary)의 최신 릴리스만 보안 수정을 받습니다.
 
 ## 범위
 
@@ -35,5 +35,5 @@ Desk는 1.0 이전 단계입니다. 각 채널(stable, beta, canary)의 최신 �
 
 ## 위협 모델
 
-[docs/security/threat-model.md](../../security/threat-model.md)(영문)에 Desk가 지키는 자산, 고려하는 공격자, 그리고
+[docs/security/threat-model.md](../../security/threat-model.md)(영문)에 endue가 지키는 자산, 고려하는 공격자, 그리고
 신뢰 경계마다 지금 `main`에 있는 대책이나 남은 빈틈과 그것을 메울 이슈를 정리해 두었습니다.

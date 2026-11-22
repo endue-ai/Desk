@@ -5,8 +5,9 @@
 
 /**
  * @typedef {import("../../schema/common.js").SchemaObject} SchemaObject
- * @typedef {{ name: string, type?: string }} ModelColumn
- * @typedef {{ name: string, kind: string, columns?: ModelColumn[] }} ModelRelation
+ * @typedef {{ name: string, type?: string, notNull?: boolean }} ModelColumn
+ * @typedef {{ name: string, kind: string, columns?: ModelColumn[], indexes?: string[] }} ModelRelation
+ *   `notNull` and `indexes` (the index definitions) come from the schema cache, for the warnings.
  * @typedef {{ name: string, kind: string, args: string, result?: string }} ModelRoutine
  * @typedef {{ name: string, relations?: ModelRelation[], routines?: ModelRoutine[] }} ModelSchema
  * @typedef {{ schemas: ModelSchema[] }} SchemaModel

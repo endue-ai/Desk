@@ -21,7 +21,8 @@ test("both published tags keep the exact path Desk verifies before checking the 
   t.after(() => rmSync(dist, { recursive: true, force: true }));
   for (const [repo, version, floor] of [
     ["endue-ai/Desk", "0.4.0", "0.1.0"],
-    ["endue-ai/endue", "0.5.0", "0.4.0"],
+    [undefined, "0.5.0", "0.4.0"],
+    ["endue-ai/endue", "0.6.0", "0.5.0"],
   ]) {
     const name = `endue-desk_${version}_linux-x86_64.deb`;
     writeFileSync(join(dist, name), version);
@@ -30,7 +31,7 @@ test("both published tags keep the exact path Desk verifies before checking the 
     const path = tagPath({ ...index, releases: [entryFor(manifest)] }, version);
     assert.equal(path.releases[0].release, `${base}/v${version}/release.json`);
     assert.equal(path.releases[0].minFrom, floor);
-    const releases = `https://github.com/${repo}/releases`;
+    const releases = `https://github.com/${repo ?? "endue-ai/endue"}/releases`;
     assert.equal(manifest.notes, `${releases}/tag/v${version}`);
     assert.equal(
       manifest.platforms["linux-x86_64-deb"].url,

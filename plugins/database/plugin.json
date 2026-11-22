@@ -25,12 +25,30 @@
         "desk.files.changed"
       ]
     },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "proc:spawn", "commands": ["*"] },
-    { "permission": "fs:write", "paths": ["/**"] },
-    { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "db:connect", "hosts": ["*"] }
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "proc:spawn",
+      "commands": ["*"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "db:connect",
+      "hosts": ["*"]
+    }
   ],
   "surfaces": [
     {
@@ -188,6 +206,36 @@
         "id": "endue.database.copy-plan",
         "title": "Database: copy the query plan",
         "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       },
       {
         "id": "endue.database.compare-plans",
@@ -1059,20 +1107,30 @@
               "enum": ["equals", "contains", "starts", "regex"],
               "description": "How a value matches: equals (the default), contains, starts with, or a regular expression (PostgreSQL ~, MySQL and SQLite REGEXP)."
             },
-            "ignoreCase": { "type": "boolean", "description": "Match ignoring case." },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case."
+            },
             "schemas": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "The schemas to search; every one the explorer lists when absent."
             },
             "tables": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Only these tables (name or schema.name, * for any run of characters); every table when absent."
             },
             "types": {
               "type": "array",
-              "items": { "type": "string", "enum": ["text", "number", "uuid", "json", "date"] },
+              "items": {
+                "type": "string",
+                "enum": ["text", "number", "uuid", "json", "date"]
+              },
               "description": "The kinds of column to look in; all five when absent."
             },
             "rowLimit": {
@@ -1183,15 +1241,38 @@
               "type": "object",
               "description": "The statement's options, on the defaults (an open form's own are set aside); what the server's version or another option rules out is left out of the statement.",
               "properties": {
-                "full": { "type": "boolean" },
-                "freeze": { "type": "boolean" },
-                "verbose": { "type": "boolean", "description": "On by default." },
-                "analyze": { "type": "boolean" },
-                "skipLocked": { "type": "boolean" },
-                "indexCleanup": { "type": "string", "enum": ["", "auto", "on", "off"] },
-                "truncate": { "type": "string", "enum": ["", "on", "off"] },
-                "parallel": { "type": ["integer", "null"], "minimum": 0, "maximum": 1024 },
-                "processToast": { "type": "boolean" },
+                "full": {
+                  "type": "boolean"
+                },
+                "freeze": {
+                  "type": "boolean"
+                },
+                "verbose": {
+                  "type": "boolean",
+                  "description": "On by default."
+                },
+                "analyze": {
+                  "type": "boolean"
+                },
+                "skipLocked": {
+                  "type": "boolean"
+                },
+                "indexCleanup": {
+                  "type": "string",
+                  "enum": ["", "auto", "on", "off"]
+                },
+                "truncate": {
+                  "type": "string",
+                  "enum": ["", "on", "off"]
+                },
+                "parallel": {
+                  "type": ["integer", "null"],
+                  "minimum": 0,
+                  "maximum": 1024
+                },
+                "processToast": {
+                  "type": "boolean"
+                },
                 "bufferUsageLimit": {
                   "type": "string",
                   "description": "A size such as 256kB or 16MB, or 0."
@@ -1297,6 +1378,159 @@
         "id": "endue.database.routine-refresh",
         "title": "Database: read the routine form again",
         "keywords": ["function", "procedure", "reload", "arguments", "signature"]
+      },
+      {
+        "id": "endue.database.create-table",
+        "title": "Database: create a table…",
+        "keywords": [
+          "new table",
+          "create table",
+          "design",
+          "columns",
+          "primary key",
+          "foreign key",
+          "index",
+          "partition",
+          "ddl"
+        ],
+        "description": "Opens the table form of a new PostgreSQL table, filled from the arguments, and answers the CREATE script it shows (every name quoted), with the problems that hold it back. Nothing runs: the person reads the script in the form and runs it there; a read-only connection gets no Run.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "description": "The new table's name, written as given (quoted)."
+            },
+            "columns": {
+              "type": "array",
+              "description": "Its columns in order.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The column's name, written as given (quoted)."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "One of the server's types: as PostgreSQL formats it (character varying), its own name (varchar, int4) or schema.name, with a length (varchar(120)) and [] for an array."
+                  },
+                  "length": {
+                    "type": "string",
+                    "description": "The type's length when not in type (120, or 10,2)."
+                  },
+                  "notNull": {
+                    "type": "boolean",
+                    "description": "NOT NULL."
+                  },
+                  "default": {
+                    "type": "string",
+                    "description": "A default expression, as SQL (now(), 0, 'new')."
+                  },
+                  "identity": {
+                    "type": "string",
+                    "enum": ["always", "by default"],
+                    "description": "An identity column (smallint, integer or bigint)."
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "The column's comment."
+                  }
+                },
+                "required": ["name"],
+                "additionalProperties": false
+              }
+            },
+            "primaryKey": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The columns of the primary key, by name."
+            },
+            "comment": {
+              "type": "string",
+              "description": "The table's comment."
+            },
+            "owner": {
+              "type": "string",
+              "description": "The role that owns it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.change-table",
+        "title": "Database: change a table's design…",
+        "keywords": [
+          "alter table",
+          "modify table",
+          "design",
+          "rename column",
+          "add column",
+          "drop column",
+          "column type",
+          "index",
+          "constraint"
+        ],
+        "description": "Opens the table form of a PostgreSQL table, read from the server, for the person to change; every change becomes the ALTER script the form shows (a rename is a rename, dangerous steps marked) and runs only when the person runs it there.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's name; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.table-design-run",
+        "title": "Database: run the table form's script",
+        "keywords": ["apply", "alter table", "create table", "execute", "save the design"]
+      },
+      {
+        "id": "endue.database.table-design-dry-run",
+        "title": "Database: dry-run the table form's script",
+        "keywords": ["try", "rollback", "test the alter", "check the script"]
+      },
+      {
+        "id": "endue.database.table-design-console",
+        "title": "Database: open the table form's script in a console",
+        "keywords": ["copy", "edit the script", "alter table", "create table", "sql"]
+      },
+      {
+        "id": "endue.database.table-design-refresh",
+        "title": "Database: read the table form's table again",
+        "keywords": ["reload", "discard changes", "design", "columns"]
       },
       {
         "id": "endue.database.history",
@@ -1511,9 +1745,590 @@
         "keywords": ["back", "foreign key", "return", "previous", "grid"]
       },
       {
+        "id": "endue.database.chart",
+        "title": "Database: draw the result as a chart",
+        "keywords": ["chart", "graph", "plot", "bar", "line", "pie", "visualize", "result"]
+      },
+      {
+        "id": "endue.database.chart-export",
+        "title": "Database: export the chart as an image",
+        "keywords": ["chart", "export", "image", "png", "svg", "save"]
+      },
+      {
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.show-map",
+        "title": "Database: show the result on a map",
+        "keywords": [
+          "geometry",
+          "geography",
+          "spatial",
+          "shapes",
+          "map",
+          "point",
+          "polygon",
+          "srid"
+        ]
+      },
+      {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
+        "id": "endue.database.fix-problem",
+        "title": "Database: fix the SQL warning at the caret",
+        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
+      },
+      {
+        "id": "endue.database.switch-database",
+        "title": "Database: switch the database",
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
+      },
+      {
+        "id": "endue.database.privileges",
+        "title": "Database: roles and privileges",
+        "keywords": ["roles", "users", "grants", "permissions", "access", "members", "pg_roles"],
+        "description": "Opens a PostgreSQL connection's roles and privileges and answers its roles: attributes (login, superuser, create database, create role, replication, bypass RLS, inherit, connection limit, valid until), what each is a member of and its members. Never a password; a catalog this role cannot read is said.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.object-privileges",
+        "title": "Database: privileges of an object",
+        "keywords": ["grants", "acl", "matrix", "who may", "permissions"],
+        "description": "Opens an object's matrix of grantees and privileges and answers its owner and every grant: grantee, privilege, grant option and grantor, its columns' too, and a table's row security policies.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's schema; one is picked when absent (not for a database, a schema, a language, a foreign data wrapper or server, or a tablespace)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind: table, view, materialized view, foreign table, sequence, function, procedure, type, schema, database, language, foreign data wrapper, foreign server, tablespace."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.role-privileges",
+        "title": "Database: what a role may do",
+        "keywords": ["effective privileges", "membership", "inherit", "public", "why"],
+        "description": "Answers everything a PostgreSQL role may do and why: the roles it inherits from or may SET ROLE to, each object's privileges with the path they come through (itself, PUBLIC or a membership), what it owns, and what its attributes and predefined roles let it do.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.default-privileges",
+        "title": "Database: default privileges",
+        "keywords": ["alter default privileges", "new objects", "pg_default_acl"],
+        "description": "Opens and answers the default privileges per owner, schema and kind: what new tables, sequences, functions, types and schemas get.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.change-privileges",
+        "title": "Database: grant or revoke privileges",
+        "keywords": ["grant", "revoke", "grant option", "permissions", "access"],
+        "description": "Grants and revokes an object's privileges for one grantee (GRANT and REVOKE). The person is shown the exact statements and runs them, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's schema; one is picked when absent (not for a database, a schema, a language, a foreign data wrapper or server, or a tablespace)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind: table, view, materialized view, foreign table, sequence, function, procedure, type, schema, database, language, foreign data wrapper, foreign server, tablespace."
+            },
+            "grantee": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A role, or PUBLIC."
+            },
+            "column": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A column, for a column grant."
+            },
+            "grant": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to grant (SELECT, INSERT ... or ALL)."
+            },
+            "revoke": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to revoke (or ALL)."
+            },
+            "grantOption": {
+              "type": "boolean",
+              "description": "Grant them WITH GRANT OPTION."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Revoke with CASCADE: what the grantee granted on goes too. Off unless true."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-default-privileges",
+        "title": "Database: change default privileges",
+        "keywords": ["alter default privileges", "grant", "revoke", "new objects"],
+        "description": "Changes what new objects of a role get (ALTER DEFAULT PRIVILEGES), in a schema or every one. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role whose new objects these are."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; every schema when absent."
+            },
+            "on": {
+              "type": "string",
+              "enum": ["tables", "sequences", "functions", "types", "schemas"],
+              "description": "The kind of new objects."
+            },
+            "grantee": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A role, or PUBLIC."
+            },
+            "grant": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to grant (or ALL)."
+            },
+            "revoke": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to revoke (or ALL)."
+            },
+            "grantOption": {
+              "type": "boolean",
+              "description": "WITH GRANT OPTION."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.create-role",
+        "title": "Database: create a role",
+        "keywords": ["create role", "create user", "login", "password", "new user"],
+        "description": "Creates a PostgreSQL role with its attributes and the roles it joins (CREATE ROLE). A password is typed by the person in a hidden field, never taken as an argument; the person is shown the exact statement, the password masked, and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The new role's name."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "It may log in."
+            },
+            "superuser": {
+              "type": "boolean",
+              "description": "SUPERUSER."
+            },
+            "createDb": {
+              "type": "boolean",
+              "description": "CREATEDB."
+            },
+            "createRole": {
+              "type": "boolean",
+              "description": "CREATEROLE."
+            },
+            "replication": {
+              "type": "boolean",
+              "description": "REPLICATION."
+            },
+            "bypassRls": {
+              "type": "boolean",
+              "description": "BYPASSRLS."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "INHERIT (on by default)."
+            },
+            "connectionLimit": {
+              "type": "integer",
+              "minimum": -1,
+              "description": "CONNECTION LIMIT; -1 for none."
+            },
+            "validUntil": {
+              "type": "string",
+              "minLength": 1,
+              "description": "VALID UNTIL, a timestamp or infinity."
+            },
+            "memberOf": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Roles it joins (IN ROLE)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.alter-role",
+        "title": "Database: change a role",
+        "keywords": [
+          "alter role",
+          "password",
+          "login",
+          "connection limit",
+          "valid until",
+          "superuser"
+        ],
+        "description": "Changes a role's attributes, connection limit, valid until and password (ALTER ROLE), only what changed. A password is typed by the person in a hidden field, never taken as an argument; the person is shown the exact statement, the password masked, and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role to change."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "It may log in."
+            },
+            "superuser": {
+              "type": "boolean",
+              "description": "SUPERUSER."
+            },
+            "createDb": {
+              "type": "boolean",
+              "description": "CREATEDB."
+            },
+            "createRole": {
+              "type": "boolean",
+              "description": "CREATEROLE."
+            },
+            "replication": {
+              "type": "boolean",
+              "description": "REPLICATION."
+            },
+            "bypassRls": {
+              "type": "boolean",
+              "description": "BYPASSRLS."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "INHERIT (on by default)."
+            },
+            "connectionLimit": {
+              "type": "integer",
+              "minimum": -1,
+              "description": "CONNECTION LIMIT; -1 for none."
+            },
+            "validUntil": {
+              "type": "string",
+              "minLength": 1,
+              "description": "VALID UNTIL, a timestamp or infinity."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-membership",
+        "title": "Database: change a role membership",
+        "keywords": ["grant role", "revoke role", "member", "admin option", "inherit", "set role"],
+        "description": "Grants a role to a member, revokes it, or changes its ADMIN, INHERIT and SET options (PostgreSQL 16; ADMIN OPTION before). The person is shown the exact statements and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role whose privileges the member gets."
+            },
+            "member": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The member."
+            },
+            "revoke": {
+              "type": "boolean",
+              "description": "Take the membership away."
+            },
+            "admin": {
+              "type": "boolean",
+              "description": "The member may grant the role on."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "The member inherits its privileges (16+)."
+            },
+            "set": {
+              "type": "boolean",
+              "description": "The member may SET ROLE to it (16+)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.policy",
+        "title": "Database: create or change a row security policy",
+        "keywords": ["row level security", "rls", "policy", "using", "with check"],
+        "description": "Creates a table's row security policy, or changes the one named (CREATE POLICY, ALTER POLICY; DROP and CREATE in one transaction for another command or kind). The person is shown the exact statements in a form and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The policy; a new one when the table has none of that name."
+            },
+            "newName": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A new name for it."
+            },
+            "command": {
+              "type": "string",
+              "enum": ["ALL", "SELECT", "INSERT", "UPDATE", "DELETE"],
+              "description": "FOR which command."
+            },
+            "restrictive": {
+              "type": "boolean",
+              "description": "AS RESTRICTIVE; permissive when false."
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "TO which roles; PUBLIC when absent."
+            },
+            "using": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The USING expression."
+            },
+            "check": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The WITH CHECK expression."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.drop-policy",
+        "title": "Database: drop a row security policy",
+        "keywords": ["drop policy", "rls", "row level security"],
+        "description": "Drops a table's row security policy (DROP POLICY). The person is shown the exact statement and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The policy."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.row-security",
+        "title": "Database: turn a table's row security on or off",
+        "keywords": ["enable row level security", "force", "rls"],
+        "description": "Turns a table's row security on or off and forced on its owner or not (ALTER TABLE ... ROW LEVEL SECURITY). The person is shown the exact statements and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "enable": {
+              "type": "boolean",
+              "description": "Row security on."
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Forced on the table's owner too."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ],
     "keys": [
@@ -1526,11 +2341,15 @@
       "endue.database.max-rows": {
         "kind": "integer",
         "default": 500,
+        "minimum": 1,
+        "maximum": 100000,
         "description": "Rows a result keeps (1 to 100000); More rows loads four times as many."
       },
       "endue.database.timeout-seconds": {
         "kind": "integer",
         "default": 0,
+        "minimum": 0,
+        "maximum": 86400,
         "description": "Stop a run that takes longer, in seconds; 0 waits as long as it takes. PostgreSQL ends the statement on the server (statement_timeout)."
       },
       "endue.database.confirm": {
@@ -1546,12 +2365,14 @@
       "endue.database.history-max": {
         "kind": "integer",
         "default": 200,
+        "minimum": 0,
+        "maximum": 1000,
         "description": "How many statements each connection's history keeps (0 to 1000)."
       },
       "endue.database.system-schemas": {
         "kind": "boolean",
         "default": false,
-        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
+        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...) and PostgreSQL's template databases."
       },
       "endue.database.mysql": {
         "kind": "string",
@@ -1633,6 +2454,16 @@
         "default": true,
         "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
       },
+      "endue.database.problems-warnings": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Mark statements that are likely mistakes in PostgreSQL consoles as warnings, each with its identifier and, where the rewrite is certain, a fix. A comment -- endue-ignore <identifiers> turns them off for its line, or for the next line when it stands alone."
+      },
+      "endue.database.problems-warnings-off": {
+        "kind": "array",
+        "default": [],
+        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal."
+      },
       "endue.database.pg-dump": {
         "kind": "string",
         "default": "",
@@ -1642,6 +2473,20 @@
         "kind": "string",
         "default": "",
         "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
+      },
+      "endue.database.sessions-per-connection": {
+        "kind": "integer",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12,
+        "description": "PostgreSQL sessions a connection's consoles and table views keep open at once (1 to 12). At the limit, a table view's idle session closes first; past it, a run says which to close."
+      },
+      "endue.database.session-idle-minutes": {
+        "kind": "integer",
+        "default": 30,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
     }
   }

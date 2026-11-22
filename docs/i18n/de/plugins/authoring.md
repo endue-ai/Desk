@@ -1,15 +1,15 @@
 > Dies ist eine Übersetzung. Bei Abweichungen ist die [englische Fassung](../../../plugins/authoring.md) maßgeblich.
 
-# Ein Desk-Plugin schreiben
+# Ein endue-Plugin schreiben
 
-Ein Desk-Plugin ist ein Ordner. Eingebaute Funktionen nutzen genau dasselbe Format; alles, was Desk selbst auf
+Ein endue-Plugin ist ein Ordner. Eingebaute Funktionen nutzen genau dasselbe Format; alles, was endue selbst auf
 dem Bildschirm tut, kann also auch ein eigenes Plugin tun. Diese Seite beginnt mit den Arten von Plugins und
 ihren Vorlagen, behandelt dann UI-Plugins im Detail, danach native Plugins und zuletzt Themes;
 Tool-Plugins (MCP) folgen später.
 
 ## Mit einer Vorlage beginnen
 
-`create-plugin` legt einen Ordner einer Art an, der `desk plugin validate` besteht und einen Test mitbringt
+`create-plugin` legt einen Ordner einer Art an, der `endue plugin validate` besteht und einen Test mitbringt
 (`pnpm create @endue-ai/plugin`, sobald das Paket veröffentlicht ist):
 
 ```bash
@@ -32,7 +32,7 @@ Die Rust-Arten werden mit dem eigenen Befehl der Sprache gebaut: `cargo build --
 Ziel `wasm32-wasip2` (einmalig `rustup target add wasm32-wasip2`). Die Komponente landet dort, wohin `entry` in
 `plugin.json` zeigt.
 
-Um ein Plugin schon während der Arbeit daran in Desk zu sehen, wird Desk mit dem eigenen Ordner als
+Um ein Plugin schon während der Arbeit daran in endue zu sehen, wird endue mit dem eigenen Ordner als
 Entwicklungs-Plugin gestartet:
 
 ```bash
@@ -40,19 +40,19 @@ DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
 Wird eine beliebige Datei im Ordner gespeichert, lädt innerhalb einer Sekunde nur dieses Plugin neu. Der Rest
-von Desk und der Zustand des Plugins bleiben, wie sie waren. Ein Ordner, der beim Start von Desk leer oder
+von endue und der Zustand des Plugins bleiben, wie sie waren. Ein Ordner, der beim Start von endue leer oder
 fehlerhaft ist, erscheint, sobald seine Dateien da oder behoben sind, ohne Neustart.
 
-### Testen mit `desk plugin test`
+### Testen mit `endue plugin test`
 
-`desk plugin test <folder>` prüft den Ordner wie `validate` und führt dann seine `tests/` auf dem Host aus, der
+`endue plugin test <folder>` prüft den Ordner wie `validate` und führt dann seine `tests/` auf dem Host aus, der
 zu seiner Art passt:
 
 - `ui`, `view`, `policy`, `theme` und die übrigen Arten ohne Wasm: `tests/*.test.js` oder `*.test.ts` mit
   vitest auf dem Test-Host des SDK (`@endue-ai/plugin-sdk/testing`, siehe Testen unten), in einer
   jsdom-Seite. Das SDK wird über seinen Namen importiert; der getestete Code bleibt frei von diesem Import,
   wie in den Vorlagen (`ui/plugin.js`, dazu `ui/main.js`, das `defineUiPlugin(plugin)` aufruft).
-- `logic` und Wasm-`connector`: jede `tests/<name>.test.json` auf einem geskripteten Desk, dem Harness von
+- `logic` und Wasm-`connector`: jede `tests/<name>.test.json` auf einem geskripteten Desktop, dem Harness von
   `desk-plugin-host`, mit der gebauten Komponente:
 
 ```json
@@ -68,7 +68,7 @@ zu seiner Art passt:
 }
 ```
 
-`steps` ist, was der Desk tut: `start`, `command` (`id`, `args`) und `event` (`name`, `data`) für ein
+`steps` ist, was der Desktop tut: `start`, `command` (`id`, `args`) und `event` (`name`, `data`) für ein
 Logik-Plugin, `connect` (`instance`, `settings`) und `sync` (`instance`) für einen Connector. Jeder Import, den
 das Plugin aufruft, wird als Bridge-Aufruf `{ method, params }` aufgezeichnet (`fs.read { path }`,
 `cmd.answer { invocationId, result }`) und vom ersten Eintrag in `answers` beantwortet, dessen `method` passt
@@ -85,7 +85,7 @@ erwartet wurde, und listet, was stattdessen kam.
 | Pfad | Erforderlich | Zweck |
 | --- | --- | --- |
 | `plugin.json` | ja | Das Manifest: id, version, kind, entry, permissions, surfaces |
-| `ui/index.html` | ja (der `entry`) | Die Seite, die Desk in einen Sandbox-Frame lädt |
+| `ui/index.html` | ja (der `entry`) | Die Seite, die endue in einen Sandbox-Frame lädt |
 | `ui/*.js`, `ui/*.css` | nein | Eigener Code und Styles, relativ zum Einstiegspunkt geladen |
 | `README.md` | empfohlen | Was das Plugin tut, welche Berechtigungen es anfordert und warum |
 
@@ -107,7 +107,7 @@ bleibt innerhalb des Ordners.
 
 ## Das SDK
 
-Das SDK wird über eine Import-Map in der Einstiegsseite importiert; Desk stellt es unter
+Das SDK wird über eine Import-Map in der Einstiegsseite importiert; endue stellt es unter
 `/_desk/plugin-sdk.js` bereit:
 
 ```html
@@ -137,10 +137,10 @@ beispielsweise `permission_denied` ist.
 Eine Oberfläche, die eine Weile niemand gesehen hat (hinter anderen Fenstern, außerhalb des Bildschirms),
 kann entladen werden, um Speicher zu sparen, und lädt erneut, sobald sie sich zeigt (ADR 0070). Um so
 zurückzukommen, wie sie war, registrieren Sie, was bleiben soll: `surface.onUnload(() => ({ open, caret,
-scroll }))` beantwortet das `ui.surface.state` des Desks mit JSON bis 64 KiB, und die neu geladene Seite
+scroll }))` beantwortet das `ui.surface.state` des Desktops mit JSON bis 64 KiB, und die neu geladene Seite
 findet es in `surface.restored`. Ohne Anbieter kommt sie kalt zurück; `state` oben kommt weiterhin zurück.
 
-Das SDK beantwortet die Pings des Desks (`desk:ping`) von selbst, sobald es geladen ist, sodass das Warten
+Das SDK beantwortet die Pings des Desktops (`desk:ping`) von selbst, sobald es geladen ist, sodass das Warten
 auf einen langsamen Aufruf nie wie ein Hänger aussieht. Ein Frame, der 5 Sekunden lang nicht antwortet,
 bekommt auf seinem Fenster „Reagiert nicht“ mit Warten und Beenden, und Neu laden holt ihn mit seinem
 letzten `state` zurück (#39).
@@ -158,15 +158,15 @@ eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049) und denen 
 unter `imports` nennt (`"imports": ["endue.eris"]`); deren Code läuft dann als Ihrer. Bauen Sie URLs aus relativen Pfaden,
 nie aus dem Origin.
 
-### Wörter in der Sprache des Desks
+### Wörter in der Sprache des Desktops
 
-Der Desk spricht Englisch und Koreanisch, und die Einstellung `desk.language` wählt, welche
+Der Desktop spricht Englisch und Koreanisch, und die Einstellung `desk.language` wählt, welche
 (`system`, die Vorgabe, folgt der Sprache des Computers). Liefern Sie Ihre Wörter als
 Nachrichtenkataloge mit (ADR 0250): eine JSON-Datei je Sprache in einem Ordner, den Ihr Manifest nennt,
 `"messages": "messages"`, wobei `en.json` Pflicht ist. Ein Katalog ordnet einer Nachrichten-ID
 (`greeting.hello`) einen Text zu oder Pluralformen, die der Parameter `count` wählt
 (`{ "one": "{count} file", "other": "{count} files" }`). `{name}` füllt der gleichnamige Parameter. In
-der Seite liest `ctx.messages.t("greeting.hello", { name })` die Sprache des Desks, dann Englisch, dann
+der Seite liest `ctx.messages.t("greeting.hello", { name })` die Sprache des Desktops, dann Englisch, dann
 die ID. `ctx.messages.language()` nennt die Sprache, und `ctx.messages.onChange` meldet jede Änderung,
 damit Sie Ihre Wörter neu zeichnen. `defineUiPlugin` bindet ein, sobald Ihre Kataloge geladen sind. Das
 Format ist `specs/plugin/v0/messages.schema.json`.
@@ -174,7 +174,7 @@ Format ist `specs/plugin/v0/messages.schema.json`.
 ## Wie sich das Fenster einer App öffnet
 
 Ein Plugin, dessen Oberfläche bei `center` oder `floating` liegt, ist eine App: Ihr Fenster öffnet sich
-auf dem Canvas des Desks oder in einem eigenen Fenster des Betriebssystems (ADR 0205). Ihre Seite und
+auf dem Canvas des Desktops oder in einem eigenen Fenster des Betriebssystems (ADR 0205). Ihre Seite und
 ihre Aufrufe sind in beiden gleich. Der Block `window` der Oberfläche sagt, wie sich das Fenster öffnet
 (ADR 0226):
 
@@ -192,15 +192,15 @@ ihre Aufrufe sind in beiden gleich. Der Block `window` der Oberfläche sagt, wie
 
 | Hinweis | Bedeutung |
 | --- | --- |
-| `size` | Ihre Seite beim ersten Öffnen des Fensters, in CSS-Pixeln; auf dem Canvas kommen Titelleiste und Rahmen des Desks hinzu. Danach öffnet sich das Fenster dort, wo die Person es gelassen hat |
+| `size` | Ihre Seite beim ersten Öffnen des Fensters, in CSS-Pixeln; auf dem Canvas kommen Titelleiste und Rahmen des Desktops hinzu. Danach öffnet sich das Fenster dort, wo die Person es gelassen hat |
 | `minSize` | Die kleinste Größe, auf die die Person Ihre Seite bringen kann, mindestens 240 × 160 |
 | `resizable` | `false`: Das Fenster hat keinen Rand zum Ziehen und behält die Größe, mit der es sich geöffnet hat |
-| `opens` | `canvas` (die Vorgabe): auf dem Desk. `out`: in einem eigenen Fenster des Betriebssystems, wenn das Fenster in einer Sitzung zum ersten Mal erscheint |
+| `opens` | `canvas` (die Vorgabe): auf dem Desktop. `out`: in einem eigenen Fenster des Betriebssystems, wenn das Fenster in einer Sitzung zum ersten Mal erscheint |
 
 Das sind Hinweise. Ein Platz, den ein Profil oder eine Sitzung gespeichert hat, und das eigene Anordnen
 der Person (Füllen, Einrasten, Kacheln) bestimmen die Größe eines Fensters auf dem Canvas, was immer
 die Hinweise sagen, und ein in Bereiche geteiltes Fenster folgt seinen Bereichen. Die Person holt jedes
-Fenster heraus und wieder zurück („Pop out window“ in der Palette, Window > Move to Desk).
+Fenster heraus und wieder zurück („Pop out window“ in der Palette, die Rückkehraktion im Menü Window (Move to Desk in v0.3.0)).
 `DESK_APP_WINDOWS` geht für einen Start über die Manifeste: `off` lässt jedes Fenster auf dem Canvas,
 `on` öffnet jede App außerhalb, und eine Liste von Plugin-IDs öffnet diese außerhalb.
 `examples/plugin-hello-window` läuft auf beide Arten, mit je einem Befehl.
@@ -212,10 +212,10 @@ ebenso, was `surface.onUnload` behalten hat. Außerhalb des Canvas ist dreierlei
   Ihrer Seite und Dateien aus dem Betriebssystem landen wie auf dem Canvas; ein Ziehen, das außerhalb
   des Fensters losgelassen wird, endet mit dem Effekt `none`, und ein Ziehen, das auf dem Canvas
   beginnt, erreicht kein Betriebssystemfenster.
-* Was der Desk die Person fragt, erscheint im Fenster des Desks, nicht in Ihrem. `desk.palette.pick`
-  holt den Desk nach vorn, und die Antwort kommt zu Ihrer Seite zurück; die Frage einer Berechtigung
-  wartet im Desk.
-* Eine Webansicht (`web.*`) erscheint nur im Desk: Sie endet, wenn ihr Fenster herausgeht.
+* Was der Desktop die Person fragt, erscheint im Fenster des Desktops, nicht in Ihrem. `desk.palette.pick`
+  holt den Desktop nach vorn, und die Antwort kommt zu Ihrer Seite zurück; die Frage einer Berechtigung
+  wartet im Desktop.
+* Eine Webansicht (`web.*`) erscheint nur im Desktop: Sie endet, wenn ihr Fenster herausgeht.
 
 `desk.files.*` und `desk.buffers.*` arbeiten wie auf dem Canvas: Eine Datei, die in Ihrem Öffner
 geöffnet wird, oder ein gezeigter Puffer geht zum Betriebssystemfenster, wo es ist, und macht es zum
@@ -226,12 +226,12 @@ Eine App, die kein Datei-Öffner ist, kann mehrere Fenster haben: Geben Sie ihre
 aus (dafür braucht es `cmd:invoke` für diese ID). Die Antwort nennt das neue Fenster,
 `{ window: "<plugin id>@<n>" }`. Jedes ist eine eigene Seite, wie die Fenster eines Datei-Öffners
 (siehe `per-file` unter Beiträge): Es ruft als Ihr Plugin auf, behält seinen eigenen `state`, liest
-seinen Namen in `ctx.instance` und schließt für sich. Nach einem Neustart öffnet der Desk sie nicht
+seinen Namen in `ctx.instance` und schließt für sich. Nach einem Neustart öffnet der Desktop sie nicht
 wieder.
 
 ## Berechtigungen
 
-Der Frame des Plugins läuft in einer Sandbox, die nur Skripte erlaubt: kein Zugriff auf die Seite von Desk,
+Der Frame des Plugins läuft in einer Sandbox, die nur Skripte erlaubt: kein Zugriff auf die Seite von endue,
 keine Top-Level-Navigation, keine Formulare oder Pop-ups und keine eigenen Netzwerkverbindungen. Jede
 Fähigkeit läuft über die Bridge, und jeder Bridge-Aufruf außer `perm.*` trägt den Berechtigungsbereich, den er
 benötigt (`params.scope`). Der Kern antwortet nur, wenn die nutzende Person eine Berechtigung erteilt hat, die
@@ -247,7 +247,7 @@ Das Vokabular (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`
 
 ## Ein eigener Prozess und ein eigener Origin
 
-Heute teilen sich alle Plugin-Frames die eine Seite von Desk und ihren einen Prozess. Desk wechselt zu
+Heute teilen sich alle Plugin-Frames die eine Seite von endue und ihren einen Prozess. endue wechselt zu
 Chromium, wo jede Oberfläche in einem eigenen Prozess läuft (ADR 0140). Am Code des Plugins ändert sich
 nichts: Manifest, Import-Map, `@endue-ai/plugin-sdk`, Bridge und CSP bleiben, wie diese Seite sie beschreibt.
 
@@ -264,7 +264,7 @@ nichts: Manifest, Import-Map, `@endue-ai/plugin-sdk`, Bridge und CSP bleiben, wi
 
 ## Beiträge
 
-Ein Plugin kann die Standardrichtlinien des Desks ohne Code ergänzen, in `contributes` von `plugin.json`
+Ein Plugin kann die Standardrichtlinien des Desktops ohne Code ergänzen, in `contributes` von `plugin.json`
 (ADR 0017): Befehle, die die Palette auflistet und Tasten ausführen, Tastenbelegungen, Anzeigeregeln,
 die Dateien, die es öffnet, Themes, Einstellungen mit ihren Standardwerten und Profile. Befehle,
 Einstellungen und Themes beginnen mit der Plugin-ID.
@@ -279,7 +279,7 @@ Einstellungen und Themes beginnen mit der Plugin-ID.
 }
 ```
 
-Beantworten Sie Ihre Befehle mit `ctx.commands.on`, und führen Sie jeden Befehl des Desks mit
+Beantworten Sie Ihre Befehle mit `ctx.commands.on`, und führen Sie jeden Befehl des Desktops mit
 `ctx.commands.run` aus. Beides läuft über das Befehlsregister des Kerns (`cmd.*`); einen Befehl, den Sie
 nicht selbst anbieten, auszuführen, braucht eine `cmd:invoke`-Berechtigung, die seine ID abdeckt, etwa
 `{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`:
@@ -298,11 +298,11 @@ defineUiPlugin({
 Ein Plugin, das Dateien öffnet, beantwortet `desk.files.visit`, `desk.files.save` und
 `desk.files.revert` und meldet ungespeicherte Änderungen mit `desk.buffers.update { id, modified: true }`.
 Das Theme erreicht Ihren Frame als CSS-Eigenschaften `--desk-*` und als `ctx.theme`. Tastenkombinationen,
-die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desks, außer Sie rufen
+die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desktops, außer Sie rufen
 `preventDefault()` auf. Die Standardrichtlinien und was jede entscheidet, stehen in `plugins/README.md`.
 
 Ein Öffner, der jeweils eine Datei zeigt, kann jede Datei in einem eigenen Fenster öffnen: Geben Sie
-seiner ersten Oberfläche `"instances": "per-file"` (ADR 0212). Der Desk öffnet dann für jede Datei, die
+seiner ersten Oberfläche `"instances": "per-file"` (ADR 0212). Der Desktop öffnet dann für jede Datei, die
 die Person öffnet, ein Fenster, jedes eine eigene Seite auf `<surface>--<n>.<label>`, und schickt jedem
 Fenster nur `desk.files.visit`, `desk.files.revert` und `desk.buffers.show` seiner eigenen Datei. Eine
 bereits offene Datei zu öffnen holt ihr Fenster nach vorn, und eine Datei, die Ihre Seite selbst öffnet
@@ -313,10 +313,10 @@ Berechtigungen, Einstellungen und Befehlen, und behält seinen eigenen `state`. 
 
 ## Befehle für Agenten
 
-Ein Agent von endue AI oder das lokale Gehirn arbeitet auf dem Desk mit denselben Befehlen, die Menschen
+Ein Agent von endue AI oder das lokale Gehirn arbeitet auf dem Desktop mit denselben Befehlen, die Menschen
 ausführen (ADR 0088). Markieren Sie einen Befehl mit `agent` und sagen Sie, was er tut, was er nimmt und
 was er antwortet: Der Kern prüft die Argumente jedes Aufrufs gegen `args`, führt den Befehl in
-`cmd.tools` auf und bietet ihn in den Gehirn-Runden des Desks als Werkzeug an, benannt nach seiner Id
+`cmd.tools` auf und bietet ihn in den Gehirn-Runden des Desktops als Werkzeug an, benannt nach seiner Id
 (`example_my-plugin_notes`):
 
 ```json
@@ -387,8 +387,8 @@ importieren nichts, daher kann ein einfacher Node-Test `packages/plugin-sdk/src/
 ## Einträge und Ansichten
 
 Was die Apps enthalten, die eine Person verbindet, kommt als Einträge einer einzigen Form auf den
-Desk (`specs/item/v0`, ADR 0032): Termine, Aufgaben, Nachrichten, Notizen und mehr, aus jeder Quelle
-gleich. `ctx.data` liest den Index des Desks mit einer `data:read`-Berechtigung und übergibt den
+Desktop (`specs/item/v0`, ADR 0032): Termine, Aufgaben, Nachrichten, Notizen und mehr, aus jeder Quelle
+gleich. `ctx.data` liest den Index des Desktops mit einer `data:read`-Berechtigung und übergibt den
 engsten Geltungsbereich, den eine Abfrage braucht; `ctx.views` liest und speichert die Ansichten der
 Person mit `view:manage`:
 
@@ -413,8 +413,8 @@ Eine universelle Ansicht (`specs/view/v0/universal.schema.json`, ADR 0087) zeigt
 die ein und dasselbe YAML-Format liefert, das universelle Datenformat, als Zeitleiste, Kalender, Kanban,
 Liste, Text, Chat oder Lauf eines Agenten. Halten Sie die Ansicht als Daten und öffnen Sie sie mit
 `ctx.universal`. Ihre Quelle können eingebettete Daten sein, eine Datei im Ordner Ihres Plugins (`asset`,
-ohne Berechtigung), eine URL (`net:fetch`), eine Datei auf dem Desk (`fs:read`), der Befehl eines anderen
-Plugins oder die Einträge des Desks, und die Ansicht bleibt dieselbe:
+ohne Berechtigung), eine URL (`net:fetch`), eine Datei auf dem Desktop (`fs:read`), der Befehl eines anderen
+Plugins oder die Einträge des Desktops, und die Ansicht bleibt dieselbe:
 
 ```js
 const board = ctx.universal.open(document.getElementById("root"), {
@@ -432,7 +432,7 @@ const board = ctx.universal.open(document.getElementById("root"), {
 
 ## Drag and Drop zwischen Plugins
 
-Plugins ziehen einander *Desk-Daten* über `ctx.dnd` zu (ADR 0119). Der Desk vermittelt jedes Ziehen.
+Plugins ziehen einander *endue-Daten* über `ctx.dnd` zu (ADR 0119). Der Desktop vermittelt jedes Ziehen.
 Er zeichnet das Ziehbild über allen Frames und bietet das Ziehen dem Frame unter dem Zeiger an. Die
 Einträge gibt er nur dem Frame, auf dem sie landen.
 
@@ -442,7 +442,7 @@ Einträge gibt er nur dem Frame, auf dem sie landen.
 | `desk/text` | `{ text }` |
 | `desk/uri` | `{ uri, title? }` |
 | `desk/json` | `{ kind, value }`, angeboten als Typ `desk/json:<kind>`, zum Beispiel `desk/json:db/rows` |
-| `text/plain` | `{ text }`: der Ersatz, den der Desk ergänzt, wenn ein Ziehen keinen anbietet |
+| `text/plain` | `{ text }`: der Ersatz, den der Desktop ergänzt, wenn ein Ziehen keinen anbietet |
 
 ```js
 // Eine Quelle: Eine Zeile zieht erst, wenn der Zeiger DRAG_THRESHOLD überschritten hat, also bleibt ein Klick ein Klick.
@@ -475,7 +475,7 @@ unter Ihren eigenen Berechtigungen, und fragen Sie mit `perm.request`, wenn sie 
 
 Zum Testen nutzen Sie `host.dnd` aus `createTestHost`:
 
-* `host.dnd.drop({ items, over })` bietet Ihren Zielen Einträge an wie der Desk und löst mit dem
+* `host.dnd.drop({ items, over })` bietet Ihren Zielen Einträge an wie der Desktop und löst mit dem
   Effekt auf.
 * `host.dnd.release()` legt Ihr eigenes Ziehen auf Ihnen selbst ab.
 * `host.dnd.drags` listet die Ziehvorgänge, die Sie gestartet haben.
@@ -494,16 +494,16 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-Vor der Veröffentlichung muss `desk plugin validate <folder>` erfolgreich durchlaufen; die CI führt den Befehl
+Vor der Veröffentlichung muss `endue plugin validate <folder>` erfolgreich durchlaufen; die CI führt den Befehl
 für jeden Ordner in `plugins/` und `examples/` aus.
 
 ## Native Plugins
 
-Ein natives Plugin (Art `native`) ist ein eigenes Programm in einer beliebigen Sprache, das Desk als
+Ein natives Plugin (Art `native`) ist ein eigenes Programm in einer beliebigen Sprache, das endue als
 eigenen Prozess startet (ADR 0154). Es zeichnet sein Fenster mit der GPU-API Ihrer Wahl in eine
-Textur, die es mit dem Desk teilt, und ruft dieselbe Bridge auf wie ein UI-Plugin. Der
-Compositor des Desks zeichnet sein Fenster wie jedes andere (ADR 0156); `just example plugin-native-wgpu`
-baut das Beispiel und führt es in einem Desk aus.
+Textur, die es mit dem Desktop teilt, und ruft dieselbe Bridge auf wie ein UI-Plugin. Der
+Compositor des Desktops zeichnet sein Fenster wie jedes andere (ADR 0156); `just example plugin-native-wgpu`
+baut das Beispiel und führt es in einem Desktop aus.
 
 ```json
 {
@@ -524,26 +524,26 @@ baut das Beispiel und führt es in einem Desk aus.
 ```
 
 * `native.binaries` nennt für jedes `<os>-<arch>`, benannt wie in Rust (`macos-aarch64`,
-  `linux-x86_64`, `windows-x86_64`, ...), das Programm im Ordner. Ein Desk ohne Programm für seine
+  `linux-x86_64`, `windows-x86_64`, ...), das Programm im Ordner. Ein Desktop ohne Programm für seine
   eigene Plattform lädt das Plugin nicht, und seine Plugin-Liste sagt, warum. Ein `entry` gibt es
   nicht.
-* **Start.** Der Desk startet das Programm im Ordner des Plugins, wenn sich sein Fenster öffnet oder
-  aufwacht. Seine Umgebung nennt zwei Verbindungen, die der Desk dafür angelegt hat: `DESK_SURFACE_FD`
+* **Start.** Der Desktop startet das Programm im Ordner des Plugins, wenn sich sein Fenster öffnet oder
+  aufwacht. Seine Umgebung nennt zwei Verbindungen, die der Desktop dafür angelegt hat: `DESK_SURFACE_FD`
   für das Surface-Protokoll (`specs/surface/v0`) und `DESK_BRIDGE_FD` für die Bridge im Format von
   `desk.sock`; unter macOS außerdem `DESK_SURFACE_MACH_SERVICE`, wohin die Mach-Rechte seiner
   IOSurfaces gehen.
-* **Frames.** Der Desk sendet `create` mit der Größe in logischen Pixeln und der Skalierung des
+* **Frames.** Der Desktop sendet `create` mit der Größe in logischen Pixeln und der Skalierung des
   Bildschirms. Das Plugin antwortet mit `desk:hello`, zeichnet in eine IOSurface (macOS), meldet jeden
-  Frame mit `attach` samt dem, was sich geändert hat, und zeichnet erneut, sobald der Desk das
+  Frame mit `attach` samt dem, was sich geändert hat, und zeichnet erneut, sobald der Desktop das
   `release` dieses Frames gesendet hat. `resize`, `show` und `hide`, `pace`, Zeiger und Tasten kommen
   in den Koordinaten des Fensters an.
 * **Fokus.** Tab bewegt sich durch ein Plugin wie durch eine Webseite. Erreicht Tab oder Umschalt+Tab
-  sein Fenster, sendet der Desk `focus.enter` mit `edge: first` oder `last`. Verlässt Tab den ersten
+  sein Fenster, sendet der Desktop `focus.enter` mit `edge: first` oder `last`. Verlässt Tab den ersten
   oder letzten Teil des Plugins, sendet das Plugin `focus.leave` mit diesem Rand, und die Tasten gehen
-  an den Desk zurück. In Rust hält `native::focus::FocusOrder` die Teile in Tab-Reihenfolge, und
+  an den Desktop zurück. In Rust hält `native::focus::FocusOrder` die Teile in Tab-Reihenfolge, und
   `Plugin::leave_focus` sendet es.
 * **Die Bridge.** Jeder Aufruf wird wie bei jedem Plugin gegen die Berechtigungen des Manifests und
-  die Freigaben der Person geprüft. Der Desk erkennt das Plugin an der Verbindung, die er ihm gegeben
+  die Freigaben der Person geprüft. Der Desktop erkennt das Plugin an der Verbindung, die er ihm gegeben
   hat, nie an dem, was es von sich behauptet.
 * **Hänger, Abstürze und Ruhe.** Beantworten Sie jedes `desk:ping` mit einem `desk:pong` aus der
   Schleife, die zeichnet: Ein Plugin, das 5 Sekunden schweigt, zeigt Reagiert nicht, mit Warten und
@@ -551,16 +551,16 @@ baut das Beispiel und führt es in einem Desk aus.
   und lädt einmal neu. `sleep` (das Fenster hat das Budget der aktiven Oberflächen verlassen) bittet
   es, seinen Zustand zu behalten (`desk:state` oder eine Antwort auf `ui.surface.state`) und sich zu
   beenden; `wake` startet es neu, und sein `desk:init` gibt ihm den Zustand zurück. Ein Prozess, der
-  `graceMs` nach der Aufforderung noch läuft, wird vom Desk beendet.
+  `graceMs` nach der Aufforderung noch läuft, wird vom Desktop beendet.
 * **Keine Sandbox.** Ein natives Plugin läuft als die Person, mit ihren Dateien und ihrem Netzwerk;
   geprüft werden nur seine Bridge-Aufrufe. Installieren Sie nur native Plugins, denen Sie vertrauen.
 
 In Rust übernimmt `desk-surface` mit dem Feature `native-wgpu` das Protokoll:
-`native::plugin::Plugin` verbindet sich, hört den Desk (und beantwortet seine Pings) und sendet
+`native::plugin::Plugin` verbindet sich, hört den Desktop (und beantwortet seine Pings) und sendet
 Frames, `native::bridge::Bridge::call` ruft die Bridge auf, und `native::iosurface::SharedTexture` ist
 eine IOSurface als wgpu-Textur. `examples/plugin-native-wgpu` ist ein vollständiges Plugin: eine
 wgpu-Szene, ein Bridge-Aufruf (`settings.get` der eigenen Einstellung) und sein Zustand, der eine
-Ruhepause übersteht. Frames eines nativen Plugins erreichen den Desk heute unter macOS; Linux
+Ruhepause übersteht. Frames eines nativen Plugins erreichen den Desktop heute unter macOS; Linux
 (DMA-BUF) und Windows (gemeinsame D3D11-Handles) folgen (#61).
 
 ## Ein Theme erstellen
@@ -581,11 +581,11 @@ Vorlage hat jede Rollenfarbe für beide Schemes, jede andere Ebene auf ihrem Sta
 die sagt, was jeder Wert färbt; `examples/plugin-hello-theme` ist das kleinste Theme mit einer Schrift und
 einem Hintergrund. Ein installiertes Theme ist noch nicht angewendet: Die Einstellung `desk.theme.active`
 nennt das gültige, gewählt im Theme-Studio (die Paletten-Schaltfläche oben rechts oder Themes in der
-Befehlspalette), mit `desk.theme.use` oder mit `desk theme apply`.
+Befehlspalette), mit `desk.theme.use` oder mit `endue theme apply`.
 
 Auch das Studio erstellt Themes: „Tune a copy“ (oder `desk.theme.edit`) öffnet seinen Editor mit einer
 Kopie des gewählten Themes, „New theme“ mit dem endue-Theme. Jede Ebene hat ihre Bedienelemente, Schriften
-und Hintergrundbilder eingeschlossen; der ganze Desk zeigt den Entwurf, während er sich ändert, die
+und Hintergrundbilder eingeschlossen; der ganze Desktop zeigt den Entwurf, während er sich ändert, die
 Korrekturen der Prüfung stehen unter der Palette, und Save behält ihn als Ihr eigenes Theme (`local.<name>`).
 Ein Ordner ist der Weg, ein Theme in einem Repository zu halten, zu testen und zu veröffentlichen.
 
@@ -618,7 +618,7 @@ kein `entry`, keine `permissions`, `surfaces`, `contributes` und kein `autoload`
 `author`, `license` (ein SPDX-Ausdruck für das Theme und seine Dateien), `tags`, `preview` (bis zu fünf
 Farben für seine Karte in der Galerie) und `origin` (der Satz, der es beschrieben hat, und das Theme, von
 dem es ausging) beschreiben es. `light` und `dark` enthalten je ein Scheme. Ein Theme braucht eines davon;
-für das andere springt das eigene Theme des Desks ein.
+für das andere springt das eigene Theme des Desktops ein.
 
 ### Ebenen und Voreinstellungen
 
@@ -626,7 +626,7 @@ Sechs Ebenen, jede mit einem Standardwert, sodass schon eine Palette allein ein 
 
 | Ebene | Schlüssel | Werte |
 | --- | --- | --- |
-| Palette | `<scheme>.colors` | Token-Name (camelCase) auf eine CSS-Farbe: die Rollen aus `docs/design-system.md`, die Tokens der Shell und von Eris. Eine fehlende Rolle behält die des Desks |
+| Palette | `<scheme>.colors` | Token-Name (camelCase) auf eine CSS-Farbe: die Rollen aus `docs/design-system.md`, die Tokens der Shell und von Eris. Eine fehlende Rolle behält die des Desktops |
 | Material | `<scheme>.material` | `opacity` 0,6–1, `blur` 0–24 px, `noise` 0–0,15, `border` 0–2 px, `shadow` none, soft oder strong |
 | Typografie | `type` | Schriftstapel `sans` und `mono`, `scale` 0,85–1,25, `tracking` −0,02–0,05 em, `fonts` |
 | Form | `shape` | `radius` none, subtle, soft oder round; `density` compact, comfortable oder spacious |
@@ -636,12 +636,12 @@ Sechs Ebenen, jede mit einem Standardwert, sodass schon eine Palette allein ein 
 `<scheme>.terminal.ansi` gibt dem Terminal seine sechzehn Farben, `<scheme>.contrast` die Änderungen der
 Palette bei hohem Kontrast. Rundung, Dichte, Bewegung, Textskala und Schatten sind Voreinstellungen: Die
 Laufzeit macht aus jedem Namen Tokens (`docs/design-system.md`, „Choosing a theme“), sodass ein Theme
-weiter funktioniert, wenn der Desk sie neu abstimmt. Zahlen sind begrenzt und Werte enthalten kein `url()`,
+weiter funktioniert, wenn der Desktop sie neu abstimmt. Zahlen sind begrenzt und Werte enthalten kein `url()`,
 sodass jedes gültige Theme benutzbar bleibt.
 
 ### Die Kontrastprüfung
 
-Der Desk prüft jedes Theme, das er anwendet (`@endue-ai/ui/theme`): Text erreicht 4,5:1 auf seinem
+Der Desktop prüft jedes Theme, das er anwendet (`@endue-ai/ui/theme`): Text erreicht 4,5:1 auf seinem
 Grund, Rahmen und Flächen 3:1, bei hohem Kontrast 7:1 und 4,5:1. Ein Vordergrund, der das verfehlt,
 ändert nur seine OKLCH-Helligkeit, gerade so weit, dass er das Verhältnis erreicht; ein Grund ändert sich
 nie. Ohne `contrast`-Palette wird der hohe Kontrast eines Themes auf dieselbe Weise aus seinen eigenen
@@ -652,7 +652,7 @@ Farben abgeleitet. Prüfen Sie Ihre Paare in beiden Schemes, damit die Prüfung 
 Schriften sind `.woff2`-Dateien, Bilder `.png`, `.jpg` oder `.webp` (kein SVG, das Skript enthalten
 kann), im Ordner: je 2 MiB und zusammen 8 MiB. Nennen Sie die Lizenz einer Schrift in `license` und legen
 Sie ihre Lizenzdatei daneben; die eingebauten Themes führen `fonts/OFL.txt` und eine `fonts/SOURCE.md` mit
-Herkunft und Prüfsummen. Der Desk lädt die Schriften eines Themes als `FontFace` in der Shell und in jedem
+Herkunft und Prüfsummen. Der Desktop lädt die Schriften eines Themes als `FontFace` in der Shell und in jedem
 Plugin-Frame; den Hintergrund zeichnet nur die Shell.
 
 ### Ein Theme testen
@@ -662,10 +662,10 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` prüft den Block gegen das Schema und die Dateien gegen ihre Grenzen.
-`desk plugin test` führt die `tests/theme.test.ts` der Vorlage mit vitest auf dem Test-Host des SDK aus:
+`endue plugin validate` prüft den Block gegen das Schema und die Dateien gegen ihre Grenzen.
+`endue plugin test` führt die `tests/theme.test.ts` der Vorlage mit vitest auf dem Test-Host des SDK aus:
 Sie kompiliert beide Schemes mit `compileTheme` und prüft sie mit `gate` über der endue-Palette, wie der
-Desk es vor dem Anwenden eines Themes tut, und schlägt mit jeder Korrektur fehl, die die Prüfung vornehmen
+Desktop es vor dem Anwenden eines Themes tut, und schlägt mit jeder Korrektur fehl, die die Prüfung vornehmen
 würde.
 
 ### Als `.desk-theme` teilen
@@ -678,7 +678,7 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 Eine `.desk-theme` ist eine einzige JSON-Datei: `format` `desk-theme/1`, die `plugin.json` des Themes als
 `manifest` und die Dateien, die sein Block nennt, in `files`, base64, höchstens 16 MiB (ADR 0058). Beim
 Import wird sie als Theme-Plugin geprüft und im Theme-Ordner der Person installiert, wo eine id außerhalb
-von `local.` und `market.` zu `local.<ihr Name>` wird; `desk theme list` zeigt sie, `desk theme remove`
+von `local.` und `market.` zu `local.<ihr Name>` wird; `endue theme list` zeigt sie, `endue theme remove`
 löscht sie. Export und Import im Studio tun dasselbe, und das Studio nimmt eine darauf gezogene
 `.desk-theme` an.
 
@@ -687,19 +687,19 @@ löscht sie. Export und Import im Studio tun dasselbe, und das Studio nimmt eine
 Der Market-Tab des Studios listet die Themes der Marktplätze, die die Einstellung `desk.theme.markets`
 mit der https-URL ihres Index nennt (ADR 0060). Voreingestellt ist `market/themes/index.json` dieses
 Repositorys auf `main`, gelesen von
-`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`. Den Index eines anderen
+`https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json`. Den Index eines anderen
 Marktplatzes fügen Sie in `init.yaml` dahinter an; listen zwei Marktplätze dieselbe id, gilt der erste:
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
 Jede Karte zeigt die Vorschaufarben eines Themes, seinen Namen, Autor und seine Lizenz und wie es auf
-diesem Desk steht: Available, Installed, Update available oder Edited. Preview lädt die `.desk-theme`
-herunter, prüft ihre sha256 und zeigt sie auf dem ganzen Desk, ohne sie zu installieren. Install holt
+diesem Desktop steht: Available, Installed, Update available oder Edited. Preview lädt die `.desk-theme`
+herunter, prüft ihre sha256 und zeigt sie auf dem ganzen Desktop, ohne sie zu installieren. Install holt
 sie über `theme.import` mit ihrer URL und sha256 herein, unter ihrer id in `market.`, und Apply setzt sie
 in Kraft. Ein Update ersetzt ein Theme vom Marktplatz nur, solange Sie es nicht geändert haben; ein
 Theme, das Sie geändert haben, bleibt Ihres.
@@ -707,7 +707,7 @@ Theme, das Sie geändert haben, bleibt Ihres.
 Um ein Theme zu veröffentlichen, öffnen Sie einen Pull Request, der sein Bündel und seinen Indexeintrag
 zu `market/themes/` hinzufügt:
 
-1. Exportieren Sie das Theme (`desk theme export <id> <file>` oder Export im Studio) mit einer id in
+1. Exportieren Sie das Theme (`endue theme export <id> <file>` oder Export im Studio) mit einer id in
    `market.`, einer Version, `theme.author` und `theme.license`: einem SPDX-Ausdruck, der auch seine
    Schriften und Bilder abdeckt.
 2. Legen Sie die Datei als `<name>.desk-theme` in `market/themes/` und tragen Sie sie in `index.json`

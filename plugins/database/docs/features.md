@@ -7,18 +7,18 @@ feature adds its line to the area it belongs to, or a section for a new area; it
 The page has one header row (the connection on screen, its environment tag and read-only mark, the buttons;
 what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
-Settings are read from what the person set over init.yaml's, and a change applies while the plugin runs;
-a change to a client's program or the `path` setting finds the clients again.
+Settings are read through `settings.get` and followed through `settings.changed`, in force with no reload; a
+wrong value keeps its default and is said once (`settings-follow.js` says what each change does at once).
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
-`keys.js`, `settings.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
+`keys.js`, `settings.js`, `settings-follow.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
 
 ## Connections
 
-- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
-  opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
-  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
-  file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
+  table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
+  client certificate is not supported yet, nor a socket folder or an IPv6 host.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
@@ -26,7 +26,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
-  `sqlite:`), and its URI copied back without the password.
+  `sqlite:`), its URI copied back without the password; many moved in one file ([`connections-file.md`](connections-file.md)).
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
 - Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
@@ -67,7 +67,7 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
   a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
   a connection, `u` adds one from a URI.
-- A table drags its qualified name.
+- A table drags its qualified name; a PostgreSQL connection lists its server's databases ([`databases.md`](databases.md)).
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
 kinds in `schema/pg/`), `view-tree.js`.
@@ -96,6 +96,14 @@ kinds in `schema/pg/`), `view-tree.js`.
 
 Modules: `features/objects/`.
 
+## Table design
+
+A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
+
+## Roles and privileges
+
+What a role may do and why, and its privileges changed by the exact script: [`privileges.md`](privileges.md).
+
 ## Console
 
 - As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
@@ -116,8 +124,9 @@ Modules: `features/objects/`.
   anywhere, ask first.
 - Cancel, or Escape while a run goes on, cancels PostgreSQL's statement on the server (`db.cancel`), and sends
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
-  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
-  (`statement_timeout`).
+  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server (`statement_timeout`).
+- On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
+  sees (ADR 0320): [`sessions.md`](sessions.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -130,8 +139,8 @@ Modules: `features/objects/`.
   part; a progress line, and the first error stops it at its line in the file.
 
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
-`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
-`view-editor.js`.
+`console-run.js`, `features/consoles/`, `execute.js`, `engines/pg-session.js`, `history.js`, `tools.js`, `sql/`,
+`editor/`, `view-editor.js`.
 
 ## Format SQL and SQL problems
 
@@ -146,11 +155,11 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
 - A grid that draws only the rows in view. A result keeps `max-rows` rows and More rows (`m`) loads four times
   as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
   (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
-- A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
+- A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, counts its rows on request, and
+  unsorted reads a PostgreSQL table by its primary key (`ctid` without one), so rows keep their places.
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
   resized (a header's grip, `(` `)`, `w` or a double click on the grip fits). A table view keeps them across
-  restarts, a console's result while it is among the last 20 (ADR 0288). Copy, export and drags take the
-  columns on screen, in their order.
+  restarts, a console's result while among the last 20 (ADR 0288); copy, export and drags take them as shown.
 - Sort by more than one column (Shift+click or `S` adds the next key, numbered in the header). Quick filters
   from the cursor's cell (`f` menu, `=` equals, `F` clears): =, ≠, >, <, contains, empty, NULL, not NULL,
   each a chip that says whether it runs on the server (a table view: its keys go to ORDER BY and its filters
@@ -170,21 +179,20 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   statement: a write runs in a transaction rolled back at the end, under the same guards as any run.
 - Two plans compared side by side, from a console's last eight or from two consoles: the nodes paired by type
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
-  plan over 64 KiB is read in a worker.
+  plan over 64 KiB is read in a worker. Pinned results, comparisons, totals and charts: [`results.md`](results.md).
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
+- A Map tab draws a result's geometry and geography values, linked to the grid: [`map.md`](map.md).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,
-`view-value.js`, `view-plan.js`.
-`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
-`view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
+`view-value.js`, `view-plan.js`, `view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`,
+`features/plans/`.
 
 ## Editing
 
 - On a table's view, or a console's plain SELECT of one table: change a cell (Enter or F2, `n` for NULL), add a
-  row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR
-  0115).
+  row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR 0115).
 - Preview (`p`) shows their SQL; Submit (`Mod+Enter`) runs them in one transaction keyed on the primary key and
   reads the rows again, and a failure rolls all of them back.
 - Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
@@ -251,17 +259,16 @@ Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd
 ## Server activity
 
 - A panel per PostgreSQL connection (13 and later) with its sessions from `pg_stat_activity`: process id,
-  user, database, application, client, state, wait event, how long in its state, transaction and statement,
-  and the statement; the selected one's whole statement below. Columns sort; filters hide idle sessions
-  and this view's own, show background processes, and keep one database.
+  user, database, application, client, state, wait event, time in its state, transaction and statement, and
+  the statement, whole below; columns sort; filters hide idle sessions and the view's reads (with their locks),
+  show background processes and keep one database; `this view` and `this desk` (`db.list`) mark the desk's own.
 - Who waits for whom (`pg_blocking_pids`) as a tree, the longest wait first, with the lock waited for and
   how its blocker holds it; the locks from `pg_locks` (5,000 at most), the waiting ones first.
 - Read again by hand (Refresh, `g`) and every 2, 5, 10, 30 or 60 seconds while on screen; Pause (`p`)
   stops that. What another role's session hides from this one (without `pg_read_all_stats`) is counted.
 - Cancel a statement (`pg_cancel_backend`, `c`) or end a session (`pg_terminate_backend`, `e`): always
   asked first with its statement shown, production named first; refused on a read-only connection; the
-  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole
-  statement.
+  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole statement.
 
 Modules: `features/activity/`.
 
@@ -330,8 +337,7 @@ Looking for a value across a connection's tables, with its limits: [`search.md`]
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
   Routines, or Run with its arguments, first in the row's menu) or the palette (a name, then the signature of
-  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in
-  words.
+  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in words.
 - A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
   0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
   the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and
@@ -388,5 +394,7 @@ Modules: `features/backup/`.
   the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
   the result's first 50 rows and the notices.
 - `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
+- `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
+  not agents' tools, so the person runs it (ADR 0324).
 
 Modules: `agent.js`.

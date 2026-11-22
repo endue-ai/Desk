@@ -24,7 +24,7 @@
 
 ## 支持的版本
 
-Desk 尚处于 1.0 之前。只有各渠道（stable、beta、canary）的最新版本会收到安全修复。
+endue 尚处于 1.0 之前。只有各渠道（stable、beta、canary）的最新版本会收到安全修复。
 
 ## 范围
 
@@ -34,4 +34,4 @@ Desk 尚处于 1.0 之前。只有各渠道（stable、beta、canary）的最新
 
 ## 威胁模型
 
-[docs/security/threat-model.md](../../security/threat-model.md)（英文）列出了 Desk 保护的资产、考虑的攻击者，以及每个信任边界上当前 `main` 已有的防护措施，或尚存的缺口和负责解决它的 issue。
+[docs/security/threat-model.md](../../security/threat-model.md)（英文）列出了 endue 保护的资产、考虑的攻击者，以及每个信任边界上当前 `main` 已有的防护措施，或尚存的缺口和负责解决它的 issue。

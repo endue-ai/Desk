@@ -5,6 +5,7 @@
 // laid out in a worker too, and drawn as an image by the page (features/diagram/, PG-55).
 import { CommandFailed, defineUiPlugin, startWorker } from "@endue-ai/plugin-sdk";
 import { defineElements } from "@endue-ai/ui";
+import { createChartPage, provideChartPage } from "./chart/page.js";
 import { platformOf } from "./clients.js";
 import { createDatabase } from "./database.js";
 import { createDatabaseDrops } from "./dnd.js";
@@ -22,6 +23,7 @@ defineElements();
 provideSqlParser(startWorker);
 provideLayoutWorker(startWorker);
 provideImager(createImager(document));
+provideChartPage(createChartPage(document));
 
 defineUiPlugin({
   mount(ctx) {

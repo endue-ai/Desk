@@ -26,7 +26,8 @@ impl Session {
         }
         if restarted {
             eprintln!(
-                "desk: the desk closed the connection while {id} ran and started again; it answers at {}",
+                "{}: the desk closed the connection while {id} ran and started again; it answers at {}",
+                crate::name(),
                 self.path.display()
             );
             return Ok(ExitCode::SUCCESS);
