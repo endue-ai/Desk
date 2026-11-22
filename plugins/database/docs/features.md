@@ -17,8 +17,8 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 - PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
   table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
-  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
-  client certificate is not supported yet, nor a socket folder or an IPv6 host.
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file, and
+  presents a client certificate (`docs/client-cert.md`); a socket folder or an IPv6 host is not supported yet.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers

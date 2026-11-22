@@ -20,10 +20,12 @@ import { affectedOf, CANCELED, errorOf, setOf } from "./pg-result.js";
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
  *   mode: "run" | "transaction" | "dry-run",
  *   session?: import("../session/keeper.js").Owner, agent?: boolean, signal?: AbortSignal,
+ *   quiet?: boolean,
  * }} Plan
  *   `session` runs on that owner's kept session (a console's, a table view's); `agent` is an
  *   agent's run, which the console's Cancel leaves alone; `signal` cancels this run alone: its
- *   statement on its session, nothing after it (a kept session stays open).
+ *   statement on its session, nothing after it (a kept session stays open); `quiet` asks for no
+ *   key passphrase (ADR 0331).
  * @typedef {{
  *   sessionId?: string, running: boolean, cancelled: boolean, timedOut: boolean,
  *   owner?: string, agent: boolean, transaction?: Transaction, ended?: string,

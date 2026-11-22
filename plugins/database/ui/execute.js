@@ -91,6 +91,7 @@ export function createExecutor(deps) {
           ...(options.session ? { session: options.session } : {}),
           ...(options.agent ? { agent: true } : {}),
           ...signal,
+          ...(options.interactive === false ? { quiet: true } : {}),
         });
       }
       try {

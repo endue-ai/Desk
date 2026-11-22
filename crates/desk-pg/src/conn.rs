@@ -169,7 +169,12 @@ async fn secure(mut tcp: TcpStream, config: &Config) -> Result<Conn, Error> {
         other => return Err(protocol(format!("SSLRequest answered {other}"))),
     }
     let tls = |e: String| Error::Io(format!("TLS: {e}"));
-    let client = tls::config(config.tls, config.ca_pem.as_deref()).map_err(tls)?;
+    let client = tls::config(
+        config.tls,
+        config.ca_pem.as_deref(),
+        config.client_cert.as_ref(),
+    )
+    .map_err(tls)?;
     let name = tls::server_name(&config.host).map_err(tls)?;
     let stream = TlsConnector::from(client)
         .connect(name, tcp)
