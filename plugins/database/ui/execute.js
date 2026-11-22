@@ -20,9 +20,10 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing; `signal` cancels this run alone, as Cancel does every run.
+ *   plugin's own reading and asks nothing; `asked` says the caller put its own question to the person
+ *   (the guards still refuse); `signal` cancels this run alone, as Cancel does every run.
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
@@ -63,7 +64,8 @@ export function createExecutor(deps) {
       throw new Refusal("Nothing to run: the editor holds no statement.");
     const classes = statements.map((statement) => classify(statement, engine.dialect));
     check(conn, engine.ddlCommits, classes, mode);
-    if (!options.catalog) await confirm(conn, statements, classes, mode, options.agent === true);
+    if (!options.catalog && !options.asked)
+      await confirm(conn, statements, classes, mode, options.agent === true);
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
     const timeoutMs = settings.timeoutSeconds * 1000;

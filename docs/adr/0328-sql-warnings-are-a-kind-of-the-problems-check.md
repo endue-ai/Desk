@@ -59,6 +59,8 @@ are already in the worker, kept per statement, so an edit checks only what chang
 * `ui/sql/classify.js` makes a PostgreSQL statement that calls `pg_cancel_backend` or
   `pg_terminate_backend` (EXPLAIN ANALYZE too) a write: read-only refuses it, production asks, an
   agent's run waits for the person. This closes ADR 0290's gap. No new confirmation sentence.
+  The activity panel's cancel and end keep their own question (with the session's statement) and
+  pass `asked`, so the person is asked once; the read-only refusal still holds.
 
 ### Consequences
 
