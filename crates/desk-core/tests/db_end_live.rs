@@ -113,7 +113,9 @@ fn closed_all(events: &Receiver<Delivery>, sessions: &[&str]) -> Vec<String> {
             panic!("no db.closed for each of {sessions:?}: {reasons:?}");
         };
         let value = serde_json::to_value(&delivery.event).unwrap();
-        let at = sessions.iter().position(|s| value["data"]["sessionId"] == *s);
+        let at = sessions
+            .iter()
+            .position(|s| value["data"]["sessionId"] == *s);
         if let (true, Some(at)) = (value["event"] == "db.closed", at) {
             reasons[at] = value["data"]["reason"].as_str().map(str::to_owned);
         }

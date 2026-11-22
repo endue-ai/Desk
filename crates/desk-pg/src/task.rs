@@ -344,10 +344,11 @@ impl Task {
         self.interrupted
             || matches!(
                 self.open,
-                Open::CopyOut { .. } | Open::Rows {
-                    suspended: false,
-                    ..
-                }
+                Open::CopyOut { .. }
+                    | Open::Rows {
+                        suspended: false,
+                        ..
+                    }
             )
     }
 

@@ -9,18 +9,16 @@ use std::time::{Duration, Instant};
 
 use desk_pg::{CloseReason, Session};
 
-use crate::core_db::{DbEntry, Databases, lock};
+use crate::core_db::{Databases, DbEntry, lock};
 use crate::handler::Core;
 use crate::perm::Target;
 
 impl Core {
     /// The caller unloaded: its sessions end (`unloaded`).
     pub(crate) fn drop_databases(&self, caller: &str) {
-        let ended = take(
-            &mut lock(&self.databases),
-            CloseReason::Unloaded,
-            |entry| entry.caller == caller,
-        );
+        let ended = take(&mut lock(&self.databases), CloseReason::Unloaded, |entry| {
+            entry.caller == caller
+        });
         close_all(ended, CloseReason::Unloaded);
     }
 
