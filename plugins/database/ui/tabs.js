@@ -123,6 +123,9 @@ function done(/** @type {import("./engines/common.js").StatementOutcome} */ outc
     : "";
   if (sets.length) {
     const rows = sets.reduce((sum, set) => sum + set.rows.length, 0);
+    // A read its cursor keeps (PG-22): at least the rows the server gave so far.
+    const kept = sets.find((set) => set.window && !set.window.done)?.window;
+    if (kept) return `at least ${formatCount(kept.known)} rows (more as you scroll)${warnings}`;
     const more = sets.some((set) => set.truncated) ? "+ (more not loaded)" : "";
     return `${formatCount(rows)}${more} row${rows === 1 && !more ? "" : "s"}${warnings}`;
   }

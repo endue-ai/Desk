@@ -2,7 +2,8 @@
 // (db.notice, outside any call) gathered in `sinks` for its next run, a running call's notices as
 // they come (db.call.notice) for its owner unless the call was already answered (its page carries
 // them, and its number says so), what a listening session hears (db.notification) for its owner,
-// and db.closed for the keeper. `answering` wraps the bridge's calls to note each answer's call.
+// and db.closed for the keeper and the cursors (PG-22). `answering` wraps the bridge's calls to
+// note each answer's call.
 // No DOM.
 
 import { noticeOf } from "../engines/pg-result.js";
@@ -34,6 +35,7 @@ export const answering =
  * @param {{
  *   own: Set<string>, sinks: Map<string, string[]>, answered: Map<string, number>,
  *   keeper: { closed(data: import("@endue-ai/bridge").DbClosedData): void, ownerOf(id: string): string | undefined },
+ *   cursors?: { closed(id: string): void },
  * } & Hears} deps
  */
 export function hearEvents(bridge, deps) {
@@ -57,6 +59,7 @@ export function hearEvents(bridge, deps) {
     if (event.event === "db.closed") {
       deps.sinks.delete(event.data.sessionId);
       deps.answered.delete(event.data.sessionId);
+      deps.cursors?.closed(event.data.sessionId);
       deps.keeper.closed(event.data);
     }
   });

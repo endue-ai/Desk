@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Connection } from "../ui/engines/common.js";
 import { show } from "../ui/tabs.js";
 import { type Answer, mount, SAVED } from "./harness";
+import { runsOf } from "./runs-of";
 
 const LAB: Connection = { ...(SAVED[1] as Connection), id: "c-lab", name: "lab", tag: "none" };
 
@@ -18,7 +19,11 @@ function script(sql: string): Answer {
 /** A run is under way, waiting on the server (the host settles only once it ends). */
 const started = (m: Awaited<ReturnType<typeof mount>>) =>
   vi.waitFor(() =>
-    expect(m.host.calls.filter((c) => c.method === "db.run").at(-1)?.params).toMatchObject({
+    expect(
+      runsOf(m.host.calls)
+        .filter((c) => c.method === "db.run")
+        .at(-1)?.params,
+    ).toMatchObject({
       sql: "select pg_sleep(9)",
     }),
   );

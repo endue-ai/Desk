@@ -256,6 +256,16 @@
         "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
       },
       {
+        "id": "endue.database.count-result-rows",
+        "title": "Database: count every row of the result",
+        "keywords": ["count", "total", "rows", "cursor", "result", "all"]
+      },
+      {
+        "id": "endue.database.fetch-all-rows",
+        "title": "Database: fetch every row of the result",
+        "keywords": ["fetch", "all", "rows", "load", "cursor", "sort", "filter"]
+      },
+      {
         "id": "endue.database.format-statement",
         "title": "Database: format the statement at the caret",
         "keywords": ["pretty", "beautify", "indent", "layout", "query", "cursor"]

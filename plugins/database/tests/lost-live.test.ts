@@ -114,7 +114,8 @@ describe.skipIf(!uri)("a lost connection on a real server", () => {
     const m = await live();
     await run(m, "select 1");
     const going = await start(m, "select pg_sleep(20)");
-    await terminate(await runningPid("select pg_sleep(20)"));
+    // A console's single read runs as its cursor's FETCH (PG-22, ADR 0352).
+    await terminate(await runningPid("FETCH%endue_desk_rows"));
     await going.done;
     await m.settle();
     expect(messages(m).join("\n")).toMatch(/terminating connection/u);

@@ -39,8 +39,9 @@ function live() {
   const sleepThenAbort = async (owner: string, pid: unknown) => {
     const stop = new AbortController();
     const started = Date.now();
+    // A console's read runs through its cursor (PG-22): the server shows its FETCH running.
     const ran = on(owner, "select pg_sleep(30)", { signal: stop.signal });
-    const running = `select count(*) from pg_stat_activity where pid = ${Number(pid)} and state = 'active' and query like '%pg_sleep%'`;
+    const running = `select count(*) from pg_stat_activity where pid = ${Number(pid)} and state = 'active' and (query like '%pg_sleep%' or query like 'FETCH%endue_desk_rows')`;
     while ((await server.admin(running)) !== "1") {
       if (Date.now() - started > 10_000) throw new Error("pg_sleep never started");
       await new Promise((resolve) => setTimeout(resolve, 50));

@@ -121,7 +121,8 @@ export function createBars(doc) {
       pin.hidden = model.kind !== "console";
       pin.textContent = tab?.kind === "pinned" ? "Unpin" : "Pin";
       const pages = byId("console-pages");
-      pages.hidden = !(model.kind === "console" && model.page);
+      // A read its cursor keeps scrolls instead of paging (PG-22).
+      pages.hidden = !(model.kind === "console" && model.page && !tab?.set?.window);
       if (model.page) {
         const rows = tab?.set?.rows.length ?? 0;
         byId("console-page").textContent =

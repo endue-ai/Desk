@@ -152,9 +152,9 @@ Laying SQL out, underlining what the server would refuse, completion: [`editor.m
   code and detail, not run), the notices and a summary.
 - Markers split the output per statement and keep NULL, `''` and `'NULL'` apart. A worker decodes and reads
   it, never the frame's thread, with a bar and Cancel after 300 ms (#38); a run keeps at most 64 MiB of output.
-- A grid that draws only the rows in view. A result keeps `max-rows` rows and More rows (`m`) loads four times
-  as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
-  (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
+- A grid that draws only the rows in view. A PostgreSQL console's single read scrolls to its end through a
+  cursor ([`rows.md`](rows.md)); elsewhere a result keeps `max-rows` rows and More rows (`m`) loads four times
+  as many. Sort (`s`), filter (`/`), a row as a record (`t`), the value viewer (`v`: JSON, text, hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, counts its rows on request, and
   unsorted reads a PostgreSQL table by its primary key (`ctid` without one), so rows keep their places.
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
