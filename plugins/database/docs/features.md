@@ -361,8 +361,8 @@ Modules: `features/routines/`.
 - Restore from a file or folder from the open dialog into any PostgreSQL connection's database: clean,
   if-exists, create, data or schema only, without owners or privileges, jobs (not tar), one transaction (one
   job, no create), and the entries `pg_restore --list` reads, filtered and chosen (a list file in the
-  plugin's folder). A plain SQL file runs as a script through run-file, on a session. A read-only connection refuses it and
-  production is always asked first.
+  plugin's folder). A plain SQL file runs as a script through run-file. A read-only connection refuses it, production is
+  asked first. Onto a server before 17, the `transaction_timeout` pg_restore 17+ sets is skipped and named, not a failure.
 - Both forms show the exact command line, never the password; it goes in `PGPASSWORD` of the program's own
   environment when typed this session, else libpq reads `~/.pgpass` (Windows: `%APPDATA%\postgresql\pgpass.conf`). Each program must be at least the
   server's major version (read through a session) and is found by its own setting (`.pg-dump`,

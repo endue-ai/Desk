@@ -200,6 +200,11 @@ describe.skipIf(!uri || !clientVersion("pg_dump"))(
       const custom = await roundTrip("custom", join(folder, "live.dump"), { jobs: 2 });
       expect(custom.restored).toMatchObject({ status: "done", connection: "fresh" });
       expect(logOf(custom.m).command).toContain("--jobs=2");
+      // Onto a server before 17, the transaction_timeout pg_restore 17 and later sets is skipped (#647).
+      const server = Math.floor(Number(await admin("SHOW server_version_num")) / 10000);
+      const tools = Number(/\) (\d+)/u.exec(clientVersion("pg_restore") ?? "")?.[1] ?? 0);
+      if (server < 17 && tools >= 17)
+        expect(logOf(custom.m).result).toContain("does not know transaction_timeout");
       expect(logOf(custom.m).command).not.toContain(password || "\u0000");
       expect(await fingerprint(fresh)).toBe(source);
 
