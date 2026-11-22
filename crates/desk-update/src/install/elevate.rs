@@ -146,11 +146,13 @@ pub fn declined(what: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Refusal, Step, osascript_command, pkexec_command, run, said};
+    #[cfg(target_os = "macos")]
+    use super::{Refusal, run};
+    use super::{Step, osascript_command, pkexec_command, said};
 
     fn step() -> Step {
         Step {
-            why: "endue Desk wants to install 0.6.0.".to_owned(),
+            why: "endue wants to install 0.6.0.".to_owned(),
             program: "dpkg".to_owned(),
             args: vec!["-i".to_owned(), "/u/0.6.0/install.deb".to_owned()],
         }
@@ -164,7 +166,7 @@ mod tests {
         let asks = |script: &str| script.contains("with administrator privileges");
         assert!(asks(&args[1]), "{}", args[1]);
         let rest = [
-            "endue Desk wants to install 0.6.0.",
+            "endue wants to install 0.6.0.",
             "dpkg",
             "-i",
             "/u/0.6.0/install.deb",
@@ -194,7 +196,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("desk-elevate-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("args");
-        let tricky = r#"/Applications/it's "endue" Desk $HOME `x` \.app"#;
+        let tricky = r#"/Applications/it's "endue" $HOME `x` \.app"#;
         let printf = "printf '%s\\n' \"$@\" > \"$0\"; [ \"$2\" = ok ] || { echo \"it said $2\" >&2; exit 3; }";
         let step = |second: &str| Step {
             why: "why".to_owned(),

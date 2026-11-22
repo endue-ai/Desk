@@ -25,11 +25,13 @@ const FETCH =
   /^\s*(FETCH|MOVE)\s+(?:(FORWARD|ABSOLUTE)\s+)?(ALL|\d+)?\s*(?:FROM|IN)\s+("?)(\w+)\4\s*;?\s*$/iu;
 const CLOSE = /^\s*CLOSE\s+("?)(\w+)\1\s*;?\s*$/iu;
 
-export function stubDbCursors<S extends object>(
-  /** The script's whole answer to a query on `session`: its columns and every row, or its error. */
+export function stubDbCursors<S extends object, B = unknown>(
+  /** The script's whole answer to a query on `session` with DECLARE's bound values: its columns
+   * and every row, or its error. */
   query: (
     session: S,
     sql: string,
+    bound?: B,
   ) => Promise<{ columns?: DbColumn[]; rows: DbValue[][] } | { error: DbServerError }>,
 ) {
   const held = new WeakMap<S, Map<string, Cursor>>();
@@ -47,7 +49,12 @@ export function stubDbCursors<S extends object>(
     /** Whether `sql` is a cursor statement the stub answers itself. */
     is: (sql: string) => DECLARE.test(sql) || FETCH.test(sql) || CLOSE.test(sql),
     /** Answer a cursor statement on `session` in `transaction`. */
-    async answer(session: S, sql: string, transaction: DbTransaction): Promise<Answered> {
+    async answer(
+      session: S,
+      sql: string,
+      transaction: DbTransaction,
+      bound?: B,
+    ): Promise<Answered> {
       const cursors = of(session);
       const declared = DECLARE.exec(sql);
       if (declared) {
@@ -59,7 +66,7 @@ export function stubDbCursors<S extends object>(
         if (cursors.has(name))
           return { error: failure("42P03", `cursor "${name}" already exists`) };
         const prefix = declared[0].length;
-        const got = await query(session, sql.slice(prefix));
+        const got = await query(session, sql.slice(prefix), bound);
         if ("error" in got) {
           const at = got.error.position;
           const error = at ? { ...got.error, position: at + prefix } : got.error;

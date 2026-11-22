@@ -181,14 +181,16 @@ export function createAgentRuns(deps) {
   const read = async (
     /** @type {Connection} */ conn,
     /** @type {string} */ sql,
-    /** @type {{ args: object, command: string, limits?: Limits, rows?: number, names?: Set<string>, single?: boolean }} */ how,
+    /** @type {{ args: object, command: string, limits?: Limits, rows?: number, names?: Set<string>, single?: boolean, mode?: "describe", statements?: import("../../editor/bind.js").Bound[] }} */ how,
   ) => {
     const { maxRows, timeoutMs } = limitsOf(deps.settings(), how.limits ?? {}, how.rows);
     const names = how.names ?? namesOf((await deps.access.of(conn.id)).sensitive);
+    // A check (`mode: "describe"`) runs nothing: the server says what the statement takes and answers.
+    const check = how.mode ? { mode: how.mode, statements: how.statements ?? [] } : {};
     const done = await timed(
       readOnly(conn),
       sql,
-      { agent: true, interactive: false, maxRows },
+      { agent: true, interactive: false, maxRows, ...check },
       timeoutMs,
     );
     return finish(done, { ...how, asked: false, allowed: null }, names);

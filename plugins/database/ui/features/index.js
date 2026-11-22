@@ -8,6 +8,7 @@ export { feature as audit } from "./audit/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as chart } from "./chart/index.js";
+export { feature as check } from "./check/index.js";
 export { feature as compare } from "./compare/index.js";
 export { feature as compareSchema } from "./compare-schema/index.js";
 export { feature as completion } from "./completion/index.js";

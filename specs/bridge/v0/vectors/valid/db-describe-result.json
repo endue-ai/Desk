@@ -1,0 +1,18 @@
+{
+  "target": "DbDescribeResult",
+  "description": "db.describe answers the parameters' types and the columns, and runs nothing",
+  "instance": {
+    "paramTypes": [23, 1009],
+    "columns": [
+      {
+        "name": "name",
+        "typeOid": 25,
+        "typeModifier": -1,
+        "typeSize": -1,
+        "tableOid": 16384,
+        "columnNumber": 2
+      }
+    ],
+    "transaction": "idle"
+  }
+}
