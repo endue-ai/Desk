@@ -1,13 +1,13 @@
 //! One session's task on the runtime thread: it owns the connection, answers the handle's calls
 //! one at a time, reads the server while idle (notifications, parameters, a FATAL before the server
-//! closes) and stops when told to. Its last act is the `Closed` event, after the state says closed.
+//! closes) and stops when told to: a statement still running on the server is cancelled before
+//! Terminate (ADR 0339). Its last act is the `Closed` event, after the state says closed.
 
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use postgres_protocol::message::backend::Message;
-use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::cancel;
@@ -16,43 +16,10 @@ use crate::error::{Error, ServerError, protocol};
 use crate::page::{Limits, MAX_NOTICES, Page, Row, Transaction};
 use crate::select::{Either, select};
 use crate::session::{CloseReason, CopyInput, Event, Sink, Statement};
+use crate::shared::Shared;
 
-/// What the handle and the task share: the state `db.list` shows and how the task is stopped.
-#[derive(Default)]
-pub(crate) struct Shared {
-    pub(crate) running: AtomicBool,
-    /// A cancel came for the call that runs (a script stops before its next statement).
-    pub(crate) cancelled: AtomicBool,
-    /// A result has pages left, or a COPY FROM STDIN waits for data.
-    pub(crate) open: AtomicBool,
-    transaction: AtomicU8,
-    closed: AtomicBool,
-    stopping: AtomicBool,
-    why: Mutex<Option<CloseReason>>,
-    stop: Notify,
-}
-
-impl Shared {
-    pub(crate) fn transaction(&self) -> Transaction {
-        Transaction::of(self.transaction.load(Ordering::SeqCst))
-    }
-
-    pub(crate) fn set_transaction(&self, status: u8) {
-        self.transaction.store(status, Ordering::SeqCst);
-    }
-
-    pub(crate) fn closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
-    }
-
-    /// Stop the task; the first reason given is the one its `Closed` event names.
-    pub(crate) fn stop(&self, reason: CloseReason) {
-        let mut why = self.why.lock().unwrap_or_else(|p| p.into_inner());
-        why.get_or_insert(reason);
-        self.stopping.store(true, Ordering::SeqCst);
-        self.stop.notify_one();
-    }
-}
+/// How long a session told to stop waits for its cancel request to be taken, then for Terminate.
+pub(crate) const CLOSE_STEP: Duration = Duration::from_secs(2);
 
 pub(crate) type Reply<T = Page> = std::sync::mpsc::SyncSender<Result<T, Error>>;
 
@@ -110,7 +77,7 @@ pub(crate) struct Task {
     pub(crate) conn: Conn,
     commands: UnboundedReceiver<Command>,
     pub(crate) shared: Arc<Shared>,
-    sink: Sink,
+    pub(crate) sink: Sink,
     pub(crate) cancel: cancel::Target,
     pub(crate) open: Open,
     /// A FATAL error the server sent before it closed.
@@ -126,6 +93,8 @@ pub(crate) struct Task {
     pub(crate) settled: Option<crate::script::Settled>,
     /// While a call runs, the notices it hears (they go with its page) and how many past the cap.
     pub(crate) heard: Option<(Vec<ServerError>, u64)>,
+    /// A stop came while a call waited on the server: its statement may still run there.
+    pub(crate) interrupted: bool,
 }
 
 impl Task {
@@ -150,6 +119,7 @@ impl Task {
             unsynced: 0,
             settled: None,
             heard: None,
+            interrupted: false,
         }
     }
 
@@ -220,6 +190,7 @@ impl Task {
         };
         let open = !matches!(self.open, Open::None);
         self.shared.open.store(open, Ordering::SeqCst);
+        self.interrupted = matches!(outcome, Err(Fail::End(End::Stopped)));
         let (end, answer) = match outcome {
             Ok(page) => (None, Ok(page)),
             Err(Fail::Call(error)) => (None, Err(error)),
@@ -358,6 +329,20 @@ impl Task {
         let _ = tokio::time::timeout(Duration::from_secs(10), cancel::send(&self.cancel)).await;
     }
 
+    /// Whether the server may still be executing for this session: a call the stop cut short, a
+    /// COPY out it streams, or rows it still sends past a page.
+    fn server_busy(&self) -> bool {
+        self.interrupted
+            || matches!(
+                self.open,
+                Open::CopyOut { .. }
+                    | Open::Rows {
+                        suspended: false,
+                        ..
+                    }
+            )
+    }
+
     async fn finish(mut self, end: End) {
         let why = *self.shared.why.lock().unwrap_or_else(|p| p.into_inner());
         let (reason, error, message) = match end {
@@ -372,7 +357,11 @@ impl Task {
         if matches!(reason, CloseReason::Server | CloseReason::Io) {
             drop(self.conn);
         } else {
-            let _ = tokio::time::timeout(Duration::from_secs(2), self.conn.terminate()).await;
+            // The server reads nothing while a statement runs: Terminate alone would wait for it.
+            if self.server_busy() {
+                let _ = tokio::time::timeout(CLOSE_STEP, cancel::send(&self.cancel)).await;
+            }
+            let _ = tokio::time::timeout(CLOSE_STEP, self.conn.terminate()).await;
         }
         self.shared.open.store(false, Ordering::SeqCst);
         self.shared.closed.store(true, Ordering::SeqCst);

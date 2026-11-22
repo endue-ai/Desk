@@ -2,12 +2,14 @@
 // sessions (engines/pg-session.js) under the person's limit and idle minutes, a session's change
 // drawn on the buffer on screen, a lost one said on the status line by its buffer's name, what
 // closing a connection's sessions ends, the scope Cancel stops (the buffer on screen and the
-// plugin's own reads), and the consoles' sessions taken back when the frame wakes; a refused one says
-// how to ask again (connect-gate.js, ADR 0335). No DOM.
+// plugin's own reads), Disconnect's stop of what runs and what the plugin would start on its own
+// (gate.js, ADR 0339), and the consoles' sessions taken back when the frame wakes; a refused one
+// says how to ask again (connect-gate.js, ADR 0335). No DOM.
 
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
 import { wordRefusals } from "./connect-gate.js";
+import { createGate } from "./gate.js";
 import { keyOf, sessionLabel } from "./owners.js";
 import { reasonsOf } from "./words.js";
 
@@ -42,6 +44,7 @@ export function createPluginSessions(deps) {
     return target ? sessionLabel(target, deps.connection(target.connection)) : "A console";
   };
 
+  const gate = createGate();
   const sessions = createSessions(deps.bridge, {
     onBusy: deps.onBusy,
     onState: () => deps.consoles().render(),
@@ -51,7 +54,8 @@ export function createPluginSessions(deps) {
     ...(deps.kept ? { kept: deps.kept } : {}),
     passphrases,
   });
-  const pg = wordRefusals(sessions);
+  const worded = wordRefusals(sessions);
+  const pg = { ...worded, run: (conn, plan) => gate.run(conn, plan, worded.run) };
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;
 
@@ -67,6 +71,8 @@ export function createPluginSessions(deps) {
             .map((e) => ({ label: labelFor(e.owner), transaction: e.transaction })),
         ),
       close: (/** @type {string} */ connection) => pg.close(mine(connection)),
+      /** Disconnect: what runs on it stops, and nothing of the plugin's own opens a session. */
+      disconnect: (/** @type {string} */ connection) => gate.disconnect(connection),
       forget: (/** @type {string} */ connection) => passphrases.forgetAll(connection),
     },
     /** What Cancel stops: the runs of the buffer on screen and the plugin's own reads. */

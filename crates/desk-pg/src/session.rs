@@ -17,8 +17,9 @@ use crate::conn::{Conn, TlsInfo};
 use crate::error::{Error, ServerError};
 use crate::page::{Limits, Page, Transaction};
 use crate::script::Script;
+use crate::shared::Shared;
 use crate::signin::{Auth, sign_in};
-use crate::task::{Command, Shared, Task};
+use crate::task::{Command, Task};
 
 /// What a session reports without being asked.
 #[derive(Debug, Clone, PartialEq)]

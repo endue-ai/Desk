@@ -17,6 +17,7 @@ pub mod pgpass;
 mod script;
 mod select;
 mod session;
+mod shared;
 mod signin;
 mod statement;
 mod task;

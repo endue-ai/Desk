@@ -35,7 +35,9 @@ export const feature = {
   actions: (deps) => {
     const activity = of(deps);
     return {
-      activityRefresh: (/** @type {string} */ id) => activity.refresh(id),
+      // The panel's period says "timer": a read of its own, which Disconnect stops (ADR 0339).
+      activityRefresh: (/** @type {string} */ id, /** @type {unknown} */ by) =>
+        activity.refresh(id, false, by === "timer"),
       activityView: (/** @type {string} */ id, /** @type {Record<string, unknown>} */ patch) =>
         activity.view(id, patch),
       activityStop: (/** @type {string} */ id, /** @type {"cancel" | "end"} */ how, pid) =>
