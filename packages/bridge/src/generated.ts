@@ -5141,6 +5141,8 @@ export interface FsWriteParams {
   encoding?: Encoding;
   /** Create missing parent folders. */
   createDirs?: boolean;
+  /** Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found. */
+  append?: boolean;
   scope: FsWritePermission;
 }
 

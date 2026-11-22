@@ -126,6 +126,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
   );
   // Reading a large output in the result worker shows a bar after 300 ms, with Cancel (#38).
   byId("reading")?.addEventListener("desk-cancel", () => act("cancel"));
+  // A COPY through standard input or output shows its bytes, with Cancel (copy/console.js).
+  byId("copying")?.addEventListener("desk-cancel", () => act("cancel"));
   for (const button of doc.querySelectorAll("[data-page]"))
     button.addEventListener("click", () =>
       act("page", { delta: Number(/** @type {HTMLElement} */ (button).dataset.page) }),
@@ -281,6 +283,17 @@ export function createView(doc, act, features = Object.values(all), options = {}
     reading(reads) {
       const bar = byId("reading");
       if (bar) bar.hidden = reads === 0;
+    },
+    copying(bar) {
+      const el = byId("copying");
+      if (!el) return;
+      el.hidden = !bar;
+      if (!bar) return;
+      el.setAttribute("label", bar.label);
+      el.setAttribute("detail", bar.detail);
+      if (bar.max) el.setAttribute("max", String(bar.max));
+      if (bar.value !== undefined) el.setAttribute("value", String(bar.value));
+      else el.removeAttribute("value");
     },
     editor: () => ({
       text: editorEl.value,
