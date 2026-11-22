@@ -3,8 +3,10 @@
 // the wrong type, out of range or not one of its choices keeps the default, and says why
 // (settings-follow.js tells the person once). The `format-*` settings hold Format SQL's style
 // (ui/sql/layout/style.js, ADR 0292) and whether Save lays a bound .sql file out first (`format-on-save`).
-// The `session*` settings bound the PostgreSQL sessions consoles and table views keep (PG-02, ADR 0320);
-// `snippets` the person's own completion snippets, name to template (editor/snippets.js, ADR 0327).
+// The `problems-*` settings say which of the editor's SQL problems and warnings are told (ADR 0294,
+// ADR 0328). The `session*` settings bound the PostgreSQL sessions consoles and table views keep
+// (PG-02, ADR 0320); `snippets` the person's own completion snippets, name to template
+// (editor/snippets.js, ADR 0327).
 import { ownSnippets } from "./editor/snippets.js";
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
@@ -15,6 +17,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
+ *   problemsWarnings: boolean, problemsWarningsOff: string[],
  *   pgDump: string, pgRestore: string, sessionsPerConnection: number, sessionIdleMinutes: number,
  *   snippets: Record<string, string>,
  * }} Settings
@@ -42,6 +45,8 @@ export const DEFAULTS = Object.freeze({
   formatOnSave: false,
   problemsSyntax: true,
   problemsNames: true,
+  problemsWarnings: true,
+  problemsWarningsOff: [],
   pgDump: "",
   pgRestore: "",
   sessionsPerConnection: 8,
@@ -80,6 +85,8 @@ const KEYS =
     formatOnSave: { key: "endue.database.format-on-save" },
     problemsSyntax: { key: "endue.database.problems-syntax" },
     problemsNames: { key: "endue.database.problems-names" },
+    problemsWarnings: { key: "endue.database.problems-warnings" },
+    problemsWarningsOff: { key: "endue.database.problems-warnings-off" },
     pgDump: { key: "endue.database.pg-dump" },
     pgRestore: { key: "endue.database.pg-restore" },
     sessionsPerConnection: { key: "endue.database.sessions-per-connection", min: 1, max: 12 },

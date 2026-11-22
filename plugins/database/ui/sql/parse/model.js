@@ -5,13 +5,17 @@
 
 /**
  * @typedef {import("../../schema/common.js").SchemaObject} SchemaObject
- * @typedef {{ name: string, type?: string, comment?: string, default?: boolean }} ModelColumn
+ * @typedef {{ name: string, type?: string, notNull?: boolean, comment?: string, default?: boolean }} ModelColumn
  * @typedef {{ columns: string[], schema: string, table: string, refColumns: string[] }} ModelKey
- * @typedef {{ name: string, kind: string, columns?: ModelColumn[], comment?: string, foreignKeys?: ModelKey[] }} ModelRelation
+ * @typedef {{
+ *   name: string, kind: string, columns?: ModelColumn[], indexes?: string[], comment?: string,
+ *   foreignKeys?: ModelKey[],
+ * }} ModelRelation
+ *   `notNull` and `indexes` (the index definitions) come from the schema cache, for the warnings;
+ *   comments, defaults, foreign keys and types are completion's (ADR 0327). The resolver reads
+ *   names and types alone.
  * @typedef {{ name: string, kind: string, args: string, result?: string, comment?: string }} ModelRoutine
  * @typedef {{ name: string, relations?: ModelRelation[], routines?: ModelRoutine[], types?: Array<{ name: string, type: string }> }} ModelSchema
- *   Comments, defaults, foreign keys and types are completion's (ADR 0327); the resolver reads
- *   names and types alone.
  * @typedef {{ schemas: ModelSchema[] }} SchemaModel
  * @typedef {{
  *   relation: ModelRelation, columns: Map<string, ModelColumn> | null,

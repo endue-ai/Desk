@@ -36,6 +36,7 @@
         <button type="button" data-act="starred" title="Starred queries of this connection" class="desk-btn desk-btn-quiet">Starred</button>
         <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown, SQL INSERT or SQL UPDATE" class="desk-btn desk-btn-quiet">Copy as…</button>
         <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
+        <button type="button" data-act="chart" title="Draw the result as a chart" class="desk-btn desk-btn-quiet">Chart</button>
         <button type="button" id="actions-more" title="The actions that do not fit in this row" class="desk-btn desk-btn-quiet" hidden>More</button>
       </nav>
       <desk-menu id="actions-menu" label="More actions"></desk-menu>
@@ -193,6 +194,7 @@
     </main>
     <footer>
       <p id="hints"></p>
+      <p id="totals"></p>
       <p id="summary" aria-live="polite"></p>
       <p id="status" role="status"></p>
     </footer>

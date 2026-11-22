@@ -13,10 +13,11 @@ import { spatialColumns } from "./geo/detect.js";
  * @typedef {import("./engines/common.js").ResultSet} ResultSet
  * @typedef {import("./engines/common.js").DbError} DbError
  * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number }} Line
- * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin }} Tab
+ * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned" | "chart", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin, chart?: import("./chart/model.js").ChartTab }} Tab
  *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn;
  *   a map tab (`geo`) the set before it and the columns that hold its shapes. A pinned tab holds a
- *   result of an earlier run as it was, `statement` -1: it is no run's.
+ *   result of an earlier run as it was, `statement` -1: it is no run's. A chart tab (opened on
+ *   request, features/chart/) the result it draws and how.
  * @typedef {{ tabs: Tab[], open: number, summary: string, error?: { statement: number, offset: number } }} Shown
  *   `error.offset` is where the first error is in the editor's text, when the client said.
  */

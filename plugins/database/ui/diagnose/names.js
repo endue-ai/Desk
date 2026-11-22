@@ -13,8 +13,10 @@ import { nearest } from "./text.js";
  * @typedef {import("../sql/parse/scope.js").Name} Name
  * @typedef {import("../sql/parse/tree.js").Node} Node
  * @typedef {import("./script.js").State} State
- * @typedef {{ from: number, to: number, kind: "syntax" | "names" | "server", message: string }} Problem
- *   Offsets in the text that was parsed (the statement after a space).
+ * @typedef {{ from: number, to: number, kind: "syntax" | "names" | "server" | "warning", message: string,
+ *   rule?: string, fix?: { title: string, text: string } }} Problem
+ *   Offsets in the text that was parsed (the statement after a space). A warning (ADR 0328) has its
+ *   identifier (`rule`) and, where the rewrite is certain, a fix: `text` replaces from to `to`.
  */
 
 const SYSTEM_COLUMNS = new Set(["ctid", "xmin", "xmax", "cmin", "cmax", "tableoid"]);

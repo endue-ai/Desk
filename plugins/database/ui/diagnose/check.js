@@ -6,15 +6,19 @@
 // again only when its text, the model, the search path or what came before it changed: each console
 // keeps the last check's statements. A statement the server answered (a run) takes the server's
 // word instead. Statements with psql's meta-commands or its `:name` and `?` parameters are skipped.
+// The warnings (warnings.js, ADR 0328) are found with the same parse and kept in the same entry; a
+// setting's identifiers and the ignore comments (ignore.js) drop them, and a run keeps them.
 // Completion (ADR 0327) reads the same state: `stateAt` replays what the statements before an offset
 // did, from the last check's, without parsing them again.
 import { createPositions } from "../sql/parse/positions.js";
 import { resolve } from "../sql/parse/resolve.js";
 import { split } from "../sql/split.js";
+import { ignoredLines } from "./ignore.js";
 import { insertProblems } from "./insert.js";
 import { nameProblems } from "./names.js";
 import { apply, createState, DEFAULT_PATH, effectsOf, searchPathOf } from "./script.js";
 import { endOf } from "./text.js";
+import { warningsOf } from "./warnings.js";
 
 /**
  * @typedef {import("./names.js").Problem} Problem
@@ -25,8 +29,9 @@ import { endOf } from "./text.js";
  *   (an offset in the statement's text).
  * @typedef {{
  *   doc: string, sql: string, syntax?: boolean, names?: boolean, searchPath?: string[],
- *   user?: string, answers?: Array<[string, Answer]>,
+ *   user?: string, answers?: Array<[string, Answer]>, warnings?: boolean, off?: string[],
  * }} CheckRequest
+ *   `warnings` true finds the warnings too; `off` names the ones never told.
  * @typedef {{ problems: Problem[], statements: number, parsed: number }} CheckResult
  *   `problems` in the script's offsets, at most MAX_PROBLEMS; `parsed` how many statements were
  *   parsed for this check.
@@ -71,6 +76,22 @@ function serverProblem(
   return /** @type {Problem} */ ({ from: at, to, kind: "server", message: answer.message });
 }
 
+/** Drops the warnings on a line an ignore comment covers (ignore.js). */
+function dropIgnored(
+  /** @type {string} */ sql,
+  /** @type {import("../sql/split.js").Statement[]} */ pieces,
+  /** @type {Problem[]} */ problems,
+) {
+  const { ignored, lineOf } = ignoredLines(sql, pieces);
+  if (ignored.size === 0) return;
+  for (let i = problems.length - 1; i >= 0; i--) {
+    const p = /** @type {Problem} */ (problems[i]);
+    if (p.kind !== "warning") continue;
+    const ids = ignored.get(lineOf(p.from));
+    if (ids === null || ids?.has(p.rule ?? "")) problems.splice(i, 1);
+  }
+}
+
 /** @param {import("../sql/parse/wasm.js").RawParser} raw */
 export function createChecker(raw) {
   /** @type {Map<string, Map<string, Entry>>} */
@@ -90,7 +111,7 @@ export function createChecker(raw) {
   const analyse = (
     /** @type {import("../sql/split.js").Statement} */ piece,
     /** @type {import("./script.js").State} */ state,
-    /** @type {{ syntax: boolean, names: boolean }} */ kinds,
+    /** @type {{ syntax: boolean, names: boolean, warnings: boolean }} */ kinds,
   ) => {
     const text = ` ${piece.text}`;
     const read = raw.parse(text);
@@ -112,17 +133,26 @@ export function createChecker(raw) {
     const positions = createPositions(text);
     for (const stmt of read.tree.stmts ?? []) {
       const tree = stmt.stmt ?? {};
-      if (kinds.names && state.index && !state.opaque) {
+      /** @type {import("../sql/parse/scope.js").Name[]} */
+      let names = [];
+      const bound = state.index && !state.opaque;
+      if (bound && (kinds.names || kinds.warnings)) {
         const parsed = { version: 0, whole: true, statements: [{ kind: null, tree }] };
-        const { names } = resolve(text, /** @type {never} */ (parsed), state.index, {
+        ({ names } = resolve(text, /** @type {never} */ (parsed), state.index, {
           searchPath: searchPathOf(state),
           user: state.user,
           positions,
-        });
+        }));
+      }
+      if (bound && kinds.names) {
         const shift = (/** @type {Problem} */ p) => ({ ...p, from: p.from - 1, to: p.to - 1 });
         entry.problems.push(...nameProblems(names, tree, state, text).map(shift));
         const offsetOf = (/** @type {number} */ byte) => positions.at(byte).offset - 1;
         entry.problems.push(...insertProblems(tree, state, offsetOf, endAt));
+      }
+      if (kinds.warnings) {
+        const input = { tree, text, positions, names, state, tokens, start: piece.start, raw };
+        entry.problems.push(...warningsOf(input));
       }
       const effects = effectsOf(tree);
       entry.effects.push(...effects);
@@ -138,7 +168,12 @@ export function createChecker(raw) {
      * @returns {CheckResult}
      */
     check(request, index) {
-      const kinds = { syntax: request.syntax !== false, names: request.names !== false };
+      const kinds = {
+        syntax: request.syntax !== false,
+        names: request.names !== false,
+        warnings: request.warnings === true,
+      };
+      const off = new Set(request.off ?? []);
       const kept = docs.get(request.doc) ?? new Map();
       docs.delete(request.doc);
       /** @type {Map<string, Entry>} */
@@ -168,6 +203,7 @@ export function createChecker(raw) {
           state.opaque,
           kinds.syntax,
           kinds.names,
+          kinds.warnings,
         ].join("\u0000");
         let entry = next.get(key) ?? kept.get(key);
         if (entry) for (const effect of entry.effects) apply(state, effect);
@@ -177,11 +213,19 @@ export function createChecker(raw) {
         }
         next.set(key, entry);
         if (entry.effects.length) changes.push({ end: piece.end, effects: entry.effects });
+        // The server's answer replaces the check's errors; the warnings stay.
         const answer = answers.get(piece.text);
-        if (answer && "ok" in answer) continue;
-        for (const p of answer ? [serverProblem(piece, answer)] : entry.problems)
+        const shown = (/** @type {Problem} */ p) => p.kind !== "warning" || !off.has(p.rule ?? "");
+        const told = answer
+          ? [
+              ...("ok" in answer ? [] : [serverProblem(piece, answer)]),
+              ...entry.problems.filter((p) => p.kind === "warning"),
+            ]
+          : entry.problems;
+        for (const p of told.filter(shown))
           problems.push({ ...p, from: p.from + piece.start, to: p.to + piece.start });
       }
+      if (kinds.warnings) dropIgnored(request.sql, pieces, problems);
       docs.set(request.doc, next);
       steps.set(request.doc, changes);
       while (docs.size > KEPT_DOCS) {
