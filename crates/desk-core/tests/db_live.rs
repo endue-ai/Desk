@@ -195,7 +195,13 @@ fn cancel_reaches_a_running_statement_and_events_reach_the_opener_alone() {
     );
     assert_eq!(raised.get("noticesSkipped"), None);
     // A parameter the session reports after the run: what comes before it is the run's.
-    run(&core, DATABASE, &session, "SET application_name = 't541'", json!({}));
+    run(
+        &core,
+        DATABASE,
+        &session,
+        "SET application_name = 't541'",
+        json!({}),
+    );
     let (marker, before) = after(&events, "db.parameter", &session);
     assert_eq!(marker["value"], "t541");
     assert!(!before.iter().any(|e| e == "db.notice"), "{before:?}");

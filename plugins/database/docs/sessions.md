@@ -21,6 +21,9 @@ Which session a PostgreSQL run goes to, and what stays on it (ADR 0320). The res
 - `sessions-per-connection` (8, at most 12) and `session-idle-minutes` (30, 0 keeps them; never one in a
   transaction) bound them; at the limit a table view's idle session goes first.
 - After the page wakes, its consoles take back the sessions the core still holds; nothing is opened again.
+- A statement's notices are those its pages carry, so they stay with it whatever order things arrive in
+  (ADR 0334); a COMMIT's (a deferred trigger's) and those the session sends outside any run are the run's
+  own lines, on the next run of a kept session.
 
 Modules: `session/` (the kept sessions, their words and limits), `engines/pg-session.js` (where a run goes),
 `engines/pg-script.js` (how its statements run), `execute.js`.

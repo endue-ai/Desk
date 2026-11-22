@@ -25,7 +25,8 @@ Layer: Rust core. Status: PostgreSQL 3.0, text results; the core serves it (`cra
   chunks until `done` or `fail`. Closing a COPY out early cancels it on the server.
 - `cancel()` sends the backend's key on a connection of its own, in the session's TLS mode; the key
   never leaves the crate. `close(CloseReason)`: the first reason is the one the `Closed` event names.
-- `Sink` receives `Event::Notice`, `Notification`, `Parameter` as they come and `Closed` last
+- A call's notices come in its `Page.notices`, in order (`MAX_NOTICES` 10,000, then `notices_skipped`).
+- `Sink` receives `Event::Notice` outside calls, `Notification`, `Parameter` as they come and `Closed` last
   (closed, server with its FATAL error, io, encoding, unloaded, revoked, desk).
 
 ## Testing

@@ -35,7 +35,7 @@ function executor() {
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
     cancelled: (message) => new Error(message),
   });
-  return (sql: string, mode?: string) => run.execute(conn, sql, mode ? { mode } : {});
+  return (sql: string, mode?: "transaction") => run.execute(conn, sql, mode ? { mode } : {});
 }
 
 const SET_UP = [
@@ -73,7 +73,8 @@ describe.skipIf(!uri)("notices with their statements on a real PostgreSQL", () =
       );
       const [first, last] = done.result.statements;
       expect(said(first?.notices)).toBe("");
-      expect(said(last?.notices)).toBe(`NOTICE:  last of run ${i}`);
+      expect(last?.notices?.[0]).toBe(`NOTICE:  last of run ${i}`);
+      expect(said(last?.notices).match(/last of run/gu)).toHaveLength(1);
       expect(said(done.result.notices)).not.toMatch(/last of run/u);
     }
   });

@@ -124,7 +124,8 @@ and `transaction` from ReadyForQuery (`idle`, `open`, `failed`). A page holds `p
 row; a row over 64 MiB ends the result with `invalid_value`. `copy` is `{ direction, format, columns }`.
 
 **Events**, to the session's caller only: `db.notice { sessionId, notice }` as each arrives, also
-while a statement runs; `db.notification { sessionId, pid, channel, payload }`, also while idle;
+while a statement runs (amended by ADR 0334: a notice raised while a call runs comes in its page's
+`notices` instead, and `db.notice` is for those outside any call); `db.notification { sessionId, pid, channel, payload }`, also while idle;
 `db.parameter { sessionId, name, value }` for each ParameterStatus; `db.closed { sessionId, reason,
 message?, error? }`, the session's last event, `reason` one of `closed`, `server` (with its FATAL
 `error` when it sent one), `io`, `encoding`, `unloaded`, `revoked`, `desk`.

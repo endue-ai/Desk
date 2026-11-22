@@ -58,6 +58,9 @@ pub(crate) fn page(page: Page) -> DbPage {
         }),
         data,
         encoding,
+        notices: (!page.notices.is_empty())
+            .then(|| page.notices.iter().map(server_error).collect()),
+        notices_skipped: (page.notices_skipped > 0).then_some(page.notices_skipped),
     }
 }
 

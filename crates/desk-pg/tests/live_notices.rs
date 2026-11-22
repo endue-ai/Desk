@@ -19,9 +19,7 @@ fn said(page: &Page) -> Vec<(String, String)> {
 
 fn heard(events: &common::Events) -> usize {
     let all = events.all();
-    all.iter()
-        .filter(|e| matches!(e, Event::Notice(_)))
-        .count()
+    all.iter().filter(|e| matches!(e, Event::Notice(_))).count()
 }
 
 #[test]
