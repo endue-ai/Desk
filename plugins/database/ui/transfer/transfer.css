@@ -1,0 +1,101 @@
+/* A copy between databases (transfer/): the form's pair of fields, and the panel (its head, the
+   report, an append's mapping, each table's line, the result and the target's script). Every
+   colour, font, size and radius comes from the theme's --desk-* tokens; the feature links this
+   sheet itself (features/README.md). */
+
+.transfer-pair {
+  display: flex;
+  gap: var(--desk-space-2);
+  margin: 0;
+}
+
+.transfer-pair > label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.transfer-problem {
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
+
+.transfer-problem:empty,
+.transfer-form [hidden],
+.transfer-panel [hidden] {
+  display: none;
+}
+
+.transfer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.transfer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.transfer-title {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  overflow-wrap: anywhere;
+}
+
+.transfer-status {
+  color: var(--desk-text-muted);
+}
+
+.transfer-list {
+  margin: 0;
+  padding-left: var(--desk-space-5);
+}
+
+.transfer-notes {
+  color: var(--desk-text-muted);
+}
+
+.transfer-mapping {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.transfer-pair-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.transfer-pair-row > span {
+  flex: 0 1 12em;
+  overflow-wrap: anywhere;
+  font-family: var(--desk-font-mono);
+}
+
+.transfer-steps .desk-list-text {
+  font-family: var(--desk-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.transfer-script {
+  flex: 1 1 auto;
+  min-height: 4em;
+  margin: 0;
+  padding: var(--desk-space-2);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
