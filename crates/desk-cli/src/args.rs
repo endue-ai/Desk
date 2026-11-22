@@ -18,6 +18,7 @@ pub struct Args {
 
 pub enum Action {
     Help,
+    Run(String),
     Validate(PathBuf),
     /// Offline: what the data folder says went wrong (`--data` names another one).
     Doctor(Option<PathBuf>),
@@ -138,11 +139,22 @@ pub enum ThemeStep {
 
 /// The action the arguments ask for, or what was wrong with them.
 pub fn parse(args: Vec<String>) -> Result<Args, Wrong> {
-    let json = args.iter().any(|arg| arg == "--json");
-    let words: Vec<&str> = args
+    let is_run = args
         .iter()
+        .find(|word| *word != "--json")
+        .is_some_and(|word| word == "run");
+    // A prompt after the run command's -- is literal, including the word --json.
+    let end = args
+        .iter()
+        .position(|word| is_run && word == "--")
+        .unwrap_or(args.len());
+    let flags = &args[..end];
+    let json = flags.iter().any(|arg| arg == "--json");
+    let words: Vec<&str> = flags
+        .iter()
+        .filter(|word| *word != "--json")
+        .chain(args.get(end + 1..).unwrap_or_default())
         .map(String::as_str)
-        .filter(|arg| *arg != "--json")
         .collect();
     let message = match action(&words) {
         Ok(action) => return Ok(Args { action, json }),
@@ -174,6 +186,8 @@ type Parsed<T> = Result<T, Miss>;
 fn action(words: &[&str]) -> Parsed<Action> {
     Ok(match words {
         ["--help" | "-h" | "help"] => Action::Help,
+        ["run", prompt] if !prompt.trim().is_empty() => Action::Run((*prompt).to_owned()),
+        ["run", ..] => return Err(Miss::Wrong("run needs one nonempty prompt argument".into())),
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
         ["doctor"] => Action::Doctor(None),
         ["doctor", "--data", dir] => Action::Doctor(Some(PathBuf::from(name(dir)?))),
