@@ -7,6 +7,8 @@ export interface StubStatement {
   sql: string | RegExp;
   columns?: DbColumn[];
   rows?: DbValue[][];
+  /** The type OIDs db.describe answers for its `$n` (ADR 0353); none by default. */
+  paramTypes?: number[];
   /** The command tag; `SELECT <rows>` when there are columns, else the first word. */
   tag?: string;
   /** The server's error, which ends the statement. */
@@ -19,6 +21,13 @@ export interface StubStatement {
   waits?: boolean;
   /** A COPY: `in` waits for db.copy; `out` answers `data`. */
   copy?: { direction: "in"; columns: number } | { direction: "out"; data: string };
+}
+
+/** What a call bound to a statement: its parameters as text or null, their type OIDs. */
+export interface StubBound {
+  params?: DbValue[];
+  paramTypes?: number[];
+  describe?: true;
 }
 
 /** Who a session signed in as, and how: what its db.open asked for. */
@@ -43,9 +52,10 @@ export interface StubDatabase {
   /** What the server reports at the sign-in; server_version and client_encoding by default. */
   parameters?: Record<string, string>;
   statements: StubStatement[];
-  /** Answers a statement none of `statements` matches, on the session it runs on; undefined
-   * leaves it unanswered (0A000). */
-  answer?: (sql: string, session: StubSession) => StubStatement | undefined;
+  /** Answers a statement none of `statements` matches, on the session it runs on, with the values
+   * db.run or db.script bound to it (`describe` for db.describe); undefined leaves it unanswered
+   * (0A000). */
+  answer?: (sql: string, session: StubSession, bound?: StubBound) => StubStatement | undefined;
 }
 
 export interface StubDbOptions {

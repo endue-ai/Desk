@@ -117,7 +117,7 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   bodies), and an error's position lands in the editor.
 - Highlighting with the lexer that cuts the statements, completion from the schema (`Ctrl+Space`, below),
   Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before the run and
-  remembered for the console.
+  remembered for the console; on PostgreSQL bound values, and a check without running (`params.md`).
 - Guards: a read-only connection refuses writes before anything runs, and on the server too
   (`default_transaction_read_only` on PostgreSQL's session); with
   `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE

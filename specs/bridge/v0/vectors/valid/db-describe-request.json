@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.describe of a statement with two parameters, the second's type fixed",
+  "instance": {
+    "id": 26,
+    "method": "db.describe",
+    "params": {
+      "sessionId": "d-1",
+      "sql": "SELECT name FROM t WHERE id = $1 AND tags @> $2",
+      "paramTypes": [0, 1009]
+    }
+  }
+}

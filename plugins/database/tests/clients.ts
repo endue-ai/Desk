@@ -32,9 +32,14 @@ export interface Answer {
   notices?: string[];
   afterwards?: string[];
   waits?: boolean;
+  /** The type OIDs db.describe answers for the statement's `$n` (ADR 0353). */
+  paramTypes?: number[];
 }
 /** Who asks: sqlite3's environment, or the session's database, host, port, user and settings. */
-export type Script = (sql: string, who: Record<string, string>) => Answer | "auth";
+/** What a call bound to a statement (ADR 0353): its values and types, `describe` for a check. */
+export type Bound = { params?: (string | null)[]; paramTypes?: number[]; describe?: true };
+
+export type Script = (sql: string, who: Record<string, string>, bound?: Bound) => Answer | "auth";
 
 export interface Reply {
   stdout: string;
@@ -111,6 +116,7 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
   const more = {
     ...(notices.length ? { notices } : {}),
     ...(afterwards.length ? { afterwards } : {}),
+    ...(answer.paramTypes ? { paramTypes: answer.paramTypes } : {}),
   };
   if (answer.waits) return { sql, waits: true, ...more };
   if (answer.error) {
@@ -170,8 +176,8 @@ export function scriptedDb(script: Script, password?: string): StubDatabase {
   return {
     ...(password === undefined ? {} : { password }),
     statements: [],
-    answer: (sql, session) => {
-      const answer = script(sql, whoOf(session));
+    answer: (sql, session, bound) => {
+      const answer = script(sql, whoOf(session), bound);
       if (answer === "auth")
         return { sql, error: serverError("password authentication failed", { code: "28P01" }) };
       return statementOf(sql, answer);
