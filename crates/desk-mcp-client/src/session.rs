@@ -65,7 +65,7 @@ impl Session {
         let params = json!({
             "protocolVersion": PROTOCOL,
             "capabilities": {},
-            "clientInfo": { "name": "endue-desk", "title": "endue Desk",
+            "clientInfo": { "name": "endue-desk", "title": "endue",
                 "version": env!("CARGO_PKG_VERSION") }
         });
         let answer = connection.request("initialize", params, wait)?;
