@@ -47,6 +47,7 @@ import {
 } from "../../../../plugins/database/tests/overview-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
+import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -106,18 +107,20 @@ const core = browserCore({
   handlers: {
     ...procs,
     // The map's statements answer first, exactly; then the diagram's connection and the value
-    // search's, each by its database; the routine forms and the overview answer their own
-    // statements exactly, then the maintenance form its own and the objects feature its own, before
-    // the activity view's looser matches.
+    // search's, each by its database; the table form, the routine forms and the overview answer
+    // their own statements exactly, then the maintenance form its own and the objects feature its
+    // own, before the activity view's looser matches.
     ...dbHandlers(
       geoServer(
         diagramServer(
           searchServer(
-            routineServer(
-              overviewServer(
-                maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                  .script,
-              ),
+            tableDesignServer(
+              routineServer(
+                overviewServer(
+                  maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
+                    .script,
+                ),
+              ).script,
             ).script,
           ),
         ),
