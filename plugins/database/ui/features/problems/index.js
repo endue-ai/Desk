@@ -2,13 +2,14 @@
 // the parse worker's check finds (../../diagnose/); this answers what it checks against: for a
 // PostgreSQL console on screen, the schema cache's model (only what the cache holds: nothing is
 // asked of the server), the search path the server starts with, the connection's user for `$user`,
-// and which kinds of problems the settings turn on. Database: list the SQL problems, next and
-// previous step through them in the editor as F8, Shift+F8 and Mod+. do.
+// and which kinds of problems the settings turn on (the warnings and the ones turned off, ADR 0328).
+// Database: list the SQL problems, next and previous step through them in the editor as F8,
+// Shift+F8 and Mod+. do; fix the SQL warning at the caret applies its fix.
 import { problemModel } from "../../diagnose/model.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
- * @typedef {"list" | "next" | "previous"} Step
+ * @typedef {"list" | "next" | "previous" | "fix"} Step
  */
 
 /** The server's default search path; a role's or a database's own is not known until a session says. */
@@ -22,13 +23,16 @@ function contextOf(/** @type {Deps} */ deps) {
   if (conn?.engine !== "postgresql") return undefined;
   const settings = deps.settings();
   const names = settings.problemsNames;
+  const warnings = settings.problemsWarnings;
   return {
     doc: shown.id,
-    model: names ? problemModel(conn.id, deps.catalog.cache.view(conn)) : null,
+    model: names || warnings ? problemModel(conn.id, deps.catalog.cache.view(conn)) : null,
     searchPath: [...SEARCH_PATH],
     user: conn.user,
     syntax: settings.problemsSyntax,
     names,
+    warnings,
+    off: [...settings.problemsWarningsOff],
   };
 }
 
@@ -48,6 +52,7 @@ export const feature = {
     "endue.database.problems": () => step(deps, "list"),
     "endue.database.next-problem": () => step(deps, "next"),
     "endue.database.previous-problem": () => step(deps, "previous"),
+    "endue.database.fix-problem": () => step(deps, "fix"),
   }),
   actions: (deps) => ({
     problemsContext: () => contextOf(deps),

@@ -71,6 +71,9 @@ export interface StubDatabase {
   /** The password the sign-in needs: a wrong one is refused (28P01), none answers needsPassword.
    * Without it every sign-in is let in. */
   password?: string;
+  /** The passphrase of every encrypted client key (a key whose PEM says ENCRYPTED): none given
+   * answers keyPassword "needed", another "wrong" (ADR 0331). */
+  keyPassword?: string;
   /** What the server reports at the sign-in; server_version and client_encoding by default. */
   parameters?: Record<string, string>;
   statements: StubStatement[];
@@ -265,6 +268,13 @@ export function stubDb(
           "invalid_value",
           `${me} already holds ${MAX_SESSIONS} database sessions`,
         );
+      const tls = params.tls;
+      if ((tls?.cert === undefined) !== (tls?.key === undefined))
+        throw new StubError("invalid_params", "tls.cert and tls.key come together");
+      if (tls?.key?.includes("ENCRYPTED") && tls.mode !== "disable") {
+        if (!tls.keyPassword) return { keyPassword: "needed" };
+        if (tls.keyPassword !== script?.keyPassword) return { keyPassword: "wrong" };
+      }
       const password = kept.password(params, caller, port);
       if (!script) throw new StubError("io_error", `cannot connect to ${params.host}:${port}`);
       if (script.password !== undefined && password === undefined) return { needsPassword: true };

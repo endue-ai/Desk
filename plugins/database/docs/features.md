@@ -17,8 +17,8 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 - PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
   table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
-  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
-  client certificate is not supported yet, nor a socket folder or an IPv6 host.
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file, and
+  presents a client certificate (`docs/client-cert.md`); a socket folder or an IPv6 host is not supported yet.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
@@ -179,7 +179,7 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   statement: a write runs in a transaction rolled back at the end, under the same guards as any run.
 - Two plans compared side by side, from a console's last eight or from two consoles: the nodes paired by type
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
-  plan over 64 KiB is read in a worker. Two results compared, and pinned ones: [`results.md`](results.md).
+  plan over 64 KiB is read in a worker. Pinned results, comparisons, totals and charts: [`results.md`](results.md).
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 - A Map tab draws a result's geometry and geography values, linked to the grid: [`map.md`](map.md).

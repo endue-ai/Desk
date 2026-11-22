@@ -5,6 +5,7 @@
 // plugin's own reads), and the consoles' sessions taken back when the frame wakes. No DOM.
 
 import { createSessions } from "../engines/pg-session.js";
+import { createPassphrases } from "../engines/pg-tls.js";
 import { keyOf, sessionLabel } from "./owners.js";
 import { reasonsOf } from "./words.js";
 
@@ -19,13 +20,16 @@ import { reasonsOf } from "./words.js";
  *   settings(): import("../settings.js").Settings,
  *   onBusy(running: number): void,
  *   kept?(conn: Connection): string | undefined,
+ *   askPassphrase?(conn: Connection, why: string): Promise<string | undefined>,
  * }} Deps
  *   `consoles` is a getter: the consoles are made after the sessions they run on; `kept` names the
- *   password the keychain keeps for a connection (ADR 0311), for every session it opens.
+ *   password the keychain keeps for a connection (ADR 0311), for every session it opens;
+ *   `askPassphrase` asks for a key file's passphrase, held in memory (ADR 0331).
  */
 
 /** @param {Deps} deps */
 export function createPluginSessions(deps) {
+  const passphrases = createPassphrases(deps.askPassphrase ?? (async () => undefined));
   const byOwner = (/** @type {string} */ owner) =>
     deps
       .consoles()
@@ -43,13 +47,15 @@ export function createPluginSessions(deps) {
     idleMs: () => deps.settings().sessionIdleMinutes * 60_000,
     limit: () => deps.settings().sessionsPerConnection,
     ...(deps.kept ? { kept: deps.kept } : {}),
+    passphrases,
   });
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;
 
   return {
     pg,
-    /** The connection's sessions, for Disconnect, a sign-in change and remove (manage.js). */
+    /** The connection's sessions, for Disconnect, a sign-in change and remove (manage.js), and
+     * `forget` for its key files' passphrases, gone with the password (ADR 0331). */
     connections: {
       reasons: (/** @type {string} */ connection) =>
         reasonsOf(
@@ -58,6 +64,7 @@ export function createPluginSessions(deps) {
             .map((e) => ({ label: labelFor(e.owner), transaction: e.transaction })),
         ),
       close: (/** @type {string} */ connection) => pg.close(mine(connection)),
+      forget: (/** @type {string} */ connection) => passphrases.forgetAll(connection),
     },
     /** What Cancel stops: the runs of the buffer on screen and the plugin's own reads. */
     scope() {
