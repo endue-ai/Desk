@@ -19,9 +19,10 @@ that presents a certificate its authority signed. ADR 0331 has the why.
   the desk's session, by connection and key file; it is forgotten when it is wrong, on Disconnect, Forget
   password and Remove, and never written to the store, the keychain, a log or the history. Agents' runs
   and quiet reads never ask: they end with "Key file: ... is encrypted, and its passphrase was not typed."
-- Backups and restores (pg_dump, pg_restore) get `PGSSLCERT` and `PGSSLKEY`. libpq has no variable for a
-  key's passphrase, and an argument would show it to other programs, so an encrypted key works on the
-  session path only.
+- Backups and restores (pg_dump, pg_restore) get `PGSSLCERT` and `PGSSLKEY` (and the CA as `PGSSLROOTCERT`).
+  libpq does not expand `~`, so a path under the home folder goes as `./…` from the home folder the program
+  starts in, as its file arguments do. libpq has no variable for a key's passphrase, and an argument would
+  show it to other programs, so an encrypted key works on the session path only.
 - libpq's default files under `~/.postgresql/` are not read on the session path; the fields' placeholders
   name them.
 - A connections file carries both paths, never a passphrase, and a `pg_service.conf` import reads

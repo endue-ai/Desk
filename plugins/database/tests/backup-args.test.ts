@@ -207,3 +207,40 @@ describe("the command line shown", () => {
     );
   });
 });
+
+describe("certificate paths under the home folder (#661)", () => {
+  const CERTS = {
+    ...SHOP,
+    sslCa: "~/certs/ca.pem",
+    sslCert: "~/certs/client.crt",
+    sslKey: "~/certs/client.key",
+  };
+
+  it("hands each of the three variables a path the program reads from the home folder it starts in", () => {
+    expect(connectionEnv(CERTS, undefined)).toMatchObject({
+      PGSSLROOTCERT: "./certs/ca.pem",
+      PGSSLCERT: "./certs/client.crt",
+      PGSSLKEY: "./certs/client.key",
+    });
+    const typed = { ...SHOP, sslCa: "/etc/ssl/ca.pem", sslCert: "C:\\certs\\c.crt", sslKey: "/k" };
+    expect(connectionEnv(typed, undefined)).toMatchObject({
+      PGSSLROOTCERT: "/etc/ssl/ca.pem",
+      PGSSLCERT: "C:\\certs\\c.crt",
+      PGSSLKEY: "/k",
+    });
+  });
+
+  it("the command line shown names the resolved paths, on POSIX and in PowerShell", () => {
+    const env = connectionEnv(CERTS, undefined);
+    const posix = commandLine("pg_dump", ["--file=./a.dump"], env);
+    const windows = commandLine("pg_dump.exe", ["--file=./a.dump"], env, "windows");
+    for (const line of [posix, windows]) {
+      expect(line).not.toContain("~/");
+      expect(line).toContain("./certs/ca.pem");
+      expect(line).toContain("./certs/client.crt");
+      expect(line).toContain("./certs/client.key");
+    }
+    expect(posix).toContain("PGSSLROOTCERT=./certs/ca.pem PGSSLCERT=./certs/client.crt");
+    expect(windows).toContain("$env:PGSSLKEY='./certs/client.key'; ");
+  });
+});
