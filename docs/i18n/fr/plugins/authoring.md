@@ -1,15 +1,15 @@
 > Ce document est une traduction. En cas de divergence, la [version anglaise](../../../plugins/authoring.md) fait foi.
 
-# Écrire un plugin Desk
+# Écrire un plugin endue
 
-Un plugin Desk est un dossier. Les fonctionnalités intégrées utilisent exactement le même format : tout ce que
-Desk fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page commence par les types de plugins et
+Un plugin endue est un dossier. Les fonctionnalités intégrées utilisent exactement le même format : tout ce que
+endue fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page commence par les types de plugins et
 leurs modèles, puis traite en détail des plugins UI, ensuite des plugins natifs et, pour finir, des thèmes ;
 les plugins d'outils (MCP) viendront plus tard.
 
 ## Partir d'un modèle
 
-`create-plugin` crée un dossier d'un type donné, qui passe `desk plugin validate` et contient un test
+`create-plugin` crée un dossier d'un type donné, qui passe `endue plugin validate` et contient un test
 (`pnpm create @endue-ai/plugin` une fois le paquet publié) :
 
 ```bash
@@ -32,7 +32,7 @@ Les types en Rust se compilent avec la commande propre au langage : `cargo build
 pour la cible `wasm32-wasip2` (`rustup target add wasm32-wasip2` une seule fois). Le composant est produit là
 où pointe l'`entry` de `plugin.json`.
 
-Pour voir un plugin dans Desk pendant que vous travaillez dessus, lancez Desk avec votre dossier comme plugin
+Pour voir un plugin dans endue pendant que vous travaillez dessus, lancez endue avec votre dossier comme plugin
 de développement :
 
 ```bash
@@ -40,12 +40,12 @@ DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
 Enregistrez n'importe quel fichier du dossier : seul votre plugin se recharge, en moins d'une seconde. Le reste
-de Desk, ainsi que l'état de votre plugin, restent tels quels. Un dossier vide ou cassé au démarrage de Desk
+d’endue, ainsi que l'état de votre plugin, restent tels quels. Un dossier vide ou cassé au démarrage d’endue
 apparaît dès que ses fichiers arrivent ou sont corrigés, sans redémarrage.
 
-### Tester avec `desk plugin test`
+### Tester avec `endue plugin test`
 
-`desk plugin test <folder>` vérifie le dossier comme le fait `validate`, puis exécute ses `tests/` sur l'hôte
+`endue plugin test <folder>` vérifie le dossier comme le fait `validate`, puis exécute ses `tests/` sur l'hôte
 qui correspond à son type :
 
 - `ui`, `view`, `policy`, `theme` et les autres types sans Wasm : `tests/*.test.js` ou `*.test.ts` avec
@@ -85,7 +85,7 @@ venu à la place.
 | Chemin | Requis | Rôle |
 | --- | --- | --- |
 | `plugin.json` | oui | Le manifeste : id, version, kind, entry, permissions, surfaces |
-| `ui/index.html` | oui (l'`entry`) | La page que Desk charge dans un cadre en sandbox |
+| `ui/index.html` | oui (l'`entry`) | La page qu’endue charge dans un cadre en sandbox |
 | `ui/*.js`, `ui/*.css` | non | Votre code et vos styles, chargés relativement à l'entrée |
 | `README.md` | recommandé | Ce que fait le plugin, quelles permissions il demande et pourquoi |
 
@@ -107,7 +107,7 @@ dossier.
 
 ## Le SDK
 
-Importez le SDK via une import map dans votre page d'entrée ; Desk le sert à l'adresse `/_desk/plugin-sdk.js` :
+Importez le SDK via une import map dans votre page d'entrée ; endue le sert à l'adresse `/_desk/plugin-sdk.js` :
 
 ```html
 <script type="importmap">
@@ -198,7 +198,7 @@ sont les mêmes dans les deux cas. Le bloc `window` de la surface dit comment la
 Ce sont des indications. Une place enregistrée par un profil ou une session, et le rangement que fait
 la personne elle-même (un remplissage, un ancrage, la mosaïque), fixent la taille d'une fenêtre sur le
 canevas quoi qu'elles disent, et une fenêtre divisée en volets suit ses volets. La personne sort
-n'importe quelle fenêtre et la ramène (« Pop out window » dans la palette, Window > Move to Desk).
+n'importe quelle fenêtre et la ramène (« Pop out window » dans la palette, la commande de retour du menu Window (Move to Desk dans la version v0.3.0)).
 `DESK_APP_WINDOWS` l'emporte sur les manifestes pour un lancement : `off` garde toutes les fenêtres sur
 le canevas, `on` ouvre toutes les applications dehors, et une liste d'ids de plugins ouvre ceux-là
 dehors. `examples/plugin-hello-window` s'exécute des deux façons, avec une commande pour chacune.
@@ -229,7 +229,7 @@ pas après un redémarrage.
 
 ## Permissions
 
-Votre cadre s'exécute dans une sandbox qui n'autorise que les scripts : aucun accès à la page de Desk, aucune
+Votre cadre s'exécute dans une sandbox qui n'autorise que les scripts : aucun accès à la page d’endue, aucune
 navigation de niveau supérieur, ni formulaires ni popups, et aucune connexion réseau propre. Chaque capacité
 passe par le pont, et chaque appel au pont, sauf `perm.*`, porte la portée de permission dont il a besoin
 (`params.scope`). Le cœur ne répond que si l'utilisateur a accordé une permission qui couvre cette portée.
@@ -244,7 +244,7 @@ Le vocabulaire (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture
 
 ## Votre propre processus et votre propre origine
 
-Aujourd'hui, tous les cadres de plugin partagent la seule page de Desk et son seul processus. Desk passe à
+Aujourd'hui, tous les cadres de plugin partagent la seule page d’endue et son seul processus. endue passe à
 Chromium, où chaque surface tourne dans un processus à elle (ADR 0140). Rien ne change pour votre code : le
 manifeste, l'import map, `@endue-ai/plugin-sdk`, le pont et la CSP restent tels que cette page les décrit.
 
@@ -492,12 +492,12 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-Avant de publier, `desk plugin validate <folder>` doit réussir ; la CI l'exécute pour chaque dossier de
+Avant de publier, `endue plugin validate <folder>` doit réussir ; la CI l'exécute pour chaque dossier de
 `plugins/` et `examples/`.
 
 ## Plugins natifs
 
-Un plugin natif (type `native`) est un programme à vous, écrit dans n'importe quel langage, que Desk
+Un plugin natif (type `native`) est un programme à vous, écrit dans n'importe quel langage, qu’endue
 lance dans un processus à lui (ADR 0154). Il dessine sa fenêtre sur le GPU avec l'API de votre choix,
 dans une texture qu'il partage avec le bureau, et appelle le même pont qu'un plugin UI. Le
 compositeur du bureau dessine sa fenêtre comme les autres (ADR 0156) ;
@@ -578,7 +578,7 @@ contient toutes les couleurs de rôle pour les deux schemes, toutes les autres c
 défaut et un README qui dit ce que peint chacune ; `examples/plugin-hello-theme` est le plus petit thème
 avec une police et un arrière-plan. Installer un thème ne l'applique pas : le réglage `desk.theme.active`
 désigne celui qui est en vigueur, choisi dans le studio de thèmes (le bouton palette en haut à droite, ou
-Themes dans la palette de commandes), avec `desk.theme.use` ou avec `desk theme apply`.
+Themes dans la palette de commandes), avec `desk.theme.use` ou avec `endue theme apply`.
 
 Le studio crée aussi des thèmes : « Tune a copy » (ou `desk.theme.edit`) ouvre son éditeur sur une copie du
 thème sélectionné, « New theme » sur le thème endue. Chaque couche a ses contrôles, polices et images
@@ -659,8 +659,8 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` vérifie le bloc par rapport au schéma et les fichiers par rapport à leurs limites.
-`desk plugin test` exécute le `tests/theme.test.ts` du modèle avec vitest sur l'hôte de test du SDK : il
+`endue plugin validate` vérifie le bloc par rapport au schéma et les fichiers par rapport à leurs limites.
+`endue plugin test` exécute le `tests/theme.test.ts` du modèle avec vitest sur l'hôte de test du SDK : il
 compile les deux schemes avec `compileTheme` et les contrôle avec `gate` par-dessus la palette endue, comme
 le bureau avant d'appliquer un thème, et échoue en listant chaque correction que le contrôle ferait.
 
@@ -674,7 +674,7 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 Un `.desk-theme` est un seul fichier JSON : `format` `desk-theme/1`, le `plugin.json` du thème comme
 `manifest`, et les fichiers que son bloc désigne dans `files`, en base64, 16 Mio au plus (ADR 0058).
 L'importer le vérifie comme plugin de thème et l'installe dans le dossier de thèmes de la personne, où un id
-hors de `local.` et `market.` devient `local.<son nom>` ; `desk theme list` l'affiche et `desk theme remove`
+hors de `local.` et `market.` devient `local.<son nom>` ; `endue theme list` l'affiche et `endue theme remove`
 le supprime. Export et Import dans le studio font de même, et le studio accepte un `.desk-theme` déposé
 dessus.
 
@@ -682,14 +682,14 @@ dessus.
 
 L'onglet Market du studio liste les thèmes des marchés que nomme le réglage `desk.theme.markets`, par
 l'URL https de chaque index (ADR 0060). Par défaut, c'est le `market/themes/index.json` de ce dépôt sur
-`main`, lu depuis `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`.
+`main`, lu depuis `https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json`.
 Ajoutez l'index d'un autre marché après lui dans `init.yaml` ; quand deux marchés listent le même id, le
 premier l'emporte :
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
@@ -703,7 +703,7 @@ avez modifié reste le vôtre.
 Pour publier un thème, ouvrez une pull request qui ajoute son paquet et son entrée d'index dans
 `market/themes/` :
 
-1. Exportez le thème (`desk theme export <id> <file>`, ou Export dans le studio) avec un id dans
+1. Exportez le thème (`endue theme export <id> <file>`, ou Export dans le studio) avec un id dans
    `market.`, une version, `theme.author` et `theme.license` : une expression SPDX qui couvre aussi ses
    polices et ses images.
 2. Placez le fichier dans `market/themes/` sous le nom `<name>.desk-theme` et ajoutez son entrée à

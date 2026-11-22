@@ -1,16 +1,16 @@
-# Writing a Desk plugin
+# Writing an endue plugin
 
 English · [日本語](../i18n/ja/plugins/authoring.md) · [中文](../i18n/zh/plugins/authoring.md) ·
 [Français](../i18n/fr/plugins/authoring.md) · [Deutsch](../i18n/de/plugins/authoring.md) ·
 [한국어](../i18n/ko/plugins/authoring.md)
 
-A Desk plugin is a folder. Built-in features use exactly the same format, so anything Desk itself does
+An endue plugin is a folder. Built-in features use exactly the same format, so anything endue itself does
 on screen, your plugin can do too. This page starts with the kinds of plugin and their templates, then
 covers UI plugins in depth, then native plugins and, last, themes; tool (MCP) plugins come later.
 
 ## Start from a template
 
-`create-plugin` writes a folder of one kind that passes `desk plugin validate` and carries one test
+`create-plugin` writes a folder of one kind that passes `endue plugin validate` and carries one test
 (`pnpm create @endue-ai/plugin` once the package is published):
 
 ```bash
@@ -33,19 +33,19 @@ The Rust kinds build with the language's own command: `cargo build --release` in
 `wasm32-wasip2` target (`rustup target add wasm32-wasip2` once). The component lands where
 `plugin.json`'s `entry` points.
 
-To see a plugin on the desk while you work on it, run Desk with your folder as a dev plugin:
+To see a plugin on the desk while you work on it, run endue with your folder as a dev plugin:
 
 ```bash
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
 Save any file in the folder and only your plugin reloads, within a second. The rest of the desk, and
-your plugin's state, stay where they were. A folder that is empty or broken when Desk starts appears
+your plugin's state, stay where they were. A folder that is empty or broken when endue starts appears
 as soon as its files arrive or are fixed, without a restart.
 
-### Testing with `desk plugin test`
+### Testing with `endue plugin test`
 
-`desk plugin test <folder>` checks the folder as `validate` does, then runs its `tests/` on the host
+`endue plugin test <folder>` checks the folder as `validate` does, then runs its `tests/` on the host
 that matches its kind:
 
 - `ui`, `view`, `policy`, `theme` and the other kinds without Wasm: `tests/*.test.js` or `*.test.ts`
@@ -84,7 +84,7 @@ expected and lists what came instead.
 | Path | Required | Purpose |
 | --- | --- | --- |
 | `plugin.json` | yes | The manifest: id, version, kind, entry, permissions, surfaces |
-| `ui/index.html` | yes (the `entry`) | The page Desk loads into a sandboxed frame |
+| `ui/index.html` | yes (the `entry`) | The page endue loads into a sandboxed frame |
 | `ui/*.js`, `ui/*.css` | no | Your code and styles, loaded relative to the entry |
 | `README.md` | recommended | What the plugin does and which permissions it asks for, and why |
 
@@ -105,7 +105,7 @@ Ids are lowercase and reverse-domain (`example.my-plugin`). The entry stays insi
 
 ## The SDK
 
-Import the SDK through an import map in your entry page; Desk serves it at `/_desk/plugin-sdk.js`:
+Import the SDK through an import map in your entry page; endue serves it at `/_desk/plugin-sdk.js`:
 
 ```html
 <script type="importmap">
@@ -192,8 +192,7 @@ surface's `window` block says how the window opens (ADR 0226):
 
 These are hints. A place that a profile or a session saved, and the person's own arranging (a fill, a
 snap, tile), size a window on the canvas whatever they say, and a window split into panes follows its
-panes. The person moves any window out and back (the palette's "Pop out window", Window > Move to
-Desk). `DESK_APP_WINDOWS` overrides the manifests for one run: `off` keeps every window on the canvas,
+panes. The person moves any window out and back (the palette's "Pop out window", the return action in the Window menu (Move to Desk in v0.3.0)). `DESK_APP_WINDOWS` overrides the manifests for one run: `off` keeps every window on the canvas,
 `on` opens every app out, and a list of plugin ids opens those out. `examples/plugin-hello-window`
 runs both ways with one command each.
 
@@ -204,7 +203,7 @@ A move out or back loads your page again, as a wake does: `state` comes back, an
   operating system land as on the canvas; a drag let go outside the window ends with the effect
   `none`, and a drag that starts on the canvas never reaches an OS window.
 * What the desk asks the person shows in the desk's window, not in yours. `desk.palette.pick` brings
-  the desk forward and its answer comes back to your page; permission requests wait in Desk.
+  the desk forward and its answer comes back to your page; permission requests wait in endue.
 * A web view (`web.*`) shows in the desk only: it ends when its window moves out.
 
 `desk.files.*` and `desk.buffers.*` work as on the canvas: a file opened in your opener, or a buffer
@@ -235,7 +234,7 @@ The vocabulary (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture
 
 ## Your own process and origin
 
-Today every plugin frame shares the desk's one page and its one process. Desk is moving to Chromium,
+Today every plugin frame shares the desk's one page and its one process. endue is moving to Chromium,
 where each surface runs in a process of its own (ADR 0140). Nothing changes for your code: the
 manifest, the import map, `@endue-ai/plugin-sdk`, the bridge and the CSP stay as this page describes.
 
@@ -470,12 +469,12 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-Before you publish, `desk plugin validate <folder>` must pass; CI runs it for every folder in
+Before you publish, `endue plugin validate <folder>` must pass; CI runs it for every folder in
 `plugins/` and `examples/`.
 
 ## Native plugins
 
-A native plugin (kind `native`) is a program of your own, in any language, that Desk starts as a
+A native plugin (kind `native`) is a program of your own, in any language, that endue starts as a
 process of its own (ADR 0154). It draws its window on the GPU with the API you choose, into a texture
 it shares with the desk, and calls the same bridge a UI plugin calls. The desk's compositor draws
 its window like any other (ADR 0156); `just example plugin-native-wgpu` builds the example and runs it
@@ -549,7 +548,7 @@ has every role colour for both schemes, every other layer at its default, and a 
 each one paints; `examples/plugin-hello-theme` is the smallest theme with a font and a backdrop.
 Installing a theme does not apply it: the setting `desk.theme.active` names the one in force, chosen in
 the theme studio (the palette button at the top right, or Themes in the command palette), with
-`desk.theme.use` or with `desk theme apply`.
+`desk.theme.use` or with `endue theme apply`.
 
 The studio makes themes too: "Tune a copy" (or `desk.theme.edit`) opens its editor on a copy of the
 selected theme, "New theme" on the endue theme. Every layer has its controls, fonts and backdrop images
@@ -629,8 +628,8 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` checks the block against the schema and the files against their limits.
-`desk plugin test` runs the template's `tests/theme.test.ts` with vitest on the SDK's test host: it
+`endue plugin validate` checks the block against the schema and the files against their limits.
+`endue plugin test` runs the template's `tests/theme.test.ts` with vitest on the SDK's test host: it
 compiles both schemes with `compileTheme` and gates them over the endue palette with `gate`, as the
 desk does before it applies a theme, and fails with every fix the gate would make.
 
@@ -644,20 +643,20 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 A `.desk-theme` is one JSON file: `format` `desk-theme/1`, the theme's `plugin.json` as `manifest`, and
 the files its block names in `files`, base64, 16 MiB at most (ADR 0058). Importing one checks it as a
 theme plugin and installs it in the person's themes folder, where an id outside `local.` and `market.`
-becomes `local.<its name>`; `desk theme list` shows it and `desk theme remove` deletes it. The studio's
+becomes `local.<its name>`; `endue theme list` shows it and `endue theme remove` deletes it. The studio's
 Export and Import do the same, and it takes a `.desk-theme` dropped on it.
 
 ### The market
 
 The studio's Market tab lists the themes of the markets that the setting `desk.theme.markets` names, by
 the https URL of each index (ADR 0060). The default is this repository's `market/themes/index.json` on
-`main`, read from `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`. Add
+`main`, read from `https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json`. Add
 another market's index after it in `init.yaml`; when two markets list the same id, the first one wins:
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
@@ -669,7 +668,7 @@ update replaces a market theme only while you have not changed it; a theme you c
 
 To publish a theme, open a pull request that adds its bundle and its index entry to `market/themes/`:
 
-1. Export the theme (`desk theme export <id> <file>`, or Export in the studio) with an id inside
+1. Export the theme (`endue theme export <id> <file>`, or Export in the studio) with an id inside
    `market.`, a version, `theme.author` and `theme.license`: an SPDX expression that covers its fonts
    and images too.
 2. Put the file in `market/themes/` as `<name>.desk-theme` and add its entry to `index.json`

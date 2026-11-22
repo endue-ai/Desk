@@ -1,10 +1,10 @@
 > Ce document est une traduction. En cas de divergence, la [version anglaise](../../../README.md) fait foi.
 
-# endue Desk
+# endue
 
 Une app qui est à elle seule un OS.
 
-**Aucun écran figé.** Desk, c'est un shell Rust sur Chromium et un petit cœur Rust surmontés d'un runtime web, et toutes
+**Aucun écran figé.** endue, c'est un shell Rust sur Chromium et un petit cœur Rust surmontés d'un runtime web, et toutes
 les fonctionnalités au-dessus, y compris celles intégrées d'origine, sont des plugins que vous pouvez remplacer
 pendant que l'app tourne. Comme Emacs : le cœur ne garde que des primitives (fichiers, processus, réseau,
 audio, fenêtres), et tout le reste est du code que vous pouvez modifier sans redémarrer.
@@ -13,11 +13,23 @@ audio, fenêtres), et tout le reste est du code que vous pouvez modifier sans re
 
 <!-- Capture d'écran : ajoutée avec la scène du premier lancement. -->
 
-## Pourquoi Desk
+## Installer ou mettre à jour l’application endue
+
+L’application graphique Desk s’appelle désormais endue. La [version v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) propose deux images disque macOS, pour puce Apple (`aarch64`) ou processeur Intel (`x86_64`). Ouvrez l’image qui correspond à votre Mac et copiez l’application dans le dossier Applications. Cette version porte encore le nom Desk. Comparez le SHA-256 de l’image avec celui indiqué dans `SHA256SUMS-macos` sur la page de la version. La version v0.3.0 n’a pas été notariée par Apple. Si macOS bloque la première ouverture de l’application vérifiée, choisissez « Ouvrir quand même » pour endue Desk dans Réglages Système → Confidentialité et sécurité.
+
+Dès la parution de la première version de bureau nommée **endue app**, choisissez dans les [versions sur GitHub](https://github.com/endue-ai/endue/releases) le programme d’installation adapté à votre système et à votre processeur, puis suivez les étapes ci-dessous.
+
+- Sous macOS, quittez Desk, ouvrez le nouveau fichier `.dmg` et lancez `Install endue.command`. Le programme retrouve dans Applications la copie existante grâce à son identifiant de bundle, même si vous l’avez renommée. Si vous avez plusieurs copies ou une autre application nommée endue, ouvrez un terminal dans l’image disque montée et exécutez `"./Install endue.command" --to "/Applications/Studio.app"`. Remplacez le chemin proposé par celui de votre copie de Desk ou par un nom disponible.
+- Sous Windows et Linux, utilisez le même format de paquet que pour votre installation actuelle s’il est proposé. Windows conserve le dossier d’installation. Le paquet Debian s’appelle toujours `endue-desk`.
+- Au prochain lancement, l’application retrouve les profils et `plugins.lock` dans `~/.desk`, ainsi que les réglages, les autorisations et les références aux identifiants. Pour une version de Desk distribuée uniquement sous forme d’installeur, comme v0.3.0, effectuez la mise à jour manuellement avec le nouvel installeur.
+
+La commande officielle est `endue`. Depuis les sources, essayez `cargo run -p desk-cli -- --help`. Les images disque de la version v0.3.0 sont antérieures à l’intégration de la CLI. Les scripts existants peuvent continuer à utiliser `desk` pendant la version majeure actuelle. La CLI autonome pour serveur Linux fera l’objet d’un téléchargement distinct dès sa publication.
+
+## Pourquoi endue
 
 Imaginez le garage d'un bâtisseur : une seule pièce où le bâtisseur travaille au centre, un assistant se
 souvient et demande, des bras robotisés font le travail, et chaque mur montre le travail dans la forme
-que le bâtisseur veut. Desk est ce garage, sur votre ordinateur.
+que le bâtisseur veut. endue est ce garage, sur votre ordinateur.
 
 - **Un outil quotidien.** Les bâtisseurs l'ouvrent chaque jour ; il s'installe, démarre et répond avant
   toute autre chose.
@@ -29,16 +41,16 @@ que le bâtisseur veut. Desk est ce garage, sur votre ordinateur.
 - **À vous.** Le système de design, la disposition et les intégrations appartiennent au bâtisseur, qui
   les choisit et les remplace.
 
-Desk est un assistant pour les bâtisseurs : il met en place un environnement stable pour construire,
+endue est un assistant pour les bâtisseurs : il met en place un environnement stable pour construire,
 les laisse libres de le façonner, et leur permet de faire le meilleur produit avec une qualité qui ne
-faiblit pas. Où en est Desk et où il va se trouve dans `docs/roadmap.md`.
+faiblit pas. Où en est endue et où il va se trouve dans `docs/roadmap.md`.
 
 ### Votre bureau est un dossier
 
 Tout ce que vous façonnez vit dans `~/.desk` : `init.yaml`, vos profils, `keys.yaml`, vos vues et
-`plugins.lock`, de simples fichiers à lire, modifier et garder dans git. `desk export <dossier|fichier.zip>`
+`plugins.lock`, de simples fichiers à lire, modifier et garder dans git. `endue export <dossier|fichier.zip>`
 les emporte vers un autre ordinateur (`--with-data` ajoute l'état propre du bureau, jamais les secrets),
-`desk import` les ramène sans écraser votre `init.yaml`, et `desk doctor` liste chaque fichier en disant
+`endue import` les ramène sans écraser votre `init.yaml`, et `endue doctor` liste chaque fichier en disant
 s'il se lit comme le veut sa spécification.
 
 ## Compilation
@@ -57,14 +69,14 @@ version même de l'app, que `just test-e2e` télécharge une fois dans `~/.cache
 
 ## Confidentialité
 
-Desk n'a aucune télémétrie. Les rapports de plantage, quand ils arriveront, seront soumis à un consentement
+endue n'a aucune télémétrie. Les rapports de plantage, quand ils arriveront, seront soumis à un consentement
 explicite et désactivés par défaut.
 
 ## En savoir plus
 
 - `docs/architecture.md` : comment les couches s'articulent
 - `docs/adr/` : les décisions difficilement réversibles, et pourquoi
-- `docs/roadmap.md` : pourquoi Desk existe, où il en est et où il va
+- `docs/roadmap.md` : pourquoi endue existe, où il en est et où il va
 - `AGENTS.md` : la carte du dépôt, les commandes et les règles (pour les humains comme pour les agents IA)
 - `CONTRIBUTING.md` : comment proposer une modification
 

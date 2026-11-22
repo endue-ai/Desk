@@ -26,7 +26,7 @@ faire.
 
 ## Versions prises en charge
 
-Desk est en version pré-1.0. Seule la dernière version de chaque canal (stable, beta, canary) reçoit des
+endue est en version pré-1.0. Seule la dernière version de chaque canal (stable, beta, canary) reçoit des
 correctifs de sécurité.
 
 ## Périmètre
@@ -40,6 +40,6 @@ adresse).
 
 ## Modèle de menace
 
-[docs/security/threat-model.md](../../security/threat-model.md) (en anglais) décrit ce que Desk protège, les
+[docs/security/threat-model.md](../../security/threat-model.md) (en anglais) décrit ce qu’endue protège, les
 attaquants pris en compte et, pour chaque frontière de confiance, la protection en place sur `main`
 aujourd'hui ou la lacune qui reste, avec le ticket qui la comble.
