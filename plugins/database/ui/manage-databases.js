@@ -5,6 +5,7 @@
 // disconnecting and forgetting its password. The manager (manage.js) knows only connections. No DOM.
 
 import { baseOf, databaseOf, homeOf, onDatabase } from "./databases.js";
+import { createManager } from "./manage.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -48,3 +49,7 @@ export function onDatabases(manager) {
     forgetPassword: atHome(manager.forgetPassword),
   };
 }
+
+/** The manager (manage.js) made from its deps, over every database of a server. */
+export const createDatabasesManager = (/** @type {Parameters<typeof createManager>[0]} */ deps) =>
+  onDatabases(createManager(deps));
