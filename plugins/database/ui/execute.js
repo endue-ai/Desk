@@ -1,11 +1,12 @@
 // Running SQL on a connection: cut it into statements, check them (what no client may run here,
-// writes on a read-only connection, a dry run that could not roll back), ask the person before what
-// is hard to undo, then run them: PostgreSQL on a session of the core's (engines/pg-session.js, ADR
-// 0281), the other engines by their client, whose output the result worker reads (#38). When the
-// server or the client says a password is missing or wrong, ask for one once and run again. The
-// "describe" mode runs nothing: PostgreSQL says what each statement takes and returns (ADR 0353),
-// asking no one and on any connection, a read-only one too. No DOM.
+// writes on a read-only connection, a dry run that could not roll back, session state through a
+// pooler), ask the person before what is hard to undo, then run them: PostgreSQL on a session of the
+// core's (engines/pg-session.js, ADR 0281), the other engines by their client, whose output the
+// result worker reads (#38). When the server or the client says a password is missing or wrong, ask
+// for one once and run again. The "describe" mode runs nothing: PostgreSQL says what each statement
+// takes and returns (ADR 0353), asking no one and on any connection, a read-only one too. No DOM.
 
+import { pooledRefusal } from "./auth/pooler.js";
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
 import { nonce as makeNonce } from "./engines/text.js";
@@ -74,6 +75,8 @@ export function createExecutor(deps) {
     if (describe && !("session" in engine))
       throw new Refusal("Only PostgreSQL checks a statement without running it.");
     check(conn, engine.ddlCommits, classes, mode);
+    const pooledWhy = pooledRefusal(conn, statements); // through a pooler (ADR 0354)
+    if (pooledWhy) throw new Refusal(pooledWhy);
     if (!options.catalog && !options.asked && !describe)
       await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
     const settings = deps.settings();
