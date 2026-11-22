@@ -23,6 +23,7 @@ import {
   toolAt,
   wheel,
 } from "../support/gestures";
+import { inWindowPage } from "../support/pages";
 import { difference, settled } from "../support/pixels";
 import {
   byId,
@@ -31,6 +32,7 @@ import {
   deskNow,
   freshDesktop,
   front,
+  onScreen,
   openWindow,
   panOf,
   rectOf,
@@ -64,8 +66,23 @@ async function openCanvasWindow(): Promise<string> {
 
 /** Shift + drag from the empty canvas by (`dx`, `dy`). */
 async function pan(dx: number, dy: number): Promise<void> {
-  const from = emptyAt(await deskNow());
-  await drag(from, { x: from.x + dx, y: from.y + dy }, { keys: [KEY.shift] });
+  const desk = await deskNow();
+  const win = onScreen(desk).find((window) => window.state === "normal");
+  if (!win) throw new Error("the canvas needs a normal window to observe a pan");
+  const from = emptyAt(desk);
+  await drag(from, { x: from.x + dx, y: from.y + dy }, { keys: [KEY.shift], hold: true });
+  try {
+    await browser.waitUntil(
+      async () => {
+        const { windows } = await shellCommand<{ windows: DrawnWindow[] }>("compositor_stats");
+        const rect = windows.find((window) => window.id === win.id)?.rect;
+        return rect?.[0] === win.x + dx && rect[1] === win.y + dy;
+      },
+      { timeoutMsg: "the compositor did not draw the window at the held pan position" },
+    );
+  } finally {
+    await release();
+  }
 }
 
 describe("canvas: resizing and the pan (#82)", () => {
@@ -86,6 +103,20 @@ describe("canvas: resizing and the pan (#82)", () => {
       const id = await openCanvasWindow();
       const win = await windowNow(id);
       const at = gripAt(rectOf(win), grip);
+      // The window's page installs the grip that accepts this first press.
+      await browser.waitUntil(
+        async () =>
+          (await inWindowPage(id, () =>
+            browser.execute(
+              (x: number, y: number) =>
+                document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-resize]")?.dataset
+                  .resize,
+              at.x - win.x,
+              at.y - win.y,
+            ),
+          )) === grip,
+        { timeoutMsg: `${id} did not expose its ${grip} resize grip` },
+      );
       await drag(at, { x: at.x - 40, y: at.y - 30 }, { steps: 5 });
       const w = grip.includes("w") ? 40 : grip.includes("e") ? -40 : 0;
       const h = grip.includes("n") ? 30 : grip.includes("s") ? -30 : 0;
@@ -111,6 +142,15 @@ describe("canvas: resizing and the pan (#82)", () => {
     await fromMenu(rectOf(unfloated), "floating", false);
     const fixed = await windowUntil(floating, (x) => x.state === "floating", "floating");
     expect(rectOf(fixed)).toEqual(rectOf(unfloated));
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          () =>
+            !document.querySelector(".desktops-menu [data-key='floating']")?.getBoundingClientRect()
+              .width,
+        ),
+      { timeoutMsg: "the window menu still covers the canvas" },
+    );
     // A plain drag on the canvas does not pan.
     const from = emptyAt(await deskNow());
     await drag(from, { x: from.x - 120, y: from.y + 60 });
