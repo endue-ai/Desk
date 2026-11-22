@@ -191,11 +191,13 @@ function xml(
 
 const PLACEHOLDER = /\{\{([^{}]+)\}\}/gu;
 
-/** The person's template: the head, each row through its placeholders, the separator, the foot. */
-function template(
+/** The person's template: the head, each row through its placeholders, the separator, the foot;
+ * `{{#}}` counts from `start` + 1 (a whole export writes its rows in pieces, export/stream.js). */
+export function template(
   /** @type {string[]} */ columns,
   /** @type {(string | null)[][]} */ rows,
   /** @type {ExportOptions} */ o,
+  start = 0,
 ) {
   const at = (/** @type {string} */ key) => {
     const name = key.trim();
@@ -213,7 +215,7 @@ function template(
       .map((part, i) => {
         const slot = slots[i] ?? -3;
         if (slot === -3) return part;
-        if (slot === -1) return String(r + 1);
+        if (slot === -1) return String(start + r + 1);
         return row[slot] ?? o.null;
       })
       .join("");
