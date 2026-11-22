@@ -32,6 +32,8 @@ const echo: PluginManifest = {
   surfaces: [{ id: "main", title: "Echo", placement: "center" }],
   contributes: {
     commands: [{ id: "test.echo.say", title: "Say it back" }],
+    // A setting the page shows as settings.get and settings.changed tell it (#570).
+    settings: { "test.echo.loud": { kind: "boolean", default: false, description: "Say it loud" } },
     display: JSON.parse(params.get("rules") ?? "[]"),
     files: [{ pattern: "*.txt", plugin: "test.echo" }],
   },

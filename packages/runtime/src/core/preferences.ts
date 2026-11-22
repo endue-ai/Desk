@@ -95,6 +95,11 @@ export class Preferences {
     this.settings.set(key, value);
   }
 
+  /** The plugins' keys kept: the person set them in the window, or the record had them (#570). */
+  pluginKeys(): string[] {
+    return [...this.#kept];
+  }
+
   save(): void {
     if (this.#disposed) return;
     const session = this.settings.layer("session");

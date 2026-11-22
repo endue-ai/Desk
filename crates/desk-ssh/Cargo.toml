@@ -1,0 +1,28 @@
+[package]
+name = "desk-ssh"
+description = "SSH tunnels for the core's database sessions (ADR 0359): one SSH connection per session, through an optional jump host, its streams opened as direct-tcpip channels in the process, never a listening port."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The SSH client: pure Rust, Apache-2.0, on tokio; ring for its crypto, as desk-pg's rustls uses.
+# No compression, no DES, no DSA.
+russh = { version = "=0.65.4", default-features = false, features = ["ring", "rsa"] }
+tokio = { version = "1.54", default-features = false, features = ["rt", "net", "io-util", "time", "sync"] }
+
+# The SSH server the tests (this crate's and desk-core's) sign in to and forward through, and the
+# keys they make at test time; none is committed.
+rand = { version = "0.10", optional = true }
+
+[features]
+testing = ["dep:rand", "russh/rsa"]
+
+[dev-dependencies]
+desk-ssh = { path = ".", features = ["testing"] }
+
+[lints]
+workspace = true

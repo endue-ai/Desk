@@ -35,6 +35,7 @@ import {
   tagOf,
 } from "./stub-db-rules";
 import { type Scripting, stubDbScript } from "./stub-db-script";
+import { type DbSshServed, stubDbSsh } from "./stub-db-ssh";
 import {
   controlTag,
   endsFailed,
@@ -51,7 +52,8 @@ export type { StubDbOptions } from "./stub-db-types";
 
 export type DbServed =
   | `db.${"open" | "run" | "script" | "describe" | "fetch" | "copy" | "cancel" | "close" | "list"}`
-  | DbPasswordsServed;
+  | DbPasswordsServed
+  | DbSshServed;
 
 /** The stub's grant check: throws permission_denied unless a grant covers `scope` and `fits`. */
 type Check = (caller: string | undefined, scope: Permission, fits: boolean) => void;
@@ -77,6 +79,7 @@ export function stubDb(
   /** Every session's caller, kept after it ends so its db.closed still finds it. */
   const owners = new Map<string, string>();
   const kept = stubDbPasswords();
+  const ssh = stubDbSsh(script, check);
   let next = 0;
 
   const mine = (caller: string | undefined, sessionId: string) => {
@@ -237,7 +240,8 @@ export function stubDb(
 
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
     ...kept.handlers,
-    "db.open": (params, caller) => {
+    ...ssh.handlers,
+    "db.open": ssh.before((params, caller) => {
       refuseAgents(caller);
       const port = params.port ?? 5432;
       const endpoint = { permission: "db:connect" as const, hosts: [`${params.host}:${port}`] };
@@ -305,7 +309,7 @@ export function stubDb(
         ...(secure ? { tls: { version: "TLSv1.3", cipher: "TLS13_AES_256_GCM_SHA384" } } : {}),
         parameters: { server_version: "17.6", client_encoding: "UTF8", ...script.parameters },
       };
-    },
+    }),
     "db.run": (params, caller) => {
       limits(params.pageRows, params.pageBytes);
       const session = mine(caller, params.sessionId);

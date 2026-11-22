@@ -19,6 +19,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
   at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file, and
   presents a client certificate (`docs/client-cert.md`); a socket folder or an IPv6 host is not supported yet.
+  A session can go through an SSH tunnel the core opens, host keys trusted on first use (`docs/tunnel.md`).
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where each system
@@ -119,9 +120,8 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   Format SQL (`Mod+Shift+F`, below), and parameters (`:name`, `?`, `$1`) asked for before the run and
   remembered for the console; on PostgreSQL bound values, and a check without running (`params.md`).
 - Guards: a read-only connection refuses writes before anything runs, and on the server too
-  (`default_transaction_read_only` on PostgreSQL's session); with
-  `confirm` on, a write on a production connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE
-  anywhere, ask first.
+  (`default_transaction_read_only` on PostgreSQL's session); with `confirm` on, a write on a production
+  connection, and DROP, TRUNCATE, or UPDATE and DELETE without WHERE anywhere, ask first.
 - Cancel, or Escape while a run goes on, cancels PostgreSQL's statement on the server (`db.cancel`), and sends
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server (`statement_timeout`).
@@ -245,11 +245,11 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result in ten formats: [`export.md`](export.md); every row of a table or query, or a schema's tables to a
-  folder: [`export-all.md`](export-all.md); a console's `COPY` through a file: [`copy.md`](copy.md).
+- Export in ten formats: [`export.md`](export.md); every row, or a schema's tables: [`export-all.md`](export-all.md);
+  `COPY` through a file: [`copy.md`](copy.md); tables or a result to another database: [`transfer.md`](transfer.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
-  like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
-  Read-only connections refuse it and production asks.
+  like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most; on
+  PostgreSQL a file of any size, JSON lines and `.xlsx` too, goes in by COPY: [`import.md`](import.md).
 - A dropped file is read with `fs.read` and asked for once (see the README's permissions).
 - Rows of a result drag as `db/rows` `{ connection, engine, schema?, table?, columns, rows }`, as INSERT
   statements (`desk/text`) and as TSV (`text/plain`).

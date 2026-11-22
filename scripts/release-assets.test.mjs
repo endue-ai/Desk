@@ -18,6 +18,24 @@ const SCRIPT = fileURLToPath(new URL("./release-assets.mjs", import.meta.url));
 const RELEASE = { repo: "endue-ai/Desk", tag: "v0.1.0", version: "0.1.0" };
 
 describe("release-assets", () => {
+  it("uses the endue name in every download and installation note from the 0.4 line", () => {
+    for (const version of ["0.4.0-beta.1", "0.4.0", "1.0.0"]) {
+      assert.deepEqual(macImages(version), [
+        `endue_${version}_darwin-aarch64.dmg`,
+        `endue_${version}_darwin-x86_64.dmg`,
+      ]);
+      const notes = macSection({
+        repo: "endue-ai/endue",
+        tag: `v${version}`,
+        version,
+        signed: false,
+      });
+      assert.match(notes, /endue app for macOS/u);
+      assert.doesNotMatch(notes, /\bdesk\b/iu);
+    }
+    assert.equal(macImages("0.3.1")[0], "endue-desk_0.3.1_darwin-aarch64.dmg");
+  });
+
   it("reads the version a release tag names and refuses any other tag", () => {
     assert.equal(tagVersion("v0.1.0"), "0.1.0");
     assert.equal(tagVersion("v1.2.3-beta.2"), "1.2.3-beta.2");
