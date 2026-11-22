@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/item/v0/item.schema.json",
-  "title": "Desk item v0",
+  "title": "endue item v0",
   "description": "The one shape every connector brings data in as, the index keeps and every view shows: an envelope all kinds share, plus the fields of eight kinds and record (ADR 0032). query.schema.json carries items in queries, pages and changes.",
   "$defs": {
     "ItemKind": {

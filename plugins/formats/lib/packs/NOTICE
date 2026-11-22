@@ -1,6 +1,6 @@
 endue.formats pack readers (lib/packs)
 
-These readers were written for endue Desk from published descriptions of the formats. No code was
+These readers were written for endue from published descriptions of the formats. No code was
 taken or followed from squashfs-tools, squashfs-tools-ng, wimlib, liblzo2, 7-Zip, libmspack or any
 other source under the GPL or the LGPL, and no permissively licensed implementation was followed.
 

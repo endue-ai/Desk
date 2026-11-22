@@ -1,5 +1,5 @@
-# endue Desk init file. Desk reads it at every start, like Emacs reads init.el.
-# The format is specs/init/v0. If the file does not parse, Desk starts with the defaults and says why.
+# endue init file. endue reads it at every start, like Emacs reads init.el.
+# The format is specs/init/v0. If the file does not parse, endue starts with the defaults and says why.
 version: 0
 
 # The profile to start in: a set of plugins plus their settings.
@@ -23,7 +23,7 @@ settings: {}
 agents: {}
 
 # MCP servers whose tools agents may call, by name. Each one starts when you allow it to run its
-# command; env names variables to pass from Desk's environment (never write their values here).
+# command; env names variables to pass from endue's environment (never write their values here).
 # Example:
 #   servers:
 #     github:

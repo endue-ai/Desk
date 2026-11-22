@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/view/v0/view.schema.json",
-  "title": "Desk view v0",
+  "title": "endue view v0",
   "description": "A view: a surface that shows items, written as data instead of code, so it is validated at install and shared without review (ADR 0032). The person's views live as YAML files in ~/.desk/views, one per view and named by its id (desk.today.yaml); on the wire a view is JSON of the same shape.",
   "$defs": {
     "View": {

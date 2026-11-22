@@ -1,6 +1,6 @@
 {
   "target": "ToolResultRequest",
-  "description": "Desk returns the tool output",
+  "description": "endue returns the tool output",
   "instance": {
     "leaseId": "l1",
     "callId": "c1",

@@ -1,6 +1,6 @@
 [package]
 name = "desk-bridge"
-description = "Rust side of the Desk bridge: traits plus the types generated from specs/bridge."
+description = "Rust side of the endue bridge: traits plus the types generated from specs/bridge."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

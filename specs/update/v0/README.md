@@ -1,7 +1,7 @@
-# Desk update v0
+# endue update v0
 
 endue discovers updates in the published GitHub Releases of `endue-ai/endue`. Signed tag paths
-retain the original Desk manifest address for installed clients (ADR 0333). The same signed formats
+retain the original manifest address for installed clients (ADR 0333). The same signed formats
 also serve earlier clients on R2 (ADR 0054). `index.schema.json` is a channel's index, and
 `release.schema.json` is one build's manifest. v0 may break on any minor release (ADR 0004).
 
@@ -45,7 +45,7 @@ carry their channel's signed snapshot, with absolute manifest URLs for release-l
 Discovery needs no credential and sends no installed version or platform to GitHub.
 
 **Installation.** A downloaded build waits for a person to install it immediately or select that
-version for their next Desk start. Consume the restart choice before installation and verify the
+version for their next endue start. Consume the restart choice before installation and verify the
 staged bytes again. A failed installation or a replacement version needs a new choice.
 
 `vectors/` holds valid and invalid documents for the contract tests. `decisions/` holds one case per

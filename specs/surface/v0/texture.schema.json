@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/texture.schema.json",
-  "title": "Desk surface protocol v0: textures and frames",
+  "title": "endue surface protocol v0: textures and frames",
   "description": "How a surface hands the compositor a frame: a shared GPU texture per OS (IOSurface, D3D11 shared handle, DMA-BUF), attached with its damage and released when the compositor is done reading it; and the pace of frames each way. See texture.md.",
   "$defs": {
     "SurfaceIoSurfaceHandle": {

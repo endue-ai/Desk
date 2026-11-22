@@ -1,8 +1,8 @@
 # endue AI platform API v0: the desk's subset
 
 `openapi.yaml` (OpenAPI 3.1) writes down the part of endue AI's own platform API (`/api/v1`, what
-endue.ai's web calls) that Desk uses to create and manage the person's endue AI agents (ADR 0122)
-and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is Desk's
+endue.ai's web calls) that endue uses to create and manage the person's endue AI agents (ADR 0122)
+and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is endue's
 client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/studio.schema.json`,
 `studio-spaces.schema.json`) under `studio:manage`. The person's own account settings (ADR 0130) are
 served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `account:manage`.
@@ -21,7 +21,7 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 
 - The base is `https://platform.endue.ai`; `https://platform.dev.endue.ai` is endue AI's development
   platform, and `DESK_ENDUE_PLATFORM_URL` overrides both.
-- Every call carries `Authorization: Bearer <endue ID access token>` from the core's account. Desk
+- Every call carries `Authorization: Bearer <endue ID access token>` from the core's account. endue
   sends no `Origin` header (no browser session), waits 15 s at most (30 s for `useCatalogAgent`), and
   after a 401 refreshes the token once and tries once more.
 - agent-service answers the bare body for agents, identity, prompt, skills, connectors and traits, and
@@ -30,10 +30,10 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
   `{ data, meta }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
   The space list and one space answer the bare body; a space's overview and rooms `{ data, meta }`.
   Channel pairings, devices and workspaces answer the bare body; an agent's theme the bare body or
-  `{ data }`; artifact-service `{ data, meta: { pagination } }`, whose total Desk counts. Workspaces
-  answer 404 `FEATURE_DISABLED` while endue AI has them turned off, which Desk reads as none.
+  `{ data }`; artifact-service `{ data, meta: { pagination } }`, whose total endue counts. Workspaces
+  answer 404 `FEATURE_DISABLED` while endue AI has them turned off, which endue reads as none.
 - Bodies are snake_case. Readers ignore fields this document does not name and read `null` as absent,
-  so endue AI can add fields without breaking Desk.
+  so endue AI can add fields without breaking endue.
 - Only what a card shows is named. People's ids, room members, a viewer's capabilities, attention
   items' reasons and anything about billing stay unnamed and unread, and nothing here names a host or
   a route other than the public gateway's.

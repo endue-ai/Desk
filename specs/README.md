@@ -1,20 +1,20 @@
 # specs
 
 The line between open and closed. Language-neutral contracts and the single source of truth for every
-type that crosses a boundary: the Desk bridge, the brain API, plugin manifests, `init.yaml`, and the
+type that crosses a boundary: the endue bridge, the brain API, plugin manifests, `init.yaml`, and the
 items, views and connectors of the integration layer.
 
 | Folder | Contract |
 | --- | --- |
-| `bridge/v0/` | Desk bridge: JSON Schema plus one page per method (fs, proc, net, audio, ui, perm, store, init, plugins, brain) |
+| `bridge/v0/` | endue bridge: JSON Schema plus one page per method (fs, proc, net, audio, ui, perm, store, init, plugins, brain) |
 | `brain/v0/` | Brain API: `openapi.yaml` (sessions, turns, streaming, leases) |
 | `platform/v0/` | The subset of endue AI's platform API (`/api/v1`) the desk calls to manage the person's endue AI agents, served on the bridge as `studio.*` (ADR 0122) |
 | `plugin/v0/` | `plugin.json` manifest schema, the permission vocabulary, and what plugins contribute to the desk's policies (`contributes`, ADR 0017) |
 | `item/v0/` | Items, the one shape of connected data: the envelope, nine kinds (`run` among them, ADR 0100) plus `record`, queries, pages and changes (ADR 0032) |
 | `agent/v0/` | One record for every agent the desk knows (Eris, init.yaml's agents, callers, the brain's directory, local programs) and its state (ADR 0100) |
 | `view/v0/` | Views, surfaces written as data: requires, params, a layout of containers and components, actions as commands |
-| `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of a Desk-aware server |
-| `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
+| `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of an endue-aware server |
+| `init/v0/` | `init.yaml`, a person's setup: schema, the template endue writes, and the sync rules |
 | `memory/v0/` | Eris's memory on this computer: facts, episodes, search hits and the `facts.yaml` file (ADR 0095) |
 | `surface/v0/` | The surface protocol between the compositor and anything that draws a surface: lifecycle, texture handles (IOSurface, D3D11, DMA-BUF), input, IME, drag and drop, frame pacing and accessibility (ADR 0141) |
 | `runtime/v0/` | Core settings UI, key-binding precedence and preference persistence (no new wire types) |

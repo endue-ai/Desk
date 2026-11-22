@@ -1,4 +1,4 @@
-# Desk plugin v0
+# endue plugin v0
 
 `plugin.schema.json` is the `plugin.json` manifest every plugin folder carries, built-in and community
 plugins alike. `permission.schema.json` is the permission vocabulary: plugin manifests declare these
@@ -93,7 +93,7 @@ first one is `market/themes/index.json` in this repository, where publishing is 
 
 Every enabled plugin may contribute; a `policy` plugin does nothing else. The runtime layers them in this
 order, each layer over the one before: the built-in `desk.*` policy plugins, the other plugins in
-`plugin.list` order, `init.yaml` settings, the active profile, then changes made while Desk runs.
+`plugin.list` order, `init.yaml` settings, the active profile, then changes made while endue runs.
 
 | Section | Like (Emacs) | A later layer |
 | --- | --- | --- |
