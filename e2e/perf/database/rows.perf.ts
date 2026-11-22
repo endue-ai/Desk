@@ -47,7 +47,9 @@ describe.skipIf(!URI)("a million-row read", () => {
     expect(shownSet(m)?.rows.at(-1)?.[0]).toBe(String(MILLION));
     // Judged on the median page: the pace of the scroll, which a burst of load during its 2,000
     // round trips does not move as it moves their sum.
-    console.info(`perf-database rows: ${pages.length} pages to the end in ${Math.round(scrolled)} ms`);
+    console.info(
+      `perf-database rows: ${pages.length} pages to the end in ${Math.round(scrolled)} ms`,
+    );
     hold("rows.scrollPageMs", median(pages), at);
     hold("rows.heapAfterEndMiB", Math.max(0, heapMiB() - before), at);
 
