@@ -31,6 +31,7 @@ import { createManager } from "./manage.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
+import { connectHeld } from "./session/connect-gate.js";
 import { createPluginSessions } from "./session/plugin.js";
 import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
 import { summaryOf } from "./tabs.js";
@@ -313,7 +314,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       tools,
       importer,
       dropped,
-      complete: createCompletions({ consoles, manager, catalog }),
+      complete: createCompletions({ consoles, manager, catalog, held: (c) => connectHeld(bridge, c) }),
       cancel,
     }),
     ...createDrags({

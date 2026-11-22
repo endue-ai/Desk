@@ -158,6 +158,11 @@
         "keywords": ["keychain", "password", "forget", "disconnect"]
       },
       {
+        "id": "endue.database.allow-connect",
+        "title": "Database: allow connecting",
+        "keywords": ["permission", "refused", "connect", "server", "ask again"]
+      },
+      {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
         "keywords": ["url", "dsn"]

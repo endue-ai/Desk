@@ -30,6 +30,7 @@ import { createStrip } from "./grid/strip.js";
 import { defaultWidths } from "./grid-model.js";
 import { createGridLinks } from "./links/grid-links.js";
 import { numericColumns } from "./results.js";
+import { lineOf } from "./message-line.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
 import { planView } from "./view-plan.js";
@@ -186,9 +187,7 @@ export function createGrid(doc, host, act, options = {}) {
     if (!next) return host.replaceChildren();
     if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next, act));
     if (next.kind === "messages" || !next.set) {
-      const lines = (next.lines ?? []).map((line) =>
-        el(doc, "li", { class: `line ${line.level}` }, line.text),
-      );
+      const lines = (next.lines ?? []).map((line) => lineOf(doc, line, act));
       strip.draw([], false);
       return host.replaceChildren(el(doc, "ul", { class: "messages" }, ...lines));
     }

@@ -2,9 +2,11 @@
 // sessions (engines/pg-session.js) under the person's limit and idle minutes, a session's change
 // drawn on the buffer on screen, a lost one said on the status line by its buffer's name, what
 // closing a connection's sessions ends, the scope Cancel stops (the buffer on screen and the
-// plugin's own reads), and the consoles' sessions taken back when the frame wakes. No DOM.
+// plugin's own reads), and the consoles' sessions taken back when the frame wakes; a refused one says
+// how to ask again (connect-gate.js, ADR 0335). No DOM.
 
 import { createSessions } from "../engines/pg-session.js";
+import { wordRefusals } from "./connect-gate.js";
 import { keyOf, sessionLabel } from "./owners.js";
 import { reasonsOf } from "./words.js";
 
@@ -36,7 +38,7 @@ export function createPluginSessions(deps) {
     return target ? sessionLabel(target, deps.connection(target.connection)) : "A console";
   };
 
-  const pg = createSessions(deps.bridge, {
+  const sessions = createSessions(deps.bridge, {
     onBusy: deps.onBusy,
     onState: () => deps.consoles().render(),
     onLost: (owner, line) => deps.view.say(line(labelFor(owner))),
@@ -44,6 +46,7 @@ export function createPluginSessions(deps) {
     limit: () => deps.settings().sessionsPerConnection,
     ...(deps.kept ? { kept: deps.kept } : {}),
   });
+  const pg = wordRefusals(sessions);
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;
 
