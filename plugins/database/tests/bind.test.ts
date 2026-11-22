@@ -2,7 +2,7 @@
 // first use, values beside the text and never in it, `=expression` put in as SQL, NULL as null, a
 // value that does not fit its type refused, and the server's position mapped back.
 import { describe, expect, it } from "vitest";
-import { bind, misfit, numbered, origin, placed, valueOf, wireOf } from "../ui/editor/bind.js";
+import { bind, misfit, numbered, origin, placed, sentValue, wireOf } from "../ui/editor/bind.js";
 import { paramsOf } from "../ui/editor/params.js";
 import { split } from "../ui/sql/split.js";
 
@@ -14,7 +14,9 @@ const one = (text: string) => {
 
 describe("numbered", () => {
   it("numbers :name, $n and repeats in the order of first use, one number per name", () => {
-    const { statement, params } = one("select :b, $1, :b, :a from t where x = '$9' and y::int = :a");
+    const { statement, params } = one(
+      "select :b, $1, :b, :a from t where x = '$9' and y::int = :a",
+    );
     const sent = numbered(statement.text, params);
     expect(sent.text).toBe("select $1, $2, $1, $3 from t where x = '$9' and y::int = $3");
     expect(sent.keys).toEqual([":b", "$1", ":a"]);
@@ -46,8 +48,15 @@ describe("bind", () => {
   });
 
   it("puts an =expression in as SQL and numbers the rest after it", () => {
-    const { statement, params } = one("select * from t where at > :since and id = :id and at < :since");
-    const bound = bind(statement, params, { ":since": "=now() - interval '1 day'", ":id": "7" }, {});
+    const { statement, params } = one(
+      "select * from t where at > :since and id = :id and at < :since",
+    );
+    const bound = bind(
+      statement,
+      params,
+      { ":since": "=now() - interval '1 day'", ":id": "7" },
+      {},
+    );
     expect(bound.text).toBe(
       "select * from t where at > now() - interval '1 day' and id = $1 and at < now() - interval '1 day'",
     );
@@ -56,10 +65,10 @@ describe("bind", () => {
   });
 
   it("reads NULL in any case as null and anything else as typed", () => {
-    expect(valueOf("NULL")).toBeNull();
-    expect(valueOf(" Null ")).toBeNull();
-    expect(valueOf("NULLS")).toBe("NULLS");
-    expect(valueOf("")).toBe("");
+    expect(sentValue("NULL")).toBeNull();
+    expect(sentValue(" Null ")).toBeNull();
+    expect(sentValue("NULLS")).toBe("NULLS");
+    expect(sentValue("")).toBe("");
   });
 });
 

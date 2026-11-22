@@ -35,7 +35,9 @@ const SCRIPT: StubDatabase = {
   ],
   answer: (sql, _session, bound) => {
     heard.push({ sql, ...bound });
-    return sql === "SELECT $1" ? { sql, columns: [{ name: "v", typeOid: 25, ...column }] } : undefined;
+    return sql === "SELECT $1"
+      ? { sql, columns: [{ name: "v", typeOid: 25, ...column }] }
+      : undefined;
   },
 };
 

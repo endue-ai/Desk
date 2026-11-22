@@ -9,7 +9,9 @@ import { failure } from "./stub-db-rules";
 import { IGNORED } from "./stub-db-transaction";
 import type { StubSession, StubStatement } from "./stub-db-types";
 
-export function stubDbDescribe<S extends { transaction: DbTransaction; signed: StubSession }>(deps: {
+export function stubDbDescribe<
+  S extends { transaction: DbTransaction; signed: StubSession },
+>(deps: {
   /** The caller's idle session, its open result closed, or the error db.run would throw. */
   idle(caller: string | undefined, sessionId: string): S;
   /** The script's statement for `sql`, if any. */
@@ -23,7 +25,9 @@ export function stubDbDescribe<S extends { transaction: DbTransaction; signed: S
       const statement = deps.scripted(session, params.sql);
       const error =
         statement?.error ??
-        (statement ? undefined : failure("0A000", "the stub's script has no answer for this statement"));
+        (statement
+          ? undefined
+          : failure("0A000", "the stub's script has no answer for this statement"));
       if (error) {
         if (transaction === "open") session.transaction = "failed";
         return { paramTypes: [], transaction: session.transaction, error };

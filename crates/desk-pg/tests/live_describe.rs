@@ -16,7 +16,10 @@ fn describe_answers_parameter_types_and_columns() {
     let config = live!(VAR);
     let (opened, _) = open(&config);
     let session = &opened.session;
-    run(session, "CREATE TEMP TABLE t454_a (id int PRIMARY KEY, name text, tags text[])");
+    run(
+        session,
+        "CREATE TEMP TABLE t454_a (id int PRIMARY KEY, name text, tags text[])",
+    );
     let described = session
         .describe(sql(
             "SELECT name, id + 1 AS next FROM t454_a WHERE id = $1 AND tags @> $2",
@@ -46,8 +49,15 @@ fn a_write_is_described_and_never_runs() {
         types: vec![20],
     };
     let described = session.describe(fixed).expect("the insert is described");
-    assert_eq!(described.params, [20, 1184], "a given type stays, the other is inferred");
-    assert!(described.page.columns.is_none(), "an INSERT answers no rows: NoData");
+    assert_eq!(
+        described.params,
+        [20, 1184],
+        "a given type stays, the other is inferred"
+    );
+    assert!(
+        described.page.columns.is_none(),
+        "an INSERT answers no rows: NoData"
+    );
     let count = session
         .run(sql("SELECT count(*) FROM t454_b"), Limits::default())
         .expect("count");
@@ -66,7 +76,9 @@ fn an_error_comes_with_its_position_and_the_session_goes_on() {
     assert_eq!(error.code(), "42P01");
     assert_eq!(error.field(b'P'), Some("16"));
     assert!(described.params.is_empty());
-    let after = session.run(sql("SELECT 1"), Limits::default()).expect("ready again");
+    let after = session
+        .run(sql("SELECT 1"), Limits::default())
+        .expect("ready again");
     assert_eq!(after.rows[0][0].as_deref(), Some("1"));
 }
 
@@ -83,7 +95,9 @@ fn an_open_transaction_stays_open_and_an_open_result_is_closed_first() {
     let described = session.describe(sql("SELECT $1::int")).expect("described");
     assert_eq!(described.params, [23]);
     assert_eq!(described.page.transaction, Some(Transaction::Open));
-    let after = session.run(sql("SELECT 2"), Limits::default()).expect("ready");
+    let after = session
+        .run(sql("SELECT 2"), Limits::default())
+        .expect("ready");
     assert_eq!(after.transaction, Some(Transaction::Open));
     run(session, "ROLLBACK");
 }

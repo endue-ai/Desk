@@ -168,7 +168,11 @@ describe("check-statement", () => {
       connection: "shop",
       sql: "select id from people where id = :id",
     });
-    expect(read).toMatchObject({ checked: true, ok: true, columns: [{ name: "id", type: "integer" }] });
+    expect(read).toMatchObject({
+      checked: true,
+      ok: true,
+      columns: [{ name: "id", type: "integer" }],
+    });
     expect(seen.find((s) => s.describe && /people where/u.test(s.sql))?.sql).toBe(
       "select id from people where id = $1",
     );

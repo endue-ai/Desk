@@ -13,9 +13,19 @@ function server(heard: Heard[]) {
   return (sql: string, _who: Record<string, string>, bound?: Bound) => {
     heard.push({ sql, describe: bound?.describe === true });
     if (/format_type/u.test(sql))
-      return { rows: [["oid", "format_type"], ["23", "integer"], ["25", "text"]] };
+      return {
+        rows: [
+          ["oid", "format_type"],
+          ["23", "integer"],
+          ["25", "text"],
+        ],
+      };
     if (bound?.describe && /nosuch/u.test(sql))
-      return { error: 'column "nosuch" does not exist', code: "42703", position: sql.indexOf("nosuch") + 1 };
+      return {
+        error: 'column "nosuch" does not exist',
+        code: "42703",
+        position: sql.indexOf("nosuch") + 1,
+      };
     if (bound?.describe && /^insert/u.test(sql)) return { paramTypes: [25] };
     if (bound?.describe) return { paramTypes: [23], rows: [["name", "id"]], types: [25, 23] };
     return {};

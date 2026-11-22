@@ -227,7 +227,9 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         const notices = [];
         const statement = /** @type {Statement} */ (group[at]);
         try {
-          done.push(placed(statement, await finish(job, statement, start + at, plan, page, notices)));
+          done.push(
+            placed(statement, await finish(job, statement, start + at, plan, page, notices)),
+          );
         } catch (failure) {
           done.push(caught(job, start + at, failure, notices, plan.timeoutMs));
           return done;
@@ -299,7 +301,8 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
       ...(error ? { error } : {}),
     });
     // A check runs nothing: each statement is described (pg-describe.js, ADR 0353).
-    if (plan.mode === "describe") return result(await describe(job, plan, before, notices, outcomes));
+    if (plan.mode === "describe")
+      return result(await describe(job, plan, before, notices, outcomes));
     const wrapped = plan.mode !== "run";
     if (wrapped && before === "failed")
       return result({ kind: "sql", code: "25P02", message: ROLLBACK_FIRST });

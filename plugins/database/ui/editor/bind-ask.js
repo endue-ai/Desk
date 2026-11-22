@@ -5,7 +5,7 @@
 // (bind.js). A statement that does not parse is asked about without types, and its run says why.
 // No DOM.
 
-import { bind, isSql, misfit, numbered, valueOf } from "./bind.js";
+import { bind, isSql, misfit, numbered, sentValue } from "./bind.js";
 import { asked, paramsOf } from "./params.js";
 
 /**
@@ -85,7 +85,7 @@ export function createBoundAsk(deps) {
         for (;;) {
           const answer = await deps.ask(why ? `${title}: ${why}` : title, offered);
           if (answer === undefined) throw deps.cancelled("Not run: a parameter has no value.");
-          why = isSql(answer) ? "" : misfit(valueOf(answer), type?.oid ?? 0);
+          why = isSql(answer) ? "" : misfit(sentValue(answer), type?.oid ?? 0);
           // Refused: asked again, with what was typed to mend.
           offered = answer;
           if (why) continue;

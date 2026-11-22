@@ -14,7 +14,13 @@ function server(heard: Heard[]) {
   return (sql: string, _who: Record<string, string>, bound?: Bound) => {
     heard.push({ sql, ...(bound && Object.keys(bound).length ? { bound } : {}) });
     if (/format_type/u.test(sql))
-      return { rows: [["oid", "format_type"], ["23", "integer"], ["25", "text"]] };
+      return {
+        rows: [
+          ["oid", "format_type"],
+          ["23", "integer"],
+          ["25", "text"],
+        ],
+      };
     if (bound?.describe) return { paramTypes: sql.includes("$2") ? [23, 25] : [23] };
     return { rows: [["n"], ["1"]] };
   };
@@ -37,7 +43,10 @@ describe("bound parameters on PostgreSQL", () => {
     await typeIn(m, "select * from t where id = :id and name = :name or id = :id");
     await m.host.command("endue.database.run");
     await m.settle();
-    expect(m.picks.map((p) => p.title)).toEqual(["Value for :id (integer)", "Value for :name (text)"]);
+    expect(m.picks.map((p) => p.title)).toEqual([
+      "Value for :id (integer)",
+      "Value for :name (text)",
+    ]);
     const checked = heard.find((h) => h.bound?.describe);
     expect(checked?.sql).toBe("select * from t where id = $1 and name = $2 or id = $1");
     const ran = heard.filter((h) => h.sql.startsWith("select * from t") && !h.bound?.describe);
@@ -109,7 +118,9 @@ describe("bound parameters on PostgreSQL", () => {
     await m.host.command("endue.database.console", { connection: "Notes" });
     m.view.text = "select :name";
     await m.host.command("endue.database.run");
-    const runs = m.clients.spawned.filter((s) => s.command === "sqlite3" && s.args[0] !== "--version");
+    const runs = m.clients.spawned.filter(
+      (s) => s.command === "sqlite3" && s.args[0] !== "--version",
+    );
     expect(runs.at(-1)?.args).toContain("select 'it''s'");
     expect(PG.engine).toBe("postgresql");
   });

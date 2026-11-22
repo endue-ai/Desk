@@ -22,6 +22,7 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { stubDbDescribe } from "./stub-db-describe";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
   bytes,
@@ -43,7 +44,6 @@ import {
   terminated,
   transactionAfter,
 } from "./stub-db-transaction";
-import { stubDbDescribe } from "./stub-db-describe";
 import type { StubBound, StubDatabase, StubSession, StubStatement } from "./stub-db-types";
 
 export type { StubDbOptions } from "./stub-db-types";

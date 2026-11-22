@@ -83,23 +83,39 @@ export function createDescribe({ call, own }) {
         ...(statement.paramTypes?.some((t) => t > 0) ? { paramTypes: statement.paramTypes } : {}),
       });
       if (answer.transaction) job.transaction = answer.transaction;
-      if (answer.error) return placed(statement, { ...outcome, error: errorOf(answer.error, statement.text) });
+      if (answer.error)
+        return placed(statement, { ...outcome, error: errorOf(answer.error, statement.text) });
       /** @type {number[]} */
       const oids = answer.paramTypes ?? [];
       const columns = answer.columns ?? null;
-      const named = await names(job, [...oids, ...(columns ?? []).map((/** @type {any} */ c) => c.typeOid)]);
+      const named = await names(job, [
+        ...oids,
+        ...(columns ?? []).map((/** @type {any} */ c) => c.typeOid),
+      ]);
       const nameOf = (/** @type {number} */ oid) => named.get(oid) || String(oid);
       /** @type {Described} */
       const described = {
-        params: oids.map((oid, i) => ({ key: statement.keys?.[i] ?? `$${i + 1}`, oid, type: nameOf(oid) })),
+        params: oids.map((oid, i) => ({
+          key: statement.keys?.[i] ?? `$${i + 1}`,
+          oid,
+          type: nameOf(oid),
+        })),
         columns: columns
-          ? columns.map((/** @type {any} */ c) => ({ name: c.name, oid: c.typeOid, type: nameOf(c.typeOid) }))
+          ? columns.map((/** @type {any} */ c) => ({
+              name: c.name,
+              oid: c.typeOid,
+              type: nameOf(c.typeOid),
+            }))
           : null,
       };
       // An agent's check answers data, not a table: its sets stay empty (features/audit/).
       return { ...outcome, described, sets: job.agent ? [] : [setOfDescribed(described)] };
     } catch (failure) {
-      return { ...outcome, ran: false, error: /** @type {DbError} */ ({ kind: "client", message: textOf(failure) }) };
+      return {
+        ...outcome,
+        ran: false,
+        error: /** @type {DbError} */ ({ kind: "client", message: textOf(failure) }),
+      };
     } finally {
       job.running = false;
     }

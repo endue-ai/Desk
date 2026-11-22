@@ -64,7 +64,8 @@ impl Task {
 
     async fn describe(&mut self, statement: Statement) -> Result<Described, Fail> {
         if let Open::CopyIn = self.open {
-            let why = "a COPY FROM STDIN waits for its data: end it with db.copy done or fail first";
+            let why =
+                "a COPY FROM STDIN waits for its data: end it with db.copy done or fail first";
             return Err(Fail::Call(Error::Invalid(why.to_owned())));
         }
         self.close_result().await?;

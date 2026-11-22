@@ -73,7 +73,7 @@ export const wireOf = (/** @type {Bound} */ statement) =>
   statement.params ? { params: statement.params, paramTypes: statement.paramTypes ?? [] } : {};
 
 /** An answer as it is sent: NULL (any case) is null, anything else the text as typed. */
-export const valueOf = (/** @type {string} */ typed) =>
+export const sentValue = (/** @type {string} */ typed) =>
   /^\s*null\s*$/iu.test(typed) ? null : typed;
 
 /** Whether an answer is SQL to put in the text: `=expression`. */
@@ -81,7 +81,8 @@ export const isSql = (/** @type {string} */ typed) => typed.startsWith("=");
 
 const INTEGER =
   /^\s*[+-]?(?:\d(?:_?\d)*|0[xX](?:_?[0-9a-fA-F])+|0[oO](?:_?[0-7])+|0[bB](?:_?[01])+)\s*$/u;
-const DECIMAL = /^\s*[+-]?(?:\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d+)?\s*$/u;
+const DECIMAL =
+  /^\s*[+-]?(?:\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d+)?\s*$/u;
 const SPECIAL = /^\s*[+-]?(?:nan|inf|infinity)\s*$/iu;
 const BOOLEAN = /^\s*(?:t(?:r(?:ue?)?)?|f(?:a(?:l(?:se?)?)?)?|y(?:es?)?|no?|on|of{1,2}|1|0)\s*$/iu;
 /** @type {Record<string, [bigint, bigint, string]>} */
@@ -114,7 +115,10 @@ export function misfit(value, oid) {
     return DECIMAL.test(value) || SPECIAL.test(value) ? "" : `${typname} takes a number`;
   if (typname === "bool") return BOOLEAN.test(value) ? "" : "boolean takes true or false";
   if (typname === "uuid") {
-    const hex = value.trim().replace(/^\{(.*)\}$/u, "$1").replaceAll("-", "");
+    const hex = value
+      .trim()
+      .replace(/^\{(.*)\}$/u, "$1")
+      .replaceAll("-", "");
     return /^[0-9a-f]{32}$/iu.test(hex) ? "" : "uuid takes 32 hexadecimal digits";
   }
   if (typname === "json" || typname === "jsonb") {
@@ -146,7 +150,7 @@ export function bind(statement, params, answers, types) {
   return {
     ...statement,
     text: sent.text,
-    params: sent.keys.map((key) => valueOf(answers[key] ?? "")),
+    params: sent.keys.map((key) => sentValue(answers[key] ?? "")),
     paramTypes: sent.keys.map((key) => types[key] ?? 0),
     keys: sent.keys,
     shifts: sent.shifts,

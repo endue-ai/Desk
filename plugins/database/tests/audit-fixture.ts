@@ -147,7 +147,13 @@ export function auditScript(seen: Seen): Script {
     if (/FROM pg_stat_activity/u.test(sql)) return { rows: SESSIONS };
     if (/^EXPLAIN \((ANALYZE, BUFFERS, )?FORMAT TEXT\) /u.test(sql))
       return { rows: [["QUERY PLAN"], ["Seq Scan on people  (cost=0.00..1.03 rows=3 width=40)"]] };
-    if (/format_type/u.test(sql)) return { rows: [["oid", "format_type"], ["23", "integer"]] };
+    if (/format_type/u.test(sql))
+      return {
+        rows: [
+          ["oid", "format_type"],
+          ["23", "integer"],
+        ],
+      };
     if (/nextval/u.test(sql) && who.readOnly === "on")
       return { error: "cannot execute nextval() in a read-only transaction", code: "25006" };
     if (/^(insert|update|delete)/iu.test(sql))

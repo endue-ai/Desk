@@ -13,14 +13,7 @@ import { classify, readsOnly } from "../../sql/classify.js";
 import { split } from "../../sql/split.js";
 import { MASK, namesOn } from "./mask.js";
 import { readOnly } from "./run.js";
-import {
-  explainSql,
-  objectsOf,
-  PREPARED,
-  SESSIONS_SQL,
-  sampleSql,
-  statsSql,
-} from "./sql.js";
+import { explainSql, objectsOf, PREPARED, SESSIONS_SQL, sampleSql, statsSql } from "./sql.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -206,11 +199,23 @@ export function agentTools(deps, agents) {
         limits: { timeoutSeconds: args.timeoutSeconds },
         names: new Set(),
         mode: "describe",
-        statements: [{ text: sent.text, keys: sent.keys, shifts: sent.shifts, start: 0, end: 0, line: 1, column: 1, tokens: [] }],
+        statements: [
+          {
+            text: sent.text,
+            keys: sent.keys,
+            shifts: sent.shifts,
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 1,
+            tokens: [],
+          },
+        ],
       });
-      const outcome = /** @type {{ described?: import("../../engines/pg-describe.js").Described, error?: import("../../engines/common.js").DbError } | undefined} */ (
-        done.result.statements[0]
-      );
+      const outcome =
+        /** @type {{ described?: import("../../engines/pg-describe.js").Described, error?: import("../../engines/common.js").DbError } | undefined} */ (
+          done.result.statements[0]
+        );
       const error = done.result.error ?? outcome?.error;
       if (!error) {
         const described = outcome?.described;
