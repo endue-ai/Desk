@@ -58,11 +58,12 @@ test("the seed holds the plugin's connection, a lasting db:connect grant and an 
   assert.ok(!files["store.json"].includes("word"), "no password in the store");
   assert.deepEqual(JSON.parse(files["grants.json"]), {
     version: 1,
+    nextId: 2,
     grants: [
       {
         caller: PLUGIN,
         grant: {
-          grantId: "g-smoke-db",
+          grantId: "g1",
           permission: { permission: "db:connect", hosts: ["db.example.test:6543"] },
           duration: "always",
           grantedAt: "2026-01-02T03:04:05.000Z",

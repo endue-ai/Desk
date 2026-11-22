@@ -62,7 +62,7 @@ export function seedFiles(/** @type {ReturnType<typeof serverOf>} */ server, at 
     user: server.user,
   };
   const grant = {
-    grantId: "g-smoke-db",
+    grantId: "g1",
     permission: { permission: "db:connect", hosts: [`${server.host}:${server.port}`] },
     duration: "always",
     grantedAt: at.toISOString(),
@@ -72,7 +72,7 @@ export function seedFiles(/** @type {ReturnType<typeof serverOf>} */ server, at 
     .join(":");
   return {
     "store.json": `${JSON.stringify({ [PLUGIN]: { connections: [connection] } })}\n`,
-    "grants.json": `${JSON.stringify({ version: 1, grants: [{ caller: PLUGIN, grant }] })}\n`,
+    "grants.json": `${JSON.stringify({ version: 1, nextId: 2, grants: [{ caller: PLUGIN, grant }] })}\n`,
     pgpass: `${line}\n`,
   };
 }
