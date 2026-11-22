@@ -1,9 +1,10 @@
 // Cancel a session's statement (pg_cancel_backend) or end the session (pg_terminate_backend). The
-// classifier reads both as a SELECT, so the write guards are applied here before deps.execute runs
-// it: a read-only connection refuses, a session that runs no statement has nothing to cancel, and
-// every cancel and end is asked first, whoever asks (the panel, the palette, an agent), with a
-// production connection named first and the session's statement shown. A refusal of the server
-// (a role without pg_signal_backend) is said in its own words. No DOM.
+// classifier reads both as writes (ADR 0328); this module asks its own question with the session's
+// statement, so deps.execute is told it was asked. A read-only connection refuses, a session that
+// runs no statement has nothing to cancel, and every cancel and end is asked first, whoever asks
+// (the panel, the palette, an agent), with a production connection named first and the session's
+// statement shown. A refusal of the server (a role without pg_signal_backend) is said in its own
+// words. No DOM.
 
 import { oneLine } from "../../execute.js";
 import { durationOf } from "./model.js";
@@ -77,7 +78,7 @@ export async function stop(deps, how, conn, s, version) {
   const { title, reasons } = questionOf(how, conn, s);
   if (!(await deps.confirm(title, reasons)))
     throw deps.cancelled(how === "cancel" ? "Not cancelled." : "Not ended.");
-  const { result } = await deps.execute(conn, signalSql(how, s.pid, version));
+  const { result } = await deps.execute(conn, signalSql(how, s.pid, version), { asked: true });
   const outcome = result.statements[0];
   const not = how === "cancel" ? "Not cancelled" : "Not ended";
   const error = result.error ?? outcome?.error;

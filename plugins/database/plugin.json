@@ -163,6 +163,16 @@
         "keywords": ["url", "dsn"]
       },
       {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
         "id": "endue.database.run",
         "title": "Database: run the statement",
         "keywords": ["execute", "query", "selection"]
@@ -266,11 +276,6 @@
         "id": "endue.database.choose-schemas",
         "title": "Database: choose the schemas to read",
         "keywords": ["schema", "cache", "system schemas", "catalog"]
-      },
-      {
-        "id": "endue.database.switch-database",
-        "title": "Database: switch the database",
-        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
       },
       {
         "id": "endue.database.filter-explorer",
@@ -1725,6 +1730,16 @@
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
       },
       {
+        "id": "endue.database.fix-problem",
+        "title": "Database: fix the SQL warning at the caret",
+        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
+      },
+      {
+        "id": "endue.database.switch-database",
+        "title": "Database: switch the database",
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
+      },
+      {
         "id": "endue.database.show-map",
         "title": "Database: show the result on a map",
         "keywords": [
@@ -2276,16 +2291,6 @@
         "agent": true
       },
       {
-        "id": "endue.database.export-connections",
-        "title": "Database: export connections to a file",
-        "keywords": ["export", "move", "share", "json", "connections", "backup"]
-      },
-      {
-        "id": "endue.database.import-connections",
-        "title": "Database: import connections from a file",
-        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
-      },
-      {
         "id": "endue.database.pin-result",
         "title": "Database: pin the result tab",
         "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
@@ -2438,6 +2443,16 @@
         "kind": "boolean",
         "default": true,
         "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
+      },
+      "endue.database.problems-warnings": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Mark statements that are likely mistakes in PostgreSQL consoles as warnings, each with its identifier and, where the rewrite is certain, a fix. A comment -- endue-ignore <identifiers> turns them off for its line, or for the next line when it stands alone."
+      },
+      "endue.database.problems-warnings-off": {
+        "kind": "array",
+        "default": [],
+        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal."
       },
       "endue.database.pg-dump": {
         "kind": "string",
