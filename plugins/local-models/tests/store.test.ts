@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import bridgeSchema from "../../../specs/bridge/v0/bridge.schema.json";
 import fsSchema from "../../../specs/bridge/v0/fs.schema.json";
 import permissionSchema from "../../../specs/plugin/v0/permission.schema.json";
+import { createLibrary, MODELS_DIR } from "../ui/library.js";
 import { createStore, HOME, INDEX } from "../ui/store.js";
 import { createThread, entryOf } from "../ui/threads.js";
 import { nodeBridge } from "./node-bridge.js";
@@ -10,7 +11,7 @@ import { nodeBridge } from "./node-bridge.js";
 const ajv = new Ajv2020({ validateFormats: false });
 ajv.addSchema([bridgeSchema, fsSchema, permissionSchema]);
 const requests = new Map(
-  ["Read", "Write", "Trash"].map((kind) => {
+  ["Read", "Write", "List", "Trash"].map((kind) => {
     const validate = ajv.getSchema(`${fsSchema.$id}#/$defs/Fs${kind}Request`);
     if (!validate) throw new Error(`Missing fs.${kind} request schema`);
     const method: string = `fs.${kind.toLowerCase()}`;
@@ -56,4 +57,44 @@ it("propagates a refused read, write and removal", async () => {
   await expect(store.thread(thread.id)).rejects.toBe(denied);
   await expect(store.saveThread(thread, { now: true })).rejects.toBe(denied);
   await expect(store.removeThread(thread.id)).rejects.toBe(denied);
+});
+
+it("scans the initial library and an added folder using only the path of each operation", async () => {
+  const disk = nodeBridge();
+  const added = "~/Models";
+  const file = `${added}/demo.gguf`;
+  const library = createLibrary({
+    ...createStore(disk),
+    bridge: {
+      ...disk,
+      async call(method, params) {
+        const validate = requests.get(method);
+        if (!validate) throw new Error(`Unexpected method ${method}`);
+        expect(validate({ id: 1, method, params }), ajv.errorsText(validate.errors)).toBe(true);
+        const { path } = params as { path: string };
+        expect(params).toMatchObject({
+          scope: { permission: method === "fs.trash" ? "fs:write" : "fs:read", paths: [path] },
+        });
+        return disk.call(method, params);
+      },
+    },
+  });
+  try {
+    await disk.call("fs.write", { path: file, content: "GGUF", createDirs: true });
+    const models = await library.scan([MODELS_DIR, added]);
+    expect(disk.calls).toContainEqual({
+      method: "fs.list",
+      params: { path: MODELS_DIR, scope: { permission: "fs:read", paths: [MODELS_DIR] } },
+    });
+    expect(models.map((m) => m.path)).toEqual([file]);
+    expect(disk.calls.some((call) => call.method === "fs.read" && call.params.path === file)).toBe(
+      true,
+    );
+    const [model] = models;
+    if (!model) throw new Error("The added model is missing");
+    await library.remove(model);
+    expect(await library.scan([added])).toEqual([]);
+  } finally {
+    disk.close();
+  }
 });
