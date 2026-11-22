@@ -65,7 +65,14 @@ fn a_declined_prompt_keeps_the_app_and_the_build_staged_and_says_so_once() {
     let replace = format!("replace {}", app.display());
     assert_eq!(status.reason.as_deref(), Some(cancelled(&replace).as_str()));
     assert!(status.staged, "the build stays for another try");
-    assert_eq!(prompt.asked.lock().unwrap().len(), 1, "the OS asked once");
+    {
+        let asked = prompt.asked.lock().unwrap();
+        assert_eq!(asked.len(), 1, "the OS asked once");
+        assert_eq!(
+            asked[0].why,
+            format!("endue needs an administrator to install its update to {NEXT}.")
+        );
+    }
     assert!(desk.restarts.lock().unwrap().is_empty());
     assert_eq!(running(&app), [("endue-desk".into(), "0.5.0-rc.1".into())]);
     assert_eq!(names(&apps), ["endue Desk.app"]);
@@ -157,6 +164,7 @@ fn a_deb_asks_once_through_pkexec_and_says_so_when_declined() {
     let package = scratch.join("0.6.0/install.deb");
     let asked = declines.asked.lock().unwrap();
     assert_eq!(asked.len(), 1);
+    assert_eq!(asked[0].why, "endue wants to install its update to 0.6.0.");
     assert_eq!(
         (asked[0].program.as_str(), asked[0].args.clone()),
         ("dpkg", vec!["-i".to_owned(), package.display().to_string()])
