@@ -18,6 +18,8 @@ import { createParts, createScriptReader } from "./script-parts.js";
  * @typedef {import("../../engines/common.js").Connection} Connection
  * @typedef {import("./script-parts.js").Part} Part
  * @typedef {{ line: number, text: string, detail?: string }} Failure
+ * @typedef {{ skip(text: string): string | undefined, note(names: string[]): string }} Skips
+ *   a statement `skip` names is left out before it runs; the result ends with `note` of the names.
  */
 
 /** A range read at once, in bytes. */
@@ -56,8 +58,9 @@ async function consoleFor(
  * Run a .sql file from disk: `path`, else the file of the console on screen, else one named.
  * @param {Deps} deps
  * @param {Record<string, unknown>} args
+ * @param {Skips} [skips] what a restore of a plain dump leaves out (features/backup/, #647)
  */
-export async function runFile(deps, args) {
+export async function runFile(deps, args, skips) {
   const shown = deps.consoles.current();
   const path =
     (typeof args.path === "string" && args.path) ||
@@ -80,6 +83,8 @@ export async function runFile(deps, args) {
   let line = 1;
   /** @type {Failure | null} */
   let failure = null;
+  /** @type {Set<string>} */
+  const skipped = new Set();
 
   /** Run one part; a failure stops the file. */
   const run = async (/** @type {Part} */ part) => {
@@ -124,7 +129,9 @@ export async function runFile(deps, args) {
         const statements = [...reader.push(text), ...(last ? reader.end() : [])];
         for (const statement of statements) {
           if (failure) break;
-          await runAll(parts.add(statement));
+          const left = skips?.skip(statement.text);
+          if (left) skipped.add(left);
+          else await runAll(parts.add(statement));
         }
         if (last && !failure) await runAll(parts.end());
       } catch (error) {
@@ -139,7 +146,9 @@ export async function runFile(deps, args) {
   const fail = /** @type {Failure | null} */ (failure);
   const said = fail
     ? `${name}: stopped at line ${formatCount(fail.line)}: ${fail.text}`
-    : `${name}: done, ${formatCount(total)} statements in ${formatDuration(Date.now() - started)}`;
+    : `${name}: done, ${formatCount(total)} statements in ${formatDuration(Date.now() - started)}${
+        skips && skipped.size ? `; ${skips.note([...skipped])}` : ""
+      }`;
   const lines = [
     { level: /** @type {const} */ (fail ? "error" : "ok"), text: said, statement: -1 },
     ...(fail?.detail

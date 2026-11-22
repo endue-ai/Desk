@@ -26,7 +26,12 @@ import {
   serverVersion,
 } from "./common.js";
 import { logState } from "./job.js";
-import { oneTransactionRefusal, skippedNote, skippedSettings } from "./restore-outcome.js";
+import {
+  oneTransactionRefusal,
+  plainSkips,
+  skippedNote,
+  skippedSettings,
+} from "./restore-outcome.js";
 import { errorWords, isPlain, listFile, parseToc } from "./toc.js";
 import { readToc } from "./toc-reader.js";
 
@@ -178,14 +183,15 @@ export async function restore(deps, jobs, args) {
   const conn = deps.manager.get(answer.connection);
   if (conn?.engine !== "postgresql") throw new Error("Restore into a PostgreSQL connection.");
   if (conn.readOnly) throw new Error(`${conn.name} is read-only: nothing is restored into it.`);
-  if (plain || !toc || !client) return runFile(deps, { path, connection: conn.id });
+  const server = await serverVersion(deps, conn);
+  const serverMajor = Math.floor(server / 10000);
+  if (plain || !toc || !client)
+    return runFile(deps, { path, connection: conn.id }, plainSkips(serverMajor));
 
   const chosen = Array.isArray(answer.chosen) ? answer.chosen : null;
   if (chosen && chosen.length === 0) throw new Error("Choose an entry to restore.");
   const chosenOptions = restoreOptions(answer.options ?? {}, toc.format || "custom");
-  const server = await serverVersion(deps, conn);
   const restorer = await programFor(deps, "pg_restore", conn, server);
-  const serverMajor = Math.floor(server / 10000);
   const refused = chosenOptions.singleTransaction
     ? oneTransactionRefusal(restorer.version, serverMajor)
     : undefined;

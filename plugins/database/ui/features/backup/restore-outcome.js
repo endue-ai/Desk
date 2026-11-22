@@ -3,7 +3,8 @@
 // pg_restore goes on, restores every entry and exits 1. Such an error is a setting skipped, not a
 // failure, when it is the only kind in a run that went on to the end. It is matched by pg_restore's
 // own `Command was:` line and the server's major, never by the server's message, which is in the
-// server's language. Pure.
+// server's language. A plain dump, which runs through run-file, leaves such a SET out before it
+// runs. Pure.
 
 import { majorOf } from "./args.js";
 
@@ -90,3 +91,24 @@ export const skippedNote = (
   /** @type {string} */ version,
 ) =>
   `PostgreSQL ${serverMajor} does not know ${names.join(", ")}, which pg_restore ${version} sets: skipped.`;
+
+const PLAIN_SET = /^SET\s+(\w+)\s*(?:=|TO)\s*[^;]*;?$/iu;
+
+/**
+ * For a plain dump run through run-file: its `SET <setting>` statements that a server of
+ * `serverMajor` would refuse are left out before they run (each part replays the settings before
+ * it, so one that fails would stop every part), and the result names them.
+ * @param {number} serverMajor
+ */
+export function plainSkips(serverMajor) {
+  return {
+    skip(/** @type {string} */ text) {
+      const bare = text.replace(/^(?:\s*--[^\n]*\n)*/u, "").trim();
+      const name = PLAIN_SET.exec(bare)?.[1]?.toLowerCase() ?? "";
+      const added = addedIn(name);
+      return added !== undefined && serverMajor < added ? name : undefined;
+    },
+    note: (/** @type {string[]} */ names) =>
+      `PostgreSQL ${serverMajor} does not know ${names.join(", ")}: skipped.`,
+  };
+}
