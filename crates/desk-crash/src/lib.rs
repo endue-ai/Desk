@@ -262,7 +262,7 @@ pub fn install_hook(data: PathBuf, context: Arc<Context>) {
             &context,
         );
         if let Err(why) = crashes.write(&report) {
-            eprintln!("endue Desk: the crash report was not written ({why})");
+            eprintln!("endue could not write the crash report ({})", why.kind());
         }
         previous(info);
     }));
