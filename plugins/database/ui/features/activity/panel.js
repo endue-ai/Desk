@@ -201,7 +201,7 @@ export function activityPanel(doc, first, act, buffer) {
       if (!root.isConnected) return;
       if (root.closest("[hidden]") || doc.visibilityState === "hidden")
         timer = setTimeout(tick, ms);
-      else act("activityRefresh", id);
+      else act("activityRefresh", id, "timer");
     };
     timer = setTimeout(tick, ms);
   };
