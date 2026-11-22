@@ -5,14 +5,18 @@
 // plugin's own reads), Disconnect's stop of what runs and what the plugin would start on its own
 // (gate.js, ADR 0339), and the consoles' sessions taken back when the frame wakes; a refused one
 // says how to ask again (connect-gate.js, ADR 0335); a console's transaction across runs, Manual
-// mode's BEGIN and what the header counts of it (transactions.js, PG-20). No DOM.
+// mode's BEGIN and what the header counts of it (transactions.js, PG-20); a lost session said with
+// the statements its transaction held, and opened again on its own or on Reconnect (reconnect.js,
+// PG-105, ADR 0355). No DOM.
 
 import { createHelper } from "../auth/helper.js";
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
-import { wordRefusals } from "./connect-gate.js";
+import { connectHeld, wordRefusals } from "./connect-gate.js";
 import { createGate } from "./gate.js";
-import { keyOf, sessionLabel } from "./owners.js";
+import { lostLine } from "./lost-words.js";
+import { keyOf, ownerOf, sessionLabel } from "./owners.js";
+import { createReconnect } from "./reconnect.js";
 import { chosenOf, createTransactions } from "./transactions.js";
 import { reasonsOf } from "./words.js";
 
@@ -51,10 +55,15 @@ export function createPluginSessions(deps) {
   };
 
   const gate = createGate();
+  const render = () => deps.consoles().render();
   const sessions = createSessions(deps.bridge, {
     onBusy: deps.onBusy,
-    onState: () => deps.consoles().render(),
-    onLost: (owner, line) => deps.view.say(line(labelFor(owner))),
+    onState: render,
+    onLost: (owner, _line, gone) => {
+      const lost = transactions.lose(owner);
+      deps.view.say(lostLine(labelFor(owner), gone, lost));
+      reconnect.lost(owner, byOwner(owner)?.kind ?? "", gone);
+    },
     idleMs: () => deps.settings().sessionIdleMinutes * 60_000,
     limit: () => deps.settings().sessionsPerConnection,
     ...(deps.kept ? { kept: deps.kept } : {}),
@@ -77,13 +86,54 @@ export function createPluginSessions(deps) {
     flagMs: () => deps.settings().transactionIdleMinutes * 60_000,
     now: () => Date.now(),
   });
+  /** Open an owner's session and run nothing on it: on its own as background work, else the
+   * person's Reconnect. */
+  const attempt = async (/** @type {string} */ owner, /** @type {boolean} */ auto) => {
+    const target = byOwner(owner);
+    const conn = target && deps.connection(target.connection);
+    const session = target && ownerOf(target, conn);
+    if (!conn || !session)
+      return {
+        error: { kind: "client", message: "That buffer keeps no PostgreSQL session." },
+        notices: [],
+      };
+    return pg.run(conn, {
+      statements: [],
+      maxRows: 1,
+      timeoutMs: deps.settings().timeoutSeconds * 1000,
+      mode: "run",
+      session,
+      ...(auto ? { background: true, quiet: true } : {}),
+    });
+  };
+  const reconnect = createReconnect({
+    attempt,
+    may: async (owner) => {
+      const conn = deps.connection(byOwner(owner)?.connection ?? "");
+      return conn !== undefined && (await connectHeld(deps.bridge, conn));
+    },
+    lost: (owner) => worded.state(owner).state === "lost",
+    say: (owner, line) => deps.view.say(line(labelFor(owner))),
+    label: labelFor,
+    onState: render,
+    setTimer: (fn, ms) => setTimeout(fn, ms),
+    clearTimer: (timer) => clearTimeout(/** @type {ReturnType<typeof setTimeout>} */ (timer)),
+  });
   const pg = {
     ...worded,
     run: (
       /** @type {Connection} */ conn,
       /** @type {import("../engines/pg-script.js").Plan} */ plan,
     ) => transactions.run(conn, plan, (c, p) => gate.run(c, p, worded.run)),
-    state: (/** @type {string} */ owner) => transactions.model(owner, worded.state(owner)),
+    state: (/** @type {string} */ owner) =>
+      reconnect.model(owner, transactions.model(owner, worded.state(owner))),
+    /** An owner that is gone: its session closes and its tries stop. */
+    forget: (/** @type {string} */ owner) => {
+      reconnect.stop(owner);
+      worded.forget(owner);
+    },
+    /** Reconnect (PG-105): the owner's lost session opened now; the status line's words. */
+    reconnect: (/** @type {string} */ owner) => reconnect.now(owner),
   };
 
   return {
