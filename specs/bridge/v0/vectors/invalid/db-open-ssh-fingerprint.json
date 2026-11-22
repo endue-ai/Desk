@@ -17,9 +17,7 @@
       },
       "scope": {
         "permission": "db:connect",
-        "hosts": [
-          "*"
-        ]
+        "hosts": ["*"]
       }
     }
   }

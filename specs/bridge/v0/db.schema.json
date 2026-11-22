@@ -108,8 +108,18 @@
           "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
           "maxLength": 253
         },
-        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 },
-        "user": { "description": "Who signs in on the SSH server.", "type": "string", "minLength": 1, "maxLength": 256 },
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "description": "Who signs in on the SSH server.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
         "keyFile": {
           "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
           "type": "string",
@@ -121,7 +131,10 @@
           "type": "string",
           "maxLength": 4096
         },
-        "agent": { "description": "Sign in with the keys the person's SSH agent holds.", "const": true },
+        "agent": {
+          "description": "Sign in with the keys the person's SSH agent holds.",
+          "const": true
+        },
         "password": {
           "description": "The SSH password: used once for the sign-in and dropped.",
           "type": "string",
@@ -145,8 +158,18 @@
           "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
           "maxLength": 253
         },
-        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 },
-        "user": { "description": "Who signs in on the SSH server.", "type": "string", "minLength": 1, "maxLength": 256 },
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "description": "Who signs in on the SSH server.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
         "keyFile": {
           "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
           "type": "string",
@@ -158,7 +181,10 @@
           "type": "string",
           "maxLength": 4096
         },
-        "agent": { "description": "Sign in with the keys the person's SSH agent holds.", "const": true },
+        "agent": {
+          "description": "Sign in with the keys the person's SSH agent holds.",
+          "const": true
+        },
         "password": {
           "description": "The SSH password: used once for the sign-in and dropped.",
           "type": "string",
@@ -210,7 +236,10 @@
       "type": "object",
       "properties": {
         "status": { "$ref": "#/$defs/DbSshHostKeyStatus" },
-        "algorithm": { "description": "ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...", "type": "string" },
+        "algorithm": {
+          "description": "ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...",
+          "type": "string"
+        },
         "fingerprint": { "$ref": "#/$defs/DbSshFingerprint" },
         "known": { "$ref": "#/$defs/DbSshFingerprint" }
       },
@@ -237,7 +266,12 @@
           "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
           "maxLength": 253
         },
-        "port": { "description": "22 by default.", "type": "integer", "minimum": 1, "maximum": 65535 }
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
       },
       "required": ["host"],
       "additionalProperties": false
