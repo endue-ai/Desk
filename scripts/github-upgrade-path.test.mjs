@@ -46,13 +46,13 @@ test("an invalid minimum version fails manifest generation before a final is tag
 });
 
 test("a signed path binds a tag to its own build, floor, rollout and manifest", () => {
-  assert.deepEqual(tagPath(index, "0.6.0", base), {
+  assert.deepEqual(tagPath(index, "0.6.0"), {
     channel: "stable",
     serial: 3,
     releases: [{ ...build("0.6.0"), release: `${base}/v0.6.0/release.json` }],
   });
-  assert.deepEqual(tagPath(index, "0.7.0", base).releases, []);
-  assert.throws(() => tagPath(index, "../main", base));
+  assert.deepEqual(tagPath(index, "0.7.0").releases, []);
+  assert.throws(() => tagPath(index, "../main"));
 });
 
 test("a preview snapshot preserves stepping stones and points to their signed manifests", () => {
