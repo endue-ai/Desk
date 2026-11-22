@@ -4753,6 +4753,10 @@ export interface DbPage {
   /** A COPY ... TO STDOUT's bytes. */
   data?: string;
   encoding?: Encoding;
+  /** The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event. At most 10,000 a page. */
+  notices?: DbServerError[];
+  /** Notices past the 10,000 a page keeps, counted and left out. */
+  noticesSkipped?: number;
 }
 
 /** One row: each value the server's text, or null. */
@@ -4818,7 +4822,7 @@ export interface DbServerError {
   other?: Record<string, string>;
 }
 
-/** A notice the server sent, as it arrived, also while a statement runs. */
+/** A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead. */
 export interface DbNoticeEvent {
   event: "db.notice";
   data: DbNoticeData;
