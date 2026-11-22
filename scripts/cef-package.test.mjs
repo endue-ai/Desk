@@ -168,6 +168,7 @@ describe("cef-package", () => {
       [
         '!define UNINSTKEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${PRODUCTNAME}"',
         '!define MANUPRODUCTKEY "Software\\${MANUFACTURER}\\${PRODUCTNAME}"',
+        '  WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"',
         '  StrCpy $INSTDIR "$LOCALAPPDATA\\${PRODUCTNAME}"',
         "  ; Uninstall previous WiX installation if exists.",
         "  wix_done:",
@@ -177,6 +178,7 @@ describe("cef-package", () => {
       ].join("\n"),
     );
     assert.ok(nsis.includes('Uninstall\\endue Desk"'));
+    assert.ok(nsis.includes('WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"'));
     assert.ok(nsis.includes('$LOCALAPPDATA\\endue Desk"'));
     assert.ok(nsis.includes('MsiEnumRelatedProductsW(w "{6DF1A592-6BAD-590D-9FF0-F3C26EC6A138}"'));
     assert.ok(nsis.includes('IfFileExists "$DESKTOP\\${PRODUCTNAME}.lnk" endue_shortcut_done'));
