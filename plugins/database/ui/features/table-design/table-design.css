@@ -1,0 +1,289 @@
+/* The table form (features/table-design/): the table's place and name, the sections as tabs, each
+   a list of its parts beside the part shown (one column under the other when narrow), and below
+   them the script in the monospace font with each mark set apart, the problems, the buttons and
+   the run's result. Every colour, font, size, radius and duration comes from the theme's --desk-*
+   tokens; the feature links this sheet itself (features/README.md). */
+
+/* Relative, so a hidden legend stays inside the panel's scroller, not the page's. */
+.td {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  outline: none;
+}
+
+.td p {
+  margin: 0;
+}
+
+.td-body,
+.td-tail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.td-tail {
+  padding-top: var(--desk-space-2);
+  border-top: 1px solid var(--desk-border);
+}
+
+.td-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.td-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Fields side by side line up by their labels, whatever hint one has under it; a check box sits by
+   the fields' boxes. */
+.td-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--desk-space-2) var(--desk-space-3);
+}
+
+.td-row > .td-field {
+  flex: 1 1 10em;
+}
+
+.td-row > .td-field ~ .td-check {
+  align-self: flex-end;
+}
+
+.td-tabs {
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.td-split {
+  display: grid;
+  grid-template-columns: minmax(12em, 16em) minmax(0, 1fr);
+  gap: var(--desk-space-3);
+  align-items: start;
+}
+
+@media (width < 640px) {
+  .td-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.td-side,
+.td-detail,
+.td-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+
+.td-list {
+  gap: var(--desk-space-1);
+}
+
+.td-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 var(--desk-space-2);
+  align-items: baseline;
+  width: 100%;
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border: 0;
+  border-radius: var(--desk-radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.td-item[aria-pressed="true"] {
+  background: var(--desk-hover);
+  font-weight: 600;
+}
+
+.td-item-title {
+  overflow-wrap: anywhere;
+}
+
+.td-item-detail {
+  grid-column: 1;
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.td-item .desk-badge {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.td-struck .td-item-title {
+  text-decoration: line-through;
+}
+
+.td-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  min-width: 0;
+}
+
+.td-label {
+  font-weight: 600;
+}
+
+.td-field .desk-field {
+  width: 100%;
+  font-size: var(--desk-text-xs);
+}
+
+.td-field textarea.desk-field {
+  resize: vertical;
+}
+
+.td-mono {
+  font-family: var(--desk-font-mono);
+}
+
+.td-hint,
+.td-note,
+.td-empty {
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.td-check {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+  padding-bottom: var(--desk-space-1);
+}
+
+.td-chips,
+.td-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.td-keys {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.td-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.td-key > .desk-field {
+  width: auto;
+}
+
+.td-key > .td-field {
+  flex: 1 1 12em;
+}
+
+.td-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: 0 var(--desk-space-1) 0 var(--desk-space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+.td-chips .td-add {
+  width: auto;
+}
+
+.td-buttons,
+.td-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.td-kept {
+  margin: 0;
+  padding: var(--desk-space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.td-script-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.td-script-head h3 {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+.td-script {
+  max-height: 22em;
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.td-script:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+/* A dangerous step's words, set apart from the statement they are about. */
+.td-mark {
+  color: var(--desk-warning-text);
+}
+
+/* The step a run stopped at, on the failure's tint. */
+.td-failed {
+  background: var(--desk-danger-soft);
+}
+
+.td-problems {
+  margin: 0;
+  padding-left: var(--desk-space-4);
+  color: var(--desk-danger-text);
+}
+
+.td-problems li + li {
+  margin-top: var(--desk-space-1);
+}
+
+.td-result {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
