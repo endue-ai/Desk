@@ -163,16 +163,6 @@
         "keywords": ["url", "dsn"]
       },
       {
-        "id": "endue.database.export-connections",
-        "title": "Database: export connections to a file",
-        "keywords": ["export", "move", "share", "json", "connections", "backup"]
-      },
-      {
-        "id": "endue.database.import-connections",
-        "title": "Database: import connections from a file",
-        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
-      },
-      {
         "id": "endue.database.run",
         "title": "Database: run the statement",
         "keywords": ["execute", "query", "selection"]
@@ -206,6 +196,20 @@
         "id": "endue.database.explain-options",
         "title": "Database: explain with options",
         "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
+      },
+      {
+        "id": "endue.database.show-map",
+        "title": "Database: show the result on a map",
+        "keywords": [
+          "geometry",
+          "geography",
+          "spatial",
+          "shapes",
+          "map",
+          "point",
+          "polygon",
+          "srid"
+        ]
       },
       {
         "id": "endue.database.plan-view",
@@ -1728,6 +1732,16 @@
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
       }
     ],
     "keys": [

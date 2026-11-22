@@ -179,12 +179,12 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   plan over 64 KiB is read in a worker.
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
+- A Map tab draws a result's geometry and geography values, linked to the grid: [`map.md`](map.md).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,
-`view-value.js`, `view-plan.js`.
-`output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `view-value.js`, `view-plan.js`,
-`view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`, `features/plans/`.
+`view-value.js`, `view-plan.js`, `view-plan-flame.js`, `view-plan-table.js`, `view-plan-marks.js`, `view-dialog.js`,
+`features/plans/`.
 
 ## Editing
 

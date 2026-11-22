@@ -9,6 +9,7 @@ export { feature as connectionsFile } from "./connections-file/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as diagram } from "./diagram/index.js";
 export { feature as format } from "./format/index.js";
+export { feature as geo } from "./geo/index.js";
 export { feature as grid } from "./grid/index.js";
 export { feature as keychain } from "./keychain/index.js";
 export { feature as links } from "./links/index.js";

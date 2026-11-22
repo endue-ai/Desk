@@ -9,12 +9,13 @@
 // whose server answers the schema cache with a small store and a schema of 500 tables and 1,000
 // foreign keys for the ER diagram (diagram-fixture.ts), the routine forms' functions and
 // procedures on every PostgreSQL connection (routine-fixture.ts), one whose server answers the
-// value search over two schemas of tables (search-fixture.ts), and fs.* over a folder in memory
-// with one .sql file (`window.__files`, what saves and exports wrote). dialog.save answers a place
-// in ~/Pictures for an image and the backup's place otherwise; a backup's save and open dialogs,
-// and the scripted pg_dump and pg_restore, are backup-fixture.ts's. A connections file waits in
-// ~/Transfer for an import, whose open dialog answers it; an export's save dialog answers a place
-// there. Never shipped.
+// value search over two schemas of tables (search-fixture.ts), the map's parcels and twenty
+// thousand squares as geometry values on every PostgreSQL connection (geo-fixture.ts), and fs.* over
+// a folder in memory with one .sql file (`window.__files`, what saves and exports wrote).
+// dialog.save answers a place in ~/Pictures for an image and the backup's place otherwise; a
+// backup's save and open dialogs, and the scripted pg_dump and pg_restore, are backup-fixture.ts's.
+// A connections file waits in ~/Transfer for an import, whose open dialog answers it; an export's
+// save dialog answers a place there. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -38,6 +39,7 @@ import {
   fixtureScript,
   procHandlers,
 } from "../../../../plugins/database/tests/fixtures";
+import { geoServer } from "../../../../plugins/database/tests/geo-fixture";
 import { maintenanceServer } from "../../../../plugins/database/tests/maintenance-fixture";
 import { objectsServer } from "../../../../plugins/database/tests/objects-fixture";
 import {
@@ -126,21 +128,23 @@ const core = browserCore({
   }),
   handlers: {
     ...procs,
-    // The diagram's connection and the value search's answer first, each by its database; the
-    // table form, the routine forms and the overview answer their own statements exactly, then the
-    // maintenance form its own and the objects feature its own, before the activity view's looser
-    // matches.
+    // The map's statements answer first, exactly; then the diagram's connection and the value
+    // search's, each by its database; the table form, the routine forms and the overview answer
+    // their own statements exactly, then the maintenance form its own and the objects feature its
+    // own, before the activity view's looser matches.
     ...dbHandlers(
-      diagramServer(
-        searchServer(
-          tableDesignServer(
-            routineServer(
-              overviewServer(
-                maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                  .script,
-              ),
+      geoServer(
+        diagramServer(
+          searchServer(
+            tableDesignServer(
+              routineServer(
+                overviewServer(
+                  maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
+                    .script,
+                ),
+              ).script,
             ).script,
-          ).script,
+          ),
         ),
       ),
       (event) => emit(event),
