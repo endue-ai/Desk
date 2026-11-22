@@ -58,11 +58,7 @@ fn installed(_target: &str) -> Result<Command, String> {
 
 #[cfg(not(target_os = "macos"))]
 fn missing_app() -> String {
-    if crate::name() == "desk" {
-        "endue Desk is not installed where it looks; set DESK_APP to it.".into()
-    } else {
-        "Cannot find the installed endue app. Set DESK_APP to its absolute executable path.".into()
-    }
+    "Cannot find the installed endue app. Set DESK_APP to its absolute executable path.".into()
 }
 
 /// The per-user install (NSIS) first, then the per-machine one (MSI).
@@ -129,12 +125,7 @@ pub fn run(arg: &str) -> ExitCode {
     match command.spawn() {
         Ok(_) => ExitCode::SUCCESS,
         Err(why) => {
-            let app = if crate::name() == "desk" {
-                "endue Desk"
-            } else {
-                "endue"
-            };
-            eprintln!("{}: open: could not start {app} ({why})", crate::name());
+            eprintln!("{}: open: could not start endue ({why})", crate::name());
             ExitCode::from(1)
         }
     }

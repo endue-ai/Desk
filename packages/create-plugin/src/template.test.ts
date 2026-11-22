@@ -96,7 +96,7 @@ describe("renderPlugin", () => {
     expect(files).toHaveProperty(manifestOf(files).entry ?? "ui/index.html");
   });
 
-  it("loads the SDK through the import map Desk serves", () => {
+  it("loads the SDK through the import map endue serves", () => {
     const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
     expect(files["ui/index.html"]).toContain('"@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js"');
     expect(files["ui/index.html"]).toContain('<script type="module" src="./main.js"></script>');

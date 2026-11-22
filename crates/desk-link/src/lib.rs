@@ -163,7 +163,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
         return refuse("An endue link names no user or port.");
     }
     if !version.eq_ignore_ascii_case(VERSION) {
-        return refuse("This link is for another version of endue Desk; this one opens v1 links.");
+        return refuse("This link is for another version of endue; this one opens v1 links.");
     }
     let pairs = query(query_text)?;
     let mut parts = path.split('/');
@@ -199,7 +199,7 @@ pub fn parse(text: &str) -> Result<Link, Refused> {
             Ok(Link::Command { id })
         }
         (verb, _) if RESERVED.contains(&verb) => refuse(format!(
-            "endue://v1/{verb} links are not opened by this version of endue Desk."
+            "endue://v1/{verb} links are not opened by this version of endue."
         )),
         ("open" | "plugin" | "command", _) => {
             refuse("This link's parts are not in the right order.")

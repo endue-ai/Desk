@@ -258,7 +258,7 @@ fn import_of_data_refuses_while_a_desk_answers() {
         Some(&socket),
     );
     assert_eq!(refused.status.code(), Some(1));
-    assert!(String::from_utf8_lossy(&refused.stderr).contains("quit Desk first"));
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("quit endue first"));
     assert!(files_in(&to.data).is_empty());
     // brain.json comes back with its transcript only, once no desk answers.
     ok(&to.run(&["import", out.to_str().unwrap(), "--with-data"], None));

@@ -13,11 +13,7 @@ export interface PluginOptions {
   description?: string;
   /** `ui` when absent. */
   kind?: TemplateKind;
-  /**
-   * A theme's test imports the theme compiler from the Desk repository: its path relative to the
-   * new folder, with `/`. `../..` (the folder in the repository's `plugins/` or `examples/`) when
-   * absent.
-   */
+  /** @deprecated Theme tests resolve their dependencies through the SDK test host. */
   desk?: string;
 }
 

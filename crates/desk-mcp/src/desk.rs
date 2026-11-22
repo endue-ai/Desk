@@ -94,7 +94,7 @@ impl Conn {
         let request = json!({ "id": self.next, "method": method, "params": params });
         let Ok(request) = serde_json::from_value::<BridgeRequest>(request) else {
             let why = format!(
-                "Desk has no bridge method {method} that takes these params (specs/bridge/v0)"
+                "endue has no bridge method {method} that takes these params (specs/bridge/v0)"
             );
             return Err(Failure::new("invalid_params", why));
         };
@@ -178,10 +178,10 @@ fn code(value: serde_json::Result<Value>) -> String {
 fn unreachable(path: &std::path::Path, why: &io::Error) -> Failure {
     let message = match why.kind() {
         io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused => {
-            format!("no desk at {} (is endue Desk running?)", path.display())
+            format!("no endue app at {} (is endue running?)", path.display())
         }
         io::ErrorKind::Unsupported => why.to_string(),
-        _ => format!("cannot reach the desk at {}: {why}", path.display()),
+        _ => format!("cannot reach endue at {}: {why}", path.display()),
     };
     Failure::new(NO_DESK, message)
 }
