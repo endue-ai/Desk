@@ -8,7 +8,7 @@ The page has one header row (the connection on screen, its environment tag and r
 what does not fit is behind More), the explorer on the left, the work area, and one footer line. Dialogs open
 inside the page. `Mod+Shift+B` opens it, and every operation is also a command `endue.database.*`.
 Settings are read through `settings.get` and followed through `settings.changed`, in force with no reload; a
-wrong value keeps its default and is said once (`settings-follow.js` says what each change does at once).
+wrong value keeps its default and is said once (`settings-follow.js` says what each change does at once). The views' words, in the desk's language, and how a language is added: [`strings.md`](strings.md).
 
 Modules: `main.js` (the only one that imports the SDK), `database.js` (the controller), `commands.js`,
 `keys.js`, `settings.js`, `settings-follow.js`, `view.js`, `view-actions.js`, `dom.js`, `*.css`.
