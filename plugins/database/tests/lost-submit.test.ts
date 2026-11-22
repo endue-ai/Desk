@@ -3,7 +3,7 @@
 // pending; ended during COMMIT, whether the server committed is unknown, and the words say how to
 // check; a COMMIT the server refused changed nothing.
 import { describe, expect, it } from "vitest";
-import { emptyChanges, editCell, targetOf } from "../ui/edit/pending.js";
+import { editCell, emptyChanges, targetOf } from "../ui/edit/pending.js";
 import { submitChanges } from "../ui/edit/submit.js";
 
 const set = {

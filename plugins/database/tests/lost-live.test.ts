@@ -7,8 +7,8 @@
 // database (live.test.ts).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
-import type { Connection } from "../ui/engines/common.js";
 import { createEdits } from "../ui/edits.js";
+import type { Connection } from "../ui/engines/common.js";
 import { editHarness } from "./edit-joins-harness";
 import { type Mounted, mount } from "./harness";
 import { liveSessions } from "./live-sessions";
