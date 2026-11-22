@@ -7,11 +7,11 @@ use std::sync::{Arc, Mutex, Weak};
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeEvent, DbAuth, DbCallNoticeData, DbCallNoticeEvent, DbClosedData, DbClosedEvent, DbClosedReason, DbColumn,
-    DbCopy, DbCopyDirection, DbCopyFormat, DbKeyPassword, DbNoticeData, DbNoticeEvent,
-    DbNotificationData, DbNotificationEvent, DbOpenResult, DbPage, DbParameterData,
-    DbParameterEvent, DbServerError, DbTls, DbTlsInfo, DbTlsMode, DbTransaction, Encoding,
-    ErrorCode,
+    BridgeError, BridgeEvent, DbAuth, DbCallNoticeData, DbCallNoticeEvent, DbClosedData,
+    DbClosedEvent, DbClosedReason, DbColumn, DbCopy, DbCopyDirection, DbCopyFormat, DbKeyPassword,
+    DbNoticeData, DbNoticeEvent, DbNotificationData, DbNotificationEvent, DbOpenResult, DbPage,
+    DbParameterData, DbParameterEvent, DbServerError, DbTls, DbTlsInfo, DbTlsMode, DbTransaction,
+    Encoding, ErrorCode,
 };
 use desk_pg::{
     Auth, ClientCert, CloseReason, Direction, Event, KeyError, Page, ServerError, Sink, TlsInfo,

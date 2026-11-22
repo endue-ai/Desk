@@ -34,18 +34,29 @@ fn a_statements_notices_arrive_as_they_are_raised() {
     std::thread::scope(|scope| {
         let running = scope.spawn(|| run(session, slow));
         let heard = until(|| Some(raised(&events)).filter(|r| r.len() == 3));
-        assert!(!running.is_finished(), "they came before the statement ended");
+        assert!(
+            !running.is_finished(),
+            "they came before the statement ended"
+        );
         let page = running.join().expect("the run answers");
         let calls: Vec<u64> = heard.iter().map(|(call, _)| *call).collect();
         assert_eq!(calls, [page.call; 3], "the call that heard them");
         let texts: Vec<&str> = heard.iter().map(|(_, text)| text.as_str()).collect();
         assert_eq!(texts, ["one", "two", "three"]);
         let kept: Vec<&str> = page.notices.iter().map(|n| n.message()).collect();
-        assert_eq!(kept, ["one", "two", "three"], "the page is still the record");
+        assert_eq!(
+            kept,
+            ["one", "two", "three"],
+            "the page is still the record"
+        );
         assert!(page.call > 1, "the SELECT before was a call of its own");
     });
     let next = run(session, "SELECT 2");
-    assert_eq!(raised(&events).len(), 3, "a call that hears none sends none");
+    assert_eq!(
+        raised(&events).len(),
+        3,
+        "a call that hears none sends none"
+    );
     assert!(next.call > 1);
 }
 
@@ -71,8 +82,8 @@ fn a_listening_session_hears_notify_while_idle_and_unlisten_stops_it() {
     run(&sender.session, "NOTIFY t458_jobs, 'second'");
     std::thread::sleep(Duration::from_millis(500));
     let heard = events.all();
-    let second = heard.iter().any(|e| {
-        matches!(e, Event::Notification { payload, .. } if payload == "second")
-    });
+    let second = heard
+        .iter()
+        .any(|e| matches!(e, Event::Notification { payload, .. } if payload == "second"));
     assert!(!second, "UNLISTEN stopped it");
 }

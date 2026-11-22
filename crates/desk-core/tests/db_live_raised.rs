@@ -44,31 +44,54 @@ fn db_call_notice_reaches_the_caller_while_db_run_runs() {
     let opened = call(&core, DATABASE, "db.open", params).unwrap();
     let session = opened["sessionId"].as_str().unwrap().to_owned();
     let (core2, id) = (core.clone(), session.clone());
-    let sql = "DO $$ BEGIN RAISE NOTICE 'first'; RAISE NOTICE 'second'; PERFORM pg_sleep(1.5); END $$";
+    let sql =
+        "DO $$ BEGIN RAISE NOTICE 'first'; RAISE NOTICE 'second'; PERFORM pg_sleep(1.5); END $$";
     let running = std::thread::spawn(move || {
-        call(&core2, DATABASE, "db.run", json!({ "sessionId": id, "sql": sql })).unwrap()
+        call(
+            &core2,
+            DATABASE,
+            "db.run",
+            json!({ "sessionId": id, "sql": sql }),
+        )
+        .unwrap()
     });
 
     let mut heard = Vec::new();
     let deadline = Instant::now() + Duration::from_secs(10);
     while heard.len() < 2 {
-        let left = deadline.checked_duration_since(Instant::now()).expect("both came");
+        let left = deadline
+            .checked_duration_since(Instant::now())
+            .expect("both came");
         let Ok(delivery) = events.recv_timeout(left) else {
             continue;
         };
         let value = serde_json::to_value(&delivery.event).unwrap();
         if value["event"] == "db.call.notice" && value["data"]["sessionId"] == session.as_str() {
-            assert_eq!(delivery.to, Some(vec![DATABASE.to_owned()]), "its caller alone");
+            assert_eq!(
+                delivery.to,
+                Some(vec![DATABASE.to_owned()]),
+                "its caller alone"
+            );
             heard.push(value["data"].clone());
         }
     }
     assert!(!running.is_finished(), "they came before the answer");
     let page = running.join().unwrap();
-    let texts: Vec<&str> = heard.iter().map(|d| d["notice"]["message"].as_str().unwrap()).collect();
+    let texts: Vec<&str> = heard
+        .iter()
+        .map(|d| d["notice"]["message"].as_str().unwrap())
+        .collect();
     assert_eq!(texts, ["first", "second"]);
     assert!(page["call"].as_u64().is_some_and(|call| call >= 1));
     for data in &heard {
-        assert_eq!(data["call"], page["call"], "the call whose answer carries it");
+        assert_eq!(
+            data["call"], page["call"],
+            "the call whose answer carries it"
+        );
     }
-    assert_eq!(page["notices"].as_array().map(Vec::len), Some(2), "the page is the record");
+    assert_eq!(
+        page["notices"].as_array().map(Vec::len),
+        Some(2),
+        "the page is the record"
+    );
 }
