@@ -10,6 +10,8 @@ export const MODELS_DIR = "~/.endue/local-models/models";
 export const CACHE_FILE = "~/.endue/local-models/library.json";
 const DEPTH = 5;
 const SKIP = new Set(["node_modules", ".git", "blobs", ".Trash"]);
+/** @param {string} path */
+const readScope = (path) => ({ permission: "fs:read", paths: [path] });
 
 /**
  * @typedef {import("./gguf.js").GgufInfo} GgufInfo
@@ -56,7 +58,9 @@ export function createLibrary(store) {
   async function walk(folder, depth = 0) {
     /** @type {{ path: string, size: number, modified?: string }[]} */
     const found = [];
-    const answer = await bridge.call("fs.list", { path: folder }).catch(() => undefined);
+    const answer = await bridge
+      .call("fs.list", { path: folder, scope: readScope(folder) })
+      .catch(() => undefined);
     for (const entry of answer?.entries ?? []) {
       const path = `${folder}/${entry.name}`;
       if (entry.kind === "dir") {
@@ -67,7 +71,13 @@ export function createLibrary(store) {
         if (entry.kind !== "file")
           size = (
             await bridge
-              .call("fs.read", { path, offset: 0, length: 0, encoding: "base64" })
+              .call("fs.read", {
+                path,
+                offset: 0,
+                length: 0,
+                encoding: "base64",
+                scope: readScope(path),
+              })
               .catch(() => undefined)
           )?.size;
         found.push({ path, size: size ?? 0, modified: entry.modifiedAt });
@@ -78,7 +88,13 @@ export function createLibrary(store) {
 
   /** @param {string} path */
   const readAt = (path) => async (/** @type {number} */ offset, /** @type {number} */ length) => {
-    const answer = await bridge.call("fs.read", { path, offset, length, encoding: "base64" });
+    const answer = await bridge.call("fs.read", {
+      path,
+      offset,
+      length,
+      encoding: "base64",
+      scope: readScope(path),
+    });
     return fromBase64(answer.content);
   };
 
@@ -174,7 +190,8 @@ export function createLibrary(store) {
           ),
         )
       : [m.path];
-    for (const path of paths) await bridge.call("fs.trash", { path });
+    for (const path of paths)
+      await bridge.call("fs.trash", { path, scope: { permission: "fs:write", paths: [path] } });
     delete cache[m.path];
   }
 

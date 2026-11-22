@@ -40,7 +40,7 @@ function repo(url) {
   return { dir, git, commit, run };
 }
 
-const GITHUB = "https://github.com/endue-ai/Desk.git";
+const GITHUB = "https://github.com/endue-ai/endue.git";
 const GITLAB = "https://git.example.test/endue/web.git";
 const OTHER = { GIT_AUTHOR_NAME: "A Colleague", GIT_AUTHOR_EMAIL: "colleague@company.example" };
 const PERSONAL = { GIT_AUTHOR_NAME: "Someone", GIT_AUTHOR_EMAIL: "someone@personal.example" };
@@ -171,10 +171,10 @@ function machine() {
   execFileSync("git", ["init", "-q", "-b", "main", dir], { env });
   execFileSync("git", ["remote", "add", "origin", GITHUB], { cwd: dir, env });
   const git = (args) => execFileSync("git", args, { cwd: dir, env, encoding: "utf8" }).trim();
-  const run = (team) =>
+  const run = (team, extra = {}) =>
     spawnSync("bash", [ensure], {
       cwd: dir,
-      env: { ...env, ENDUE_IDENTITY_TEAM: team },
+      env: { ...env, ENDUE_IDENTITY_TEAM: team, ...extra },
       encoding: "utf8",
     });
   return { home, git, run };
@@ -203,4 +203,22 @@ test("ensure on a machine outside the team only says how and changes nothing", (
   assert.match(m.run("0").stdout, /just identity/);
   assert.equal(m.git(["config", "user.email"]), "someone@personal.example");
   assert.throws(() => m.git(["config", "core.hooksPath"]));
+});
+
+test("both repository names select the strict team hooks", () => {
+  for (const url of [GITHUB, "https://github.com/endue-ai/Desk.git"]) {
+    const r = repo(url);
+    assert.equal(r.run(["pre-commit"], TEAM).status, 0);
+    assert.equal(r.run(["pre-commit"], OTHER).status, 1);
+  }
+});
+
+test("ensure checks push access to the canonical repository", () => {
+  const m = machine();
+  writeFileSync(
+    join(m.home, "gh"),
+    '#!/bin/sh\n[ "$*" = "api repos/endue-ai/endue --jq .permissions.push" ] && echo true\n',
+    { mode: 0o755 },
+  );
+  assert.match(m.run("", { PATH: `${m.home}:${process.env.PATH}` }).stdout, /installed for/);
 });

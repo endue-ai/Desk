@@ -6,8 +6,9 @@
 // names the one the keychain keeps, `passwordRef`, ADR 0311; the core reads the password file first),
 // and starts the session read-only for a read-only connection.
 // A script in one transaction or a dry run is BEGIN, the statements, COMMIT or ROLLBACK on that
-// session. Cancel is db.cancel; the statement timeout is the server's statement_timeout, with a
-// backstop that cancels and then closes the session. No DOM.
+// session. Cancel is db.cancel, of every run or of one run its signal stops; the statement timeout
+// is the server's statement_timeout, with a backstop that cancels and then closes the session. No
+// DOM.
 
 import { readScope, withGrant } from "../console-files.js";
 import { endpoint } from "../keychain.js";
@@ -24,8 +25,9 @@ import { affectedOf, CANCELED, errorOf, noticeOf, refusedOf, setOf } from "./pg-
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call" | "onEvent">} Bridge
  * @typedef {{
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
- *   mode: "run" | "transaction" | "dry-run",
+ *   mode: "run" | "transaction" | "dry-run", signal?: AbortSignal,
  * }} Plan
+ *   `signal` cancels this run alone: its statement on its session, nothing after it.
  * @typedef {{ sessionId?: string, running: boolean, cancelled: boolean, timedOut: boolean }} Job
  */
 
@@ -38,6 +40,8 @@ export const BACKSTOP_MS = 5000;
 export const GRACE_MS = 1000;
 const PAGE_ROWS = 10_000;
 const SIGN_IN_MS = 10_000;
+/** @returns {DbError} */
+const cancelled = () => ({ kind: "cancelled", message: "Cancelled." });
 /** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
 const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
 
@@ -323,37 +327,44 @@ export function createSessions(bridge, options = {}) {
     const target = targetOf(conn);
     if (typeof target === "string")
       return failedRun(plan.statements, { kind: "connect", message: target });
+    if (plan.signal?.aborted) return failedRun(plan.statements, cancelled());
     /** @type {Job} */
     const job = { running: false, cancelled: false, timedOut: false };
+    const abort = () => stop(job);
+    plan.signal?.addEventListener("abort", abort, { once: true });
     jobs.add(job);
     onBusy(jobs.size);
     await take();
     try {
-      if (job.cancelled)
-        return failedRun(plan.statements, { kind: "cancelled", message: "Cancelled." });
+      if (job.cancelled) return failedRun(plan.statements, cancelled());
       const opened = await open(conn, target, plan);
       if ("error" in opened) return failedRun(plan.statements, opened.error, now() - started);
       job.sessionId = opened.sessionId;
       try {
+        // Cancelled while it signed in: nothing ran.
+        if (job.cancelled) return failedRun(plan.statements, cancelled(), now() - started);
         return { ...(await script(job, plan)), ms: now() - started };
       } finally {
         sinks.delete(opened.sessionId);
         await call("db.close", { sessionId: opened.sessionId }).catch(() => {});
       }
     } finally {
+      plan.signal?.removeEventListener("abort", abort);
       give();
       jobs.delete(job);
       onBusy(jobs.size);
     }
   };
 
-  /** Cancel every run: the statement that runs is cancelled on the server, nothing after starts. */
+  /** Cancel one run: its statement is cancelled on its session, nothing after it starts. */
+  const stop = (/** @type {Job} */ job) => {
+    job.cancelled = true;
+    if (job.running && job.sessionId)
+      void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
+  };
+  /** Cancel every run. */
   const cancel = () => {
-    for (const job of jobs) {
-      job.cancelled = true;
-      if (job.running && job.sessionId)
-        void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
-    }
+    for (const job of jobs) stop(job);
   };
 
   return { run, cancel, running: () => jobs.size };

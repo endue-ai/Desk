@@ -8,7 +8,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 mod error;
 pub use error::{Error, ErrorCode};
 
-#[cfg(feature = "audio")]
+#[cfg(feature = "audio-api")]
 pub mod audio;
 #[cfg(feature = "calendar")]
 pub mod calendar;

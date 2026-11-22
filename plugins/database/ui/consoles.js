@@ -97,9 +97,9 @@ export function createConsoles(deps) {
 
   /**
    * Show a connection's console (the one used last, else its first), or a table's view, opening its
-   * buffer the first time.
+   * buffer the first time (under `filters`, its first page read with them: a followed key's, PG-41).
    * @param {Connection} conn
-   * @param {{ schema: string, name: string } | null} [table]
+   * @param {{ schema: string, name: string, filters?: import("./grid/filters.js").Filter[] } | null} [table]
    * @param {string} [given] A buffer the desk opened already (a visited SQLite file).
    */
   const open = async (conn, table = null, given = undefined) => {
@@ -112,7 +112,8 @@ export function createConsoles(deps) {
         c.table?.name === table.name,
     );
     if (found) return buffers.show(found);
-    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters: [] };
+    const filters = table.filters ?? [];
+    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters };
     const name = tableName(conn, page);
     const id = await buffers.open(name);
     const target = buffers.show(
