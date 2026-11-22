@@ -246,7 +246,7 @@ fn the_autostart_entry_quotes_the_program_and_reads_back() {
         [
             "[Desktop Entry]",
             "Type=Application",
-            "Name=endue Desk",
+            "Name=endue",
             "Exec=\"/opt/endue-desk/endue-desk\" --background",
             "X-GNOME-Autostart-enabled=true",
         ]

@@ -180,3 +180,29 @@ fn split(exec: &str) -> Vec<String> {
         .map(|word| word.replace("%%", "%"))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::XdgAutostart;
+    use crate::login::{Change, ID, apply, desk};
+    use std::fs;
+
+    #[test]
+    fn applying_an_existing_login_item_updates_only_its_product_name() {
+        let dir = std::env::temp_dir().join(format!("endue-login-name-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let item = XdgAutostart::in_dir(&dir, ID);
+        let registration = desk("/opt/endue/endue");
+        let entry = "[Desktop Entry]\r\nName=endue Desk\r\nExec=/opt/endue/endue --background\r\nHidden=true\r\n[Desktop Action Other]\r\nName=endue fixture\r\n";
+        fs::write(item.path(), entry).unwrap();
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Registered));
+        let current = entry.replacen("Name=endue Desk", "Name=endue", 1);
+        assert_eq!(fs::read_to_string(item.path()).unwrap(), current);
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Unchanged));
+        let custom = entry.replacen("Name=endue Desk", "Name=endue custom", 1);
+        fs::write(item.path(), &custom).unwrap();
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Unchanged));
+        assert_eq!(fs::read_to_string(item.path()).unwrap(), custom);
+        fs::remove_dir_all(dir).unwrap();
+    }
+}
