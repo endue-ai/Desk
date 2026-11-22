@@ -63,6 +63,8 @@ function other(key: string): unknown {
     return fallback === max ? (setting.minimum ?? 0) : max;
   }
   if (setting?.kind === "array") return ["/opt/db/bin"];
+  // The one object setting is the person's snippets (ADR 0327): a name to a template.
+  if (setting?.kind === "object") return { top: "SELECT * FROM $" + "{table} LIMIT $" + "{n}" };
   return `/opt/db/bin/${key.slice(PREFIX.length)}`;
 }
 

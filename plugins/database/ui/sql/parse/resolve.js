@@ -22,8 +22,9 @@ import { fieldsOf, kindOf, listOf, stringOf, walk } from "./tree.js";
  * @typedef {import("./model.js").ModelIndex} ModelIndex
  * @typedef {import("./parse.js").Parsed} Parsed
  * @typedef {import("./tree.js").Node} Node
- * @typedef {{ searchPath?: string[], user?: string, positions?: import("./positions.js").Positions }} ResolveOptions
- *   `searchPath` as the server holds it (default `"$user", public`); `user` stands for `$user`.
+ * @typedef {{ searchPath?: string[], user?: string, positions?: import("./positions.js").Positions, probe?: import("./scope.js").Probe }} ResolveOptions
+ *   `searchPath` as the server holds it (default `"$user", public`); `user` stands for `$user`;
+ *   `probe` asks for the scope a name at a byte is bound in (completion, ADR 0327).
  * @typedef {{ names: Name[], unbound: Name[] }} Resolution
  */
 
@@ -52,6 +53,7 @@ export function resolve(sql, parsed, model, options = {}) {
     path: effectivePath(options.searchPath, options.user),
     statement: 0,
     names: [],
+    ...(options.probe ? { probe: options.probe } : {}),
   };
   parsed.statements.forEach((statement, i) => {
     ctx.statement = i;

@@ -7,6 +7,9 @@
 // wider, NOT NULL, a default, a column dropped with its index, a new column, a constraint renamed,
 // a CONCURRENTLY index) and compared again; a dry run and a failing step that leave it as it was;
 // a partitioned table; and a read-only connection that runs nothing.
+// Each test builds on the table the one before left, so each gets a minute (#627): at vitest's 5 s
+// default a loaded machine timed the first out, and the next started while the first was still
+// creating the table, failing on a table not there yet.
 import { afterAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
@@ -41,6 +44,15 @@ async function setUp() {
   await admin(`CREATE ROLE ${OWNER} NOLOGIN`);
   await admin(`CREATE SCHEMA ${S}`);
   await admin(`CREATE TABLE ${S}.people (id integer PRIMARY KEY, name text NOT NULL)`);
+}
+
+/** A table the test before left; a clear failure when it did not. */
+async function needs(name: string) {
+  const there = await admin(
+    `SELECT count(*) FROM pg_class WHERE oid = to_regclass('${S}."${name}"')`,
+  );
+  if (there !== "1")
+    throw new Error(`${S}."${name}" is not there: the test before did not leave it.`);
 }
 
 /** The table's DDL as the server writes it: columns, constraints, indexes and comments. */
@@ -102,9 +114,9 @@ afterAll(async () => {
   await live.end();
   await admin(`DROP SCHEMA IF EXISTS ${S} CASCADE`);
   await admin(`DROP ROLE IF EXISTS ${OWNER}`);
-});
+}, 60_000);
 
-describe.skipIf(!uri)("the table form on a real PostgreSQL", () => {
+describe.skipIf(!uri)("the table form on a real PostgreSQL", { timeout: 60_000 }, () => {
   it("creates a table from the form, its DDL as written, and reads it back as it was designed", async () => {
     await setUp();
     const m = await plugin();
@@ -210,6 +222,7 @@ describe.skipIf(!uri)("the table form on a real PostgreSQL", () => {
   });
 
   it("changes the table as the form says, a dry run and a failing step leaving it as it was", async () => {
+    await needs("Orders");
     const m = await plugin();
     await admin(`INSERT INTO ${S}.people VALUES (1, 'Ann')`);
     await admin(
@@ -300,6 +313,7 @@ describe.skipIf(!uri)("the table form on a real PostgreSQL", () => {
   });
 
   it("creates a partitioned table, and a read-only connection runs nothing", async () => {
+    await needs("orders");
     const m = await plugin();
     await m.host.command("endue.database.create-table", {
       connection: "live",
