@@ -118,7 +118,14 @@ export function widths(/** @type {ResultSet} */ set, max = 48) {
   });
 }
 
-/** Each column's default width in pixels, for a character `ch` pixels wide. */
+/**
+ * Each column's default width in pixels, for a character `ch` pixels wide. A read its cursor keeps
+ * (PG-22) is measured once, by its first rows, so the columns stay put as its pages come and go.
+ */
 export function defaultWidths(/** @type {ResultSet} */ set, /** @type {number} */ ch) {
-  return widths(set).map((chars) => Math.ceil(chars * ch) + CELL_PAD);
+  const kept = set.window?.widths;
+  if (kept && kept.ch === ch) return kept.px;
+  const px = widths(set).map((chars) => Math.ceil(chars * ch) + CELL_PAD);
+  if (set.window) set.window.widths = { ch, px };
+  return px;
 }

@@ -14,7 +14,9 @@ import { endpoint } from "../keychain.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { failedRun } from "./common.js";
+import { createCursors } from "./pg-cursor.js";
 import { noticeOf, refusedOf } from "./pg-result.js";
+import { cursorRows } from "./pg-rows.js";
 import { createScript } from "./pg-script.js";
 import { createTls } from "./pg-tls.js";
 
@@ -196,6 +198,8 @@ export function createSessions(bridge, options = {}) {
   };
 
   const { script } = createScript({ call, sinks, setTimer, clearTimer });
+  // A console's single read keeps a scroll cursor (PG-22, ADR 0352), ended before its next run.
+  const cursors = createCursors({ script });
   const keeper = createKeeper({
     call,
     slots,
@@ -216,6 +220,7 @@ export function createSessions(bridge, options = {}) {
     }
     if (event.event === "db.closed") {
       sinks.delete(event.data.sessionId);
+      cursors.closed(event.data.sessionId);
       keeper.closed(event.data);
     }
   });
@@ -262,6 +267,8 @@ export function createSessions(bridge, options = {}) {
         if (job.cancelled) return failedRun(plan.statements, cancelled());
         job.sessionId = entry.sessionId;
         job.transaction = entry.transaction;
+        notes.push(...(await cursors.end(job, plan, entry.sessionId)));
+        entry.transaction = job.transaction ?? entry.transaction;
         // A changed statement timeout reaches the session outside a transaction, where SET stays.
         if (entry.timeoutMs !== plan.timeoutMs && entry.transaction === "idle") {
           const ran = await script(job, {
@@ -271,7 +278,10 @@ export function createSessions(bridge, options = {}) {
           });
           if (!ran.statements[0]?.error) entry.timeoutMs = plan.timeoutMs;
         }
-        const done = await script(job, { ...plan, timeoutMs: entry.timeoutMs }, entry.transaction);
+        const timed = { ...plan, timeoutMs: entry.timeoutMs };
+        const done = cursors.wanted(plan, entry)
+          ? await cursors.declare(job, timed, entry)
+          : await script(job, timed, entry.transaction);
         entry.transaction = job.transaction ?? entry.transaction;
         if (job.ended) keeper.lost(entry.sessionId, job.ended);
         return { ...done, notices: [...notes, ...done.notices] };
@@ -316,6 +326,8 @@ export function createSessions(bridge, options = {}) {
     }
   };
 
+  const rows = cursorRows({ jobs, onBusy, keeper, cursors });
+
   /** Cancel one run: its statement is cancelled on its session, nothing after it starts. */
   const stop = (/** @type {Job} */ job) => {
     job.cancelled = true;
@@ -334,6 +346,7 @@ export function createSessions(bridge, options = {}) {
 
   return {
     run,
+    rows,
     cancel,
     running: () => jobs.size,
     /** What the header shows for an owner's session. */

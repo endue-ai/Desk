@@ -33,6 +33,7 @@ export { feature as privileges } from "./privileges/index.js";
 export { feature as problems } from "./problems/index.js";
 export { feature as rename } from "./rename/index.js";
 export { feature as routines } from "./routines/index.js";
+export { feature as rows } from "./rows/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";
 export { feature as search } from "./search/index.js";
 export { feature as sourceSearch } from "./source-search/index.js";

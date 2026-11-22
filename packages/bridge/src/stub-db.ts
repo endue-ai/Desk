@@ -21,6 +21,7 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { stubDbCursors } from "./stub-db-cursor";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
   bytes,
@@ -180,17 +181,39 @@ export function stubDb(
     return { ...page(session, pageRows, pageBytes), columns: statement.columns };
   };
 
-  /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
-  const respond = (session: Session, sql: string, pageRows: number, pageBytes: number) => {
+  const lookup = (session: Session, sql: string) => {
     const matches = (s: StubStatement) =>
       typeof s.sql === "string" ? s.sql === sql : s.sql.test(sql);
-    const statement = script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
+    return script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
+  };
+  const noAnswer = () => failure("0A000", "the stub's script has no answer for this statement");
+  // A cursor's query is answered whole by the script (stub-db-cursor.ts).
+  const cursors = stubDbCursors<Session>(async (session, sql) => {
+    const statement = lookup(session, sql);
+    if (!statement) return { error: noAnswer() };
+    const done = await first(session, statement, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    if (done.error) return { error: done.error };
+    return { ...(done.columns ? { columns: done.columns } : {}), rows: done.rows };
+  });
+  const cursor = async (session: Session, sql: string, pageRows: number, pageBytes: number) => {
+    const got = await cursors.answer(session, sql, session.transaction);
+    if ("error" in got) return failed(session, got.error);
+    const { columns, rows, tag = "", rowCount } = got.page;
+    if (!columns) return last(session, tag, rowCount === undefined ? {} : { rowCount });
+    session.result = { rows, at: 0, tag };
+    return { ...page(session, pageRows, pageBytes), columns };
+  };
+
+  /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
+  const respond = (session: Session, sql: string, pageRows: number, pageBytes: number) => {
+    if (cursors.is(sql)) return cursor(session, sql, pageRows, pageBytes);
+    const statement = lookup(session, sql);
     if (statement) return answer(session, statement, pageRows, pageBytes);
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
     const pids = [...sessions.values()].map((s) => s.info.pid);
     const ended = terminateAnswer(sql, pids);
     if (ended) return last(session, "SELECT 1", ended);
-    return failed(session, failure("0A000", "the stub's script has no answer for this statement"));
+    return failed(session, noAnswer());
   };
 
   /** One statement on an idle session, as db.run answers it. */
@@ -205,6 +228,7 @@ export function stubDb(
     if (!done.error && done.transaction) {
       session.transaction = transactionAfter(sql, before);
       done.transaction = session.transaction;
+      if (session.transaction === "idle") cursors.ended(session);
       if (before === "failed" && isControl(sql)) done.tag = controlTag(sql, before);
     }
     const pid = terminated(sql);

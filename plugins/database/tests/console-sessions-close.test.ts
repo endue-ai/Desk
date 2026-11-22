@@ -8,6 +8,7 @@ import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
 import { type Handlers, mount, scriptedDb } from "./harness";
 import { dbBridge } from "./pg-host";
+import { runsOf } from "./runs-of";
 import { closed, made, messages, PG, run, script, sessionOf, shop, state } from "./session-helpers";
 
 const DB = [
@@ -130,7 +131,7 @@ describe("when a console's session closes", () => {
     const exec = (sql: string, owner: string) =>
       executor.execute(PG, sql, { session: { owner, kind: "console" } });
     const idOf = (sql: string) =>
-      calls.find((c) => c.method === "db.run" && c.params.sql === sql)?.params.sessionId;
+      runsOf(calls).find((c) => c.method === "db.run" && c.params.sql === sql)?.params.sessionId;
     const closes = () =>
       calls.filter((c) => c.method === "db.close").map((c) => c.params.sessionId);
 

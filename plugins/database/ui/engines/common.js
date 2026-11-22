@@ -15,8 +15,17 @@
  * }} Connection
  *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
  *   (ADR 0331); paths only.
- * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[] }} ResultSet
- *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription).
+ * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[], window?: Window }} ResultSet
+ *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription); `window` the
+ *   rows held of a read its cursor still holds (PG-22, engines/pg-cursor.js).
+ * @typedef {{
+ *   id: string, first: number, known: number, done: boolean, page: number,
+ *   base?: string, sort?: import("../grid/filters.js").SortKey[], filters?: import("../grid/filters.js").Filter[],
+ *   gone?: string, widths?: { ch: number, px: number[] },
+ * }} Window
+ *   `first` is the row number of the first row held; `known` the rows the server gave so far (all of
+ *   them when `done`); `base` the statement before the grid's ORDER BY or WHERE went around it; `gone`
+ *   why the rest cannot be read.
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
  * @typedef {{ kind: ErrorKind, message: string, code?: string, detail?: string, position?: number }} DbError
  *   `position` is an offset in the statement's text.
