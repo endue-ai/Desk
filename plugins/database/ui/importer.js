@@ -119,7 +119,8 @@ export function createImporter(deps) {
         (want.table && tables.includes(want.table) ? want.table : undefined) ??
         tables.find((t) => t.toLowerCase() === file) ??
         (onScreen && tables.includes(onScreen) ? onScreen : undefined) ??
-        (tables.length === 1 ? (tables[0] ?? "") : "");
+        // A COPY makes a new table instead of guessing the only one (PG-60).
+        (tables.length === 1 && !s.copy ? (tables[0] ?? "") : "");
       const columns = table ? await deps.catalog.columns(conn, schema, table) : [];
       if (seq !== reads || !s) return;
       Object.assign(s, { connection: conn.id, schemas, schema, tables, table, columns });

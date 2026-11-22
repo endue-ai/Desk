@@ -57,11 +57,12 @@ the bridge: the file is read in 1 MiB ranges with `fs.read` and sent with `db.co
 
 ### Consequences
 
-* Good, because a generated file of MEASURED went in with the plugin's heap at most MEASURED above
-  where it started, its row count and checksum equal on the server (measured in the pull request).
+* Good, because a generated CSV of 2 GiB (32,537,630 rows) went in through the real core in one
+  transaction with the plugin's heap at most 7.5 MiB above where it started, its row count and checksum
+  equal on the server (`import-copy-live.test.ts`, measured in the pull request).
 * Good, because a bad row is named by its line, and in skip mode set aside with the server's own reason.
 * Bad, because the server's own CSV parser is faster than the plugin's; the parse runs in a worker so
-  the page stays responsive, and its throughput is in the pull request.
+  the page stays responsive; the plugin's side ran at about 13.6 MiB/s in that test.
 * Bad, because an `.xlsx` larger than 64 MiB is refused: a workbook cannot be read in ranges.
 * Neutral, because types are inferred from a sample: a later value outside the type fails the COPY,
   named by its line, and the person widens the column and runs it again.

@@ -175,6 +175,9 @@ describe.skipIf(!uri)("an import by COPY on a real server", () => {
   it("rolls back on a refused row, the new table with it, and says its line", async () => {
     const m = await live({ "~/gen/bad.csv": "n,word\n1,one\n2,two\nthree,3\n4,four\n" }, fresh());
     await dropped(m, "~/gen/bad.csv");
+    // The sample reads "three" too, so n is text: the person makes it an integer.
+    m.app.importChange({ column: [0, { type: "integer" }] });
+    await m.settle();
     await m.app.importRun();
     await m.settle();
     expect(latest(m)?.problem).toBe(
@@ -189,6 +192,7 @@ describe.skipIf(!uri)("an import by COPY on a real server", () => {
     const m = await live({ "~/gen/skip.csv": text }, fresh(), out);
     await dropped(m, "~/gen/skip.csv");
     m.app.importChange({ onError: "skip" });
+    m.app.importChange({ column: [0, { type: "integer" }] });
     await m.settle();
     await m.app.importRun();
     await m.settle();
