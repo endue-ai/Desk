@@ -3002,6 +3002,21 @@
         "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
       },
       {
+        "id": "endue.database.clear-notifications",
+        "title": "Database: clear the console's notifications",
+        "keywords": ["notify", "listen", "notification", "channel", "clear", "empty"]
+      },
+      {
+        "id": "endue.database.export-notifications",
+        "title": "Database: export the console's notifications",
+        "keywords": ["notify", "listen", "notification", "channel", "export", "save"]
+      },
+      {
+        "id": "endue.database.listen-again",
+        "title": "Database: listen again on the channels the lost session listened to",
+        "keywords": ["listen", "notify", "notification", "channel", "again", "reconnect"]
+      },
+      {
         "id": "endue.database.transaction-mode",
         "title": "Database: switch the console between auto and manual commit",
         "keywords": ["autocommit", "manual", "auto", "commit", "transaction", "mode"]

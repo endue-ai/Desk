@@ -2,7 +2,8 @@
 //! of `postgres-protocol`, over tokio and rustls (ring). A session signs in with SCRAM-SHA-256
 //! (SCRAM-SHA-256-PLUS over TLS), md5 or the password over TLS, or the password file's, presenting a client certificate when one is given (ADR 0331); runs one
 //! statement at a time by the extended protocol with text results, in pages whose `more` is exact;
-//! cancels on a connection of its own; copies in and out; and reports notices, notifications,
+//! cancels on a connection of its own; copies in and out; and reports notices (a call's as they
+//! arrive too, and on its page), notifications,
 //! parameter changes and its end as events. Every session's task runs on one runtime thread.
 
 mod binding;

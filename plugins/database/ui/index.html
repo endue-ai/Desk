@@ -96,6 +96,11 @@
                 <button type="button" data-console-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
               </span>
               <span class="grow"></span>
+              <span id="notifications-bar" hidden>
+                <button type="button" id="listen-again" data-act="listenAgain" title="Run LISTEN in this console on the channels the ended session listened to" class="desk-btn desk-btn-quiet" hidden>Listen again</button>
+                <button type="button" data-act="exportNotifications" title="Export the notifications as a result" class="desk-btn desk-btn-quiet">Export</button>
+                <button type="button" data-act="clearNotifications" title="Clear the notifications" class="desk-btn desk-btn-quiet">Clear</button>
+              </span>
               <button type="button" data-act="addRow" title="Add a row (+)" class="desk-btn desk-btn-quiet edit-only">Add row</button>
               <span id="changes" role="status" hidden>
                 <span id="changes-count"></span>

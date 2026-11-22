@@ -8,7 +8,7 @@
 // kept under its own id (console-text.js), a run's statements in the history. On PostgreSQL a
 // console and a table view each run on a session of their own (PG-02, ADR 0320), whose state the
 // model carries (`session`) and which closes with the buffer, asked first while a transaction is
-// open. No DOM: the view gets a model and hands back the editor's text and selection.
+// open; a console's live notices and Notifications tab are drawn on it as it is (PG-25). No DOM: the view gets a model and hands back the editor's text and selection.
 
 import { createBuffers } from "./buffers.js";
 import { createMany } from "./console-many.js";
@@ -81,7 +81,7 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
- *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction">,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction"> & { decorate?(owner: string, model: Console): void },
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
@@ -114,6 +114,7 @@ export function createConsoles(deps) {
       const owner = who(model)?.owner;
       if (owner && deps.sessions) model.session = deps.sessions.state(owner);
       else delete model.session;
+      if (owner && model.kind === "console") deps.sessions?.decorate?.(owner, model);
     },
     gone: (target) => release(target),
   });

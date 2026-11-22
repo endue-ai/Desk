@@ -3,7 +3,8 @@
 // PostgreSQL session in words and a status dot, PG-02, and the database a console or a table view
 // is on, a button to switch it, PG-13, with the role and search path its sessions start with, PG-12;
 // a console's transaction beside it, PG-20) and the result's bars (its tabs, and the toolbar of what can
-// be done with the rows on screen and their pending changes).
+// be done with the rows on screen and their pending changes; on a console's Notifications tab, its
+// note and buttons, PG-25).
 
 import { labelOf } from "./console-list.js";
 import { ownDatabase } from "./databases.js";
@@ -111,7 +112,9 @@ export function createBars(doc) {
       byId("changes-count").textContent = edit?.count
         ? `${formatCount(edit.count)} pending change${edit.count === 1 ? "" : "s"}`
         : "";
-      byId("edit-note").textContent = edit?.message ?? "";
+      byId("edit-note").textContent = edit?.message ?? tab?.note ?? "";
+      byId("notifications-bar").hidden = tab?.kind !== "notifications";
+      byId("listen-again").hidden = !tab?.stopped;
       // A console's result pins (features/compare/); a pinned one unpins.
       const pin = byId("pin");
       pin.hidden = model.kind !== "console";

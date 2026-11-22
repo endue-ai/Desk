@@ -1,5 +1,5 @@
 //! What `desk-pg` answers, as the bridge says it (`specs/bridge/v0/db.schema.json`): pages, the
-//! server's errors and notices with every field by name, a session's events for its caller, and the
+//! server's errors and notices with every field by name (a call's also as they arrive, ADR 0358), a session's events for its caller, and the
 //! client certificate `db.open` hands over (ADR 0331).
 
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, Weak};
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeEvent, DbAuth, DbClosedData, DbClosedEvent, DbClosedReason, DbColumn,
+    BridgeError, BridgeEvent, DbAuth, DbCallNoticeData, DbCallNoticeEvent, DbClosedData, DbClosedEvent, DbClosedReason, DbColumn,
     DbCopy, DbCopyDirection, DbCopyFormat, DbKeyPassword, DbNoticeData, DbNoticeEvent,
     DbNotificationData, DbNotificationEvent, DbOpenResult, DbPage, DbParameterData,
     DbParameterEvent, DbServerError, DbTls, DbTlsInfo, DbTlsMode, DbTransaction, Encoding,
@@ -67,6 +67,7 @@ pub(crate) fn page(page: Page) -> DbPage {
         notices: (!page.notices.is_empty())
             .then(|| page.notices.iter().map(server_error).collect()),
         notices_skipped: (page.notices_skipped > 0).then_some(page.notices_skipped),
+        call: (page.call > 0).then_some(page.call),
     }
 }
 
@@ -163,6 +164,14 @@ pub(crate) fn event(
                 event: Default::default(),
                 data: DbNoticeData {
                     session_id,
+                    notice: server_error(&notice),
+                },
+            }),
+            Event::CallNotice { call, notice } => BridgeEvent::DbCallNotice(DbCallNoticeEvent {
+                event: Default::default(),
+                data: DbCallNoticeData {
+                    session_id,
+                    call,
                     notice: server_error(&notice),
                 },
             }),

@@ -6,7 +6,8 @@
  * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
  * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A
  * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311);
- * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344).
+ * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344); LISTEN and
+ * NOTIFY, and a statement's notices as db.call.notice while it runs (stub-db-listen.ts, ADR 0358).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
@@ -21,6 +22,7 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { stubDbListen } from "./stub-db-listen";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
   bytes,
@@ -63,6 +65,8 @@ interface Session {
   copying?: { lines: number };
   running?: () => void;
   scripting?: Scripting;
+  channels?: Set<string>;
+  calls?: number;
 }
 
 export function stubDb(
@@ -74,6 +78,7 @@ export function stubDb(
   /** Every session's caller, kept after it ends so its db.closed still finds it. */
   const owners = new Map<string, string>();
   const kept = stubDbPasswords();
+  const listening = stubDbListen(() => sessions.values(), later);
   let next = 0;
 
   const mine = (caller: string | undefined, sessionId: string) => {
@@ -138,8 +143,10 @@ export function stubDb(
     const sessionId = session.info.sessionId;
     for (const notice of statement.afterwards ?? [])
       setTimeout(() => later({ event: "db.notice", data: { sessionId, notice } }), 0);
+    const call = listening.call(session, statement.notices);
     const done = await first(session, statement, pageRows, pageBytes);
-    return statement.notices?.length ? { ...done, notices: [...statement.notices] } : done;
+    const page = statement.notices?.length ? { ...done, notices: [...statement.notices] } : done;
+    return listening.numbered(page, call);
   };
   const first = async (
     session: Session,
@@ -184,8 +191,10 @@ export function stubDb(
   const respond = (session: Session, sql: string, pageRows: number, pageBytes: number) => {
     const matches = (s: StubStatement) =>
       typeof s.sql === "string" ? s.sql === sql : s.sql.test(sql);
+    const listened = listening.answer(session, sql);
     const statement = script?.statements.find(matches) ?? script?.answer?.(sql, session.signed);
     if (statement) return answer(session, statement, pageRows, pageBytes);
+    if (listened) return listening.numbered(last(session, listened), listening.call(session));
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
     const pids = [...sessions.values()].map((s) => s.info.pid);
     const ended = terminateAnswer(sql, pids);
