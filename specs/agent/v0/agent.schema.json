@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/agent/v0/agent.schema.json",
-  "title": "Desk agent v0",
+  "title": "endue agent v0",
   "description": "One record for every agent the desk knows, wherever it comes from: Eris, the agents init.yaml names, agents that call the desk (the brain's agents, apps over MCP), agents of the brain's directory and the local agent programs a plugin runs (ADR 0100). What an agent does is a run, an item of kind run (specs/item/v0).",
   "$defs": {
     "AgentId": {

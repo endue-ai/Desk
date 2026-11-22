@@ -152,6 +152,14 @@ describe("spec-docs on the real specs", () => {
   const pages = render(ROOT);
   const bridge = join(ROOT, "specs/bridge/v0");
 
+  it("names endue in the public reference and the sample client", () => {
+    for (const page of ["index.md", "bridge.md", "permissions.md"]) {
+      assert.match(pages[page], /^description: .*\bendue\b/m);
+    }
+    const sample = join(ROOT, "specs/brain/v0/vectors/valid/create-session-request.json");
+    assert.equal(JSON.parse(readFileSync(sample, "utf8")).instance.client.name, "endue");
+  });
+
   it("renders every bridge method of the real specs with params, result, errors and permission", () => {
     const methods = consts(bridge, "method");
     assert.ok(methods.length >= 30, `found only ${methods.length} methods`);

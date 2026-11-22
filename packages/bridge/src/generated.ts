@@ -91,7 +91,7 @@ export interface PaletteResult {
 /** A command the palette runs on a result, with its args. */
 export interface PaletteAction {
   command: CommandId;
-  /** Shown under the results: Open in Desk. */
+  /** Shown under the results: Open in endue. */
   title: string;
   args?: CommandArgs;
 }
@@ -1763,7 +1763,7 @@ export interface ConnectorManifest {
   instanceSettings?: Record<string, ConnectorSetting>;
 }
 
-/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
+/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the endue profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
 export type ConnectorBinding = "wasm" | "mcp" | "http";
 
 /** none (local files, the OS's own data), token (a key the person pastes) or oauth. */
@@ -2078,7 +2078,7 @@ export interface MarketEntry {
 
 /** The desks the bundle runs on. */
 export interface MarketEngines {
-  /** The Desk versions, as a minimum: >=0.1.0. */
+  /** The endue versions, as a minimum: >=0.1.0. */
   desk?: string;
 }
 
@@ -2102,7 +2102,7 @@ export type BundleData = string;
 
 /** The whole of init.yaml. Every key is optional; a missing key takes its default. */
 export interface InitDocument {
-  /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
+  /** The format version. Default 0. endue refuses a file with a version newer than it reads. */
   version?: number;
   profile?: InitProfile;
   plugins?: InitPlugins;
@@ -2117,7 +2117,7 @@ export type InitProfile = string;
 
 /** Which plugins start how. */
 export interface InitPlugins {
-  /** Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start. */
+  /** Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while endue runs; the list applies again at the next start. */
   disabled?: PluginId[];
 }
 
@@ -2169,7 +2169,7 @@ export interface InitSync {
 
 /** The whole of keys.yaml. Every key is optional. */
 export interface KeysFile {
-  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  /** The format version. Default 0. endue ignores a file with a version newer than it reads. */
   version?: number;
   /** The person's bindings, in order: a later one of the same key sequence wins, and "command": "" takes a sequence away from the plugins. A binding that shadows another (one sequence a prefix of the other) wins over the plugins' and the core's, and the desk lists what it shadows with this file's line (ADR 0118). Default none. */
   bindings?: KeyBinding[];
@@ -2177,7 +2177,7 @@ export interface KeysFile {
 
 /** The whole of plugins.lock. */
 export interface PluginsLock {
-  /** The format version. Desk refuses a lock newer than it reads. */
+  /** The format version. endue refuses a lock newer than it reads. */
   version: number;
   /** Every installed plugin that validates, sorted by id. */
   plugins: LockedPlugin[];
@@ -2194,12 +2194,12 @@ export interface LockedPlugin {
   enabled: boolean;
 }
 
-/** Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
+/** Where the plugin came from: builtin (shipped with endue), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
 export type LockSource = string;
 
 /** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
 export interface ProfileFile {
-  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  /** The format version. Default 0. endue ignores a file with a version newer than it reads. */
   version?: number;
   /** What the profile switcher shows. Default: the file name. */
   name?: string;
@@ -5898,7 +5898,7 @@ export interface PermRequestParams {
   again?: boolean;
 }
 
-/** How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
+/** How long a grant lasts. once: the next call it allows, then it expires. session: until endue quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
 export type GrantDuration = "once" | "session" | "always";
 
 /** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist, or a plugin and its manifest does not declare it. */
@@ -6197,7 +6197,7 @@ export interface PluginInfo {
   id: PluginId;
   status: PluginStatus;
   enabled: boolean;
-  /** Shipped with Desk. */
+  /** Shipped with endue. */
   builtIn: boolean;
   /** Increases every time the plugin's files change. */
   revision: number;

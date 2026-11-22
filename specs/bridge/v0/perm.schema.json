@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
-  "title": "Desk bridge v0: perm",
+  "title": "endue bridge v0: perm",
   "description": "Permissions: request, query and revoke grants, the prompter's side of a request, and the approval an agent's irreversible call waits for. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants, granting them for the person (perm.grant) and answering prompts and approvals need perm:manage.",
   "$defs": {
     "PermRequestRequest": {
@@ -35,7 +35,7 @@
       "additionalProperties": false
     },
     "GrantDuration": {
-      "description": "How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.",
+      "description": "How long a grant lasts. once: the next call it allows, then it expires. session: until endue quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.",
       "type": "string",
       "enum": ["once", "session", "always"]
     },

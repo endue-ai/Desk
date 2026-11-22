@@ -5,7 +5,7 @@
 	<key>CFBundleIdentifier</key>
 	<string>ai.endue.sample</string>
 	<key>CFBundleName</key>
-	<string>Desk Sample</string>
+	<string>endue</string>
 	<key>CFBundleVersion</key>
 	<integer>42</integer>
 	<key>Ratio</key>

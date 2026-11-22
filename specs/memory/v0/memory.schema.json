@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/memory/v0/memory.schema.json",
-  "title": "Desk memory v0",
+  "title": "endue memory v0",
   "description": "Eris's memory on this computer (ADR 0095): facts and preferences a person can read and edit, and episodes (what was asked, done and answered) kept beyond a session. Working context is assembled for each turn and never stored. The memory folder holds facts.yaml (MemoryFactsFile), episodes/<YYYY-MM>.jsonl (one MemoryEpisode per line) and a search index derived from both.",
   "$defs": {
     "MemoryKind": {

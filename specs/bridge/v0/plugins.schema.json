@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/plugins.schema.json",
-  "title": "Desk bridge v0: plugin",
+  "title": "endue bridge v0: plugin",
   "description": "Installed plugins: list them, turn them on and off, and hear when they change. Scoped by plugin:manage.",
   "$defs": {
     "PluginListRequest": {
@@ -42,7 +42,7 @@
         "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
         "status": { "$ref": "#/$defs/PluginStatus" },
         "enabled": { "type": "boolean" },
-        "builtIn": { "description": "Shipped with Desk.", "type": "boolean" },
+        "builtIn": { "description": "Shipped with endue.", "type": "boolean" },
         "revision": {
           "description": "Increases every time the plugin's files change.",
           "type": "integer",

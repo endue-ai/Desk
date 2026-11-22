@@ -15,7 +15,7 @@ const BINARY = new Uint8Array(fixture("sample.bplist"));
 
 const EXPECTED = {
   CFBundleIdentifier: "ai.endue.sample",
-  CFBundleName: "Desk Sample",
+  CFBundleName: "endue",
   CFBundleVersion: 42,
   Ratio: 1.5,
   Enabled: true,

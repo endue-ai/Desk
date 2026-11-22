@@ -1,6 +1,6 @@
 {
   "target": "TurnRequest",
-  "description": "Desk only sends user messages",
+  "description": "endue only sends user messages",
   "instance": {
     "leaseId": "l1",
     "message": {

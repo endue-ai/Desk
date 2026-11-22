@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/input.schema.json",
-  "title": "Desk surface protocol v0: pointer, keyboard, focus and cursor",
+  "title": "endue surface protocol v0: pointer, keyboard, focus and cursor",
   "description": "Input the compositor routes to a surface after its own hit test, in the surface's logical pixels; the focus coming in by Tab and handed back past an end; and the cursor the surface asks for. See input.md.",
   "$defs": {
     "SurfacePointerButton": {

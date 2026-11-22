@@ -1,4 +1,4 @@
-# Desk surface protocol v0
+# endue surface protocol v0
 
 Everything on screen is a **surface**: a texture a process rendered, placed by the compositor
 (ADR 0140). This is the one contract between the compositor and anything that draws a surface

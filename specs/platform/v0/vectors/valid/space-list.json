@@ -1,6 +1,6 @@
 {
   "target": "SpaceListResponse",
-  "description": "two spaces: one the person owns with its summary and look, one shared with nulls and fields Desk ignores",
+  "description": "two spaces: one the person owns with its summary and look, one shared with nulls and fields endue ignores",
   "instance": [
     {
       "id": "sp_01JC0Q4MR00000000000000001",

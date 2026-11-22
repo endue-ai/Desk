@@ -1,4 +1,4 @@
-# Desk market v0
+# endue market v0
 
 One market format for every kind a desk installs (ADR 0107): themes, design systems, views, packs and
 plugins. It generalises the theme market (ADR 0060, `specs/plugin/v0/theme-index.schema.json`), which
