@@ -135,7 +135,7 @@ describe("a restore onto PostgreSQL 15 with pg_restore 17", () => {
   it("in one transaction is refused before pg_restore runs", async () => {
     const { run, done } = await restoreOn(ONE_JOB, 1, { singleTransaction: true });
     await expect(done).rejects.toThrow(
-      /^pg_restore 17\.6 sets transaction_timeout, which PostgreSQL 15 does not know, .* use pg_restore 15 or 16 /u,
+      /pg_restore 17\.6 sets transaction_timeout, which PostgreSQL 15 does not know, .* use pg_restore 15 or 16 /u,
     );
     expect(run.restores).toEqual([]);
   });
@@ -150,7 +150,51 @@ describe("a restore onto PostgreSQL 15 with pg_restore 17", () => {
     run.attach(m);
     await expect(
       m.host.command("endue.database.restore", { path: "~/Backups/warehouse.dump" }),
-    ).rejects.toThrow(/^pg_restore 17\.6 is older than warehouse's server \(PostgreSQL 18\)/u);
+    ).rejects.toThrow(/pg_restore 17\.6 is older than warehouse's server \(PostgreSQL 18\)/u);
     expect(run.restores).toEqual([]);
+  });
+});
+
+/** A plain dump of pg_dump 18: its session settings, then a row. */
+const PLAIN_18 = [
+  "SET statement_timeout = 0;",
+  "SET transaction_timeout = 0;",
+  "SET client_encoding = 'UTF8';",
+  "INSERT INTO public.orders VALUES (1, 'a');",
+  "",
+].join("\n");
+const plainFile: Handlers = {
+  "fs.read": (p: { offset?: number }) => {
+    const bytes = Buffer.from(PLAIN_18, "utf8").subarray(p.offset ?? 0);
+    return { content: bytes.toString("base64"), encoding: "base64", size: PLAIN_18.length };
+  },
+};
+
+describe("a plain dump of pg_dump 18", () => {
+  it("onto PostgreSQL 15 runs every statement but the setting the server does not know, and names it", async () => {
+    const { m } = await start({
+      server: "150004",
+      handlers: plainFile,
+      restore: { connection: "c-wh" },
+    });
+    const said = await m.host.command("endue.database.restore", { path: "~/Backups/w.sql" });
+    expect(said).toMatch(
+      /^w\.sql: done, 3 statements in .*; PostgreSQL 15 does not know transaction_timeout: skipped\.$/u,
+    );
+    const ran = m.sessions().flat().join("\n");
+    expect(ran).not.toContain("transaction_timeout");
+    expect(ran).toContain("SET client_encoding = 'UTF8'");
+    expect(ran).toContain("INSERT INTO public.orders VALUES (1, 'a')");
+  });
+
+  it("onto PostgreSQL 17 runs it as written", async () => {
+    const { m } = await start({
+      server: "170006",
+      handlers: plainFile,
+      restore: { connection: "c-wh" },
+    });
+    const said = await m.host.command("endue.database.restore", { path: "~/Backups/w.sql" });
+    expect(said).toMatch(/^w\.sql: done, 4 statements in [^;]*$/u);
+    expect(m.sessions().flat().join("\n")).toContain("SET transaction_timeout = 0");
   });
 });
