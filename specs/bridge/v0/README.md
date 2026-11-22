@@ -106,6 +106,9 @@ an `fs:write` scope; with `createDirs` it also creates missing parent folders in
 bytes go to a temp file beside the target that is renamed over it, so the file is the old content or the
 new, never a mix. Before it overwrites a file whose bytes differ, the core keeps the old ones as a version
 in its local history and answers that version's id as `version` (ADR 0076); a new file keeps nothing.
+With `append` the content is added at the end of the existing file in place, so a file is written in
+chunks without holding it whole: no temp file, no kept version and no undo entry, and a missing file is
+`not_found` (ADR 0356). The first chunk is an ordinary write, which keeps what it replaces.
 
 **fs.history** lists the versions the core kept of one file, newest first, `limit` at most: each is the
 content a write replaced, with `at` (when that write ran), `caller` (whose write it was), `size` and
