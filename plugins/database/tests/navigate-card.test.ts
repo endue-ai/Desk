@@ -6,6 +6,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { cardOf, MAX_COLUMNS } from "../ui/navigate/card.js";
 import { renderCard } from "../ui/navigate/card-view.js";
+import { t } from "../ui/strings/index.js";
 import { shopView } from "./navigate-fixture";
 import { shop } from "./pg-catalog";
 
@@ -110,7 +111,7 @@ describe("a name's card", () => {
     const el = renderCard(document, card as never);
     expect(el.getAttribute("role")).toBe("status");
     expect(el.querySelector(".nav-card-title")?.textContent).toBe("public.people");
-    expect(el.textContent).toContain("about 4 rows");
+    expect(el.textContent).toContain(t("card.estimate", { count: 4 }));
     expect([...el.querySelectorAll(".nav-card-col")].map((c) => c.textContent)).toEqual([
       "id",
       "name",

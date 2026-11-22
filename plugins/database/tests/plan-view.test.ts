@@ -9,6 +9,7 @@ import { comparePlans } from "../ui/explain/compare.js";
 import { optionsFor } from "../ui/explain/options.js";
 import { planOf, sqlitePlan } from "../ui/explain/plan.js";
 import { SAFETY } from "../ui/features/plans/options-dialog.js";
+import { t } from "../ui/strings/index.js";
 import { createView } from "../ui/view.js";
 import { SAVED } from "./harness";
 import { captured, setOf } from "./plans/captured";
@@ -85,15 +86,17 @@ describe("the plan tab", () => {
       expect.stringMatching(/^the sort spilled to disk/u),
     ]);
     expect(all(".plan-mark.mark-high").length).toBeGreaterThan(0);
-    expect(document.querySelector(".plan-tools [aria-selected=true]")?.textContent).toBe("Tree");
+    expect(document.querySelector(".plan-tools [aria-selected=true]")?.textContent).toBe(
+      t("plan.viewTree"),
+    );
 
     const button = (name: string) =>
       all(".plan-tools button").find((b) => b.textContent === name) as HTMLButtonElement;
-    button("Flame").click();
-    button("Copy text").click();
-    button("Copy JSON").click();
-    button("Compare…").click();
-    button("Options…").click();
+    button(t("plan.viewFlame")).click();
+    button(t("plan.copyText")).click();
+    button(t("plan.copyJson")).click();
+    button(t("plan.compare")).click();
+    button(t("plan.options")).click();
     expect(act.mock.calls).toEqual([
       ["planView", "flame"],
       ["copyPlan", "text"],
@@ -102,7 +105,7 @@ describe("the plan tab", () => {
       ["explainOptions"],
     ]);
     view.console(planTab(sqlitePlan([["2", "0", "0", "SCAN t"]])), SAVED[0] ?? null);
-    expect(all(".plan-tools button").map((b) => b.textContent)).not.toContain("Options…");
+    expect(all(".plan-tools button").map((b) => b.textContent)).not.toContain(t("plan.options"));
     expect(document.querySelector(".plan-summary")).toBeNull();
   });
 
@@ -118,36 +121,40 @@ describe("the plan tab", () => {
     );
     expect(all(".flame-row")).toHaveLength(3);
     expect(document.querySelector(".flame")?.getAttribute("aria-label")).toBe(
-      "Where the plan's time goes",
+      t("plan.flameLabel", { what: t("plan.measureTime") }),
     );
     view.console(planTab(read(pg17.estimate), "flame"), conn);
     expect(document.querySelector(".flame")?.getAttribute("aria-label")).toBe(
-      "Where the plan's estimated cost goes",
+      t("plan.flameLabel", { what: t("plan.measureCost") }),
     );
 
     view.console(planTab(plan, "table"), conn);
     const rows = () => text(".plan-table tbody th");
     expect(text(".plan-table thead th")).toEqual([
-      "Node",
-      "Est. rows",
-      "Rows",
-      "Misestimate",
-      "Loops",
-      "Own",
-      "Total",
-      "Share",
-      "Marks",
-      "Buffers",
+      ...[
+        "plan.columnNode",
+        "plan.columnEstRows",
+        "plan.columnRows",
+        "plan.columnMisestimate",
+        "plan.columnLoops",
+        "plan.columnOwn",
+        "plan.columnTotal",
+        "plan.columnShare",
+        "plan.columnMarks",
+        "plan.columnBuffers",
+      ].map((key) => t(key)),
     ]);
     const heaviest = [...plan.children, plan].flatMap((n) => [n, ...n.children]);
     expect(rows()[0]).toBe([...new Set(heaviest)].sort((a, b) => b.share - a.share)[0]?.label);
     (
       all(".plan-table thead button").find(
-        (b) => b.textContent === "Misestimate",
+        (b) => b.textContent === t("plan.columnMisestimate"),
       ) as HTMLButtonElement
     ).click();
     expect(rows()[0]).toBe("Sort");
-    expect(text(".plan-table tbody tr:first-child td")[2]).toBe("×990 more");
+    expect(text(".plan-table tbody tr:first-child td")[2]).toBe(
+      t("plan.misestimateMore", { ratio: "990" }),
+    );
   });
 });
 

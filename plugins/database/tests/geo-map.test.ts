@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResultSet } from "../ui/engines/common.js";
 import { spatialColumns } from "../ui/geo/detect.js";
 import { createEngine } from "../ui/geo/engine.js";
+import { t } from "../ui/strings/index.js";
 import { createGrid } from "../ui/view-grid.js";
 import { createValueViewer } from "../ui/view-value.js";
 import { CAPTURED, CURVE_AS_LINE } from "./geo-corpus";
@@ -141,7 +142,7 @@ describe("the Map tab", () => {
     viewer.open({ ...cell, value: hex("polygon with a hole"), oid: 16394 });
     const tabs = () =>
       [...document.querySelectorAll("#value-tabs [role=tab]")].map((t) => t.textContent);
-    expect(tabs()).toEqual(["Shape", "Text"]);
+    expect(tabs()).toEqual([t("value.shape"), t("value.text")]);
     const meta = () => document.getElementById("value-meta")?.textContent ?? "";
     await vi.waitFor(() => expect(meta()).toMatch(/^Polygon · SRID 4326 · 10 vertices · /u));
     expect((document.getElementById("value-text") as HTMLElement).hidden).toBe(true);

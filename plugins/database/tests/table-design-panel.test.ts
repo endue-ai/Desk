@@ -9,6 +9,7 @@ import type { DesignState } from "../ui/features/table-design/controller.js";
 import { feature } from "../ui/features/table-design/index.js";
 import type { Design } from "../ui/features/table-design/model.js";
 import { designOf } from "../ui/features/table-design/read.js";
+import { t } from "../ui/strings/index.js";
 import { shopFacts, TABLES } from "./table-design-fixture";
 
 const panel = feature.panels?.tableDesign;
@@ -98,12 +99,10 @@ describe("the table form's panel", () => {
       "name",
       "joined",
     ]);
-    expect($(".td-note")?.textContent).toBe(
-      "PostgreSQL adds a column at the end and cannot move one: the columns keep their order.",
-    );
-    expect(script()).toBe("Nothing changes yet.");
-    expect(button(handle.el, "Run")?.disabled).toBe(true);
-    expect(button(handle.el, "Open in console")?.disabled).toBe(true);
+    expect($(".td-note")?.textContent).toBe(t("tableDesign.order"));
+    expect(script()).toBe(t("tableDesign.nothing"));
+    expect(button(handle.el, t("tableDesign.run"))?.disabled).toBe(true);
+    expect(button(handle.el, t("tableDesign.openConsole"))?.disabled).toBe(true);
     expect($(".td-actions")?.textContent).toContain(
       "Nothing changes yet: the form is as the table is.",
     );
@@ -146,21 +145,21 @@ describe("the table form's panel", () => {
     expect([...handle.el.querySelectorAll(".td-mark")].map((m) => m.textContent)).toEqual([
       "-- Drops column name and its data for good.",
     ]);
-    expect(document.activeElement?.textContent).toBe("Keep column");
+    expect(document.activeElement?.textContent).toBe(t("tableDesign.keepColumn"));
     // Its index goes with it only when the person removes it too.
     expect($('[data-part="problems"]')?.textContent).toBe(
       "Index people_name holds full name, which is dropped: remove it too, or keep the column.",
     );
-    expect(button(handle.el, "Run")?.disabled).toBe(true);
+    expect(button(handle.el, t("tableDesign.run"))?.disabled).toBe(true);
     keyed<HTMLButtonElement>("tab:indexes").click();
     keyed<HTMLButtonElement>("idx:k16411:remove").click();
     expect(script()).toBe(
       'BEGIN;\n\nDROP INDEX "public"."people_name";\n\n-- Drops column name and its data for good.\nALTER TABLE "public"."people" DROP COLUMN "name";\n\nCOMMIT;\n',
     );
-    expect(button(handle.el, "Run")?.disabled).toBe(false);
-    button(handle.el, "Run")?.click();
-    button(handle.el, "Dry run")?.click();
-    button(handle.el, "Open in console")?.click();
+    expect(button(handle.el, t("tableDesign.run"))?.disabled).toBe(false);
+    button(handle.el, t("tableDesign.run"))?.click();
+    button(handle.el, t("tableDesign.dryRun"))?.click();
+    button(handle.el, t("tableDesign.openConsole"))?.click();
     expect(acts.filter((a) => a[0] !== "tableDesignEdit")).toEqual([
       ["tableDesignRun", "b-1"],
       ["tableDesignDryRun", "b-1"],
@@ -177,8 +176,8 @@ describe("the table form's panel", () => {
       "PostgreSQL has no automatic cast from timestamp with time zone to boolean for column joined, so the change needs USING, which the form does not write: open the script in a console and add USING with an expression, or keep the type.",
     );
     expect(document.activeElement).toBe(keyed("col:c3:type"));
-    expect(button(handle.el, "Run")?.disabled).toBe(true);
-    expect(button(handle.el, "Open in console")?.disabled).toBe(false);
+    expect(button(handle.el, t("tableDesign.run"))?.disabled).toBe(true);
+    expect(button(handle.el, t("tableDesign.openConsole"))?.disabled).toBe(false);
     const enter = () =>
       handle.el.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }),
@@ -209,7 +208,7 @@ describe("the table form's panel", () => {
     expect(handle.el.querySelector(".td-script-head .td-hint")?.textContent).toBe(
       "Runs in one transaction; the CONCURRENTLY indexes run after it commits, each on its own.",
     );
-    expect(button(handle.el, "Dry run")?.disabled).toBe(true);
+    expect(button(handle.el, t("tableDesign.dryRun"))?.disabled).toBe(true);
     // The kept index has no CONCURRENTLY: it exists.
     keyed<HTMLButtonElement>("idx:k16411").click();
     expect(keyed("idx:k16411:concurrently")).toBeUndefined();
@@ -224,10 +223,10 @@ describe("the table form's panel", () => {
     const locked = draw(
       state({ conn: { name: "Locked", readOnly: true, tag: "none" }, design: dropped }),
     );
-    expect(button(locked.handle.el, "Run")).toBeUndefined();
-    expect(button(locked.handle.el, "Dry run")).toBeUndefined();
+    expect(button(locked.handle.el, t("tableDesign.run"))).toBeUndefined();
+    expect(button(locked.handle.el, t("tableDesign.dryRun"))).toBeUndefined();
     expect(locked.$('[data-part="read-only"]')?.textContent).toBe(
-      "Locked is read-only: the form shows the script and runs nothing.",
+      t("tableDesign.readOnly", { name: "Locked" }),
     );
     expect(locked.script()).toContain('DROP COLUMN "joined";');
 

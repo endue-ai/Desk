@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ImportModel } from "../ui/importer.js";
+import { t } from "../ui/strings/index.js";
 import { createImportView } from "../ui/view-import.js";
 
 const html = readFileSync("plugins/database/ui/index.html", "utf8");
@@ -138,7 +139,13 @@ describe("the import wizard's COPY part", () => {
     expect(byId("import-server").textContent).toBe("id1NULL");
     view.render(model({ copy: { ...COPY, server: { error: "invalid input syntax" } } }));
     expect(byId("import-server-box").hidden).toBe(true);
-    expect(byId("import-server-error").textContent).toBe("The server: invalid input syntax");
+    expect(byId("import-server-error").textContent).toBe(
+      t("copyImport.server", { error: "invalid input syntax" }),
+    );
+    // The server's words stay its own, marked as such (PG-108).
+    const said = byId("import-server-error").querySelector<HTMLElement>("[data-words=server]");
+    expect(said?.textContent).toBe("invalid input syntax");
+    expect(said?.getAttribute("translate")).toBe("no");
   });
 
   it("shows the progress in rows and bytes, and its Cancel stops the run", () => {
@@ -151,7 +158,13 @@ describe("the import wizard's COPY part", () => {
     );
     const bar = byId("import-progress");
     expect(bar.hidden).toBe(false);
-    expect(bar.getAttribute("detail")).toBe("12,345 rows, 1 MiB of 3 MiB read");
+    expect(bar.getAttribute("detail")).toBe(
+      t("copyImport.read", {
+        rows: 12345,
+        bytes: "1 MiB",
+        total: t("copyImport.readOf", { total: "3 MiB" }),
+      }),
+    );
     expect(bar.getAttribute("value")).toBe(String(1024 * 1024));
     expect(byId<HTMLInputElement>("i-delimiter").disabled).toBe(true);
     bar.dispatchEvent(new Event("desk-cancel"));
