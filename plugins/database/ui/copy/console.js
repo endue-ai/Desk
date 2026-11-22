@@ -3,7 +3,7 @@
 // (dialog.open, which grants the file chosen); the console's bar shows the bytes as they go, a
 // share of the file for COPY in, with Cancel, which cancels the console's run. No DOM.
 
-import { sizeText } from "../console-files.js";
+import { sizeText as size } from "../console-files.js";
 import { baseName } from "../console-list.js";
 import { wordsOf } from "../sql/lexer.js";
 import { fileSink, fileSource } from "./files.js";
@@ -43,6 +43,8 @@ export function copyName(/** @type {Statement} */ statement) {
  */
 export function barOf(direction, name, progress) {
   const { bytes, total } = progress;
+  // Nothing moved yet reads as nothing, not as the smallest size sizeText names.
+  const sizeText = (/** @type {number} */ n) => (n === 0 ? "0 KiB" : size(n));
   if (direction === "out")
     return { label: `COPY to ${name}`, detail: `${sizeText(bytes)} written` };
   const of = total ? ` of ${sizeText(total)}` : "";

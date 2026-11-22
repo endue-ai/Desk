@@ -63,7 +63,7 @@ describe("a console's COPY", () => {
       scope: { permission: "fs:write", paths: ["~/Downloads/items.txt"] },
     });
     expect(files["~/Downloads/items.txt"]).toBe("1\tone\n2\ttwo\n");
-    expect(bars[0]).toEqual({ label: "COPY to items.txt", detail: "1 KiB written" });
+    expect(bars[0]).toEqual({ label: "COPY to items.txt", detail: "0 KiB written" });
     expect(bars.at(-1)).toBeNull();
     expect(messages(m).join("\n")).toMatch(/COPY: 2 rows/u);
   });
@@ -76,7 +76,7 @@ describe("a console's COPY", () => {
     const sent = made(m, "db.copy");
     expect(atob(String(sent[0]?.data))).toBe(files["~/data/items.txt"]);
     expect(sent.at(-1)).toMatchObject({ done: true });
-    expect(bars[0]).toMatchObject({ value: 0, max: 20, detail: "1 KiB of 1 KiB sent" });
+    expect(bars[0]).toMatchObject({ value: 0, max: 20, detail: "0 KiB of 1 KiB sent" });
     expect(bars).toContainEqual({
       label: "COPY from items.txt",
       value: 20,
