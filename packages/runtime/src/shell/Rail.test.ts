@@ -152,8 +152,10 @@ describe("the Arrange button (ADR 0220)", () => {
   const actions = () => root.querySelector<HTMLElement>('[data-popover="arrange"]');
   const action = (key: string) =>
     actions()?.querySelector<HTMLButtonElement>(`[data-arrange="${key}"]`);
-  const over = (el: Element | null) =>
+  const over = (el: Element | null) => {
     el?.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    el?.dispatchEvent(new Event("pointermove", { bubbles: true }));
+  };
   const off = (el: Element | null) => el?.dispatchEvent(new Event("pointerleave"));
 
   beforeEach(() => {
@@ -230,6 +232,24 @@ describe("the Arrange button (ADR 0220)", () => {
     // With no pointer on it (the keyboard, a touch): a press opens them, and they stay.
     button()?.click();
     vi.advanceTimersByTime(2000);
+    expect(actions()).not.toBeNull();
+  });
+
+  it("stays closed under a stationary pointer when a press redraws the Arrange button", () => {
+    over(button());
+    button()?.click();
+    off(root.querySelector(".rail"));
+    vi.advanceTimersByTime(500);
+    over(button());
+    const pressed = button();
+    pressed?.click();
+    expect(button()).not.toBe(pressed);
+    // Chromium can hit-test the rail itself before it hits the replacement button.
+    root.querySelector(".rail")?.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    over(button());
+    expect(actions()).toBeNull();
+    over(root.querySelector('[data-rail="tasks"]'));
+    over(button());
     expect(actions()).not.toBeNull();
   });
 
