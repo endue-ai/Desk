@@ -64,8 +64,9 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
 - Keys: Enter opens a table's rows or a connection's console, `/` filters, `g` refreshes, `c` counts rows
   exactly (the server's estimate shows before), `d` shows an object's DDL, `r` draws the ER diagram of a
   schema (of the tables the filter keeps) or of a table and its neighbours, `m` opens the maintenance form of
-  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `n`, `e` and
-  Delete add, change and remove a connection, `u` adds one from a URI.
+  a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
+  a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
+  a connection, `u` adds one from a URI.
 - A table drags its qualified name.
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
@@ -171,13 +172,7 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
   plan over 64 KiB is read in a worker.
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
-  key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`; ADR 0318:
-  the desk gives the page the press a palette pick is). A copy as TSV, and the grid's Mod+C, carry an HTML
-  table of the same cells beside the text, so a spreadsheet pastes cells (NULL an empty one); the copy
-  command, where the Clipboard API refuses, carries the text only. Past 100,000 cells (weighed before the
-  text is built) or 10,000,000 characters a copy asks first in the palette and copies nothing on No
-  (`copy-size.js`); a block that large from Mod+C goes the same way. Copy the cell's value
-  (`endue.database.copy-value`, the value viewer's Copy) copies one value whole, under the same limit.
+  key or button in the page and from the palette alike: [`copy.md`](copy.md).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `copy-size.js`, `pages.js`, `grid-model.js`, `value.js`,
 `output-client.js`, `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`,
@@ -222,6 +217,22 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `copy-size.js`, `pages.js`, `g
 Modules: `edits.js`, `edit/` (`cells.js`, `duplicate.js`, `history.js`, `paste-text.js` for the paste),
 `view-cell.js`, `cell-editors/` (`resolve.js`, `pg-types.js`, `values.js`, `panel.js`, one module per kind),
 `grid/paste.js`, `grid/paste-worker.js`, `features/cell-values/`, `features/paste/`.
+
+## Foreign keys
+
+- On PostgreSQL, a foreign key's cells in a table's view or a console's plain SELECT of one table are links,
+  their title saying where they point (ADR 0322). `g` or Mod+click (the cell's menu, Database: go to the row
+  this key points at) opens the referenced table's view under one `=` quick filter per key column, its typed
+  WHERE cleared; a NULL, or a key column missing from the result, is said instead.
+- `r` (Database: show the rows that point at this row) lists the tables whose keys point at the row, counted
+  in one run when asked, and opens one filtered the same way. `b` (Database: go back to where the key was
+  followed from) shows the view as it was: WHERE, order, sort keys, filters and page; 50 steps are kept.
+- Enter or F2 on an editable key cell (Database: pick the key from the referenced table) searches the
+  referenced table in the palette: 50 rows a page by key with its first text column, More rows, typed text
+  searched on the server, and the text as it is for a key of one column. The whole key is one pending step.
+- Keys come from the schema cache when it holds the table's schema, else from one read of `pg_constraint`.
+
+Modules: `links/`, `features/links/`.
 
 ## Import and export
 
@@ -311,6 +322,10 @@ Modules: `features/diagram/`, `schema/diagram.js`.
 
 Modules: `features/maintenance/`.
 
+## Value search
+
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md).
+
 ## Routines
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
@@ -357,6 +372,7 @@ Modules: `features/backup/`.
   1000 at most) are registered with an argument schema as agents' tools (ADR 0088); the first two only read.
 - An agent's write runs only after the person says yes, whatever the connection's tag and the `confirm`
   setting; a read-only connection refuses it, and an agent is never shown a password prompt.
+- `.search-data` answers where a value is in a connection's tables, read-only under the panel's limits.
 - `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
   the person's paste; nothing runs until the person submits.
 - `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and

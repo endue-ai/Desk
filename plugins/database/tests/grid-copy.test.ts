@@ -50,6 +50,7 @@ beforeEach(() => {
     selection: () => selection,
     cursorRow: () => 0,
     copyLarge,
+    follow: () => {},
   });
   grid.focus();
 });
