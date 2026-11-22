@@ -101,6 +101,23 @@ fn event(events: &Receiver<Delivery>, name: &str, session: &str) -> (Value, Opti
     panic!("no {name} for {session}");
 }
 
+/// The first event named `name` for `session`, and the names of the events that came before it.
+fn after(events: &Receiver<Delivery>, name: &str, session: &str) -> (Value, Vec<String>) {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut before = Vec::new();
+    while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+        let Ok(delivery) = events.recv_timeout(left) else {
+            break;
+        };
+        let value = serde_json::to_value(&delivery.event).unwrap();
+        if value["event"] == name && value["data"]["sessionId"] == session {
+            return (value["data"].clone(), before);
+        }
+        before.push(value["event"].as_str().unwrap_or_default().to_owned());
+    }
+    panic!("no {name} for {session}");
+}
+
 #[test]
 fn a_session_opens_runs_in_pages_and_is_listed() {
     let server = live!();
@@ -160,18 +177,28 @@ fn cancel_reaches_a_running_statement_and_events_reach_the_opener_alone() {
     let core = Arc::new(Core::new(roots(&home("db-live"))));
     let events = core.events().subscribe_addressed();
     let session = server.open(&core, DATABASE);
-    run(
+    // A notice raised while the statement runs comes with its answer (ADR 0334), not as an event.
+    let raised = run(
         &core,
         DATABASE,
         &session,
         "DO $$ BEGIN RAISE NOTICE 'hello'; END $$",
         json!({}),
     );
-    let (notice, to) = event(&events, "db.notice", &session);
     assert_eq!(
-        (notice["notice"]["message"].as_str(), to),
-        (Some("hello"), Some(vec![DATABASE.to_owned()]))
+        (
+            raised["notices"][0]["message"].as_str(),
+            raised["notices"][0]["severity"].as_str(),
+            raised["notices"][0]["code"].as_str(),
+        ),
+        (Some("hello"), Some("NOTICE"), Some("00000"))
     );
+    assert_eq!(raised.get("noticesSkipped"), None);
+    // A parameter the session reports after the run: what comes before it is the run's.
+    run(&core, DATABASE, &session, "SET application_name = 't541'", json!({}));
+    let (marker, before) = after(&events, "db.parameter", &session);
+    assert_eq!(marker["value"], "t541");
+    assert!(!before.iter().any(|e| e == "db.notice"), "{before:?}");
 
     run(&core, DATABASE, &session, "LISTEN t440_core", json!({}));
     let other = server.open(&core, "example.other");
