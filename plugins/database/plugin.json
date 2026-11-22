@@ -1403,6 +1403,26 @@
         "keywords": ["stop", "abort", "pg_dump", "pg_restore"]
       },
       {
+        "id": "endue.database.transfer",
+        "title": "Database: copy tables to another database",
+        "keywords": ["copy", "transfer", "migrate", "move", "clone", "table", "schema"]
+      },
+      {
+        "id": "endue.database.transfer-query",
+        "title": "Database: copy the query's result into a table",
+        "keywords": ["copy", "transfer", "result", "create table as", "append", "insert"]
+      },
+      {
+        "id": "endue.database.transfer-start",
+        "title": "Database: start the copy",
+        "keywords": ["copy", "transfer", "run"]
+      },
+      {
+        "id": "endue.database.transfer-cancel",
+        "title": "Database: cancel the copy",
+        "keywords": ["copy", "transfer", "stop", "abort"]
+      },
+      {
         "id": "endue.database.search-data",
         "title": "Database: search for a value in tables",
         "keywords": [
