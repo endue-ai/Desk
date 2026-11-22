@@ -67,7 +67,7 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
   a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
   a connection, `u` adds one from a URI.
-- A table drags its qualified name.
+- A table drags its qualified name; a PostgreSQL connection lists its server's databases ([`databases.md`](databases.md)).
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
 kinds in `schema/pg/`), `view-tree.js`.
@@ -100,6 +100,10 @@ Modules: `features/objects/`.
 
 A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
 
+## Roles and privileges
+
+What a role may do and why, and its privileges changed by the exact script: [`privileges.md`](privileges.md).
+
 ## Console
 
 - As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
@@ -120,8 +124,7 @@ A PostgreSQL table created and changed in a form that shows its script first: [`
   anywhere, ask first.
 - Cancel, or Escape while a run goes on, cancels PostgreSQL's statement on the server (`db.cancel`), and sends
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
-  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
-  (`statement_timeout`).
+  second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server (`statement_timeout`).
 - On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
   sees (ADR 0320): [`sessions.md`](sessions.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
@@ -189,8 +192,7 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
 ## Editing
 
 - On a table's view, or a console's plain SELECT of one table: change a cell (Enter or F2, `n` for NULL), add a
-  row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR
-  0115).
+  row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR 0115).
 - Preview (`p`) shows their SQL; Submit (`Mod+Enter`) runs them in one transaction keyed on the primary key and
   reads the rows again, and a failure rolls all of them back.
 - Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
@@ -266,8 +268,7 @@ Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd
   stops that. What another role's session hides from this one (without `pg_read_all_stats`) is counted.
 - Cancel a statement (`pg_cancel_backend`, `c`) or end a session (`pg_terminate_backend`, `e`): always
   asked first with its statement shown, production named first; refused on a read-only connection; the
-  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole
-  statement.
+  server's refusal said in its words (ADR 0290). Keys: arrows, Home and End select, Enter shows the whole statement.
 
 Modules: `features/activity/`.
 
@@ -336,8 +337,7 @@ Looking for a value across a connection's tables, with its limits: [`search.md`]
 
 - A form per signature of a PostgreSQL function or procedure, opened from the explorer (`x` on its row under
   Routines, or Run with its arguments, first in the row's menu) or the palette (a name, then the signature of
-  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in
-  words.
+  an overloaded one); aggregates, window and trigger functions and those taking `internal` are refused in words.
 - A row per argument from `pg_proc` with its mode, type and default, edited by its type's cell editor (ADR
   0287), NULL and DEFAULT as choices (DEFAULT only where one is declared, and an unnamed argument only at
   the end), VARIADIC as the list of its elements, a polymorphic one with the type it is given as; OUT and

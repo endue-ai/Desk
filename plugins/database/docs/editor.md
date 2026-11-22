@@ -48,3 +48,26 @@ Modules: `sql/layout/`, `console-run.js`, `console-files.js`.
   checked.
 
 Modules: `diagnose/`, `features/problems/`, `sql/parse/`, `view-editor.js`.
+
+## SQL warnings
+
+- Beside the problems, a PostgreSQL console marks statements the server runs that are likely mistakes, as
+  warnings (ADR 0328), each with its identifier under the message: `null-comparison` (`= NULL`, `<> NULL`,
+  `CASE x WHEN NULL`), `join-without-condition` (tables side by side that no condition links, `ON true`, a
+  NATURAL JOIN with no column in common), `select-star` (in a view or an INSERT ... SELECT), `column-cast`
+  (a column the server casts to compare it), `not-in-null` (NOT IN over a NULL or a nullable column),
+  `update-without-where`, `delete-without-where`, `limit-without-order`, `function-on-indexed-column`,
+  `insert-without-columns` and `server-signal` (`pg_cancel_backend`, `pg_terminate_backend`).
+- What needs the schema (types, NOT NULL, indexes) is read from the schema cache only, and nothing is said
+  where it cannot tell.
+- A fix only where the rewrite is certain: `IS NULL` and `IS NOT NULL`, and an INSERT's column list from the
+  cached columns. It is the message's button, a key in the list (`Mod+.`), and Database: fix the SQL warning
+  at the caret; a fix whose text changed since the check is refused.
+- `problems-warnings` turns them all off and `problems-warnings-off` lists identifiers to leave out.
+  `-- endue-ignore [identifiers]` turns them off for its line, or for the next line when it stands alone.
+  A statement that ran keeps its warnings; the run's confirmations are unchanged.
+- A console statement that calls `pg_cancel_backend` or `pg_terminate_backend` runs as a change: a read-only
+  connection refuses it, production and agents ask first.
+
+Modules: `diagnose/warnings.js`, `diagnose/warn-*.js`, `diagnose/ignore.js`, `sql/classify.js`.
+

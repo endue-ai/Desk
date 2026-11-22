@@ -40,6 +40,19 @@ header .tag {
   display: none;
 }
 
+/* The database a PostgreSQL console or table view is on (PG-13): a quiet button at the actions'
+   size that switches it, cut short before it pushes the actions out. */
+#database {
+  --desk-button-height: var(--desk-control-xs);
+  --desk-button-padding-x: var(--desk-space-2);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 20%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The actions take the room the title leaves; the ones that do not fit are behind More, so the
    row's width never depends on them. They are the design system's buttons at its smallest size. */
 nav {

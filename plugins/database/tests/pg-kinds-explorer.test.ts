@@ -47,7 +47,10 @@ describe("PG-50's kinds in the explorer", () => {
     await until(m, () => row(m, "Server", shopRow));
     const passed = runs(m);
     expect(passed).toBeGreaterThan(0);
-    expect(children(m, shopRow)).toEqual(["public", "sales", "Database · shop", "Server"]);
+    // PG-13: under the connection's own database, the first of its server's and open.
+    expect(children(m, shopRow)).toEqual(["shop · the connection's"]);
+    const own = row(m, "shop", shopRow) as Node;
+    expect(children(m, own)).toEqual(["public", "sales", "Database · shop", "Server"]);
 
     // Under a schema, after PG-06's folders.
     const pub = await open(m, "Shop", "public");

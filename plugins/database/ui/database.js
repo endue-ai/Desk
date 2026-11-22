@@ -18,6 +18,7 @@ import { loadConnections, newId, normalize, saveConnections } from "./connection
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
 import { createExecutor } from "./execute.js";
@@ -27,7 +28,7 @@ import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
 import { createKeychain } from "./keychain.js";
-import { createManager } from "./manage.js";
+import { createDatabasesManager } from "./manage-databases.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
@@ -127,8 +128,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const changed = () => view.explorer(explorer.rows());
   // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
   const keychain = createKeychain(bridge, () => changed());
-  /** @type {ReturnType<typeof createManager>} */
-  const manager = createManager({
+  const manager = createDatabasesManager({
     bridge,
     view,
     pick,
@@ -189,6 +189,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ok: !s.error,
           summary: summaryOf(execution, s.index),
           ...(target.consoleId ? { console: target.consoleId } : {}),
+          ...(conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },
