@@ -37,7 +37,10 @@ own outcome?
 
 Chosen option: "`db.script`", because it removes the cost that was measured (the bridge crossing and
 the hand-over to the session's task) and changes nothing the server sees: each statement is still
-Parse, Bind, Describe and Execute, then Sync, one after another on the same connection.
+Parse, Bind, Describe and Execute, then Sync, one after another on the same connection. Inside a
+script a statement's Sync goes out in the same write as the next statement's messages, so a statement
+costs one round trip to the server instead of two, as one `psql` statement does; the ReadyForQuery
+that answers it, and a notice or FATAL raised at that statement's commit, stay that statement's.
 
 * `db.script { sessionId, statements: [{ sql, params?, paramTypes? }], goOn?, pageRows?, pageBytes? }`
   runs the statements in order, each as `db.run` runs one, and answers `{ pages, cancelled?, failure? }`:
@@ -70,7 +73,8 @@ Parse, Bind, Describe and Execute, then Sync, one after another on the same conn
 
 ### Confirmation
 
-`crates/desk-pg/tests/live_script.rs` runs scripts against a real server: pages and notices in order,
+`crates/desk-pg/tests/live_script.rs` runs scripts against a real server: pages and notices in order
+(a notice raised at a statement's commit included),
 the first error stopping unless `goOn`, a result with pages left and a COPY in stopping open, a
 transaction kept, a cancel stopping the script, a FATAL as its page. `packages/bridge/src/
 stub-db-script.test.ts` checks the browser stub's copy. `plugins/database/tests/pg-script-batches.test.ts`
@@ -83,6 +87,8 @@ outcome, error, position and notices, and that Cancel stops a batch.
 
 * Good, because nothing changes on the server's side.
 * Neutral, because each statement still waits for the server once: what `psql` does too.
+* Bad, because the Sync sent with the next statement needs care: what it answers belongs to the
+  statement before (`crates/desk-pg/src/script.rs`).
 
 ### Pipeline with one Sync
 
