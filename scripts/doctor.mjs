@@ -54,11 +54,11 @@ export async function checkSession({
     return {
       ok: false,
       state: "session-ended",
-      detail: `user lookup returned ${user ?? "an error"}`,
+      detail: "the session account lookup failed",
     };
   }
   if (await succeeds(() => lookup(HOST), timeoutMs)) {
-    return { ok: true, state: "healthy", detail: `user ${user}, ${HOST} resolves` };
+    return { ok: true, state: "healthy", detail: `account lookup succeeded and ${HOST} resolves` };
   }
   if (await succeeds(() => resolve4(HOST), timeoutMs)) {
     return {

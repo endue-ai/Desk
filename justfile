@@ -211,8 +211,7 @@ doctor:
 lanes *args="status":
     node scripts/lanes.mjs {{args}}
 
-# For every repository under ~/Project/endue (`--root <folder>` for another); `--block '<text>'` adds a
-# personal string to refuse, kept in this machine's config only. Sessions and task-start check it too.
+# Applies under ~/Project/endue by default. Use `--root <folder>` to select another folder.
 # Install the commit identity endue-team and its hooks on this machine (AGENTS.md, Boundaries)
 [positional-arguments]
 identity *args:
