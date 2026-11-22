@@ -222,3 +222,40 @@ fn a_fatal_error_ends_the_script_and_its_page_says_so() {
     assert_eq!(fatal.severity(), "FATAL");
     until(|| session.closed().then_some(()));
 }
+
+#[test]
+fn a_notice_raised_at_a_statement_s_commit_stays_with_it() {
+    let config = live!(VAR);
+    let (opened, events) = open(&config);
+    let session = &opened.session;
+    run(session, "CREATE TEMP TABLE t540_e (id int)");
+    run(
+        session,
+        "CREATE FUNCTION pg_temp.t540_said() RETURNS trigger LANGUAGE plpgsql AS \
+         $$ BEGIN RAISE NOTICE 'committed %', NEW.id; RETURN NULL; END $$",
+    );
+    run(
+        session,
+        "CREATE CONSTRAINT TRIGGER t540_at_commit AFTER INSERT ON t540_e \
+         DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pg_temp.t540_said()",
+    );
+    let before = events.all().len();
+    let done = session
+        .script(
+            script(&[
+                "INSERT INTO t540_e VALUES (1)",
+                "SELECT 1",
+                "INSERT INTO t540_e VALUES (2)",
+            ]),
+            Limits::default(),
+            false,
+        )
+        .expect("the script runs");
+    let said: Vec<Vec<&str>> = done
+        .pages
+        .iter()
+        .map(|p| p.notices.iter().map(|n| n.message()).collect())
+        .collect();
+    assert_eq!(said, [vec!["committed 1"], vec![], vec!["committed 2"]]);
+    assert_eq!(events.all().len(), before, "none also as an event");
+}

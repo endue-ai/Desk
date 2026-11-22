@@ -230,11 +230,11 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         }
       }
       const next = start + done.length;
-      const failure = answer.failure;
-      if (failure)
-        done.push(
-          caught(job, next, Object.assign(new Error(failure.message), failure), [], plan.timeoutMs),
-        );
+      const failure =
+        answer.failure && Object.assign(new Error(answer.failure.message), answer.failure);
+      // A failure after the last statement's answer (its Sync) only says the session went.
+      if (failure && done.length === group.length) failed(job, failure);
+      else if (failure) done.push(caught(job, next, failure, [], plan.timeoutMs));
       // The backstop's cancel stopped it between statements: the next one is the one it stopped.
       else if (
         answer.cancelled &&

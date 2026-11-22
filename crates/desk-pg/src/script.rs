@@ -49,6 +49,8 @@ impl Task {
             None if self.unsynced > 0 => self.last_sync(&mut script).await,
             end => end,
         };
+        // A stop that cut a statement short: it may still run on the server (ADR 0339).
+        self.interrupted = matches!(end, Some(End::Stopped));
         script.cancelled = end.is_none() && self.shared.cancelled.load(Ordering::SeqCst);
         self.heard = None;
         let _ = reply.send(Ok(script));
@@ -68,6 +70,8 @@ impl Task {
             }
             self.heard = Some((Vec::new(), 0));
             let outcome = self.run_statement(statement, limits).await;
+            // An end before the last Sync's answer was read is the last statement's, not this one's.
+            let settling = self.unsynced > 0;
             self.apply_settled(&mut script.pages);
             let open = !matches!(self.open, Open::None);
             self.shared.open.store(open, Ordering::SeqCst);
@@ -80,18 +84,7 @@ impl Task {
                     return None;
                 }
                 Err(Fail::End(ended)) => {
-                    // The server's FATAL is the statement's answer; any other end is a failure.
-                    let fatal = matches!(ended, End::Server).then(|| self.fatal.clone());
-                    match fatal.flatten() {
-                        Some(error) => script.pages.push(self.noticed(Page {
-                            error: Some(error),
-                            ..Page::default()
-                        })),
-                        None => {
-                            let _ = self.with_notices(Err(Error::Closed));
-                            script.failure = Some(failure(&ended));
-                        }
-                    }
+                    self.ended(script, &ended, settling);
                     return Some(ended);
                 }
             };
@@ -119,8 +112,28 @@ impl Task {
                 None
             }
             Err(Fail::End(ended)) => {
-                script.failure = Some(failure(&ended));
+                self.ended(script, &ended, true);
                 Some(ended)
+            }
+        }
+    }
+
+    /// The connection ended: the server's FATAL is the answer of the statement it came in (the
+    /// last one's when it came with that statement's Sync); any other end is a failure.
+    fn ended(&mut self, script: &mut Script, ended: &End, settling: bool) {
+        let fatal = matches!(ended, End::Server).then(|| self.fatal.clone());
+        match (fatal.flatten(), script.pages.last_mut()) {
+            (Some(error), Some(last)) if settling => {
+                last.error = Some(error);
+                let _ = self.with_notices(Err(Error::Closed));
+            }
+            (Some(error), _) => script.pages.push(self.noticed(Page {
+                error: Some(error),
+                ..Page::default()
+            })),
+            (None, _) => {
+                let _ = self.with_notices(Err(Error::Closed));
+                script.failure = Some(failure(ended));
             }
         }
     }
@@ -134,12 +147,23 @@ impl Task {
         let own = self.heard.replace((Vec::new(), 0));
         let settled = self.settle().await;
         let (notices, skipped) = std::mem::replace(&mut self.heard, own).unwrap_or_default();
-        self.settled = Some(Settled {
-            transaction: settled?,
-            notices,
-            skipped,
-        });
-        Ok(())
+        match settled {
+            Ok(transaction) => {
+                self.settled = Some(Settled {
+                    transaction,
+                    notices,
+                    skipped,
+                });
+                Ok(())
+            }
+            Err(fail) => {
+                // Nothing will carry them: they are the session's own.
+                for notice in notices {
+                    (self.sink)(crate::session::Event::Notice(notice));
+                }
+                Err(fail)
+            }
+        }
     }
 
     /// What the last deferred Sync answered goes on the page of the statement it followed.
