@@ -358,10 +358,10 @@ fn out(line: &str) {
 fn unreachable(path: &Path, why: &io::Error) -> String {
     match why.kind() {
         io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused => {
-            format!("no desk at {} (is endue Desk running?)", path.display())
+            format!("no endue app at {} (is endue running?)", path.display())
         }
         io::ErrorKind::Unsupported => why.to_string(),
-        _ => format!("cannot reach the desk at {}: {why}", path.display()),
+        _ => format!("cannot reach endue at {}: {why}", path.display()),
     }
 }
 

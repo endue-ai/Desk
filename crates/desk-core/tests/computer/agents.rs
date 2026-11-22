@@ -230,7 +230,7 @@ fn no_agent_operates_the_desk_itself() {
     let desk = std::process::id() as i32;
     let fake = Arc::new(desk_computer::fake::FakeComputer::new().with_apps(vec![app(
         desk,
-        "endue Desk",
+        "endue",
         "ai.endue.desk",
         true,
     )]));

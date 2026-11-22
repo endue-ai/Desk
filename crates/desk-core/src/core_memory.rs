@@ -29,7 +29,7 @@ impl Core {
     pub fn with_memory_dir(mut self, dir: PathBuf) -> Self {
         match Memory::open(&dir) {
             Ok(memory) => self.memory = Some(Arc::new(memory)),
-            Err(why) => eprintln!("endue Desk: no memory ({why})"),
+            Err(why) => eprintln!("endue: no memory ({why})"),
         }
         self
     }
@@ -51,7 +51,7 @@ impl Core {
             .memory
             .as_ref()?
             .record(asked, answered, steps, &writer(caller))
-            .map_err(|why| eprintln!("endue Desk: an episode was not kept ({why})"))
+            .map_err(|why| eprintln!("endue: an episode was not kept ({why})"))
             .ok()?;
         self.memory_changed(
             MemoryChange::Recorded,

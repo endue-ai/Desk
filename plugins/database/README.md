@@ -5,8 +5,7 @@ public SDK only. PostgreSQL runs on the core's sessions (`db.*`, ADR 0281), one 
 the others run their own client by `proc.spawn`, never a shell, unable to reach past the database (ADR 0038). It keeps
 no password; the desk may keep a PostgreSQL one in the OS keychain (ADR 0311); [its connections file](docs/connections-file.md) holds none. [Features](docs/features.md). PostgreSQL 15 to 19 are the supported servers, each tested in a container by `just test-pg-versions` (ADR 0351).
 
-`Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
-`endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`, `.end-session`,
+`Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and `endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`, `.end-session`,
 `.maintenance`, `.routine`, `.create-table`, `.change-table`, `.paste`, the objects' and the privileges' commands serve
 agents (ADR 0088; a cancel, an end, maintenance, a routine's write, an object's or a privilege's change reach the server after the person's yes, ADR 0290, 0293, 0312, 0330; a paste or a table form waits for the person, ADR 0324).
 
@@ -35,6 +34,7 @@ path by a case-sensitive pattern under one root: only `*` covers a program a set
 ```bash
 pnpm exec vitest run plugins/database; just test-e2e database.spec.ts  # packages/runtime/e2e: the page at 402×305, 643×339, 900×600
 ENDUE_DB_TEST_POSTGRES=postgresql://... ENDUE_DB_TEST_MYSQL=mysql://... pnpm exec vitest run plugins/database/tests/live.test.ts  # PostgreSQL through the core (tests/core-bridge.ts; ENDUE_DB_TEST_BRIDGE=<built db-bridge> reuses a build)
+just perf-database  # the budgets of a million-row read, 10,000 tables, 1,000 columns and 1 MB of SQL, each with its measurement (e2e/perf/database.json, ADR 0362)
 cargo run -p desk-cli -- plugin validate plugins/database
 cargo test -p desk-core --test builtin_declarations  # every scope the code uses is declared
 ```
