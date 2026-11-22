@@ -1,6 +1,6 @@
 # endue CLI
 
-The public `desk-cli` crate builds `endue` and its compatibility command `desk` from the same implementation and release. Both accept the same arguments, socket protocol, overrides and exit codes. The `desk` entry point stays available throughout the current major release line (ADR 0333).
+The public `desk-cli` crate builds `endue` and its compatibility command `desk` from the same implementation and release. Both accept the existing `desk` commands and share their socket protocol, overrides and exit codes. The `desk` entry point stays available throughout the current major release line (ADR 0333).
 
 ## Installation
 
