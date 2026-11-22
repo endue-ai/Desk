@@ -8000,6 +8000,9 @@ pub struct FsWriteParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub create_dirs: Option<bool>,
+    /// Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub append: Option<bool>,
     pub scope: FsWritePermission,
 }
 

@@ -69,12 +69,12 @@ function syncTest({ id, name }: PluginOptions): string {
 
 function readme(options: PluginOptions, entry: string): string {
   return [
-    ...heading(options, "A Desk connector."),
+    ...heading(options, "An endue connector."),
     ...buildSection(entry),
     "## What it does",
     "",
-    "`src/lib.rs` implements the `desk:connector` world in `wit/` (`specs/wit` of the Desk repository).",
-    "Desk calls `sync` every `sync.intervalSeconds` and stamps each item's `source`; this one returns",
+    "`src/lib.rs` implements the `desk:connector` world in `wit/` (`specs/wit` of the endue repository).",
+    "endue calls `sync` every `sync.intervalSeconds` and stamps each item's `source`; this one returns",
     "one note the first time and nothing after. `query` and `act` answer `unsupported`, `status` is ok.",
     "Return your app's items instead, declare what each instance needs under",
     "`connector.instanceSettings`, and every permission the code uses under `permissions`.",
@@ -100,7 +100,7 @@ function readme(options: PluginOptions, entry: string): string {
 }
 
 function libRs({ name }: PluginOptions): string {
-  return `//! ${oneLine(name)}: a Desk connector, a Wasm component of the \`desk:connector\` world (\`wit/\`). Desk
+  return `//! ${oneLine(name)}: an endue connector, a Wasm component of the \`desk:connector\` world (\`wit/\`). endue
 //! calls \`sync\` on the manifest's interval and stamps each item's \`source\`.
 
 wit_bindgen::generate!({

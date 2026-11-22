@@ -26,6 +26,7 @@ fn initialize_answers_in_the_clients_version_with_what_the_server_serves() {
     let (_mcp, result) = Mcp::initialized(options(), "2025-06-18");
     assert_eq!(result["protocolVersion"], "2025-06-18");
     assert_eq!(result["serverInfo"]["name"], SERVER_NAME);
+    assert_eq!(result["serverInfo"]["title"], "endue");
     assert_eq!(result["capabilities"]["tools"]["listChanged"], false);
     assert_eq!(result["capabilities"]["resources"]["listChanged"], true);
     assert!(
@@ -71,14 +72,9 @@ fn without_a_desk_a_tool_call_says_so_and_how_to_fix_it() {
             output["error"]["message"]
                 .as_str()
                 .unwrap()
-                .contains("no desk at")
+                .contains("no endue app at")
         );
-        assert!(
-            output["hint"]
-                .as_str()
-                .unwrap()
-                .contains("Start endue Desk")
-        );
+        assert!(output["hint"].as_str().unwrap().contains("Start endue"));
         assert_eq!(output["caller"], format!("agent:{AGENT}"));
     }
     let resources = mcp.request("resources/list", json!({}));

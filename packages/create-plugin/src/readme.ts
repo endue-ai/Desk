@@ -16,21 +16,21 @@ export function heading({ id, name, description }: PluginOptions, otherwise: str
   ];
 }
 
-/** "Check and test it": `desk plugin validate` and `desk plugin test`, and what the test runs on. */
+/** "Check and test it": `endue plugin validate` and `endue plugin test`, and what the test runs on. */
 export function checkSection(test: string): string[] {
   return [
     "## Check and test it",
     "",
-    "From the Desk repository:",
+    "From the plugin folder:",
     "",
     `${FENCE}bash`,
-    "cargo run -p desk-cli -- plugin validate /path/to/this/folder",
-    "cargo run -p desk-cli -- plugin test /path/to/this/folder",
+    "endue plugin validate .",
+    "endue plugin test .",
     FENCE,
     "",
     test,
     "",
-    "Guide: `docs/plugins/authoring.md` in the Desk repository.",
+    "Guide: `docs/plugins/authoring.md` in the endue repository.",
     "",
   ];
 }
@@ -40,7 +40,7 @@ export function devSection(after: string): string[] {
   return [
     "## Run it",
     "",
-    "From the Desk repository, run Desk with this folder as a dev plugin:",
+    "From the endue repository, run endue with this folder as a dev plugin:",
     "",
     `${FENCE}bash`,
     "DESK_DEV_PLUGINS=/path/to/this/folder just dev",

@@ -54,7 +54,7 @@ pub fn begin(data: &Path, core: Core, crash: &Crash) -> (Core, LastStart) {
     }
     match reason {
         Some(reason) => {
-            eprintln!("endue Desk: safe mode ({reason:?}): only the desk.* policy plugins run");
+            eprintln!("endue: safe mode ({reason:?}): only the desk.* policy plugins run");
             (core.with_safe_mode(reason), last)
         }
         None => (core, last),
@@ -119,7 +119,7 @@ pub fn relaunch(release: impl FnOnce()) {
 /// [`relaunch`], the new desk hearing `env` as well (a start for a stall says when it was, ADR 0202).
 pub fn relaunch_with(release: impl FnOnce(), env: &[(&str, String)]) {
     let Ok(binary) = std::env::current_exe() else {
-        eprintln!("endue Desk: cannot find its own binary to start again");
+        eprintln!("endue: cannot find its own binary to start again");
         return;
     };
     let args: Vec<OsString> = std::env::args_os()
@@ -133,7 +133,7 @@ pub fn relaunch_with(release: impl FnOnce(), env: &[(&str, String)]) {
         .envs(env.iter().map(|(key, value)| (key, value)))
         .spawn();
     if let Err(why) = started {
-        eprintln!("endue Desk: could not start again ({why})");
+        eprintln!("endue: could not start again ({why})");
     }
     std::process::exit(0);
 }

@@ -82,6 +82,45 @@ describe("cefAdapter", () => {
     ]);
   });
 
+  it("answers a request the shell refuses as its failed call, never a rejection (#566)", async () => {
+    const { native, sent, reply } = fakeNative();
+    const adapter = cefAdapter(cefHost(native));
+    const request = { id: 7, method: "cmd.register", params: { id: "x.y" } } as never;
+    const answer = adapter.call(request, "endue.notes");
+    reply({ id: sent[0]?.id, error: "not a bridge request: data did not match any variant" });
+    await expect(answer).resolves.toEqual({
+      id: 7,
+      ok: false,
+      error: {
+        code: "invalid_params",
+        message: "not a bridge request: data did not match any variant",
+      },
+    });
+    // Any other refusal of the shell answers too, as the desk's own failure.
+    const other = adapter.call({ id: 8, method: "plugin.list", params: {} } as never);
+    reply({ id: sent[1]?.id, error: "this page may not use the bridge" });
+    await expect(other).resolves.toEqual({
+      id: 8,
+      ok: false,
+      error: { code: "internal", message: "this page may not use the bridge" },
+    });
+  });
+
+  it("lets a client's caller hear a refused request as a bridge error (#566)", async () => {
+    const adapter = cefAdapter({
+      invoke: async () => {
+        throw new Error("not a bridge request: missing field `title`");
+      },
+      listen: async () => () => {},
+    });
+    const client = new BridgeClient(adapter);
+    await expect(client.call("perm.query", {})).rejects.toMatchObject({
+      name: "BridgeCallError",
+      method: "perm.query",
+      code: "invalid_params",
+    });
+  });
+
   it("hears the core's events on bridge://event until the listener stops, even before it is set", async () => {
     const { native, reply } = fakeNative();
     const adapter = cefAdapter(cefHost(native));
