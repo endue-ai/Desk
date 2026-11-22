@@ -3,9 +3,12 @@
 // feature merge without a conflict.
 
 export { feature as activity } from "./activity/index.js";
+export { feature as assist } from "./assist/index.js";
+export { feature as audit } from "./audit/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as chart } from "./chart/index.js";
+export { feature as check } from "./check/index.js";
 export { feature as compare } from "./compare/index.js";
 export { feature as compareSchema } from "./compare-schema/index.js";
 export { feature as completion } from "./completion/index.js";
@@ -29,8 +32,14 @@ export { feature as paste } from "./paste/index.js";
 export { feature as plans } from "./plans/index.js";
 export { feature as privileges } from "./privileges/index.js";
 export { feature as problems } from "./problems/index.js";
+export { feature as reconnect } from "./reconnect/index.js";
+export { feature as rename } from "./rename/index.js";
 export { feature as routines } from "./routines/index.js";
+export { feature as rows } from "./rows/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";
 export { feature as search } from "./search/index.js";
 export { feature as sourceSearch } from "./source-search/index.js";
 export { feature as tableDesign } from "./table-design/index.js";
+export { feature as transactions } from "./transactions/index.js";
+export { feature as transfer } from "./transfer/index.js";
+export { feature as tunnel } from "./tunnel/index.js";

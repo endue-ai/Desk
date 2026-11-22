@@ -12,7 +12,11 @@
 # (ADR 0144): the .app bundle's binary on macOS, target/debug/endue-desk(.exe) elsewhere. Nothing is
 # installed or checked then.
 # Either way the app starts with a temp HOME and e2e/fixtures/init.yaml, the script waits for the ready
-# line it prints (desk_ready) and quits it with SIGTERM. Exits 0 only when every step passed;
+# line it prints (desk_ready) and quits it with SIGTERM. With DESK_SMOKE_POSTGRES set (a
+# postgresql:// URI, the password in PGPASSWORD), it also opens the database plugin and runs one
+# query on that server through the desk CLI (DESK_SMOKE_CLI, else the build's `desk`) before quitting
+# (e2e/smoke/database-query.mjs; skipped with one line on Windows, which has no desk socket yet).
+# Exits 0 only when every step passed;
 # otherwise it names the step that failed. `just smoke` runs it; the e2e workflow runs that under
 # xvfb-run, and release-build.yml runs it on each package it builds.
 set -euo pipefail
@@ -177,10 +181,17 @@ err="$results/smoke.stderr.log"
 # A short HOME: on macOS the desk socket's path under Library/Application Support must fit in 104 bytes.
 home="$(mktemp -d /tmp/desk-smoke-XXXXXX)"
 echo "smoke: $step $app (HOME=$home)"
+pgpassfile=""
+if [ -n "${DESK_SMOKE_POSTGRES:-}" ]; then
+  seeded="$(node "$root/e2e/smoke/database-query.mjs" seed "$home")" || fail "the database seed"
+  pgpassfile="${seeded#PGPASSFILE=}"
+fi
 (
   # The data folder follows HOME; nothing from the runner's desk setup leaks in.
   while read -r name; do unset "$name"; done < <(compgen -e | grep -E '^(XDG_|DESK_)' || true)
   export HOME="$home" DESK_INIT="$root/e2e/fixtures/init.yaml"
+  if [ -n "$pgpassfile" ]; then export PGPASSFILE="$pgpassfile"; fi
+  unset PGPASSWORD
   # Runners have no FUSE: the AppImage unpacks itself to a temp folder and runs from there.
   if [[ "$app" == *.AppImage ]]; then export APPIMAGE_EXTRACT_AND_RUN=1; fi
   exec "$app"
@@ -196,6 +207,21 @@ for ((tick = 0; tick < ready_within * 10; tick++)); do
 done
 grep -q '^desk ready' "$out" || fail "no ready line within $ready_within s"
 echo "smoke: $(grep -m1 '^desk ready' "$out")"
+
+if [ -n "${DESK_SMOKE_POSTGRES:-}" ]; then
+  step="database"
+  cli="${DESK_SMOKE_CLI:-}"
+  if [ -z "$cli" ]; then
+    cli="$root/target/debug/desk"
+    [ -x "$cli" ] || cargo build -q -p desk-cli --bin desk --manifest-path "$root/Cargo.toml" ||
+      fail "cargo build of the desk CLI exited $?"
+  fi
+  (
+    while read -r name; do unset "$name"; done < <(compgen -e | grep -E '^(XDG_|DESK_SOCKET)' || true)
+    export HOME="$home"
+    node "$root/e2e/smoke/database-query.mjs" run "$cli"
+  ) || fail "the database plugin's query (see above)"
+fi
 
 step="quit"
 kill -TERM "$pid"

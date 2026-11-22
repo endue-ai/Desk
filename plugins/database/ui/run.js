@@ -4,6 +4,8 @@
 // cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes mysql cancel
 // the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
 // client carries on with the next statement when a killed query does not fail (SLEEP() returns 1).
+// On Windows the core ends a child whatever the signal (no SIGINT reaches a process without a
+// console), so there one kill is sent at once.
 // A non-zero exit is not an error here: the engine reads what the client said. A long program
 // (pg_dump, features/backup/) is heard as it writes and cancelled by its own signal.
 
@@ -41,14 +43,17 @@ export class RunError extends Error {
  * @param {Pick<PluginBridge, "call" | "onEvent">} bridge
  * @param {{
  *   onBusy?(running: number): void,
+ *   platform?: import("./clients.js").Platform,
  *   searchPath?(): string,
  *   now?(): number,
  *   setTimer?(fn: () => void, ms: number): unknown,
  *   clearTimer?(timer: unknown): void,
- * }} [options] `searchPath` is the PATH tried when a program is not found on the desk's own.
+ * }} [options] `searchPath` is the PATH tried when a program is not found on the desk's own;
+ *   `platform` how a program is stopped (Windows: one kill).
  */
 export function createRunner(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
+  const killAtOnce = options.platform === "windows";
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -130,7 +135,7 @@ export function createRunner(bridge, options = {}) {
       const decision = await bridge
         .call("perm.request", {
           permission: scope,
-          reason: `To run ${command}, the database client`,
+          reason: invocation.reason ?? `To run ${command}, the database client`,
         })
         .catch(() => ({ granted: false }));
       if (!decision.granted) throw new RunError(`Not allowed to run ${command}.`, "refused");
@@ -194,6 +199,10 @@ export function createRunner(bridge, options = {}) {
           flags[flag] = true;
           if (stopping) return;
           stopping = true;
+          if (killAtOnce) {
+            void kill(procId, invocation.command, "kill");
+            return;
+          }
           void kill(procId, invocation.command, "int");
           timers.push(setTimer(() => void kill(procId, invocation.command, "kill"), GRACE_MS));
         },

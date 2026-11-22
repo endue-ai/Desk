@@ -21,7 +21,15 @@
       <h1 id="title">Database</h1>
       <span id="badge" class="tag" hidden></span>
       <span id="session" role="status" hidden><span id="session-label"></span><span class="desk-dot"></span></span>
+      <button type="button" id="session-reconnect" data-act="reconnectSession" title="Open a new session now; nothing of the lost one is run again" class="desk-btn desk-btn-quiet" hidden>Reconnect</button>
+      <span id="transaction-bar" hidden>
+        <button type="button" id="tx-mode" data-act="toggleTransactionMode" title="Auto commit: each statement commits by itself. Manual commit: the first statement begins a transaction, kept until Commit or Rollback" class="desk-btn desk-btn-quiet">Auto commit</button>
+        <span id="transaction" hidden></span>
+        <button type="button" id="tx-commit" data-act="commitTransaction" title="Commit the console's transaction (Mod+Shift+Y)" class="desk-btn desk-btn-quiet" hidden>Commit</button>
+        <button type="button" id="tx-rollback" data-act="rollbackTransaction" title="Roll back the console's transaction (Mod+Shift+S)" class="desk-btn desk-btn-quiet" hidden>Rollback</button>
+      </span>
       <button type="button" id="database" data-act="switchDatabase" title="The database it runs on: pick another of its server" class="desk-btn desk-btn-quiet" hidden></button>
+      <span id="session-options" title="The role and the search path each session of this connection starts with" hidden></span>
       <nav id="actions" aria-label="Run" hidden>
         <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)" class="desk-btn desk-btn-quiet">Run</button>
         <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)" class="desk-btn desk-btn-quiet">Run all</button>
@@ -42,6 +50,7 @@
       <desk-menu id="actions-menu" label="More actions"></desk-menu>
       <span id="busy" role="img" aria-label="Running" hidden>…</span>
       <desk-progress id="reading" label="Reading the results" cancelable hidden></desk-progress>
+      <desk-progress id="copying" label="Copying" cancelable hidden></desk-progress>
     </header>
     <main>
       <aside id="side" aria-label="Connections">
@@ -126,7 +135,40 @@
         <label>Colour <select id="f-color" class="desk-field"></select></label>
         <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
         <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> Remember the password in the keychain</label>
-        <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it.</p>
+        <label data-for="postgresql">Password command <input id="f-passwordCommand" placeholder="/usr/local/bin/db-token --user app (optional)" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+        <label class="check" data-for="postgresql"><input type="checkbox" id="f-pooler" class="desk-check" /> Through a pooler in transaction mode: keep nothing on the session</label>
+        <details id="f-tunnel" data-for="postgresql">
+          <summary>SSH tunnel</summary>
+          <div class="options">
+            <label>SSH host <input id="f-sshHost" placeholder="bastion.example.com (empty: no tunnel)" spellcheck="false" class="desk-field" /></label>
+            <label>SSH port <input id="f-sshPort" inputmode="numeric" placeholder="22" class="desk-field" /></label>
+            <label>SSH user <input id="f-sshUser" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label>Sign in with
+              <select id="f-sshAuth" class="desk-field">
+                <option value="key">a key file</option>
+                <option value="agent">the SSH agent</option>
+                <option value="password">a password, asked when connecting</option>
+              </select>
+            </label>
+            <label>SSH key file <input id="f-sshKey" placeholder="~/.ssh/id_ed25519" spellcheck="false" class="desk-field" /></label>
+            <label>Jump host <input id="f-sshJump" placeholder="deploy@gate.example.com:22 (optional)" spellcheck="false" class="desk-field" /></label>
+            <p class="hint">The desk opens the tunnel itself, for each session and its own: no port is opened on this computer. The host and the database are reached from the SSH host. The first time, you check the server's key fingerprint; a key that changes later is refused. No key, passphrase or password is kept with the connection.</p>
+          </div>
+        </details>
+        <details id="f-options" data-for="postgresql">
+          <summary>Session options</summary>
+          <div class="options">
+            <label>Search path <input id="f-searchPath" placeholder="app, public" spellcheck="false" class="desk-field" /></label>
+            <label>Role <input id="f-role" placeholder="reporting" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label>Time zone <input id="f-timeZone" placeholder="UTC" spellcheck="false" class="desk-field" /></label>
+            <label>Lock timeout <input id="f-lockTimeout" placeholder="5s" spellcheck="false" class="desk-field" /></label>
+            <label>Idle in transaction <input id="f-idleTimeout" placeholder="10min" spellcheck="false" class="desk-field" /></label>
+            <label>Application name <input id="f-applicationName" placeholder="endue Desk" spellcheck="false" class="desk-field" /></label>
+            <label>Startup script <textarea id="f-startup" rows="3" placeholder="SET work_mem = '64MB';" spellcheck="false" class="desk-field"></textarea></label>
+            <p class="hint">Every session of this connection signs in with these and runs the startup script first. Empty fields keep the server's own.</p>
+          </div>
+        </details>
+        <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it; a password command prints a fresh one for each session.</p>
         <p id="form-error" class="error" role="alert"></p>
         <p id="form-note" class="note" role="status"></p>
         <p class="buttons">

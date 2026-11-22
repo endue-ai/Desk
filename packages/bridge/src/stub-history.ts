@@ -83,9 +83,18 @@ export function stubHistory(
   };
 
   return {
-    "fs.write": ({ path, content, encoding, scope }, caller) => {
+    "fs.write": ({ path, content, encoding, scope, append }, caller) => {
       allow(caller, path, scope);
-      return write(caller, path, decode(content, encoding), "fs.write");
+      if (!append) return write(caller, path, decode(content, encoding), "fs.write");
+      // An append replaces nothing, so nothing is kept (ADR 0356).
+      const old = files.get(path);
+      if (!old) throw new StubError("not_found", `${path}: no such file`);
+      const added = decode(content, encoding);
+      const bytes = new Uint8Array(old.length + added.length);
+      bytes.set(old);
+      bytes.set(added, old.length);
+      files.set(path, bytes);
+      return { bytesWritten: added.length };
     },
     "fs.history": ({ path, limit, scope }, caller) => {
       allow(caller, path, scope);

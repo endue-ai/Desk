@@ -99,6 +99,8 @@ the runtime routes `db:<sessionId>` like a socket (`owners.ts`: `db.open` claims
   the plugin, and two statements are the server's 42601. `params` are text or null, their types the
   server's inference unless `paramTypes` gives OIDs (0 infers). While an earlier result still has
   pages, `db.run` closes it first; while a statement runs, `db.run` is `invalid_params`.
+* `db.script { sessionId, statements, goOn?, pageRows?, pageBytes? }` → each statement's first page,
+  so a long script crosses the bridge once a batch instead of once a statement (ADR 0344).
 * `db.fetch { sessionId, pageRows?, pageBytes?, close? }` → the next page; `close: true` ends the result
   without reading on (Sync).
 * `db.copy { sessionId, data?, encoding?, done?, fail? }` sends `COPY ... FROM STDIN` data (`utf8` or

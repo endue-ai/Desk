@@ -246,10 +246,10 @@ jobs:
         if: runner.os == 'Linux'
         env:
           UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
-        run: e2e/smoke/verify-signature.sh "dist/endue-desk_${VERSION}_linux-x86_64.deb" "$UPDATER_PUBKEY"
+        run: e2e/smoke/verify-signature.sh dist/*_"${VERSION}"_linux-x86_64.deb "$UPDATER_PUBKEY"
       - uses: actions/upload-artifact@v7
         with:
-          name: desk-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
+          name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 7

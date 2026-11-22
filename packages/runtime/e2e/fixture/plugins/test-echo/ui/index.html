@@ -11,9 +11,10 @@
     </style>
   </head>
   <body>
-    <!-- A test-only plugin: it answers test.echo.say, runs desk commands, shows the theme, and opens
-         *.txt files for desk.files (its "file" is the text in the field). -->
+    <!-- A test-only plugin: it answers test.echo.say, runs desk commands, shows the theme and its
+         setting "loud", and opens *.txt files for desk.files (its "file" is the text in the field). -->
     <p data-testid="scheme">none</p>
+    <p data-testid="loud">unset</p>
     <button type="button" data-testid="toggle">Toggle theme</button>
     <button type="button" data-testid="notify">Notify</button>
     <input data-testid="field" aria-label="Field" />
@@ -32,6 +33,9 @@
           let current = null;
           show(ctx.theme.get());
           ctx.theme.on(show);
+          const loud = (value) => ($("loud").textContent = String(value ?? "unset"));
+          ctx.settings.onChange((setting) => setting.key === "loud" && loud(setting.value));
+          void ctx.settings.get("loud").then(loud);
           ctx.commands.on("test.echo.say", (args) => ({ said: args, by: ctx.pluginId }));
           $("toggle").addEventListener("click", async () => {
             $("out").textContent = String(await ctx.commands.run("desk.theme.toggle"));

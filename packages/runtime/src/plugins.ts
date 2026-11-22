@@ -64,7 +64,10 @@ export class PluginHost {
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
     this.#options = options;
-    this.#commands = new PluginCommands(deps.bridge);
+    this.#commands = new PluginCommands(deps.bridge, {
+      launch: (id) => this.launch(id),
+      post: (id, message) => this.#post(this.#instances.resolve(id) ?? id, message),
+    });
     this.#routes = {
       owners: this.#owners,
       commands: this.#commands,
@@ -183,15 +186,15 @@ export class PluginHost {
     return this.#greetings.next(key);
   }
 
-  /** Take a window away for the session, as `desk:close` does: its work goes on, its database
-   * sessions end (ADR 0339). A plugin's last window, or its first, takes the plugin with it. */
+  /** Take a window away for the session, as `desk:close` does: its database sessions end (ADR 0339).
+   * A plugin's last window, or its first, closes the plugin; its manifest's commands stay (#565). */
   unmount(id: string): void {
     const plugin = pluginOf(id);
     // A later window that is not open (a tab kept from an earlier session) takes nothing with it.
     if (plugin !== id && !this.#instances.has(id)) return;
     const others = this.#instances.of(plugin).filter((key) => key !== id);
     if (others.length > 0 && this.#instances.has(id)) this.#close(id);
-    else this.#unmount(plugin);
+    else this.#unmount(plugin, true);
   }
 
   /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
@@ -244,8 +247,7 @@ export class PluginHost {
   /** Mount a plugin: its surface opens now, or on its first use when it starts `asleep` (#590). */
   #mount(info: PluginInfo, asleep = false): void {
     if (info.status !== "ready" || !info.enabled || !this.#mounts(info.manifest)) return;
-    if (this.#mounted.has(info.id)) return;
-    if (this.#deps.mayMount?.(info) === false) return;
+    if (this.#mounted.has(info.id) || this.#deps.mayMount?.(info) === false) return;
     this.#mounted.set(info.id, info);
     this.#open(info, info.id, asleep);
     this.#commands.mounted(info);
@@ -280,9 +282,9 @@ export class PluginHost {
     );
   }
 
-  #unmount(id: string): void {
+  #unmount(id: string, closed = false): void {
+    this.#commands[closed ? "closed" : "unmounted"](id);
     if (!this.#mounted.delete(id)) return;
-    this.#commands.unmounted(id);
     for (const key of this.#instances.of(id)) this.#close(key);
   }
 

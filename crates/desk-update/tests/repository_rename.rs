@@ -9,13 +9,19 @@ use support::*;
 
 const OLD: &str = "endue-ai/Desk";
 const NEW: &str = "endue-ai/endue";
-const BRIDGE: &str = "1.1.0";
-const RENAMED: &str = "1.2.0";
+const INSTALLED: &str = "0.3.0";
+const BRIDGE: &str = "0.3.1";
+const RENAMED: &str = "0.4.0";
 
 fn publish(catalog: &Path, script: &Path, repo: &str, version: &str, floor: &str, key: &Key) {
     let folder = catalog.join(version);
     fs::create_dir_all(&folder).unwrap();
-    let name = format!("endue-desk_{version}_linux-x86_64.deb");
+    let app = if version == BRIDGE {
+        "endue-desk"
+    } else {
+        "endue"
+    };
+    let name = format!("{app}_{version}_linux-x86_64.deb");
     let bytes = artifact(version, DEB);
     fs::write(folder.join(&name), &bytes).unwrap();
     fs::write(
@@ -131,11 +137,11 @@ fn published_rename_catalog_installs_both_hops() {
                 Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/github-upgrade-path.mjs")
             });
         let key = Key::new();
-        publish(&root, &script, OLD, BRIDGE, "1.0.0", &key);
+        publish(&root, &script, OLD, BRIDGE, INSTALLED, &key);
         publish(&root, &script, NEW, RENAMED, BRIDGE, &key);
         fs::write(root.join("public"), key.public()).unwrap();
-        fs::write(root.join("installed"), artifact("1.0.0", DEB)).unwrap();
-        install(&root, catalog(&root), OLD, "1.0.0", BRIDGE);
+        fs::write(root.join("installed"), artifact(INSTALLED, DEB)).unwrap();
+        install(&root, catalog(&root), OLD, INSTALLED, BRIDGE);
     }
     if hop != "old" {
         let bad = catalog(&root);

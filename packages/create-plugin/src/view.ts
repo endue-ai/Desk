@@ -50,10 +50,10 @@ function manifest({ id, name, description }: PluginOptions): string {
 function readme(options: PluginOptions): string {
   const open = `${options.id}.open`;
   return [
-    ...heading(options, "A Desk view: the notes touched last, newest first."),
+    ...heading(options, "An endue view: the notes touched last, newest first."),
     ...devSection(
       [
-        `Open it from the palette (Open ${options.name}) or with \`desk cmd run ${open}\`. It shows`,
+        `Open it from the palette (Open ${options.name}) or with \`endue cmd run ${open}\`. It shows`,
         "the notes of every connected source. Save `plugin.json` and the view follows.",
       ].join("\n"),
     ),
@@ -81,7 +81,7 @@ function readme(options: PluginOptions): string {
   ].join("\n");
 }
 
-const VIEW_TEST = `// The view on the SDK's test host: a desk in memory with an item index. \`desk plugin test <this
+const VIEW_TEST = `// The view on the SDK's test host: a desk in memory with an item index. \`endue plugin test <this
 // folder>\` runs it with vitest.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

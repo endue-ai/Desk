@@ -1,5 +1,6 @@
 // When a console's PostgreSQL session closes (PG-02, ADR 0320): with its console, on Disconnect, when
-// the connection's sign-in changes and when it is removed, asking first while a transaction is open;
+// the connection's sign-in changes and when it is removed, asking first while a transaction is open
+// (closing and Disconnect ask commit, roll back or stay, PG-20);
 // after the person's idle minutes, never in a transaction; at the limit per connection, a table
 // view's idle session first; and what a read-only connection and a frame that wakes open.
 import { describe, expect, it } from "vitest";
@@ -8,9 +9,19 @@ import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
 import { type Handlers, mount, scriptedDb } from "./harness";
 import { dbBridge } from "./pg-host";
+import { runsOf } from "./runs-of";
 import { closed, made, messages, PG, run, script, sessionOf, shop, state } from "./session-helpers";
 
-const DB = ["db.open", "db.run", "db.fetch", "db.copy", "db.cancel", "db.close", "db.list"];
+const DB = [
+  "db.open",
+  "db.run",
+  "db.script",
+  "db.fetch",
+  "db.copy",
+  "db.cancel",
+  "db.close",
+  "db.list",
+];
 const table = (name: string) => ({ connection: "Shop", schema: "public", table: name });
 const pageOf = (m: Awaited<ReturnType<typeof shop>>, name: string) =>
   made(m, "db.run").find((p) => String(p.sql).includes(`"public"."${name}"`))?.sessionId;
@@ -27,7 +38,7 @@ describe("when a console's session closes", () => {
     const asked = m.picks.at(-1);
     expect(asked?.title).toBe("Close Shop?");
     expect(JSON.stringify(asked?.items)).toMatch(/Shop is in a transaction.*rolls it back/u);
-    answers.push("yes");
+    answers.push("rollback");
     await m.host.command("endue.database.close-console");
     await m.settle();
     expect(closed(m)).toContain(open);
@@ -77,7 +88,7 @@ describe("when a console's session closes", () => {
       m.host.command("endue.database.disconnect", { connection: "Shop main" }),
     ).rejects.toThrow(/Not disconnected/u);
     expect(closed(m)).not.toContain(two);
-    answers.push("yes");
+    answers.push("rollback");
     await m.host.command("endue.database.disconnect", { connection: "Shop main" });
     await m.settle();
     expect(closed(m)).toContain(two);
@@ -121,7 +132,7 @@ describe("when a console's session closes", () => {
     const exec = (sql: string, owner: string) =>
       executor.execute(PG, sql, { session: { owner, kind: "console" } });
     const idOf = (sql: string) =>
-      calls.find((c) => c.method === "db.run" && c.params.sql === sql)?.params.sessionId;
+      runsOf(calls).find((c) => c.method === "db.run" && c.params.sql === sql)?.params.sessionId;
     const closes = () =>
       calls.filter((c) => c.method === "db.close").map((c) => c.params.sessionId);
 

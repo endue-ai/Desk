@@ -98,6 +98,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(!uri)("two schemas compared on a real PostgreSQL", () => {
+  // A setup, three compares, a migration and a dump: past the default 5 s on a server just started.
   it("applies the script to the target and compares again with no difference left", async () => {
     await setUp();
     const { m, files } = await plugin();
@@ -144,5 +145,5 @@ describe.skipIf(!uri)("two schemas compared on a real PostgreSQL", () => {
     });
     expect(back).toMatchObject({ onlyLeft: 0, onlyRight: 0, differ: 0 });
     expect(state(m).notes).toEqual([]);
-  });
+  }, 60_000);
 });

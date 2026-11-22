@@ -174,9 +174,13 @@ describe.skipIf(!uri)("the server's activity on a real PostgreSQL", () => {
     expect(seen.hidden).toBeGreaterThanOrEqual(1);
     expect(hiddenOf(m.shown()?.activity.read.sessions)).toMatch(/pg_read_all_stats/u);
     const pid = named(seen, "activity sleeper")?.pid;
+    // The server's own words: PostgreSQL 16 reworded "must be a superuser to cancel superuser query".
+    const version = Number(await admin("SHOW server_version_num"));
+    const refused =
+      version >= 160000 ? "permission denied to cancel query" : "must be a superuser to cancel";
     await expect(
       m.host.command("endue.database.cancel-session", { connection: "live", pid }),
-    ).rejects.toThrow(/Not cancelled: permission denied to cancel query/u);
-    expect(m.view.said.at(-1)).toMatch(/^Not cancelled: permission denied to cancel query/u);
+    ).rejects.toThrow(`Not cancelled: ${refused}`);
+    expect(m.view.said.at(-1)).toMatch(new RegExp(`^Not cancelled: ${refused}`, "u"));
   }, 60_000);
 });

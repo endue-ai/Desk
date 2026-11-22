@@ -57,6 +57,14 @@ test-unit:
 test-e2e *args:
     node scripts/e2e.mjs test "$@"
 
+# The database plugin's live tests against real PostgreSQL 15 to 19, each in a throwaway container
+# (PG-101, ADR 0351): as the superuser, as a role that is not one with its own search_path, and over
+# TLS with a client certificate. `--versions 17,18`, `--variants main,app,cert`, file names narrow it;
+# skipped with one line where no container runtime answers
+[positional-arguments]
+test-pg-versions *args:
+    node scripts/pg-versions.mjs "$@"
+
 # Static checks: formatting, lints, types, workflows, specs and the theme market (not the CEF shell)
 check:
     cargo fmt --all -- --check
@@ -159,6 +167,14 @@ app-icons:
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
 
+# The database plugin's budgets (#498, ADR 0362): a million-row read, 10,000 tables, 1,000 columns and
+# a 1 MB script, each judged against a calibration run just before it, so load does not fail it; the
+# live cases need ENDUE_DB_TEST_POSTGRES (a scratch database: their tables are made and dropped there).
+# Baselines and reasons in e2e/perf/database.json ("record" sets them), lines in
+# e2e/test-results/perf-database/results.json
+perf-database mode="check":
+    PERF_MODE={{mode}} pnpm exec vitest run --config e2e/perf/database/vitest.config.ts --silent=false
+
 # WebdriverIO on the CEF desk as in `just test-app-e2e`, results in e2e/test-results/perf, baselines in
 # e2e/perf/budgets.json; nightly in the e2e workflow's perf job. Measure the app's start-up, idle
 # memory and input latency ("record" sets the baselines)
@@ -195,8 +211,7 @@ doctor:
 lanes *args="status":
     node scripts/lanes.mjs {{args}}
 
-# For every repository under ~/Project/endue (`--root <folder>` for another); `--block '<text>'` adds a
-# personal string to refuse, kept in this machine's config only. Sessions and task-start check it too.
+# Applies under ~/Project/endue by default. Use `--root <folder>` to select another folder.
 # Install the commit identity endue-team and its hooks on this machine (AGENTS.md, Boundaries)
 [positional-arguments]
 identity *args:

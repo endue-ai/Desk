@@ -19,6 +19,7 @@ import { baseOf } from "./databases.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
 import { createPanels } from "./panels.js";
+import { lapse } from "./rows/control.js";
 import { keyOf, ownerOf, sessionLabel } from "./session/owners.js";
 import { reasonsOf, rolledBackOnClose } from "./session/words.js";
 import { show, summaryOf } from "./tabs.js";
@@ -81,7 +82,7 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
- *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction">,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows" | "rowsGone">,
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
@@ -114,6 +115,7 @@ export function createConsoles(deps) {
       const owner = who(model)?.owner;
       if (owner && deps.sessions) model.session = deps.sessions.state(owner);
       else delete model.session;
+      if (owner && deps.sessions?.rowsGone) lapse(model, deps.sessions.rowsGone);
     },
     gone: (target) => release(target),
   });
@@ -246,6 +248,8 @@ export function createConsoles(deps) {
     run: (target, conn, sql, options) => execute(target, conn, sql, options),
     execute: deps.execute,
     render,
+    sessions: deps.sessions,
+    say: (text) => deps.view.say(text),
   });
   const edits = createEdits({
     catalog: deps.catalog,
@@ -314,6 +318,8 @@ export function createConsoles(deps) {
     restoreConsoles: many.restore,
     /** Run SQL in a console as a run of its own does (features/consoles/run-file.js). */
     runIn: execute,
+    /** The PostgreSQL sessions: a console's transaction (features/transactions/, PG-20). */
+    sessions: deps.sessions,
     page: (/** @type {Parameters<typeof pages.page>[2]} */ change) =>
       withActive((shown, conn) => pages.page(shown, conn, change)),
     edits: {
@@ -346,7 +352,7 @@ export function createConsoles(deps) {
     /** Pick a result tab. */
     tab(/** @type {number} */ index) {
       const target = buffers.current();
-      if (target?.shown && index >= 0 && index < target.shown.tabs.length) target.tab = index;
+      if (target) pages.pick(target, deps.connection(target.connection), index);
       render();
     },
     show: buffers.showId,

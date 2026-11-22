@@ -2,8 +2,8 @@
 //! (`plugins/database/tests/core-bridge.ts`) run their PostgreSQL through it instead of a client
 //! program. One bridge request a line on standard input, served by `Core::handle` as one plugin
 //! (`endue.database`, or the first argument); each answer, and every event addressed to that
-//! plugin, a line on standard output. A `db.open` is granted its own scope first, as the person
-//! who says yes to the plugin's ask, so the core's grant check still runs on every call. Requests
+//! plugin, a line on standard output. A `db.open`, `fs.read` or `fs.write` is granted its own scope
+//! first, as the person who says yes to the plugin's ask or picks the file in a dialog, so the core's grant check still runs on every call. Requests
 //! are served on threads of their own, so a `db.cancel` reaches a statement that runs. The core's
 //! home is the second argument (its `.pgpass` is the password file), else a fresh folder under the
 //! temp folder, removed at the end. Passwords kept with `db.passwords.*` (ADR 0311) live in an
@@ -31,7 +31,8 @@ fn main() {
     std::fs::create_dir_all(&home).expect("the core's home");
     let keychain = Arc::new(FakeKeychain::new());
     let core = Core::new(Roots { home: home.clone() })
-        .with_db_passwords(Some(keychain), Some(home.join("db-passwords.json")));
+        .with_db_passwords(Some(keychain), Some(home.join("db-passwords.json")))
+        .with_db_ssh_hosts(Some(home.join("db-ssh-hosts.json")));
     let core = Arc::new(core);
 
     let out = Arc::new(Mutex::new(std::io::stdout()));
@@ -61,7 +62,9 @@ fn main() {
             continue;
         }
         let value = serde_json::from_str::<serde_json::Value>(&line).unwrap_or_default();
-        if value["method"] == "db.open"
+        // fs.read and fs.write on a file a test names stand for a file the person chose in a dialog.
+        let granted = ["db.open", "fs.read", "fs.write"];
+        if granted.iter().any(|method| value["method"] == *method)
             && let Ok(scope) =
                 serde_json::from_value::<Permission>(value["params"]["scope"].clone())
         {

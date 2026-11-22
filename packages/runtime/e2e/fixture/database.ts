@@ -18,7 +18,9 @@
 // backup's place otherwise; a backup's save and open dialogs, and the scripted pg_dump and
 // pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
 // open dialog answers it; an export's save dialog answers a place there. fixture-pg's server has more
-// databases (databases-fixture.ts, PG-13). Never shipped.
+// databases (databases-fixture.ts, PG-13) and answers a join of orders and people with its columns'
+// origins (edit-joins-fixture.ts, PG-45), and copies its items in and out through standard input
+// and output into ~/Downloads (copy-fixture.ts, PG-23). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -30,16 +32,22 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { assistAnswer } from "../../../../plugins/database/tests/assist-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
+import {
+  COPY_IN_FILE,
+  COPY_IN_TEXT,
+  copyScript,
+} from "../../../../plugins/database/tests/copy-fixture";
 import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   DIAGRAM_CONNECTION,
   diagramServer,
 } from "../../../../plugins/database/tests/diagram-fixture";
+import { editJoinsScript } from "../../../../plugins/database/tests/edit-joins-fixture";
 import {
-  dbHandlers,
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
   fixtureScript,
@@ -52,11 +60,15 @@ import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { paramsHandlers } from "../../../../plugins/database/tests/params-fixture";
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
+import { renameServer } from "../../../../plugins/database/tests/refactor-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
+import { showServer } from "../../../../plugins/database/tests/session-options-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
+import { transferServer } from "../../../../plugins/database/tests/transfer-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -73,6 +85,7 @@ let emit: (event: BridgeEvent) => void = () => {};
 const TRANSFER = "~/Transfer/team-connections.json";
 const files: Record<string, string> = {
   "~/queries/report.sql": "select * from orders;\n",
+  [COPY_IN_FILE]: COPY_IN_TEXT,
   [TRANSFER]: `${JSON.stringify({
     format: "endue.database.connections",
     version: 1,
@@ -105,14 +118,18 @@ const fsHandlers: StubHandlers = {
       encoding === "base64" ? btoa(String.fromCharCode(...part)) : new TextDecoder().decode(part);
     return { content, encoding: encoding ?? "utf8", size: bytes.length };
   },
-  "fs.write": ({ path, content }) => {
-    files[path] = content;
+  // A chunk appends (ADR 0356); a write waits while `window.__copyHold` holds it (PG-23's shots).
+  "fs.write": async ({ path, content, append }) => {
+    await (window as unknown as { __copyHold?: Promise<void> }).__copyHold;
+    files[path] = append ? `${files[path] ?? ""}${content}` : content;
     return { bytesWritten: content.length };
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
 };
 // sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
 // `stock` changes from one read to the next, for the comparison (compare-fixture.ts).
+// A join of orders and people with its columns' origins (edit-joins-fixture.ts, PG-45).
+const joins = editJoinsScript(fixtureScript);
 const procs = procHandlers(stockScript(fixtureScript), (event) => emit(event));
 const backup = backupHandlers(
   files,
@@ -143,7 +160,9 @@ const core = browserCore({
     // the objects feature its own, before the activity view's looser matches.
     // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
     // reads, which carry their own marker (PG-53).
-    ...dbHandlers(
+    // Innermost, `SHOW` answers each session's own settings (session-options-fixture.ts, PG-12).
+    // A check and bound values on `orders` answer outermost, where the bound values reach (PG-21).
+    ...paramsHandlers(
       withDatabases(
         schemaCompareServer(
           privilegesServer(
@@ -155,7 +174,11 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(fixtureScript).script).script,
+                            objectsServer(
+                              activityServer(
+                                renameServer(showServer(transferServer(copyScript(joins)))),
+                              ).script,
+                            ).script,
                           ).script,
                         ),
                       ).script,
@@ -174,18 +197,25 @@ const core = browserCore({
     ...backup,
     // An exported image goes to ~/Pictures, exported connections to ~/Transfer; anything else is
     // the backup's to place.
+    // A COPY's rows go to ~/Downloads (PG-23).
     "dialog.save": (params, caller) =>
-      /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
-        ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
-        : /\.json$/u.test(params.suggestedName ?? "")
-          ? { cancelled: false, path: `~/Transfer/${params.suggestedName}` }
-          : backupSave(params, caller),
+      /^Save the rows of the COPY/u.test(params.title ?? "")
+        ? { cancelled: false, path: `~/Downloads/${params.suggestedName}` }
+        : /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
+          ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
+          : /\.json$/u.test(params.suggestedName ?? "")
+            ? { cancelled: false, path: `~/Transfer/${params.suggestedName}` }
+            : backupSave(params, caller),
     "dialog.open": (params, caller) =>
       /connections/u.test(params.title ?? "")
         ? { cancelled: false, paths: [TRANSFER] }
-        : backupOpen(params, caller),
+        : /the COPY on/u.test(params.title ?? "")
+          ? { cancelled: false, paths: [COPY_IN_FILE] }
+          : backupOpen(params, caller),
   },
   open: () => {},
+  // Eris in a console answers from a script (assist-fixture.ts, PG-90).
+  ask: assistAnswer,
 });
 emit = (event) => core.stub.emit(event);
 const runtime = createRuntime({

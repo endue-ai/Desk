@@ -106,6 +106,9 @@ an `fs:write` scope; with `createDirs` it also creates missing parent folders in
 bytes go to a temp file beside the target that is renamed over it, so the file is the old content or the
 new, never a mix. Before it overwrites a file whose bytes differ, the core keeps the old ones as a version
 in its local history and answers that version's id as `version` (ADR 0076); a new file keeps nothing.
+With `append` the content is added at the end of the existing file in place, so a file is written in
+chunks without holding it whole: no temp file, no kept version and no undo entry, and a missing file is
+`not_found` (ADR 0356). The first chunk is an ordinary write, which keeps what it replaces.
 
 **fs.history** lists the versions the core kept of one file, newest first, `limit` at most: each is the
 content a write replaced, with `at` (when that write ran), `caller` (whose write it was), `size` and
@@ -219,6 +222,20 @@ the server asks for one. A refused or unreachable host, or a certificate that fa
 `io_error`. A caller holds at most 16 sessions; another is `invalid_value`. An agent is
 `permission_denied`.
 
+`ssh` takes the session through an SSH tunnel (ADR 0359): `host`, `port` (22) and `user` of the SSH
+server, and one of `keyFile` (a path the core reads itself, never sent back; `keyPassword` decrypts it),
+`agent: true` (the person's SSH agent), `password` or `passwordRef` (a kept password for that SSH host,
+port and user); `jump` is a jump host of the same shape, reached first. One SSH connection carries the
+session and its cancel requests as channels inside the core, nothing listens on a port, and it closes
+with the session. `db:connect` must cover every hop's host and port as well as the database's, and is
+checked before anything connects. Host keys are trusted on first use per caller: a key not trusted yet
+answers `{ ssh: { hop, stage: "hostKey", hostKey: { status: "unknown", algorithm, fingerprint } } }`,
+and `hostKey` set to that fingerprint in the next `db.open` trusts it once the tunnel opens; a key that
+differs from the trusted one is `changed` (with `known`) and refused until **db.hostKeys.delete**
+`{ host, port }` forgets the trusted one. Any other hop that fails answers `ssh` with its `stage`
+(`connect`, `auth` with `keyPassword` or `needsPassword` when one is missing, `forward`) and a
+`message` naming the hop.
+
 **db.run** runs one statement by the extended protocol and answers its first page; an earlier result
 with pages left is closed first, and while a statement runs, `db.run`, `db.fetch` and `db.copy` are
 `invalid_params`. `params` are text or `null`, their types the server's inference unless `paramTypes`
@@ -231,6 +248,22 @@ last page's `error`, with every field the server sent by name (`severity`, `loca
 `message`, `detail`, `hint`, `position`, `internalPosition`, `internalQuery`, `where`, `schema`,
 `table`, `column`, `dataType`, `constraint`, `file`, `line`, `routine`, and `other` by code); after it
 the session is ready again. A row over 64 MiB ends its result with `invalid_value`.
+
+**db.script** runs `statements` (each `{ sql, params?, paramTypes? }`, 1 to 10,000) in order on the
+session, each as `db.run` runs one, and answers `pages`: each statement's first page, with the notices
+it heard (ADR 0344). It stops after a page with `more` (the result or the COPY FROM STDIN stays open
+for `db.fetch` and `db.copy`), at the first error unless `goOn`, at a FATAL, and at a `db.cancel`, which
+then also stops it before its next statement (`cancelled: true`). A failure that is not the server's,
+which `db.run` would have answered as a bridge error, is `failure` and belongs to the statement after
+the last page; an empty `statements`, a busy session or another caller's are errors of the call.
+
+**db.describe** asks the server what one statement takes and answers without running it: Parse and
+Describe of the unnamed statement, then Sync (ADR 0353). Nothing executes, so it changes nothing and
+works on a read-only session. It answers `paramTypes`, the OID of each `$n` as the server infers it
+(`paramTypes` in the call fix some, as in `db.run`), `columns` as `db.run`'s first page has them (absent
+when the statement answers no rows), `transaction`, and the server's `error` with its `position`, after
+which the session is ready again. An earlier result with pages left is closed first; a busy session, a
+waiting COPY FROM STDIN or another caller's session are errors of the call, as for `db.run`.
 
 **db.fetch** answers the next page; `close: true` ends the result without reading on. With no result
 open it is `invalid_params`.

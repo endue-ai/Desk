@@ -11,11 +11,15 @@ mod client_cert;
 mod config;
 mod conn;
 mod copy;
+mod describe;
+mod dial;
 mod error;
 mod page;
 pub mod pgpass;
+mod script;
 mod select;
 mod session;
+mod shared;
 mod signin;
 mod statement;
 mod task;
@@ -24,11 +28,14 @@ mod tls;
 pub use client_cert::{ClientCert, KeyError};
 pub use config::{APPLICATION_NAME, Config, DEFAULT_PORT, MAX_OPEN_TIMEOUT, OPEN_TIMEOUT, TlsMode};
 pub use conn::TlsInfo;
+pub use describe::Described;
+pub use dial::{Dial, Dialled, Io};
 pub use error::{Error, ServerError};
 pub use page::{
     Column, Copy, Direction, Limits, MAX_PAGE_BYTES, MAX_PAGE_ROWS, MIN_PAGE_BYTES, PAGE_BYTES,
     PAGE_ROWS, Page, Row, Transaction,
 };
+pub use script::Script;
 pub use session::{CloseReason, CopyInput, Event, Opened, Session, Sink, Statement, open};
 pub use signin::Auth;
 

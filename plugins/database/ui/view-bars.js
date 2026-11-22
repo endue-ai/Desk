@@ -1,13 +1,16 @@
 // The bars around the work area: the header (the console or the buffer on screen, a .sql file's
 // unsaved mark, its engine and place, its environment and read-only marks, the state of its
 // PostgreSQL session in words and a status dot, PG-02, and the database a console or a table view
-// is on, a button to switch it, PG-13) and the result's bars (its tabs, and the toolbar of what can
+// is on, a button to switch it, PG-13, with the role and search path its sessions start with, PG-12;
+// a console's transaction beside it, PG-20) and the result's bars (its tabs, and the toolbar of what can
 // be done with the rows on screen and their pending changes).
 
 import { labelOf } from "./console-list.js";
 import { ownDatabase } from "./databases.js";
 import { el } from "./dom.js";
+import { headerOf } from "./engines/pg-options.js";
 import { formatCount } from "./format.js";
+import { createTransactionHeader } from "./session/header-view.js";
 
 /**
  * @typedef {import("./consoles.js").Console} Console
@@ -21,17 +24,19 @@ export function createBars(doc) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const gridBar = byId("grid-bar");
   const tabsEl = byId("tabs");
+  const transaction = createTransactionHeader(doc);
 
   /** A console's or a table view's PostgreSQL session: its state, the sentence under it. */
   const session = (/** @type {Console["session"]} */ model) => {
     const shown = byId("session");
     shown.hidden = !model;
-    if (!model) return;
+    if (!model) return transaction(undefined);
     shown.title = model.detail;
     byId("session-label").textContent = model.label;
     const dot = /** @type {HTMLElement} */ (shown.querySelector(".desk-dot"));
     if (model.tone) dot.dataset.tone = model.tone;
     else delete dot.dataset.tone;
+    transaction(model);
   };
 
   return {
@@ -56,6 +61,10 @@ export function createBars(doc) {
         conn?.engine === "postgresql" && (model?.kind === "console" || model?.kind === "table");
       database.hidden = !on;
       database.textContent = on ? ownDatabase(conn) : "";
+      // The role and the search path its sessions start with (PG-12).
+      const options = byId("session-options");
+      options.textContent = on ? headerOf(conn) : "";
+      options.hidden = !options.textContent;
       const tag = conn && conn.tag !== "none" ? conn.tag : "";
       badge.hidden = !tag && !conn?.readOnly;
       badge.textContent = [tag, conn?.readOnly ? "read-only" : ""].filter(Boolean).join(" · ");
@@ -108,7 +117,8 @@ export function createBars(doc) {
       pin.hidden = model.kind !== "console";
       pin.textContent = tab?.kind === "pinned" ? "Unpin" : "Pin";
       const pages = byId("console-pages");
-      pages.hidden = !(model.kind === "console" && model.page);
+      // A read its cursor keeps scrolls instead of paging (PG-22).
+      pages.hidden = !(model.kind === "console" && model.page && !tab?.set?.window);
       if (model.page) {
         const rows = tab?.set?.rows.length ?? 0;
         byId("console-page").textContent =

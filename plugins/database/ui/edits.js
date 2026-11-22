@@ -6,12 +6,15 @@
 // types are read too, so each column gets its typed editor (cell-editors/, PG-40); they are read again
 // when the catalog reads the columns again, and a failed read leaves the declared types. Every change
 // is one undoable step (edit/history.js, PG-43): a paste, a fill or a duplicate (features/paste/) is
-// made on the state `ready` gives and applied as a `step`. No DOM.
+// made on the state `ready` gives and applied as a `step`. A PostgreSQL result that names its columns'
+// tables is mapped by them instead, a join's cells each by its own table (edit/origins.js, PG-45). No
+// DOM.
 
 import { defaultSchema } from "./catalog.js";
 import { readTypes } from "./cell-editors/pg-types.js";
 import { attachEditors } from "./cell-editors/resolve.js";
 import { createHistory } from "./edit/history.js";
+import { byOrigins, readOrigins } from "./edit/origins.js";
 import {
   addRow,
   countChanges,
@@ -107,13 +110,26 @@ export function createEdits(deps) {
       const { dialect } = engineOf(conn.engine);
       const tab = target.shown?.tabs[target.tab];
       const statement = target.execution?.statements[tab?.statement ?? 0];
+      const table = target.kind === "table" && target.table;
+      const alone = statement && target.execution?.statements.length === 1;
       const source =
         target.kind === "table" && target.table
           ? { schema: target.table.schema, name: target.table.name }
           : statement && target.execution?.statements.length === 1
             ? sourceOf(statement, dialect)
             : undefined;
-      if (!source) state = refused(refusalOf(conn, undefined));
+      if (byOrigins(conn, set) && (table || alone)) {
+        const found = await readOrigins({
+          execute: deps.execute,
+          conn,
+          set,
+          ...(table || !statement ? {} : { statement }),
+        });
+        const reason = refusalOf(conn, found.target, found.reason);
+        state = reason
+          ? refused(reason)
+          : { ...refused(""), status: "ready", target: found.target ?? null };
+      } else if (!source) state = refused(refusalOf(conn, undefined));
       else {
         const schema = source.schema ?? defaultSchema(conn);
         const columns = await deps.catalog.columns(conn, schema, source.name);

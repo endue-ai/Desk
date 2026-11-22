@@ -1,28 +1,28 @@
 // The Database plugin without its DOM: the connections, the explorer, the consoles (as many per
-// connection as the person opens, and .sql files bound to one: console-files.js), table and DDL
-// views and the features' panels as desk buffers, the plugin's commands (commands.js), the
-// features (features/, feature-host.js), the commands for agents and the desk's requests. It talks
-// only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's test host runs it with a
-// recording view and scripted clients. The view's actions come back here by name (the object this
-// returns: actions.js and the features').
+// connection as the person opens; console-files.js binds .sql files), table, DDL and feature panels
+// as desk buffers, the commands (commands.js, feature-host.js, agents': each call watched for who
+// makes it, features/audit/) and the desk's requests. It talks only to ctx.bridge, ctx.commands,
+// ctx.state and a view, so the SDK's test host runs it; the view's actions come back here by name.
 
 import { builtinActions } from "./actions.js";
 import { createAgentCommands } from "./agent.js";
 import { answerer, guarded } from "./answer.js";
 import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
-import { createClients, searchPath } from "./clients.js";
+import { createClients, runsOn } from "./clients.js";
 import { registerCommands } from "./commands.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { createConsoleCopies } from "./copy/console.js";
 import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
+import { createAgents } from "./features/audit/agents.js";
 import { createCompletion } from "./features/completion/controller.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
@@ -42,7 +42,7 @@ import { createTools } from "./tools.js";
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("./engines/common.js").Connection} Connection
  * @typedef {import("./explorer.js").Node} Node
- * @typedef {import("./consoles.js").ConsoleView & import("./manage.js").Deps["view"] & {
+ * @typedef {import("./consoles.js").ConsoleView & import("./manage.js").Deps["view"] & import("./copy/console.js").View & {
  *   explorer(rows: Node[]): void,
  *   busy(running: number): void,
  *   reading?(reads: number): void,
@@ -76,7 +76,8 @@ import { createTools } from "./tools.js";
  *   `features` are features/index.js's unless given; `plans` reads big plans in a worker;
  *   `startWorker` starts a feature's worker (none: a feature reads in place).
  */
-export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
+export function createDatabase({ bridge, commands: raw, state, settings: source }, view, options) {
+  const commands = createAgents(bridge, () => featureDeps).gate.watch(raw);
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
@@ -92,17 +93,18 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
         running = count;
         busy();
       },
-      searchPath: () => searchPath(options.platform ?? "mac", settings.path),
+      ...runsOn(options.platform ?? "mac", () => settings.path),
     });
   const output = options.output((reads) => {
     reading = reads;
     busy();
     view.reading?.(reads);
   });
-  // PostgreSQL's runs on the core's sessions (ADR 0281): a console's and a table view's kept, any
-  // other run's its own (PG-02, ADR 0320).
+  // PostgreSQL's runs on the core's sessions (ADR 0281, 0320); a password command runs (ADR 0354).
   const held = createPluginSessions({
     bridge,
+    runner,
+    confirm: (title, reasons) => confirm(title, reasons),
     view,
     consoles: () => consoles,
     connection: (id) => manager.get(id),
@@ -111,18 +113,16 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
       sessions = count;
       busy();
     },
-    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
-    kept: (conn) => manager.passwords.ref(conn),
+    kept: (conn) => manager.passwords.ref(conn), // the keychain's password signs in (ADR 0311)
     askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
-  const pg = held.pg;
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
-    pg.cancel(held.scope());
+    held.pg.cancel(held.scope());
     output.cancel();
   };
-  const clients = createClients(runner, () => settings);
+  const clients = createClients(runner, () => settings, options.platform ?? "mac");
   const { pick, confirm } = createAsk(commands);
   const list = options.features ?? Object.values(features);
 
@@ -151,11 +151,12 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     runner,
     output,
     clients,
-    sessions: pg,
+    sessions: held.pg,
     settings: () => settings,
     confirm,
     passwords: manager.passwords,
     cancelled,
+    copies: createConsoleCopies(bridge, view),
     ...(options.random ? { random: options.random } : {}),
   });
   // The schema cache (ADR 0285) is kept in the plugin's store; what it read is drawn again.
@@ -208,7 +209,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     ...(options.random ? { random: options.random } : {}),
     ...(options.plans ? { readPlan: options.plans.read } : {}),
-    sessions: pg,
+    sessions: held.pg,
   });
   const files = createConsoleFiles({
     bridge,
@@ -244,7 +245,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const save = () => {
     const panels = consoles.kept();
     const open = consoles.keptConsoles();
-    const consoleSessions = pg.kept();
+    const consoleSessions = held.pg.kept();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
@@ -306,8 +307,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const guard = guarded(view);
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
-  // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
-  // open takes it where that is safe; a value that falls back is said once.
+  // Settings while running (PG-104): in force at the next run, open takes it where safe; said once.
   const effects = effectsOf({
     clients,
     catalog,

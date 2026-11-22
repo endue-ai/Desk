@@ -130,7 +130,7 @@ impl Ask {
         let request = CreateSessionRequest {
             title: Some(format!("brain.ask: {}", self.tool.name)),
             client: ClientInfo {
-                name: "endue Desk".to_owned(),
+                name: "endue".to_owned(),
                 version: env!("CARGO_PKG_VERSION").to_owned(),
             },
         };
