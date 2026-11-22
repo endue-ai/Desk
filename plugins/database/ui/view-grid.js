@@ -10,10 +10,11 @@
 // takes the last change back (PG-43, grid/paste.js, features/paste/). `v` opens the value viewer,
 // Mod+C copies the block as tab-separated text. A foreign key's cells are links: `g` or Mod+click
 // follows one, `r` lists the rows pointing at the row, `b` goes back, Enter searches the referenced
-// table (PG-41, links/). A plan tab draws the plan tree, the Messages tab each statement's outcome.
-// The parts live in grid/.
+// table (PG-41, links/). Plan, Messages and Map tabs draw the plan tree, each statement's outcome
+// and the shapes (geo/map-view.js). The parts live in grid/.
 
 import { el } from "./dom.js";
+import { createMaps } from "./geo/map-view.js";
 import { emptyColumns, layoutOf } from "./grid/columns.js";
 import { createFinder } from "./grid/finder.js";
 import { attachHeader } from "./grid/header.js";
@@ -86,6 +87,9 @@ export function createGrid(doc, host, act, options = {}) {
   const rows = createRowsClient(options.startWorker);
   const shapes = createShapes(act, (key) => key === shape().key && st.tab?.set && relayout());
   const shape = () => shapes.of(st.context.key ?? "result:none");
+  // A Map tab, and the row its Show in grid puts the cursor on next (PG-46).
+  const maps = createMaps(doc, act, options.startWorker);
+  let goto = /** @type {number | undefined} */ (undefined);
   const say = (/** @type {string | undefined} */ words) => (words ? act("say", words) : undefined);
 
   /** The rows' order changed: size the grid for them and draw. */
@@ -102,6 +106,8 @@ export function createGrid(doc, host, act, options = {}) {
       st.cursor = { row: Math.max(0, st.order.length - 1), col: 0 };
       st.anchor = st.cursor;
     }
+    const at = st.record || grid.hasAttribute("aria-busy") ? -1 : st.order.indexOf(goto ?? -1);
+    if (at >= 0) goto = undefined;
     st.cursor = {
       row: Math.min(st.cursor.row, Math.max(0, count - 1)),
       col: Math.min(st.cursor.col, Math.max(0, cols - 1)),
@@ -116,6 +122,7 @@ export function createGrid(doc, host, act, options = {}) {
     for (const old of host.querySelectorAll(":scope > .empty")) old.remove();
     if (count === 0) host.append(el(doc, "p", { class: "empty" }, why));
     screen.redraw();
+    if (at >= 0) moveTo(at, 0, false);
     finder.changed();
   };
 
@@ -169,6 +176,7 @@ export function createGrid(doc, host, act, options = {}) {
     /** @type {boolean} */ fresh,
     /** @type {Context} */ given,
   ) => {
+    if (st.tab?.set && next?.kind === "map") maps.leave(st.tab.set, blockRows(), cursorCell()?.row);
     st.tab = next;
     st.context = given;
     shaping.answered();
@@ -185,6 +193,8 @@ export function createGrid(doc, host, act, options = {}) {
     links.shown(next?.set ? key : "");
     if (!next) return host.replaceChildren();
     if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next, act));
+    if (next.kind === "map") return maps.show(host, next);
+    if (fresh) goto = maps.take(next.set);
     if (next.kind === "messages" || !next.set) {
       const lines = (next.lines ?? []).map((line) =>
         el(doc, "li", { class: `line ${line.level}` }, line.text),

@@ -9,7 +9,6 @@ import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
 import { FORMATS, formatRows } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
-import { loadSettings } from "./settings.js";
 import { split, statementAt } from "./sql/split.js";
 
 /** The client program the footer names when an engine's is not found. */
@@ -31,7 +30,7 @@ const PROGRAMS = { postgresql: "PostgreSQL", mysql: "mysql", sqlite: "sqlite3" }
  *   explorer: ReturnType<typeof import("./explorer.js").createExplorer>,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client>, reset(): void },
  *   settings(): import("./settings.js").Settings,
- *   reload(settings: import("./settings.js").Settings): void,
+ *   reload(): Promise<import("./settings.js").Settings>,
  * }} Deps
  */
 
@@ -264,7 +263,7 @@ export function createTools(deps) {
      * holds one line, so it says each client in a few words; the answer has every whole sentence.
      */
     async checkClients() {
-      deps.reload(await loadSettings(bridge));
+      await deps.reload();
       deps.clients.reset();
       const found = await Promise.all(
         /** @type {const} */ (["postgresql", "mysql", "sqlite"]).map((engine) =>
