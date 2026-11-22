@@ -108,6 +108,10 @@ fn agents_are_refused() {
             "db.script",
             json!({ "sessionId": "d-1", "statements": [{ "sql": "SELECT 1" }] }),
         ),
+        (
+            "db.describe",
+            json!({ "sessionId": "d-1", "sql": "SELECT $1" }),
+        ),
         ("db.list", json!({})),
         ("db.close", json!({ "sessionId": "d-1" })),
     ] {
@@ -192,6 +196,10 @@ fn an_unknown_or_another_callers_session_is_not_found() {
         (
             "db.script",
             json!({ "sessionId": "d-9", "statements": [{ "sql": "SELECT 1" }] }),
+        ),
+        (
+            "db.describe",
+            json!({ "sessionId": "d-9", "sql": "SELECT $1" }),
         ),
         ("db.fetch", json!({ "sessionId": "d-9" })),
         ("db.copy", json!({ "sessionId": "d-9", "done": true })),

@@ -243,6 +243,14 @@ then also stops it before its next statement (`cancelled: true`). A failure that
 which `db.run` would have answered as a bridge error, is `failure` and belongs to the statement after
 the last page; an empty `statements`, a busy session or another caller's are errors of the call.
 
+**db.describe** asks the server what one statement takes and answers without running it: Parse and
+Describe of the unnamed statement, then Sync (ADR 0353). Nothing executes, so it changes nothing and
+works on a read-only session. It answers `paramTypes`, the OID of each `$n` as the server infers it
+(`paramTypes` in the call fix some, as in `db.run`), `columns` as `db.run`'s first page has them (absent
+when the statement answers no rows), `transaction`, and the server's `error` with its `position`, after
+which the session is ready again. An earlier result with pages left is closed first; a busy session, a
+waiting COPY FROM STDIN or another caller's session are errors of the call, as for `db.run`.
+
 **db.fetch** answers the next page; `close: true` ends the result without reading on. With no result
 open it is `invalid_params`.
 

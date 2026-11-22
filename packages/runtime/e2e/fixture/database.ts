@@ -48,7 +48,6 @@ import {
 } from "../../../../plugins/database/tests/diagram-fixture";
 import { editJoinsScript } from "../../../../plugins/database/tests/edit-joins-fixture";
 import {
-  dbHandlers,
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
   fixtureScript,
@@ -61,6 +60,7 @@ import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { paramsHandlers } from "../../../../plugins/database/tests/params-fixture";
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
 import { renameServer } from "../../../../plugins/database/tests/refactor-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
@@ -160,7 +160,8 @@ const core = browserCore({
     // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
     // reads, which carry their own marker (PG-53).
     // Innermost, `SHOW` answers each session's own settings (session-options-fixture.ts, PG-12).
-    ...dbHandlers(
+    // A check and bound values on `orders` answer outermost, where the bound values reach (PG-21).
+    ...paramsHandlers(
       withDatabases(
         schemaCompareServer(
           privilegesServer(

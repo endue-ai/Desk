@@ -70,7 +70,7 @@ pub fn step(
     let text = |path: &Path| path.to_string_lossy().into_owned();
     Step {
         why: format!(
-            "endue Desk needs an administrator to install its update to {}.",
+            "endue needs an administrator to install its update to {}.",
             chosen.version
         ),
         program: "/bin/sh".to_owned(),
@@ -117,7 +117,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("desk-admin-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let app = dir.join("endue Desk.app");
+        let app = dir.join("endue.app");
         let archive = dir.join("it's gone.tar.gz");
         let ask = |name: &str| {
             let step = step(&archive, "00", &app, name, "endue-desk", &chosen());
@@ -127,7 +127,7 @@ mod tests {
         let refused = |said: &str| Err(Refusal::Failed(said.to_owned()));
         assert_eq!(ask("../x.app"), refused("the update names no app"));
         let unread = format!("the update cannot be read at {}", archive.display());
-        assert_eq!(ask("endue Desk.app"), refused(&unread));
+        assert_eq!(ask("endue.app"), refused(&unread));
         let left: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
         assert!(left.is_empty(), "nothing left beside the app: {left:?}");
         let _ = std::fs::remove_dir_all(dir);

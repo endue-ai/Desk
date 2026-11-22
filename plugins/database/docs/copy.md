@@ -21,6 +21,8 @@ plugin's other parts use for the same stream. A change to it adds its line here.
   refuses it and a production one asks. A `COPY` to or from a file or a program on the server stays a write.
 - A COPY through standard input or output runs on its own: in a script with other statements it is refused,
   so its file is chosen for it. An agent's is refused: the file is the person's choice.
+- COPY takes no bound values, so one with parameters is refused: write the values into its query. A check
+  (run nothing, describe) refuses it too, before any dialog: it would have nothing to say without the file.
 - The statement timeout applies to a COPY as to any statement.
 - The stream is a call: `ui/copy/index.js` `copyOut(execute, conn, sql, sink, options)` and `copyIn(execute,
   conn, sql, source, options)` run through `deps.execute`, so the guards, the console's session and Cancel

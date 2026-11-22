@@ -16,9 +16,10 @@ Each is an agent command with an argument schema, marked read-only, and runs as 
   and each column's `pg_stats`.
 - `.sessions-list` (PostgreSQL): the server's sessions from `pg_stat_activity`, statements cut at 500
   characters and shown as the server reports them.
-- `.check-statement` (PostgreSQL): one SELECT, INSERT, UPDATE, DELETE, MERGE or VALUES prepared on a read-only
-  session and let go of, which checks its names and types without running it; the error answers with its
-  position in the agent's statement. Any other statement answers that it was not checked.
+- `.check-statement` (PostgreSQL): one SELECT, INSERT, UPDATE, DELETE, MERGE or VALUES described by the
+  server on a read-only session (Parse and Describe, nothing runs; `params.md`), which checks its names and
+  types and answers its parameters' and columns' types; the error answers with its position in the
+  agent's statement. Any other statement answers that it was not checked.
 
 ## How an agent's SQL runs
 

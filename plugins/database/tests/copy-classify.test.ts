@@ -1,10 +1,14 @@
 // What a COPY through standard input or output is to the guards (PG-23): COPY ... TO STDOUT reads
 // unless its query writes, COPY ... FROM STDIN writes, so a read-only connection refuses it; a COPY
 // to or from a file or a program on the server stays a write, asked on production; one among other
-// statements, or an agent's, is refused in words.
-import { describe, expect, it } from "vitest";
+// statements, an agent's, or one with bound values, is refused in words; a check asks for no file.
+import { describe, expect, it, vi } from "vitest";
 import { copyStep } from "../ui/copy/plan.js";
 import { copyOf } from "../ui/copy/statement.js";
+import type { Bound } from "../ui/editor/bind.js";
+import type { Connection } from "../ui/engines/common.js";
+import { createExecutor } from "../ui/execute.js";
+import { fromValues } from "../ui/settings.js";
 import { classify } from "../ui/sql/classify.js";
 import { split } from "../ui/sql/split.js";
 import { mount } from "./harness";
@@ -94,5 +98,42 @@ describe("a COPY through standard input or output", () => {
     m.view.text = "select 1; copy items from stdin";
     await expect(m.host.command("endue.database.run-all")).rejects.toThrow(/runs on its own/u);
     expect(m.sessions()).toHaveLength(0);
+  });
+
+  it("takes no bound values, and a check refuses it before any dialog or stream", async () => {
+    const bound = { ...one("copy (select * from items where id = $1) to stdout"), params: ["7"] };
+    expect(copyStep("postgresql", [bound as Bound], {})).toBe(
+      "COPY takes no bound values: write the values into its query and run it again.",
+    );
+    const run = vi.fn(async () => ({
+      statements: [{ index: 0, ran: false, sets: [] }],
+      notices: [],
+    }));
+    const ask = vi.fn(async () => undefined);
+    const executor = createExecutor({
+      runner: { run: async () => ({}) as never },
+      output: { read: async () => ({}) as never },
+      clients: { get: async () => ({}) as never },
+      sessions: { run } as never,
+      settings: () => fromValues({}),
+      confirm: async () => true,
+      passwords: { get: () => undefined, set: () => {}, ask: async () => undefined },
+      cancelled: (message) => new Error(message),
+      copies: { ask },
+    });
+    const conn = { id: "c-1", name: "shop", engine: "postgresql", readOnly: true } as Connection;
+    await expect(
+      executor.execute(conn, "copy items to stdout", { statements: [bound] }),
+    ).rejects.toThrow(/no bound values/u);
+    for (const sql of ["copy items from stdin", "copy items to stdout"])
+      await expect(executor.execute(conn, sql, { mode: "describe" })).rejects.toThrow(
+        "A COPY through standard input or output cannot be checked without running it",
+      );
+    expect(ask).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    // A COPY to a server file is checked as any statement, with no dialog.
+    await executor.execute(conn, "copy items to '/srv/items.csv'", { mode: "describe" });
+    expect(run.mock.calls[0]?.at(1)).toMatchObject({ mode: "describe" });
+    expect(ask).not.toHaveBeenCalled();
   });
 });

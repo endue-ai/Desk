@@ -92,10 +92,7 @@ pub fn install_deb(
 /// The step that installs `package` as root: `dpkg -i <package>`.
 pub fn deb_step(package: &Path, chosen: &Chosen) -> Step {
     Step {
-        why: format!(
-            "endue Desk wants to install its update to {}.",
-            chosen.version
-        ),
+        why: format!("endue wants to install its update to {}.", chosen.version),
         program: "dpkg".to_owned(),
         args: vec!["-i".to_owned(), package.to_string_lossy().into_owned()],
     }

@@ -1,11 +1,13 @@
 // Running from a console's editor: the statement at the caret, the selection or the whole script,
-// with its parameters asked for first (`:name`, `?`, `$1`, remembered for the console); EXPLAIN
+// with its parameters asked for first (`:name`, `?`, `$1`, remembered for the console; on PostgreSQL
+// sent as bound values of the types the server infers, editor/bind-ask.js, ADR 0353); EXPLAIN
 // as a plan tree with PostgreSQL's options the connection keeps (ANALYZE of a write rolls back),
 // each plan kept for comparing; Format SQL (PostgreSQL laid out again from its parse tree in the
 // parse worker, by the style in the settings, ADR 0292; MySQL and SQLite token by token); more
 // rows of a single read; and a console SELECT made pageable when it came back with more rows than
 // it shows. No DOM.
 
+import { createBoundAsk } from "./editor/bind-ask.js";
 import { formatSql } from "./editor/format.js";
 import { asked, fill, paramsOf, valueSql } from "./editor/params.js";
 import { engineOf } from "./engines/index.js";
@@ -13,6 +15,7 @@ import { readOptions } from "./explain/options.js";
 import { explainSql, planOf } from "./explain/plan.js";
 import { createVersions } from "./explain/version.js";
 import { pagedSql } from "./pages.js";
+import { ownerOf } from "./session/owners.js";
 import { formatStyle } from "./settings.js";
 import { classify } from "./sql/classify.js";
 import { sqlParser } from "./sql/parse/client.js";
@@ -88,7 +91,10 @@ export async function formatText(text, engine, settings) {
 /** @param {Inner} inner */
 export function createRunning({ deps, active, execute, render, typed, pages }) {
   const serverVersion = createVersions(deps.execute);
+  const boundAsk = createBoundAsk({ ...deps, typed });
   let explains = 0;
+  /** The parameters the last run's answers sent as SQL, for its status line. */
+  let asSql = /** @type {string[]} */ ([]);
 
   /** Statements with their parameters filled from the person's answers, kept per console. */
   const filled = async (
@@ -97,6 +103,13 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     /** @type {Console} */ owner,
   ) => {
     const { dialect } = engineOf(conn.engine);
+    asSql = [];
+    if (dialect === "postgresql") {
+      const memo = owner.consoleId ?? conn.id;
+      const bound = await boundAsk(conn, statements, memo, ownerOf(owner, conn));
+      asSql = bound.sql;
+      return bound.statements;
+    }
     /** @type {Record<string, string>} */
     const values = {};
     const out = [];
@@ -161,13 +174,15 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     const said = await execute(shown, conn, sql, { mode, base: selected ? start : 0, statements });
     const only = statements.length === 1 ? statements[0] : undefined;
     const truncated = shown.execution?.result.statements[0]?.sets.some((s) => s.truncated);
+    // Paging sends the text alone, so a statement with bound values is not paged.
+    const plain = only && !(/** @type {import("./editor/bind.js").Bound} */ (only).params);
     shown.page =
-      only && mode === "run" && truncated && pagedSql(only, dialect, 1, 0)
+      plain && only && mode === "run" && truncated && pagedSql(only, dialect, 1, 0)
         ? { statement: only, offset: 0 }
         : null;
     if (shown.shown?.error) deps.view.select(shown.shown.error.offset, shown.shown.error.offset);
     render();
-    return said;
+    return asSql.length ? `${said}; sent as SQL: ${asSql.join(", ")}` : said;
   };
 
   /**
@@ -195,9 +210,14 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     const view = shown.shown?.tabs.find((t) => t.kind === "plan")?.view ?? "tree";
     // ANALYZE runs the statement: a write is rolled back at the end.
     const writes = analyze && classify(statement, dialect).kind !== "read";
+    // Bound values go with the EXPLAIN as they would with the statement.
+    const values = /** @type {import("./editor/bind.js").Bound} */ (statement).params
+      ? { statements: [{ ...statement, text: sql, start: 0, shifts: undefined }] }
+      : {};
     const said = await execute(shown, conn, sql, {
       history: false,
       mode: writes ? "dry-run" : "run",
+      ...values,
     });
     const set = shown.shown?.tabs.find((t) => t.kind === "rows")?.set;
     const plan = set ? await (deps.readPlan ? deps.readPlan(set) : planOf(set)) : undefined;
