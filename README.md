@@ -24,7 +24,11 @@ When the first desktop release labeled **endue app** appears, choose your operat
 - On Windows or Linux, use the same package type as your installed copy when that package is listed. Windows keeps the existing installation directory. Debian continues to track the package as `endue-desk`.
 - Reopen the app. Your profiles and `plugins.lock` stay in `~/.desk`. The app also keeps its existing settings, grants and credential references. An installer-only Desk release such as v0.3.0 upgrades manually with the installer.
 
-The official command is `endue`. Try it from a source checkout with `cargo run -p desk-cli -- --help`. The v0.3.0 disk images predate the bundled CLI. Existing scripts can keep using `desk` throughout the current major release line. The standalone Linux CLI will have its own download when published.
+The official command is `endue`. Try it from a source checkout with `cargo run -p desk-cli -- --help`. The v0.3.0 disk images predate the bundled CLI. Existing scripts can keep using `desk` throughout the current major release line.
+
+### Linux x86_64 servers
+
+On a release that lists **endue CLI for Linux x86_64**, download the archive, its signature and `SHA256SUMS-cli` into an empty directory. Run `sha256sum -c SHA256SUMS-cli`, then `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `./endue-cli_*/bin/endue run "hello"`. The first CLI download will appear on its release page. v0.3.0 contains the macOS app only. [Verify the publisher signature](docs/releasing.md#verify-a-linux-cli-download)
 
 ## Why endue
 
