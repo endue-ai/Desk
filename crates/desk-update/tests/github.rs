@@ -56,6 +56,52 @@ fn desk(key: &Key, origin: Arc<Origin>, dir: &Path, version: &str) -> Updater {
 }
 
 #[test]
+fn a_signed_tag_accepts_only_its_manifest_at_either_repository_name() {
+    const RENAMED: &str = "https://github.com/endue-ai/endue/releases";
+    let key = Key::new();
+    let origin = shared(Origin::default());
+    page(&origin, 1, &[publish(&origin, &key, "1.0.0", "0.1.0", DEB)]);
+    let tag = format!("{GH}/download/v1.0.0");
+    let index = format!("{tag}/UPGRADE_PATH.json");
+    let mut path: Value = serde_json::from_slice(&origin.get(&index).unwrap()).unwrap();
+    let expected = format!("{RENAMED}/download/v1.0.0/release.json");
+    for suffix in ["", ".sig"] {
+        origin.put(
+            &format!("{expected}{suffix}"),
+            origin.get(&format!("{tag}/release.json{suffix}")).unwrap(),
+        );
+    }
+    for url in [
+        "https://github.com/other/endue/releases/download/v1.0.0/release.json",
+        "https://github.com/endue-ai/endue/releases/download/v1.1.0/release.json",
+        "https://github.com/endue-ai/endue/releases/download/v1.0.0/release.json?tag=v1.0.0",
+    ] {
+        path["releases"][0]["release"] = json!(url);
+        signed(&origin, &key, &index, &path);
+        let updater = desk(&key, origin.clone(), &dir("wrong-tag-url"), "0.1.0");
+        let status = updater.check_now(Prefs::default());
+        assert_eq!(status.state, State::Failed);
+        assert!(status.reason.unwrap().contains("does not match release"));
+    }
+    path["releases"][0]["release"] = json!(expected);
+    signed(&origin, &key, &index, &path);
+    let updater = desk(&key, origin.clone(), &dir("renamed-manifest"), "0.1.0");
+    assert!(updater.check_now(Prefs::default()).staged);
+    origin.put(
+        &format!("{expected}.sig"),
+        key.sign(b"different document", None).into_bytes(),
+    );
+    let updater = desk(&key, origin, &dir("renamed-forgery"), "0.1.0");
+    assert!(
+        updater
+            .check_now(Prefs::default())
+            .reason
+            .unwrap()
+            .contains("signature")
+    );
+}
+
+#[test]
 fn stages_only_the_highest_reachable_tag_across_pages_then_takes_the_next_hop() {
     let key = Key::new();
     let origin = shared(Origin::default());

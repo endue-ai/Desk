@@ -6,14 +6,21 @@ use semver::Version;
 use serde::Deserialize;
 
 use super::Updater;
-use crate::GITHUB_RELEASES;
 use crate::generated::ReleaseChannel;
 use crate::manifest::Index;
 use crate::policy;
 use crate::status::Channel;
+use crate::{LEGACY_RELEASES, RENAMED_RELEASES};
 
-const API: &str = "https://api.github.com/repos/endue-ai/Desk/releases";
 const PAGE_SIZE: usize = 30;
+
+pub(super) fn release_api(base: &str) -> Option<&'static str> {
+    match base {
+        LEGACY_RELEASES => Some("https://api.github.com/repos/endue-ai/Desk/releases"),
+        RENAMED_RELEASES => Some("https://api.github.com/repos/endue-ai/endue/releases"),
+        _ => None,
+    }
+}
 
 #[derive(Deserialize)]
 struct Release {
@@ -29,7 +36,12 @@ struct Asset {
 }
 
 impl Updater {
-    pub(super) fn github_index(&self, channel: Channel) -> Result<Index, String> {
+    pub(super) fn github_index(
+        &self,
+        channel: Channel,
+        base: &str,
+        api: &str,
+    ) -> Result<Index, String> {
         let mut versions = BTreeSet::new();
         let snapshot = format!("desk-updates-{}", channel.name());
         let mut has_snapshot = false;
@@ -37,7 +49,7 @@ impl Updater {
             let bytes = self
                 .inner
                 .transport
-                .get(&format!("{API}?per_page={PAGE_SIZE}&page={page}"))?;
+                .get(&format!("{api}?per_page={PAGE_SIZE}&page={page}"))?;
             let releases: Vec<Release> = serde_json::from_slice(&bytes)
                 .map_err(|e| format!("GitHub Releases could not be read: {e}"))?;
             let last = releases.len() < PAGE_SIZE;
@@ -69,7 +81,7 @@ impl Updater {
             releases: Vec::new(),
         };
         if has_snapshot {
-            result = self.tag_path(&snapshot, channel)?;
+            result = self.tag_path(base, &snapshot, channel)?;
             if result
                 .releases
                 .iter()
@@ -99,14 +111,15 @@ impl Updater {
                 continue;
             }
             let tag = format!("v{version}");
-            let path = self.tag_path(&tag, channel)?;
-            let manifest = format!("{GITHUB_RELEASES}/download/{tag}/release.json");
+            let path = self.tag_path(base, &tag, channel)?;
+            let manifests = [LEGACY_RELEASES, RENAMED_RELEASES]
+                .map(|origin| format!("{origin}/download/{tag}/release.json"));
             let version = version.to_string();
             if path.releases.len() > 1
                 || path
                     .releases
                     .iter()
-                    .any(|row| row.version != version || row.release != manifest)
+                    .any(|row| row.version != version || !manifests.contains(&row.release))
             {
                 return Err(format!("UPGRADE_PATH.json does not match release {tag}"));
             }
@@ -123,8 +136,8 @@ impl Updater {
         Ok(result)
     }
 
-    fn tag_path(&self, tag: &str, channel: Channel) -> Result<Index, String> {
-        let url = format!("{GITHUB_RELEASES}/download/{tag}/UPGRADE_PATH.json");
+    fn tag_path(&self, base: &str, tag: &str, channel: Channel) -> Result<Index, String> {
+        let url = format!("{base}/download/{tag}/UPGRADE_PATH.json");
         self.signed_index(&url, channel, tag)
     }
 }

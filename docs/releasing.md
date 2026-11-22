@@ -34,6 +34,28 @@ a tag with `minFrom` of `1.3.0` can be installed by Desk 1.3.0 or later. Older i
 stage the highest earlier release whose own path accepts them. Mark version tags with prerelease
 suffixes as GitHub prereleases. Existing installer-only tags are skipped by the updater.
 
+### Move installed Desk clients to endue
+
+1. Publish the signed transition build in the original repository, now named `endue-ai/endue`.
+   Set its `minFrom` to a supported update-capable Desk version and make it available to all of
+   those installations before publishing the first branded app. Verify the signed index and
+   manifest through the old Desk URLs. Keep the tag, signatures and GitHub redirect throughout the
+   compatibility window in [ADR 0333](adr/0333-endue-product-and-installation-identity.md).
+2. For the first endue tag, set `minFrom` to the transition version. On **both tags** the signed
+   `UPGRADE_PATH.json` must point to `https://github.com/endue-ai/Desk/releases/download/v<V>/release.json`.
+   Desk checks that exact address even for a tag above its own version floor. The signed manifest
+   can name artifacts at the new repository. Keep the same updater signing identity.
+3. Run `e2e/smoke/update-two-hops.sh --github-rename` from a checkout with the history of #516.
+   It uses the unchanged pre-transition updater for the first hop and the current updater for the
+   second. Both see the same signed publisher output and both tags from the start. It also checks
+   that a bad signature leaves the transition install usable. It uses an ephemeral test key.
+4. Before rolling out, run the package-level two-hop smoke described below on the three builds.
+   From an isolated, update-capable Desk installation with the release key, check for updates
+   with both production tags visible. Record the installed version after each restart. Verify the
+   old API and tag download URLs still resolve after the rename. A Desk installation from an
+   installer-only release can install the official endue package over its existing installation
+   and reopen its workspace. Keep its application data in place.
+
 Desk checks the public release list on startup and periodically. It verifies the available package
 and offers **Restart to update**, **Install on next restart** and **Later**. The restart choice
 belongs to that exact version and is consumed before installation. The staged package works offline.
