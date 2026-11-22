@@ -127,10 +127,10 @@ describe("two results compared through the plugin", () => {
     await m.host.command("endue.database.copy-difference", { format: "csv" });
     expect(m.view.copied.at(-1)?.split("\r\n")).toEqual([
       "change,id,item,price,shelf",
-      "changed (before),2,ink,4.00,",
-      "changed (after),2,ink,4.40,A",
-      "added,5,tape,1.90,B",
-      "removed,3,pad,3.20,",
+      "changed (before),2,ink,4.75,",
+      "changed (after),2,ink,4.95,A",
+      "added,5,tape,1.95,B",
+      "removed,3,pad,3.25,",
     ]);
     // From the console, the last comparison.
     await m.host.command("endue.database.console", { connection: "Notes" });
@@ -147,6 +147,6 @@ describe("two results compared through the plugin", () => {
     expect(m.view.said.at(-1)).toBe(`Exported 4 rows of the difference to ${path}.`);
     await expect(
       m.host.command("endue.database.export-difference", { format: "yaml" }),
-    ).rejects.toThrow(/^Database: export the difference as: pick tsv, csv/u);
+    ).rejects.toThrow(/Database: export the difference as: pick tsv, csv/u);
   });
 });

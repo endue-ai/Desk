@@ -7,17 +7,17 @@ import type { Answer, Script } from "./clients";
 
 export const STOCK_V1 = [
   ["id", "item", "price"],
-  ["1", "pen", "2.50"],
-  ["2", "ink", "4.00"],
-  ["3", "pad", "3.20"],
-  ["4", "clip", "0.10"],
+  ["1", "pen", "2.25"],
+  ["2", "ink", "4.75"],
+  ["3", "pad", "3.25"],
+  ["4", "clip", "0.15"],
 ];
 export const STOCK_V2 = [
   ["id", "item", "price", "shelf"],
-  ["1", "pen", "2.50", "A"],
-  ["2", "ink", "4.40", "A"],
-  ["4", "clip", "0.10", "B"],
-  ["5", "tape", "1.90", "B"],
+  ["1", "pen", "2.25", "A"],
+  ["2", "ink", "4.95", "A"],
+  ["4", "clip", "0.15", "B"],
+  ["5", "tape", "1.95", "B"],
 ];
 
 /** name, type, nullable, default, primary: as the SQLite catalog query reads them. */

@@ -67,7 +67,7 @@
 /** The kinds of the built-in buffers and the fields every buffer has: no panel type is one. */
 const KINDS = "console table ddl";
 const FIELDS =
-  "id kind connection name text execution shown running tab maxRows edit page consoleId number title file visited used filing explained";
+  "id kind connection name text execution shown running tab maxRows edit page consoleId number title file visited used filing explained pinned";
 export const RESERVED = new Set(`${KINDS} ${FIELDS}`.split(" "));
 
 /**

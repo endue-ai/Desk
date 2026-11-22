@@ -173,6 +173,7 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   plan over 64 KiB is read in a worker.
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
+- A result pinned through later runs, and two results compared row by row: [`results.md`](results.md).
 
 Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `value.js`, `output-client.js`,
 `output-worker.js`, `output/`, `explain/`, `view-grid.js`, `view-grid-draw.js`, `grid/`, `features/grid/`,

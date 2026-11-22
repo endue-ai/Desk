@@ -188,7 +188,7 @@ export function createConsoles(deps) {
         ...(options.agent ? { agent: true, interactive: false } : {}),
       });
       target.execution = execution;
-      target.shown = show(execution, options.base ?? 0);
+      target.shown = show(execution, options.base ?? 0, target.pinned);
       target.tab = target.shown.open;
       target.maxRows = maxRows;
       target.edit = null;

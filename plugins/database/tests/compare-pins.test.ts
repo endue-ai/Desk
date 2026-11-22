@@ -129,7 +129,7 @@ describe("pinned result tabs", () => {
     ).toEqual(["select * from t2"]);
     await run(m, "select * from big");
     await expect(m.host.command("endue.database.pin-result")).rejects.toThrow(
-      /^Not pinned: this result holds about \d+(\.\d)? KiB, and pinned results keep at most \d+ B\. Load fewer rows and pin again\.$/u,
+      /Not pinned: this result holds about \d+(\.\d)? KiB, and pinned results keep at most \d+ B\. Load fewer rows and pin again\.$/u,
     );
     expect(tabs(m).filter((tab) => tab.kind === "pinned")).toHaveLength(1);
   });

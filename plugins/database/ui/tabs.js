@@ -1,6 +1,7 @@
 // What a run shows: a tab per result set, and a Messages tab with a line per statement (rows, rows
 // affected, the error with its code and detail, not run), the notices, and a summary. The tab that
-// opens is the error's, else the first result's. Pure, so the tests read it without a DOM.
+// opens is the error's, else the first result's; the console's pinned tabs follow, kept through
+// its runs (compare/pins.js, PG-26). Pure, so the tests read it without a DOM.
 
 import { oneLine } from "./execute.js";
 import { formatCount, formatDuration } from "./format.js";
@@ -10,8 +11,9 @@ import { formatCount, formatDuration } from "./format.js";
  * @typedef {import("./engines/common.js").ResultSet} ResultSet
  * @typedef {import("./engines/common.js").DbError} DbError
  * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number }} Line
- * @typedef {{ label: string, kind: "rows" | "messages" | "plan", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table" }} Tab
+ * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "pinned", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", pin?: import("./compare/pins.js").Pin }} Tab
  *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn.
+ *   A pinned tab holds a result of an earlier run as it was, `statement` -1: it is no run's.
  * @typedef {{ tabs: Tab[], open: number, summary: string, error?: { statement: number, offset: number } }} Shown
  *   `error.offset` is where the first error is in the editor's text, when the client said.
  */
@@ -19,9 +21,10 @@ import { formatCount, formatDuration } from "./format.js";
 /**
  * @param {Execution} execution
  * @param {number} [base] Where the run's text starts in the editor, for the error's offset.
+ * @param {Tab[]} [pinned] The console's pinned tabs, after the run's.
  * @returns {Shown}
  */
-export function show(execution, base = 0) {
+export function show(execution, base = 0, pinned = []) {
   const { statements, classes, result } = execution;
   /** @type {Tab[]} */
   const tabs = [];
@@ -77,6 +80,7 @@ export function show(execution, base = 0) {
   const summary = `${failed ? "Failed" : "Done"}: ${formatCount(ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"} ran in ${formatDuration(result.ms)}${tail}`;
   tabs.push({ label: "Messages", kind: "messages", statement: -1, lines });
   const open = failed || !tabs.some((t) => t.kind === "rows") ? tabs.length - 1 : 0;
+  tabs.push(...pinned);
   return { tabs, open, summary, ...(error ? { error } : {}) };
 }
 

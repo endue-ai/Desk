@@ -1,0 +1,108 @@
+/* Pinned results and two results compared (PG-26): a pinned tab's mark in the result's tabs, and
+   the panel of a difference, drawn as the grid draws pending changes (work.css): a changed cell on
+   the warning tint with its solid bar, an added row on the success tint, a removed row on the
+   danger tint and struck through. Every row and changed cell also says its change in words. Every
+   colour, font, size and radius comes from the theme's --desk-* tokens. */
+
+#tabs .desk-tab.tab-pinned {
+  font-style: italic;
+  border-bottom: 2px dotted var(--desk-text-muted);
+}
+
+.compare {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.compare-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.compare-sides {
+  flex: 1;
+  min-width: 0;
+}
+
+.compare-sides p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--desk-text-xs);
+}
+
+.compare-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.compare > p {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: var(--desk-text-xs);
+}
+
+.compare-count {
+  font-weight: 600;
+}
+
+.compare-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.compare-table {
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.compare-table td {
+  max-width: 24em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.compare-table .null {
+  color: var(--desk-text-muted);
+}
+
+.compare-change {
+  font-weight: 600;
+}
+
+.compare-added td {
+  background: var(--desk-success-soft);
+}
+
+.compare-removed td {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+  text-decoration: line-through;
+}
+
+.compare-removed .compare-change {
+  text-decoration: none;
+}
+
+.compare-cell {
+  background: var(--desk-warning-soft);
+  box-shadow: inset 2px 0 0 var(--desk-warning);
+}
+
+.compare-cell del {
+  color: var(--desk-danger-text);
+}
+
+.compare-cell ins {
+  margin-left: 6px;
+  text-decoration: none;
+}
