@@ -47,6 +47,7 @@ describe("check without running", () => {
     const m = await shop({ script: server(heard) });
     const said = await check(m, "select 1;\nselect name, id from people where id = :id;", 15);
     expect(said).toBe("Checked, nothing ran: takes :id integer; answers 2 columns.");
+    expect(m.shown()?.shown?.summary).toBe(said);
     expect(heard.filter((h) => h.describe).map((h) => h.sql)).toEqual([
       "select name, id from people where id = $1",
     ]);

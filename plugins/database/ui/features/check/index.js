@@ -66,7 +66,13 @@ async function check(deps) {
   const failure = target.execution?.result.error;
   if (failure) return `Not checked: ${failure.message}`;
   const said = outcomes.map((o, i) => (outcomes.length > 1 ? `${i + 1}: ${saidOf(o)}` : saidOf(o)));
-  return `Checked, nothing ran: ${said.join("; ")}.`;
+  const line = `Checked, nothing ran: ${said.join("; ")}.`;
+  // The result's own line says what the check found, not that a statement ran.
+  if (target.shown) {
+    target.shown.summary = line;
+    deps.consoles.render();
+  }
+  return line;
 }
 
 /** @type {import("../../feature-host.js").Feature} */
