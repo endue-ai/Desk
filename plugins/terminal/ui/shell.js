@@ -102,7 +102,7 @@ export function environment(/** @type {Settings} */ settings) {
   return {
     TERM: "xterm-256color",
     COLORTERM: "truecolor",
-    TERM_PROGRAM: "endue-desk",
+    TERM_PROGRAM: "endue",
     ...settings.env,
   };
 }
