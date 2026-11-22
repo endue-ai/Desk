@@ -5,9 +5,9 @@
 export { feature as activity } from "./activity/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
-export { feature as connect } from "./connect/index.js";
 export { feature as chart } from "./chart/index.js";
 export { feature as compare } from "./compare/index.js";
+export { feature as connect } from "./connect/index.js";
 export { feature as connectionsFile } from "./connections-file/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as databases } from "./databases/index.js";
