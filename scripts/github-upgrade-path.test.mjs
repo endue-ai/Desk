@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
-import { previewPath, tagPath } from "./github-upgrade-path.mjs";
-import { releaseManifest } from "./release-manifest.mjs";
+import { githubManifest, previewPath, tagPath } from "./github-upgrade-path.mjs";
+import { entryFor, releaseManifest } from "./release-manifest.mjs";
 
 const base = "https://github.com/endue-ai/Desk/releases/download";
 const build = (version) => ({
@@ -12,6 +15,29 @@ const build = (version) => ({
   release: `releases/${version}/release.json`,
 });
 const index = { channel: "stable", serial: 3, releases: [build("1.0.0"), build("0.6.0")] };
+
+test("both published tags keep the exact path Desk verifies before checking the version floor", (t) => {
+  const dist = mkdtempSync(join(tmpdir(), "endue-tag-"));
+  t.after(() => rmSync(dist, { recursive: true, force: true }));
+  for (const [repo, version, floor] of [
+    ["endue-ai/Desk", "0.4.0", "0.1.0"],
+    ["endue-ai/endue", "0.5.0", "0.4.0"],
+  ]) {
+    const name = `endue-desk_${version}_linux-x86_64.deb`;
+    writeFileSync(join(dist, name), version);
+    writeFileSync(join(dist, `${name}.sig`), "test-signature");
+    const manifest = githubManifest(dist, version, "c46d12b", floor, repo);
+    const path = tagPath({ ...index, releases: [entryFor(manifest)] }, version);
+    assert.equal(path.releases[0].release, `${base}/v${version}/release.json`);
+    assert.equal(path.releases[0].minFrom, floor);
+    const releases = `https://github.com/${repo}/releases`;
+    assert.equal(manifest.notes, `${releases}/tag/v${version}`);
+    assert.equal(
+      manifest.platforms["linux-x86_64-deb"].url,
+      `${releases}/download/v${version}/${name}`,
+    );
+  }
+});
 
 test("an invalid minimum version fails manifest generation before a final is tagged", () => {
   for (const minFrom of ["invalid", "v0.2.0", "1.0.0", "1.1.0"]) {
