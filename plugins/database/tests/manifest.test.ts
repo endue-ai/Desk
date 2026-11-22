@@ -11,7 +11,7 @@ import { createDropped } from "../ui/dropped.js";
 import { createSessions } from "../ui/engines/pg-session.js";
 import { EXPORT_FOLDER, exportResult } from "../ui/export.js";
 import { createRunner } from "../ui/run.js";
-import { DEFAULTS, SETTING_KEYS } from "../ui/settings.js";
+import { DEFAULTS, fromValues, SETTING_KEYS } from "../ui/settings.js";
 import { CHOICES, RANGES, STYLE } from "../ui/sql/layout/style.js";
 import { split } from "../ui/sql/split.js";
 
@@ -116,7 +116,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(137);
+    expect(ids).toHaveLength(140);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -151,6 +151,32 @@ describe("plugin.json", () => {
       const key = `endue.database.format-${field.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}`;
       expect(declared[key]).toMatchObject({ kind: "integer", minimum, maximum });
       expect(declared[key]?.default).toBe(STYLE[field as keyof typeof RANGES]);
+    }
+  });
+
+  it("declares each setting's default, range and choices as settings.js checks them", () => {
+    const declared = manifest().contributes?.settings ?? {};
+    for (const key of SETTING_KEYS) {
+      const setting = declared[key];
+      const name = key
+        .slice("endue.database.".length)
+        .replace(/-([a-z0-9])/gu, (_, c: string) => c.toUpperCase()) as keyof typeof DEFAULTS;
+      expect([key, setting?.default]).toEqual([key, DEFAULTS[name]]);
+      const keeps = (value: unknown) => fromValues({ [key]: value })[name] === value;
+      if (setting?.kind === "integer") {
+        const { minimum, maximum } = setting;
+        expect([key, typeof minimum, typeof maximum]).toEqual([key, "number", "number"]);
+        const bounds = [minimum, maximum, Number(minimum) - 1, Number(maximum) + 1].map(keeps);
+        expect([key, ...bounds]).toEqual([key, true, true, false, false]);
+      } else if (setting?.choices) {
+        expect([key, ...setting.choices.map(keeps), keeps("none of them")]).toEqual([
+          key,
+          ...setting.choices.map(() => true),
+          false,
+        ]);
+      } else {
+        expect([key, setting?.minimum, setting?.maximum]).toEqual([key, undefined, undefined]);
+      }
     }
   });
 

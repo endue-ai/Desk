@@ -1,4 +1,4 @@
-// The settings in force: what the person set (settings.list) over init.yaml's at the start, and a
+// The settings in force: what the person set (settings.get) over init.yaml's at the start, and a
 // change while the plugin runs (settings.changed) taken at once, the clients found again when it
 // names one (D5).
 import { describe, expect, it } from "vitest";
