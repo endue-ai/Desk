@@ -3,8 +3,10 @@
 // of a connection, else its first; a new one numbered; renamed, closed (a closed console's text
 // forgotten, but for a connection's first console, whose text stays as the one console's did); a
 // .sql file's console in the desk's buffer for the file (console-files.js); and the list the
-// surface state keeps, opened again after a restart. Closing one, or moving a file's console to
-// another connection, closes its PostgreSQL session: asked first while it is in a transaction. No DOM.
+// surface state keeps, opened again after a restart. A console on another database of its server
+// (PG-13) takes a random id, as does a first console whose id another console holds. Closing one,
+// moving a file's console to another connection, or a console to another database closes its
+// PostgreSQL session: asked first while it is in a transaction. No DOM.
 
 import {
   baseName,
@@ -16,6 +18,7 @@ import {
   nextNumber,
   readKept,
 } from "./console-list.js";
+import { baseOf } from "./databases.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -64,11 +67,16 @@ export function createMany(buffers, texts, deps) {
     const text = await texts.load(how.consoleId);
     return buffers.made({ id, name, text, ...fields });
   };
+  /** The id a first console of `conn` takes: the connection's, unless another database's or taken. */
+  const firstId = (/** @type {Connection} */ conn) =>
+    conn.id !== baseOf(conn.id) || buffers.list().some((c) => c.consoleId === conn.id)
+      ? newConsoleId(random)
+      : conn.id;
   /** The id and number the next console of `conn` takes: its first's while that is closed. */
   const slot = (/** @type {Connection} */ conn) =>
     scratchOf(conn.id).some((c) => c.consoleId === conn.id)
       ? { consoleId: newConsoleId(random), number: nextNumber(buffers.list(), conn.id) }
-      : { consoleId: conn.id, number: 1 };
+      : { consoleId: firstId(conn), number: 1 };
 
   /** The console on screen, or the one named, that the person may close or rename. */
   const pickConsole = (/** @type {string | undefined} */ id) => {
@@ -79,7 +87,7 @@ export function createMany(buffers, texts, deps) {
 
   /** A console that closed: an extra one's text goes with it. */
   const gone = (/** @type {Console} */ target) => {
-    if (isScratch(target) && target.consoleId && target.consoleId !== target.connection)
+    if (isScratch(target) && target.consoleId && target.consoleId !== baseOf(target.connection))
       texts.forget(target.consoleId);
     else texts.keep();
   };
@@ -89,7 +97,7 @@ export function createMany(buffers, texts, deps) {
     async open(/** @type {Connection} */ conn) {
       const [last] = scratchOf(conn.id).sort((a, b) => (b.used ?? 0) - (a.used ?? 0));
       if (last) return buffers.show(last);
-      return buffers.show(await make(conn, { consoleId: conn.id, number: 1 }));
+      return buffers.show(await make(conn, { consoleId: firstId(conn), number: 1 }));
     },
     /** Open another console on a connection, `<connection> 2` and on. */
     async openNew(/** @type {Connection} */ conn) {
@@ -212,11 +220,11 @@ export function createMany(buffers, texts, deps) {
       if (last) buffers.show(last);
       return back.length > 0;
     },
-    /** A connection was renamed: so are its consoles. */
+    /** A connection was renamed: so are its consoles, on each of its databases. */
     async renamed(/** @type {Connection} */ conn) {
       for (const target of buffers.list()) {
-        if (target.connection !== conn.id || target.kind !== "console") continue;
-        target.name = nameOf(target, conn);
+        if (baseOf(target.connection) !== conn.id || target.kind !== "console") continue;
+        target.name = nameOf(target, deps.connection(target.connection) ?? conn);
         if (target.visited) continue;
         await deps.commands
           .run("desk.buffers.update", { id: target.id, name: target.name })

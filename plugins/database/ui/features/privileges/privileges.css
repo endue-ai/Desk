@@ -1,0 +1,210 @@
+/* The privileges feature (PG-54): the panel's tabs, status and sections, the matrix of grantees
+   and privileges whose cells are buttons, the roles' and policies' tables that scroll sideways, and
+   the change dialog with its exact script. A pressed cell is marked by its outline and the hover
+   surface, never a fill of its own. Every colour, font, size, radius and duration comes from the
+   theme's --desk-* tokens; the feature links this sheet itself (features/README.md). */
+
+.privileges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  outline: none;
+}
+
+.privileges-bar,
+.privileges-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.privileges-tools .desk-field {
+  height: var(--desk-control-xs);
+  font-size: var(--desk-text-xs);
+}
+
+.privileges-status,
+.privileges-said {
+  margin: 0;
+}
+
+.privileges-status {
+  color: var(--desk-text-muted);
+}
+
+.privileges-notices:empty {
+  display: none;
+}
+
+.privileges-notices .desk-error {
+  margin: 0;
+}
+
+.privileges-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.privileges-section h3 {
+  margin: var(--desk-space-2) 0 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.privileges-matrix-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.privileges-matrix th,
+.privileges-roles th,
+.privileges-policies th,
+.privileges-reach th {
+  white-space: nowrap;
+}
+
+.privileges-priv {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  text-align: center;
+}
+
+.privileges-column {
+  padding-left: var(--desk-space-4);
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.privileges-cell {
+  min-width: calc(var(--desk-control-xs) + var(--desk-space-2));
+  height: var(--desk-control-xs);
+  padding: 0 var(--desk-space-1);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: transparent;
+  color: var(--desk-text);
+  font: var(--desk-text-xs) / 1 var(--desk-font-mono);
+  cursor: pointer;
+}
+
+.privileges-cell:hover:not(:disabled) {
+  background: var(--desk-hover);
+}
+
+.privileges-cell:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+.privileges-cell:disabled {
+  cursor: default;
+}
+
+/* A pressed cell needs the person's review: the ring's outline and the hover surface. */
+.privileges-cell.pending {
+  border-color: var(--desk-ring);
+  background: var(--desk-hover);
+  font-weight: 600;
+}
+
+.privileges-flag {
+  text-align: center;
+}
+
+.privileges-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+}
+
+.privileges-expr {
+  max-width: 20em;
+  font-family: var(--desk-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.privileges-list {
+  margin: 0;
+  padding-left: var(--desk-space-4);
+}
+
+.privileges-change {
+  width: min(560px, calc(100% - 16px));
+}
+
+.privileges-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.dialog label.privileges-field {
+  grid-template-columns: 8em minmax(0, 1fr);
+}
+
+.dialog label.privileges-field .hint {
+  grid-column: 2;
+}
+
+.privileges-field textarea {
+  resize: vertical;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+.privileges-choices {
+  display: grid;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dialog label.privileges-choice {
+  display: grid;
+  grid-template-columns: auto 10em minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--desk-space-2);
+}
+
+.privileges-choice-name {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.privileges-choice:has(input:disabled) {
+  color: var(--desk-text-muted);
+}
+
+.privileges-script-label {
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.privileges-script {
+  min-height: 2.5em;
+  max-height: 12em;
+  margin: 0;
+  padding: var(--desk-space-2);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.privileges-script:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+.privileges-problem {
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
