@@ -1,19 +1,35 @@
-import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, it } from "vitest";
-import { realGit } from "./real-git";
+import { gitOutput, realGit, tempRepo } from "./real-git";
 
 const input = "test input\n".repeat(400_000);
 
 it("closes an empty stdin and passes every byte to a Git command that reads input", async () => {
-  const empty = await realGit.run(["hash-object", "--stdin"]);
-  const full = await realGit.run(["hash-object", "--stdin"], { input });
-  const objectId = (value: string) =>
-    createHash("sha1")
-      .update(`blob ${Buffer.byteLength(value)}\0`)
-      .update(value)
-      .digest("hex");
-  expect(empty.stdout.trim()).toBe(objectId(""));
-  expect(full.stdout.trim()).toBe(objectId(input));
+  const repo = await tempRepo();
+  try {
+    const file = join(repo.root, "input");
+    for (const value of ["", input]) {
+      writeFileSync(file, value);
+      const stored = await repo.git("hash-object", file);
+      const piped = await realGit.run(["hash-object", "--stdin"], {
+        cwd: repo.root,
+        input: value || undefined,
+      });
+      expect(piped.stdout).toBe(stored.stdout);
+    }
+    const bytes = Buffer.from([0, 255, 97, 128, 10]);
+    writeFileSync(file, bytes);
+    const object = await repo.git("hash-object", "-w", file);
+    const raw = await gitOutput(["cat-file", "blob", object.stdout.trim()], {
+      cwd: repo.root,
+      env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+    });
+    expect(raw.code).toBe(0);
+    expect(raw.stdout).toEqual(bytes);
+  } finally {
+    repo.done();
+  }
 });
 
 it("uses the child's result when it closes stdin before a large write finishes", async () => {

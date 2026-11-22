@@ -25,25 +25,39 @@ const ENV = {
   GIT_CONFIG_NOSYSTEM: "1",
 };
 
-export const realGit = {
-  run(args: string[], options: RunOptions = {}): Promise<Outcome> {
-    return new Promise((resolve, reject) => {
-      const child = execFile(
-        "git",
-        ["-c", "core.quotepath=false", ...args],
-        { cwd: options.cwd, env: ENV, maxBuffer: 8 << 20 },
-        (error, stdout, stderr) => {
-          const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
-          const outcome = { code, signal: null, stdout, stderr };
-          if (code === 0 || (options.ok ?? []).includes(code)) resolve(outcome);
-          else
-            reject(
-              Object.assign(new Error(stderr.trim() || `git exited with ${code}`), { outcome }),
-            );
-        },
-      );
-      child.stdin?.end(options.input ?? "");
+/** Both test adapters keep Git's raw output until their own text or bridge encoding step. */
+export function gitOutput(
+  args: string[],
+  options: { cwd?: string; env: NodeJS.ProcessEnv; input?: string },
+): Promise<{ code: number; stdout: Buffer; stderr: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "git",
+      args,
+      { cwd: options.cwd, env: options.env, encoding: "buffer", maxBuffer: 8 << 20 },
+      (error, stdout, stderr) => {
+        const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
+        resolve({ code, stdout, stderr });
+      },
+    );
+    // Commands such as git version and failed invocations may finish without consuming input.
+    child.stdin?.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EPIPE") reject(error);
     });
+    child.stdin?.end(options.input);
+  });
+}
+
+export const realGit = {
+  async run(args: string[], options: RunOptions = {}): Promise<Outcome> {
+    const { code, stdout, stderr } = await gitOutput(["-c", "core.quotepath=false", ...args], {
+      cwd: options.cwd,
+      env: ENV,
+      input: options.input,
+    });
+    const outcome = { code, signal: null, stdout: stdout.toString(), stderr: stderr.toString() };
+    if (code === 0 || (options.ok ?? []).includes(code)) return outcome;
+    throw Object.assign(new Error(outcome.stderr.trim() || `git exited with ${code}`), { outcome });
   },
 };
 
