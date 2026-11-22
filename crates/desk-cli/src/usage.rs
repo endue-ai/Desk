@@ -60,7 +60,7 @@ pub fn help() -> std::borrow::Cow<'static, str> {
         return USAGE.into();
     }
     format!(
-        "{}\n\nOn local files: endue plugin validate <dir>.\nWith the running app: endue cmd list.\nRelease version: endue --version.",
+        "{}\n\nOn a server: endue run \"prompt\" (set ENDUE_BRAIN_URL).\nOn local files: endue plugin validate <dir>.\nWith the running app: endue cmd list.\nRelease version: endue --version.",
         USAGE.replacen("usage: desk ", "usage: endue ", 1)
     )
     .into()

@@ -1,7 +1,7 @@
 [package]
 name = "desk-cli"
 default-run = "endue"
-description = "The endue CLI and its desk compatibility command: local plugin tools and a running app over its socket."
+description = "The endue CLI and its desk compatibility command: headless brain turns, local plugin tools and the app socket."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,6 +18,8 @@ name = "endue"
 path = "src/bin/endue.rs"
 
 [dependencies]
+desk-brain.workspace = true
+desk-brain-endue.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
 desk-crash.workspace = true

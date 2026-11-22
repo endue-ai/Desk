@@ -1,12 +1,13 @@
 //! The endue command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
 //! usage. `plugin validate`, `plugin test`, `doctor`, `doctor --trace`, `export` and `import` work
-//! offline; the other subcommands reach a running desk over its socket, `mcp` for another app (ADR
+//! offline. `run` uses a configured brain without the desktop. Live app commands use its socket, including `mcp` (ADR
 //! 0086).
 
 mod args;
 mod doctor;
 mod export;
 mod files;
+mod headless;
 mod health;
 mod lock;
 mod open;
@@ -65,6 +66,7 @@ pub fn run() -> ExitCode {
             println!("{}", usage::help());
             ExitCode::SUCCESS
         }
+        Action::Run(prompt) => headless::run(prompt, args.json),
         Action::Validate(dir) => validate(&dir, args.json),
         // Tests run on a plugin that validates; one that does not says why, as validate does.
         Action::Test(dir) => match checked(&dir) {

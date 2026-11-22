@@ -1732,6 +1732,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ureq",
+ "url",
 ]
 
 [[package]]
@@ -1758,6 +1759,8 @@ dependencies = [
 name = "desk-cli"
 version = "0.0.0"
 dependencies = [
+ "desk-brain",
+ "desk-brain-endue",
  "desk-bridge",
  "desk-core",
  "desk-crash",

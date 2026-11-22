@@ -8,6 +8,12 @@ Desktop packages include both commands in their own `cli` directory. On macOS us
 
 On macOS and Linux run the packaged `cli/activate` to link both commands into `~/.local/bin`, or pass your preferred bin directory and put it on PATH. On Windows run the packaged `cli/activate.ps1` in PowerShell to use both commands in that session. Activation checks both names before making changes. If another program owns either name, use the packaged CLI's absolute path. Repeating activation recognizes the existing installation.
 
+## Run on a server
+
+Set `ENDUE_BRAIN_URL` to the HTTP or HTTPS base URL of a service implementing the public brain v0 contract, including its path (typically `/v0`). The existing `DESK_BRAIN_URL` override is also supported. When the service requires a bearer token, provide `ENDUE_BRAIN_TOKEN` through the process environment. Use HTTPS for remote credentials. Local development can use loopback HTTP.
+
+Run `endue run "hello from SSH"` for one text turn. The answer goes to stdout, errors to stderr. Exit codes are 0 for success, 1 for a runtime failure and 2 for incorrect input. The command takes one quoted argument, accepts closed stdin and works without a desktop. Use `--json` for a JSON result or `run -- "--json"` for literal text. The turn has a two-minute limit. For a local example start `node examples/brain-echo/server.mjs` and set `ENDUE_BRAIN_URL=http://127.0.0.1:8787/v0`.
+
 ## Commands
 
 ```sh

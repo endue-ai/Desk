@@ -22,34 +22,58 @@ pub struct Endpoint {
 
 impl Endpoint {
     pub fn parse(base_url: &str) -> Result<Self, String> {
-        let (secure, rest) = match base_url.split_once("://") {
-            Some(("http", rest)) => (false, rest),
-            Some(("https", rest)) => (true, rest),
-            _ => return Err(format!("not an http URL: {base_url}")),
-        };
-        let (authority, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
-        let (host, port) = match authority.rsplit_once(':') {
-            Some((host, port)) => (
-                host,
-                port.parse()
-                    .map_err(|_| format!("not a port: {port} in {base_url}"))?,
-            ),
-            None => (authority, if secure { 443 } else { 80 }),
-        };
-        if host.is_empty() {
-            return Err(format!("no host in {base_url}"));
+        if base_url
+            .bytes()
+            .any(|byte| byte.is_ascii_control() || byte == b' ')
+        {
+            return Err("invalid characters in the brain URL".into());
         }
+        let url = url::Url::parse(base_url).map_err(|_| "invalid brain URL")?;
+        let secure = match url.scheme() {
+            "https" => true,
+            "http" => false,
+            _ => return Err("expected an HTTP or HTTPS brain URL".into()),
+        };
+        if !url.username().is_empty()
+            || url.password().is_some()
+            || url.query().is_some()
+            || url.fragment().is_some()
+        {
+            return Err(
+                "the brain base URL cannot contain credentials, a query or a fragment".into(),
+            );
+        }
+        let host = match url.host().ok_or("missing brain host")? {
+            url::Host::Ipv6(ip) => ip.to_string(),
+            host => host.to_string(),
+        };
         Ok(Self {
             secure,
-            host: host.to_owned(),
-            port,
-            prefix: path.trim_end_matches('/').to_owned(),
+            host,
+            port: url.port_or_known_default().ok_or("missing brain port")?,
+            prefix: url.path().trim_end_matches('/').to_owned(),
         })
+    }
+
+    fn authority(&self) -> String {
+        if self.host.contains(':') {
+            format!("[{}]:{}", self.host, self.port)
+        } else {
+            format!("{}:{}", self.host, self.port)
+        }
     }
 
     pub fn url(&self) -> String {
         let scheme = if self.secure { "https" } else { "http" };
-        format!("{scheme}://{}:{}{}", self.host, self.port, self.prefix)
+        format!("{scheme}://{}{}", self.authority(), self.prefix)
+    }
+
+    pub(crate) fn is_loopback(&self) -> bool {
+        self.host == "localhost"
+            || self
+                .host
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|ip| ip.is_loopback())
     }
 
     pub fn is_secure(&self) -> bool {
@@ -107,19 +131,29 @@ pub fn send(
     if endpoint.secure {
         return crate::tls::send(endpoint, token, method, path, body);
     }
-    let address = (endpoint.host.as_str(), endpoint.port)
+    // localhost and multi-address services may listen on just one address family.
+    let mut last_error = io::Error::new(io::ErrorKind::NotFound, "the host has no address");
+    let mut stream = (endpoint.host.as_str(), endpoint.port)
         .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "the host has no address"))?;
-    let mut stream = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT)?;
+        .find_map(
+            |address| match TcpStream::connect_timeout(&address, CONNECT_TIMEOUT) {
+                Ok(stream) => Some(stream),
+                Err(error) => {
+                    last_error = error;
+                    None
+                }
+            },
+        )
+        .ok_or(last_error)?;
     stream.set_read_timeout(Some(READ_TIMEOUT))?;
     stream.set_write_timeout(Some(CONNECT_TIMEOUT))?;
 
     let payload = body.map(|b| b.to_string()).unwrap_or_default();
     let mut head = format!(
-        "{method} {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: endue-desk\r\n\
+        "{method} {}{path} HTTP/1.1\r\nHost: {}\r\nUser-Agent: endue-desk\r\n\
          Accept: application/json, text/event-stream\r\nConnection: close\r\n",
-        endpoint.prefix, endpoint.host, endpoint.port
+        endpoint.prefix,
+        endpoint.authority()
     );
     if let Some(token) = token {
         head.push_str(&format!("Authorization: Bearer {token}\r\n"));

@@ -77,7 +77,10 @@ fn supports_json_and_a_literal_option_in_the_prompt_with_the_existing_url_overri
     let echo = fixture::Echo::start();
     let out = cli()
         .args(["--json", "run", "--", "--json"])
-        .env("DESK_BRAIN_URL", echo.url())
+        .env(
+            "DESK_BRAIN_URL",
+            echo.url().replace("127.0.0.1", "localhost"),
+        )
         .output()
         .unwrap();
     assert!(out.status.success());
