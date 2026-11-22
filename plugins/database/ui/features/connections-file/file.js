@@ -7,6 +7,7 @@
 
 import { blank, newId, normalize } from "../../connections.js";
 import { OPTIONS } from "../../engines/pg-options.js";
+import { TUNNEL } from "../../tunnel/fields.js";
 import { looksLikeService, readService } from "./service.js";
 
 /**
@@ -25,8 +26,9 @@ const MAX_ENTRIES = 1000;
 export const SECRET = /pass|secret|token|credential/iu;
 const ID = /^[a-z0-9-]{1,40}$/u;
 
-/** The session options a file carries when a connection sets them: all but the startup script. */
-const OPTIONAL = OPTIONS.filter((key) => key !== "startup");
+/** What a file carries when a connection sets it: the session options but the startup script, and
+ * the SSH tunnel's fields (ADR 0359), which hold no secret. */
+const OPTIONAL = [...OPTIONS.filter((key) => key !== "startup"), ...TUNNEL];
 /** The fields the file carries: those a connection is made of, never a secret's. */
 export const FIELDS = [...Object.keys(blank()).filter((key) => !SECRET.test(key)), ...OPTIONAL];
 

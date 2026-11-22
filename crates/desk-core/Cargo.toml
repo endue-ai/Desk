@@ -17,6 +17,8 @@ desk-computer = { path = "../desk-computer" }
 desk-index.workspace = true
 desk-memory.workspace = true
 desk-pg.workspace = true
+# db.open's SSH tunnels (ADR 0359).
+desk-ssh.workspace = true
 # studio.*: endue AI's platform API (ADR 0122).
 desk-platform = { path = "../desk-platform" }
 desk-plugin-host.workspace = true
@@ -45,6 +47,8 @@ desk-brain-local.workspace = true
 desk-platform = { path = "../desk-platform", features = ["fake"] }
 # Test connectors in component WAT (tests/connectors_wasm_imports), as desk-plugin-host's tests.
 wat = "1"
+# The SSH server db.open's tunnel tests sign in to (ADR 0359).
+desk-ssh = { workspace = true, features = ["testing"] }
 
 [lints]
 workspace = true

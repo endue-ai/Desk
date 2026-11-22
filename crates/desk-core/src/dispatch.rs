@@ -90,6 +90,7 @@ impl Core {
             R::DbPasswordsSet(r) => (r.id, self.db_passwords_set(caller, r.params)),
             R::DbPasswordsDelete(r) => (r.id, self.db_passwords_delete(caller, r.params)),
             R::DbPasswordsList(r) => (r.id, self.db_passwords_list(caller, r.params)),
+            R::DbHostKeysDelete(r) => (r.id, self.db_host_keys_delete(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, self.audio_capture_start(caller, r.params)),
             R::AudioCaptureStop(r) => (r.id, self.audio_capture_stop(caller, r.params)),
             R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),

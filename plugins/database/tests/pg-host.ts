@@ -16,6 +16,7 @@ import { createSessions } from "../ui/engines/pg-session.js";
 import type { Passphrases } from "../ui/engines/pg-tls.js";
 import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
+import type { createTunnel } from "../ui/tunnel/open.js";
 import { runsOf } from "./runs-of";
 
 export const ME = "endue.database";
@@ -71,13 +72,14 @@ export function sessionExecutor(
     files?: StubFiles;
     prompt?: (data: PermPromptData) => boolean;
     passphrases?: Passphrases;
+    tunnel?: ReturnType<typeof createTunnel>;
   } = {},
 ) {
   const { bridge, calls, core } = dbBridge(db, options);
-  const sessions = createSessions(
-    bridge,
-    options.passphrases ? { passphrases: options.passphrases } : {},
-  );
+  const sessions = createSessions(bridge, {
+    ...(options.passphrases ? { passphrases: options.passphrases } : {}),
+    ...(options.tunnel ? { tunnel: options.tunnel } : {}),
+  });
   const settings = fromValues(options.settings ?? {});
   const asked: string[] = [];
   const kept: string[] = [];
