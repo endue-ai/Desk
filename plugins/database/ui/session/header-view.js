@@ -1,8 +1,8 @@
 // A PostgreSQL console's transaction in the header (PG-20): the Auto or Manual commit button, and
 // while a transaction is open its statements and the time it has been open, counted every second
 // and flagged when it sits idle past the person's minutes (the status dot then turns to danger),
-// with Commit, and Rollback (a failed transaction offers only Rollback). The words are
-// transaction-words.js's.
+// with Commit, and Rollback (a failed transaction offers only Rollback); and Reconnect beside a lost
+// session (PG-105). The words are transaction-words.js's.
 
 import { transactionLine } from "./transaction-words.js";
 
@@ -37,6 +37,8 @@ export function createTransactionHeader(doc, now = () => Date.now()) {
 
   return (/** @type {TransactionModel | undefined} */ model) => {
     shown = model;
+    const again = byId("session-reconnect");
+    if (again) again.hidden = model?.state !== "lost";
     const bar = byId("transaction-bar");
     if (!bar) return;
     bar.hidden = !model?.mode;

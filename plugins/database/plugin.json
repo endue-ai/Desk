@@ -3007,6 +3007,11 @@
         "keywords": ["rollback", "transaction", "undo", "discard", "abort"]
       },
       {
+        "id": "endue.database.reconnect",
+        "title": "Database: reconnect the lost session",
+        "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
+      },
+      {
         "id": "endue.database.transaction-mode",
         "title": "Database: switch the console between auto and manual commit",
         "keywords": ["autocommit", "manual", "auto", "commit", "transaction", "mode"]
