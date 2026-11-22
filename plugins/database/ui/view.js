@@ -61,8 +61,18 @@ export function createView(doc, act, features = Object.values(all), options = {}
   /** The results whose editability was asked for, so it is asked once. */
   let asked = "";
 
-  const tree = createTree(doc, byId("tree"), (action, ...args) =>
-    action === "filter" ? filter.focus() : act(action, ...args),
+  // With nothing open the work pane names the connection the explorer's cursor is in.
+  const empty = byId("empty");
+  const pick = empty.textContent ?? "";
+  const tree = createTree(
+    doc,
+    byId("tree"),
+    (action, ...args) => (action === "filter" ? filter.focus() : act(action, ...args)),
+    (row) => {
+      empty.textContent = row
+        ? `No console is open on ${row.label}: Enter or a double click on it opens one.`
+        : pick;
+    },
   );
   const copy = (/** @type {string} */ text) => copyText(doc, text);
   const grid = createGrid(
@@ -181,7 +191,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
   const draw = (/** @type {Console | null} */ model, /** @type {Connection | null} */ conn) => {
     const previous = shown;
     shown = model;
-    byId("empty").hidden = model !== null;
+    empty.hidden = model !== null;
     byId("actions").hidden = model === null;
     editorBox.hidden = model?.kind !== "console" && model?.kind !== "ddl";
     tableBar.hidden = model?.kind !== "table";

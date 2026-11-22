@@ -69,6 +69,14 @@ export function pgFixtureScript(sql: string): Answer {
         ]),
       ],
     };
+  // The table view's order (ui/table-order.js): a table keyed by id.
+  if (/^SELECT c\.relkind, /u.test(text) && text.includes("'items'"))
+    return {
+      rows: [
+        ["relkind", "key"],
+        ["r", '"id"'],
+      ],
+    };
   if (/^WITH RECURSIVE d/u.test(text) && text.includes("'items'"))
     return {
       rows: [

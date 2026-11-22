@@ -90,12 +90,15 @@ export function viewOf(held, systemSchemas) {
 
 /** @typedef {ReturnType<typeof viewOf>} CacheView */
 
-/** "read 14:05" today, "read 2026-11-20 14:05" before. */
-export function readAtText(/** @type {number} */ readAt, now = Date.now()) {
+/**
+ * "read 14:05" today, "read 2026-11-20 14:05" before, on the 24-hour clock; with `seconds`,
+ * "read 14:05:09" (the activity view, which reads every few seconds).
+ */
+export function readAtText(/** @type {number} */ readAt, now = Date.now(), seconds = false) {
   const at = new Date(readAt);
   const day = new Date(now);
   const two = (/** @type {number} */ n) => String(n).padStart(2, "0");
-  const time = `${two(at.getHours())}:${two(at.getMinutes())}`;
+  const time = `${two(at.getHours())}:${two(at.getMinutes())}${seconds ? `:${two(at.getSeconds())}` : ""}`;
   const same =
     at.getFullYear() === day.getFullYear() &&
     at.getMonth() === day.getMonth() &&
