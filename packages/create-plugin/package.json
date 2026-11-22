@@ -2,7 +2,7 @@
   "name": "@endue-ai/create-plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "pnpm create @endue-ai/plugin: scaffold a Desk plugin folder of any kind that passes desk plugin validate and carries one test.",
+  "description": "pnpm create @endue-ai/plugin: scaffold an endue plugin folder of any kind that passes endue plugin validate and carries one test.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {

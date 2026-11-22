@@ -44,10 +44,7 @@ export const KINDS = {
     render: renderTheme,
     build: false,
     dev: true,
-    after: (id) => [
-      "Then choose it in the theme studio, or with:",
-      `  cargo run -p desk-cli -- theme apply ${id}`,
-    ],
+    after: (id) => ["Then choose it in the theme studio, or with:", `  endue theme apply ${id}`],
   },
 } satisfies Record<string, Kind>;
 
