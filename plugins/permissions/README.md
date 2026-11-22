@@ -23,12 +23,13 @@ refusals, which the core keeps (CORE-03), each with Allow (`perm.grant`) to take
 | `ui/refusals.js` | This session's refusals, kept across a reload, and their Allow buttons |
 | `ui/overlay.js` | When the overlay shows, hides and shows the list |
 | `ui/controller.js` | Bridge calls and events, the card queue, Escape |
-| `ui/view.js` · `ui/main.js` | The DOM (dialogs, the list, a status live region); mounting |
+| `ui/view.js` · `ui/arming.js` · `ui/main.js` | The DOM (dialogs, the list, a status live region); a card's arming delay; mounting |
 
 A request is broad (CORE-03) when it names a shell or interpreter in `proc:spawn`, a host wildcard over
 a top-level domain, a file scope over a disk or the home folder, every command, every plugin's
-settings, or `perm:manage`. Focus starts on Don't allow; Tab stays inside the card; Escape refuses,
-denies or closes. A press beside a card does nothing. When the core offers the parent folder (a
+settings, or `perm:manage`. Focus starts on Don't allow, and for 500 ms after a card shows no key
+answers it (ADR 0335); Tab stays inside the card; Escape refuses, denies or closes. A press beside a
+card does nothing. When the core offers the parent folder (a
 caller's third folder under it), "Allow all of <folder>" grants that instead (`parent: true`). The
 approval card offers "Allow once", "Allow for this task" (only in a turn) and "Deny" (focused); after
 an allowed write, the path, the size and Undo once the core says `undoable` (`cmd.undo`, #276).

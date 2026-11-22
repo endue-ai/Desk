@@ -2580,6 +2580,11 @@
         "id": "endue.database.palette-hide",
         "title": "Database: hide a connection from the palette, or show it again",
         "keywords": ["palette", "hide", "show", "search", "connection"]
+      },
+      {
+        "id": "endue.database.allow-connect",
+        "title": "Database: allow connecting",
+        "keywords": ["permission", "refused", "connect", "server", "ask again"]
       }
     ],
     "keys": [

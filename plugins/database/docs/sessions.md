@@ -24,6 +24,11 @@ Which session a PostgreSQL run goes to, and what stays on it (ADR 0320). The res
 - A statement's notices are those its pages carry, so they stay with it whatever order things arrive in
   (ADR 0334); a COMMIT's (a deferred trigger's) and those the session sends outside any run are the run's
   own lines, on the next run of a kept session.
+- Connecting is asked only from the person's act (ADR 0335): the first run, Test or Connect raises the
+  `db:connect` question for a server; the completions read its catalog only once the plugin holds the grant
+  (`perm.query`, which asks nothing), so typing never raises it. A refused run says "Allow connecting to
+  host:port asks again", and its Messages tab has that button; it and Database: allow connecting ask again
+  through `perm.request` with `again`, which the core honours after a refusal earlier in the session.
 
-Modules: `session/` (the kept sessions, their words and limits), `engines/pg-session.js` (where a run goes),
+Modules: `session/` (the kept sessions, their words and limits; `connect-gate.js` who asks to connect), `engines/pg-session.js` (where a run goes),
 `engines/pg-script.js` (how its statements run), `execute.js`.
