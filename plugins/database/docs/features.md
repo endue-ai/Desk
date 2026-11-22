@@ -144,7 +144,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 ## Format SQL, SQL problems and completion
 
-Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md). Eris writing, explaining and fixing a console's SQL, and what is sent: [`assist.md`](assist.md).
 
 ## Results
 
@@ -244,8 +244,7 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
-  an earlier one, and show it in the file manager.
+- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
   like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
   Read-only connections refuse it and production asks.

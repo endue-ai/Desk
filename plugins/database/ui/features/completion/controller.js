@@ -6,7 +6,9 @@
 // of the tables the statement names, at most four of them. Either way the person's picks rank
 // candidates (picks.js) and the snippets the settings add are offered where they fit. A server the
 // plugin holds no db:connect grant for is not read while the person types (connectHeld, ADR 0335):
-// it completes from what is cached already, and the question comes from a run, Test or Connect. No DOM.
+// it completes from what is cached already, and the question comes from a run, Test or Connect.
+// Inside a PL/pgSQL body (ADR 0343) the worker completes even without a cache, for the body's
+// variables. No DOM.
 
 import { problemModel } from "../../diagnose/model.js";
 import { complete } from "../../editor/complete.js";
@@ -14,6 +16,7 @@ import { snippetsOf } from "../../editor/snippets.js";
 import { engineOf } from "../../engines/index.js";
 import { connectHeld } from "../../session/connect-gate.js";
 import { sqlParser } from "../../sql/parse/client.js";
+import { bodyAt } from "../../sql/plpgsql/bodies.js";
 import { picksFor } from "./picks.js";
 
 /**
@@ -85,7 +88,10 @@ export function createCompletion(deps, parser = sqlParser) {
         conn.engine === "postgresql" && sql
           ? problemModel(conn.id, deps.catalog.cache.view(conn))
           : null;
-      if (sql && model)
+      // A PL/pgSQL body's variables need no cache: the worker completes there without one.
+      const body =
+        conn.engine === "postgresql" && !model && text.includes("$") && bodyAt(text, caret);
+      if (sql && (model || body))
         return sql.complete(text, model, {
           doc: shown.id,
           caret,

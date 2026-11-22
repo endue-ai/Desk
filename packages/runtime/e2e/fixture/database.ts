@@ -30,6 +30,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { assistAnswer } from "../../../../plugins/database/tests/assist-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
@@ -186,6 +187,8 @@ const core = browserCore({
         : backupOpen(params, caller),
   },
   open: () => {},
+  // Eris in a console answers from a script (assist-fixture.ts, PG-90).
+  ask: assistAnswer,
 });
 emit = (event) => core.stub.emit(event);
 const runtime = createRuntime({

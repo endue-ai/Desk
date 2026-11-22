@@ -3,6 +3,7 @@
 // feature merge without a conflict.
 
 export { feature as activity } from "./activity/index.js";
+export { feature as assist } from "./assist/index.js";
 export { feature as audit } from "./audit/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
@@ -15,12 +16,14 @@ export { feature as connectionsFile } from "./connections-file/index.js";
 export { feature as consoles } from "./consoles/index.js";
 export { feature as databases } from "./databases/index.js";
 export { feature as diagram } from "./diagram/index.js";
+export { feature as exportResult } from "./export/index.js";
 export { feature as format } from "./format/index.js";
 export { feature as geo } from "./geo/index.js";
 export { feature as grid } from "./grid/index.js";
 export { feature as keychain } from "./keychain/index.js";
 export { feature as links } from "./links/index.js";
 export { feature as maintenance } from "./maintenance/index.js";
+export { feature as navigate } from "./navigate/index.js";
 export { feature as objects } from "./objects/index.js";
 export { feature as overview } from "./overview/index.js";
 export { feature as palette } from "./palette/index.js";

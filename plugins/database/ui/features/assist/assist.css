@@ -1,0 +1,57 @@
+/* Eris in a console (PG-90): the dialog of what is sent and the dialog of a proposal. Every colour,
+   font, size and radius comes from the theme's --desk-* tokens; the feature links this sheet
+   itself (features/README.md). */
+
+.assist-sent-text {
+  max-height: min(260px, 40vh);
+  margin: 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assist-text {
+  min-height: min(160px, 30vh);
+  max-height: 50vh;
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  resize: vertical;
+}
+
+.assist-explanation {
+  font-size: var(--desk-text-sm);
+}
+
+.assist-marks {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--desk-text-xs);
+}
+
+.assist-marks .assist-write {
+  padding: 2px 6px;
+  border: 1px solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.dialog .assist-refused {
+  color: var(--desk-danger-text);
+}
+
+.assist-sent-box summary {
+  cursor: pointer;
+  font-size: var(--desk-text-xs);
+}

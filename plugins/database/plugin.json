@@ -48,6 +48,9 @@
     {
       "permission": "db:connect",
       "hosts": ["*"]
+    },
+    {
+      "permission": "brain:ask"
     }
   ],
   "surfaces": [
@@ -961,7 +964,10 @@
               "minLength": 1,
               "description": "PostgreSQL: another database of the connection's server; its own by default."
             },
-            "sql": { "type": "string", "minLength": 1 },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
             "analyze": {
               "type": "boolean",
               "description": "Run it to measure it (EXPLAIN ANALYZE); refused unless the person allows it on this connection."
@@ -1001,7 +1007,10 @@
               "minLength": 1,
               "description": "Its schema (SQLite: main)."
             },
-            "name": { "type": "string", "minLength": 1 },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
             "kind": {
               "type": "string",
               "description": "Its kind, when names clash: table, view, function ..."
@@ -1036,8 +1045,15 @@
               "minLength": 1,
               "description": "Its schema (SQLite: main)."
             },
-            "table": { "type": "string", "minLength": 1 },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
             "timeoutSeconds": {
               "type": "integer",
               "minimum": 1,
@@ -1068,8 +1084,14 @@
               "minLength": 1,
               "description": "PostgreSQL: another database of the connection's server; its own by default."
             },
-            "schema": { "type": "string", "minLength": 1 },
-            "table": { "type": "string", "minLength": 1 },
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
             "timeoutSeconds": {
               "type": "integer",
               "minimum": 1,
@@ -1095,7 +1117,11 @@
               "minLength": 1,
               "description": "A connection's name or id."
             },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
             "timeoutSeconds": {
               "type": "integer",
               "minimum": 1,
@@ -1126,7 +1152,10 @@
               "minLength": 1,
               "description": "PostgreSQL: another database of the connection's server; its own by default."
             },
-            "sql": { "type": "string", "minLength": 1 },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
             "timeoutSeconds": {
               "type": "integer",
               "minimum": 1,
@@ -1171,14 +1200,25 @@
               "type": "boolean",
               "description": "Close the connection to agents, or open it again."
             },
-            "analyze": { "type": "boolean", "description": "Let agents run EXPLAIN ANALYZE here." },
+            "analyze": {
+              "type": "boolean",
+              "description": "Let agents run EXPLAIN ANALYZE here."
+            },
             "sensitive": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "The sensitive columns, replacing the ones set: column, table.column or schema.table.column."
             },
-            "add": { "type": "string", "description": "One more sensitive column." },
-            "remove": { "type": "string", "description": "A sensitive column to unmask." }
+            "add": {
+              "type": "string",
+              "description": "One more sensitive column."
+            },
+            "remove": {
+              "type": "string",
+              "description": "A sensitive column to unmask."
+            }
           },
           "additionalProperties": false
         }
@@ -1911,7 +1951,100 @@
       {
         "id": "endue.database.export",
         "title": "Database: export the result to a file",
-        "keywords": ["download", "save", "csv", "json", "sql"]
+        "keywords": [
+          "download",
+          "save",
+          "csv",
+          "json",
+          "sql",
+          "xlsx",
+          "spreadsheet",
+          "html",
+          "xml",
+          "template"
+        ],
+        "description": "Exports the result on screen (or the grid's selection) as a file in a format, with that format's options; the person always chooses the place in the save dialog, which no argument can skip. Without a format the palette asks, then the options dialog. It answers the path, the rows written, their bytes, and partial when the server has more rows than the result holds.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "sheets": {
+              "enum": ["shown", "all"],
+              "description": "For xlsx: the result on screen, or every result of the console as a sheet each."
+            }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.database.add-row",
@@ -2857,6 +2990,56 @@
         "id": "endue.database.allow-connect",
         "title": "Database: allow connecting",
         "keywords": ["permission", "refused", "connect", "server", "ask again"]
+      },
+      {
+        "id": "endue.database.assist-write",
+        "title": "Database: Eris writes a statement from a sentence",
+        "keywords": ["ai", "brain", "generate", "natural language", "write", "sql"]
+      },
+      {
+        "id": "endue.database.assist-explain",
+        "title": "Database: Eris explains this statement",
+        "keywords": ["ai", "brain", "explain", "what does", "sql"]
+      },
+      {
+        "id": "endue.database.assist-fix",
+        "title": "Database: Eris fixes this error",
+        "keywords": ["ai", "brain", "fix", "error", "repair", "sql"]
+      },
+      {
+        "id": "endue.database.assist-plan",
+        "title": "Database: Eris explains this plan",
+        "keywords": ["ai", "brain", "explain", "plan", "slow", "index"]
+      },
+      {
+        "id": "endue.database.assist-sent",
+        "title": "Database: what this console sends to Eris",
+        "keywords": ["ai", "brain", "privacy", "sent", "sample", "prompt"]
+      },
+      {
+        "id": "endue.database.assist-close",
+        "title": "Database: close this connection to Eris",
+        "keywords": ["ai", "brain", "privacy", "off", "block"]
+      },
+      {
+        "id": "endue.database.assist-open",
+        "title": "Database: open this connection to Eris again",
+        "keywords": ["ai", "brain", "privacy", "on", "allow"]
+      },
+      {
+        "id": "endue.database.go-to-definition",
+        "title": "Database: go to the definition of the name at the caret",
+        "keywords": ["definition", "jump", "navigate", "DDL", "CTE", "alias", "F12"]
+      },
+      {
+        "id": "endue.database.show-card",
+        "title": "Database: show what the name at the caret is",
+        "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
+      },
+      {
+        "id": "endue.database.find-usages",
+        "title": "Database: find the usages of the name at the caret",
+        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
       }
     ],
     "keys": [
@@ -2990,7 +3173,7 @@
       "endue.database.problems-warnings-off": {
         "kind": "array",
         "default": [],
-        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal."
+        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal, and in PL/pgSQL bodies unused-variable, unreachable-code."
       },
       "endue.database.pg-dump": {
         "kind": "string",

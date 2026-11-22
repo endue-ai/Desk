@@ -115,7 +115,9 @@ package-shell version="0.0.0": build-sdk build-ui
     if [ "$(uname -s)" = Linux ]; then export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN'; fi
     export DESK_VERSION="{{version}}"
     # Build separately so desktop features do not enter the standalone CLI.
+    source scripts/package-build-env.sh
     cargo build -p desk-shell --bins --release
+    if [ "$(uname -s)" = Linux ]; then source scripts/package-cli-build-env.sh; fi
     cargo build -p desk-cli --bins --release
     node scripts/cef-package.mjs --target "$triple" --version "{{version}}"
 
