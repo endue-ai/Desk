@@ -9,7 +9,8 @@
  * @typedef {import("./check.js").Answer} Answer
  * @typedef {import("./check.js").CheckResult} CheckResult
  * @typedef {import("../execute.js").Execution} Execution
- * @typedef {{ model: SchemaModel | null, searchPath: string[], user: string, syntax: boolean, names: boolean }} Context
+ * @typedef {{ model: SchemaModel | null, searchPath: string[], user: string, syntax: boolean,
+ *   names: boolean, warnings?: boolean, off?: string[] }} Context
  * @typedef {{ check(sql: string, model: SchemaModel | null, options: Record<string, unknown>): Promise<CheckResult> }} Checking
  * @typedef {{ sql: string, context: Context, callers: Array<(result: CheckResult | null) => void> }} Waiting
  */

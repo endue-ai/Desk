@@ -33,7 +33,8 @@ const COLUMNS = /** @type {const} */ ([
 ]);
 /** At most this many locks are drawn; the rest are counted. */
 const LOCKS_DRAWN = 200;
-const MARKS = { view: "this view", plugin: "endue", "": "" };
+/** What marks the view's own session and the plugin's others on this desk. */
+const MARKS = { view: "this view", desk: "this desk", "": "" };
 
 const who = (/** @type {Session | undefined} */ s) =>
   s ? `${s.user ?? "another role"}${s.application ? ` · ${s.application}` : ""}` : "";
@@ -243,16 +244,17 @@ function details(
 }
 
 /**
- * The locks in the database the filter keeps (without the view's own), waiting ones first.
+ * The locks in the database the filter keeps (without the view's reads'), waiting ones first.
  * @param {Document} doc
  * @param {ActivityState} state
  */
 export function locksSection(doc, state) {
   const read = /** @type {Read} */ (state.read);
   const { database, own } = state.filters;
+  const reads = new Set(read.sessions.filter((s) => s.reads).map((s) => s.pid)).add(read.own);
   const locks = read.locks.filter(
     (l) =>
-      (!database || l.database === null || l.database === database) && !(own && l.pid === read.own),
+      (!database || l.database === null || l.database === database) && !(own && reads.has(l.pid)),
   );
   const box = section(doc, "locks", `Locks (${locks.length}${read.more ? "+" : ""})`);
   const heads = ["PID", "Type", "On", "Mode", "Held", "Waiting for"];

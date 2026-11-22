@@ -100,6 +100,8 @@ export function createEdits(deps) {
     /** @type {EditState} */
     let state;
     if (!set) state = refused("Pick a result with rows first.");
+    else if (target.shown?.tabs[target.tab]?.kind === "pinned")
+      state = refused("A pinned result is kept as it was: run its query again to change its rows.");
     else if (conn.readOnly) state = refused(refusalOf(conn, undefined));
     else {
       const { dialect } = engineOf(conn.engine);

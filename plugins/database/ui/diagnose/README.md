@@ -14,6 +14,8 @@ words. The worker side reads the script; the page side asks for it and draws it.
   and moved relations, schemas, opaque statements) as effects over a copy-on-write state.
 - `names.js`, `insert.js` (worker): the names that bind to nothing and INSERT's counts as
   problems, each with the server's message and hint.
+- `warnings.js`, `warn-*.js`, `ignore.js` (worker): the warnings (ADR 0328), each rule on a
+  statement's tree and bound names, and the `-- endue-ignore` lines.
 - `text.js`: edit distance, the nearest name, a message as one sentence, where a token ends.
 - `model.js` (page): `problemModel(connectionId, view)`, the schema cache's view as the parser's
   model, read schemas only.

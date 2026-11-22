@@ -1,7 +1,9 @@
 // What a statement does, from its words: read, write, ddl, transaction or session, whether it returns
 // rows, whether it is dangerous (DROP, TRUNCATE, UPDATE or DELETE without WHERE), and what no client
 // may run here (psql meta-commands, sqlite3 dot-commands, COPY through standard input or output).
-// Unknown statements count as writes, so a read-only connection refuses them.
+// Unknown statements count as writes, so a read-only connection refuses them, and so does a
+// PostgreSQL statement that signals a server session (pg_cancel_backend, pg_terminate_backend:
+// ADR 0328), which changes the server whatever its verb.
 
 import { wordsOf } from "./lexer.js";
 
@@ -66,6 +68,8 @@ const SESSION = new Set([
   "LOAD",
 ]);
 const MAIN_VERBS = new Set(["SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "VALUES", "TABLE"]);
+/** PostgreSQL's functions that cancel or end another session. */
+const SIGNALS = new Set(["PG_CANCEL_BACKEND", "PG_TERMINATE_BACKEND"]);
 const READ_ONLY_NAMES =
   /\b(?:transaction_read_only|default_transaction_read_only|read_only|tx_read_only)\b/iu;
 
@@ -90,12 +94,13 @@ export function classify(statement, dialect) {
     verb = nested ?? top.find((w) => MAIN_VERBS.has(w)) ?? "SELECT";
     rest = nested ? words.slice(words.indexOf(nested)) : top.slice(top.indexOf(verb));
   }
-  if (verb === "EXPLAIN") return explained(words, top, dialect, refused);
+  const signals = dialect === "postgresql" && words.some((w) => SIGNALS.has(w));
+  if (verb === "EXPLAIN") return explained(words, top, dialect, refused, signals);
   // PRAGMA name = value sets something; PRAGMA name or name(arg) reads.
   const assigns = statement.tokens.some((t) => t.type === "op" && t.text === "=");
   const kind = verb === "PRAGMA" ? (assigns ? "session" : "read") : kindOf(verb, rest, dialect);
   return {
-    kind,
+    kind: signals && kind === "read" ? "write" : kind,
     verb,
     rows: returnsRows(verb, rest, words, dialect),
     dangerous: danger(verb, rest, words),
@@ -104,18 +109,20 @@ export function classify(statement, dialect) {
   };
 }
 
-/** EXPLAIN reads, unless ANALYZE runs the statement it explains. */
+/** EXPLAIN reads, unless ANALYZE runs the statement it explains (a signal in it writes). */
 function explained(
   /** @type {string[]} */ words,
   /** @type {string[]} */ top,
   /** @type {Dialect} */ dialect,
   /** @type {string} */ refused,
+  /** @type {boolean} */ signals,
 ) {
   const at = words.findIndex((w, i) => i > 0 && (MAIN_VERBS.has(w) || WRITE.has(w)));
   const inner = words[at];
   const analyze = words.slice(1, at).some((w) => w === "ANALYZE" || w === "ANALYSE");
   const rest = inner ? top.slice(Math.max(0, top.indexOf(inner))) : top;
-  const kind = analyze && inner ? kindOf(inner, rest, dialect) : "read";
+  const ran = analyze && inner ? kindOf(inner, rest, dialect) : "read";
+  const kind = analyze && signals && ran === "read" ? "write" : ran;
   return { kind, verb: "EXPLAIN", rows: true, dangerous: "", refused, opensWrite: false };
 }
 

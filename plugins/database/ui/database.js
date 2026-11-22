@@ -18,9 +18,9 @@ import { loadConnections, newId, normalize, saveConnections } from "./connection
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
-import { createSessions } from "./engines/pg-session.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
@@ -28,11 +28,13 @@ import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
 import { createKeychain } from "./keychain.js";
-import { createManager } from "./manage.js";
+import { createDatabasesManager } from "./manage-databases.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
-import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
+import { createPluginSessions } from "./session/plugin.js";
+import { DEFAULTS } from "./settings.js";
+import { effectsOf, followSettings } from "./settings-follow.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
 
@@ -97,8 +99,14 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     busy();
     view.reading?.(reads);
   });
-  // PostgreSQL's runs: a session each, on the core (ADR 0281).
-  const pg = createSessions(bridge, {
+  // PostgreSQL's runs on the core's sessions (ADR 0281): a console's and a table view's kept, any
+  // other run's its own (PG-02, ADR 0320).
+  const held = createPluginSessions({
+    bridge,
+    view,
+    consoles: () => consoles,
+    connection: (id) => manager.get(id),
+    settings: () => settings,
     onBusy: (count) => {
       sessions = count;
       busy();
@@ -106,10 +114,11 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
     kept: (conn) => manager.passwords.ref(conn),
   });
+  const pg = held.pg;
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
-    pg.cancel();
+    pg.cancel(held.scope());
     output.cancel();
   };
   const clients = createClients(runner, () => settings);
@@ -119,8 +128,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const changed = () => view.explorer(explorer.rows());
   // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
   const keychain = createKeychain(bridge, () => changed());
-  /** @type {ReturnType<typeof createManager>} */
-  const manager = createManager({
+  const manager = createDatabasesManager({
     bridge,
     view,
     pick,
@@ -134,6 +142,8 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     renamed: (conn) => consoles.renamed(conn),
     changed: () => changed(),
+    sessions: held.connections,
+    cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
   const executor = createExecutor({
@@ -179,6 +189,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ok: !s.error,
           summary: summaryOf(execution, s.index),
           ...(target.consoleId ? { console: target.consoleId } : {}),
+          ...(conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },
@@ -196,6 +207,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     },
     ...(options.random ? { random: options.random } : {}),
     ...(options.plans ? { readPlan: options.plans.read } : {}),
+    sessions: pg,
   });
   const files = createConsoleFiles({
     bridge,
@@ -224,21 +236,21 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer,
     clients,
     settings: () => settings,
-    reload: (next) => {
-      settings = next;
-    },
+    reload: () => follower.reload(),
   });
 
   /** What comes back after a restart: the connection on screen, the explorer, the consoles the
-   * plugin opened and the kept panels. */
+   * plugin opened, the kept panels, and the consoles' sessions for a frame that wakes. */
   const save = () => {
     const panels = consoles.kept();
-    const kept = consoles.keptConsoles();
+    const open = consoles.keptConsoles();
+    const consoleSessions = pg.kept();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
-      ...(kept.length ? { consoles: kept } : {}),
+      ...(open.length ? { consoles: open } : {}),
       ...(panels.length ? { panels } : {}),
+      ...(consoleSessions.length ? { sessions: consoleSessions } : {}),
     });
   };
 
@@ -313,6 +325,25 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   };
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
+  // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
+  // open takes it where that is safe; a value that falls back is said once.
+  const effects = effectsOf({
+    clients,
+    catalog,
+    explorer,
+    connections: () => manager.list(),
+    redraw: () => changed(),
+    features: followers,
+  });
+  const follower = followSettings({
+    bridge,
+    ...(source ? { source } : {}),
+    say: (text) => view.say(text),
+    apply: (next, changed) => {
+      settings = next;
+      effects(next, changed);
+    },
+  });
   /** @type {import("./feature-host.js").Deps} */
   const featureDeps = {
     bridge,
@@ -346,13 +377,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     const saved = /** @type {{ current?: string | null, expanded?: string[] } | undefined} */ (
       state.get()
     );
-    const values = await loadValues(bridge);
-    settings = fromValues(values);
-    followSettings(source, values, (next, found) => {
-      settings = next;
-      if (found) clients.reset();
-      for (const listener of followers) listener(next);
-    });
+    settings = await follower.start();
     manager.replace(await loadConnections(bridge));
     await keychain.load();
     explorer.restore(saved?.expanded ?? []);
@@ -364,8 +389,11 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     )();
     const conn = saved?.current ? manager.get(saved.current) : undefined;
     if (!back && conn) await guard(() => consoles.open(conn))();
-    const kept = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
-    await guard(() => consoles.restore(kept))();
+    const panels = /** @type {{ panels?: unknown } | undefined} */ (saved)?.panels;
+    await guard(() => consoles.restore(panels))();
+    // A frame that wakes (ADR 0134): its consoles' sessions are theirs again, any other closed.
+    if (saved)
+      await guard(() => held.adopt(/** @type {{ sessions?: unknown }} */ (saved).sessions))();
   })();
 
   return Object.assign({ ready, ...builtins }, featureActions);

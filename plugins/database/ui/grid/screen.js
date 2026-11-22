@@ -5,6 +5,7 @@
 // screen order, the shown columns only) are read from here. view-grid.js holds the state
 // (GridState); this reads it and moves the cursor.
 
+import { createTotals } from "../chart/totals.js";
 import { el } from "../dom.js";
 import { rowsShown, valueAt } from "../grid-model.js";
 import { drawHeader, drawRows, ROW } from "../view-grid-draw.js";
@@ -37,8 +38,9 @@ const OVERSCAN = 10;
 /**
  * @param {Document} doc
  * @param {GridState} st
- * @param {{ found(value: string | null): boolean, sortKeys(): SortKey[], link?(col: number): string | undefined }} hooks
- *   `link` is a result column's link title (a foreign key's, PG-41), undefined for none.
+ * @param {{ found(value: string | null): boolean, sortKeys(): SortKey[], link?(col: number): string | undefined, startWorker?: import("../chart/client.js").StartWorker | undefined }} hooks
+ *   `link` is a result column's link title (a foreign key's, PG-41), undefined for none;
+ *   `startWorker` counts a large selection's totals in the footer off the frame (chart/totals.js).
  */
 export function createScreen(doc, st, hooks) {
   const scroller = el(doc, "div", { class: "scroller" });
@@ -152,8 +154,27 @@ export function createScreen(doc, st, hooks) {
     head.replaceChildren(...drawHeader(doc, heads, { lane, record: st.record, sort }));
   };
 
+  // The block's totals in the footer (PG-44), counted again after a paint when the block moved.
+  const totals = createTotals(
+    doc,
+    scroller,
+    {
+      set: () => st.tab?.set,
+      changes,
+      rows: blockRows,
+      columns: () => range(block().left, block().right + 1).map(columnAt),
+      record: () => st.record,
+      cells: () => {
+        const b = block();
+        return (b.bottom - b.top + 1) * (b.right - b.left + 1);
+      },
+    },
+    hooks.startWorker,
+  );
+
   /** Draw the rows and columns that are in view, and the cursor's block. */
   const paint = () => {
+    totals.update();
     if (!st.tab?.set) return;
     const names = () => st.layout.visible.map((c) => set().columns[c] ?? "");
     const next = st.record
