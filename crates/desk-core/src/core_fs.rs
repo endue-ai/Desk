@@ -14,8 +14,8 @@ pub(crate) use trash::{TrashFn, system_trash};
 pub(crate) use undo::is_fs_op;
 
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::MutexGuard;
 
@@ -79,6 +79,14 @@ impl Core {
             bytes: &bytes,
         };
         self.hold(caller, &scope, write)?;
+        if params.append == Some(true) {
+            // A chunk at the end, in place: it replaces nothing, so nothing is kept (ADR 0356).
+            let bytes_written = append(&path, &bytes).map_err(io_error)?;
+            return json(FsWriteResult {
+                bytes_written,
+                version: None,
+            });
+        }
         // The bytes it replaces are kept first (ADR 0076).
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, create_dirs)?;
         if let Some(version) = &version {
@@ -273,4 +281,12 @@ pub(crate) fn list(path: &Path) -> Answer {
         })
         .collect();
     json(FsListResult { entries })
+}
+
+/// Add `bytes` at the end of the existing file at `path`; a missing one is NotFound (no create).
+fn append(path: &Path, bytes: &[u8]) -> io::Result<u64> {
+    let mut file = OpenOptions::new().append(true).open(path)?;
+    file.write_all(bytes)?;
+    file.flush()?;
+    Ok(bytes.len() as u64)
 }

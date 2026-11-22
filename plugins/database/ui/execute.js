@@ -1,12 +1,14 @@
 // Running SQL on a connection: cut it into statements, check them (what no client may run here,
 // writes on a read-only connection, a dry run that could not roll back, session state through a
-// pooler), ask the person before what is hard to undo, then run them: PostgreSQL on a session of the
-// core's (engines/pg-session.js, ADR 0281), the other engines by their client, whose output the
-// result worker reads (#38). When the server or the client says a password is missing or wrong, ask
-// for one once and run again. The "describe" mode runs nothing: PostgreSQL says what each statement
-// takes and returns (ADR 0353), asking no one and on any connection, a read-only one too. No DOM.
+// pooler), ask the person before what is hard to undo, then run them (a COPY through standard input
+// or output with its file, copy/, PG-23): PostgreSQL on a session of the core's
+// (engines/pg-session.js, ADR 0281), the other engines by their client, whose output the result
+// worker reads (#38). When the server or the client says a password is missing or wrong, ask for one
+// once and run again. The "describe" mode runs nothing: PostgreSQL says what each statement takes
+// and returns (ADR 0353), asking no one and on any connection, a read-only one too. No DOM.
 
 import { pooledRefusal } from "./auth/pooler.js";
+import { COPY_UNCHECKED, copyStep } from "./copy/plan.js";
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
 import { nonce as makeNonce } from "./engines/text.js";
@@ -24,14 +26,15 @@ import { split } from "./sql/split.js";
  * @typedef {"run" | "transaction" | "dry-run" | "describe"} Mode
  *   `describe` runs nothing: PostgreSQL answers what each statement takes and returns (ADR 0353).
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean, copy?: import("./copy/stream.js").Copy }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
  *   plugin's own reading and asks nothing; `asked` says the caller put its own question to the person
  *   (the guards still refuse); `session` runs PostgreSQL on the session that console or table view
  *   keeps (PG-02, ADR 0320), else on a short one of the run's own; `signal` cancels this run alone,
  *   as Cancel does every run; `shown` is what a question shows of the statements instead of their
  *   text (a role's password masked); `background` is a read the plugin starts on its own (a
- *   panel's period), refused on a connection the person disconnected (ADR 0339).
+ *   panel's period), refused on a connection the person disconnected (ADR 0339); `copy` is where a
+ *   COPY ... TO STDOUT writes or a COPY ... FROM STDIN reads (copy/index.js), else `copies` asks.
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
@@ -41,6 +44,7 @@ import { split } from "./sql/split.js";
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   passwords: { get(id: string): string | undefined, set(id: string, value: string): void, ask(conn: Connection, why: string): Promise<string | undefined> },
  *   cancelled(message: string): Error,
+ *   copies?: { ask(conn: Connection, statement: Statement, direction: "in" | "out"): Promise<import("./copy/stream.js").Copy | undefined> },
  *   now?(): number,
  *   random?(): number,
  * }} Deps
@@ -74,11 +78,24 @@ export function createExecutor(deps) {
     const describe = mode === "describe";
     if (describe && !("session" in engine))
       throw new Refusal("Only PostgreSQL checks a statement without running it.");
-    check(conn, engine.ddlCommits, classes, mode);
+    const step = copyStep(engine.dialect, statements, options);
+    if (typeof step === "string") throw new Refusal(step);
+    // A check streams nothing, so a COPY's is refused before any file is asked for (copy/plan.js).
+    if (step && describe) throw new Refusal(COPY_UNCHECKED);
+    // The COPY this run streams is let through; every other guard holds.
+    check(
+      conn,
+      engine.ddlCommits,
+      step ? classes.map((c) => ({ ...c, refused: "" })) : classes,
+      mode,
+    );
     const pooledWhy = pooledRefusal(conn, statements); // through a pooler (ADR 0354)
     if (pooledWhy) throw new Refusal(pooledWhy);
     if (!options.catalog && !options.asked && !describe)
       await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
+    const copy =
+      step && (options.copy ?? (await deps.copies?.ask(conn, step.statement, step.direction)));
+    if (step && !copy) throw deps.cancelled("Not copied.");
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
     const timeoutMs = settings.timeoutSeconds * 1000;
@@ -106,6 +123,7 @@ export function createExecutor(deps) {
           ...signal,
           ...(options.interactive === false ? { quiet: true } : {}),
           ...(options.background ? { background: true } : {}),
+          ...(copy ? { copy } : {}),
         });
       }
       try {

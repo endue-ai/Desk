@@ -12,7 +12,8 @@
 // options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). A connection's
 // password command gives each new session its password, run again once when the server refuses it;
 // one through a pooler signs in with its application name alone and keeps nothing with SET (PG-14,
-// ADR 0354: auth/). Through an SSH tunnel, db:connect covers every hop (tunnel/, ADR 0359). No DOM.
+// ADR 0354: auth/). A console's single read scrolls a cursor (pg-cursor.js, PG-22). Through an SSH
+// tunnel, db:connect covers every hop (tunnel/, ADR 0359). No DOM.
 
 import { commandFor } from "../auth/fields.js";
 import { pooled, pooledSettings } from "../auth/pooler.js";
@@ -21,8 +22,11 @@ import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { createTunnel, scopeOf } from "../tunnel/open.js";
 import { failedRun } from "./common.js";
+import { createCursors, own as own_ } from "./pg-cursor.js";
+import { codeOf, openFailed, textOf } from "./pg-open-failed.js";
 import { sessionSettings } from "./pg-options.js";
 import { noticeOf, refusedOf } from "./pg-result.js";
+import { cursorRows } from "./pg-rows.js";
 import { createScript } from "./pg-script.js";
 import { runStartup } from "./pg-startup.js";
 import { createTls } from "./pg-tls.js";
@@ -51,11 +55,6 @@ const PER_CONNECTION = 8;
 const cancelled = () => ({ kind: "cancelled", message: "Cancelled." });
 /** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
 const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
-
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
-const textOf = (/** @type {unknown} */ error) =>
-  error instanceof Error ? error.message : String(error);
 
 /** The server and the sign-in a connection names, or the sentence why it cannot be reached. */
 export function targetOf(/** @type {Connection} */ conn) {
@@ -197,19 +196,7 @@ export function createSessions(bridge, options = {}) {
           : `${where} asks for a password, and the password file has none for ${target.user}.`;
       return { error: { kind: "auth", message } };
     } catch (error) {
-      const code = codeOf(error);
-      if (code === "permission_denied")
-        return { error: { kind: "refused", message: `Not allowed to connect to ${where}.` } };
-      if (code === "unsupported")
-        return {
-          error: {
-            kind: "client",
-            message: "This desk cannot open database sessions: db.* is unsupported.",
-          },
-        };
-      return {
-        error: { kind: "connect", message: `Could not connect to ${where}: ${textOf(error)}` },
-      };
+      return openFailed(error, where);
     }
   };
 
@@ -219,6 +206,7 @@ export function createSessions(bridge, options = {}) {
     script,
     close: (/** @type {string} */ id) => call("db.close", { sessionId: id }),
   };
+  const cursors = createCursors({ script, kept: () => keeper.kept() });
   const keeper = createKeeper({
     call,
     slots,
@@ -239,6 +227,7 @@ export function createSessions(bridge, options = {}) {
     }
     if (event.event === "db.closed") {
       sinks.delete(event.data.sessionId);
+      cursors.closed(event.data.sessionId);
       keeper.closed(event.data);
     }
   });
@@ -285,6 +274,7 @@ export function createSessions(bridge, options = {}) {
         if (job.cancelled) return failedRun(plan.statements, cancelled());
         job.sessionId = entry.sessionId;
         job.transaction = entry.transaction;
+        notes.push(...(await cursors.end(job, plan, entry)));
         // A changed statement timeout reaches the session outside a transaction, where SET stays;
         // through a pooler nothing stays, and the plugin's own stop holds the timeout.
         if (pooled(conn)) entry.timeoutMs = plan.timeoutMs;
@@ -296,7 +286,10 @@ export function createSessions(bridge, options = {}) {
           });
           if (!ran.statements[0]?.error) entry.timeoutMs = plan.timeoutMs;
         }
-        const done = await script(job, { ...plan, timeoutMs: entry.timeoutMs }, entry.transaction);
+        const timed = { ...plan, timeoutMs: entry.timeoutMs };
+        const done = cursors.wanted(plan, entry, pooled(conn))
+          ? await cursors.declare(job, timed, entry)
+          : await script(job, timed, entry.transaction);
         entry.transaction = job.transaction ?? entry.transaction;
         if (job.ended) keeper.lost(entry.sessionId, job.ended);
         return { ...done, notices: [...notes, ...done.notices] };
@@ -359,6 +352,8 @@ export function createSessions(bridge, options = {}) {
 
   return {
     run,
+    rows: cursorRows({ jobs, onBusy, keeper, cursors }),
+    rowsGone: cursors.gone,
     cancel,
     running: () => jobs.size,
     /** What the header shows for an owner's session. */
@@ -386,10 +381,8 @@ export function createSessions(bridge, options = {}) {
 }
 
 /** SET statement_timeout as a statement of the plugin's own. */
-const setTimeout_ = (/** @type {number} */ ms) => {
-  const text = `SET statement_timeout = ${Math.max(0, Math.round(ms))}`;
-  return { text, start: 0, end: text.length, line: 1, column: 1, tokens: [] };
-};
+const setTimeout_ = (/** @type {number} */ ms) =>
+  own_(`SET statement_timeout = ${Math.max(0, Math.round(ms))}`);
 
 /** One kept session in the surface state, as keeper.kept() wrote it. */
 const isKept = (/** @type {any} */ k) =>

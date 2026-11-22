@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkId, defaultId, defaultName } from "./names";
 
 describe("defaultId", () => {
-  // The same rule as desk-core `fallback_id`, so a scaffolded folder keeps the id Desk would give it.
+  // The same rule as desk-core `fallback_id`, so a scaffolded folder keeps the id endue would give it.
   it.each([
     ["my-plugin", "local.my-plugin"],
     ["My Plugin", "local.my-plugin"],

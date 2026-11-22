@@ -32,6 +32,8 @@ export interface Answer {
   notices?: string[];
   afterwards?: string[];
   waits?: boolean;
+  /** A COPY through standard input or output (the stub's StubStatement.copy, PG-23). */
+  copy?: StubStatement["copy"];
   /** The type OIDs db.describe answers for the statement's `$n` (ADR 0353). */
   paramTypes?: number[];
 }
@@ -119,6 +121,7 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
     ...(answer.paramTypes ? { paramTypes: answer.paramTypes } : {}),
   };
   if (answer.waits) return { sql, waits: true, ...more };
+  if (answer.copy) return { sql, copy: answer.copy, ...more };
   if (answer.error) {
     const { code = "", detail, hint, position } = answer;
     const fields = { code, ...(detail ? { detail } : {}), ...(hint ? { hint } : {}) };

@@ -22,6 +22,7 @@ import type {
   Permission,
 } from "./generated";
 import { covers } from "./stub-covers";
+import { stubDbCursorRun } from "./stub-db-cursor-run";
 import { stubDbDescribe } from "./stub-db-describe";
 import { type DbPasswordsServed, stubDbPasswords } from "./stub-db-passwords";
 import {
@@ -191,6 +192,7 @@ export function stubDb(
       typeof s.sql === "string" ? s.sql === sql : s.sql.test(sql);
     return script?.statements.find(matches) ?? script?.answer?.(sql, session.signed, bound);
   };
+  const cursors = stubDbCursorRun<Session, StubBound>({ scripted, first, failed, last, page });
 
   /** A statement's answer: the script's, else a transaction's control, pg_terminate_backend's, 0A000. */
   const respond = (
@@ -200,6 +202,7 @@ export function stubDb(
     pageBytes: number,
     bound?: StubBound,
   ) => {
+    if (cursors.is(sql)) return cursors.respond(session, sql, pageRows, pageBytes, bound);
     const statement = scripted(session, sql, bound);
     if (statement) return answer(session, statement, pageRows, pageBytes);
     if (isControl(sql)) return last(session, controlTag(sql, session.transaction));
@@ -225,6 +228,7 @@ export function stubDb(
     if (!done.error && done.transaction) {
       session.transaction = transactionAfter(sql, before);
       done.transaction = session.transaction;
+      if (session.transaction === "idle") cursors.ended(session);
       if (before === "failed" && isControl(sql)) done.tag = controlTag(sql, before);
     }
     const pid = terminated(sql);

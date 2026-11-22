@@ -1,7 +1,7 @@
 //! `desk plugin test <dir>`: a plugin's tests, on the host that matches its kind. Logic plugins
 //! and Wasm connectors run each `tests/<name>.test.json` on the desk-plugin-host harness (a
 //! scripted desk); every other kind runs `tests/*.test.{js,ts}` with vitest on the SDK's test host,
-//! from the Desk checkout. Exit codes: 0 every test passed, 1 otherwise.
+//! from the endue checkout. Exit codes: 0 every test passed, 1 otherwise.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -92,7 +92,7 @@ fn sdk(dir: &Path) -> ExitCode {
     let config = repo.join("packages/plugin-sdk/vitest.plugin.config.ts");
     if !vitest.is_file() || !config.is_file() {
         return fail(&format!(
-            "the SDK's test host is not in {}: set DESK_REPO to a Desk checkout where `pnpm install` ran",
+            "the SDK's test host is not in {}: set DESK_REPO to an endue checkout where `pnpm install` ran",
             repo.display()
         ));
     }

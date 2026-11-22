@@ -77,7 +77,7 @@ impl Core {
             let own =
                 "an agent may not operate the desk itself: its cards and settings are the person's";
             let refused = error(ErrorCode::PermissionDenied, own.to_owned());
-            self.act_ended(acting, own, "endue Desk", Err(&refused));
+            self.act_ended(acting, own, "endue", Err(&refused));
             return Err(refused);
         }
         let what = act
