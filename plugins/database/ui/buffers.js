@@ -1,7 +1,9 @@
 // The plugin's desk buffers: its consoles, table views, DDL views and the features' panels, which
 // of them is on screen (and when each was last), and the desk's side of each (opened under a name,
 // shown, closed, closed with its connection, on any of its databases). Every change draws the
-// buffer on screen and tells the controller, which keeps what comes back after a restart. No DOM.
+// buffer on screen and tells the controller, which keeps what comes back after a restart. A buffer
+// drawn is decorated first (its PostgreSQL session's state, PG-02), and one that goes is told (its
+// session closes). No DOM.
 
 import { baseOf } from "./databases.js";
 
@@ -14,6 +16,8 @@ import { baseOf } from "./databases.js";
  *   settings(): import("./settings.js").Settings,
  *   view: { console(model: Console | null, conn: Connection | null): void, closed?(id: string): void },
  *   changed(): void,
+ *   decorate?(model: Console, conn: Connection | null): void,
+ *   gone?(target: Console): void,
  * }} Deps
  */
 
@@ -30,14 +34,18 @@ export function createBuffers(deps) {
   const shown = () => (current ? (all.get(current) ?? null) : null);
   const render = () => {
     const model = shown();
-    deps.view.console(model, model ? (deps.connection(model.connection) ?? null) : null);
+    const conn = model ? (deps.connection(model.connection) ?? null) : null;
+    if (model) deps.decorate?.(model, conn);
+    deps.view.console(model, conn);
     deps.changed();
   };
   /** The buffer is gone: it leaves the list, the screen and what the view keeps for it. */
   const forget = (/** @type {string} */ id) => {
-    if (!all.delete(id)) return false;
+    const target = all.get(id);
+    if (!target || !all.delete(id)) return false;
     if (current === id) current = null;
     deps.view.closed?.(id);
+    deps.gone?.(target);
     return true;
   };
 

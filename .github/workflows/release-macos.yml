@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       min-from:
-        description: Oldest Desk version that can install this tag directly
+        description: Oldest installed app version that can install this tag directly
         required: false
         type: string
 

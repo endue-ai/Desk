@@ -25,6 +25,21 @@ header .tag {
   white-space: nowrap;
 }
 
+/* The PostgreSQL session's state (PG-02): its words, then its status dot. */
+#session {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+#session[hidden] {
+  display: none;
+}
+
 /* The database a PostgreSQL console or table view is on (PG-13): a quiet button at the actions'
    size that switches it, cut short before it pushes the actions out. */
 #database {

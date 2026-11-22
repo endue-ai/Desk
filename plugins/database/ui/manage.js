@@ -6,6 +6,8 @@
 // on Save, forgotten when the choice goes off, the server or user changes, or the connection goes.
 // One password serves every database of the connection's server: `get` also answers a reference to
 // another database (databases.js), and its password is the connection's.
+// Disconnect, removing a connection and saving a change to how it signs in close its PostgreSQL
+// sessions (PG-02), asked first while one is in a transaction.
 
 import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
 import { baseOf, databaseOf, homeOf, onDatabase } from "./databases.js";
@@ -30,8 +32,23 @@ import { chosen, offered, withChoice } from "./keychain.js";
  *   renamed(conn: Connection): Promise<void>,
  *   changed(): void,
  *   random?(): number,
+ *   sessions?: { reasons(connection: string): string[], close(connection: string): void },
+ *   cancelled?(message: string): Error,
  * }} Deps
+ *   `sessions` are the connection's kept PostgreSQL sessions: what closing them ends, and the close.
  */
+
+/** The fields a session signs in with: a change to any closes the connection's sessions. */
+const SIGN_IN = /** @type {const} */ ([
+  "engine",
+  "host",
+  "port",
+  "database",
+  "user",
+  "ssl",
+  "sslCa",
+  "readOnly",
+]);
 
 /** @param {Deps} deps */
 export function createManager(deps) {
@@ -55,6 +72,13 @@ export function createManager(deps) {
   const choices = new Map();
 
   const showForm = () => deps.view.form(form);
+  const refused = (/** @type {string} */ message) =>
+    deps.cancelled?.(message) ?? Object.assign(new Error(message), { code: "cancelled" });
+  /** Whether the person lets the connection's sessions close, asked while one is in a transaction. */
+  const letClose = async (/** @type {Connection} */ conn, /** @type {string} */ title) => {
+    const reasons = deps.sessions?.reasons(conn.id) ?? [];
+    return reasons.length === 0 || deps.confirm(title, reasons);
+  };
 
   const named = (/** @type {string} */ ref) =>
     list.find((c) => c.id === ref) ?? list.find((c) => c.name.toLowerCase() === ref.toLowerCase());
@@ -233,6 +257,13 @@ export function createManager(deps) {
     },
     async save(/** @type {Partial<Connection>} */ fields) {
       const conn = checked(fields);
+      const before = form?.mode === "edit" ? list.find((c) => c.id === conn.id) : undefined;
+      const signIn = before && SIGN_IN.some((key) => (before[key] ?? "") !== (conn[key] ?? ""));
+      if (before && signIn && !(await letClose(before, `Save ${before.name}?`))) {
+        deps.view.say(`Not saved: ${before.name}'s sessions stay open.`);
+        return undefined;
+      }
+      if (signIn) deps.sessions?.close(conn.id);
       const next = list.some((c) => c.id === conn.id)
         ? list.map((c) => (c.id === conn.id ? conn : c))
         : [...list, conn];
@@ -311,12 +342,12 @@ export function createManager(deps) {
     async remove(/** @type {string | undefined} */ ref) {
       const conn = await chooseHome(ref, "Database: remove which connection?");
       if (!conn) return undefined;
-      if (
-        !(await deps.confirm(`Remove ${conn.name}?`, [
-          "Its console, history and saved settings go too.",
-        ]))
-      )
-        return undefined;
+      const reasons = [
+        "Its console, history and saved settings go too.",
+        ...(deps.sessions?.reasons(conn.id) ?? []),
+      ];
+      if (!(await deps.confirm(`Remove ${conn.name}?`, reasons))) return undefined;
+      deps.sessions?.close(conn.id);
       const next = list.filter((c) => c.id !== conn.id);
       await saveConnections(deps.bridge, next);
       list = next;
@@ -329,13 +360,16 @@ export function createManager(deps) {
       deps.view.say(`Removed ${conn.name}.`);
       return conn.id;
     },
-    /** Forget the session's password and what the explorer read. */
+    /** Close the connection's sessions and forget its password. */
     async disconnect(/** @type {string | undefined} */ ref) {
       const conn = await chooseHome(ref, "Database: disconnect which connection?");
       if (!conn) return undefined;
+      if (!(await letClose(conn, `Disconnect ${conn.name}?`))) throw refused("Not disconnected.");
+      deps.sessions?.close(conn.id);
       passwords.delete(conn.id);
+      const closed = conn.engine === "postgresql" ? "its sessions are closed and " : "";
       const kept = deps.keychain.has(conn) ? "; the keychain still remembers it" : "";
-      deps.view.say(`Disconnected ${conn.name}: its password is forgotten${kept}.`);
+      deps.view.say(`Disconnected ${conn.name}: ${closed}its password is forgotten${kept}.`);
       return conn.id;
     },
     /** Disconnect and forget: the session's password, the keychain's, and the choice. */

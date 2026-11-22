@@ -236,3 +236,11 @@ fn reports_progress_while_downloading() {
     assert_eq!(progress.len(), 11, "the start and one per tenth");
     assert!(progress.windows(2).all(|w| w[0].0 < w[1].0));
 }
+
+#[test]
+fn new_installations_discover_releases_in_the_renamed_repository() {
+    assert_eq!(
+        desk_update::GITHUB_RELEASES,
+        "https://github.com/endue-ai/endue/releases"
+    );
+}

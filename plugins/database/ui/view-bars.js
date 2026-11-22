@@ -1,7 +1,8 @@
 // The bars around the work area: the header (the console or the buffer on screen, a .sql file's
-// unsaved mark, its engine and place, its environment and read-only marks, and the PostgreSQL
-// database a console or a table view is on, a button to switch it) and the result's bars (its
-// tabs, and the toolbar of what can be done with the rows on screen and their pending changes).
+// unsaved mark, its engine and place, its environment and read-only marks, the state of its
+// PostgreSQL session in words and a status dot, PG-02, and the database a console or a table view
+// is on, a button to switch it, PG-13) and the result's bars (its tabs, and the toolbar of what can
+// be done with the rows on screen and their pending changes).
 
 import { labelOf } from "./console-list.js";
 import { ownDatabase } from "./databases.js";
@@ -20,6 +21,18 @@ export function createBars(doc) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const gridBar = byId("grid-bar");
   const tabsEl = byId("tabs");
+
+  /** A console's or a table view's PostgreSQL session: its state, the sentence under it. */
+  const session = (/** @type {Console["session"]} */ model) => {
+    const shown = byId("session");
+    shown.hidden = !model;
+    if (!model) return;
+    shown.title = model.detail;
+    byId("session-label").textContent = model.label;
+    const dot = /** @type {HTMLElement} */ (shown.querySelector(".desk-dot"));
+    if (model.tone) dot.dataset.tone = model.tone;
+    else delete dot.dataset.tone;
+  };
 
   return {
     /** The header: a console by what it is called (`Shop 2`, `● report.sql · Shop`), another
@@ -50,6 +63,7 @@ export function createBars(doc) {
       doc.body.dataset.tag = tag;
       doc.body.dataset.color = conn?.color ?? "";
       doc.body.dataset.running = String(Boolean(model?.running || model?.filing));
+      session(model?.session);
     },
 
     /** The result's tabs, the one on screen selected. */

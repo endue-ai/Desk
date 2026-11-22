@@ -12,8 +12,7 @@ dans `brand/`, sont des marques de Team endue.
 
 ## Ce que vous pouvez faire
 
-- Mentionner endue Desk de manière exacte, par exemple « un plugin pour endue Desk » ou « basé sur endue
-  Desk ».
+- Mentionner endue de manière exacte, par exemple « un plugin pour endue » ou « basé sur endue ».
 - Utiliser des captures d'écran et les fichiers non modifiés de `brand/` dans des critiques, articles,
   conférences et fiches de plugins, à condition qu'il soit clair que vous n'êtes pas endue.
 - Compiler, exécuter et modifier le code pour vous-même ou pour votre organisation.

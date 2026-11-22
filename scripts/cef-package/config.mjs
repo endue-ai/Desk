@@ -132,7 +132,11 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
     binariesDir: os === "linux" ? join(paths.stage, "bin") : paths.binaries,
   };
   // The built-in plugins sit beside the shell, where the desk looks when DESK_PLUGIN_DIRS is unset.
+  const cli = os === "windows" ? ["endue.exe", "desk.exe"] : ["endue", "desk"];
+  const activate = os === "windows" ? "activate.ps1" : "activate";
   const runtime = [
+    ...cli.map((name) => ({ src: join(paths.binaries, name), target: `cli/${name}` })),
+    { src: join(PACKAGER, "cli", activate), target: `cli/${activate}` },
     { src: paths.dist, target: "shell" },
     { src: join(paths.stage, "plugins"), target: "plugins" },
   ];

@@ -15,11 +15,12 @@ use std::sync::{Mutex, MutexGuard};
 
 use crate::{Error, ErrorCode};
 
-#[cfg(target_os = "macos")]
+#[cfg(all(feature = "audio", target_os = "macos"))]
 mod avfoundation;
 pub mod fake;
 mod pipeline;
 mod resample;
+#[cfg(feature = "audio")]
 mod system;
 
 /// The sample rate a capture delivers unless asked for another, what speech recognition expects.
@@ -133,6 +134,7 @@ pub trait AudioInput: Send + Sync {
 
 /// The OS input: cpal's default host, with AVFoundation's microphone grant on macOS. The app needs
 /// `NSMicrophoneUsageDescription` in its Info.plist before it calls `request_access` there.
+#[cfg(feature = "audio")]
 pub fn os() -> Result<Box<dyn AudioInput>, Error> {
     Ok(Box::new(system::System))
 }
