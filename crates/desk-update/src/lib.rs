@@ -5,8 +5,10 @@
 //! `Updater`'s status as `update.*`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
-/// Published Desk releases. Packaged builds discover updates only in this repository.
-pub const GITHUB_RELEASES: &str = "https://github.com/endue-ai/Desk/releases";
+pub(crate) const LEGACY_RELEASES: &str = "https://github.com/endue-ai/Desk/releases";
+pub(crate) const RENAMED_RELEASES: &str = "https://github.com/endue-ai/endue/releases";
+/// New installations discover releases at the canonical repository.
+pub const GITHUB_RELEASES: &str = RENAMED_RELEASES;
 
 pub mod generated;
 #[cfg(feature = "https")]

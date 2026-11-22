@@ -101,6 +101,9 @@ sign_app() {
     count=$((count + 1))
   done
   [ "$count" -eq 5 ] || fail "$app holds $count helper apps, CEF needs 5"
+  for cli in "$app/Contents/Resources/cli/endue" "$app/Contents/Resources/cli/desk"; do
+    if [ -f "$cli" ]; then sign "$cli"; fi
+  done
   own="$(entitled "$entitlements/app.plist")"
   sign "$app" "$own"
   codesign --verify --deep --strict --verbose=2 "$app"

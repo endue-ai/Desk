@@ -9,7 +9,7 @@ version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
-repository = "https://github.com/endue-ai/Desk"
+repository = "https://github.com/endue-ai/endue"
 publish = false
 
 [workspace.dependencies]

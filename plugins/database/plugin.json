@@ -25,12 +25,30 @@
         "desk.files.changed"
       ]
     },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "proc:spawn", "commands": ["*"] },
-    { "permission": "fs:write", "paths": ["/**"] },
-    { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "db:connect", "hosts": ["*"] }
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "proc:spawn",
+      "commands": ["*"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "db:connect",
+      "hosts": ["*"]
+    }
   ],
   "surfaces": [
     {
@@ -1028,6 +1046,96 @@
         "keywords": ["stop", "abort", "pg_dump", "pg_restore"]
       },
       {
+        "id": "endue.database.search-data",
+        "title": "Database: search for a value in tables",
+        "keywords": [
+          "find",
+          "where is",
+          "value",
+          "id",
+          "across tables",
+          "grep",
+          "lookup",
+          "regex",
+          "json"
+        ],
+        "description": "Looks for a value in every table of the chosen schemas, one table at a time in a read-only transaction with a statement timeout each, and answers the tables and columns that hold it with their counts and the first rows' keys. A production connection asks first. Without a value it opens the form.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "value": {
+              "type": "string",
+              "description": "The text or number to find; absent or empty opens the form."
+            },
+            "match": {
+              "type": "string",
+              "enum": ["equals", "contains", "starts", "regex"],
+              "description": "How a value matches: equals (the default), contains, starts with, or a regular expression (PostgreSQL ~, MySQL and SQLite REGEXP)."
+            },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case."
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The schemas to search; every one the explorer lists when absent."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only these tables (name or schema.name, * for any run of characters); every table when absent."
+            },
+            "types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["text", "number", "uuid", "json", "date"]
+              },
+              "description": "The kinds of column to look in; all five when absent."
+            },
+            "rowLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Matching rows read per table (100 when absent)."
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300,
+              "description": "Seconds each table's statement may take (10 when absent)."
+            },
+            "sizeLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Tables estimated past this many rows are left out (1,000,000 when absent)."
+            },
+            "big": {
+              "type": "boolean",
+              "description": "Search the tables past the size limit too."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.search-data-cancel",
+        "title": "Database: cancel the value search",
+        "keywords": ["stop", "search", "find"]
+      },
+      {
         "id": "endue.database.overview",
         "title": "Database: server overview",
         "keywords": [
@@ -1103,15 +1211,38 @@
               "type": "object",
               "description": "The statement's options, on the defaults (an open form's own are set aside); what the server's version or another option rules out is left out of the statement.",
               "properties": {
-                "full": { "type": "boolean" },
-                "freeze": { "type": "boolean" },
-                "verbose": { "type": "boolean", "description": "On by default." },
-                "analyze": { "type": "boolean" },
-                "skipLocked": { "type": "boolean" },
-                "indexCleanup": { "type": "string", "enum": ["", "auto", "on", "off"] },
-                "truncate": { "type": "string", "enum": ["", "on", "off"] },
-                "parallel": { "type": ["integer", "null"], "minimum": 0, "maximum": 1024 },
-                "processToast": { "type": "boolean" },
+                "full": {
+                  "type": "boolean"
+                },
+                "freeze": {
+                  "type": "boolean"
+                },
+                "verbose": {
+                  "type": "boolean",
+                  "description": "On by default."
+                },
+                "analyze": {
+                  "type": "boolean"
+                },
+                "skipLocked": {
+                  "type": "boolean"
+                },
+                "indexCleanup": {
+                  "type": "string",
+                  "enum": ["", "auto", "on", "off"]
+                },
+                "truncate": {
+                  "type": "string",
+                  "enum": ["", "on", "off"]
+                },
+                "parallel": {
+                  "type": ["integer", "null"],
+                  "minimum": 0,
+                  "maximum": 1024
+                },
+                "processToast": {
+                  "type": "boolean"
+                },
                 "bufferUsageLimit": {
                   "type": "string",
                   "description": "A size such as 256kB or 16MB, or 0."
@@ -1217,6 +1348,159 @@
         "id": "endue.database.routine-refresh",
         "title": "Database: read the routine form again",
         "keywords": ["function", "procedure", "reload", "arguments", "signature"]
+      },
+      {
+        "id": "endue.database.create-table",
+        "title": "Database: create a table…",
+        "keywords": [
+          "new table",
+          "create table",
+          "design",
+          "columns",
+          "primary key",
+          "foreign key",
+          "index",
+          "partition",
+          "ddl"
+        ],
+        "description": "Opens the table form of a new PostgreSQL table, filled from the arguments, and answers the CREATE script it shows (every name quoted), with the problems that hold it back. Nothing runs: the person reads the script in the form and runs it there; a read-only connection gets no Run.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "description": "The new table's name, written as given (quoted)."
+            },
+            "columns": {
+              "type": "array",
+              "description": "Its columns in order.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The column's name, written as given (quoted)."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "One of the server's types: as PostgreSQL formats it (character varying), its own name (varchar, int4) or schema.name, with a length (varchar(120)) and [] for an array."
+                  },
+                  "length": {
+                    "type": "string",
+                    "description": "The type's length when not in type (120, or 10,2)."
+                  },
+                  "notNull": {
+                    "type": "boolean",
+                    "description": "NOT NULL."
+                  },
+                  "default": {
+                    "type": "string",
+                    "description": "A default expression, as SQL (now(), 0, 'new')."
+                  },
+                  "identity": {
+                    "type": "string",
+                    "enum": ["always", "by default"],
+                    "description": "An identity column (smallint, integer or bigint)."
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "The column's comment."
+                  }
+                },
+                "required": ["name"],
+                "additionalProperties": false
+              }
+            },
+            "primaryKey": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The columns of the primary key, by name."
+            },
+            "comment": {
+              "type": "string",
+              "description": "The table's comment."
+            },
+            "owner": {
+              "type": "string",
+              "description": "The role that owns it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.change-table",
+        "title": "Database: change a table's design…",
+        "keywords": [
+          "alter table",
+          "modify table",
+          "design",
+          "rename column",
+          "add column",
+          "drop column",
+          "column type",
+          "index",
+          "constraint"
+        ],
+        "description": "Opens the table form of a PostgreSQL table, read from the server, for the person to change; every change becomes the ALTER script the form shows (a rename is a rename, dangerous steps marked) and runs only when the person runs it there.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's name; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.table-design-run",
+        "title": "Database: run the table form's script",
+        "keywords": ["apply", "alter table", "create table", "execute", "save the design"]
+      },
+      {
+        "id": "endue.database.table-design-dry-run",
+        "title": "Database: dry-run the table form's script",
+        "keywords": ["try", "rollback", "test the alter", "check the script"]
+      },
+      {
+        "id": "endue.database.table-design-console",
+        "title": "Database: open the table form's script in a console",
+        "keywords": ["copy", "edit the script", "alter table", "create table", "sql"]
+      },
+      {
+        "id": "endue.database.table-design-refresh",
+        "title": "Database: read the table form's table again",
+        "keywords": ["reload", "discard changes", "design", "columns"]
       },
       {
         "id": "endue.database.history",
@@ -1562,6 +1846,20 @@
         "kind": "string",
         "default": "",
         "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
+      },
+      "endue.database.sessions-per-connection": {
+        "kind": "integer",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12,
+        "description": "PostgreSQL sessions a connection's consoles and table views keep open at once (1 to 12). At the limit, a table view's idle session closes first; past it, a run says which to close."
+      },
+      "endue.database.session-idle-minutes": {
+        "kind": "integer",
+        "default": 30,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
     }
   }

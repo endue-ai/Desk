@@ -28,14 +28,11 @@ impl Updater {
     }
 
     fn read_index(&self, channel: Channel) -> Result<Index, String> {
-        if self.inner.config.base.trim_end_matches('/') == crate::GITHUB_RELEASES {
-            return self.github_index(channel);
+        let base = self.inner.config.base.trim_end_matches('/');
+        if let Some(api) = super::github::release_api(base) {
+            return self.github_index(channel, base, api);
         }
-        let url = format!(
-            "{}/channels/{}/index.json",
-            self.inner.config.base.trim_end_matches('/'),
-            channel.name()
-        );
+        let url = format!("{base}/channels/{}/index.json", channel.name());
         let index = self.signed_index(&url, channel, channel.name())?;
         self.inner.stage.see(channel.name(), index.serial);
         Ok(index)
