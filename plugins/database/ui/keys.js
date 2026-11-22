@@ -45,6 +45,7 @@ export const BINDINGS = {
     { chord: "Mod+Enter", action: "run", label: "run statement" },
     { chord: "Mod+Shift+Enter", action: "runAll", label: "run script" },
     { chord: "Mod+Shift+F", action: "format", label: "format" },
+    { chord: "F2", action: "renameAtCaret", label: "" },
     { chord: "Escape", action: "cancel", label: "cancel" },
   ],
   grid: [

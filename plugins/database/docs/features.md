@@ -145,6 +145,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 ## Format SQL, SQL problems and completion
 
 Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md).
+Renaming a name with what keeps its dependents working, extracting and inlining CTEs, qualifying names: [`refactor.md`](refactor.md).
 
 ## Results
 

@@ -1848,6 +1848,31 @@
         "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
       },
       {
+        "id": "endue.database.rename-at-caret",
+        "title": "Database: rename the name at the caret",
+        "keywords": ["rename", "refactor", "alias", "CTE", "parameter", "F2"]
+      },
+      {
+        "id": "endue.database.rename-with-dependents",
+        "title": "Database: rename an object with the script that keeps its dependents working",
+        "keywords": ["rename", "refactor", "column", "table", "function", "dependents", "script"]
+      },
+      {
+        "id": "endue.database.extract-cte",
+        "title": "Database: make the subquery at the caret a CTE",
+        "keywords": ["extract", "CTE", "WITH", "subquery", "refactor"]
+      },
+      {
+        "id": "endue.database.inline-cte",
+        "title": "Database: inline the CTE at the caret where it is used",
+        "keywords": ["inline", "CTE", "WITH", "subquery", "refactor"]
+      },
+      {
+        "id": "endue.database.qualify-names",
+        "title": "Database: qualify every name of the statement at the caret",
+        "keywords": ["qualify", "schema", "alias", "names", "refactor"]
+      },
+      {
         "id": "endue.database.follow-key",
         "title": "Database: go to the row this key points at",
         "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
