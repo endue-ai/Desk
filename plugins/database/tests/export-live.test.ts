@@ -125,7 +125,10 @@ describe.skipIf(!uri)("an export read back by PostgreSQL", () => {
   it("the .xlsx's number cells hold the server's values exactly", async () => {
     const set = await source();
     const [sheet] = readXlsx(
-      await xlsxOf([{ name: "src", ...set, oids: set.types }], { header: true, null: "" }),
+      await xlsxOf([{ name: "src", columns: set.columns, rows: set.rows, oids: set.types }], {
+        header: true,
+        null: "",
+      }),
     );
     const checks: string[] = [];
     for (const [r, row] of set.rows.entries())
