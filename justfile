@@ -113,7 +113,7 @@ package-shell version="0.0.0": build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     # Linux: the desk finds libcef.so beside itself.
     if [ "$(uname -s)" = Linux ]; then export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN'; fi
-    cargo build -p desk-shell --bins --release
+    DESK_VERSION="{{version}}" cargo build -p desk-shell -p desk-cli --bins --release
     node scripts/cef-package.mjs --target "$triple" --version "{{version}}"
 
 # Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)

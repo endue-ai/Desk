@@ -30,12 +30,12 @@ it("ships the canonical CLI, the compatibility command and the opt-in activator"
     const resources = Object.fromEntries(config.resources.map(({ src, target }) => [target, src]));
     const windows = target.includes("windows");
     for (const name of ["endue", "desk"]) {
-      const file = windows ? name + ".exe" : name;
-      assert.equal(resources["cli/" + file], join(paths.binaries, file));
+      const file = windows ? `${name}.exe` : name;
+      assert.equal(resources[`cli/${file}`], join(paths.binaries, file));
     }
     const script = windows ? "activate.ps1" : "activate";
-    assert.equal(resources["cli/" + script], join(PACKAGER, "cli", script));
-    assert.ok(existsSync(resources["cli/" + script]));
+    assert.equal(resources[`cli/${script}`], join(PACKAGER, "cli", script));
+    assert.ok(existsSync(resources[`cli/${script}`]));
   }
 });
 
@@ -76,4 +76,43 @@ it("activates both Unix names, preserves a foreign command and repeats safely", 
     for (const name of ["endue", "desk"])
       assert.equal(realpathSync(join(bin, name)), realpathSync(join(cli, name)));
   }
+});
+
+it("preserves existing PowerShell commands and activates its two executables once", {
+  skip: process.platform !== "win32",
+}, () => {
+  const dir = mkdtempSync(join(tmpdir(), "endue-cli-session-"));
+  after(() => rmSync(dir, { recursive: true, force: true }));
+  const script = join(dir, "activate.ps1");
+  writeFileSync(script, readFileSync(join(PACKAGER, "cli", "activate.ps1")));
+  const result = spawnSync(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      `
+    $ErrorActionPreference = 'Stop'
+    $cli = $env:ENDUE_TEST_CLI
+    $script = Join-Path $cli 'activate.ps1'
+    foreach ($name in 'endue', 'desk') { Copy-Item $env:ComSpec (Join-Path $cli "$name.exe") }
+    $env:PATH = Join-Path $env:SystemRoot System32
+    $before = $env:PATH
+    Set-Alias endue Get-Date
+    $refused = $false
+    try { & $script } catch { $refused = $true }
+    if (-not $refused -or $env:PATH -ne $before) { throw 'A foreign command was replaced' }
+    Remove-Item Alias:endue
+    & $script
+    $activated = $env:PATH
+    & $script
+    if ($activated -ne $env:PATH) { throw 'Repeated activation changed PATH' }
+    foreach ($name in 'endue', 'desk') {
+      if ((Get-Command $name).Path -ne (Join-Path $cli "$name.exe")) { throw "Unexpected $name command" }
+    }
+  `,
+    ],
+    { env: { ...process.env, ENDUE_TEST_CLI: dir }, encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr);
 });

@@ -1,6 +1,7 @@
 [package]
 name = "desk-cli"
-description = "The desk CLI: plugin validate and test, doctor --trace, commands, plugins and grants of a running desk over its socket, and an MCP server for other apps. The hands AI agents use."
+default-run = "endue"
+description = "The endue CLI and its desk compatibility command: local plugin tools and a running app over its socket."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +12,10 @@ publish.workspace = true
 [[bin]]
 name = "desk"
 path = "src/main.rs"
+
+[[bin]]
+name = "endue"
+path = "src/bin/endue.rs"
 
 [dependencies]
 desk-bridge.workspace = true
@@ -27,6 +32,9 @@ serde_json.workspace = true
 zip = { version = "9.2.1", default-features = false, features = ["deflate-flate2"] }
 # zip's deflate needs a flate2 backend: the default one, miniz_oxide, already in the tree.
 flate2 = "1.1.10"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.10.1"
 
 [dev-dependencies]
 desk-update.workspace = true

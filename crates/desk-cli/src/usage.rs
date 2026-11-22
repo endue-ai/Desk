@@ -54,6 +54,18 @@ pub const USAGE: &str = "usage: desk [--json] <command>
 --json prints the desk's answer line as it is; when none came, {\"ok\":false,\"error\":{code,message}}.
 Exit codes: 0 ok, 1 failed, 2 usage.";
 
+/// Full help for the invoked executable. Keep the existing command's output stable for scripts.
+pub fn help() -> std::borrow::Cow<'static, str> {
+    if crate::name() == "desk" {
+        return USAGE.into();
+    }
+    format!(
+        "{}\n\nOn local files: endue plugin validate <dir>.\nWith the running app: endue cmd list.\nRelease version: endue --version.",
+        USAGE.replacen("usage: desk ", "usage: endue ", 1)
+    )
+    .into()
+}
+
 /// A command line `desk` cannot run.
 pub struct Wrong {
     /// What was wrong, in one sentence; empty when no command was given at all.
@@ -66,10 +78,12 @@ pub struct Wrong {
 /// `desk: <what was wrong>`, the usage header and the lines of the command it was about.
 pub fn wrong(wrong: &Wrong) -> String {
     if wrong.message.is_empty() {
-        return format!("{USAGE}\n");
+        return format!("{}\n", help());
     }
-    let mut text = format!("desk: {}\n", wrong.message);
-    let mut lines = USAGE.lines();
+    let name = crate::name();
+    let mut text = format!("{name}: {}\n", wrong.message);
+    let help = help();
+    let mut lines = help.lines();
     if let Some(header) = lines.next() {
         text.push_str(header);
         text.push('\n');
@@ -88,7 +102,7 @@ pub fn wrong(wrong: &Wrong) -> String {
             }
         }
     }
-    text.push_str("desk --help lists every command.\n");
+    text.push_str(&format!("{name} --help lists every command.\n"));
     text
 }
 

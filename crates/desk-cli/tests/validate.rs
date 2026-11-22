@@ -36,7 +36,7 @@ fn both_commands_return_the_same_offline_json_and_status() {
     let dir = repo().join("examples/plugin-hello-ui");
     let args = ["--json", "plugin", "validate", dir.to_str().unwrap()];
     let legacy = desk(&args);
-    let path = option_env!("CARGO_BIN_EXE_endue").unwrap_or("missing-endue-cli");
+    let path = env!("CARGO_BIN_EXE_endue");
     let primary = Command::new(path)
         .args(args)
         .output()

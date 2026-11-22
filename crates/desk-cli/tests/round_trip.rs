@@ -90,7 +90,7 @@ fn the_binary_runs_a_command_through_the_socket_and_the_core() {
     let out = desk(&path, &["ping"]);
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&out.stdout), "ok\n");
-    let executable = option_env!("CARGO_BIN_EXE_endue").unwrap_or("missing-endue-cli");
+    let executable = env!("CARGO_BIN_EXE_endue");
     let result = Command::new(executable)
         .args(["cmd", "run", "desk.theme.toggle"])
         .env("DESK_SOCKET", &path)

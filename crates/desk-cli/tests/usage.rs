@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 
 #[test]
 fn endue_help_distinguishes_local_commands_from_commands_for_the_running_app() {
-    let executable = option_env!("CARGO_BIN_EXE_endue").unwrap_or("missing-endue-cli");
+    let executable = env!("CARGO_BIN_EXE_endue");
     let help = Command::new(executable)
         .arg("--help")
         .output()
@@ -16,6 +16,12 @@ fn endue_help_distinguishes_local_commands_from_commands_for_the_running_app() {
     assert!(text.contains("endue plugin validate"));
     assert!(text.contains("endue cmd list"));
     assert!(text.contains("running app"));
+    let version = Command::new(executable).arg("--version").output().unwrap();
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8(version.stdout).unwrap(),
+        format!("endue {}\n", desk_cli::version())
+    );
     let wrong = Command::new(executable)
         .arg("unknown-command")
         .output()
