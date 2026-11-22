@@ -52,9 +52,9 @@ fn speaks_a_protocol_version_both_know() {
     assert_eq!(older.unwrap().protocol(), "2024-11-05");
     let (_unknown, unknown, _) = open(&["--protocol", "1999-01-01"], &[]);
     let Err(Failure::Protocol(why)) = unknown else {
-        panic!("a version Desk does not speak is refused");
+        panic!("endue should reject the unsupported protocol version");
     };
-    assert!(why.contains("1999-01-01"), "{why}");
+    assert_eq!(why, "endue does not support protocol version 1999-01-01");
 }
 
 #[test]
