@@ -100,20 +100,25 @@ fn sleeping(core: &Arc<Core>, caller: &str, session: &str) -> JoinHandle<Result<
 
 /// The reason of `session`'s db.closed.
 fn closed(events: &Receiver<Delivery>, session: &str) -> String {
+    closed_all(events, &[session]).remove(0)
+}
+
+/// The reasons of each of `sessions`' db.closed, in their order, whatever order they come in.
+fn closed_all(events: &Receiver<Delivery>, sessions: &[&str]) -> Vec<String> {
+    let mut reasons = vec![None; sessions.len()];
     let deadline = Instant::now() + Duration::from_secs(10);
-    while let Some(left) = deadline.checked_duration_since(Instant::now()) {
-        let Ok(delivery) = events.recv_timeout(left) else {
-            break;
+    while reasons.iter().any(Option::is_none) {
+        let left = deadline.checked_duration_since(Instant::now());
+        let Some(Ok(delivery)) = left.map(|left| events.recv_timeout(left)) else {
+            panic!("no db.closed for each of {sessions:?}: {reasons:?}");
         };
         let value = serde_json::to_value(&delivery.event).unwrap();
-        if value["event"] == "db.closed" && value["data"]["sessionId"] == session {
-            return value["data"]["reason"]
-                .as_str()
-                .unwrap_or_default()
-                .to_owned();
+        let at = sessions.iter().position(|s| value["data"]["sessionId"] == *s);
+        if let (true, Some(at)) = (value["event"] == "db.closed", at) {
+            reasons[at] = value["data"]["reason"].as_str().map(str::to_owned);
         }
     }
-    panic!("no db.closed for {session}");
+    reasons.into_iter().flatten().collect()
 }
 
 /// Whether the server lets go of every backend in `pids` within five seconds, asked by `core`.
@@ -199,8 +204,7 @@ fn quitting_ends_every_session_and_its_statement() {
     );
     assert_eq!(core.database_count(), 0);
     assert!(sleeper.join().unwrap().is_err());
-    assert_eq!(closed(&events, &busy), "desk");
-    assert_eq!(closed(&events, &idle), "desk");
+    assert_eq!(closed_all(&events, &[&busy, &idle]), ["desk", "desk"]);
     assert!(
         gone(&server, &[busy_pid, idle_pid]),
         "a session outlived the quit"

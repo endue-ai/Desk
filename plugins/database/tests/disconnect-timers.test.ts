@@ -8,7 +8,6 @@ import { type Mounted, mount } from "./harness";
 const acts = (m: Mounted) =>
   m.app as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
 const opens = (m: Mounted) => m.host.calls.filter((c) => c.method === "db.open").length;
-const cancels = (m: Mounted) => m.host.calls.filter((c) => c.method === "db.cancel").length;
 
 async function start() {
   const server = activityServer();
@@ -20,8 +19,15 @@ async function start() {
   });
   await m.host.command("endue.database.activity", { connection: "warehouse" });
   const id = m.shown()?.id as string;
-  const panel = () => m.view.consoles.find((c) => c.model?.id === id)?.model?.activity;
-  return { m, id, panel, slow: (on: boolean) => void (slow = on) };
+  const panel = () => m.view.consoles.findLast((c) => c.model?.id === id)?.model?.activity;
+  return {
+    m,
+    id,
+    panel,
+    slow: (on: boolean) => {
+      slow = on;
+    },
+  };
 }
 
 describe("Disconnect and the activity panel's refresh", () => {
@@ -56,15 +62,24 @@ describe("Disconnect and the activity panel's refresh", () => {
     const { m, id, panel, slow } = await start();
     slow(true);
     const reading = acts(m).activityRefresh?.(id, "timer");
-    await m.settle();
+    // Not settled: the read waits on the server until it is cancelled.
+    for (let i = 0; i < 200 && !m.host.calls.some((c) => c.method === "db.run"); i++)
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    const runs = () => m.host.calls.filter((c) => c.method === "db.run").length;
+    const before = runs();
+    for (let i = 0; i < 200 && runs() === before; i++)
+      await new Promise((resolve) => setTimeout(resolve, 5));
     expect(panel()?.reading).toBe(true);
     await m.host.command("endue.database.disconnect", { connection: "warehouse" });
     await reading;
     await m.settle();
-    expect(cancels(m)).toBeGreaterThan(0);
+    // The read's own session: its statement cancelled, then the session closed.
+    const methods = m.host.calls.map((c) => c.method);
+    const after = methods.slice(methods.lastIndexOf("db.open"));
+    expect(after.filter((c) => c === "db.cancel" || c === "db.close")).toEqual([
+      "db.cancel",
+      "db.close",
+    ]);
     expect(panel()?.reading).toBe(false);
-    expect(m.host.calls.filter((c) => c.method === "db.close").length).toBe(
-      m.host.calls.filter((c) => c.method === "db.open").length,
-    );
   });
 });

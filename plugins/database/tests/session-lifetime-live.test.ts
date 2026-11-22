@@ -11,7 +11,7 @@ import { coreBridge } from "./core-bridge";
 import { mount } from "./harness";
 import { liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
-import { start } from "./session-helpers";
+import { run, start } from "./session-helpers";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const { fields, password } = uri ? parseUri(uri) : { fields: {}, password: undefined };
@@ -40,6 +40,8 @@ describe.skipIf(!uri)("a session's lifetime on a real server", () => {
     const m = await mount({ store: { connections: [LIVE] }, handlers: procs.handlers });
     procs.attach((event) => m.host.emit(event));
     await m.host.command("endue.database.console", { connection: "live" });
+    // The console's session first, so the sleep starts at once.
+    await run(m, "select 1");
     const { done } = await start(m, "select pg_sleep(30)");
     const pid = m.shown()?.session?.pid as number;
     expect(pid).toBeGreaterThan(0);

@@ -120,6 +120,13 @@ export class Owners {
     this.#early.delete(key);
   }
 
+  /** The keys `owner` holds that start with `prefix` (`db:` for its database sessions). */
+  held(owner: string, prefix: string): string[] {
+    return [...this.#owners]
+      .filter(([k, o]) => o === owner && k.startsWith(prefix))
+      .map(([k]) => k);
+  }
+
   /** Forget everything `owner` held: its surface went away. */
   drop(owner: string): void {
     for (const [key, holder] of this.#owners) if (holder === owner) this.#owners.delete(key);
