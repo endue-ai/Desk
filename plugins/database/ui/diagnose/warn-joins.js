@@ -177,10 +177,10 @@ function joined(
 export function joinWithoutCondition(/** @type {WarnContext} */ ctx) {
   /** @type {Set<string>} */
   const ctes = new Set();
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "CommonTableExpr" && f.ctename) ctes.add(f.ctename);
   });
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "JoinExpr") return void joined(ctx, f, ctes);
     /** @type {unknown[]} */
     let from = [];

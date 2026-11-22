@@ -3,7 +3,7 @@
 // WHERE, LIMIT, OFFSET or FETCH FIRST without ORDER BY, INSERT without a column list (with the
 // cached columns as the fix, as many as it has values), and a call that cancels or ends a server
 // session. Pure.
-import { fieldsOf, kindOf, listOf, walk } from "../sql/parse/tree.js";
+import { fieldsOf, kindOf, listOf } from "../sql/parse/tree.js";
 import { startOf } from "./insert.js";
 import { isNull, partsOf } from "./warn-context.js";
 
@@ -46,7 +46,7 @@ function stars(
 }
 
 export function selectStar(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "ViewStmt") stars(ctx, fieldsOf(f.query, "SelectStmt"), STAR.view);
     else if (kind === "CreateTableAsStmt" && f.objtype === "OBJECT_MATVIEW")
       stars(ctx, fieldsOf(f.query, "SelectStmt"), STAR.view);
@@ -58,7 +58,7 @@ export function selectStar(/** @type {WarnContext} */ ctx) {
 }
 
 export function writesWithoutWhere(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if ((kind !== "UpdateStmt" && kind !== "DeleteStmt") || f.whereClause || !f.relation) return;
     const [rule, message] =
       kind === "UpdateStmt"
@@ -83,7 +83,7 @@ const KEYWORDS = new Set(["LIMIT", "OFFSET", "FETCH"]);
 export function limitWithoutOrder(/** @type {WarnContext} */ ctx) {
   /** @type {Set<unknown>} */
   const exists = new Set();
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "SubLink" && f.subLinkType === "EXISTS_SUBLINK")
       exists.add(fieldsOf(f.subselect, "SelectStmt"));
     if (kind !== "SelectStmt" || exists.has(f) || listOf(f.sortClause).length > 0) return;
@@ -132,7 +132,7 @@ function columnName(/** @type {WarnContext} */ ctx, /** @type {string} */ name) 
 }
 
 export function insertWithoutColumns(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind !== "InsertStmt" || !f.relation || !f.selectStmt || listOf(f.cols).length > 0) return;
     const span = ctx.relationSpan(f.relation);
     if (f.relation.alias?.aliasname) {
@@ -156,7 +156,7 @@ export function insertWithoutColumns(/** @type {WarnContext} */ ctx) {
 }
 
 export function serverSignal(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind !== "FuncCall") return;
     const parts = partsOf(f.funcname);
     const message = SIGNALS[parts.at(-1) ?? ""];

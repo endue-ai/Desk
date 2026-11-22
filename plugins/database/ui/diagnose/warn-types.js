@@ -57,10 +57,10 @@ function kindOfType(/** @type {string} */ type) {
 }
 
 /** The conditions of the statement: each WHERE, HAVING and ON. */
-function conditions(/** @type {Node} */ tree) {
+function conditions(/** @type {WarnContext} */ ctx) {
   /** @type {unknown[]} */
   const out = [];
-  walk(tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "SelectStmt") out.push(f.whereClause, f.havingClause);
     else if (kind === "UpdateStmt" || kind === "DeleteStmt") out.push(f.whereClause);
     else if (kind === "JoinExpr") out.push(f.quals);
@@ -69,10 +69,10 @@ function conditions(/** @type {Node} */ tree) {
 }
 
 /** Each comparison in the conditions, as its two sides (a range's right side is its list). */
-function comparisons(/** @type {Node} */ tree, /** @type {boolean} */ likes) {
+function comparisons(/** @type {WarnContext} */ ctx, /** @type {boolean} */ likes) {
   /** @type {Array<{ left: unknown, right: unknown[] }>} */
   const out = [];
-  for (const root of conditions(tree))
+  for (const root of conditions(ctx))
     walk(root, (kind, f) => {
       if (kind === "SelectStmt") return false;
       if (kind !== "A_Expr") return;
@@ -97,7 +97,7 @@ function valueKind(/** @type {WarnContext} */ ctx, /** @type {unknown} */ node) 
 export function columnCast(/** @type {WarnContext} */ ctx) {
   /** @type {Set<number>} */
   const told = new Set();
-  for (const { left, right } of comparisons(ctx.tree, false)) {
+  for (const { left, right } of comparisons(ctx, false)) {
     const ref = fieldsOf(left, "ColumnRef");
     const column = ref ? ctx.column(ref) : null;
     if (!ref || !column?.type || told.has(ref.location ?? -1)) continue;
@@ -144,7 +144,7 @@ function indexesOf(/** @type {WarnContext} */ ctx, /** @type {Column["found"]} *
 export function functionOnIndexedColumn(/** @type {WarnContext} */ ctx) {
   /** @type {Set<unknown>} */
   const told = new Set();
-  for (const { left } of comparisons(ctx.tree, true)) {
+  for (const { left } of comparisons(ctx, true)) {
     const call = fieldsOf(left, "FuncCall");
     if (!call || call.over || call.agg_star || told.has(call)) continue;
     for (const arg of listOf(call.args)) {

@@ -2,7 +2,7 @@
 // IS NOT NULL as the fix, in the case the NULL was written in), CASE x WHEN NULL, which never
 // matches, and NOT IN over a list holding NULL or a subquery whose column the cache says can be
 // NULL, which no row passes once a NULL comes. Pure.
-import { fieldsOf, kindOf, listOf, walk } from "../sql/parse/tree.js";
+import { fieldsOf, kindOf, listOf } from "../sql/parse/tree.js";
 import { isNull, opOf, partsOf } from "./warn-context.js";
 
 /** @typedef {import("./warn-context.js").WarnContext} WarnContext */
@@ -22,7 +22,7 @@ function test(/** @type {string} */ op, /** @type {string} */ written) {
 
 /** `= NULL`, `<> NULL` (and `!=`), and CASE ... WHEN NULL. */
 export function nullComparison(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "CaseExpr" && f.arg)
       for (const when of listOf(f.args)) {
         const expr = fieldsOf(when, "CaseWhen")?.expr;
@@ -92,7 +92,7 @@ function guarded(
 
 /** NOT IN (..., NULL, ...) and NOT IN over a subquery whose column can be NULL. */
 export function notInNull(/** @type {WarnContext} */ ctx) {
-  walk(ctx.tree, (kind, f) => {
+  ctx.each((kind, f) => {
     if (kind === "A_Expr" && f.kind === "AEXPR_IN" && opOf(f) === "<>") {
       const items = listOf(fieldsOf(f.rexpr, "List")?.items);
       if (items.some(isNull))

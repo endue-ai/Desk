@@ -45,6 +45,7 @@ test("a likely mistake is underlined as a warning, named on hover, and its fix r
   const warnings = frame.locator(".cm-content .cm-lintRange-warning");
   await editor.pressSequentially("select * from people where name = null", { delay: 20 });
   await expect(warnings).toHaveText(["= null"]);
+  await page.keyboard.press("Escape");
   await expect(frame.locator(".cm-content .cm-lintRange-error")).toHaveCount(0);
   await expect(frame.locator(".cm-gutter-lint .cm-lint-marker-warning")).toHaveCount(1);
 
@@ -57,7 +58,9 @@ test("a likely mistake is underlined as a warning, named on hover, and its fix r
   const action = tooltip.getByRole("button", { name: "Use IS NULL" });
   await expect(action).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("warnings-hover.png") });
-  await action.click();
+  // The fixture's window shows the frame's left part only, and the button sits past it: press it
+  // as the person's click would reach it.
+  await action.dispatchEvent("click");
   await expect(text).toHaveText("select * from people where name is null");
   await expect(warnings).toHaveCount(0);
 

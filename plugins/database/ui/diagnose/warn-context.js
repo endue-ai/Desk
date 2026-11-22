@@ -5,7 +5,7 @@
 // warning is written down. Offsets are the statement's (its text without the space the parser was
 // sent). Pure: it runs in the parse worker.
 import { partsAt } from "../sql/parse/names.js";
-import { fieldsOf, kindOf, listOf, stringOf } from "../sql/parse/tree.js";
+import { fieldsOf, kindOf, listOf, stringOf, walk } from "../sql/parse/tree.js";
 import { relationIn } from "./names.js";
 import { endOf } from "./text.js";
 
@@ -52,6 +52,8 @@ export function warnContext(input) {
       if (n.kind === "column" && n.target?.kind === "column") columns.set(n.start.offset, n);
     return columns;
   };
+  /** @type {Array<[string, Node]> | undefined} */
+  let nodes;
   /** A byte of the parsed text as an offset in the statement. */
   const offsetOf = (/** @type {number} */ byte) => positions.at(byte).offset - 1;
 
@@ -59,6 +61,15 @@ export function warnContext(input) {
     ...input,
     out,
     offsetOf,
+    /** Each node of the tree in the order walk() visits it; the tree is walked once for every rule. */
+    each(/** @type {(kind: string, fields: Node) => void} */ visit) {
+      if (!nodes) {
+        const found = /** @type {Array<[string, Node]>} */ ([]);
+        walk(input.tree, (kind, f) => void found.push([kind, f]));
+        nodes = found;
+      }
+      for (const [kind, f] of nodes) visit(kind, f);
+    },
     /** The end of the token at `offset`, or of the expression it starts. */
     tokenEnd: (/** @type {number} */ offset, expression = false) =>
       endOf(tokens, start + offset, expression) - start,
