@@ -208,7 +208,7 @@
       "properties": {
         "command": { "$ref": "#/$defs/CommandId" },
         "title": {
-          "description": "Shown under the results: Open in Desk.",
+          "description": "Shown under the results: Open in endue.",
           "type": "string",
           "minLength": 1
         },

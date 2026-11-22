@@ -1,6 +1,6 @@
 [package]
 name = "desk-core"
-description = "Kernel of endue Desk: permission engine, event bus, storage, plugin registry and session lease client."
+description = "Kernel of endue: permission engine, event bus, storage, plugin registry and session lease client."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
