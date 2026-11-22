@@ -63,7 +63,9 @@ export function ident(/** @type {Dialect} */ dialect, /** @type {string} */ name
  * @param {Dialect} dialect
  * @param {SchemaView} schema
  * @param {{ picks?: Picks, scope?: ScopeAt, want?: "items" | "signature" | "star",
- *   snippets?: import("./snippets.js").Snippet[] }} [options] `snippets` are offered where they fit
+ *   snippets?: import("./snippets.js").Snippet[], locals?: import("./plpgsql-complete.js").Locals }} [options]
+ *   `snippets` are offered where they fit; `locals` a PL/pgSQL body's variables and parameters, offered
+ *   in expressions and where a statement starts, a record's fields after its name and a dot
  * @returns {Completion}
  */
 export function complete(text, caret, dialect, schema, options = {}) {
@@ -212,9 +214,11 @@ export function complete(text, caret, dialect, schema, options = {}) {
   else if (c.place === "qualified") {
     const names = c.qualifier;
     const q = names[names.length - 1] ?? "";
-    const entry = names.length === 1 ? all().find((e) => e.name === q) : undefined;
+    const record = names.length === 1 ? options.locals?.records.get(q) : undefined;
+    const entry = names.length === 1 && !record ? all().find((e) => e.name === q) : undefined;
     const named = schema.schemas().find((s) => s === q || s.toLowerCase() === q);
-    if (entry) columnItems(entry, 0);
+    if (record) columnItems({ name: q, columns: record }, 0);
+    else if (entry) columnItems(entry, 0);
     else if (names.length === 2) columnItems({ name: q, columns: columnsOf(names[0] ?? "", q) }, 0);
     else if (named !== undefined) {
       tablesOf(named);
@@ -269,11 +273,24 @@ export function complete(text, caret, dialect, schema, options = {}) {
     if (c.values === 0 && fresh) items.push(...rowItems(listed, c.insert.rest));
     expected = listed[c.values]?.type ?? "";
     words(true);
+    items.push(...(options.locals?.items ?? []));
     place = "expression";
   } else if (c.place === "set" && c.update) {
     columnItems({ name: c.update.at(-1) ?? "", columns: target(c.update) }, 0);
   } else if (c.place === "start") {
-    words(false);
+    // In a PL/pgSQL body, its statements' words in place of every keyword.
+    if (!options.locals) words(false);
+    else {
+      items.push(...options.locals.items);
+      for (const k of options.locals.keywords)
+        items.push({
+          label: k,
+          kind: "keyword",
+          detail: "PL/pgSQL",
+          insert: c.prefix && c.prefix === c.prefix.toLowerCase() ? k.toLowerCase() : k,
+          key: keyOf("keyword", k),
+        });
+    }
     place = "statement";
   } else {
     levels().forEach((level, depth) => {
@@ -290,6 +307,7 @@ export function complete(text, caret, dialect, schema, options = {}) {
       });
     typesOf(schema.defaultSchema);
     words(true);
+    items.push(...(options.locals?.items ?? []));
     place = "expression";
     expected = typeOf(c.operand) || expectedArg(signature);
   }

@@ -71,6 +71,29 @@ Modules: `diagnose/`, `features/problems/`, `sql/parse/`, `view-editor.js`.
 
 Modules: `diagnose/warnings.js`, `diagnose/warn-*.js`, `diagnose/ignore.js`, `sql/classify.js`.
 
+## PL/pgSQL bodies
+
+- Inside the dollar quotes of `CREATE FUNCTION` and `CREATE PROCEDURE` with `LANGUAGE plpgsql` (before or after
+  `AS`), and of `DO`, the body is drawn as PL/pgSQL (ADR 0343): its keywords and SQL's, declared variables and
+  parameters (`tok-variable`), strings, numbers and comments, `$1` as a parameter. DECLARE folds to BEGIN, and
+  BEGIN, IF, LOOP, WHILE, FOR and CASE fold to their END. A body in another language, a `BEGIN ATOMIC` body
+  and a single-quoted body stay one string.
+- The problems check parses the routine with PostgreSQL's own PL/pgSQL grammar in the parse worker (the SQL
+  inside with the server's grammar too): a syntax error is underlined on its token with the grammar's
+  message and its line of the body; the grammar gives no position, so the statement is found by parsing the
+  body cut after each `;` with its open blocks closed. A routine that parses is told a name used where only
+  a variable can stand (an expression, a SELECT with no FROM) that nothing declares, in the words the server
+  uses when the line runs; and two warnings, `unused-variable` and `unreachable-code` (after RETURN, RAISE
+  EXCEPTION, or EXIT and CONTINUE without WHEN). A name declared in any block counts as declared.
+- Completion inside a body offers the variables declared before the caret in a block around it, the
+  routine's parameters, a `%ROWTYPE` record's fields after `r.`, PL/pgSQL's statement words where a statement
+  starts, and in the SQL inside (SELECT ... INTO, PERFORM, RETURN QUERY, a FOR loop's query, an expression)
+  what any query is offered. It needs no schema cache for the variables.
+- A routine's source opened from the explorer (`s`, Database: edit the source) is such a console: it is
+  applied as `CREATE OR REPLACE`, and the server's error selects its line.
+
+Modules: `sql/plpgsql/`, `editor/plpgsql.js`, `editor/plpgsql-complete.js`, `diagnose/plpgsql*.js`.
+
 ## Completion
 
 - The list opens after `.`, two letters of a name, or INSERT's `(` after its table, and on `Ctrl+Space`. In a

@@ -9,13 +9,15 @@
 // The warnings (warnings.js, ADR 0328) are found with the same parse and kept in the same entry; a
 // setting's identifiers and the ignore comments (ignore.js) drop them, and a run keeps them.
 // Completion (ADR 0327) reads the same state: `stateAt` replays what the statements before an offset
-// did, from the last check's, without parsing them again.
+// did, from the last check's, without parsing them again. A routine's PL/pgSQL body is checked by
+// PL/pgSQL's own grammar (plpgsql.js, ADR 0343).
 import { createPositions } from "../sql/parse/positions.js";
 import { resolve } from "../sql/parse/resolve.js";
 import { split } from "../sql/split.js";
 import { ignoredLines } from "./ignore.js";
 import { insertProblems } from "./insert.js";
 import { nameProblems } from "./names.js";
+import { plpgsqlProblems } from "./plpgsql.js";
 import { apply, createState, DEFAULT_PATH, effectsOf, searchPathOf } from "./script.js";
 import { endOf } from "./text.js";
 import { warningsOf } from "./warnings.js";
@@ -154,6 +156,8 @@ export function createChecker(raw) {
         const input = { tree, text, positions, names, state, tokens, start: piece.start, raw };
         entry.problems.push(...warningsOf(input));
       }
+      if (tree.CreateFunctionStmt || tree.DoStmt)
+        entry.problems.push(...plpgsqlProblems(raw, piece.text, kinds));
       const effects = effectsOf(tree);
       entry.effects.push(...effects);
       for (const effect of effects) apply(state, effect);

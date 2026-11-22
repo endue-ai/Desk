@@ -30,6 +30,7 @@ import {
   ACTIVITY_CONNECTION,
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
+import { assistAnswer } from "../../../../plugins/database/tests/assist-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
@@ -53,6 +54,7 @@ import {
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
+import { renameServer } from "../../../../plugins/database/tests/refactor-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
@@ -155,7 +157,8 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(fixtureScript).script).script,
+                            objectsServer(activityServer(renameServer(fixtureScript)).script)
+                              .script,
                           ).script,
                         ),
                       ).script,
@@ -186,6 +189,8 @@ const core = browserCore({
         : backupOpen(params, caller),
   },
   open: () => {},
+  // Eris in a console answers from a script (assist-fixture.ts, PG-90).
+  ask: assistAnswer,
 });
 emit = (event) => core.stub.emit(event);
 const runtime = createRuntime({
