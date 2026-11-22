@@ -170,6 +170,7 @@ fn every_request_carries_the_token_its_source_answers_now() {
             .iter()
             .all(|h| !h.to_ascii_lowercase().starts_with("authorization"))
     );
+    assert!(headers.iter().any(|h| h.eq_ignore_ascii_case("User-Agent: endue")));
     // Signed in: the token as it is now.
     *token.lock().unwrap() = Some("access1".to_owned());
     let (url, server) = one_answer();

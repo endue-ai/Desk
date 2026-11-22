@@ -234,6 +234,6 @@ export async function mount(
   };
 }
 
-export const ENV = { TERM: "xterm-256color", COLORTERM: "truecolor", TERM_PROGRAM: "endue-desk" };
+export const ENV = { TERM: "xterm-256color", COLORTERM: "truecolor", TERM_PROGRAM: "endue" };
 export const scope = (command: string) =>
   ({ permission: "proc:spawn", commands: [command], pty: true }) as const;

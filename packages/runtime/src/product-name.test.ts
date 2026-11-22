@@ -6,6 +6,11 @@ import en from "./surface/messages/en.json";
 import ko from "./surface/messages/ko.json";
 
 describe("endue product copy", () => {
+  it("names the runtime development page endue", () => {
+    const html = readFileSync(new URL("../dev/index.html", import.meta.url), "utf8");
+    expect(html).toContain("<title>endue</title>");
+  });
+
   it("identifies endue in both local session tabs", () => {
     expect(en["surface.localAgent.tabDesk"]).toBe("In endue {n}");
     expect(ko["surface.localAgent.tabDesk"]).toBe("endue {n}");
