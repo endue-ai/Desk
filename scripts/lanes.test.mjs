@@ -58,7 +58,10 @@ test("a numbered ADR can start beside a different numbered reservation", () => {
     openIssues: new Set(),
   });
   assert.deepEqual(result.start, [580]);
-  assert.deepEqual(result.waiting.map((entry) => entry.number), [581]);
+  assert.deepEqual(
+    result.waiting.map((entry) => entry.number),
+    [581],
+  );
 });
 
 test("shared files never take a lane", () => {
