@@ -44,7 +44,11 @@ describe("the page's shell", () => {
       throw new Error("no event without a shell");
     });
     expect(() => off()).not.toThrow();
+    // A bridge call answers as its failure, as every refused one does (#566).
     const call = host.adapter().call({ id: 1, method: "perm.query", params: {} } as never);
-    await expect(call).rejects.toThrow(host.NO_SHELL);
+    await expect(call).resolves.toMatchObject({
+      ok: false,
+      error: { code: "internal", message: expect.stringContaining(host.NO_SHELL) },
+    });
   });
 });

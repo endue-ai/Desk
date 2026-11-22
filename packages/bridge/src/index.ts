@@ -44,7 +44,8 @@ export {
   stubCommands,
 } from "./stub-commands";
 export { stubDb } from "./stub-db";
-export type { StubDatabase, StubSession, StubStatement } from "./stub-db-types";
+export { STUB_HOST_KEY } from "./stub-db-ssh";
+export type { StubDatabase, StubSession, StubSsh, StubStatement } from "./stub-db-types";
 export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
 export { type StubOpened, shellLink } from "./stub-shell";
 export {

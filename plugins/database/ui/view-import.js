@@ -1,10 +1,14 @@
 // The import wizard's DOM (importer.js holds what it shows): where the file goes (a connection, a
 // schema, a table), how it reads (a header line, empty fields as NULL), one row per column of the
 // file with an example value and the table column it goes to, a preview of the first rows as they
-// will be inserted, the SQL, and Import, which runs it all in one transaction. Escape cancels.
+// will be inserted, the SQL, and Import, which runs it all in one transaction. Escape cancels. On a
+// PostgreSQL connection the COPY part (import-copy/view.js) adds its options, a new table's columns
+// as a name and a type each, the server's check and the progress (PG-60).
 
+import { sizeText } from "./console-files.js";
 import { el } from "./dom.js";
 import { formatCount } from "./format.js";
+import { createCopyView } from "./import-copy/view.js";
 
 /**
  * @typedef {import("./importer.js").ImportModel} ImportModel
@@ -14,6 +18,19 @@ import { formatCount } from "./format.js";
 /** A value as the grid shows it: NULL apart from an empty string. */
 const shown = (/** @type {string | null | undefined} */ value) =>
   value === null || value === undefined ? "NULL" : value === "" ? "''" : value;
+
+/** What a COPY import will do, in a sentence. @param {NonNullable<ImportModel["copy"]>} c */
+const copySummary = (c) => {
+  const how =
+    c.batch > 0
+      ? `committed every ${formatCount(c.batch)} rows`
+      : "in one transaction: if it fails, nothing is kept";
+  const errors =
+    c.onError === "skip"
+      ? " A row the server refuses goes to a reject file with its reason."
+      : " The first row the server refuses stops it.";
+  return `The whole file goes in by COPY, ${how}.${errors}`;
+};
 
 /**
  * @param {Document} doc
@@ -29,6 +46,7 @@ export function createImportView(doc, act) {
   const map = byId("import-map");
   const preview = byId("import-preview");
   const run = /** @type {HTMLButtonElement} */ (byId("import-run"));
+  const copy = createCopyView(doc, act);
   /** @type {ImportModel | null} */
   let model = null;
 
@@ -55,13 +73,22 @@ export function createImportView(doc, act) {
       {},
       el(doc, "th", { scope: "col" }, "In the file"),
       el(doc, "th", { scope: "col" }, "First row"),
-      el(doc, "th", { scope: "col" }, "Goes to"),
+      el(doc, "th", { scope: "col" }, m.copy?.target === "new" ? "Column and type" : "Goes to"),
     );
     const choices = /** @type {Array<[string, string]>} */ ([
       ["", "Leave out"],
       ...m.columns.map((c) => [c.name, c.type ? `${c.name} (${c.type})` : c.name]),
     ]);
     const rows = m.fileColumns.map((name, index) => {
+      if (m.copy?.target === "new")
+        return el(
+          doc,
+          "tr",
+          {},
+          el(doc, "th", { scope: "row" }, name),
+          el(doc, "td", { class: "example" }, shown(m.examples[index])),
+          el(doc, "td", { class: "new-column" }, ...copy.newColumn(m, index)),
+        );
       const pick = /** @type {HTMLSelectElement} */ (
         el(doc, "select", {
           class: "desk-field",
@@ -113,8 +140,10 @@ export function createImportView(doc, act) {
       return;
     }
     byId("import-title").textContent = `Import ${next.file}`;
-    byId("import-file").textContent =
-      `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} of ${next.format.toUpperCase()}, ${next.fileColumns.length} column${next.fileColumns.length === 1 ? "" : "s"}.`;
+    const columns = `${next.fileColumns.length} column${next.fileColumns.length === 1 ? "" : "s"}`;
+    byId("import-file").textContent = next.copy
+      ? `${next.format.toUpperCase()}, ${sizeText(next.copy.size)}, ${columns}; the first ${formatCount(next.rows)} rows are shown.`
+      : `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} of ${next.format.toUpperCase()}, ${columns}.`;
     options(
       connection,
       next.connections.map((c) => [c.id, c.name]),
@@ -134,12 +163,18 @@ export function createImportView(doc, act) {
     header.disabled = next.format === "json" || next.running;
     empty.checked = next.emptyNull;
     empty.disabled = next.format !== "csv" || next.running;
+    // The COPY's NULL text says what an empty field is.
+    empty.closest("label")?.toggleAttribute("hidden", Boolean(next.copy));
     for (const node of [connection, schema, table]) node.disabled = next.running;
+    table.disabled = next.running || next.copy?.target === "new";
+    copy.render(next);
     drawMap(next);
     drawPreview(next);
     byId("import-summary").textContent = next.problem
       ? ""
-      : `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} in ${next.statements} INSERT statement${next.statements === 1 ? "" : "s"}, run in one transaction: if one fails, none is kept.`;
+      : next.copy
+        ? copySummary(next.copy)
+        : `${formatCount(next.rows)} row${next.rows === 1 ? "" : "s"} in ${next.statements} INSERT statement${next.statements === 1 ? "" : "s"}, run in one transaction: if one fails, none is kept.`;
     byId("import-sql").textContent = next.sql;
     byId("import-problem").textContent = next.problem;
     run.disabled = next.running || next.problem !== "";
@@ -156,9 +191,12 @@ export function createImportView(doc, act) {
   header.addEventListener("change", () => act("importChange", { header: header.checked }));
   empty.addEventListener("change", () => act("importChange", { empty: empty.checked }));
   map.addEventListener("change", (event) => {
-    const pick = /** @type {HTMLSelectElement} */ (event.target);
+    const pick = /** @type {HTMLSelectElement | HTMLInputElement} */ (event.target);
     const index = Number(pick.dataset.index);
-    if (!Number.isNaN(index)) act("importChange", { map: [index, pick.value || null] });
+    if (Number.isNaN(index)) return;
+    if (pick.dataset.part)
+      act("importChange", { column: [index, { [pick.dataset.part]: pick.value }] });
+    else act("importChange", { map: [index, pick.value || null] });
   });
   form.addEventListener("submit", (event) => {
     event.preventDefault();

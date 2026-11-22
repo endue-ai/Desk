@@ -12,8 +12,9 @@ Layer: Rust core. Status: PostgreSQL 3.0, text results; the core serves it (`cra
   database, user, the password (used once) or the password file read when the server asks
   (`pgpass::default_file`), `TlsMode` (disable, prefer, require, verify-ca, verify-full; a PEM
   `ca_pem`, else the platform's roots), settings, `read_only` and the sign-in timeout (10 s, 120 s
-  at most), and `client_cert` (`ClientCert::from_pem(cert, key, passphrase)`: PEM, an encrypted PKCS#8 key
-  decrypted with PBES2, ADR 0331). Sign-in: SCRAM-SHA-256, -PLUS over TLS, md5, or the password over TLS.
+  at most), `client_cert` (`ClientCert::from_pem(cert, key, passphrase)`: PEM, an encrypted PKCS#8 key
+  decrypted with PBES2, ADR 0331) and `via`, a `Dial` that opens the stream instead of TCP (an SSH
+  tunnel's, ADR 0359; cancel goes the same way). Sign-in: SCRAM-SHA-256, -PLUS over TLS, md5, or the password over TLS.
 - `Session::run(Statement, Limits)`, `fetch(Limits, close)`, `copy(CopyInput)` answer a `Page`:
   columns with type and origin, rows of the server's text (`None` is NULL), `more`, and with the
   last page the tag, the row count over all pages, the transaction state, or the server's error.
@@ -36,5 +37,4 @@ Layer: Rust core. Status: PostgreSQL 3.0, text results; the core serves it (`cra
 `live_script.rs` and `live_describe.rs` run against `ENDUE_DB_TEST_POSTGRES` (a `postgresql://` URI without TLS);
 `tests/live_tls.rs` against `ENDUE_DB_TEST_POSTGRES_TLS` (verify-full to `localhost` with
 `sslrootcert`) and `ENDUE_DB_TEST_POSTGRES_OTHER_CA`; `tests/live_client_cert.rs` against
-`ENDUE_DB_TEST_POSTGRES_CLIENT_CERT` (`clientcert=verify-full`, `sslcert`, `sslkey`, `sslpassword`); each
-skips when its variable is unset.
+`ENDUE_DB_TEST_POSTGRES_CLIENT_CERT` (`clientcert=verify-full`, `sslcert`, `sslkey`, `sslpassword`); each skips when its variable is unset.

@@ -228,6 +228,7 @@ pub(crate) fn empty_open() -> DbOpenResult {
         error: None,
         needs_password: None,
         key_password: None,
+        ssh: None,
     }
 }
 

@@ -6,7 +6,8 @@
 // PostgreSQL connection may name a client certificate and its key file (`sslcert`, `sslkey`, ADR
 // 0331): only the paths are kept, never a key's passphrase. Its session options (search path, role,
 // time zone, timeouts, application name, startup script) are engines/pg-options.js's; its password
-// command and "through a pooler" are auth/fields.js's (ADR 0354).
+// command and "through a pooler" are auth/fields.js's (ADR 0354); its SSH tunnel tunnel/fields.js's
+// (ADR 0359), without a key, a passphrase or a password.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -18,6 +19,7 @@
 
 import { AUTH, authOf } from "./auth/fields.js";
 import { OPTIONS, optionsOf, readOptions, writeOptions } from "./engines/pg-options.js";
+import { TUNNEL, tunnelOf } from "./tunnel/fields.js";
 
 export const ENGINE_IDS = /** @type {const} */ (["postgresql", "mysql", "sqlite"]);
 export const TAGS = /** @type {const} */ (["none", "development", "staging", "production"]);
@@ -127,6 +129,7 @@ export function normalize(raw, others = []) {
   conn.name = text("Name", conn.name, 80).trim() || defaultName(conn);
   Object.assign(conn, optionsOf(/** @type {Record<string, unknown>} */ (raw), conn));
   Object.assign(conn, authOf(/** @type {Record<string, unknown>} */ (raw), conn));
+  Object.assign(conn, tunnelOf(/** @type {Record<string, unknown>} */ (raw), conn));
   const taken = others.find(
     (o) => o.id !== conn.id && o.name.toLowerCase() === conn.name.toLowerCase(),
   );
@@ -307,4 +310,5 @@ export const SIGN_IN = /** @type {const} */ ([
   "readOnly",
   ...OPTIONS,
   ...AUTH,
+  ...TUNNEL,
 ]);

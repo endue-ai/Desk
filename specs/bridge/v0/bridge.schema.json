@@ -65,6 +65,7 @@
         { "$ref": "db.schema.json#/$defs/DbPasswordsSetRequest" },
         { "$ref": "db.schema.json#/$defs/DbPasswordsDeleteRequest" },
         { "$ref": "db.schema.json#/$defs/DbPasswordsListRequest" },
+        { "$ref": "db.schema.json#/$defs/DbHostKeysDeleteRequest" },
         { "$ref": "audio.schema.json#/$defs/AudioCaptureStartRequest" },
         { "$ref": "audio.schema.json#/$defs/AudioCaptureStopRequest" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenRequest" },

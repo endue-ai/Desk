@@ -3237,6 +3237,7 @@ export type BridgeRequest =
   | DbPasswordsSetRequest
   | DbPasswordsDeleteRequest
   | DbPasswordsListRequest
+  | DbHostKeysDeleteRequest
   | AudioCaptureStartRequest
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
@@ -4512,6 +4513,7 @@ export interface DbOpenParams {
   /** How long the connection and the sign-in may take; 10000 by default. */
   timeoutMs?: number;
   scope: DbConnectPermission;
+  ssh?: DbSsh;
 }
 
 /** How the session uses TLS. */
@@ -4527,10 +4529,100 @@ export interface DbTls {
   keyPassword?: string;
 }
 
+/** An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to. */
+export interface DbSsh {
+  /** The SSH server, a host name or an IPv4 address. */
+  host: string;
+  /** 22 by default. */
+  port?: number;
+  /** Who signs in on the SSH server. */
+  user: string;
+  /** The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge. */
+  keyFile?: string;
+  /** The passphrase of an encrypted keyFile: used once to decrypt it and dropped. */
+  keyPassword?: string;
+  /** Sign in with the keys the person's SSH agent holds. */
+  agent?: true;
+  /** The SSH password: used once for the sign-in and dropped. */
+  password?: string;
+  passwordRef?: DbPasswordName;
+  hostKey?: DbSshFingerprint;
+  jump?: DbSshHop;
+}
+
+/** A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does. */
+export interface DbSshHop {
+  /** The SSH server, a host name or an IPv4 address. */
+  host: string;
+  /** 22 by default. */
+  port?: number;
+  /** Who signs in on the SSH server. */
+  user: string;
+  /** The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge. */
+  keyFile?: string;
+  /** The passphrase of an encrypted keyFile: used once to decrypt it and dropped. */
+  keyPassword?: string;
+  /** Sign in with the keys the person's SSH agent holds. */
+  agent?: true;
+  /** The SSH password: used once for the sign-in and dropped. */
+  password?: string;
+  passwordRef?: DbPasswordName;
+  hostKey?: DbSshFingerprint;
+}
+
+/** An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens. */
+export type DbSshFingerprint = string;
+
+/** Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database). */
+export interface DbSshAnswer {
+  hop: DbSshHopName;
+  stage: DbSshStage;
+  /** What failed, in words, naming the hop. */
+  message: string;
+  hostKey?: DbSshHostKey;
+  keyPassword?: DbKeyPassword;
+  needsPassword?: true;
+}
+
+/** Which hop: the jump host, or the SSH host the database is reached from. */
+export type DbSshHopName = "jump" | "host";
+
+/** Where the hop failed: connect, hostKey, auth or forward. */
+export type DbSshStage = "connect" | "hostKey" | "auth" | "forward";
+
+/** unknown: not trusted yet. changed: differs from the trusted one. */
+export type DbSshHostKeyStatus = "unknown" | "changed";
+
+/** The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one. */
+export interface DbSshHostKey {
+  status: DbSshHostKeyStatus;
+  /** ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ... */
+  algorithm: string;
+  fingerprint: DbSshFingerprint;
+  known?: DbSshFingerprint;
+}
+
+/** Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error. */
+export interface DbHostKeysDeleteRequest {
+  id: RequestId;
+  method: "db.hostKeys.delete";
+  params: DbHostKeysDeleteParams;
+}
+
+/** Parameters of db.hostKeys.delete. */
+export interface DbHostKeysDeleteParams {
+  host: string;
+  /** 22 by default. */
+  port?: number;
+}
+
+/** Result of db.hostKeys.delete. */
+export type DbHostKeysDeleteResult = Record<string, never>;
+
 /** disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name. */
 export type DbTlsMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
-/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
+/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
 export interface DbOpenResult {
   sessionId?: DbSessionId;
   /** The server process of the session. */
@@ -4542,6 +4634,7 @@ export interface DbOpenResult {
   error?: DbServerError;
   needsPassword?: true;
   keyPassword?: DbKeyPassword;
+  ssh?: DbSshAnswer;
 }
 
 /** tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected. */
@@ -8196,6 +8289,7 @@ export interface BridgeMethodMap {
   "db.passwords.set": { params: DbPasswordsSetParams; result: DbPasswordsSetResult };
   "db.passwords.delete": { params: DbPasswordsDeleteParams; result: DbPasswordsDeleteResult };
   "db.passwords.list": { params: DbPasswordsListParams; result: DbPasswordsListResult };
+  "db.hostKeys.delete": { params: DbHostKeysDeleteParams; result: DbHostKeysDeleteResult };
   "audio.capture.start": { params: AudioCaptureStartParams; result: AudioCaptureStartResult };
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
@@ -8399,6 +8493,7 @@ export const BRIDGE_METHODS = [
   "db.passwords.set",
   "db.passwords.delete",
   "db.passwords.list",
+  "db.hostKeys.delete",
   "audio.capture.start",
   "audio.capture.stop",
   "ui.surface.open",

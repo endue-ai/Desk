@@ -126,6 +126,11 @@
         "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
       },
       {
+        "id": "endue.database.import-file",
+        "title": "Database: import a file into a table",
+        "keywords": ["csv", "xlsx", "json", "copy", "load"]
+      },
+      {
         "id": "endue.database.import-uri",
         "title": "Database: new connection from a URI",
         "keywords": ["url", "dsn", "connection string"]
@@ -3127,6 +3132,31 @@
         "id": "endue.database.reconnect",
         "title": "Database: reconnect the lost session",
         "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
+      },
+      {
+        "id": "endue.database.transfer",
+        "title": "Database: copy tables to another database",
+        "keywords": ["copy", "transfer", "migrate", "move", "clone", "table", "schema"]
+      },
+      {
+        "id": "endue.database.transfer-query",
+        "title": "Database: copy the query's result into a table",
+        "keywords": ["copy", "transfer", "result", "create table as", "append", "insert"]
+      },
+      {
+        "id": "endue.database.transfer-start",
+        "title": "Database: start the copy",
+        "keywords": ["copy", "transfer", "run"]
+      },
+      {
+        "id": "endue.database.transfer-cancel",
+        "title": "Database: cancel the copy",
+        "keywords": ["copy", "transfer", "stop", "abort"]
+      },
+      {
+        "id": "endue.database.forget-ssh-host-key",
+        "title": "Database: forget the SSH host key",
+        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
       },
       {
         "id": "endue.database.clear-notifications",

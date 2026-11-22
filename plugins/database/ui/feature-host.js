@@ -45,9 +45,11 @@
  *   guard: ReturnType<typeof import("./answer.js").guarded>,
  *   cancelled(message: string): Error,
  *   dialog(type: string, model: unknown): Promise<unknown>,
+ *   drop(item: import("./drops.js").Dropped): Promise<unknown>,
  * }} Deps
  *   `execute` runs SQL under the read-only, production and agent guards; every write goes through
- *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled).
+ *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled);
+ *   `drop` carries out a file or text as a drop on the page does (dropped.js).
  *   `onSettings` calls its listener with the settings after each change while the plugin runs, until
  *   the function it returns is called.
  *   `runner` runs a program as the clients run (features/backup/), `clients` finds it, and
