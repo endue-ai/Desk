@@ -19,14 +19,17 @@ const one = (sql: string) => {
 describe("a COPY through standard input or output", () => {
   it("runs: COPY TO STDOUT reads unless its query writes, COPY FROM STDIN writes", () => {
     const out = classify(one("copy items to stdout with (format csv)"), "postgresql");
-    expect(out).toMatchObject({ kind: "read", refused: "" });
+    expect(out).toMatchObject({
+      kind: "read",
+      refused: expect.stringMatching(/alone from a console/u),
+    });
     expect(classify(one("COPY (SELECT * FROM items) TO STDOUT"), "postgresql").kind).toBe("read");
     expect(classify(one("copy (delete from items returning *) to stdout"), "postgresql").kind).toBe(
       "write",
     );
     expect(classify(one("copy items (id, name) from stdin"), "postgresql")).toMatchObject({
       kind: "write",
-      refused: "",
+      refused: expect.stringMatching(/alone from a console/u),
     });
     expect(classify(one("copy items to '/tmp/items.csv'"), "postgresql").kind).toBe("write");
     expect(classify(one("copy items from program 'cat x'"), "postgresql").kind).toBe("write");

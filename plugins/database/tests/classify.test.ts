@@ -60,8 +60,8 @@ describe("classify", () => {
   it("refuses what a client must not run here", () => {
     expect(one("\\! rm -rf ~").refused).toMatch(/psql meta-commands/u);
     expect(one("\\copy t from 'x'").refused).toMatch(/psql meta-commands/u);
-    expect(one("copy t from stdin").refused).toBe("");
-    expect(one("copy t to stdout").refused).toBe("");
+    expect(one("copy t from stdin").refused).toMatch(/COPY/u);
+    expect(one("copy t to stdout").refused).toMatch(/COPY/u);
     expect(one(".shell ls", "sqlite").refused).toMatch(/dot-commands/u);
     expect(one("\\! ls", "mysql").refused).toMatch(/client commands/u);
     expect(one("select '\\! not a command'").refused).toBe("");

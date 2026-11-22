@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { FsReadResult } from "../../../packages/bridge/src/index";
 import { normalize, parseUri } from "../ui/connections.js";
 import { COPY_CHUNK } from "../ui/copy/index.js";
 import type { Connection } from "../ui/engines/common.js";
@@ -65,7 +66,7 @@ async function live(file: string, watch: Watch): Promise<Mounted> {
         return done;
       },
       "fs.read": async (params) => {
-        const read = (await core.call("fs.read", params)) as { content: string };
+        const read = (await core.call("fs.read", params)) as FsReadResult;
         watch.reads.push(read.content.length);
         peak();
         return read;

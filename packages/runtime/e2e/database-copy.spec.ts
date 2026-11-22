@@ -58,7 +58,8 @@ test("COPY TO STDOUT writes the file the save dialog answers, with the bar while
   await expect(bar).toHaveAttribute("cancelable", "");
   await page.evaluate(() => (window as unknown as { __copyGo(): void }).__copyGo());
   await expect(bar).toBeHidden();
-  await expect(frame.locator("#summary")).toContainText("COPY: 3 rows");
+  await expect(frame.locator("#summary")).toContainText("Done: 1 of 1 statement ran");
+  await expect(frame.locator("ul.messages")).toContainText("COPY: 3 rows affected");
   expect((await files(page))["~/Downloads/items.txt"]?.split("\n")[0]).toBe(
     '1\tok\t{"size": 1}\tt\t{a,b}\t2026-11-21 09:00:00+00',
   );
@@ -67,6 +68,6 @@ test("COPY TO STDOUT writes the file the save dialog answers, with the bar while
   });
 
   await runs("copy items from stdin");
-  await expect(frame.locator("#summary")).toContainText("COPY: 3 rows");
+  await expect(frame.locator("ul.messages")).toContainText("COPY: 4 rows affected");
   await expect(bar).toBeHidden();
 });

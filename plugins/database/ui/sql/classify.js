@@ -1,7 +1,8 @@
 // What a statement does, from its words: read, write, ddl, transaction or session, whether it returns
 // rows, whether it is dangerous (DROP, TRUNCATE, UPDATE or DELETE without WHERE), and what no client
-// may run here (psql meta-commands, sqlite3 dot-commands). COPY ... TO STDOUT reads unless its query
-// writes, and COPY ... FROM STDIN writes (copy/statement.js, PG-23).
+// may run here (psql meta-commands, sqlite3 dot-commands, a COPY through standard input or output
+// but alone from a console, which the executor lets through: copy/plan.js, PG-23). COPY ... TO STDOUT
+// reads unless its query writes, and COPY ... FROM STDIN writes.
 // Unknown statements count as writes, so a read-only connection refuses them, and so does a
 // PostgreSQL statement that signals a server session (pg_cancel_backend, pg_terminate_backend:
 // ADR 0328), which changes the server whatever its verb.
@@ -192,6 +193,8 @@ function refusal(/** @type {Statement} */ statement, /** @type {Dialect} */ dial
     return "psql meta-commands (\\...) do not run here; use the terminal.";
   if (dialect === "sqlite" && statement.text.startsWith("."))
     return "sqlite3 dot-commands (.tables, .import ...) do not run here; use the terminal.";
+  if (dialect === "postgresql" && copyOf(statement))
+    return "a COPY through standard input or output runs alone from a console, which asks for its file.";
   if (dialect === "mysql" && statement.text.startsWith("\\"))
     return "mysql client commands (\\...) do not run here; use the terminal.";
   return "";

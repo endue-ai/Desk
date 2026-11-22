@@ -14,7 +14,7 @@ export const COPY_ITEMS = [
   .join("");
 /** The file the open dialog answers for a COPY in, and what it holds. */
 export const COPY_IN_FILE = "~/Downloads/items-more.txt";
-export const COPY_IN_TEXT = COPY_ITEMS.replaceAll(/^(\d)/gmu, "1$1");
+export const COPY_IN_TEXT = `${COPY_ITEMS.replaceAll(/^(\d)/gmu, "1$1")}14\tok\t{}\tf\t{}\t2026-11-18 12:00:00+00\n`;
 
 export function copyScript(script: Script): Script {
   return (sql, who) => {

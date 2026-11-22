@@ -71,9 +71,15 @@ export function createExecutor(deps) {
     if (statements.length === 0)
       throw new Refusal("Nothing to run: the editor holds no statement.");
     const classes = statements.map((statement) => classify(statement, engine.dialect));
-    check(conn, engine.ddlCommits, classes, mode);
     const step = copyStep(engine.dialect, statements, options);
     if (typeof step === "string") throw new Refusal(step);
+    // The COPY this run streams is let through (copy/plan.js); every other guard holds.
+    check(
+      conn,
+      engine.ddlCommits,
+      step ? classes.map((c) => ({ ...c, refused: "" })) : classes,
+      mode,
+    );
     if (!options.catalog && !options.asked)
       await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
     const copy =

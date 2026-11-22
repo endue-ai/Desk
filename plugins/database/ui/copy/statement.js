@@ -18,8 +18,9 @@ const WRITES = new Set(["INSERT", "UPDATE", "DELETE", "MERGE"]);
  * @returns {Direction | undefined}
  */
 export function copyOf(statement) {
+  const first = statement.tokens.find((t) => t.type !== "space" && t.type !== "comment");
+  if (first?.type !== "word" || first.text.toUpperCase() !== "COPY") return undefined;
   const top = wordsOf(statement.tokens, true);
-  if (top[0] !== "COPY") return undefined;
   if (top.includes("FROM") && top.includes("STDIN")) return "in";
   if (top.includes("TO") && top.includes("STDOUT")) return "out";
   return undefined;
