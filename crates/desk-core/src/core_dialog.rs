@@ -31,7 +31,7 @@ pub enum DialogError {
     Failed(String),
 }
 
-/// Who asks, for the dialog's title: `Notes (endue.notes)` for a plugin, `endue Desk` for the desk.
+/// Who asks, for the dialog's title: `Notes (endue.notes)` for a plugin, `endue` for the desk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asker {
     pub caller: String,
@@ -119,7 +119,7 @@ impl Core {
         caller: &str,
     ) -> Result<(Arc<dyn Dialogs>, Asker), desk_bridge::BridgeError> {
         let name = if caller == "desk" {
-            Some("endue Desk".to_owned())
+            Some("endue".to_owned())
         } else if agent_of(caller).is_some() || caller.contains(':') {
             None
         } else {

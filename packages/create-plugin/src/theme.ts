@@ -7,9 +7,6 @@ import type { PluginOptions } from "./template";
 import { DARK, LIGHT } from "./theme-palette";
 import { themeReadme } from "./theme-readme";
 
-/** Where the example's test finds the Desk repository: three folders up from `tests/`. */
-const EXAMPLE_DESK = "../..";
-
 /** The licence a new theme starts with; the README asks the person to set their own. */
 const LICENSE = "Apache-2.0";
 
@@ -18,7 +15,7 @@ export function renderTheme(options: PluginOptions): Record<string, string> {
   return {
     "plugin.json": manifest(options),
     "README.md": themeReadme(options, LICENSE),
-    "tests/theme.test.ts": themeTest(options.desk ?? EXAMPLE_DESK),
+    "tests/theme.test.ts": exampleTest,
   };
 }
 
@@ -48,15 +45,4 @@ function manifest({ id, name, description }: PluginOptions): string {
     },
   };
   return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-/**
- * The example's test with its paths to the Desk repository rewritten for the new folder: `desk` is
- * the repository relative to the folder, so the test reaches it from `tests/` one level further up.
- */
-function themeTest(desk: string): string {
-  if (desk === EXAMPLE_DESK) return exampleTest;
-  // An absolute path (another drive on Windows) is used as it is.
-  const path = /^([A-Za-z]:)?\//.test(desk) ? desk : `../${desk}`;
-  return exampleTest.replaceAll(`"../${EXAMPLE_DESK}`, `"${path}`);
 }

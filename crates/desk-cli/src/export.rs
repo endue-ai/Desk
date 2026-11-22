@@ -86,9 +86,7 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
     }
     let carries_data = tree.keys().any(|path| path.starts_with("data/"));
     if with_data && carries_data && desk_answers() {
-        return fail(
-            "import: a desk is running on this computer; quit Desk first to import its data",
-        );
+        return fail("import: quit endue first to import its data");
     }
     let desk = home.join(".desk");
     let mut lines = Vec::new();

@@ -5,7 +5,7 @@ const ID_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 const ID_MAX_LENGTH = 128;
 
 /**
- * `local.<folder>`, lowercased and dashed: the id Desk gives a folder whose manifest has none
+ * `local.<folder>`, lowercased and dashed: the id endue gives a folder whose manifest has none
  * (desk-core `fallback_id`), so a scaffolded plugin keeps the id it would have had anyway.
  */
 export function defaultId(folder: string): string {

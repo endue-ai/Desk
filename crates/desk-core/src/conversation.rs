@@ -271,7 +271,7 @@ impl Conversation {
                 let request = CreateSessionRequest {
                     title: None,
                     client: ClientInfo {
-                        name: "endue Desk".to_owned(),
+                        name: "endue".to_owned(),
                         version: env!("CARGO_PKG_VERSION").to_owned(),
                     },
                 };
