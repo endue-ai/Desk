@@ -303,31 +303,6 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   });
 
   const guard = guarded(view);
-  const builtins = {
-    ...builtinActions({
-      guard,
-      view,
-      manager,
-      consoles,
-      explorer,
-      tools,
-      importer,
-      dropped,
-      complete: createCompletion({
-        consoles,
-        manager,
-        catalog,
-        bridge,
-        settings: () => settings,
-      }).complete,
-      cancel,
-    }),
-    ...createDrags({
-      current: () => consoles.current(),
-      connection: (id) => manager.get(id),
-      selection: () => view.selection(),
-    }),
-  };
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
   // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
@@ -374,6 +349,25 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     guard,
     cancelled,
     dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
+  };
+  const builtins = {
+    ...builtinActions({
+      guard,
+      view,
+      manager,
+      consoles,
+      explorer,
+      tools,
+      importer,
+      dropped,
+      complete: createCompletion(featureDeps).complete,
+      cancel,
+    }),
+    ...createDrags({
+      current: () => consoles.current(),
+      connection: (id) => manager.get(id),
+      selection: () => view.selection(),
+    }),
   };
   const taken = new Set(Object.keys(builtins));
   const featureActions = registerFeatures(list, featureDeps, { answer, taken });
