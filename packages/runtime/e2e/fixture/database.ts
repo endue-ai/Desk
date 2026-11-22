@@ -47,6 +47,7 @@ import {
   diagramServer,
 } from "../../../../plugins/database/tests/diagram-fixture";
 import { editJoinsScript } from "../../../../plugins/database/tests/edit-joins-fixture";
+import { exportAllScript } from "../../../../plugins/database/tests/export-all-fixture";
 import {
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
@@ -174,7 +175,9 @@ const core = browserCore({
                         overviewServer(
                           maintenanceServer(
                             objectsServer(
-                              activityServer(renameServer(showServer(copyScript(joins)))).script,
+                              activityServer(
+                                renameServer(showServer(exportAllScript(copyScript(joins)))),
+                              ).script,
                             ).script,
                           ).script,
                         ),
