@@ -1769,6 +1769,7 @@ dependencies = [
  "desk-update",
  "flate2",
  "serde_json",
+ "winreg",
  "zip",
 ]
 

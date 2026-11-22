@@ -272,16 +272,17 @@ fn unmatched(words: &[&str]) -> String {
     let whole = (1..words.len())
         .rev()
         .find(|&k| action(&words[..k]).is_ok());
+    let name = crate::name();
     match whole {
         Some(k) if k + 1 == words.len() && usage::takes_value(words[k]) => {
             format!("{} needs a value", words[k])
         }
         Some(k) => format!(
-            "'{}' is not expected after 'desk {}'",
+            "'{}' is not expected after '{name} {}'",
             words[k],
             words[..k].join(" ")
         ),
-        None => format!("'desk {}' is not complete", words.join(" ")),
+        None => format!("'{name} {}' is not complete", words.join(" ")),
     }
 }
 

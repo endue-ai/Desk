@@ -325,7 +325,7 @@ impl Session {
             }
             Err((code, message)) => {
                 if !self.json {
-                    eprintln!("desk: {code}: {message}");
+                    eprintln!("{}: {code}: {message}", crate::name());
                 }
                 ExitCode::from(1)
             }
@@ -378,6 +378,6 @@ fn say(json: bool, code: &str, message: &str) {
         let line = json!({ "ok": false, "error": { "code": code, "message": message } });
         out(&line.to_string());
     } else {
-        eprintln!("desk: {message}");
+        eprintln!("{}: {message}", crate::name());
     }
 }

@@ -86,7 +86,7 @@ pub(super) fn mcp(mut rest: &[&str]) -> Parsed<Action> {
             ("--agent", []) => return Err("--agent needs an agent id".to_owned().into()),
             ("--plugin", []) => return Err("--plugin needs a plugin id or *".to_owned().into()),
             (word, _) => {
-                let takes = "desk mcp takes --agent <id> and --plugin <id>";
+                let takes = format!("{} mcp takes --agent <id> and --plugin <id>", crate::name());
                 return Err(format!("'{word}' is not expected: {takes}").into());
             }
         };

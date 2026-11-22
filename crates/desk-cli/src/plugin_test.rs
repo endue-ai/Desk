@@ -29,7 +29,7 @@ pub fn run(dir: &Path, manifest: &PluginManifest) -> ExitCode {
 }
 
 fn fail(why: &str) -> ExitCode {
-    eprintln!("desk plugin test: {why}");
+    eprintln!("{} plugin test: {why}", crate::name());
     ExitCode::from(1)
 }
 
@@ -65,17 +65,29 @@ fn wasm(dir: &Path) -> ExitCode {
     }
 }
 
-/// The Desk checkout with the SDK and vitest: `DESK_REPO`, or the one this binary was built from.
-fn repo() -> PathBuf {
-    std::env::var_os("DESK_REPO")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+/// An explicitly selected SDK checkout, or the checkout containing this Cargo build.
+fn repo() -> Option<PathBuf> {
+    if let Some(root) = std::env::var_os("DESK_REPO") {
+        return Some(root.into());
+    }
+    let executable = std::env::current_exe().ok()?;
+    executable
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|name| name == "target"))
+        .and_then(Path::parent)
+        .filter(|root| {
+            root.join("packages/plugin-sdk/vitest.plugin.config.ts")
+                .is_file()
+        })
+        .map(Path::to_path_buf)
 }
 
 /// vitest on the SDK's test host (`packages/plugin-sdk/vitest.plugin.config.ts`): the plugin's
 /// folder as the root, `@endue-ai/plugin-sdk` and its `testing` resolved in the checkout, jsdom.
 fn sdk(dir: &Path) -> ExitCode {
-    let repo = repo();
+    let Some(repo) = repo() else {
+        return fail("set DESK_REPO to the endue checkout containing the installed plugin SDK");
+    };
     let vitest = repo.join("node_modules/vitest/vitest.mjs");
     let config = repo.join("packages/plugin-sdk/vitest.plugin.config.ts");
     if !vitest.is_file() || !config.is_file() {

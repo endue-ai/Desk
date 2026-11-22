@@ -32,7 +32,7 @@ impl Session {
                     if enabled { "enabled" } else { "disabled" }
                 )),
                 Err((code, message)) => {
-                    eprintln!("desk: {id}: {code}: {message}");
+                    eprintln!("{}: {id}: {code}: {message}", crate::name());
                     failed = true;
                 }
             }
