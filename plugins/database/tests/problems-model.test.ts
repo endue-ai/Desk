@@ -218,6 +218,9 @@ describe("what SQL problems bind against", () => {
       },
     });
     await m.host.command("endue.database.console", { connection: "Shop" });
+    await until(m, () => row(m, "Shop"));
+    m.app.toggle(row(m, "Shop") as Node, true);
+    await until(m, () => row(m, "public"));
     const context = (await contextOf(m)) as { model: unknown };
     expect(context).toMatchObject({
       names: false,

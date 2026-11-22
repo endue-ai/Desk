@@ -163,10 +163,12 @@ describe.skipIf(!pgUri)("SQL warnings on a real PostgreSQL", () => {
     expect(await warned("select id from people where lower(email) = 'p1@x'")).toEqual([
       ["function-on-indexed-column", null],
     ]);
-    expect(await plan("select id from people where lower(email) = 'p1@x'")).not.toContain(
-      "people_email",
+    const wrapped = await plan("select id from people where lower(email) = 'p1@x'");
+    expect(wrapped).not.toMatch(/Index Cond: [^\n]*email/u);
+    expect(wrapped).toMatch(/Filter: \(lower\(/u);
+    expect(await plan("select id from people where email = 'p1@x'")).toMatch(
+      /Index Cond: \(\(email\)::text = /u,
     );
-    expect(await plan("select id from people where email = 'p1@x'")).toContain("people_email");
     expect(await warned("select id from people where lower(name) = 'p1'")).toEqual([]);
     expect(await plan("select id from people where lower(name) = 'p1'")).toContain(
       "people_lower_name",

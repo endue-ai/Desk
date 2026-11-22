@@ -104,3 +104,56 @@
   color: var(--desk-text-muted);
   cursor: pointer;
 }
+
+/* The warnings (ADR 0328): a likely mistake, in the warning colour, and its fix as a small outline
+   button under the message. */
+#editor-box .cm-lintRange-warning {
+  background-image: none;
+  text-decoration: underline wavy var(--desk-warning);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+#editor-box .cm-lintRange-warning.cm-lintRange-active {
+  background: var(--desk-warning-soft);
+}
+
+#editor-box .cm-lintPoint-warning::after {
+  border-bottom-color: var(--desk-warning);
+}
+
+#editor-box .cm-lint-marker-warning::before {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--desk-warning);
+  content: "";
+}
+
+#editor-box .cm-diagnostic-warning {
+  border-left-color: var(--desk-warning);
+}
+
+#editor-box .cm-diagnosticAction {
+  margin: 4px 0 0;
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-sans);
+  cursor: pointer;
+}
+
+#editor-box .cm-diagnosticAction:hover {
+  background: var(--desk-hover);
+}
+
+#editor-box .cm-diagnosticAction:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
