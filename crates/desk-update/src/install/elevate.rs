@@ -150,7 +150,7 @@ mod tests {
 
     fn step() -> Step {
         Step {
-            why: "endue Desk wants to install 0.6.0.".to_owned(),
+            why: "endue wants to install 0.6.0.".to_owned(),
             program: "dpkg".to_owned(),
             args: vec!["-i".to_owned(), "/u/0.6.0/install.deb".to_owned()],
         }
@@ -164,7 +164,7 @@ mod tests {
         let asks = |script: &str| script.contains("with administrator privileges");
         assert!(asks(&args[1]), "{}", args[1]);
         let rest = [
-            "endue Desk wants to install 0.6.0.",
+            "endue wants to install 0.6.0.",
             "dpkg",
             "-i",
             "/u/0.6.0/install.deb",

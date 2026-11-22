@@ -7,7 +7,8 @@
 use std::path::Path;
 
 /// The attribute macOS quarantines files with.
-pub const ATTRIBUTE: &str = "com.apple.quarantine";
+#[cfg(target_os = "macos")]
+const ATTRIBUTE: &str = "com.apple.quarantine";
 
 /// Take the quarantine mark off everything under `root`, links not followed; refused when
 /// `executable` still carries it afterwards.
@@ -51,11 +52,11 @@ mod tests {
     fn a_checked_update_loses_the_quarantine_mark_on_every_file() {
         let root = std::env::temp_dir().join(format!("desk-quarantine-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
-        let macos = root.join("endue Desk.app/Contents/MacOS");
+        let macos = root.join("endue.app/Contents/MacOS");
         fs::create_dir_all(&macos).unwrap();
         let program = macos.join("endue-desk");
-        fs::write(&program, b"desk").unwrap();
-        let mark = b"0081;6af2cbd5;endue Desk;";
+        fs::write(&program, b"endue").unwrap();
+        let mark = b"0081;6af2cbd5;endue;";
         for path in [&root, &macos, &program] {
             xattr::set(path, ATTRIBUTE, mark).unwrap();
         }
