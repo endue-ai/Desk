@@ -172,7 +172,7 @@ export async function mount(
     commands?: Commands;
     store?: Record<string, unknown>;
     init?: Record<string, unknown>;
-    /** Settings the person set, by the plugin's own key (`confirm`), as settings.list names them. */
+    /** Settings the person set, by the plugin's own key (`confirm`), as settings.get names them. */
     settings?: Record<string, unknown>;
     /** Bridge methods served instead of the scripted clients' (the real processes, for one). */
     handlers?: Handlers;

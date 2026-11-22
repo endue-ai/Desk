@@ -17,6 +17,7 @@ import { loadConnections, newId, normalize, saveConnections } from "./connection
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
 import { createExecutor } from "./execute.js";
@@ -27,12 +28,13 @@ import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
 import { createKeychain } from "./keychain.js";
-import { createManager } from "./manage.js";
+import { createDatabasesManager } from "./manage-databases.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
 import { createPluginSessions } from "./session/plugin.js";
-import { DEFAULTS, followSettings, fromValues, loadValues } from "./settings.js";
+import { DEFAULTS } from "./settings.js";
+import { effectsOf, followSettings } from "./settings-follow.js";
 import { summaryOf } from "./tabs.js";
 import { createTools } from "./tools.js";
 
@@ -126,8 +128,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   const changed = () => view.explorer(explorer.rows());
   // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
   const keychain = createKeychain(bridge, () => changed());
-  /** @type {ReturnType<typeof createManager>} */
-  const manager = createManager({
+  const manager = createDatabasesManager({
     bridge,
     view,
     pick,
@@ -188,6 +189,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
           ok: !s.error,
           summary: summaryOf(execution, s.index),
           ...(target.consoleId ? { console: target.consoleId } : {}),
+          ...(conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {}),
         }));
       void addHistory(bridge, conn.id, entries, settings.historyMax);
     },
@@ -233,9 +235,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     explorer,
     clients,
     settings: () => settings,
-    reload: (next) => {
-      settings = next;
-    },
+    reload: () => follower.reload(),
   });
 
   /** What comes back after a restart: the connection on screen, the explorer, the consoles the
@@ -330,6 +330,25 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   };
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
+  // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
+  // open takes it where that is safe; a value that falls back is said once.
+  const effects = effectsOf({
+    clients,
+    catalog,
+    explorer,
+    connections: () => manager.list(),
+    redraw: () => changed(),
+    features: followers,
+  });
+  const follower = followSettings({
+    bridge,
+    ...(source ? { source } : {}),
+    say: (text) => view.say(text),
+    apply: (next, changed) => {
+      settings = next;
+      effects(next, changed);
+    },
+  });
   /** @type {import("./feature-host.js").Deps} */
   const featureDeps = {
     bridge,
@@ -363,13 +382,7 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
     const saved = /** @type {{ current?: string | null, expanded?: string[] } | undefined} */ (
       state.get()
     );
-    const values = await loadValues(bridge);
-    settings = fromValues(values);
-    followSettings(source, values, (next, found) => {
-      settings = next;
-      if (found) clients.reset();
-      for (const listener of followers) listener(next);
-    });
+    settings = await follower.start();
     manager.replace(await loadConnections(bridge));
     await keychain.load();
     explorer.restore(saved?.expanded ?? []);
