@@ -1,6 +1,6 @@
 > Ce document est une traduction. En cas de divergence, la [version anglaise](../../../CONTRIBUTING.md) fait foi.
 
-# Contribuer à endue Desk
+# Contribuer à endue
 
 Merci de votre aide. Commencez par `AGENTS.md` : il contient la carte du dépôt, les commandes et les règles
 communes aux humains et aux agents IA.

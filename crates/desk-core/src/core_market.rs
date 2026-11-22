@@ -301,9 +301,10 @@ impl Core {
 
     /// The bytes at `url`: the fetch a test gave, else desk-sys `net`.
     pub(crate) fn get(&self, url: &str) -> Result<Vec<u8>, String> {
+        let url = crate::marketplace::fetch_url(url, &self.market.endue);
         match &self.themes.fetch {
-            Some(fetch) => fetch(url),
-            None => https_fetch(url),
+            Some(fetch) => fetch(url.as_ref()),
+            None => https_fetch(url.as_ref()),
         }
     }
 }
