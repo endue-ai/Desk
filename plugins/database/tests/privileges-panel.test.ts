@@ -95,7 +95,7 @@ describe("the privileges panel", () => {
       privilege: "SELECT",
       now: "option",
     });
-    update({
+    update?.({
       ...state,
       edits: { "reports\u0000\u0000SELECT": "none", "ana\u0000\u0000SELECT": "granted" },
     } as never);

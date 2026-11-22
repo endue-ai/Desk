@@ -127,7 +127,7 @@ describe("the privileges feature", () => {
       'REVOKE SELECT ON TABLE "public"."orders" FROM "reports";',
     ]);
     expect(model.choices.map((c) => c.name)).toEqual(["cascade"]);
-    expect(server.ran).toEqual(script.split("\n").map((line) => line.replace(/;$/u, "")));
+    expect(server.ran).toEqual(script.split("\n").map((line: string) => line.replace(/;$/u, "")));
     expect(
       m.host.calls.some(
         (c) => c.method === "db.run" && /^BEGIN/iu.test((c.params as { sql: string }).sql),
