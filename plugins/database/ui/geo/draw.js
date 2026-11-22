@@ -169,5 +169,9 @@ function graticule(/** @type {Context} */ ctx, /** @type {View} */ v, /** @type 
   ctx.font = style.font;
   const mark = style.units === "degrees" ? "°" : "";
   for (const x of xs) ctx.fillText(`${fixed(x, stepX)}${mark}`, w / 2 + (x - v.cx) * ax + 3, 12);
-  for (const y of ys) ctx.fillText(`${fixed(y, step)}${mark}`, 3, h / 2 - (y - v.cy) * v.scale - 3);
+  // A y label stays below the row of x labels, so the two never overlap in the corner.
+  for (const y of ys) {
+    const at = h / 2 - (y - v.cy) * v.scale - 3;
+    if (at > 26) ctx.fillText(`${fixed(y, step)}${mark}`, 3, at);
+  }
 }
