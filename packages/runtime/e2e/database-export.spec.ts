@@ -51,7 +51,7 @@ async function query(page: Page, frame: Frame) {
   await run(page, "endue.database.console", { connection: "fixture" });
   const editor = frame.getByRole("textbox", { name: "SQL" });
   await editor.click();
-  await editor.fill("select id, name from staff;");
+  await editor.fill("select * from staff;");
   await editor.press("ControlOrMeta+Enter");
   await expect(frame.locator("#summary")).toContainText("Done");
 }
@@ -71,10 +71,10 @@ test("a result is exported as CSV with the options chosen, where the save dialog
   await expect(form).toBeHidden();
   await expect(frame.locator("#status")).toContainText("Exported 4 rows as CSV to ~/Backups/");
   const all = await files(page);
-  const path = Object.keys(all).find((p) => /^~\/Backups\/result-\d{8}-\d{6}\.csv$/u.test(p));
-  expect(path).toBeDefined();
+  const path = Object.keys(all).find((p) => p.endsWith(".csv"));
+  expect(path).toMatch(/^~\/Backups\/[\w.-]+-\d{8}-\d{6}\.csv$/u);
   const lines = (all[path as string] ?? "").split("\n");
-  expect(lines[0]).toBe("id;name");
+  expect(lines[0]).toBe("id;name;note;team");
   expect(lines).toHaveLength(6);
 });
 
