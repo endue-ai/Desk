@@ -48,6 +48,9 @@
     {
       "permission": "db:connect",
       "hosts": ["*"]
+    },
+    {
+      "permission": "brain:ask"
     }
   ],
   "surfaces": [
@@ -944,6 +947,315 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.explain-statement",
+        "title": "Database: explain a statement (agents)",
+        "keywords": ["explain", "plan", "query plan", "analyze", "agent"],
+        "description": "Answers the plan of one statement (EXPLAIN; SQLite's EXPLAIN QUERY PLAN) on a read-only session. analyze runs it (EXPLAIN ANALYZE), only a read and only where the person allows it for agents.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "analyze": {
+              "type": "boolean",
+              "description": "Run it to measure it (EXPLAIN ANALYZE); refused unless the person allows it on this connection."
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.object-ddl",
+        "title": "Database: an object's DDL (agents)",
+        "keywords": ["ddl", "definition", "create statement", "source", "agent"],
+        "description": "Answers the DDL of a table, view, sequence, routine or other object, read from the server.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its schema (SQLite: main)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "description": "Its kind, when names clash: table, view, function ..."
+            }
+          },
+          "required": ["connection", "name"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.sample-rows",
+        "title": "Database: a table's sample rows (agents)",
+        "keywords": ["sample", "rows", "preview", "head", "agent"],
+        "description": "Answers a table's first rows (20 by default; 1000 and the settings' row limit at most) on a read-only session, the columns the person marks sensitive masked.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its schema (SQLite: main)."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "table"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.table-stats",
+        "title": "Database: a table's statistics (agents)",
+        "keywords": ["statistics", "pg_stats", "size", "dead rows", "vacuum", "analyze", "agent"],
+        "description": "Answers a PostgreSQL table's estimated rows, sizes, scans, live and dead rows, last vacuum and analyze, and each column's statistics (pg_stats); a sensitive column's common values and histogram are masked.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "schema", "table"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.sessions-list",
+        "title": "Database: the server's sessions (agents)",
+        "keywords": ["sessions", "pg_stat_activity", "processes", "connections", "agent"],
+        "description": "Answers a PostgreSQL server's sessions (pg_stat_activity): process id, user, database, application, client, state, wait, start times and statement (cut at 500 characters). It only reads.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.check-statement",
+        "title": "Database: check a statement without running it (agents)",
+        "keywords": ["check", "validate", "prepare", "syntax", "lint", "agent"],
+        "description": "Asks a PostgreSQL server to prepare one SELECT, INSERT, UPDATE, DELETE, MERGE or VALUES statement on a read-only session, which checks its names and types without running it, and answers the error with its position, if any.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.agent-audit",
+        "title": "Database: agent audit",
+        "keywords": ["agents", "audit", "log", "what agents ran", "eris", "access"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-access",
+        "title": "Database: what agents may reach of a connection",
+        "keywords": ["agents", "close to agents", "sensitive", "mask", "explain analyze", "access"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "closed": {
+              "type": "boolean",
+              "description": "Close the connection to agents, or open it again."
+            },
+            "analyze": {
+              "type": "boolean",
+              "description": "Let agents run EXPLAIN ANALYZE here."
+            },
+            "sensitive": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The sensitive columns, replacing the ones set: column, table.column or schema.table.column."
+            },
+            "add": {
+              "type": "string",
+              "description": "One more sensitive column."
+            },
+            "remove": {
+              "type": "string",
+              "description": "A sensitive column to unmask."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-audit-export",
+        "title": "Database: export the agent audit list",
+        "keywords": ["agents", "audit", "export", "json", "download"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-audit-clear",
+        "title": "Database: clear the agent audit list",
+        "keywords": ["agents", "audit", "clear", "forget"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "endue.database.backup",
         "title": "Database: back up a database",
         "keywords": ["pg_dump", "dump", "backup", "export", "archive", "copy"],
@@ -1164,6 +1476,85 @@
         "id": "endue.database.search-data-cancel",
         "title": "Database: cancel the value search",
         "keywords": ["stop", "search", "find"]
+      },
+      {
+        "id": "endue.database.search-source",
+        "title": "Database: search the source of routines, views and triggers",
+        "keywords": [
+          "find in source",
+          "grep",
+          "definition",
+          "function",
+          "procedure",
+          "view",
+          "trigger",
+          "policy",
+          "check",
+          "default",
+          "regex",
+          "where used"
+        ],
+        "description": "Looks for a text or a regular expression in the definitions of functions, procedures, views, materialized views, triggers, policies, checks and defaults that the schema cache holds (routine and view bodies read once per read of a schema), in one schema, the connection's database or every connection, and answers each object with its matching lines. Comments too when asked. Without a text it opens the form. It never changes anything.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "text": {
+              "type": "string",
+              "description": "What to find; absent or empty opens the form."
+            },
+            "regex": {
+              "type": "boolean",
+              "description": "The text is a regular expression, matched within a line."
+            },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case (the default)."
+            },
+            "comments": {
+              "type": "boolean",
+              "description": "Search COMMENT ON texts and the comments inside definitions too."
+            },
+            "scope": {
+              "type": "string",
+              "enum": ["schema", "database", "all"],
+              "description": "One schema (with schema), the connection's database (the default), or every PostgreSQL connection and each cached database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "description": "The schema of the scope schema."
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "function",
+                  "procedure",
+                  "view",
+                  "materialized view",
+                  "trigger",
+                  "policy",
+                  "check",
+                  "default"
+                ]
+              },
+              "description": "The kinds of object to search; all of them when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.search-source-cancel",
+        "title": "Database: cancel the source search",
+        "keywords": ["stop", "search", "source"]
       },
       {
         "id": "endue.database.overview",
@@ -1831,21 +2222,6 @@
         "id": "endue.database.expand-star",
         "title": "Database: write out the columns of * at the caret",
         "keywords": ["star", "asterisk", "columns", "expand", "select list"]
-      },
-      {
-        "id": "endue.database.go-to-definition",
-        "title": "Database: go to the definition of the name at the caret",
-        "keywords": ["definition", "jump", "navigate", "DDL", "CTE", "alias", "F12"]
-      },
-      {
-        "id": "endue.database.show-card",
-        "title": "Database: show what the name at the caret is",
-        "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
-      },
-      {
-        "id": "endue.database.find-usages",
-        "title": "Database: find the usages of the name at the caret",
-        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
       },
       {
         "id": "endue.database.follow-key",
@@ -2611,88 +2987,59 @@
         "keywords": ["palette", "hide", "show", "search", "connection"]
       },
       {
-        "id": "endue.database.search-source",
-        "title": "Database: search the source of routines, views and triggers",
-        "keywords": [
-          "find in source",
-          "grep",
-          "definition",
-          "function",
-          "procedure",
-          "view",
-          "trigger",
-          "policy",
-          "check",
-          "default",
-          "regex",
-          "where used"
-        ],
-        "description": "Looks for a text or a regular expression in the definitions of functions, procedures, views, materialized views, triggers, policies, checks and defaults that the schema cache holds (routine and view bodies read once per read of a schema), in one schema, the connection's database or every connection, and answers each object with its matching lines. Comments too when asked. Without a text it opens the form. It never changes anything.",
-        "args": {
-          "type": "object",
-          "properties": {
-            "connection": {
-              "type": "string",
-              "minLength": 1,
-              "description": "A PostgreSQL connection's name or id; the one on screen, or one picked, when absent."
-            },
-            "text": {
-              "type": "string",
-              "description": "What to find; absent or empty opens the form."
-            },
-            "regex": {
-              "type": "boolean",
-              "description": "The text is a regular expression, matched within a line."
-            },
-            "ignoreCase": {
-              "type": "boolean",
-              "description": "Match ignoring case (the default)."
-            },
-            "comments": {
-              "type": "boolean",
-              "description": "Search COMMENT ON texts and the comments inside definitions too."
-            },
-            "scope": {
-              "type": "string",
-              "enum": ["schema", "database", "all"],
-              "description": "One schema (with schema), the connection's database (the default), or every PostgreSQL connection and each cached database of its server."
-            },
-            "schema": {
-              "type": "string",
-              "description": "The schema of the scope schema."
-            },
-            "kinds": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "function",
-                  "procedure",
-                  "view",
-                  "materialized view",
-                  "trigger",
-                  "policy",
-                  "check",
-                  "default"
-                ]
-              },
-              "description": "The kinds of object to search; all of them when absent."
-            }
-          },
-          "additionalProperties": false
-        },
-        "agent": true,
-        "readOnly": true
-      },
-      {
-        "id": "endue.database.search-source-cancel",
-        "title": "Database: cancel the source search",
-        "keywords": ["stop", "search", "source"]
-      },
-      {
         "id": "endue.database.allow-connect",
         "title": "Database: allow connecting",
         "keywords": ["permission", "refused", "connect", "server", "ask again"]
+      },
+      {
+        "id": "endue.database.assist-write",
+        "title": "Database: Eris writes a statement from a sentence",
+        "keywords": ["ai", "brain", "generate", "natural language", "write", "sql"]
+      },
+      {
+        "id": "endue.database.assist-explain",
+        "title": "Database: Eris explains this statement",
+        "keywords": ["ai", "brain", "explain", "what does", "sql"]
+      },
+      {
+        "id": "endue.database.assist-fix",
+        "title": "Database: Eris fixes this error",
+        "keywords": ["ai", "brain", "fix", "error", "repair", "sql"]
+      },
+      {
+        "id": "endue.database.assist-plan",
+        "title": "Database: Eris explains this plan",
+        "keywords": ["ai", "brain", "explain", "plan", "slow", "index"]
+      },
+      {
+        "id": "endue.database.assist-sent",
+        "title": "Database: what this console sends to Eris",
+        "keywords": ["ai", "brain", "privacy", "sent", "sample", "prompt"]
+      },
+      {
+        "id": "endue.database.assist-close",
+        "title": "Database: close this connection to Eris",
+        "keywords": ["ai", "brain", "privacy", "off", "block"]
+      },
+      {
+        "id": "endue.database.assist-open",
+        "title": "Database: open this connection to Eris again",
+        "keywords": ["ai", "brain", "privacy", "on", "allow"]
+      },
+      {
+        "id": "endue.database.go-to-definition",
+        "title": "Database: go to the definition of the name at the caret",
+        "keywords": ["definition", "jump", "navigate", "DDL", "CTE", "alias", "F12"]
+      },
+      {
+        "id": "endue.database.show-card",
+        "title": "Database: show what the name at the caret is",
+        "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
+      },
+      {
+        "id": "endue.database.find-usages",
+        "title": "Database: find the usages of the name at the caret",
+        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
       }
     ],
     "keys": [
