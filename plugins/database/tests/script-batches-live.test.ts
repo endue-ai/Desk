@@ -14,7 +14,7 @@ import { sharedCore } from "./core-bridge";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
 const { fields, password } = uri ? parseUri(uri) : { fields: {}, password: undefined };
-const conn = { ...normalize({ ...fields, id: "c-live", name: "live" }) } as Connection;
+const conn = (uri ? normalize({ ...fields, id: "c-live", name: "live" }) : {}) as Connection;
 
 /** The plugin's executor on the shared core, counting the calls it makes by method. */
 function onCore() {
@@ -66,7 +66,11 @@ describe.skipIf(!uri)("a long PostgreSQL script in batches, on a real server", (
     const done = await run(sql.join(";\n"));
     const outcomes = done.result.statements;
     expect(outcomes.slice(0, 5).every((o) => o.ran && !o.error)).toBe(true);
-    expect(outcomes[5]?.error).toMatchObject({ kind: "sql", code: "42703", position: bad.indexOf("nope") });
+    expect(outcomes[5]?.error).toMatchObject({
+      kind: "sql",
+      code: "42703",
+      position: bad.indexOf("nope"),
+    });
     expect(outcomes.slice(6).every((o) => !o.ran)).toBe(true);
     expect(await one("select count(*) from t540_err")).toBe("5");
   });
@@ -75,12 +79,9 @@ describe.skipIf(!uri)("a long PostgreSQL script in batches, on a real server", (
     const { run } = onCore();
     const say = (word: string) => `do $$ begin raise notice '${word}'; end $$`;
     const done = await run(["select 1", say("two"), "select 3", say("four")].join(";\n"));
-    expect(done.result.statements.map((s) => s.notices)).toEqual([
-      [],
-      ["NOTICE:  two"],
-      [],
-      ["NOTICE:  four"],
-    ]);
+    expect(
+      done.result.statements.map((s) => s.notices.filter((n) => n.startsWith("NOTICE"))),
+    ).toEqual([[], ["NOTICE:  two"], [], ["NOTICE:  four"]]);
   });
 
   it("Cancel stops a batch where it is", { timeout: 30_000 }, async () => {

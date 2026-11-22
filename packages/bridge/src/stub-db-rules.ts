@@ -1,7 +1,7 @@
 /** The stub's rules every db.* call shares: limits, what agents and sessions may, tags (stub-db.ts). */
 import { StubError } from "./adapters";
 import type { DbServerError, DbValue } from "./generated";
-import type { StubStatement } from "./stub-db";
+import type { StubStatement } from "./stub-db-types";
 
 export const MAX_SESSIONS = 16;
 export const RESERVED = ["client_encoding", "user", "database", "replication"];

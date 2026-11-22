@@ -60,7 +60,7 @@ describe("a long PostgreSQL script runs in batches", () => {
     const outcomes = run.result.statements;
     expect(outcomes).toHaveLength(count);
     expect(outcomes.every((o) => o.ran && !o.error && o.affected === 1)).toBe(true);
-    expect(t.made("db.run")).toHaveLength(0);
+    expect(t.calls.filter((c) => c.method === "db.run")).toHaveLength(0);
     const batches = t.made("db.script") as { statements: { sql: string }[] }[];
     expect(batches.map((b) => b.statements.length)).toEqual([BATCH, BATCH, 7]);
     expect(batches.flatMap((b) => b.statements.map((s) => s.sql))).toEqual(inserts(count));
@@ -68,7 +68,12 @@ describe("a long PostgreSQL script runs in batches", () => {
 
   it("a statement's notices and rows stay its own, and rows past the page are read before the rest", async () => {
     const t = sessionExecutor(db, { grants: grant, settings: { "endue.database.max-rows": 20 } });
-    const sql = ["insert into t values (1)", "do $$ say $$", "select n", "insert into t values (2)"];
+    const sql = [
+      "insert into t values (1)",
+      "do $$ say $$",
+      "select n",
+      "insert into t values (2)",
+    ];
     const run = await t.execute(PG, sql.join(";\n"));
     const [first, said, rows, last] = run.result.statements;
     expect(first?.notices).toEqual([]);
@@ -76,9 +81,9 @@ describe("a long PostgreSQL script runs in batches", () => {
     expect(rows?.sets[0]?.rows).toHaveLength(20);
     expect(rows?.sets[0]?.truncated).toBe(true);
     expect(last?.affected).toBe(1);
-    // The batch stopped at the result with pages left; it was closed, then the rest ran.
+    // The batch stopped at the result with pages left; it was closed, then the last one ran.
     const calls = t.calls.map((c) => c.method).filter((m) => m !== "db.open" && m !== "db.close");
-    expect(calls).toEqual(["db.script", "db.fetch", "db.script"]);
+    expect(calls).toEqual(["db.script", "db.fetch", "db.run"]);
   });
 
   it("the first error stops the run there, with its position, and says what ran before it", async () => {
@@ -115,7 +120,11 @@ describe("a long PostgreSQL script runs in batches", () => {
     await t.execute(PG, inserts(3).join(";\n"), { mode: "transaction" });
     const order = t.calls
       .filter((c) => c.method === "db.run" || c.method === "db.script")
-      .map((c) => (c.method === "db.run" ? c.params.sql : `script of ${(c.params.statements as unknown[]).length}`));
+      .map((c) =>
+        c.method === "db.run"
+          ? c.params.sql
+          : `script of ${(c.params.statements as unknown[]).length}`,
+      );
     expect(order).toEqual(["BEGIN", "script of 3", "COMMIT"]);
   });
 });

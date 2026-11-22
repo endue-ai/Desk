@@ -9,7 +9,14 @@
         "tag": "INSERT 0 1",
         "rowCount": 1,
         "transaction": "idle",
-        "notices": [{ "severity": "NOTICE", "code": "00000", "message": "row 1 checked" }]
+        "notices": [
+          {
+            "severity": "NOTICE",
+            "localSeverity": "NOTICE",
+            "code": "00000",
+            "message": "row 1 checked"
+          }
+        ]
       },
       {
         "rows": [],
@@ -17,6 +24,7 @@
         "transaction": "idle",
         "error": {
           "severity": "ERROR",
+          "localSeverity": "ERROR",
           "code": "23505",
           "message": "duplicate key value violates unique constraint \"t_pkey\""
         }

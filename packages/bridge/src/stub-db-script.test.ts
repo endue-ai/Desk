@@ -47,11 +47,7 @@ async function setup() {
   const opened = await client.call("db.open", { ...params, scope }, DB);
   const sessionId = opened.sessionId ?? "";
   const script = (sqls: string[], more: Record<string, unknown> = {}) =>
-    client.call(
-      "db.script",
-      { sessionId, statements: sqls.map((sql) => ({ sql })), ...more },
-      DB,
-    );
+    client.call("db.script", { sessionId, statements: sqls.map((sql) => ({ sql })), ...more }, DB);
   return { client, sessionId, script };
 }
 
@@ -84,9 +80,9 @@ describe("the stub's db.script, as the core serves it (ADR 0344)", () => {
     const running = script(["INSERT 1", "SELECT pg_sleep(9)", "INSERT 2"], { goOn: true });
     await new Promise((resolve) => setTimeout(resolve, 5));
     expect((await client.call("db.list", {}, DB)).sessions[0]?.running).toBe(true);
-    await expect(
-      client.call("db.run", { sessionId, sql: "INSERT 2" }, DB),
-    ).rejects.toMatchObject({ code: "invalid_params" });
+    await expect(client.call("db.run", { sessionId, sql: "INSERT 2" }, DB)).rejects.toMatchObject({
+      code: "invalid_params",
+    });
     await client.call("db.cancel", { sessionId }, DB);
     const done = await running;
     expect(done.pages.map((p) => p.error?.code)).toEqual([undefined, "57014"]);

@@ -16,6 +16,7 @@ use crate::config::Config;
 use crate::conn::{Conn, TlsInfo};
 use crate::error::{Error, ServerError};
 use crate::page::{Limits, Page, Transaction};
+use crate::script::Script;
 use crate::signin::{Auth, sign_in};
 use crate::task::{Command, Shared, Task};
 
@@ -152,6 +153,17 @@ impl Session {
         self.call(|reply| Command::Run(statement, limits, reply))
     }
 
+    /// Run `statements` in order, each as `run` runs one, and answer each one's first page: it
+    /// stops after a page with `more`, at the first error unless `go_on`, and at a cancel (ADR 0344).
+    pub fn script(
+        &self,
+        statements: Vec<Statement>,
+        limits: Limits,
+        go_on: bool,
+    ) -> Result<Script, Error> {
+        self.call(|reply| Command::Script(statements, limits, go_on, reply))
+    }
+
     /// The next page of the open result; with `close`, end it without reading on.
     pub fn fetch(&self, limits: Limits, close: bool) -> Result<Page, Error> {
         self.call(|reply| Command::Fetch(limits, close, reply))
@@ -162,7 +174,7 @@ impl Session {
         self.call(|reply| Command::Copy(input, reply))
     }
 
-    fn call(&self, command: impl FnOnce(crate::task::Reply) -> Command) -> Result<Page, Error> {
+    fn call<T>(&self, command: impl FnOnce(crate::task::Reply<T>) -> Command) -> Result<T, Error> {
         if self.shared.closed() {
             return Err(Error::Closed);
         }
@@ -170,6 +182,7 @@ impl Session {
             let why = "a statement runs on the session: cancel it or wait for its answer";
             return Err(Error::Invalid(why.to_owned()));
         }
+        self.shared.cancelled.store(false, Ordering::SeqCst);
         let (reply, answer) = sync_channel(1);
         let answered = match self.commands.send(command(reply)) {
             Ok(()) => answer.recv().unwrap_or(Err(Error::Closed)),
@@ -185,6 +198,8 @@ impl Session {
         if !self.running() || self.closed() {
             return Ok(());
         }
+        // A script stops before its next statement, which the server's cancel would miss.
+        self.shared.cancelled.store(true, Ordering::SeqCst);
         let target = self.cancel.clone();
         let (reply, answer) = sync_channel(1);
         runtime()?.spawn(async move {

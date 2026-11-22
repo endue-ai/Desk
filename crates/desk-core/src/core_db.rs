@@ -274,7 +274,7 @@ impl Core {
     }
 
     /// One of the caller's signed-in sessions.
-    fn db_session(&self, caller: &str, id: &str) -> Result<Arc<Session>, BridgeError> {
+    pub(crate) fn db_session(&self, caller: &str, id: &str) -> Result<Arc<Session>, BridgeError> {
         refuse_agents(caller)?;
         lock(&self.databases)
             .entries
@@ -364,12 +364,12 @@ fn refuse_agents(caller: &str) -> Result<(), BridgeError> {
     }
 }
 
-fn limits(rows: Option<u64>, bytes: Option<u64>) -> Result<Limits, BridgeError> {
+pub(crate) fn limits(rows: Option<u64>, bytes: Option<u64>) -> Result<Limits, BridgeError> {
     Limits::new(rows, bytes).map_err(db_error)
 }
 
 /// A session's failure as the bridge says it.
-fn db_error(failure: desk_pg::Error) -> BridgeError {
+pub(crate) fn db_error(failure: desk_pg::Error) -> BridgeError {
     use desk_pg::Error as E;
     let code = match &failure {
         E::Invalid(_) => ErrorCode::InvalidParams,

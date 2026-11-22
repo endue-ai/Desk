@@ -46,12 +46,19 @@ fn a_script_answers_each_statement_in_order_with_its_notices() {
         .iter()
         .map(|p| p.notices.iter().map(|n| n.message()).collect())
         .collect();
-    assert_eq!(said, [vec![], vec!["one"], vec![], vec!["two", "three"], vec![]]);
+    assert_eq!(
+        said,
+        [vec![], vec!["one"], vec![], vec!["two", "three"], vec![]]
+    );
     let last = &done.pages[4];
     assert_eq!(last.columns.as_ref().map(Vec::len), Some(1));
     let names: Vec<_> = last.rows.iter().map(|r| r[0].clone()).collect();
     assert_eq!(names, [Some("ada".to_owned()), Some("grace".to_owned())]);
-    assert!(done.pages.iter().all(|p| p.transaction == Some(Transaction::Idle)));
+    assert!(
+        done.pages
+            .iter()
+            .all(|p| p.transaction == Some(Transaction::Idle))
+    );
     assert!(!session.running());
 }
 
@@ -112,7 +119,10 @@ fn a_transaction_the_script_opens_stays_the_session_s() {
     assert_eq!(failed.pages.len(), 1);
     assert_eq!(failed.pages[0].transaction, Some(Transaction::Failed));
     run(session, "ROLLBACK");
-    assert_eq!(value(session, "SELECT count(*) FROM t540_c"), Some("0".to_owned()));
+    assert_eq!(
+        value(session, "SELECT count(*) FROM t540_c"),
+        Some("0".to_owned())
+    );
 }
 
 #[test]
@@ -163,15 +173,18 @@ fn cancel_stops_the_script_where_it_is() {
     let running = session.clone();
     let start = Instant::now();
     let sleeps = vec!["SELECT pg_sleep(0.05)"; 200];
-    let script = std::thread::spawn(move || {
-        running.script(script(&sleeps), Limits::default(), true)
-    });
+    let script =
+        std::thread::spawn(move || running.script(script(&sleeps), Limits::default(), true));
     until(|| session.running().then_some(()));
     std::thread::sleep(Duration::from_millis(400));
     session.cancel().unwrap();
     let done = script.join().unwrap().expect("the script answers");
     assert!(done.cancelled, "a cancel stops even a script that goes on");
-    assert!(done.pages.len() < 200, "{} statements ran", done.pages.len());
+    assert!(
+        done.pages.len() < 200,
+        "{} statements ran",
+        done.pages.len()
+    );
     assert!(start.elapsed() < Duration::from_secs(5));
     // A statement the cancel reached carries 57014; every page before it finished.
     let errors = done.pages.iter().filter(|p| p.error.is_some()).count();
@@ -179,7 +192,11 @@ fn cancel_stops_the_script_where_it_is() {
     assert_eq!(value(&session, "SELECT 1"), Some("1".to_owned()));
     // The next script is not cancelled by the last one's cancel.
     let again = session
-        .script(self::script(&["SELECT 1", "SELECT 2"]), Limits::default(), false)
+        .script(
+            self::script(&["SELECT 1", "SELECT 2"]),
+            Limits::default(),
+            false,
+        )
         .unwrap();
     assert_eq!((again.pages.len(), again.cancelled), (2, false));
 }
