@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { type KeyEntry, resolveBindings } from "../sequences/conflicts";
-import { type ConflictWords, conflictsPanel } from "./key-conflicts";
+import { conflictReason, type ConflictWords, conflictsPanel } from "./key-conflicts";
 
 // Settings › Keyboard's conflicts in a person's words (#158 finding 16): no file path, no id.
 const titles: Record<string, string> = {
@@ -17,7 +17,7 @@ const words = (language: "en" | "ko" = "en"): ConflictWords => ({
   plugin: (id) => ({ "desk.shell": "Shell", "example.a": "List", "example.b": "Items" })[id] ?? id,
 });
 const source = {
-  file: "/Users/someone/desk/plugins/shell/plugin.json",
+  file: "/endue/plugins/shell/plugin.json",
   path: "contributes.keys[11]",
 };
 const panel = (entries: KeyEntry[], language: "en" | "ko" = "en") =>
@@ -31,6 +31,16 @@ const rows = (el: HTMLElement | null) =>
   }));
 
 describe("the conflicts panel", () => {
+  it.each([
+    ["Mod+Q", "quits endue", "endue를 종료합니다"],
+    ["Mod+H", "hides endue", "endue를 가립니다"],
+  ])("localizes the current native action for %s", (key, does, translated) => {
+    const [conflict] = resolveBindings([{ key, command: "endue.open", owner: "desk" }], "mac").conflicts;
+    if (!conflict?.reserved) throw new Error("the system shortcut must be reserved");
+    const native = { ...conflict, reserved: { ...conflict.reserved, does } };
+    expect(conflictReason(native, words("ko"))).toContain(translated);
+  });
+
   it("says what macOS does with a key, who set it, and what to do; never a path", () => {
     const el = panel([
       { key: "Mod+Shift+3", command: "desk.shell.move-to-desktop-3", owner: "desk.shell", source },
