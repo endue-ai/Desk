@@ -152,9 +152,9 @@ Laying SQL out, underlining what the server would refuse, completion: [`editor.m
   code and detail, not run), the notices and a summary.
 - Markers split the output per statement and keep NULL, `''` and `'NULL'` apart. A worker decodes and reads
   it, never the frame's thread, with a bar and Cancel after 300 ms (#38); a run keeps at most 64 MiB of output.
-- A grid that draws only the rows in view. A result keeps `max-rows` rows and More rows (`m`) loads four times
-  as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
-  (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
+- A grid that draws only the rows in view. A PostgreSQL console's single read scrolls to its end through a
+  cursor ([`rows.md`](rows.md)); elsewhere a result keeps `max-rows` rows and More rows (`m`) loads four times
+  as many. Sort (`s`), filter (`/`), a row as a record (`t`), the value viewer (`v`: JSON, text, hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, counts its rows on request, and
   unsorted reads a PostgreSQL table by its primary key (`ctid` without one), so rows keep their places.
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
@@ -245,7 +245,8 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md).
+- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md); a
+  console's `COPY ... TO STDOUT` and `COPY ... FROM STDIN` through a file: [`copy.md`](copy.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
   like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
   Read-only connections refuse it and production asks.
@@ -253,8 +254,7 @@ Modules: `links/`, `features/links/`.
 - Rows of a result drag as `db/rows` `{ connection, engine, schema?, table?, columns, rows }`, as INSERT
   statements (`desk/text`) and as TSV (`text/plain`).
 
-Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`,
-`view-import.js`.
+Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`, `view-import.js`.
 
 ## Server activity
 

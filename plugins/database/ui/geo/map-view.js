@@ -344,7 +344,7 @@ export function createMaps(doc, act, startWorker) {
     );
     column.hidden = geo.columns.length < 2;
     const modes = /** @type {const} */ ([
-      ["all", `All rows (${count(geo.set.rows.length)})`],
+      ["all", `${geo.set.truncated ? "Rows held" : "All rows"} (${count(geo.set.rows.length)})`],
       ["selected", `Selected rows (${count(link.selected.length)})`],
     ]);
     rowsTabs.replaceChildren(

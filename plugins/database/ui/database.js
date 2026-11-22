@@ -15,6 +15,7 @@ import { loadConnections, newId, normalize, saveConnections } from "./connection
 import { createConsoleFiles } from "./console-files.js";
 import { formatText } from "./console-run.js";
 import { createConsoles } from "./consoles.js";
+import { createConsoleCopies } from "./copy/console.js";
 import { ownDatabase } from "./databases.js";
 import { createDrags } from "./dnd.js";
 import { createDropped } from "./dropped.js";
@@ -41,7 +42,7 @@ import { createTools } from "./tools.js";
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("./engines/common.js").Connection} Connection
  * @typedef {import("./explorer.js").Node} Node
- * @typedef {import("./consoles.js").ConsoleView & import("./manage.js").Deps["view"] & {
+ * @typedef {import("./consoles.js").ConsoleView & import("./manage.js").Deps["view"] & import("./copy/console.js").View & {
  *   explorer(rows: Node[]): void,
  *   busy(running: number): void,
  *   reading?(reads: number): void,
@@ -115,11 +116,10 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     kept: (conn) => manager.passwords.ref(conn), // the keychain's password signs in (ADR 0311)
     askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
-  const pg = held.pg;
   const cancel = () => {
     catalog.cancel();
     runner.cancel();
-    pg.cancel(held.scope());
+    held.pg.cancel(held.scope());
     output.cancel();
   };
   const clients = createClients(runner, () => settings, options.platform ?? "mac");
@@ -151,11 +151,12 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     runner,
     output,
     clients,
-    sessions: pg,
+    sessions: held.pg,
     settings: () => settings,
     confirm,
     passwords: manager.passwords,
     cancelled,
+    copies: createConsoleCopies(bridge, view),
     ...(options.random ? { random: options.random } : {}),
   });
   // The schema cache (ADR 0285) is kept in the plugin's store; what it read is drawn again.
@@ -208,7 +209,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     },
     ...(options.random ? { random: options.random } : {}),
     ...(options.plans ? { readPlan: options.plans.read } : {}),
-    sessions: pg,
+    sessions: held.pg,
   });
   const files = createConsoleFiles({
     bridge,
@@ -244,7 +245,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
   const save = () => {
     const panels = consoles.kept();
     const open = consoles.keptConsoles();
-    const consoleSessions = pg.kept();
+    const consoleSessions = held.pg.kept();
     state.set({
       current: consoles.current()?.connection ?? null,
       expanded: explorer.opened(),
@@ -306,8 +307,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
   const guard = guarded(view);
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
-  // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
-  // open takes it where that is safe; a value that falls back is said once.
+  // Settings while running (PG-104): in force at the next run, open takes it where safe; said once.
   const effects = effectsOf({
     clients,
     catalog,
