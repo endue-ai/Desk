@@ -24,7 +24,7 @@ function startTyping() {
   };
   const view = findView(document, actions, vi.fn());
   view.render(previous);
-  const input = document.querySelector<HTMLInputElement>("#find-query")!;
+  const input = document.getElementById("find-query") as HTMLInputElement;
   input.value = "pic";
   input.dispatchEvent(new Event("input", { bubbles: true }));
   return { actions, view, input };
