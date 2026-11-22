@@ -8,19 +8,11 @@
   "permissions": [
     {
       "permission": "proc:spawn",
-      "commands": [
-        "mysql",
-        "mariadb",
-        "sqlite3",
-        "pg_dump",
-        "pg_restore"
-      ]
+      "commands": ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"]
     },
     {
       "permission": "fs:write",
-      "paths": [
-        "${home}/Downloads/**"
-      ]
+      "paths": ["${home}/Downloads/**"]
     },
     {
       "permission": "cmd:invoke",
@@ -35,39 +27,27 @@
     },
     {
       "permission": "fs:read",
-      "paths": [
-        "/**"
-      ]
+      "paths": ["/**"]
     },
     {
       "permission": "proc:spawn",
-      "commands": [
-        "*"
-      ]
+      "commands": ["*"]
     },
     {
       "permission": "fs:write",
-      "paths": [
-        "/**"
-      ]
+      "paths": ["/**"]
     },
     {
       "permission": "fs:read",
-      "paths": [
-        "${home}/.endue/database/**"
-      ]
+      "paths": ["${home}/.endue/database/**"]
     },
     {
       "permission": "fs:write",
-      "paths": [
-        "${home}/.endue/database/**"
-      ]
+      "paths": ["${home}/.endue/database/**"]
     },
     {
       "permission": "db:connect",
-      "hosts": [
-        "*"
-      ]
+      "hosts": ["*"]
     }
   ],
   "surfaces": [
@@ -100,560 +80,292 @@
       {
         "id": "endue.database.open",
         "title": "Database: open",
-        "keywords": [
-          "sql",
-          "postgres",
-          "mysql",
-          "sqlite",
-          "client"
-        ]
+        "keywords": ["sql", "postgres", "mysql", "sqlite", "client"]
       },
       {
         "id": "endue.database.console",
         "title": "Database: open a console",
-        "keywords": [
-          "sql",
-          "query"
-        ]
+        "keywords": ["sql", "query"]
       },
       {
         "id": "endue.database.new-console",
         "title": "Database: new console",
-        "keywords": [
-          "sql",
-          "query",
-          "another",
-          "tab",
-          "second"
-        ]
+        "keywords": ["sql", "query", "another", "tab", "second"]
       },
       {
         "id": "endue.database.consoles",
         "title": "Database: show a console",
-        "keywords": [
-          "consoles",
-          "list",
-          "switch",
-          "sql"
-        ]
+        "keywords": ["consoles", "list", "switch", "sql"]
       },
       {
         "id": "endue.database.rename-console",
         "title": "Database: rename the console",
-        "keywords": [
-          "name",
-          "title",
-          "console"
-        ]
+        "keywords": ["name", "title", "console"]
       },
       {
         "id": "endue.database.close-console",
         "title": "Database: close the console",
-        "keywords": [
-          "close",
-          "console",
-          "remove"
-        ]
+        "keywords": ["close", "console", "remove"]
       },
       {
         "id": "endue.database.run-file",
         "title": "Database: run a .sql file",
-        "keywords": [
-          "sql",
-          "script",
-          "file",
-          "dump",
-          "restore",
-          "import"
-        ]
+        "keywords": ["sql", "script", "file", "dump", "restore", "import"]
       },
       {
         "id": "endue.database.file-connection",
         "title": "Database: run this .sql file on another connection",
-        "keywords": [
-          "sql",
-          "file",
-          "connection",
-          "bind"
-        ]
+        "keywords": ["sql", "file", "connection", "bind"]
       },
       {
         "id": "endue.database.new-connection",
         "title": "Database: new connection",
-        "keywords": [
-          "add",
-          "connect",
-          "postgres",
-          "mysql",
-          "mariadb",
-          "sqlite"
-        ]
+        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
       },
       {
         "id": "endue.database.import-uri",
         "title": "Database: new connection from a URI",
-        "keywords": [
-          "url",
-          "dsn",
-          "connection string"
-        ]
+        "keywords": ["url", "dsn", "connection string"]
       },
       {
         "id": "endue.database.edit-connection",
         "title": "Database: change a connection",
-        "keywords": [
-          "edit"
-        ]
+        "keywords": ["edit"]
       },
       {
         "id": "endue.database.duplicate-connection",
         "title": "Database: duplicate a connection",
-        "keywords": [
-          "copy",
-          "clone"
-        ]
+        "keywords": ["copy", "clone"]
       },
       {
         "id": "endue.database.remove-connection",
         "title": "Database: remove a connection",
-        "keywords": [
-          "delete",
-          "forget"
-        ]
+        "keywords": ["delete", "forget"]
       },
       {
         "id": "endue.database.test-connection",
         "title": "Database: test a connection",
-        "keywords": [
-          "ping",
-          "version"
-        ]
+        "keywords": ["ping", "version"]
       },
       {
         "id": "endue.database.disconnect",
         "title": "Database: disconnect",
-        "keywords": [
-          "forget password",
-          "sign out"
-        ]
+        "keywords": ["forget password", "sign out"]
       },
       {
         "id": "endue.database.forget-password",
         "title": "Database: forget the remembered password",
-        "keywords": [
-          "keychain",
-          "password",
-          "forget",
-          "disconnect"
-        ]
+        "keywords": ["keychain", "password", "forget", "disconnect"]
       },
       {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
-        "keywords": [
-          "url",
-          "dsn"
-        ]
+        "keywords": ["url", "dsn"]
       },
       {
         "id": "endue.database.run",
         "title": "Database: run the statement",
-        "keywords": [
-          "execute",
-          "query",
-          "selection"
-        ]
+        "keywords": ["execute", "query", "selection"]
       },
       {
         "id": "endue.database.run-all",
         "title": "Database: run the script",
-        "keywords": [
-          "execute",
-          "all"
-        ]
+        "keywords": ["execute", "all"]
       },
       {
         "id": "endue.database.run-transaction",
         "title": "Database: run the script in one transaction",
-        "keywords": [
-          "atomic",
-          "begin",
-          "commit"
-        ]
+        "keywords": ["atomic", "begin", "commit"]
       },
       {
         "id": "endue.database.dry-run",
         "title": "Database: dry run (roll back at the end)",
-        "keywords": [
-          "rollback",
-          "preview",
-          "test"
-        ]
+        "keywords": ["rollback", "preview", "test"]
       },
       {
         "id": "endue.database.explain",
         "title": "Database: explain the statement",
-        "keywords": [
-          "plan",
-          "query plan"
-        ]
+        "keywords": ["plan", "query plan"]
       },
       {
         "id": "endue.database.explain-analyze",
         "title": "Database: explain analyze the statement",
-        "keywords": [
-          "plan",
-          "timing",
-          "actual"
-        ]
+        "keywords": ["plan", "timing", "actual"]
       },
       {
         "id": "endue.database.explain-options",
         "title": "Database: explain with options",
-        "keywords": [
-          "plan",
-          "analyze",
-          "buffers",
-          "verbose",
-          "settings",
-          "wal",
-          "generic plan"
-        ]
+        "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
       },
       {
         "id": "endue.database.plan-view",
         "title": "Database: show the plan as a tree, flame or table",
-        "keywords": [
-          "query plan",
-          "flame graph",
-          "icicle",
-          "where the time goes"
-        ]
+        "keywords": ["query plan", "flame graph", "icicle", "where the time goes"]
       },
       {
         "id": "endue.database.copy-plan",
         "title": "Database: copy the query plan",
-        "keywords": [
-          "plan",
-          "explain",
-          "text",
-          "json"
-        ]
+        "keywords": ["plan", "explain", "text", "json"]
       },
       {
         "id": "endue.database.pin-result",
         "title": "Database: pin the result tab",
-        "keywords": [
-          "pin",
-          "keep",
-          "result",
-          "tab",
-          "snapshot",
-          "before"
-        ]
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
       },
       {
         "id": "endue.database.unpin-result",
         "title": "Database: unpin a result tab",
-        "keywords": [
-          "unpin",
-          "let go",
-          "result",
-          "tab",
-          "memory"
-        ]
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
       },
       {
         "id": "endue.database.compare-results",
         "title": "Database: compare two results",
-        "keywords": [
-          "compare",
-          "diff",
-          "difference",
-          "result",
-          "added",
-          "removed",
-          "changed"
-        ]
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
       },
       {
         "id": "endue.database.run-again-and-compare",
         "title": "Database: run again and compare with before",
-        "keywords": [
-          "rerun",
-          "compare",
-          "diff",
-          "difference",
-          "before and after"
-        ]
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
       },
       {
         "id": "endue.database.copy-difference",
         "title": "Database: copy the difference of two results",
-        "keywords": [
-          "compare",
-          "diff",
-          "copy",
-          "csv",
-          "json",
-          "markdown"
-        ]
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
       },
       {
         "id": "endue.database.export-difference",
         "title": "Database: export the difference of two results",
-        "keywords": [
-          "compare",
-          "diff",
-          "export",
-          "file",
-          "csv",
-          "json"
-        ]
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       },
       {
         "id": "endue.database.compare-plans",
         "title": "Database: compare two query plans",
-        "keywords": [
-          "plan",
-          "diff",
-          "before and after",
-          "regression"
-        ]
+        "keywords": ["plan", "diff", "before and after", "regression"]
       },
       {
         "id": "endue.database.format",
         "title": "Database: format the SQL",
-        "keywords": [
-          "pretty",
-          "beautify",
-          "indent",
-          "layout",
-          "selection",
-          "script"
-        ]
+        "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
       },
       {
         "id": "endue.database.format-statement",
         "title": "Database: format the statement at the caret",
-        "keywords": [
-          "pretty",
-          "beautify",
-          "indent",
-          "layout",
-          "query",
-          "cursor"
-        ]
+        "keywords": ["pretty", "beautify", "indent", "layout", "query", "cursor"]
       },
       {
         "id": "endue.database.format-preview",
         "title": "Database: preview the SQL format",
-        "keywords": [
-          "style",
-          "settings",
-          "sample",
-          "layout",
-          "pretty"
-        ]
+        "keywords": ["style", "settings", "sample", "layout", "pretty"]
       },
       {
         "id": "endue.database.cancel",
         "title": "Database: cancel the run",
-        "keywords": [
-          "stop",
-          "kill",
-          "interrupt"
-        ]
+        "keywords": ["stop", "kill", "interrupt"]
       },
       {
         "id": "endue.database.more",
         "title": "Database: load more rows",
-        "keywords": [
-          "fetch",
-          "page"
-        ]
+        "keywords": ["fetch", "page"]
       },
       {
         "id": "endue.database.next-page",
         "title": "Database: next page of rows",
-        "keywords": [
-          "paging",
-          "offset"
-        ]
+        "keywords": ["paging", "offset"]
       },
       {
         "id": "endue.database.previous-page",
         "title": "Database: previous page of rows",
-        "keywords": [
-          "paging",
-          "offset"
-        ]
+        "keywords": ["paging", "offset"]
       },
       {
         "id": "endue.database.open-table",
         "title": "Database: open a table's rows",
-        "keywords": [
-          "data",
-          "browse"
-        ]
+        "keywords": ["data", "browse"]
       },
       {
         "id": "endue.database.refresh",
         "title": "Database: refresh the explorer",
-        "keywords": [
-          "reload",
-          "schema"
-        ]
+        "keywords": ["reload", "schema"]
       },
       {
         "id": "endue.database.reload-schema",
         "title": "Database: read the schema again",
-        "keywords": [
-          "schema",
-          "cache",
-          "reload",
-          "refresh",
-          "catalog"
-        ]
+        "keywords": ["schema", "cache", "reload", "refresh", "catalog"]
       },
       {
         "id": "endue.database.choose-schemas",
         "title": "Database: choose the schemas to read",
-        "keywords": [
-          "schema",
-          "cache",
-          "system schemas",
-          "catalog"
-        ]
+        "keywords": ["schema", "cache", "system schemas", "catalog"]
       },
       {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
-        "keywords": [
-          "find",
-          "search",
-          "objects"
-        ]
+        "keywords": ["find", "search", "objects"]
       },
       {
         "id": "endue.database.ddl",
         "title": "Database: show an object's DDL",
-        "keywords": [
-          "create",
-          "definition",
-          "source"
-        ]
+        "keywords": ["create", "definition", "source"]
       },
       {
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
-        "keywords": [
-          "entity relationship",
-          "foreign keys",
-          "relations",
-          "erd"
-        ]
+        "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
       },
       {
         "id": "endue.database.er-neighbours",
         "title": "Database: ER diagram of a table and its neighbours",
-        "keywords": [
-          "entity relationship",
-          "foreign keys",
-          "related tables",
-          "depth",
-          "erd"
-        ]
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"]
       },
       {
         "id": "endue.database.er-arrange",
         "title": "Database: auto layout of the ER diagram",
-        "keywords": [
-          "arrange",
-          "layout",
-          "tidy",
-          "erd"
-        ]
+        "keywords": ["arrange", "layout", "tidy", "erd"]
       },
       {
         "id": "endue.database.er-columns",
         "title": "Database: columns shown in the ER diagram",
-        "keywords": [
-          "keys only",
-          "hide columns",
-          "erd"
-        ]
+        "keywords": ["keys only", "hide columns", "erd"]
       },
       {
         "id": "endue.database.er-add-table",
         "title": "Database: add a table to the ER diagram",
-        "keywords": [
-          "show table",
-          "erd"
-        ]
+        "keywords": ["show table", "erd"]
       },
       {
         "id": "endue.database.er-remove-table",
         "title": "Database: remove a table from the ER diagram",
-        "keywords": [
-          "hide table",
-          "erd"
-        ]
+        "keywords": ["hide table", "erd"]
       },
       {
         "id": "endue.database.er-expand",
         "title": "Database: add a table's neighbours to the ER diagram",
-        "keywords": [
-          "related tables",
-          "foreign keys",
-          "erd"
-        ]
+        "keywords": ["related tables", "foreign keys", "erd"]
       },
       {
         "id": "endue.database.er-add-schema",
         "title": "Database: add a schema to the ER diagram",
-        "keywords": [
-          "several schemas",
-          "erd"
-        ]
+        "keywords": ["several schemas", "erd"]
       },
       {
         "id": "endue.database.er-relation",
         "title": "Database: draw a relation in the ER diagram",
-        "keywords": [
-          "virtual foreign key",
-          "not in the database",
-          "erd"
-        ]
+        "keywords": ["virtual foreign key", "not in the database", "erd"]
       },
       {
         "id": "endue.database.er-remove-relation",
         "title": "Database: remove a drawn relation from the ER diagram",
-        "keywords": [
-          "virtual foreign key",
-          "erd"
-        ]
+        "keywords": ["virtual foreign key", "erd"]
       },
       {
         "id": "endue.database.er-export",
         "title": "Database: export the ER diagram as an image",
-        "keywords": [
-          "svg",
-          "png",
-          "save",
-          "picture",
-          "erd"
-        ]
+        "keywords": ["svg", "png", "save", "picture", "erd"]
       },
       {
         "id": "endue.database.er-copy-image",
         "title": "Database: copy the ER diagram as an image",
-        "keywords": [
-          "png",
-          "clipboard",
-          "picture",
-          "erd"
-        ]
+        "keywords": ["png", "clipboard", "picture", "erd"]
       },
       {
         "id": "endue.database.object-actions",
@@ -703,11 +415,7 @@
       {
         "id": "endue.database.rename-object",
         "title": "Database: rename an object",
-        "keywords": [
-          "alter",
-          "name",
-          "rename to"
-        ],
+        "keywords": ["alter", "name", "rename to"],
         "description": "Renames a table, view, sequence, routine, index, trigger, constraint or schema (ALTER ... RENAME TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -750,10 +458,7 @@
       {
         "id": "endue.database.move-object",
         "title": "Database: move an object to another schema",
-        "keywords": [
-          "set schema",
-          "alter"
-        ],
+        "keywords": ["set schema", "alter"],
         "description": "Moves a table, view, sequence or routine to another schema (ALTER ... SET SCHEMA; MySQL: RENAME TABLE to another database). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -796,11 +501,7 @@
       {
         "id": "endue.database.change-owner",
         "title": "Database: change an object's owner",
-        "keywords": [
-          "owner to",
-          "alter",
-          "role"
-        ],
+        "keywords": ["owner to", "alter", "role"],
         "description": "Gives a PostgreSQL table, view, sequence, routine or schema to another role (ALTER ... OWNER TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -843,11 +544,7 @@
       {
         "id": "endue.database.comment-object",
         "title": "Database: comment on an object",
-        "keywords": [
-          "comment on",
-          "describe",
-          "note"
-        ],
+        "keywords": ["comment on", "describe", "note"],
         "description": "Sets or removes an object's comment (COMMENT ON ... IS; an empty comment removes it). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -889,12 +586,7 @@
       {
         "id": "endue.database.drop-object",
         "title": "Database: drop an object",
-        "keywords": [
-          "delete",
-          "remove",
-          "cascade",
-          "dependents"
-        ],
+        "keywords": ["delete", "remove", "cascade", "dependents"],
         "description": "Drops an object after listing what depends on it (PostgreSQL's pg_depend); CASCADE only when asked. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -937,12 +629,7 @@
       {
         "id": "endue.database.truncate-table",
         "title": "Database: truncate a table",
-        "keywords": [
-          "empty",
-          "delete all rows",
-          "restart identity",
-          "cascade"
-        ],
+        "keywords": ["empty", "delete all rows", "restart identity", "cascade"],
         "description": "Removes every row of a table (TRUNCATE; SQLite: DELETE FROM), with the server's row estimate shown first. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -989,11 +676,7 @@
       {
         "id": "endue.database.refresh-materialized-view",
         "title": "Database: refresh a materialized view",
-        "keywords": [
-          "refresh",
-          "concurrently",
-          "with no data"
-        ],
+        "keywords": ["refresh", "concurrently", "with no data"],
         "description": "Refreshes a PostgreSQL materialized view, CONCURRENTLY when it has data and a unique index. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -1039,11 +722,7 @@
       {
         "id": "endue.database.enable-trigger",
         "title": "Database: enable or disable a trigger",
-        "keywords": [
-          "disable trigger",
-          "enable trigger",
-          "alter table"
-        ],
+        "keywords": ["disable trigger", "enable trigger", "alter table"],
         "description": "Enables or disables a PostgreSQL trigger (ALTER TABLE ... ENABLE or DISABLE TRIGGER). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -1131,12 +810,7 @@
       {
         "id": "endue.database.apply-source",
         "title": "Database: apply the source (save the object)",
-        "keywords": [
-          "save",
-          "create or replace",
-          "replace",
-          "commit the definition"
-        ],
+        "keywords": ["save", "create or replace", "replace", "commit the definition"],
         "description": "Runs the source edited in the console on screen: CREATE OR REPLACE, or the drop and create a materialized view needs, in one transaction. The person is shown the script first.",
         "args": {
           "type": "object",
@@ -1148,15 +822,7 @@
       {
         "id": "endue.database.generate-sql",
         "title": "Database: generate SQL for an object",
-        "keywords": [
-          "template",
-          "select",
-          "insert",
-          "update",
-          "delete",
-          "call",
-          "script"
-        ],
+        "keywords": ["template", "select", "insert", "update", "delete", "call", "script"],
         "description": "Writes a SELECT, INSERT, UPDATE or DELETE of a table, or a call of a routine, into its connection's console, with :name parameters; nothing runs.",
         "args": {
           "type": "object",
@@ -1187,13 +853,7 @@
               "description": "The table a part (an index, a trigger, a constraint) is on."
             },
             "statement": {
-              "enum": [
-                "select",
-                "insert",
-                "update",
-                "delete",
-                "call"
-              ],
+              "enum": ["select", "insert", "update", "delete", "call"],
               "description": "Which statement; asked when absent and there are several."
             }
           },
@@ -1233,22 +893,12 @@
       {
         "id": "endue.database.activity-refresh",
         "title": "Database: refresh the server activity",
-        "keywords": [
-          "reload",
-          "sessions",
-          "locks"
-        ]
+        "keywords": ["reload", "sessions", "locks"]
       },
       {
         "id": "endue.database.cancel-session",
         "title": "Database: cancel a session's statement",
-        "keywords": [
-          "pg_cancel_backend",
-          "stop",
-          "interrupt",
-          "query",
-          "kill"
-        ],
+        "keywords": ["pg_cancel_backend", "stop", "interrupt", "query", "kill"],
         "description": "Cancels the statement a PostgreSQL session runs (pg_cancel_backend); the session stays. The person is asked first, with the statement shown; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -1272,13 +922,7 @@
       {
         "id": "endue.database.end-session",
         "title": "Database: end a session",
-        "keywords": [
-          "pg_terminate_backend",
-          "terminate",
-          "kill",
-          "disconnect",
-          "backend"
-        ],
+        "keywords": ["pg_terminate_backend", "terminate", "kill", "disconnect", "backend"],
         "description": "Ends a PostgreSQL session (pg_terminate_backend): its connection closes and its open transaction rolls back. The person is asked first, with its statement shown; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -1302,14 +946,7 @@
       {
         "id": "endue.database.backup",
         "title": "Database: back up a database",
-        "keywords": [
-          "pg_dump",
-          "dump",
-          "backup",
-          "export",
-          "archive",
-          "copy"
-        ],
+        "keywords": ["pg_dump", "dump", "backup", "export", "archive", "copy"],
         "description": "Opens the backup form of a PostgreSQL connection (pg_dump), filled from these arguments: the format, the schemas or tables, schema or data only, owner and privileges, compression and jobs. Nothing runs until the person submits it and chooses where to save; it answers what was written and its size.",
         "args": {
           "type": "object",
@@ -1321,12 +958,7 @@
             },
             "format": {
               "type": "string",
-              "enum": [
-                "custom",
-                "directory",
-                "tar",
-                "plain"
-              ],
+              "enum": ["custom", "directory", "tar", "plain"],
               "description": "custom (the default), directory, tar or plain SQL."
             },
             "schemas": {
@@ -1347,11 +979,7 @@
             },
             "content": {
               "type": "string",
-              "enum": [
-                "all",
-                "schema",
-                "data"
-              ],
+              "enum": ["all", "schema", "data"],
               "description": "Schema and data (all), schema only or data only."
             },
             "noOwner": {
@@ -1362,13 +990,7 @@
             },
             "method": {
               "type": "string",
-              "enum": [
-                "default",
-                "none",
-                "gzip",
-                "lz4",
-                "zstd"
-              ],
+              "enum": ["default", "none", "gzip", "lz4", "zstd"],
               "description": "Compression of a custom or directory backup."
             },
             "level": {
@@ -1399,13 +1021,7 @@
       {
         "id": "endue.database.restore",
         "title": "Database: restore a database",
-        "keywords": [
-          "pg_restore",
-          "load",
-          "import",
-          "dump",
-          "backup"
-        ],
+        "keywords": ["pg_restore", "load", "import", "dump", "backup"],
         "description": "Opens the restore form for a dump (pg_restore, or a plain SQL file run as a script), filled from these arguments: the connection it goes into and pg_restore's options. Nothing runs until the person submits it; a read-only connection refuses, and production is asked first.",
         "args": {
           "type": "object",
@@ -1431,11 +1047,7 @@
             },
             "content": {
               "type": "string",
-              "enum": [
-                "all",
-                "schema",
-                "data"
-              ],
+              "enum": ["all", "schema", "data"],
               "description": "Schema and data (all), schema only or data only."
             },
             "noOwner": {
@@ -1461,12 +1073,7 @@
       {
         "id": "endue.database.backup-cancel",
         "title": "Database: cancel the backup or restore",
-        "keywords": [
-          "stop",
-          "abort",
-          "pg_dump",
-          "pg_restore"
-        ]
+        "keywords": ["stop", "abort", "pg_dump", "pg_restore"]
       },
       {
         "id": "endue.database.search-data",
@@ -1497,12 +1104,7 @@
             },
             "match": {
               "type": "string",
-              "enum": [
-                "equals",
-                "contains",
-                "starts",
-                "regex"
-              ],
+              "enum": ["equals", "contains", "starts", "regex"],
               "description": "How a value matches: equals (the default), contains, starts with, or a regular expression (PostgreSQL ~, MySQL and SQLite REGEXP)."
             },
             "ignoreCase": {
@@ -1527,13 +1129,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": [
-                  "text",
-                  "number",
-                  "uuid",
-                  "json",
-                  "date"
-                ]
+                "enum": ["text", "number", "uuid", "json", "date"]
               },
               "description": "The kinds of column to look in; all five when absent."
             },
@@ -1567,11 +1163,7 @@
       {
         "id": "endue.database.search-data-cancel",
         "title": "Database: cancel the value search",
-        "keywords": [
-          "stop",
-          "search",
-          "find"
-        ]
+        "keywords": ["stop", "search", "find"]
       },
       {
         "id": "endue.database.overview",
@@ -1589,30 +1181,17 @@
       {
         "id": "endue.database.refresh-overview",
         "title": "Database: refresh the server overview",
-        "keywords": [
-          "reload",
-          "statistics",
-          "health"
-        ]
+        "keywords": ["reload", "statistics", "health"]
       },
       {
         "id": "endue.database.overview-result",
         "title": "Database: open an overview section in the console",
-        "keywords": [
-          "result",
-          "copy",
-          "export",
-          "statistics"
-        ]
+        "keywords": ["result", "copy", "export", "statistics"]
       },
       {
         "id": "endue.database.overview-statement",
         "title": "Database: open a heavy statement in the console",
-        "keywords": [
-          "pg_stat_statements",
-          "slow query",
-          "top queries"
-        ]
+        "keywords": ["pg_stat_statements", "slow query", "top queries"]
       },
       {
         "id": "endue.database.maintenance",
@@ -1655,12 +1234,7 @@
             },
             "operation": {
               "type": "string",
-              "enum": [
-                "vacuum",
-                "analyze",
-                "reindex",
-                "cluster"
-              ],
+              "enum": ["vacuum", "analyze", "reindex", "cluster"],
               "description": "What to run; VACUUM by default (REINDEX for an index)."
             },
             "options": {
@@ -1685,26 +1259,14 @@
                 },
                 "indexCleanup": {
                   "type": "string",
-                  "enum": [
-                    "",
-                    "auto",
-                    "on",
-                    "off"
-                  ]
+                  "enum": ["", "auto", "on", "off"]
                 },
                 "truncate": {
                   "type": "string",
-                  "enum": [
-                    "",
-                    "on",
-                    "off"
-                  ]
+                  "enum": ["", "on", "off"]
                 },
                 "parallel": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
+                  "type": ["integer", "null"],
                   "minimum": 0,
                   "maximum": 1024
                 },
@@ -1742,36 +1304,17 @@
       {
         "id": "endue.database.maintenance-run",
         "title": "Database: run the maintenance form",
-        "keywords": [
-          "vacuum",
-          "analyze",
-          "reindex",
-          "cluster",
-          "start",
-          "execute"
-        ]
+        "keywords": ["vacuum", "analyze", "reindex", "cluster", "start", "execute"]
       },
       {
         "id": "endue.database.maintenance-cancel",
         "title": "Database: cancel the maintenance run",
-        "keywords": [
-          "stop",
-          "abort",
-          "pg_cancel_backend",
-          "vacuum",
-          "reindex"
-        ]
+        "keywords": ["stop", "abort", "pg_cancel_backend", "vacuum", "reindex"]
       },
       {
         "id": "endue.database.maintenance-refresh",
         "title": "Database: read the maintenance target again",
-        "keywords": [
-          "reload",
-          "size",
-          "statistics",
-          "dead tuples",
-          "last vacuum"
-        ]
+        "keywords": ["reload", "size", "statistics", "dead tuples", "last vacuum"]
       },
       {
         "id": "endue.database.routine",
@@ -1810,10 +1353,7 @@
               "description": "Its argument types as pg_get_function_identity_arguments writes them (a integer, b text), for an overloaded name."
             },
             "arguments": {
-              "type": [
-                "object",
-                "array"
-              ],
+              "type": ["object", "array"],
               "description": "Values by argument name ($1 for one without), or a list in the call's order: null is NULL, a list is a VARIADIC argument's elements, {value, type} gives a polymorphic one its type, and one left out takes its DEFAULT."
             },
             "rollback": {
@@ -1832,24 +1372,12 @@
       {
         "id": "endue.database.routine-run",
         "title": "Database: run the routine form",
-        "keywords": [
-          "function",
-          "procedure",
-          "call",
-          "execute",
-          "start"
-        ]
+        "keywords": ["function", "procedure", "call", "execute", "start"]
       },
       {
         "id": "endue.database.routine-refresh",
         "title": "Database: read the routine form again",
-        "keywords": [
-          "function",
-          "procedure",
-          "reload",
-          "arguments",
-          "signature"
-        ]
+        "keywords": ["function", "procedure", "reload", "arguments", "signature"]
       },
       {
         "id": "endue.database.create-table",
@@ -1912,10 +1440,7 @@
                   },
                   "identity": {
                     "type": "string",
-                    "enum": [
-                      "always",
-                      "by default"
-                    ],
+                    "enum": ["always", "by default"],
                     "description": "An identity column (smallint, integer or bigint)."
                   },
                   "comment": {
@@ -1923,9 +1448,7 @@
                     "description": "The column's comment."
                   }
                 },
-                "required": [
-                  "name"
-                ],
+                "required": ["name"],
                 "additionalProperties": false
               }
             },
@@ -1992,91 +1515,47 @@
       {
         "id": "endue.database.table-design-run",
         "title": "Database: run the table form's script",
-        "keywords": [
-          "apply",
-          "alter table",
-          "create table",
-          "execute",
-          "save the design"
-        ]
+        "keywords": ["apply", "alter table", "create table", "execute", "save the design"]
       },
       {
         "id": "endue.database.table-design-dry-run",
         "title": "Database: dry-run the table form's script",
-        "keywords": [
-          "try",
-          "rollback",
-          "test the alter",
-          "check the script"
-        ]
+        "keywords": ["try", "rollback", "test the alter", "check the script"]
       },
       {
         "id": "endue.database.table-design-console",
         "title": "Database: open the table form's script in a console",
-        "keywords": [
-          "copy",
-          "edit the script",
-          "alter table",
-          "create table",
-          "sql"
-        ]
+        "keywords": ["copy", "edit the script", "alter table", "create table", "sql"]
       },
       {
         "id": "endue.database.table-design-refresh",
         "title": "Database: read the table form's table again",
-        "keywords": [
-          "reload",
-          "discard changes",
-          "design",
-          "columns"
-        ]
+        "keywords": ["reload", "discard changes", "design", "columns"]
       },
       {
         "id": "endue.database.history",
         "title": "Database: history",
-        "keywords": [
-          "recent",
-          "earlier queries"
-        ]
+        "keywords": ["recent", "earlier queries"]
       },
       {
         "id": "endue.database.star",
         "title": "Database: star the query",
-        "keywords": [
-          "save",
-          "favorite",
-          "bookmark"
-        ]
+        "keywords": ["save", "favorite", "bookmark"]
       },
       {
         "id": "endue.database.starred",
         "title": "Database: starred queries",
-        "keywords": [
-          "saved",
-          "favorites",
-          "bookmarks"
-        ]
+        "keywords": ["saved", "favorites", "bookmarks"]
       },
       {
         "id": "endue.database.unstar",
         "title": "Database: unstar a query",
-        "keywords": [
-          "remove saved",
-          "forget"
-        ]
+        "keywords": ["remove saved", "forget"]
       },
       {
         "id": "endue.database.copy",
         "title": "Database: copy the result as",
-        "keywords": [
-          "csv",
-          "tsv",
-          "json",
-          "markdown",
-          "insert",
-          "update",
-          "clipboard"
-        ]
+        "keywords": ["csv", "tsv", "json", "markdown", "insert", "update", "clipboard"]
       },
       {
         "id": "endue.database.export",
@@ -2122,11 +1601,7 @@
                   "maxLength": 2
                 },
                 "quote": {
-                  "enum": [
-                    "needed",
-                    "always",
-                    "never"
-                  ]
+                  "enum": ["needed", "always", "never"]
                 },
                 "header": {
                   "type": "boolean"
@@ -2136,17 +1611,10 @@
                   "maxLength": 100
                 },
                 "lineEnding": {
-                  "enum": [
-                    "lf",
-                    "crlf"
-                  ]
+                  "enum": ["lf", "crlf"]
                 },
                 "encoding": {
-                  "enum": [
-                    "utf-8",
-                    "utf-16le",
-                    "utf-16be"
-                  ]
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
                 },
                 "bom": {
                   "type": "boolean"
@@ -2180,10 +1648,7 @@
               "additionalProperties": false
             },
             "sheets": {
-              "enum": [
-                "shown",
-                "all"
-              ],
+              "enum": ["shown", "all"],
               "description": "For xlsx: the result on screen, or every result of the console as a sheet each."
             }
           },
@@ -2193,52 +1658,27 @@
       {
         "id": "endue.database.add-row",
         "title": "Database: add a row",
-        "keywords": [
-          "insert",
-          "new row",
-          "edit"
-        ]
+        "keywords": ["insert", "new row", "edit"]
       },
       {
         "id": "endue.database.preview-changes",
         "title": "Database: preview the pending changes",
-        "keywords": [
-          "diff",
-          "sql",
-          "edit"
-        ]
+        "keywords": ["diff", "sql", "edit"]
       },
       {
         "id": "endue.database.submit-changes",
         "title": "Database: submit the pending changes",
-        "keywords": [
-          "commit",
-          "apply",
-          "save",
-          "edit"
-        ]
+        "keywords": ["commit", "apply", "save", "edit"]
       },
       {
         "id": "endue.database.revert-changes",
         "title": "Database: revert the pending changes",
-        "keywords": [
-          "undo",
-          "discard",
-          "edit"
-        ]
+        "keywords": ["undo", "discard", "edit"]
       },
       {
         "id": "endue.database.paste",
         "title": "Database: paste into the grid",
-        "keywords": [
-          "clipboard",
-          "tsv",
-          "csv",
-          "spreadsheet",
-          "cells",
-          "rows",
-          "edit"
-        ],
+        "keywords": ["clipboard", "tsv", "csv", "spreadsheet", "cells", "rows", "edit"],
         "description": "Pastes tab-separated text (or CSV, or one value) into the grid on screen from its caret as pending changes: rows past the last are added, each value is checked by its column's type and a bad one refuses the whole paste with its row and column. Nothing runs until the person submits.",
         "args": {
           "type": "object",
@@ -2255,355 +1695,172 @@
       {
         "id": "endue.database.duplicate-rows",
         "title": "Database: duplicate the selected rows",
-        "keywords": [
-          "copy row",
-          "clone",
-          "insert",
-          "new row",
-          "edit"
-        ]
+        "keywords": ["copy row", "clone", "insert", "new row", "edit"]
       },
       {
         "id": "endue.database.fill-down",
         "title": "Database: fill down the selected cells",
-        "keywords": [
-          "copy down",
-          "repeat",
-          "cells",
-          "edit"
-        ]
+        "keywords": ["copy down", "repeat", "cells", "edit"]
       },
       {
         "id": "endue.database.clear-cells",
         "title": "Database: clear the selected cells to NULL",
-        "keywords": [
-          "null",
-          "empty",
-          "erase",
-          "cells",
-          "edit"
-        ]
+        "keywords": ["null", "empty", "erase", "cells", "edit"]
       },
       {
         "id": "endue.database.undo-change",
         "title": "Database: undo the last pending change",
-        "keywords": [
-          "undo",
-          "take back",
-          "paste",
-          "edit"
-        ]
+        "keywords": ["undo", "take back", "paste", "edit"]
       },
       {
         "id": "endue.database.set-default",
         "title": "Database: set the cell to DEFAULT",
-        "keywords": [
-          "default value",
-          "edit",
-          "cell",
-          "reset"
-        ]
+        "keywords": ["default value", "edit", "cell", "reset"]
       },
       {
         "id": "endue.database.cell-file-load",
         "title": "Database: load the cell's bytes from a file",
-        "keywords": [
-          "bytea",
-          "blob",
-          "binary",
-          "upload",
-          "edit",
-          "cell"
-        ]
+        "keywords": ["bytea", "blob", "binary", "upload", "edit", "cell"]
       },
       {
         "id": "endue.database.cell-file-save",
         "title": "Database: save the cell's bytes to a file",
-        "keywords": [
-          "bytea",
-          "blob",
-          "binary",
-          "download",
-          "cell"
-        ]
+        "keywords": ["bytea", "blob", "binary", "download", "cell"]
       },
       {
         "id": "endue.database.clients",
         "title": "Database: check the clients",
-        "keywords": [
-          "postgresql",
-          "mysql",
-          "mariadb",
-          "sqlite3",
-          "install",
-          "version"
-        ]
+        "keywords": ["postgresql", "mysql", "mariadb", "sqlite3", "install", "version"]
       },
       {
         "id": "endue.database.hide-column",
         "title": "Database: hide the result's column at the cursor",
-        "keywords": [
-          "grid",
-          "columns",
-          "hide"
-        ]
+        "keywords": ["grid", "columns", "hide"]
       },
       {
         "id": "endue.database.show-column",
         "title": "Database: show a hidden column of the result",
-        "keywords": [
-          "grid",
-          "columns",
-          "unhide"
-        ]
+        "keywords": ["grid", "columns", "unhide"]
       },
       {
         "id": "endue.database.move-column-left",
         "title": "Database: move the result's column left",
-        "keywords": [
-          "grid",
-          "columns",
-          "reorder"
-        ]
+        "keywords": ["grid", "columns", "reorder"]
       },
       {
         "id": "endue.database.move-column-right",
         "title": "Database: move the result's column right",
-        "keywords": [
-          "grid",
-          "columns",
-          "reorder"
-        ]
+        "keywords": ["grid", "columns", "reorder"]
       },
       {
         "id": "endue.database.pin-column",
         "title": "Database: pin or unpin the result's column",
-        "keywords": [
-          "grid",
-          "columns",
-          "freeze",
-          "sticky"
-        ]
+        "keywords": ["grid", "columns", "freeze", "sticky"]
       },
       {
         "id": "endue.database.fit-column",
         "title": "Database: fit the result's column to its content",
-        "keywords": [
-          "grid",
-          "columns",
-          "width",
-          "autosize"
-        ]
+        "keywords": ["grid", "columns", "width", "autosize"]
       },
       {
         "id": "endue.database.narrow-column",
         "title": "Database: make the result's column narrower",
-        "keywords": [
-          "grid",
-          "columns",
-          "width",
-          "resize"
-        ]
+        "keywords": ["grid", "columns", "width", "resize"]
       },
       {
         "id": "endue.database.widen-column",
         "title": "Database: make the result's column wider",
-        "keywords": [
-          "grid",
-          "columns",
-          "width",
-          "resize"
-        ]
+        "keywords": ["grid", "columns", "width", "resize"]
       },
       {
         "id": "endue.database.reset-columns",
         "title": "Database: reset the result's columns",
-        "keywords": [
-          "grid",
-          "columns",
-          "order",
-          "width"
-        ]
+        "keywords": ["grid", "columns", "order", "width"]
       },
       {
         "id": "endue.database.add-sort",
         "title": "Database: sort the result by its column next",
-        "keywords": [
-          "grid",
-          "order by",
-          "multi-column"
-        ]
+        "keywords": ["grid", "order by", "multi-column"]
       },
       {
         "id": "endue.database.filter-by-cell",
         "title": "Database: filter the result by the cell at the cursor",
-        "keywords": [
-          "grid",
-          "quick filter",
-          "equals",
-          "contains",
-          "null"
-        ]
+        "keywords": ["grid", "quick filter", "equals", "contains", "null"]
       },
       {
         "id": "endue.database.clear-filters",
         "title": "Database: clear the result's quick filters",
-        "keywords": [
-          "grid",
-          "quick filter",
-          "where"
-        ]
+        "keywords": ["grid", "quick filter", "where"]
       },
       {
         "id": "endue.database.find-in-result",
         "title": "Database: find in the result",
-        "keywords": [
-          "grid",
-          "search",
-          "cell"
-        ]
+        "keywords": ["grid", "search", "cell"]
       },
       {
         "id": "endue.database.find-next",
         "title": "Database: find the next match in the result",
-        "keywords": [
-          "grid",
-          "search"
-        ]
+        "keywords": ["grid", "search"]
       },
       {
         "id": "endue.database.find-previous",
         "title": "Database: find the previous match in the result",
-        "keywords": [
-          "grid",
-          "search"
-        ]
+        "keywords": ["grid", "search"]
       },
       {
         "id": "endue.database.problems",
         "title": "Database: list the SQL problems",
-        "keywords": [
-          "errors",
-          "diagnostics",
-          "lint",
-          "underline",
-          "syntax"
-        ]
+        "keywords": ["errors", "diagnostics", "lint", "underline", "syntax"]
       },
       {
         "id": "endue.database.next-problem",
         "title": "Database: go to the next SQL problem",
-        "keywords": [
-          "error",
-          "diagnostic",
-          "lint",
-          "F8"
-        ]
+        "keywords": ["error", "diagnostic", "lint", "F8"]
       },
       {
         "id": "endue.database.previous-problem",
         "title": "Database: go to the previous SQL problem",
-        "keywords": [
-          "error",
-          "diagnostic",
-          "lint",
-          "Shift+F8"
-        ]
+        "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
       },
       {
         "id": "endue.database.signatures",
         "title": "Database: show the arguments of the function at the caret",
-        "keywords": [
-          "signature",
-          "parameters",
-          "overloads",
-          "help",
-          "Ctrl+Shift+Space"
-        ]
+        "keywords": ["signature", "parameters", "overloads", "help", "Ctrl+Shift+Space"]
       },
       {
         "id": "endue.database.expand-star",
         "title": "Database: write out the columns of * at the caret",
-        "keywords": [
-          "star",
-          "asterisk",
-          "columns",
-          "expand",
-          "select list"
-        ]
+        "keywords": ["star", "asterisk", "columns", "expand", "select list"]
       },
       {
         "id": "endue.database.follow-key",
         "title": "Database: go to the row this key points at",
-        "keywords": [
-          "foreign key",
-          "follow",
-          "reference",
-          "link",
-          "related",
-          "grid"
-        ]
+        "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
       },
       {
         "id": "endue.database.referencing-rows",
         "title": "Database: show the rows that point at this row",
-        "keywords": [
-          "foreign key",
-          "referencing",
-          "references",
-          "children",
-          "related",
-          "count"
-        ]
+        "keywords": ["foreign key", "referencing", "references", "children", "related", "count"]
       },
       {
         "id": "endue.database.go-back",
         "title": "Database: go back to where the key was followed from",
-        "keywords": [
-          "back",
-          "foreign key",
-          "return",
-          "previous",
-          "grid"
-        ]
+        "keywords": ["back", "foreign key", "return", "previous", "grid"]
       },
       {
         "id": "endue.database.chart",
         "title": "Database: draw the result as a chart",
-        "keywords": [
-          "chart",
-          "graph",
-          "plot",
-          "bar",
-          "line",
-          "pie",
-          "visualize",
-          "result"
-        ]
+        "keywords": ["chart", "graph", "plot", "bar", "line", "pie", "visualize", "result"]
       },
       {
         "id": "endue.database.chart-export",
         "title": "Database: export the chart as an image",
-        "keywords": [
-          "chart",
-          "export",
-          "image",
-          "png",
-          "svg",
-          "save"
-        ]
+        "keywords": ["chart", "export", "image", "png", "svg", "save"]
       },
       {
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
-        "keywords": [
-          "foreign key",
-          "search",
-          "lookup",
-          "reference",
-          "edit",
-          "cell"
-        ]
+        "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
       },
       {
         "id": "endue.database.show-map",
@@ -2622,61 +1879,27 @@
       {
         "id": "endue.database.export-connections",
         "title": "Database: export connections to a file",
-        "keywords": [
-          "export",
-          "move",
-          "share",
-          "json",
-          "connections",
-          "backup"
-        ]
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
       },
       {
         "id": "endue.database.import-connections",
         "title": "Database: import connections from a file",
-        "keywords": [
-          "import",
-          "move",
-          "share",
-          "json",
-          "pg_service.conf",
-          "service"
-        ]
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
       },
       {
         "id": "endue.database.fix-problem",
         "title": "Database: fix the SQL warning at the caret",
-        "keywords": [
-          "quick fix",
-          "warning",
-          "lint",
-          "IS NULL",
-          "column list"
-        ]
+        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
       },
       {
         "id": "endue.database.switch-database",
         "title": "Database: switch the database",
-        "keywords": [
-          "database",
-          "switch",
-          "server",
-          "catalog",
-          "postgresql"
-        ]
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
       },
       {
         "id": "endue.database.privileges",
         "title": "Database: roles and privileges",
-        "keywords": [
-          "roles",
-          "users",
-          "grants",
-          "permissions",
-          "access",
-          "members",
-          "pg_roles"
-        ],
+        "keywords": ["roles", "users", "grants", "permissions", "access", "members", "pg_roles"],
         "description": "Opens a PostgreSQL connection's roles and privileges and answers its roles: attributes (login, superuser, create database, create role, replication, bypass RLS, inherit, connection limit, valid until), what each is a member of and its members. Never a password; a catalog this role cannot read is said.",
         "args": {
           "type": "object",
@@ -2695,13 +1918,7 @@
       {
         "id": "endue.database.object-privileges",
         "title": "Database: privileges of an object",
-        "keywords": [
-          "grants",
-          "acl",
-          "matrix",
-          "who may",
-          "permissions"
-        ],
+        "keywords": ["grants", "acl", "matrix", "who may", "permissions"],
         "description": "Opens an object's matrix of grantees and privileges and answers its owner and every grant: grantee, privilege, grant option and grantor, its columns' too, and a table's row security policies.",
         "args": {
           "type": "object",
@@ -2735,13 +1952,7 @@
       {
         "id": "endue.database.role-privileges",
         "title": "Database: what a role may do",
-        "keywords": [
-          "effective privileges",
-          "membership",
-          "inherit",
-          "public",
-          "why"
-        ],
+        "keywords": ["effective privileges", "membership", "inherit", "public", "why"],
         "description": "Answers everything a PostgreSQL role may do and why: the roles it inherits from or may SET ROLE to, each object's privileges with the path they come through (itself, PUBLIC or a membership), what it owns, and what its attributes and predefined roles let it do.",
         "args": {
           "type": "object",
@@ -2765,11 +1976,7 @@
       {
         "id": "endue.database.default-privileges",
         "title": "Database: default privileges",
-        "keywords": [
-          "alter default privileges",
-          "new objects",
-          "pg_default_acl"
-        ],
+        "keywords": ["alter default privileges", "new objects", "pg_default_acl"],
         "description": "Opens and answers the default privileges per owner, schema and kind: what new tables, sequences, functions, types and schemas get.",
         "args": {
           "type": "object",
@@ -2788,13 +1995,7 @@
       {
         "id": "endue.database.change-privileges",
         "title": "Database: grant or revoke privileges",
-        "keywords": [
-          "grant",
-          "revoke",
-          "grant option",
-          "permissions",
-          "access"
-        ],
+        "keywords": ["grant", "revoke", "grant option", "permissions", "access"],
         "description": "Grants and revokes an object's privileges for one grantee (GRANT and REVOKE). The person is shown the exact statements and runs them, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -2861,12 +2062,7 @@
       {
         "id": "endue.database.change-default-privileges",
         "title": "Database: change default privileges",
-        "keywords": [
-          "alter default privileges",
-          "grant",
-          "revoke",
-          "new objects"
-        ],
+        "keywords": ["alter default privileges", "grant", "revoke", "new objects"],
         "description": "Changes what new objects of a role get (ALTER DEFAULT PRIVILEGES), in a schema or every one. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
         "args": {
           "type": "object",
@@ -2888,13 +2084,7 @@
             },
             "on": {
               "type": "string",
-              "enum": [
-                "tables",
-                "sequences",
-                "functions",
-                "types",
-                "schemas"
-              ],
+              "enum": ["tables", "sequences", "functions", "types", "schemas"],
               "description": "The kind of new objects."
             },
             "grantee": {
@@ -2930,13 +2120,7 @@
       {
         "id": "endue.database.create-role",
         "title": "Database: create a role",
-        "keywords": [
-          "create role",
-          "create user",
-          "login",
-          "password",
-          "new user"
-        ],
+        "keywords": ["create role", "create user", "login", "password", "new user"],
         "description": "Creates a PostgreSQL role with its attributes and the roles it joins (CREATE ROLE). A password is typed by the person in a hidden field, never taken as an argument; the person is shown the exact statement, the password masked, and runs it, or not.",
         "args": {
           "type": "object",
@@ -3073,14 +2257,7 @@
       {
         "id": "endue.database.change-membership",
         "title": "Database: change a role membership",
-        "keywords": [
-          "grant role",
-          "revoke role",
-          "member",
-          "admin option",
-          "inherit",
-          "set role"
-        ],
+        "keywords": ["grant role", "revoke role", "member", "admin option", "inherit", "set role"],
         "description": "Grants a role to a member, revokes it, or changes its ADMIN, INHERIT and SET options (PostgreSQL 16; ADMIN OPTION before). The person is shown the exact statements and runs them, or not.",
         "args": {
           "type": "object",
@@ -3124,13 +2301,7 @@
       {
         "id": "endue.database.policy",
         "title": "Database: create or change a row security policy",
-        "keywords": [
-          "row level security",
-          "rls",
-          "policy",
-          "using",
-          "with check"
-        ],
+        "keywords": ["row level security", "rls", "policy", "using", "with check"],
         "description": "Creates a table's row security policy, or changes the one named (CREATE POLICY, ALTER POLICY; DROP and CREATE in one transaction for another command or kind). The person is shown the exact statements in a form and runs them, or not.",
         "args": {
           "type": "object",
@@ -3162,13 +2333,7 @@
             },
             "command": {
               "type": "string",
-              "enum": [
-                "ALL",
-                "SELECT",
-                "INSERT",
-                "UPDATE",
-                "DELETE"
-              ],
+              "enum": ["ALL", "SELECT", "INSERT", "UPDATE", "DELETE"],
               "description": "FOR which command."
             },
             "restrictive": {
@@ -3201,11 +2366,7 @@
       {
         "id": "endue.database.drop-policy",
         "title": "Database: drop a row security policy",
-        "keywords": [
-          "drop policy",
-          "rls",
-          "row level security"
-        ],
+        "keywords": ["drop policy", "rls", "row level security"],
         "description": "Drops a table's row security policy (DROP POLICY). The person is shown the exact statement and runs it, or not.",
         "args": {
           "type": "object",
@@ -3239,11 +2400,7 @@
       {
         "id": "endue.database.row-security",
         "title": "Database: turn a table's row security on or off",
-        "keywords": [
-          "enable row level security",
-          "force",
-          "rls"
-        ],
+        "keywords": ["enable row level security", "force", "rls"],
         "description": "Turns a table's row security on or off and forced on its owner or not (ALTER TABLE ... ROW LEVEL SECURITY). The person is shown the exact statements and runs them, or not.",
         "args": {
           "type": "object",
@@ -3354,13 +2511,7 @@
       {
         "id": "endue.database.dump-schema",
         "title": "Database: dump a schema to a folder…",
-        "keywords": [
-          "export ddl",
-          "version control",
-          "one file per object",
-          "git",
-          "schema files"
-        ],
+        "keywords": ["export ddl", "version control", "one file per object", "git", "schema files"],
         "args": {
           "type": "object",
           "properties": {
@@ -3386,11 +2537,7 @@
       {
         "id": "endue.database.save-schema-snapshot",
         "title": "Database: save a schema's snapshot…",
-        "keywords": [
-          "baseline",
-          "compare later",
-          "schema json"
-        ],
+        "keywords": ["baseline", "compare later", "schema json"],
         "args": {
           "type": "object",
           "properties": {
@@ -3411,80 +2558,42 @@
       {
         "id": "endue.database.schema-compare-run",
         "title": "Database: run the schema comparison's script",
-        "keywords": [
-          "apply migration",
-          "sync schema",
-          "execute"
-        ]
+        "keywords": ["apply migration", "sync schema", "execute"]
       },
       {
         "id": "endue.database.schema-compare-dry-run",
         "title": "Database: dry-run the schema comparison's script",
-        "keywords": [
-          "try migration",
-          "rollback",
-          "check the script"
-        ]
+        "keywords": ["try migration", "rollback", "check the script"]
       },
       {
         "id": "endue.database.schema-compare-console",
         "title": "Database: open the schema comparison's script in a console",
-        "keywords": [
-          "edit migration",
-          "copy",
-          "sql"
-        ]
+        "keywords": ["edit migration", "copy", "sql"]
       },
       {
         "id": "endue.database.schema-compare-refresh",
         "title": "Database: compare the two schemas again",
-        "keywords": [
-          "reload",
-          "diff again"
-        ]
+        "keywords": ["reload", "diff again"]
       },
       {
         "id": "endue.database.schema-compare-cancel",
         "title": "Database: cancel the schema comparison",
-        "keywords": [
-          "stop reading",
-          "abort"
-        ]
+        "keywords": ["stop reading", "abort"]
       },
       {
         "id": "endue.database.find-objects",
         "title": "Database: find objects by name",
-        "keywords": [
-          "palette",
-          "find",
-          "table",
-          "column",
-          "routine",
-          "schema cache",
-          "search"
-        ]
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
       },
       {
         "id": "endue.database.copy-name",
         "title": "Database: copy a qualified name",
-        "keywords": [
-          "copy",
-          "name",
-          "identifier",
-          "qualified",
-          "palette"
-        ]
+        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
       },
       {
         "id": "endue.database.palette-hide",
         "title": "Database: hide a connection from the palette, or show it again",
-        "keywords": [
-          "palette",
-          "hide",
-          "show",
-          "search",
-          "connection"
-        ]
+        "keywords": ["palette", "hide", "show", "search", "connection"]
       },
       {
         "id": "endue.database.search-source",
@@ -3530,11 +2639,7 @@
             },
             "scope": {
               "type": "string",
-              "enum": [
-                "schema",
-                "database",
-                "all"
-              ],
+              "enum": ["schema", "database", "all"],
               "description": "One schema (with schema), the connection's database (the default), or every PostgreSQL connection and each cached database of its server."
             },
             "schema": {
@@ -3567,22 +2672,12 @@
       {
         "id": "endue.database.search-source-cancel",
         "title": "Database: cancel the source search",
-        "keywords": [
-          "stop",
-          "search",
-          "source"
-        ]
+        "keywords": ["stop", "search", "source"]
       },
       {
         "id": "endue.database.allow-connect",
         "title": "Database: allow connecting",
-        "keywords": [
-          "permission",
-          "refused",
-          "connect",
-          "server",
-          "ask again"
-        ]
+        "keywords": ["permission", "refused", "connect", "server", "ask again"]
       }
     ],
     "keys": [
@@ -3646,11 +2741,7 @@
       "endue.database.format-keyword-case": {
         "kind": "string",
         "default": "upper",
-        "choices": [
-          "upper",
-          "lower",
-          "preserve"
-        ],
+        "choices": ["upper", "lower", "preserve"],
         "description": "How Format SQL writes PostgreSQL's keywords: upper (SELECT, INT), lower (select, int) or preserve (as typed). Names, strings and quoted identifiers never change."
       },
       "endue.database.format-indent": {
@@ -3670,47 +2761,31 @@
       "endue.database.format-comma": {
         "kind": "string",
         "default": "last",
-        "choices": [
-          "last",
-          "first"
-        ],
+        "choices": ["last", "first"],
         "description": "Where a broken list's commas go in PostgreSQL's Format SQL: last (id, then name on the next line) or first (id, then , name)."
       },
       "endue.database.format-and-or": {
         "kind": "string",
         "default": "before",
-        "choices": [
-          "before",
-          "after"
-        ],
+        "choices": ["before", "after"],
         "description": "Where a broken condition's AND and OR go in PostgreSQL's Format SQL: before (a line starts AND b = 1) or after (a line ends a = 1 AND)."
       },
       "endue.database.format-joins": {
         "kind": "string",
         "default": "flat",
-        "choices": [
-          "flat",
-          "indented"
-        ],
+        "choices": ["flat", "indented"],
         "description": "How joins sit in PostgreSQL's Format SQL: flat (JOIN under FROM) or indented (JOIN one level in from FROM)."
       },
       "endue.database.format-one-line": {
         "kind": "string",
         "default": "clause",
-        "choices": [
-          "clause",
-          "statement",
-          "item"
-        ],
+        "choices": ["clause", "statement", "item"],
         "description": "What PostgreSQL's Format SQL keeps on one line when it fits: each clause (SELECT a, b then FROM t), the whole statement (SELECT a, b FROM t), or only each item (every list and condition broken one item a line)."
       },
       "endue.database.format-lists": {
         "kind": "string",
         "default": "indent",
-        "choices": [
-          "indent",
-          "align"
-        ],
+        "choices": ["indent", "align"],
         "description": "Where a broken list goes in PostgreSQL's Format SQL: indent (on the lines under SELECT, one level in) or align (after SELECT, each item under the first)."
       },
       "endue.database.format-on-save": {
