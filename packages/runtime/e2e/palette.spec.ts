@@ -80,6 +80,7 @@ test.describe("desk.palette", () => {
           (error: { code?: string }) => error.code,
         ),
     );
+    await expect(frame(page).getByTestId("title")).toHaveText("Pick one");
     await expect(frame(page).getByTestId("query")).toBeFocused();
     await page.keyboard.press("Escape");
     expect(await cancelled).toBe("cancelled");

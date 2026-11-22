@@ -88,7 +88,8 @@ describe("a console's PostgreSQL session", () => {
   });
 
   it("a session the server ended is lost in words, its transaction reported, and the next run opens a new one without replaying", async () => {
-    const m = await shop();
+    // An agent's pg_terminate_backend is a write (ADR 0328): the person says yes to it.
+    const m = await shop({ pick: () => "yes" });
     await run(m, "set search_path to audit");
     await run(m, "begin");
     const first = sessionOf(m, "begin");
@@ -99,6 +100,7 @@ describe("a console's PostgreSQL session", () => {
       connection: "Shop",
       sql: `select pg_terminate_backend(${pid})`,
     });
+    expect(m.picks.at(-1)?.title).toBe("Run this statement on Shop?");
     await m.settle();
     expect(m.shown()?.session).toMatchObject({
       state: "lost",

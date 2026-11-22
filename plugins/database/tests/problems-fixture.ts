@@ -1,7 +1,7 @@
 // Fixtures for the SQL problems (PG-30, ADR 0294): the worker's checker over the vendored parser in
 // Node, a schema model as the cache answers it (a partitioned table with its partition, a sequence
 // without columns, an unread schema), and the problems of a script as [underlined text, message]
-// pairs to read.
+// pairs to read. The warnings (PG-36) are off here unless a test asks for them.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createChecker } from "../ui/diagnose/check.js";
@@ -64,6 +64,8 @@ export type Check = {
   doc?: string;
   syntax?: boolean;
   names?: boolean;
+  warnings?: boolean;
+  off?: string[];
   searchPath?: string[];
   user?: string;
   answers?: Array<[string, { ok: true } | { message: string; at: number }]>;
@@ -101,7 +103,7 @@ export async function checker() {
     parsed,
     check: (request: Check, model: SchemaModel | null = PROBLEM_MODEL) =>
       made.check(
-        { doc: "d", syntax: true, names: true, ...request },
+        { doc: "d", syntax: true, names: true, warnings: false, ...request },
         model ? index(model) : undefined,
       ) as { problems: Problem[]; statements: number; parsed: number },
   };

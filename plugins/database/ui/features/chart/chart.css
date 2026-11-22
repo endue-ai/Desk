@@ -1,0 +1,65 @@
+/* A result's Chart tab and the footer's totals (PG-44, ui/chart/): the bar of settings, the note of
+   what the chart leaves out, the figure the SVG fills. The marks' own colours are the theme's
+   --desk-chart-* tokens that reach 3:1 in both schemes, set on the SVG by chart/draw.js; every
+   colour, font, size and radius here is a --desk-* token too. */
+
+.chart-box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chart-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.chart-bar .grow {
+  flex: 1;
+}
+
+.chart-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--desk-text-xs);
+}
+
+.chart-field select {
+  width: auto;
+  max-width: 14em;
+}
+
+.chart-note {
+  margin: 0;
+  padding: 2px 8px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.chart-note:empty {
+  display: none;
+}
+
+.chart-figure {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-background);
+}
+
+.chart-figure svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#totals {
+  flex: 0 4 auto;
+  font-variant-numeric: tabular-nums;
+}
