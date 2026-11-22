@@ -32,6 +32,8 @@ export interface Answer {
   notices?: string[];
   afterwards?: string[];
   waits?: boolean;
+  /** A COPY through standard input or output (the stub's StubStatement.copy, PG-23). */
+  copy?: StubStatement["copy"];
 }
 /** Who asks: sqlite3's environment, or the session's database, host, port, user and settings. */
 export type Script = (sql: string, who: Record<string, string>) => Answer | "auth";
@@ -113,6 +115,7 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
     ...(afterwards.length ? { afterwards } : {}),
   };
   if (answer.waits) return { sql, waits: true, ...more };
+  if (answer.copy) return { sql, copy: answer.copy, ...more };
   if (answer.error) {
     const { code = "", detail, hint, position } = answer;
     const fields = { code, ...(detail ? { detail } : {}), ...(hint ? { hint } : {}) };
