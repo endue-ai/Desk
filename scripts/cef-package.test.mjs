@@ -2,8 +2,16 @@
 // beside the executable on Windows and Linux, nothing that would make cargo-packager sign, the
 // bundle layout scripts/release-collect.mjs reads, and the built-in plugins every package carries (#47).
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
@@ -18,7 +26,7 @@ import {
   pluginFiles,
 } from "./cef-package/config.mjs";
 import { nsisIdentity, wixIdentity } from "./cef-package/windows.mjs";
-import { pickFormats, stagePlugins } from "./cef-package.mjs";
+import { archiveMacApp, pickFormats, stagePlugins } from "./cef-package.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PACKAGER = join(ROOT, "apps/desk/shell/packager");
@@ -52,6 +60,30 @@ describe("cef-package", () => {
       "/cef/LICENSE.txt",
       "CEF's BSD licence ships",
     );
+  });
+
+  it("omits the build account from macOS updater archive headers", {
+    skip: process.platform !== "darwin",
+  }, (t) => {
+    const root = mkdtempSync(join(tmpdir(), "endue-updater-"));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    const app = join(root, "endue.app");
+    mkdirSync(app);
+    writeFileSync(join(app, "payload"), "fixture");
+    symlinkSync("payload", join(app, "link"));
+    archiveMacApp(app);
+    execFileSync("python3", [
+      "-c",
+      `
+import sys, tarfile
+with tarfile.open(sys.argv[1]) as archive:
+    assert all(not m.uname and not m.gname and m.uid == m.gid == 0 for m in archive)
+    assert archive.extractfile("endue.app/payload").read() == b"fixture"
+    link = archive.getmember("endue.app/link")
+    assert link.issym() and link.linkname == "payload"
+`,
+      `${app}.tar.gz`,
+    ]);
   });
 
   it("never lets cargo-packager sign or show a licence, and passes only fields it knows", () => {
