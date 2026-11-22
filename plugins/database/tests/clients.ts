@@ -14,9 +14,10 @@ import { programReply } from "./backup-fixture";
 
 /**
  * What a scripted statement gives back: rows (the first is the header; on PostgreSQL a value may be
- * null), changes, or an error; on PostgreSQL also the columns' type OIDs (text by default), the
- * error's fields, notices before the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
- * lines), or a statement that runs until it is cancelled.
+ * null), changes, or an error; on PostgreSQL also the columns' type OIDs (text by default), their
+ * tables of origin (table OID and column number, 0 and 0 by default), the error's fields, notices with the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
+ * lines), notices the session sends after it (`afterwards`, db.notice events a turn later, ADR 0334),
+ * or a statement that runs until it is cancelled.
  */
 export interface Answer {
   rows?: (string | null)[][];
@@ -27,11 +28,20 @@ export interface Answer {
   hint?: string;
   position?: number;
   types?: number[];
+  origins?: [number, number][];
   notices?: string[];
+  afterwards?: string[];
   waits?: boolean;
+  /** A COPY through standard input or output (the stub's StubStatement.copy, PG-23). */
+  copy?: StubStatement["copy"];
+  /** The type OIDs db.describe answers for the statement's `$n` (ADR 0353). */
+  paramTypes?: number[];
 }
 /** Who asks: sqlite3's environment, or the session's database, host, port, user and settings. */
-export type Script = (sql: string, who: Record<string, string>) => Answer | "auth";
+/** What a call bound to a statement (ADR 0353): its values and types, `describe` for a check. */
+export type Bound = { params?: (string | null)[]; paramTypes?: number[]; describe?: true };
+
+export type Script = (sql: string, who: Record<string, string>, bound?: Bound) => Answer | "auth";
 
 export interface Reply {
   stdout: string;
@@ -79,13 +89,13 @@ export function scriptedReply(
   return sqliteRun(args, script, env);
 }
 
-const column = (name: string, typeOid = 25): DbColumn => ({
+const column = (name: string, typeOid = 25, [tableOid, columnNumber] = [0, 0]): DbColumn => ({
   name,
   typeOid,
   typeModifier: -1,
   typeSize: -1,
-  tableOid: 0,
-  columnNumber: 0,
+  tableOid,
+  columnNumber,
 });
 const serverError = (message: string, fields: Partial<DbServerError> = {}): DbServerError => ({
   severity: "ERROR",
@@ -103,22 +113,15 @@ const tagOf = (sql: string, changes?: number) => {
 
 /** A script's answer as the scripted server's statement. */
 export function statementOf(sql: string, answer: Answer): StubStatement {
-  // A line with no severity goes on the message before it, as a server's message of many lines.
-  const notices: ReturnType<typeof serverError>[] = [];
-  for (const text of answer.notices ?? []) {
-    const [, severity, message = text] = /^([A-Z]+):\s+(.*)$/su.exec(text) ?? [];
-    const before = notices.at(-1);
-    if (!severity && before) before.message += `\n${text}`;
-    else
-      notices.push({
-        ...serverError(message),
-        severity: severity ?? "NOTICE",
-        localSeverity: severity ?? "NOTICE",
-        code: "00000",
-      });
-  }
-  const more = notices.length ? { notices } : {};
+  const notices = noticesOf(answer.notices);
+  const afterwards = noticesOf(answer.afterwards);
+  const more = {
+    ...(notices.length ? { notices } : {}),
+    ...(afterwards.length ? { afterwards } : {}),
+    ...(answer.paramTypes ? { paramTypes: answer.paramTypes } : {}),
+  };
   if (answer.waits) return { sql, waits: true, ...more };
+  if (answer.copy) return { sql, copy: answer.copy, ...more };
   if (answer.error) {
     const { code = "", detail, hint, position } = answer;
     const fields = { code, ...(detail ? { detail } : {}), ...(hint ? { hint } : {}) };
@@ -130,10 +133,31 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
   }
   if (answer.rows) {
     const [head = [], ...rows] = answer.rows;
-    const columns = head.map((name, i) => column(name ?? "", answer.types?.[i]));
+    const columns = head.map((name, i) =>
+      column(name ?? "", answer.types?.[i], answer.origins?.[i]),
+    );
     return { sql, columns, rows, ...more };
   }
   return { sql, tag: tagOf(sql, answer.changes), ...more };
+}
+
+/** `SEVERITY:  message` lines as the server's notices; a line with no severity goes on the one
+ * before it, as a server's message of many lines. */
+function noticesOf(lines: string[] = []) {
+  const notices: ReturnType<typeof serverError>[] = [];
+  for (const text of lines) {
+    const [, severity, message = text] = /^([A-Z]+):\s+(.*)$/su.exec(text) ?? [];
+    const before = notices.at(-1);
+    if (!severity && before) before.message += `\n${text}`;
+    else
+      notices.push({
+        ...serverError(message),
+        severity: severity ?? "NOTICE",
+        localSeverity: severity ?? "NOTICE",
+        code: "00000",
+      });
+  }
+  return notices;
 }
 
 /** Who a session is, as a script reads it. */
@@ -155,8 +179,8 @@ export function scriptedDb(script: Script, password?: string): StubDatabase {
   return {
     ...(password === undefined ? {} : { password }),
     statements: [],
-    answer: (sql, session) => {
-      const answer = script(sql, whoOf(session));
+    answer: (sql, session, bound) => {
+      const answer = script(sql, whoOf(session), bound);
       if (answer === "auth")
         return { sql, error: serverError("password authentication failed", { code: "28P01" }) };
       return statementOf(sql, answer);

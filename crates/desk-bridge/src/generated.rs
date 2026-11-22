@@ -5198,6 +5198,8 @@ pub enum BridgeRequest {
     NetClose(NetCloseRequest),
     DbOpen(DbOpenRequest),
     DbRun(DbRunRequest),
+    DbScript(DbScriptRequest),
+    DbDescribe(DbDescribeRequest),
     DbFetch(DbFetchRequest),
     DbCopy(DbCopyRequest),
     DbCancel(DbCancelRequest),
@@ -5206,6 +5208,7 @@ pub enum BridgeRequest {
     DbPasswordsSet(DbPasswordsSetRequest),
     DbPasswordsDelete(DbPasswordsDeleteRequest),
     DbPasswordsList(DbPasswordsListRequest),
+    DbHostKeysDelete(DbHostKeysDeleteRequest),
     AudioCaptureStart(AudioCaptureStartRequest),
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
@@ -5423,6 +5426,7 @@ pub enum BridgeEvent {
     NetData(NetDataEvent),
     NetClosed(NetClosedEvent),
     DbNotice(DbNoticeEvent),
+    DbCallNotice(DbCallNoticeEvent),
     DbNotification(DbNotificationEvent),
     DbParameter(DbParameterEvent),
     DbClosed(DbClosedEvent),
@@ -7038,6 +7042,8 @@ pub struct DbOpenParams {
     #[serde(rename = "timeoutMs", default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
     pub scope: DbConnectPermission,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh: Option<DbSsh>,
 }
 
 /// How the session uses TLS.
@@ -7048,7 +7054,190 @@ pub struct DbTls {
     /// The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ca: Option<String>,
+    /// The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cert: Option<String>,
+    /// The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    /// The passphrase of an encrypted key: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
 }
+
+/// An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSsh {
+    /// The SSH server, a host name or an IPv4 address.
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    /// Who signs in on the SSH server.
+    pub user: String,
+    /// The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.
+    #[serde(rename = "keyFile", default, skip_serializing_if = "Option::is_none")]
+    pub key_file: Option<String>,
+    /// The passphrase of an encrypted keyFile: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
+    /// Sign in with the keys the person's SSH agent holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<True>,
+    /// The SSH password: used once for the sign-in and dropped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(
+        rename = "passwordRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub password_ref: Option<DbPasswordName>,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshFingerprint>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump: Option<DbSshHop>,
+}
+
+/// A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshHop {
+    /// The SSH server, a host name or an IPv4 address.
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    /// Who signs in on the SSH server.
+    pub user: String,
+    /// The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.
+    #[serde(rename = "keyFile", default, skip_serializing_if = "Option::is_none")]
+    pub key_file: Option<String>,
+    /// The passphrase of an encrypted keyFile: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
+    /// Sign in with the keys the person's SSH agent holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<True>,
+    /// The SSH password: used once for the sign-in and dropped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(
+        rename = "passwordRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub password_ref: Option<DbPasswordName>,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshFingerprint>,
+}
+
+/// An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens.
+pub type DbSshFingerprint = String;
+
+/// Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshAnswer {
+    pub hop: DbSshHopName,
+    pub stage: DbSshStage,
+    /// What failed, in words, naming the hop.
+    pub message: String,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshHostKey>,
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<DbKeyPassword>,
+    #[serde(
+        rename = "needsPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub needs_password: Option<True>,
+}
+
+/// Which hop: the jump host, or the SSH host the database is reached from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshHopName {
+    #[serde(rename = "jump")]
+    Jump,
+    #[serde(rename = "host")]
+    Host,
+}
+
+/// Where the hop failed: connect, hostKey, auth or forward.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshStage {
+    #[serde(rename = "connect")]
+    Connect,
+    #[serde(rename = "hostKey")]
+    HostKey,
+    #[serde(rename = "auth")]
+    Auth,
+    #[serde(rename = "forward")]
+    Forward,
+}
+
+/// unknown: not trusted yet. changed: differs from the trusted one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshHostKeyStatus {
+    #[serde(rename = "unknown")]
+    Unknown,
+    #[serde(rename = "changed")]
+    Changed,
+}
+
+/// The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshHostKey {
+    pub status: DbSshHostKeyStatus,
+    /// ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...
+    pub algorithm: String,
+    pub fingerprint: DbSshFingerprint,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known: Option<DbSshFingerprint>,
+}
+
+/// Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteRequest {
+    pub id: RequestId,
+    pub method: DbHostKeysDeleteRequestMethod,
+    pub params: DbHostKeysDeleteParams,
+}
+
+/// Parameters of db.hostKeys.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteParams {
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+}
+
+/// Result of db.hostKeys.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteResult {}
 
 /// disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -7065,7 +7254,7 @@ pub enum DbTlsMode {
     VerifyFull,
 }
 
-/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbOpenResult {
@@ -7089,6 +7278,23 @@ pub struct DbOpenResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub needs_password: Option<True>,
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<DbKeyPassword>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh: Option<DbSshAnswer>,
+}
+
+/// tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbKeyPassword {
+    #[serde(rename = "needed")]
+    Needed,
+    #[serde(rename = "wrong")]
+    Wrong,
 }
 
 /// How the session signed in.
@@ -7155,6 +7361,109 @@ pub struct DbRunParams {
 
 /// Result of db.run: the statement's first page.
 pub type DbRunResult = DbPage;
+
+/// Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptRequest {
+    pub id: RequestId,
+    pub method: DbScriptRequestMethod,
+    pub params: DbScriptParams,
+}
+
+/// Parameters of db.script.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// The statements, in the order they run.
+    pub statements: Vec<DbScriptStatement>,
+    /// Run on past a statement's error instead of stopping there.
+    #[serde(rename = "goOn", default, skip_serializing_if = "Option::is_none")]
+    pub go_on: Option<bool>,
+    /// Rows each statement's first page holds: 1000 by default.
+    #[serde(rename = "pageRows", default, skip_serializing_if = "Option::is_none")]
+    pub page_rows: Option<u64>,
+    /// Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger.
+    #[serde(rename = "pageBytes", default, skip_serializing_if = "Option::is_none")]
+    pub page_bytes: Option<u64>,
+}
+
+/// One statement of db.script and its parameters, as db.run takes them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptStatement {
+    /// One statement; two are the server's 42601.
+    pub sql: String,
+    /// $1, $2, ... as text, or null.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<Vec<DbValue>>,
+    /// The parameters' type OIDs; 0, or a missing one, is the server's inference.
+    #[serde(
+        rename = "paramTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub param_types: Option<Vec<u64>>,
+}
+
+/// Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptResult {
+    pub pages: Vec<DbPage>,
+    /// A db.cancel came while the script ran: no statement after the last page started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cancelled: Option<bool>,
+    /// What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<BridgeError>,
+}
+
+/// Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeRequest {
+    pub id: RequestId,
+    pub method: DbDescribeRequestMethod,
+    pub params: DbDescribeParams,
+}
+
+/// Parameters of db.describe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// One statement; two are the server's 42601.
+    pub sql: String,
+    /// The parameters' type OIDs; 0, or a missing one, is the server's inference.
+    #[serde(
+        rename = "paramTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub param_types: Option<Vec<u64>>,
+}
+
+/// Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbDescribeResult {
+    /// The type OID of $1, $2, ..., as the server infers them; empty with an error.
+    #[serde(rename = "paramTypes")]
+    pub param_types: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<Vec<DbColumn>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction: Option<DbTransaction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<DbServerError>,
+    /// The notices the server sent while this call ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notices: Option<Vec<DbServerError>>,
+}
 
 /// The next page of the session's open result, or close it without reading on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -7408,6 +7717,19 @@ pub struct DbPage {
     pub data: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    /// The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event (each also came as a db.call.notice while the call ran). At most 10,000 a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notices: Option<Vec<DbServerError>>,
+    /// Notices past the 10,000 a page keeps, counted and left out.
+    #[serde(
+        rename = "noticesSkipped",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub notices_skipped: Option<u64>,
+    /// The session's number for the call this page answers, counting from 1: a db.call.notice with this number or a lower one is already on a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call: Option<u64>,
 }
 
 /// One row: each value the server's text, or null.
@@ -7528,7 +7850,7 @@ pub struct DbServerError {
     pub other: Option<BTreeMap<String, String>>,
 }
 
-/// A notice the server sent, as it arrived, also while a statement runs.
+/// A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbNoticeEvent {
@@ -7542,6 +7864,25 @@ pub struct DbNoticeEvent {
 pub struct DbNoticeData {
     #[serde(rename = "sessionId")]
     pub session_id: DbSessionId,
+    pub notice: DbServerError,
+}
+
+/// A notice the server sent while a call runs, sent as it arrives, so a long statement's progress can be shown before its answer. The call's page carries it too, and the page is the record (ADR 0334, ADR 0358): an event whose call is already answered is late. At most the 10,000 a page keeps.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCallNoticeEvent {
+    pub event: DbCallNoticeEventEvent,
+    pub data: DbCallNoticeData,
+}
+
+/// Payload of db.call.notice.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCallNoticeData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// The number of the call that heard it, as that call's pages say (DbPage.call).
+    pub call: u64,
     pub notice: DbServerError,
 }
 
@@ -7857,6 +8198,9 @@ pub struct FsWriteParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub create_dirs: Option<bool>,
+    /// Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub append: Option<bool>,
     pub scope: FsWritePermission,
 }
 
@@ -8826,6 +9170,9 @@ pub struct PermRequestParams {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
+    /// The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub again: Option<bool>,
 }
 
 /// How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.
@@ -13680,12 +14027,36 @@ pub enum DbOpenRequestMethod {
     DbOpen,
 }
 
+/// The `method` of [`DbHostKeysDeleteRequest`]: always `"db.hostKeys.delete"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbHostKeysDeleteRequestMethod {
+    #[default]
+    #[serde(rename = "db.hostKeys.delete")]
+    DbHostKeysDelete,
+}
+
 /// The `method` of [`DbRunRequest`]: always `"db.run"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum DbRunRequestMethod {
     #[default]
     #[serde(rename = "db.run")]
     DbRun,
+}
+
+/// The `method` of [`DbScriptRequest`]: always `"db.script"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbScriptRequestMethod {
+    #[default]
+    #[serde(rename = "db.script")]
+    DbScript,
+}
+
+/// The `method` of [`DbDescribeRequest`]: always `"db.describe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbDescribeRequestMethod {
+    #[default]
+    #[serde(rename = "db.describe")]
+    DbDescribe,
 }
 
 /// The `method` of [`DbFetchRequest`]: always `"db.fetch"`.
@@ -13758,6 +14129,14 @@ pub enum DbNoticeEventEvent {
     #[default]
     #[serde(rename = "db.notice")]
     DbNotice,
+}
+
+/// The `event` of [`DbCallNoticeEvent`]: always `"db.call.notice"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbCallNoticeEventEvent {
+    #[default]
+    #[serde(rename = "db.call.notice")]
+    DbCallNotice,
 }
 
 /// The `event` of [`DbNotificationEvent`]: always `"db.notification"`.

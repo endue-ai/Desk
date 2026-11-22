@@ -6,23 +6,33 @@ lines, candidates on beta, stable in steps) and ADR 0229 (a GitHub Release a per
 the macOS app). Agents stop at the cherry-pick pull request: every run of the line pipeline waits for
 a person in the `stable` environment.
 
+## Verify a Linux CLI download
+
+A release that includes the standalone client lists **endue app** and **endue CLI for Linux x86_64** separately. Download `endue-cli_<version>_linux-x86_64.tar.gz`, its `.sig` and `SHA256SUMS-cli` from that tag into an empty directory. The public v0.3.0 release predates the server CLI.
+
+1. Run `sha256sum -c SHA256SUMS-cli`. Set `VERSION` to the version printed on the release, without the leading `v`. Verify the build provenance with `gh attestation verify "endue-cli_${VERSION}_linux-x86_64.tar.gz" --repo endue-ai/endue`.
+2. To verify the version-bound signature, obtain the trusted updater public key from your existing installation or release administrator. Set `DESK_UPDATER_PUBKEY` to its Tauri-encoded public value. From a public source checkout, run `node scripts/release-verify.mjs /path/to/archive.tar.gz --pubkey "$DESK_UPDATER_PUBKEY" --version "$VERSION"` with the downloaded archive’s path.
+3. Extract the verified archive and open its directory. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `bin/endue run "hello"`. To activate both terminal names, run `bin/activate` with your chosen bin directory.
+
+The Linux desktop build ships the same executable in its installer and the standalone archive. A manually published tag builds the Linux CLI at the same commit as both macOS images. Each publishing path checks the version-bound signature and downloads the archive into a read-only Debian x86_64 container with a separate echo service. The archive includes the project license and dependency notices. The in-app updater selects the signed desktop packages.
+
 ## Publish a GitHub Release with the macOS app
 
 Publishing a version tag builds both macOS disk images. Configuring the updater key also makes
 the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
-   `gh release create v0.1.0 --target <commit> --title "endue 0.1.0" --generate-notes`, or
+   `gh release create v0.4.0 --target <commit> --title "endue 0.4.0" --notes-file <reviewed-notes>`, or
    Releases → Draft a new release → Publish.
 2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
    and Intel (`release-build.yml`), runs the install smoke on each package, and
-   attaches `endue-desk_<version>_darwin-aarch64.dmg`, `endue-desk_<version>_darwin-x86_64.dmg` and
+   attaches `endue_<version>_darwin-aarch64.dmg`, `endue_<version>_darwin-x86_64.dmg` and
    `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
 3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
    notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
    ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
    and still attached: the run warns, and the notes tell the person to allow the app once in System
-   Settings > Privacy & Security, or to run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.
+   Settings > Privacy & Security.
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
 

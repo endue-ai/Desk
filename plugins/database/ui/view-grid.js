@@ -28,8 +28,10 @@ import { createScreen } from "./grid/screen.js";
 import { createShapes } from "./grid/shapes.js";
 import { createShaping } from "./grid/shaping.js";
 import { createStrip } from "./grid/strip.js";
+import { attachWindow } from "./grid/window.js";
 import { defaultWidths } from "./grid-model.js";
 import { createGridLinks } from "./links/grid-links.js";
+import { lineOf } from "./message-line.js";
 import { numericColumns } from "./results.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
@@ -95,6 +97,7 @@ export function createGrid(doc, host, act, options = {}) {
 
   /** The rows' order changed: size the grid for them and draw. */
   const arrange = () => {
+    windowing.follow();
     const s = set();
     st.recordAt = Math.max(0, Math.min(st.recordAt, st.order.length - 1));
     strip.draw(shaping.filters(), st.context.server);
@@ -126,7 +129,6 @@ export function createGrid(doc, host, act, options = {}) {
     if (at >= 0) moveTo(at, 0, false);
     finder.changed();
   };
-
   /**
    * Lay the grid out again after a change of rows, sort, filters, columns or mode; `reorder` false
    * keeps the rows' order (only the columns changed, and no typed filter searches them).
@@ -170,7 +172,6 @@ export function createGrid(doc, host, act, options = {}) {
     st.order = before.length ? before : [...range(0, s.rows.length), ...added];
     arrange();
   };
-
   /** Draw a tab: a grid for a result set, a plan, or the messages. */
   const render = (
     /** @type {Tab | null} */ next,
@@ -197,9 +198,7 @@ export function createGrid(doc, host, act, options = {}) {
     if (next.kind === "map") return maps.show(host, next);
     if (fresh) goto = maps.take(next.set);
     if (next.kind === "messages" || !next.set) {
-      const lines = (next.lines ?? []).map((line) =>
-        el(doc, "li", { class: `line ${line.level}` }, line.text),
-      );
+      const lines = (next.lines ?? []).map((line) => lineOf(doc, line, act));
       strip.draw([], false);
       return host.replaceChildren(el(doc, "ul", { class: "messages" }, ...lines));
     }
@@ -357,6 +356,7 @@ export function createGrid(doc, host, act, options = {}) {
     widths: [...st.layout.widths],
   });
   scroller.addEventListener("scroll", screen.paint);
+  const windowing = attachWindow(scroller, st, act); // a read its cursor keeps (PG-22)
   attachHeader(doc, head, grid, {
     width: shaping.width,
     resize: (col, px) => shaping.resize(col, px),

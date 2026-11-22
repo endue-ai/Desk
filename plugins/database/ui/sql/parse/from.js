@@ -46,6 +46,7 @@ export function fromItem(ctx, scope, node, before) {
     /** @type {Scope} */ ({ ...scope, entries: lateral ? before : [], merged: new Map() });
   const alias = f.alias?.aliasname ?? null;
   if (kind === "RangeVar") {
+    if (ctx.probe && f.location === ctx.probe.at) ctx.probe.hit = { scope, before };
     const bound = bindRangeVar(ctx, f, scope);
     return [
       {

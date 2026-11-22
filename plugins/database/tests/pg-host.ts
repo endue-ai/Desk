@@ -13,8 +13,11 @@ import {
   stubCommands,
 } from "../../../packages/bridge/src/index";
 import { createSessions } from "../ui/engines/pg-session.js";
+import type { Passphrases } from "../ui/engines/pg-tls.js";
 import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
+import type { createTunnel } from "../ui/tunnel/open.js";
+import { runsOf } from "./runs-of";
 
 export const ME = "endue.database";
 
@@ -68,10 +71,15 @@ export function sessionExecutor(
     typed?: string;
     files?: StubFiles;
     prompt?: (data: PermPromptData) => boolean;
+    passphrases?: Passphrases;
+    tunnel?: ReturnType<typeof createTunnel>;
   } = {},
 ) {
   const { bridge, calls, core } = dbBridge(db, options);
-  const sessions = createSessions(bridge);
+  const sessions = createSessions(bridge, {
+    ...(options.passphrases ? { passphrases: options.passphrases } : {}),
+    ...(options.tunnel ? { tunnel: options.tunnel } : {}),
+  });
   const settings = fromValues(options.settings ?? {});
   const asked: string[] = [];
   const kept: string[] = [];
@@ -96,6 +104,9 @@ export function sessionExecutor(
     cancelled: (message) => Object.assign(new Error(message), { code: "cancelled" }),
   });
   /** Every call of `method`, in order. */
-  const made = (method: string) => calls.filter((c) => c.method === method).map((c) => c.params);
+  const made = (method: string) =>
+    (method === "db.run" ? runsOf(calls) : calls)
+      .filter((c) => c.method === method)
+      .map((c) => c.params);
   return { execute: executor.execute, sessions, calls, made, core, asked, kept };
 }

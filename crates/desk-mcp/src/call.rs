@@ -97,10 +97,10 @@ fn run(desk: &Desk, command: &str, args: Option<Map<String, Value>>) -> Result<V
 fn failed(desk: &Desk, failure: &Failure) -> Value {
     let caller = desk.caller();
     let hint = match failure.code.as_str() {
-        NO_DESK => Some("Start endue Desk on this computer, then try again.".to_owned()),
+        NO_DESK => Some("Start endue on this computer, then try again.".to_owned()),
         "permission_denied" => Some(format!(
             "The person did not allow {caller} this, or the agent's allowlist in init.yaml \
-             leaves it out. Ask the person to allow it in Desk instead of retrying."
+             leaves it out. Ask the person to allow it in endue before retrying."
         )),
         "invalid_params" => Some(
             "Check the names with list-commands and the args against the command's argsSchema."

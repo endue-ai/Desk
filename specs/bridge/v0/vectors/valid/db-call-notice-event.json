@@ -1,0 +1,18 @@
+{
+  "target": "BridgeEvent",
+  "description": "a notice a long statement raised while its call runs, before the call's answer",
+  "instance": {
+    "event": "db.call.notice",
+    "data": {
+      "sessionId": "d-1",
+      "call": 3,
+      "notice": {
+        "severity": "NOTICE",
+        "localSeverity": "NOTICE",
+        "code": "00000",
+        "message": "batch 2 of 5 done",
+        "where": "PL/pgSQL function inline_code_block line 4 at RAISE"
+      }
+    }
+  }
+}

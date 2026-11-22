@@ -27,6 +27,10 @@ on:
       - ".github/release-shell"
       - "scripts/release-*.mjs"
       - "scripts/cef-**"
+      - "scripts/package-cli*"
+      - "scripts/package-cli-licenses/**"
+      - "crates/desk-cli/**"
+      - "e2e/smoke/cli-*"
       - "e2e/smoke/verify-signature.sh"
       - "e2e/smoke/install-and-launch.sh"
       - "apps/desk/shell/packager/**"
@@ -109,13 +113,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-*-unsigned
+          pattern: endue-app-*-unsigned
           path: dist
           merge-multiple: true
       - uses: actions/download-artifact@v8
         with:
           name: dry-run-key
           path: key
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Write and sign release.json and the canary index, as canary does
         env:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: dry-run
@@ -125,7 +134,7 @@ jobs:
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum "$DESKTOP_PREFIX"* "endue-cli_${VERSION}_"* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
           node scripts/release-manifest.mjs list missing.json --channel canary --release dist/release.json > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
@@ -139,10 +148,11 @@ jobs:
           tree="release-dry-run/desk"
           node scripts/release-verify.mjs "$tree/channels/canary/index.json" --pubkey "$PUBKEY"
           node scripts/release-verify.mjs "$tree/releases/$VERSION/release.json" --pubkey "$PUBKEY"
-          for sig in "$tree/releases/$VERSION"/endue-desk_*.sig; do
+          for sig in "$tree/releases/$VERSION/$DESKTOP_PREFIX"*.sig; do
             node scripts/release-verify.mjs "${sig%.sig}" --pubkey "$PUBKEY"
           done
-          e2e/smoke/verify-signature.sh "$tree/releases/$VERSION/endue-desk_${VERSION}_linux-x86_64.deb" "$PUBKEY"
+          node scripts/release-verify.mjs "$tree/releases/$VERSION/endue-cli_${VERSION}_linux-x86_64.tar.gz" --pubkey "$PUBKEY" --version "$VERSION"
+          e2e/smoke/verify-signature.sh "$tree/releases/$VERSION/${DESKTOP_PREFIX}linux-x86_64.deb" "$PUBKEY"
       - name: Say what a real publish would need
         run: |
           {

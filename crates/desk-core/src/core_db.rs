@@ -1,7 +1,8 @@
 //! The database side of `Core`: db.open, db.run, db.fetch, db.copy, db.cancel, db.close and
 //! db.list over PostgreSQL sessions of `desk-pg` (ADR 0281), behind `db:connect` as `net:connect`
 //! guards sockets (`core_sockets.rs`). A session belongs to its caller: another caller's id is
-//! `not_found`, and it ends when the caller unloads or its grants no longer cover the host and port.
+//! `not_found`, and it ends at db.close, when the caller unloads, when its grants no longer cover
+//! the host and port, and when the desk quits (`core_db_end.rs`, ADR 0339).
 //! Its events go to that caller alone; `db.closed` once its entry has left the table. The table is
 //! never locked while a session's call waits on the server.
 
@@ -18,7 +19,11 @@ use desk_bridge::{
 use desk_pg::{CloseReason, Config, CopyInput, Limits, Session, Statement};
 
 use crate::agents::agent_of;
-use crate::db_wire::{auth, event, page, server_error, tls_info, tls_mode, transaction};
+use crate::core_db_ssh::{Tunnelled, hops_of};
+use crate::db_wire::{
+    KeyCheck, auth, client_cert, empty_open, event, page, server_error, tls_info, tls_mode,
+    transaction,
+};
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 
@@ -27,18 +32,20 @@ pub(crate) const MAX_SESSIONS: usize = 16;
 /// The one engine the core speaks.
 const POSTGRESQL: &str = "postgresql";
 
-struct DbEntry {
-    caller: String,
-    scope: Permission,
-    host: String,
-    port: u16,
+pub(crate) struct DbEntry {
+    pub(crate) caller: String,
+    pub(crate) scope: Permission,
+    pub(crate) host: String,
+    pub(crate) port: u16,
+    /// Its SSH tunnel's hops, the jump host first (ADR 0359).
+    pub(crate) hops: Vec<(String, u16)>,
     database: String,
     user: String,
     pid: i64,
     /// `None` while it signs in.
-    session: Option<Arc<Session>>,
+    pub(crate) session: Option<Arc<Session>>,
     /// Why the desk let it go while it signed in; the sign-in then ends it so.
-    ended: Option<CloseReason>,
+    pub(crate) ended: Option<CloseReason>,
 }
 
 /// The sessions callers opened, by id. Shared with each session's sink, which removes the entry
@@ -46,7 +53,7 @@ struct DbEntry {
 #[derive(Default)]
 pub(crate) struct Databases {
     next: u64,
-    entries: BTreeMap<String, DbEntry>,
+    pub(crate) entries: BTreeMap<String, DbEntry>,
 }
 
 impl Core {
@@ -60,12 +67,41 @@ impl Core {
             port,
         };
         self.check(caller, &scope, &target)?;
+        self.db_ssh_check(caller, &scope, &params)?;
         if params.engine != POSTGRESQL {
             let why = format!("the desk speaks {POSTGRESQL}, not {}", params.engine);
             return Err(error(ErrorCode::Unsupported, why));
         }
-        let config = self.db_config(caller, &params, port)?;
+        let mut config = self.db_config(caller, &params, port)?;
+        config.client_cert = match client_cert(params.tls.as_ref()) {
+            Ok(client) => client,
+            Err(KeyCheck::Answer(key_password)) => {
+                let key_password = Some(key_password);
+                return json(DbOpenResult {
+                    key_password,
+                    ..empty_open()
+                });
+            }
+            Err(KeyCheck::Refused(refused)) => return Err(refused),
+        };
         let id = self.db_reserve(caller, scope, &params, port)?;
+        if let Some(ssh) = &params.ssh {
+            let at = (params.host.as_str(), port);
+            match self.db_tunnel(caller, ssh, at, config.timeout) {
+                Ok(Tunnelled::Via(via)) => config.via = Some(via),
+                Ok(Tunnelled::Answer(answer)) => {
+                    lock(&self.databases).entries.remove(&id);
+                    return json(DbOpenResult {
+                        ssh: Some(answer),
+                        ..empty_open()
+                    });
+                }
+                Err(refused) => {
+                    lock(&self.databases).entries.remove(&id);
+                    return Err(refused);
+                }
+            }
+        }
         let sink = event(
             id.clone(),
             caller.to_owned(),
@@ -118,7 +154,7 @@ impl Core {
     }
 
     /// The session's config: the password given or kept (ADR 0311), the password file under the
-    /// desk's home, the limits checked.
+    /// desk's home, the limits checked; the client certificate is `client_cert`'s (ADR 0331).
     fn db_config(
         &self,
         caller: &str,
@@ -167,6 +203,7 @@ impl Core {
             scope,
             host: params.host.clone(),
             port,
+            hops: hops_of(params),
             database: params.database.clone(),
             user: params.user.clone(),
             pid: 0,
@@ -260,7 +297,7 @@ impl Core {
     }
 
     /// One of the caller's signed-in sessions.
-    fn db_session(&self, caller: &str, id: &str) -> Result<Arc<Session>, BridgeError> {
+    pub(crate) fn db_session(&self, caller: &str, id: &str) -> Result<Arc<Session>, BridgeError> {
         refuse_agents(caller)?;
         lock(&self.databases)
             .entries
@@ -270,73 +307,9 @@ impl Core {
             .ok_or_else(|| error(ErrorCode::NotFound, format!("{caller} has no session {id}")))
     }
 
-    /// The caller unloaded: its sessions end (`unloaded`).
-    pub(crate) fn drop_databases(&self, caller: &str) {
-        self.end_databases(caller, CloseReason::Unloaded, |_| true);
-    }
-
-    /// End the caller's sessions that its grants no longer cover (`revoked`).
-    pub(crate) fn prune_databases(&self, caller: &str) {
-        let permissions = self.permissions();
-        let lost = |entry: &DbEntry| {
-            let target = Target::Endpoint {
-                host: &entry.host,
-                port: entry.port,
-            };
-            permissions
-                .authorize(caller, &entry.scope, &target)
-                .is_err()
-        };
-        let ended = take(
-            &mut lock(&self.databases),
-            caller,
-            CloseReason::Revoked,
-            lost,
-        );
-        drop(permissions);
-        close_all(ended, CloseReason::Revoked);
-    }
-
-    fn end_databases(&self, caller: &str, reason: CloseReason, ends: impl Fn(&DbEntry) -> bool) {
-        let ended = take(&mut lock(&self.databases), caller, reason, ends);
-        close_all(ended, reason);
-    }
-
     /// How many sessions are open or signing in, for tests and diagnostics.
     pub fn database_count(&self) -> usize {
         lock(&self.databases).entries.len()
-    }
-}
-
-/// Take the caller's signed-in sessions `ends` picks out of the table; mark those still signing in.
-fn take(
-    databases: &mut Databases,
-    caller: &str,
-    reason: CloseReason,
-    ends: impl Fn(&DbEntry) -> bool,
-) -> Vec<Arc<Session>> {
-    let mut ended = Vec::new();
-    databases.entries.retain(|_, entry| {
-        if entry.caller != caller || !ends(entry) {
-            return true;
-        }
-        match entry.session.take() {
-            Some(session) => {
-                ended.push(session);
-                false
-            }
-            None => {
-                entry.ended.get_or_insert(reason);
-                true
-            }
-        }
-    });
-    ended
-}
-
-fn close_all(sessions: Vec<Arc<Session>>, reason: CloseReason) {
-    for session in sessions {
-        session.close(reason);
     }
 }
 
@@ -350,24 +323,12 @@ fn refuse_agents(caller: &str) -> Result<(), BridgeError> {
     }
 }
 
-fn limits(rows: Option<u64>, bytes: Option<u64>) -> Result<Limits, BridgeError> {
+pub(crate) fn limits(rows: Option<u64>, bytes: Option<u64>) -> Result<Limits, BridgeError> {
     Limits::new(rows, bytes).map_err(db_error)
 }
 
-fn empty_open() -> DbOpenResult {
-    DbOpenResult {
-        session_id: None,
-        pid: None,
-        auth: None,
-        tls: None,
-        parameters: None,
-        error: None,
-        needs_password: None,
-    }
-}
-
 /// A session's failure as the bridge says it.
-fn db_error(failure: desk_pg::Error) -> BridgeError {
+pub(crate) fn db_error(failure: desk_pg::Error) -> BridgeError {
     use desk_pg::Error as E;
     let code = match &failure {
         E::Invalid(_) => ErrorCode::InvalidParams,

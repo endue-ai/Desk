@@ -1,14 +1,14 @@
-// What the plugin does around a console's results and the explorer: copy and export a result as a
-// format (a copy as TSV with an HTML table beside it, a large one asked first: copy-size.js), copy a
-// cell's value, the history and starred queries of a connection, an object's DDL, exact row counts,
-// and finding the clients again. Each asks through the palette when an argument is missing. No DOM.
+// What the plugin does around a console's results and the explorer: copy a result as a format (a
+// copy as TSV with an HTML table beside it, a large one asked first: copy-size.js) and what an export
+// of it takes, copy a cell's value, the history and starred queries of a connection, an object's
+// DDL, exact row counts, and finding the clients again. Each asks through the palette when an
+// argument is missing. No DOM.
 
 import { tableName } from "./catalog.js";
 import { mayCopy, tooLarge } from "./copy-size.js";
 import { ownDatabase } from "./databases.js";
 import { engineOf } from "./engines/index.js";
 import { oneLine } from "./execute.js";
-import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
 import { FORMATS, formatRows, htmlTable } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
@@ -183,21 +183,11 @@ export function createTools(deps) {
       const refused = "The clipboard refused: select the text and press Mod+C.";
       return (await put(value, undefined, "Copied the value.", refused, false)) ? value : undefined;
     },
-    /** Export the result on screen (or the grid's selection) to a file in ~/Downloads. */
-    async exportTo(/** @type {string | undefined} */ format) {
-      const { set, options, name } = shownResult();
-      const chosen = await formatOf(format, "Database: export the result as");
-      if (!chosen) return undefined;
-      const done = await exportResult(bridge, {
-        set,
-        format: chosen,
-        name,
-        options: { ...options, ...picked() },
-      });
-      const more = set.truncated ? " (the rows loaded; load more rows first for the rest)" : "";
-      view.say(`Exported ${done.rows} rows to ${done.path}${more}.`);
-      void deps.commands.run("desk.files.reveal", { path: done.path }).catch(() => {});
-      return done.path;
+    /** What an export of the result on screen writes (features/export/): the set, its name, and its
+     * options with the grid's selection. */
+    exportable() {
+      const { shown, set, options, name } = shownResult();
+      return { shown, set, name, options: { ...options, ...picked() } };
     },
     /** Pick an earlier statement of this connection (searching for `query`) into the editor. */
     async history(/** @type {string | undefined} */ query) {

@@ -13,6 +13,7 @@ import { dialogsOf, panelsOf } from "./feature-host.js";
 import * as all from "./features/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
+import { rowsLine, whole } from "./rows/window.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
 import { createDialogs } from "./view-dialog.js";
@@ -126,6 +127,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
   );
   // Reading a large output in the result worker shows a bar after 300 ms, with Cancel (#38).
   byId("reading")?.addEventListener("desk-cancel", () => act("cancel"));
+  // A COPY through standard input or output shows its bytes, with Cancel (copy/console.js).
+  byId("copying")?.addEventListener("desk-cancel", () => act("cancel"));
   for (const button of doc.querySelectorAll("[data-page]"))
     button.addEventListener("click", () =>
       act("page", { delta: Number(/** @type {HTMLElement} */ (button).dataset.page) }),
@@ -237,22 +240,28 @@ export function createView(doc, act, features = Object.values(all), options = {}
     if (fresh && quick.value) quick.value = "";
     const page = model.kind === "table" ? model.table : null;
     const tab = model.shown.tabs[model.tab];
+    // A read its cursor keeps, not fully held, sorts and filters on the server (PG-22).
+    const held = tab?.set?.window && !whole(tab.set) ? tab.set.window : null;
+    if (tab?.set?.window && !model.running)
+      summary.textContent = `${model.shown.summary} · ${rowsLine(tab.set, formatCount)}`;
     // A Chart tab (chart/view.js) takes the result's box from the grid, and keeps it while shown.
     const charted = tab?.kind === "chart";
     if (!charted || !charts.showing(tab))
       grid.render(charted ? null : (tab ?? null), fresh, {
         edit: model.edit,
-        server: Boolean(page),
+        server: Boolean(page ?? held),
         ordered: Boolean(page?.order),
         // A table view's columns are the table's (kept across restarts), a result's its own.
         key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
-        sort: page?.sort ?? [],
-        filters: page?.filters ?? [],
+        sort: page?.sort ?? held?.sort ?? [],
+        filters: page?.filters ?? held?.filters ?? [],
       });
     if (charted) charts.show(byId("result"), tab);
     drawn = key;
     if (fresh) record.setAttribute("aria-pressed", String(grid.recording()));
-    if (tab?.set && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
+    // What a session heard is no table's rows: nothing to edit (PG-25).
+    const rows = tab?.set && tab.kind !== "notifications";
+    if (rows && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
       asked = key;
       act("canEdit");
     }
@@ -275,6 +284,17 @@ export function createView(doc, act, features = Object.values(all), options = {}
     reading(reads) {
       const bar = byId("reading");
       if (bar) bar.hidden = reads === 0;
+    },
+    copying(bar) {
+      const el = byId("copying");
+      if (!el) return;
+      el.hidden = !bar;
+      if (!bar) return;
+      el.setAttribute("label", bar.label);
+      el.setAttribute("detail", bar.detail);
+      if (bar.max) el.setAttribute("max", String(bar.max));
+      if (bar.value !== undefined) el.setAttribute("value", String(bar.value));
+      else el.removeAttribute("value");
     },
     editor: () => ({
       text: editorEl.value,
@@ -318,5 +338,10 @@ export function createView(doc, act, features = Object.values(all), options = {}
     cell: () => grid.cursorCell(),
     /** The SQL problems of the console on screen: list them, or go to the next or previous. */
     problems: (/** @type {"list" | "next" | "previous"} */ what) => editor.problems(what),
+    /** The signature help and `*` written out in the console on screen (features/completion/). */
+    signatures: () => editor.signatures(),
+    expandStar: () => editor.expandStar(),
+    /** From the name at the caret to its definition, card or usages (features/navigate/). */
+    navigate: (/** @type {"definition" | "card" | "usages"} */ what) => editor.navigate(what),
   };
 }

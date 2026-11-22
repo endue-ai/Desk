@@ -344,7 +344,8 @@ describe("SQL warnings", () => {
     ).toEqual([["= null", "null-comparison"]]);
   });
 
-  it("1 MB of SQL is checked with its warnings within the problems' budget", async () => {
+  // Its time is held by `just perf-database` (e2e/perf/database/script.perf.ts, ADR 0362).
+  it("1 MB of SQL is checked with its warnings, and again only the statement edited", async () => {
     const unit = (n: number) =>
       [
         `select p.id, p.name from people p join orders o on o.person = p.id where p.email = 'x' and o.total > ${n} order by p.id limit 10`,
@@ -355,23 +356,10 @@ describe("SQL warnings", () => {
     let script = "";
     for (let n = 0; script.length < 1024 * 1024; n++) script += `${unit(n)};\n`;
     const c = await checker();
-    const first: number[] = [];
-    const again: number[] = [];
-    for (let run = 0; run < 3; run++) {
-      const doc = `big-${run}`;
-      let at = performance.now();
-      const done = c.check({ sql: script, doc, warnings: true }, WARN_MODEL);
-      first.push(performance.now() - at);
-      expect(done.problems.length).toBeGreaterThan(100);
-      const edited = script.replace("o.total > 7 ", "o.totl > 7 ");
-      at = performance.now();
-      const next = c.check({ sql: edited, doc, warnings: true }, WARN_MODEL);
-      again.push(performance.now() - at);
-      expect(next.parsed).toBe(1);
-    }
-    const best = { first: Math.min(...first), again: Math.min(...again) };
-    console.log(`warnings, 1 MB: ${JSON.stringify(best)}`);
-    expect(best.first).toBeLessThan(2000);
-    expect(best.again).toBeLessThan(300);
+    const done = c.check({ sql: script, doc: "big", warnings: true }, WARN_MODEL);
+    expect(done.problems.length).toBeGreaterThan(100);
+    const edited = script.replace("o.total > 7 ", "o.totl > 7 ");
+    const next = c.check({ sql: edited, doc: "big", warnings: true }, WARN_MODEL);
+    expect(next.parsed).toBe(1);
   }, 60_000);
 });

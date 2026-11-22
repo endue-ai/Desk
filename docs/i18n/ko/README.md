@@ -22,7 +22,11 @@ endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://githu
 - Windows와 Linux에서는 해당 릴리즈에 기존 설치본과 같은 형식의 패키지가 있으면 그 파일을 사용하세요. Windows는 기존 설치 폴더를 사용하고 Debian의 패키지 이름은 `endue-desk`입니다.
 - 앱을 다시 열면 `~/.desk`에 있던 프로필과 `plugins.lock`, 기존 설정, 권한, 자격 증명 참조를 그대로 사용합니다. v0.3.0처럼 설치 파일만 제공한 Desk 버전은 새 설치 파일로 직접 업데이트하세요.
 
-공식 명령은 `endue`입니다. 소스에서는 `cargo run -p desk-cli -- --help`로 실행할 수 있습니다. v0.3.0 디스크 이미지에는 CLI가 포함되어 있지 않습니다. 기존 스크립트에서는 현재 메이저 버전 동안 `desk`를 계속 사용할 수 있습니다. 서버용 Linux CLI는 배포가 시작되면 별도 다운로드로 제공됩니다.
+공식 명령은 `endue`입니다. 소스에서는 `cargo run -p desk-cli -- --help`로 실행할 수 있습니다. v0.3.0 디스크 이미지에는 CLI가 포함되어 있지 않습니다. 기존 스크립트에서는 현재 메이저 버전 동안 `desk`를 계속 사용할 수 있습니다.
+
+### Linux x86_64 서버
+
+릴리즈 페이지에 **endue CLI for Linux x86_64**가 표시되면 빈 디렉터리에 압축 파일, 서명 파일, `SHA256SUMS-cli`를 받으세요. `sha256sum -c SHA256SUMS-cli`로 확인한 뒤 `tar -xzf endue-cli_*_linux-x86_64.tar.gz`로 압축을 풉니다. `ENDUE_BRAIN_URL`에 사용할 brain v0 서비스 주소를 설정하고 `./endue-cli_*/bin/endue run "hello"`를 실행하세요. v0.3.0에서 받을 수 있는 설치 파일은 macOS 앱입니다. [배포자 서명 검증 방법](../../releasing.md#verify-a-linux-cli-download)
 
 ## 왜 endue인가
 

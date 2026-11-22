@@ -1,0 +1,96 @@
+/* The agent audit panel (features/audit/): a header, what agents may reach (two checks, the
+   sensitive columns as chips with a field to add one), the last sentence said, and the list as a
+   hairline table that scrolls sideways inside the panel. Statements wrap; a failed or refused
+   entry says why under its statement in the muted text. Every colour, font, size and radius comes
+   from the theme's --desk-* tokens; the feature links this sheet itself (features/README.md). */
+
+.audit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  min-width: 0;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.audit-header {
+  flex-wrap: wrap;
+}
+
+.audit-access {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+}
+
+.audit-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+}
+
+.audit-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+}
+
+.audit-add .desk-field {
+  flex: 1 1 calc(var(--desk-space-8) * 6);
+  min-width: 0;
+}
+
+.audit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1) var(--desk-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-chip {
+  gap: var(--desk-space-1);
+}
+
+.audit-muted {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.audit-list {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.audit-table {
+  width: 100%;
+  font-size: var(--desk-text-xs);
+}
+
+.audit-table th,
+.audit-table td {
+  vertical-align: top;
+  text-align: start;
+}
+
+.audit-when,
+.audit-num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-num {
+  text-align: end;
+}
+
+.audit-sql code {
+  font-family: var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.audit-error {
+  color: var(--desk-text-muted);
+}

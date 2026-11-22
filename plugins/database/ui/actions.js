@@ -17,7 +17,7 @@ import { codeOf } from "./answer.js";
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   importer: ReturnType<typeof import("./importer.js").createImporter>,
  *   dropped: ReturnType<typeof import("./dropped.js").createDropped>,
- *   complete(text: string, caret: number): Promise<unknown>,
+ *   complete: ReturnType<typeof import("./features/completion/controller.js").createCompletion>["complete"],
  *   cancel(): void,
  * }} Deps
  */
@@ -48,8 +48,13 @@ export function builtinActions(deps) {
     explain: guard(() => consoles.explain(false)),
     explainAnalyze: guard(() => consoles.explain(true)),
     format: guard(async () => view.say(await consoles.format())),
-    complete: (/** @type {string} */ text, /** @type {number} */ caret) =>
-      deps.complete(text, caret).catch(() => undefined),
+    /** What completion offers at the caret (features/completion/controller.js, ADR 0327). */
+    complete: (
+      /** @type {string} */ text,
+      /** @type {number} */ caret,
+      /** @type {number} */ offset = 0,
+      /** @type {"items" | "signature" | "star"} */ want = "items",
+    ) => deps.complete(text, caret, offset, want).catch(() => undefined),
     more: guard(() => consoles.more()),
     cancel: deps.cancel,
     page: guard((/** @type {Parameters<typeof consoles.page>[0]} */ change) =>
@@ -104,6 +109,7 @@ export function builtinActions(deps) {
       importer.change(change),
     ),
     importRun: guard(() => importer.run()),
+    importCheck: guard(() => importer.check()),
     importCancel: () => importer.cancel(),
     create: () => manager.create(),
     importUri: guard(() => manager.importUri(undefined)),

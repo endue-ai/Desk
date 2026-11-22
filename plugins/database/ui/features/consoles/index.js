@@ -4,6 +4,7 @@
 // console-many.js; this folder holds their commands. No DOM.
 
 import { labelOf } from "../../console-list.js";
+import { settle } from "../transactions/settle.js";
 import { runFile } from "./run-file.js";
 
 /**
@@ -71,9 +72,14 @@ async function rename(/** @type {Deps} */ deps, /** @type {Record<string, unknow
   return done;
 }
 
-/** Close a console: the one named, else the one on screen. */
+/** Close a console: the one named, else the one on screen; an open transaction asks first (PG-20). */
 async function close(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
   const target = named(deps, args.console);
+  const shown = target ?? deps.consoles.current();
+  if (shown?.kind === "console" && !shown.running) {
+    const connection = (/** @type {string} */ id) => deps.manager.get(id);
+    await settle({ ...deps, connection }, [shown], `Close ${label(deps, shown)}?`, "Not closed.");
+  }
   const done = await deps.consoles.close(target?.id);
   deps.say(`Closed ${done}.`);
   return done;

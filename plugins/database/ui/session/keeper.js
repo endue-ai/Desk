@@ -6,10 +6,14 @@
 // nothing run again), closes one no run used for the person's minutes (never one in a transaction),
 // keeps under the limits (per connection, and twelve in all, the core's sixteen less four for short
 // runs), letting a table view's idle session go first, closes what the person closes, and takes back
-// a console's session when the frame wakes. No DOM.
+// a console's session when the frame wakes. After the computer slept, a session is checked before
+// its next run (wake.js, PG-105, ADR 0355): one that does not answer is lost, and a run whose open
+// transaction went with it does not run. No DOM.
 
+import { lostLine, SLEPT, SLEPT_REFUSED } from "./lost-words.js";
 import { KEPT_MAX } from "./slots.js";
-import { closedWhy, idleWhy, lostLine, modelOf, newSession } from "./words.js";
+import { monotonic, probe, slept } from "./wake.js";
+import { closedWhy, idleWhy, modelOf, newSession } from "./words.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -19,20 +23,25 @@ import { closedWhy, idleWhy, lostLine, modelOf, newSession } from "./words.js";
  * @typedef {{ owner: string, kind: "console" | "table" }} Owner
  * @typedef {{
  *   owner: string, kind: Owner["kind"], connection: string, sessionId: string, pid: number,
- *   transaction: Transaction, running: boolean, used: number, at: number, timeoutMs: number,
- *   timer?: unknown,
+ *   transaction: Transaction, running: boolean, used: number, at: number, mono: number,
+ *   timeoutMs: number, timer?: unknown,
  * }} Entry
- *   `at` is when a run last ended; `timeoutMs` the statement timeout the session has.
+ *   `at` is when a run last ended (`mono` the same on the monotonic clock); `timeoutMs` the
+ *   statement timeout the session has.
  * @typedef {{ owner: string, sessionId: string, connection: string, timeoutMs: number }} Kept
  *   What the surface state keeps of a console's session, to take it back when the frame wakes.
  * @typedef {{
  *   call(method: string, params: Record<string, unknown>): Promise<any>,
  *   slots: ReturnType<typeof import("./slots.js").createSlots>,
  *   onState(owner: string): void,
- *   onLost(owner: string, line: (label: string) => string): void,
- *   idleMs(): number, limit(): number, now(): number,
+ *   onLost(owner: string, line: (label: string) => string, gone: Gone): void,
+ *   idleMs(): number, limit(): number, now(): number, monotonic?(): number,
  *   setTimer(fn: () => void, ms: number): unknown, clearTimer(timer: unknown): void,
+ *   holds?(owner: string): boolean, ended?(owner: string): void,
  * }} Deps
+ *   `monotonic` is a clock a sleep does not move (performance.now by default); `holds` keeps an
+ *   owner's session the idle timer would close (one that listens, PG-25); `ended` hears an owner's
+ *   session go, before `onLost`.
  * @typedef {{ sessionId: string, pid: number } | { error: DbError }} Opened
  */
 
@@ -49,6 +58,12 @@ export function createKeeper(deps) {
   /** Sessions signing in, by connection. @type {Map<string, number>} */
   const opening = new Map();
   let tick = 0;
+  const mono = deps.monotonic ?? monotonic;
+  /** Mark an entry used now, on both clocks. */
+  const touch = (/** @type {Entry} */ entry) => {
+    entry.at = deps.now();
+    entry.mono = mono();
+  };
 
   /** Forget an entry: its slot goes back, its timer stops. */
   const drop = (/** @type {Entry} */ entry) => {
@@ -57,6 +72,7 @@ export function createKeeper(deps) {
     owners.delete(entry.sessionId);
     deps.clearTimer(entry.timer);
     deps.slots.give("kept");
+    deps.ended?.(entry.owner);
     return true;
   };
   /** End an entry's session: the person's close (no `why`), or the idle timer's. */
@@ -68,12 +84,35 @@ export function createKeeper(deps) {
     deps.onState(entry.owner);
   };
   /** A session that ended without the person: lost, said, and new at the next run. */
-  const lose = (/** @type {Entry} */ entry, /** @type {string} */ why) => {
+  const lose = (
+    /** @type {Entry} */ entry,
+    /** @type {string} */ why,
+    /** @type {string} */ reason,
+  ) => {
     if (!drop(entry)) return;
-    const was = { why, transaction: entry.transaction, lost: true };
+    /** @type {Gone} */
+    const was = { why, transaction: entry.transaction, lost: true, reason };
     gone.set(entry.owner, was);
     deps.onState(entry.owner);
-    deps.onLost(entry.owner, (label) => lostLine(label, was));
+    deps.onLost(entry.owner, (label) => lostLine(label, was), was);
+  };
+  /**
+   * After a sleep, whether the entry's session still answers; one that does not is closed and lost.
+   * @returns {Promise<boolean>}
+   */
+  const awake = async (/** @type {Entry} */ entry) => {
+    if (!slept({ wall: entry.at, mono: entry.mono }, { wall: deps.now(), mono: mono() }))
+      return true;
+    const checked = await probe(deps.call, entry.sessionId, deps);
+    if (entries.get(entry.owner) !== entry) return false;
+    touch(entry);
+    if (checked.alive) {
+      if (checked.transaction) entry.transaction = checked.transaction;
+      return true;
+    }
+    void deps.call("db.close", { sessionId: entry.sessionId }).catch(() => {});
+    lose(entry, SLEPT, "slept");
+    return false;
   };
 
   const arm = (/** @type {Entry} */ entry, ms = deps.idleMs()) => {
@@ -85,7 +124,11 @@ export function createKeeper(deps) {
     const ms = deps.idleMs();
     if (entries.get(entry.owner) !== entry || ms <= 0) return;
     const left = entry.at + ms - deps.now();
-    const busy = entry.running || entry.transaction !== "idle" || turns.has(entry.owner);
+    const busy =
+      entry.running ||
+      entry.transaction !== "idle" ||
+      turns.has(entry.owner) ||
+      deps.holds?.(entry.owner) === true;
     if (busy || left > 0) arm(entry, left > 0 ? left : ms);
     else shut(entry, idleWhy(ms));
   };
@@ -120,8 +163,13 @@ export function createKeeper(deps) {
   const acquire = async (who, conn, timeoutMs, open) => {
     const had = entries.get(who.owner);
     if (had?.connection === conn.id) {
-      had.used = ++tick;
-      return { entry: had, notes: [] };
+      const held = had.transaction !== "idle";
+      if (await awake(had)) {
+        had.used = ++tick;
+        return { entry: had, notes: [] };
+      }
+      // Its transaction went with it: this run was meant to run inside it, so it does not.
+      if (held) return { error: { kind: "client", message: SLEPT_REFUSED } };
     }
     if (had) shut(had, "");
     const full = room(conn);
@@ -151,6 +199,7 @@ export function createKeeper(deps) {
       running: false,
       used: ++tick,
       at: deps.now(),
+      mono: mono(),
       timeoutMs,
     };
     entries.set(who.owner, entry);
@@ -188,7 +237,7 @@ export function createKeeper(deps) {
           return { done: await work(entry, notes) };
         } finally {
           entry.running = false;
-          entry.at = deps.now();
+          touch(entry);
           if (entries.get(who.owner) === entry) arm(entry);
           deps.onState(who.owner);
         }
@@ -200,12 +249,12 @@ export function createKeeper(deps) {
     /** db.closed: a session the plugin still keeps is lost. */
     closed(/** @type {import("@endue-ai/bridge").DbClosedData} */ data) {
       const entry = entries.get(owners.get(data.sessionId) ?? "");
-      if (entry) lose(entry, closedWhy(data));
+      if (entry) lose(entry, closedWhy(data), data.reason);
     },
     /** A run found its session gone (`why`): lost, as db.closed would say. */
     lost(/** @type {string} */ sessionId, /** @type {string} */ why) {
       const entry = entries.get(owners.get(sessionId) ?? "");
-      if (entry) lose(entry, why);
+      if (entry) lose(entry, why, "run");
     },
     /** Close the sessions `test` takes: a console's, a connection's. Their transactions roll back. */
     close(/** @type {(entry: Entry) => boolean} */ test) {
@@ -220,6 +269,8 @@ export function createKeeper(deps) {
     /** The sessions `test` takes that are in a transaction, open or failed. */
     inTransaction: (/** @type {(entry: Entry) => boolean} */ test) =>
       [...entries.values()].filter((e) => test(e) && e.transaction !== "idle"),
+    /** The owner of a kept session. */
+    ownerOf: (/** @type {string} */ sessionId) => owners.get(sessionId),
     /** What the header shows for an owner. */
     state: (/** @type {string} */ owner) => modelOf(entries.get(owner), gone.get(owner)),
     /** The consoles' sessions, for the surface state. @returns {Kept[]} */
@@ -261,6 +312,7 @@ export function createKeeper(deps) {
           running: false,
           used: ++tick,
           at: deps.now(),
+          mono: mono(),
           timeoutMs: kept.timeoutMs,
         };
         entries.set(entry.owner, entry);

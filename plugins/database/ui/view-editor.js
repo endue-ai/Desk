@@ -1,17 +1,20 @@
 // The SQL editor: the vendored editor component (ADR 0282) in the console's box, with the plugin's
 // own lexer for highlighting, brackets, quotes and folds (editor/lexing.js), completion from the
-// controller (editor/completion.js), find and replace (editor/search-panel.js), several carets and
+// controller (editor/completion.js) with a call's signature help (editor/signature-help.js), find and replace (editor/search-panel.js), several carets and
 // column selection (Alt+drag), comment and indent toggles, and an undo history per console: each
 // console's editor state (text, history, selection, folds, scroll) is kept while the plugin runs.
+// F12, Shift+F12, Alt+F12 and a resting pointer go from a name to what it means (navigate/editor.js).
 // The console's textarea stays the handle the surface holds (editor/facade.js). The controller
 // answers what to offer and runs; this only draws and edits. SQL problems are diagnose/'s.
 
 import { sqlProblems } from "./diagnose/editor.js";
-import { sqlCompletion } from "./editor/completion.js";
+import { expandStar, sqlCompletion } from "./editor/completion.js";
 import { attachFacade, textOf } from "./editor/facade.js";
 import { editorKeymap } from "./editor/keymap.js";
 import { dialectFacet, sqlLanguage } from "./editor/lexing.js";
 import { findAndReplace } from "./editor/search-panel.js";
+import { signatureHelp } from "./editor/signature-help.js";
+import { navigation } from "./navigate/editor.js";
 import {
   Annotation,
   Compartment,
@@ -65,6 +68,8 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
   const dialect = new Compartment();
   const readOnly = new Compartment();
   const problems = sqlProblems(act);
+  const signatures = signatureHelp(act);
+  const navigate = navigation(act);
   const fixed = [
     sqlLanguage,
     history(),
@@ -88,7 +93,9 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     }),
     findAndReplace(),
     sqlCompletion(act),
+    signatures.extension,
     problems.extension,
+    navigate.extension,
     editorKeymap((action) => act(action), running),
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
@@ -107,6 +114,7 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     });
 
   const view = new EditorView({ state: stateOf("", "postgresql"), parent: box });
+  const editorShown = () => !box.hidden && !view.state.readOnly;
   layer.hidden = true;
   list.hidden = true;
   attachFacade(editor, view, {
@@ -168,6 +176,13 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     },
     repaint: () => view.requestMeasure(),
     close: () => closeCompletion(view),
+    /** Show the arguments of the call at the caret; false when it is in none. */
+    signatures: () => (editorShown() ? signatures.ask(view) : false),
+    /** Write out the `*` at the caret as its columns; false when there is none. */
+    expandStar: () => (editorShown() ? expandStar(view, act) : false),
+    /** Go to the definition of the name at the caret, show its card or find its usages. */
+    navigate: (/** @type {import("./navigate/controller.js").What} */ what) =>
+      box.hidden ? false : navigate.run(view, what),
     /** Step through the SQL problems or list them; false when this editor has none to check. */
     problems: (/** @type {"list" | "next" | "previous"} */ what) => problems.step(view, what),
     /** What the problems are checked against may have changed (the schema cache, a setting). */

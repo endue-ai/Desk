@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "forget the SSH host key trusted for a host and port",
+  "instance": {
+    "id": 41,
+    "method": "db.hostKeys.delete",
+    "params": {
+      "host": "bastion.example.test",
+      "port": 22
+    }
+  }
+}

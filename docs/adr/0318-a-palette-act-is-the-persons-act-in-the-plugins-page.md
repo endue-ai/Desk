@@ -67,4 +67,4 @@ the one place a command is the person's own pick.
 * Bad, because the lend gives a page the focus for five seconds that the compositor did not: a page that
   draws its own focus ring may show it meanwhile.
 * Bad, because the shell reads the relay's messages for two event names; a renamed event drops the
-  activation (the unit tests and the app e2e `database-copy` pin them).
+  activation (the unit tests and the app e2e `database-clipboard` pin them).

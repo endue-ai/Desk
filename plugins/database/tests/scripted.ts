@@ -84,10 +84,12 @@ export function realProcs(options: { password?: string } = {}): {
     name === "open" && options.password && params.password === undefined
       ? { ...params, password: options.password }
       : params;
-  const db = ["open", "run", "fetch", "copy", "cancel", "close", "list"].map((name) => [
-    `db.${name}`,
-    (params: Record<string, unknown>) => bridge.call(`db.${name}`, signed(name, params)),
-  ]);
+  const db = ["open", "run", "script", "describe", "fetch", "copy", "cancel", "close", "list"].map(
+    (name) => [
+      `db.${name}`,
+      (params: Record<string, unknown>) => bridge.call(`db.${name}`, signed(name, params)),
+    ],
+  );
   return {
     handlers: {
       "proc.spawn": (params) => bridge.call("proc.spawn", params),

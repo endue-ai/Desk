@@ -3,9 +3,12 @@
 // query that only reads runs as asked; one that writes runs only after the person says yes,
 // whatever the connection's tag, and a read-only connection refuses it as always. An agent is
 // never shown a password prompt. On PostgreSQL both take another database of the connection's
-// server (PG-13), and describing a connection also lists its server's databases.
+// server (PG-13), and describing a connection also lists its server's databases. A connection
+// closed to agents is not listed, and a query runs as an agent's (features/audit/: read-only,
+// limited, masked, a write asked for this run only, every call on the audit list).
 
 import { homeOf, onDatabase } from "./databases.js";
+import { agentsOf } from "./features/audit/agents.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -31,6 +34,7 @@ const DATABASE = {
 
 /** @param {Deps} deps */
 export function createAgentCommands(deps) {
+  const agents = agentsOf(deps.bridge);
   /**
    * @param {string} id
    * @param {string} title
@@ -65,8 +69,8 @@ export function createAgentCommands(deps) {
     "Database: list connections",
     "The person's database connections: name, engine, where, environment tag, read-only. Never a password.",
     { type: "object", properties: {}, additionalProperties: false },
-    () =>
-      deps.connections().map((c) => ({
+    async () =>
+      (agents ? await agents.visible(deps.connections()) : deps.connections()).map((c) => ({
         id: c.id,
         name: c.name,
         engine: c.engine,
@@ -111,7 +115,7 @@ export function createAgentCommands(deps) {
   provide(
     "endue.database.query",
     "Database: run SQL",
-    "Runs SQL on a connection (on PostgreSQL, on database when given) and answers each statement's columns and rows (maxRows each, 100 by default, 1000 at most), rows affected or error. Statements that change data run only after the person says yes.",
+    "Runs SQL on a connection (on PostgreSQL, on database when given) and answers each statement's columns and rows (maxRows each, 100 by default, 1000 and the settings' row limit at most), rows affected or error. A read runs read-only, within timeoutSeconds and the settings' timeout, with sensitive columns masked; statements that change data run only after the person says yes, for that run only.",
     {
       type: "object",
       properties: {
@@ -119,12 +123,14 @@ export function createAgentCommands(deps) {
         database: DATABASE,
         sql: { type: "string", minLength: 1 },
         maxRows: { type: "integer", minimum: 1, maximum: ROWS_MAX },
+        timeoutSeconds: { type: "integer", minimum: 1 },
       },
       required: ["connection", "sql"],
       additionalProperties: false,
     },
     async (args) => {
       const conn = named(args.connection, args.database);
+      if (agents) return answerOf(await agents.query(conn, String(args.sql), args));
       const maxRows =
         typeof args.maxRows === "number" ? Math.min(ROWS_MAX, args.maxRows) : ROWS_DEFAULT;
       const done = await deps.execute(conn, String(args.sql), {

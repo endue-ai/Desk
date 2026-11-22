@@ -8,6 +8,8 @@ Desktop packages include both commands in their own `cli` directory. On macOS us
 
 On macOS and Linux run the packaged `cli/activate` to link both commands into `~/.local/bin`, or pass your preferred bin directory and put it on PATH. On Windows run the packaged `cli/activate.ps1` in PowerShell to use both commands in that session. Activation checks both names before making changes. If another program owns either name, use the packaged CLI's absolute path. Repeating activation recognizes the existing installation.
 
+On releases that list **endue CLI for Linux x86_64**, download the archive, its signature and `SHA256SUMS-cli`. Verify them with the [release guide](../../docs/releasing.md#verify-a-linux-cli-download), extract the archive in an empty directory and run its `bin/endue` or `bin/activate`. v0.3.0 predates this download.
+
 ## Run on a server
 
 Set `ENDUE_BRAIN_URL` to the HTTP or HTTPS base URL of a service implementing the public brain v0 contract, including its path (typically `/v0`). The existing `DESK_BRAIN_URL` override is also supported. When the service requires a bearer token, provide `ENDUE_BRAIN_TOKEN` through the process environment. Use HTTPS for remote credentials. Local development can use loopback HTTP.

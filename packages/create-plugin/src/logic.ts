@@ -61,11 +61,11 @@ function greetTest({ id }: PluginOptions): string {
 function readme(options: PluginOptions, entry: string): string {
   const command = `${options.id}.greet`;
   return [
-    ...heading(options, "A Desk logic plugin."),
+    ...heading(options, "An endue logic plugin."),
     ...buildSection(entry),
     "## What it does",
     "",
-    "`src/lib.rs` implements the `plugin` world of `desk:host` in `wit/` (`specs/wit` of the Desk",
+    "`src/lib.rs` implements the `plugin` world of `desk:host` in `wit/` (`specs/wit` of the endue",
     `repository). On \`start\` it registers \`${command} { name }\`; \`on-command\` answers it`,
     "through `cmd.answer` with a greeting whose first word is the plugin's `greeting` setting",
     '("Hello" until one is set). Every capability goes through `desk:host`; declare each permission',
@@ -92,7 +92,7 @@ function readme(options: PluginOptions, entry: string): string {
 }
 
 function libRs({ id, name }: PluginOptions): string {
-  return `//! ${oneLine(name)}: a Desk logic plugin, a Wasm component of the \`desk:host\` world (\`wit/\`). On
+  return `//! ${oneLine(name)}: an endue logic plugin, a Wasm component of the \`desk:host\` world (\`wit/\`). On
 //! start it registers its command; it answers it with a greeting whose first word is its
 //! \`greeting\` setting, "Hello" until one is set. Every capability goes through \`desk:host\`.
 

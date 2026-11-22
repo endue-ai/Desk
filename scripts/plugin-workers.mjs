@@ -74,6 +74,11 @@ export const OFF_MAIN = {
         "ui/diagnose/insert.js",
       ],
     },
+    // A file import's .xlsx reader, the vendored one (PG-60, ADR 0363); the page holds import-copy/client.js.
+    {
+      worker: "ui/import-copy/worker.js",
+      modules: ["ui/import-copy/worker.js", "ui/import-copy/xlsx.js", "ui/vendor/sheetjs/xlsx.mjs"],
+    },
   ],
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
   player: {

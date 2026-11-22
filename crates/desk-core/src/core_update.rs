@@ -47,7 +47,7 @@ impl Core {
         let choice = self.set_values().take(RUNTIME, "update.on-restart");
         match choice {
             Ok(Some(Value::String(version))) => updater.apply_on_start(&version),
-            Err(why) => eprintln!("endue Desk: could not consume the update choice ({why})"),
+            Err(why) => eprintln!("endue: could not consume the update choice ({why})"),
             _ => {}
         }
         let core = Arc::downgrade(self);

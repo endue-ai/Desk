@@ -59,12 +59,12 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
 
 test("it attaches the disk images and their checksums and writes the notes' macOS section", () => {
   const attach = workflow("release-macos").jobs.attach;
-  assert.deepEqual(attach.needs, ["gate", "build"]);
+  assert.deepEqual(attach.needs, ["gate", "build", "cli"]);
   assert.deepEqual(attach.permissions, { contents: "write" }, "the only job that writes");
   const download = attach.steps.find((step) => String(step.uses).startsWith("actions/download-"));
-  assert.equal(download.with.pattern, "desk-darwin-*");
+  assert.equal(download.with.pattern, "endue-app-darwin-*");
   const run = scripts(attach);
-  assert.match(run, /sha256sum endue-desk_\*\.dmg > SHA256SUMS-macos/u);
+  assert.match(run, /sha256sum "\$DESKTOP_PREFIX"\*\.dmg > SHA256SUMS-macos/u);
   assert.match(run, /release-assets\.mjs files dist --version "\$VERSION"/u);
   assert.match(run, /gh release upload "\$TAG" "\$\{files\[@\]\}" --clobber/u);
   assert.match(run, /release-assets\.mjs notes body\.md .*--tag "\$TAG"/u);

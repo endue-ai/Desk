@@ -9,6 +9,7 @@ import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import type { PluginMessage } from "./plugin-messages";
 import { named, surfaceUrl } from "./plugin-origins";
 import { PluginAsks } from "./plugins-asks";
+import { closeSessions } from "./plugins-db";
 import {
   broadcast,
   type ChangeHost,
@@ -40,7 +41,7 @@ export class PluginHost {
   readonly #instances = new PluginInstances();
   readonly #search = new WindowSearch(this.#instances, this.#mounted);
   readonly #state = new Map<string, unknown>();
-  /** Turns, watches, subscriptions and processes, by window: kept while one is put away (#160). */
+  /** Turns, watches, subscriptions, processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
   /** Commands delivered to plugins that wait for their reply. */
   readonly #asks = new PluginAsks();
@@ -63,13 +64,17 @@ export class PluginHost {
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
     this.#options = options;
-    this.#commands = new PluginCommands(deps.bridge);
+    this.#commands = new PluginCommands(deps.bridge, {
+      launch: (id) => this.launch(id),
+      post: (id, message) => this.#post(this.#instances.resolve(id) ?? id, message),
+    });
     this.#routes = {
       owners: this.#owners,
       commands: this.#commands,
       instances: this.#instances,
       mounted: this.#mounted,
       post: (key, message) => this.#post(key, message),
+      bridge: deps.bridge,
     };
     this.#changes = {
       mounted: this.#mounted,
@@ -181,17 +186,15 @@ export class PluginHost {
     return this.#greetings.next(key);
   }
 
-  /**
-   * Take a window away for the session, as its `desk:close` does; its work goes on. A plugin's last
-   * window takes the plugin with it, as does a plugin id whose first window is closed.
-   */
+  /** Take a window away for the session, as `desk:close` does: its database sessions end (ADR 0339).
+   * A plugin's last window, or its first, closes the plugin; its manifest's commands stay (#565). */
   unmount(id: string): void {
     const plugin = pluginOf(id);
     // A later window that is not open (a tab kept from an earlier session) takes nothing with it.
     if (plugin !== id && !this.#instances.has(id)) return;
     const others = this.#instances.of(plugin).filter((key) => key !== id);
     if (others.length > 0 && this.#instances.has(id)) this.#close(id);
-    else this.#unmount(plugin);
+    else this.#unmount(plugin, true);
   }
 
   /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
@@ -244,8 +247,7 @@ export class PluginHost {
   /** Mount a plugin: its surface opens now, or on its first use when it starts `asleep` (#590). */
   #mount(info: PluginInfo, asleep = false): void {
     if (info.status !== "ready" || !info.enabled || !this.#mounts(info.manifest)) return;
-    if (this.#mounted.has(info.id)) return;
-    if (this.#deps.mayMount?.(info) === false) return;
+    if (this.#mounted.has(info.id) || this.#deps.mayMount?.(info) === false) return;
     this.#mounted.set(info.id, info);
     this.#open(info, info.id, asleep);
     this.#commands.mounted(info);
@@ -272,19 +274,17 @@ export class PluginHost {
     else this.#sleepers.load(key, open);
   }
 
-  /**
-   * Whether plugins of this manifest's kind get a surface: UI plugins, and native plugins on a
-   * desk whose compositor hosts their processes (#59, ADR 0154).
-   */
+  /** Whether this manifest's kind gets a surface: UI plugins, and native plugins on a desk whose
+   * compositor hosts their processes (#59, ADR 0154). */
   #mounts(manifest: PluginInfo["manifest"]): manifest is NonNullable<PluginInfo["manifest"]> {
     return (
       manifest?.kind === "ui" || (manifest?.kind === "native" && this.#options.native === true)
     );
   }
 
-  #unmount(id: string): void {
+  #unmount(id: string, closed = false): void {
+    this.#commands[closed ? "closed" : "unmounted"](id);
     if (!this.#mounted.delete(id)) return;
-    this.#commands.unmounted(id);
     for (const key of this.#instances.of(id)) this.#close(key);
   }
 
@@ -298,6 +298,7 @@ export class PluginHost {
     this.#sleepers.forget(key);
     this.#cancel(key, "stopped before it answered");
     this.#search.closed(key, this.#deps.bridge);
+    closeSessions(this.#owners, key, this.#deps.bridge);
     if (key !== pluginOf(key)) {
       this.#state.delete(key);
       this.#owners.drop(key);

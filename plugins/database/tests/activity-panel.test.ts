@@ -134,9 +134,10 @@ describe("the activity panel", () => {
     vi.useFakeTimers();
     const { act, handle, el } = draw({ selected: 4243 });
     vi.advanceTimersByTime(4999);
-    expect(act).not.toHaveBeenCalledWith("activityRefresh", "b-1");
+    expect(act).not.toHaveBeenCalledWith("activityRefresh", "b-1", "timer");
     vi.advanceTimersByTime(1);
-    expect(act).toHaveBeenCalledWith("activityRefresh", "b-1");
+    // The period's read says so: Disconnect stops it (ADR 0339).
+    expect(act).toHaveBeenCalledWith("activityRefresh", "b-1", "timer");
     // The next read lands while the row has the focus: the focus stays on that session.
     el.querySelector<HTMLElement>('tr[data-pid="4243"]')?.focus();
     const rows2 = activityRows();

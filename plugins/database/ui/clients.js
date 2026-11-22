@@ -4,7 +4,10 @@
 // mysql-client out of PATH). `--version` says which client it is (mysql or mariadb) and whether it
 // has what the plugin uses: mysql 8.0.19 or mariadb 10.5 (--binary-as-hex), sqlite3 3.37 (-safe).
 // PostgreSQL's pg_dump and pg_restore (features/backup/) are programs found the same way, each
-// named by a setting of its own, from version 13.
+// named by a setting of its own, from version 13, also where each system's PostgreSQL packages put
+// them: the Windows installer's folder per major, Debian's and Red Hat's per-major folders,
+// Homebrew's kegs (docs/platforms.md). A program keeps its bare name: the core adds `.exe` on
+// Windows (PATHEXT), and the manifest grants programs by name (ADR 0260).
 
 /**
  * @typedef {import("./engines/common.js").EngineId} EngineId
@@ -15,6 +18,10 @@
  * @typedef {{ run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> }} Runner
  */
 
+/** PostgreSQL's majors whose per-major folders are looked in, newest first. */
+const MAJORS = [19, 18, 17, 16, 15, 14, 13];
+const perMajor = (/** @type {(major: number) => string} */ folder) => MAJORS.map(folder);
+
 /** Where clients are installed outside PATH, per platform. */
 export const INSTALL_FOLDERS = {
   mac: [
@@ -23,16 +30,25 @@ export const INSTALL_FOLDERS = {
     "/opt/homebrew/opt/mysql-client/bin",
     "/opt/homebrew/opt/mariadb/bin",
     "/opt/homebrew/opt/sqlite/bin",
+    ...perMajor((n) => `/opt/homebrew/opt/postgresql@${n}/bin`),
     "/usr/local/bin",
     "/usr/local/opt/libpq/bin",
     "/usr/local/opt/mysql-client/bin",
     "/usr/local/opt/sqlite/bin",
+    ...perMajor((n) => `/usr/local/opt/postgresql@${n}/bin`),
     "/Applications/Postgres.app/Contents/Versions/latest/bin",
     "/usr/bin",
     "/bin",
   ],
-  linux: ["/usr/local/bin", "/usr/bin", "/bin", "/snap/bin"],
-  windows: [],
+  linux: [
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/snap/bin",
+    ...perMajor((n) => `/usr/lib/postgresql/${n}/bin`),
+    ...perMajor((n) => `/usr/pgsql-${n}/bin`),
+  ],
+  windows: perMajor((n) => `C:\\Program Files\\PostgreSQL\\${n}\\bin`),
 };
 
 /** The oldest client each flavor needs, and what it needs it for. */
@@ -48,6 +64,13 @@ export const INSTALL_HINTS = /** @type {Partial<Record<EngineId, string>>} */ ({
     "Install mysql: brew install mysql-client, or apt install mysql-client (or mariadb-client).",
   sqlite: "Install sqlite3: brew install sqlite, or apt install sqlite3.",
 });
+
+/** How to install one of PostgreSQL's programs on `platform`, said when it is missing. */
+export function installHint(/** @type {string} */ name, /** @type {Platform} */ platform) {
+  if (platform === "windows")
+    return `Install ${name}: the PostgreSQL installer for Windows puts it in C:\\Program Files\\PostgreSQL\\<version>\\bin.`;
+  return `Install ${name}: brew install libpq, or apt install postgresql-client.`;
+}
 
 /** PostgreSQL's own programs, by name: the setting that names another one. */
 export const PROGRAMS = /** @type {const} */ ({ pg_dump: "pgDump", pg_restore: "pgRestore" });
@@ -65,6 +88,12 @@ export function platformOf(/** @type {string | undefined} */ navigatorPlatform) 
 export function searchPath(/** @type {Platform} */ platform, /** @type {string[]} */ extra) {
   return [...extra, ...INSTALL_FOLDERS[platform]].join(platform === "windows" ? ";" : ":");
 }
+
+/** The runner's options for `platform`: how it stops a program, and the PATH it tries after the desk's. */
+export const runsOn = (
+  /** @type {Platform} */ platform,
+  /** @type {() => string[]} */ folders,
+) => ({ platform, searchPath: () => searchPath(platform, folders()) });
 
 /** PostgreSQL's "client": the core's sessions, nothing to find or run. @type {Client} */
 export const BUILT_IN = Object.freeze({ command: "", flavor: "postgresql", version: "" });
@@ -134,8 +163,9 @@ export function tooOld(/** @type {Client} */ client) {
  * Finds and remembers each engine's client for the session.
  * @param {Runner} runner
  * @param {() => Settings} settings
+ * @param {Platform} [platform] the system the desk runs on: its install hints and command lines
  */
-export function createClients(runner, settings) {
+export function createClients(runner, settings, platform = "mac") {
   /** @type {Map<string, Promise<Client>>} */
   const found = new Map();
 
@@ -153,7 +183,8 @@ export function createClients(runner, settings) {
       },
       { timeoutMs: 10_000 },
     );
-    const parsed = parse(`${outcome.stdout}\n${outcome.stderr}`.trim().split("\n")[0] ?? "");
+    const first = `${outcome.stdout}\n${outcome.stderr}`.trim().split(/\r?\n/u)[0] ?? "";
+    const parsed = parse(first);
     if (!parsed) throw new Error(`${command} --version did not say which client it is.`);
     return { command, ...parsed };
   };
@@ -199,6 +230,7 @@ export function createClients(runner, settings) {
   };
 
   return {
+    platform,
     /** The client for an engine, found once per session (a failure is tried again next time). */
     get(/** @type {EngineId} */ engine) {
       if (engine === "postgresql") return Promise.resolve(BUILT_IN);
@@ -208,9 +240,13 @@ export function createClients(runner, settings) {
     },
     /** pg_dump or pg_restore, found once per session as a client is. */
     program(/** @type {Program} */ name) {
-      const hint = `Install ${name}: brew install libpq, or apt install postgresql-client.`;
       return once(name, () =>
-        find(programCandidates(name, settings()), hint, parseProgram, programTooOld),
+        find(
+          programCandidates(name, settings()),
+          installHint(name, platform),
+          parseProgram,
+          programTooOld,
+        ),
       );
     },
     /** Forget what was found, after the settings change or for a fresh check. */

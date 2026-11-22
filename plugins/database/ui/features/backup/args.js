@@ -227,7 +227,9 @@ export function restoreArgs(o, { path, database, list }) {
 
 /**
  * The environment a program connects with: libpq's PG* variables, the password only when one was
- * typed this session (else libpq reads the person's ~/.pgpass).
+ * typed this session (else libpq reads the person's ~/.pgpass). The client certificate and key go
+ * as paths; libpq has no variable for a key's passphrase, so an encrypted key works on the
+ * session path only (ADR 0331).
  * @param {Connection} conn
  * @param {string | undefined} password
  */
@@ -244,6 +246,8 @@ export function connectionEnv(conn, password) {
   set("PGPASSWORD", password);
   set("PGSSLMODE", conn.ssl === "default" ? "" : conn.ssl);
   set("PGSSLROOTCERT", conn.sslCa);
+  set("PGSSLCERT", conn.sslCert);
+  set("PGSSLKEY", conn.sslKey);
   set("PGCONNECT_TIMEOUT", "10");
   set("PGAPPNAME", "endue Desk");
   set("LC_ALL", "C");
@@ -255,16 +259,27 @@ const SAFE = /^[A-Za-z0-9_./:=@%+,-]+$/u;
 export const shellWord = (/** @type {string} */ word) =>
   SAFE.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`;
 
-/** The exact command line, as a terminal would run it from the home folder, without the password. */
-export function commandLine(
-  /** @type {string} */ command,
-  /** @type {string[]} */ args,
-  /** @type {Record<string, string>} */ env,
-) {
-  const vars = Object.entries(env)
-    .filter(([key]) => key !== "PGPASSWORD")
-    .map(([key, value]) => `${key}=${shellWord(value)}`);
-  return [...vars, shellWord(command), ...args.map(shellWord)].join(" ");
+const POWERSHELL_SAFE = /^[A-Za-z0-9_./:=%+\\-][A-Za-z0-9_./:=@%+\\-]*$/u;
+/** A word as PowerShell reads it back: bare when safe (no `@`, `$`, `,` or `;` that it reads), else quoted. */
+export const powershellWord = (/** @type {string} */ word) =>
+  POWERSHELL_SAFE.test(word) ? word : `'${word.replaceAll("'", "''")}'`;
+
+/**
+ * The exact command line, as a terminal of the system would run it from the home folder, without
+ * the password: POSIX shell words, or on Windows PowerShell's (`$env:` variables, `&` to call).
+ * @param {string} command
+ * @param {string[]} args
+ * @param {Record<string, string>} env
+ * @param {import("../../clients.js").Platform} [platform]
+ */
+export function commandLine(command, args, env, platform = "mac") {
+  const vars = Object.entries(env).filter(([key]) => key !== "PGPASSWORD");
+  if (platform === "windows") {
+    const sets = vars.map(([key, value]) => `$env:${key}='${value.replaceAll("'", "''")}'; `);
+    return `${sets.join("")}& ${[command, ...args].map(powershellWord).join(" ")}`;
+  }
+  const words = vars.map(([key, value]) => `${key}=${shellWord(value)}`);
+  return [...words, shellWord(command), ...args.map(shellWord)].join(" ");
 }
 
 /** The name a backup suggests: the database and the minute, `shop-2026-11-21-0930.dump`. */

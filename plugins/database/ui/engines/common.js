@@ -11,10 +11,29 @@
  * @typedef {{
  *   id: string, name: string, engine: EngineId, host: string, port: number | null,
  *   database: string, user: string, ssl: SslMode, sslCa: string, file: string,
- *   tag: Tag, readOnly: boolean, group?: string, color?: string,
+ *   tag: Tag, readOnly: boolean, group?: string, color?: string, sslCert?: string, sslKey?: string,
+ *   searchPath?: string, role?: string, timeZone?: string, lockTimeout?: string,
+ *   idleTimeout?: string, applicationName?: string, startup?: string,
+ *   passwordCommand?: string, pooler?: boolean,
+ *   sshHost?: string, sshPort?: number, sshUser?: string, sshAuth?: "key" | "agent" | "password",
+ *   sshKey?: string, sshJump?: string,
  * }} Connection
- * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[] }} ResultSet
- *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription).
+ *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
+ *   (ADR 0331); paths only. `searchPath` to `startup`: a PostgreSQL connection's session options,
+ *   each only when set (pg-options.js). `passwordCommand` and `pooler`: PG-14's (auth/fields.js).
+ *   `sshHost` to `sshJump`: its SSH tunnel, kept only when it has one (tunnel/fields.js, ADR 0359).
+ * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[], origins?: { table: number, column: number }[], window?: Window }} ResultSet
+ *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription); `origins` each
+ *   column's table OID and column number there (0 and 0 for an expression; ctid is column -1);
+ *   `window` the rows held of a read its cursor still holds (PG-22, engines/pg-cursor.js).
+ * @typedef {{
+ *   id: string, first: number, known: number, done: boolean, page: number,
+ *   base?: string, sort?: import("../grid/filters.js").SortKey[], filters?: import("../grid/filters.js").Filter[],
+ *   gone?: string, widths?: { ch: number, px: number[] },
+ * }} Window
+ *   `first` is the row number of the first row held; `known` the rows the server gave so far (all of
+ *   them when `done`); `base` the statement before the grid's ORDER BY or WHERE went around it; `gone`
+ *   why the rest cannot be read.
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
  * @typedef {{ kind: ErrorKind, message: string, code?: string, detail?: string, position?: number }} DbError
  *   `position` is an offset in the statement's text.
@@ -28,9 +47,10 @@
  * @typedef {{
  *   command: string, args: string[], env: Record<string, string>, cwd?: string,
  *   nonce: string, statements: Statement[], maxRows: number,
- *   counter?: Counter, stopAfter: number,
+ *   counter?: Counter, stopAfter: number, reason?: string,
  * }} Invocation
- *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows).
+ *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows);
+ *   `reason` is what the desk's ask for the program says, when not the client's words.
  * @typedef {{
  *   code: number | null, signal: string | null, stdout: string, stderr: string,
  *   stopped: boolean, cancelled: boolean, timedOut: boolean, overflow: boolean, ms: number,

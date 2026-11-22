@@ -137,15 +137,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-*
+          pattern: endue-app-*
           path: dist
           merge-multiple: true
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Write and sign release.json
         run: |
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum "$DESKTOP_PREFIX"* "endue-cli_${VERSION}_"* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"

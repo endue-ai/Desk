@@ -81,6 +81,7 @@ export function lookupEntry(
  * @param {{ outputs?: Scope["outputs"], fallback?: Scope["outputs"] }} [order]
  */
 export function bindColumnRef(ctx, scope, ref, order = {}) {
+  if (ctx.probe && ref.location === ctx.probe.at) ctx.probe.hit = { scope };
   const fields = listOf(ref.fields);
   const star = kindOf(fields[fields.length - 1]) === "A_Star";
   const parts = fields.filter((f) => kindOf(f) === "String").map((f) => stringOf(f) ?? "");
