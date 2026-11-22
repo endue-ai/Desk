@@ -31,7 +31,7 @@ nothing here is read at run time.
 
 ```bash
 node --test scripts/cef-fetch.test.mjs scripts/cef-package.test.mjs scripts/cef-sign-macos.test.mjs
-just package-shell && just smoke "target/packager/aarch64-apple-darwin/bundle/dmg/endue Desk_0.0.0_aarch64.dmg"
+just package-shell && just smoke "target/packager/aarch64-apple-darwin/bundle/dmg/endue_0.0.0_aarch64.dmg"
 ```
 
 Signing with a Developer ID, notarisation, Windows and Linux run where the identities and the OSes
