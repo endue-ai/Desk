@@ -99,7 +99,9 @@ describe("the objects feature", () => {
     await action(m, "objectMenu")(orders);
     const labels = (asked?: Asked) => asked?.items.map((i) => i.label);
     expect(m.picks.at(-1)?.title).toBe("Database: table public.orders");
+    // The table form's entry (features/table-design/) comes first on PostgreSQL.
     expect(labels(m.picks.at(-1))).toEqual([
+      "Change the table's design…",
       "Rename…",
       "Move to another schema…",
       "Change the owner…",

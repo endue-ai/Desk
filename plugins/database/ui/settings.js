@@ -1,7 +1,8 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
 // default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
-// whether Save lays a bound .sql file out first (`format-on-save`); `snippets` the person's own
+// whether Save lays a bound .sql file out first (`format-on-save`). The `session*` settings bound the
+// PostgreSQL sessions consoles and table views keep (PG-02, ADR 0320); `snippets` the person's own
 // completion snippets, name to template (editor/snippets.js, ADR 0327).
 import { ownSnippets } from "./editor/snippets.js";
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
@@ -13,7 +14,8 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
- *   pgDump: string, pgRestore: string, snippets: Record<string, string>,
+ *   pgDump: string, pgRestore: string, sessionsPerConnection: number, sessionIdleMinutes: number,
+ *   snippets: Record<string, string>,
  * }} Settings
  */
 
@@ -41,6 +43,8 @@ export const DEFAULTS = Object.freeze({
   problemsNames: true,
   pgDump: "",
   pgRestore: "",
+  sessionsPerConnection: 8,
+  sessionIdleMinutes: 30,
   snippets: Object.freeze({}),
 });
 
@@ -77,6 +81,8 @@ const KEYS =
     problemsNames: { key: "endue.database.problems-names" },
     pgDump: { key: "endue.database.pg-dump" },
     pgRestore: { key: "endue.database.pg-restore" },
+    sessionsPerConnection: { key: "endue.database.sessions-per-connection", min: 1, max: 12 },
+    sessionIdleMinutes: { key: "endue.database.session-idle-minutes", min: 0, max: 1440 },
     snippets: { key: "endue.database.snippets" },
   });
 

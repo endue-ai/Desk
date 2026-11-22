@@ -95,8 +95,9 @@ describe("the schema cache in the plugin", () => {
     await m.host.command("endue.database.run");
     m.view.text = "alter table public.people add column age integer";
     await m.host.command("endue.database.run");
-    await until(m, () => ran(m).length === 24);
-    const after = ran(m).slice(14);
+    // The console's two runs share its session (PG-02): the pass comes after 12 + 1.
+    await until(m, () => ran(m).length === 23);
+    const after = ran(m).slice(13);
     expect(after.map(kindOf)).toEqual(SCHEMAS);
     for (const sql of after.slice(1)) expect(schemasOf(sql)).toEqual(["public"]);
     await open(m, "public", "Tables", "people", "Columns");
