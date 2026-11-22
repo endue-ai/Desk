@@ -173,14 +173,16 @@ jobs:
           merge-multiple: true
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: dist/endue-desk_*
+          subject-path: |
+            dist/endue-desk_*
+            dist/endue-cli_*
       - name: Write and sign release.json
         run: |
           notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$COMMIT" --notes "$notes" --min-from "$MIN_FROM" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum endue-desk_* endue-cli_* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build (listed nowhere yet)
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
@@ -195,7 +197,7 @@ jobs:
           {
             echo "Built from $CANDIDATE, which ran on beta first."
             echo
-            echo "## Download"
+            echo "## endue app"
             echo
             for path in dist/endue-desk_*; do
               file="${path##*/}"
@@ -205,6 +207,10 @@ jobs:
             echo
             echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Provenance: \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
             echo "Installed desks on the stable channel update themselves as the rollout widens."
+            if [ -f "dist/endue-cli_${VERSION}_linux-x86_64.tar.gz" ]; then
+              echo
+              node scripts/release-assets.mjs cli-section "$VERSION" --repo "$GITHUB_REPOSITORY"
+            fi
           } > downloads.md
           args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue $VERSION" --generate-notes --notes-file downloads.md)
           if [ -n "$NOTES_START" ]; then args+=(--notes-start-tag "$NOTES_START"); fi

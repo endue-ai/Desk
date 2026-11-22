@@ -4,9 +4,11 @@
 // folder once and compiles it once; a parser that stopped (a trap) is started again for the next
 // request. Models come once each, by key, and are kept until the page says to forget them. Format
 // SQL's layout (../layout/, ADR 0292) runs here too, on the same parser, and a `check` finds a
-// script's problems for the editor (../../diagnose/check.js, ADR 0294). It imports only relative
+// script's problems for the editor (../../diagnose/check.js, ADR 0294), and a `complete` the
+// candidates at a caret over the same state (../../editor/statement.js, ADR 0327). It imports only relative
 // files: import maps do not reach a module worker.
 import { createChecker } from "../../diagnose/check.js";
+import { createCompleter } from "../../editor/statement.js";
 import { createLayout } from "../layout/layout.js";
 import { indexModel } from "./model.js";
 import { createParse } from "./parse.js";
@@ -21,6 +23,7 @@ import { loadLibpgQuery } from "./wasm.js";
  *   | { id: number, type: "resolve", sql: string, model: number, searchPath?: string[], user?: string }
  *   | { id: number, type: "layout", sql: string, style: unknown, at?: number }
  *   | { id: number, type: "check", model?: number } & import("../../diagnose/check.js").CheckRequest
+ *   | { id: number, type: "complete", model?: number } & import("../../editor/statement.js").CompleteRequest
  *   | { type: "model", key: number, model: SchemaModel }
  *   | { type: "forget", key: number }} Request
  * @typedef {{ id: number, result: unknown } | { id: number, error: string }} Reply
@@ -46,6 +49,7 @@ export function createService(raw, models = new Map()) {
   const parse = createParse(raw);
   const layout = createLayout(raw);
   const checker = createChecker(raw);
+  const completer = createCompleter(raw, checker);
   return {
     raw,
     /** @param {Request} request @returns {Reply | undefined} */
@@ -64,10 +68,12 @@ export function createService(raw, models = new Map()) {
           const at = request.at === undefined ? {} : { at: request.at };
           return { id, result: layout(sql, request.style, at) };
         }
-        if (request.type === "check") {
+        if (request.type === "check" || request.type === "complete") {
           const index = request.model === undefined ? undefined : models.get(request.model);
           if (request.model !== undefined && !index)
             throw new Error("The schema model was not sent to the parser.");
+          if (request.type === "complete")
+            return { id, result: completer.complete(request, index) };
           return { id, result: checker.check(request, index) };
         }
         const positions = createPositions(sql);

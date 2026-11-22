@@ -44,14 +44,40 @@ export const SERVER_READS = /** @type {Read[]} */ ([
 /** The reads of an existing table, after the server's. */
 export function tableReads(/** @type {string} */ schema, /** @type {string} */ name) {
   const rel = `pg_catalog.to_regclass(${quoteText(PG, qualified(PG, schema, name))})`;
+  return relationReads(
+    (column) => `${column} = ${rel}`,
+    () => "",
+  );
+}
+
+/**
+ * The same reads of every table of a schema (not its partitions), one statement each, each row
+ * ending with its table's oid (PG-53, features/compare-schema/).
+ */
+export function schemaTableReads(/** @type {string} */ schema) {
+  const tables =
+    "(SELECT r.oid FROM pg_catalog.pg_class r JOIN pg_catalog.pg_namespace rn ON rn.oid = " +
+    `r.relnamespace WHERE rn.nspname = ${quoteText(PG, schema)} AND r.relkind IN ('r', 'p') ` +
+    "AND NOT r.relispartition)";
+  return relationReads(
+    (column) => `${column} IN ${tables}`,
+    (column) => `, ${column}::text AS relid`,
+  );
+}
+
+/**
+ * @param {(column: string) => string} match The condition on a read's relation column.
+ * @param {(column: string) => string} own What a row adds after its fields ("" for one table).
+ */
+function relationReads(match, own) {
   return /** @type {Read[]} */ ([
     {
       key: "table",
       sql:
         "SELECT c.oid::text, c.relkind::text, pg_catalog.pg_get_userbyid(c.relowner) AS owner, " +
         "coalesce(pg_catalog.obj_description(c.oid, 'pg_class'), '') AS comment, " +
-        "coalesce(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition, c.relispartition::text " +
-        `FROM pg_catalog.pg_class c WHERE c.oid = ${rel}`,
+        "coalesce(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition, c.relispartition::text" +
+        `${own("c.oid")} FROM pg_catalog.pg_class c WHERE ${match("c.oid")}`,
     },
     {
       key: "columns",
@@ -63,13 +89,13 @@ export function tableReads(/** @type {string} */ schema, /** @type {string} */ n
         "a.atttypmod) FROM '\\(([^)]*)\\)'), '') ELSE '' END AS length, a.attnotnull::text, " +
         "a.attidentity::text, a.attgenerated::text, " +
         "coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid, true), '') AS expression, " +
-        "coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS comment " +
+        `coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS comment${own("a.attrelid")} ` +
         "FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON t.oid = a.atttypid " +
         "LEFT JOIN pg_catalog.pg_type e ON t.typcategory = 'A' AND e.oid = t.typelem " +
         "JOIN pg_catalog.pg_type b ON b.oid = coalesce(e.oid, t.oid) " +
         "JOIN pg_catalog.pg_namespace bn ON bn.oid = b.typnamespace " +
         "LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum " +
-        `WHERE a.attrelid = ${rel} AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum`,
+        `WHERE ${match("a.attrelid")} AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum`,
     },
     {
       key: "constraints",
@@ -88,10 +114,10 @@ export function tableReads(/** @type {string} */ schema, /** @type {string} */ n
         "OR i.indoption::text ~ '[1-9]'))) OR pg_catalog.pg_get_constraintdef(k.oid) ~ " +
         "'NULLS NOT DISTINCT|ON (DELETE|UPDATE) SET (NULL|DEFAULT) \\(')::text AS kept, " +
         "pg_catalog.pg_get_constraintdef(k.oid, true) AS definition, " +
-        "(k.confrelid = k.conrelid)::text AS self " +
+        `(k.confrelid = k.conrelid)::text AS self${own("k.conrelid")} ` +
         "FROM pg_catalog.pg_constraint k LEFT JOIN pg_catalog.pg_class fc ON fc.oid = k.confrelid " +
         "LEFT JOIN pg_catalog.pg_namespace fn ON fn.oid = fc.relnamespace " +
-        `WHERE k.conrelid = ${rel} AND k.contype IN ('p', 'u', 'c', 'f', 'x') ` +
+        `WHERE ${match("k.conrelid")} AND k.contype IN ('p', 'u', 'c', 'f', 'x') ` +
         "ORDER BY k.contype, k.conname",
     },
     {
@@ -107,9 +133,10 @@ export function tableReads(/** @type {string} */ schema, /** @type {string} */ n
         "OR ic.reltablespace <> 0 OR NOT i.indisvalid OR EXISTS (SELECT FROM " +
         "pg_catalog.unnest(i.indclass::oid[]) o(c) JOIN pg_catalog.pg_opclass oc ON oc.oid = o.c " +
         "WHERE NOT oc.opcdefault))::text AS kept, pg_catalog.pg_get_indexdef(i.indexrelid) AS " +
-        "definition FROM pg_catalog.pg_index i JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid " +
+        `definition${own("i.indrelid")} FROM pg_catalog.pg_index i` +
+        " JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid " +
         "JOIN pg_catalog.pg_am am ON am.oid = ic.relam " +
-        `WHERE i.indrelid = ${rel} AND NOT EXISTS (SELECT FROM pg_catalog.pg_constraint k ` +
+        `WHERE ${match("i.indrelid")} AND NOT EXISTS (SELECT FROM pg_catalog.pg_constraint k ` +
         "WHERE k.conindid = i.indexrelid AND k.conrelid = i.indrelid " +
         "AND k.contype IN ('p', 'u', 'x')) ORDER BY ic.relname",
     },

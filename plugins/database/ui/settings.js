@@ -5,7 +5,9 @@
 // (ui/sql/layout/style.js, ADR 0292) and whether Save lays a bound .sql file out first (`format-on-save`).
 // The `problems-*` settings say which of the editor's SQL problems and warnings are told (ADR 0294,
 // ADR 0328). The `session*` settings bound the PostgreSQL sessions consoles and table views keep
-// (PG-02, ADR 0320).
+// (PG-02, ADR 0320); `snippets` the person's own completion snippets, name to template
+// (editor/snippets.js, ADR 0327).
+import { ownSnippets } from "./editor/snippets.js";
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -17,6 +19,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
  *   problemsWarnings: boolean, problemsWarningsOff: string[],
  *   pgDump: string, pgRestore: string, sessionsPerConnection: number, sessionIdleMinutes: number,
+ *   snippets: Record<string, string>,
  * }} Settings
  */
 
@@ -48,6 +51,7 @@ export const DEFAULTS = Object.freeze({
   pgRestore: "",
   sessionsPerConnection: 8,
   sessionIdleMinutes: 30,
+  snippets: Object.freeze({}),
 });
 
 /** The manifest key of each setting, the range of the numbers and the choices of the strings. */
@@ -87,6 +91,7 @@ const KEYS =
     pgRestore: { key: "endue.database.pg-restore" },
     sessionsPerConnection: { key: "endue.database.sessions-per-connection", min: 1, max: 12 },
     sessionIdleMinutes: { key: "endue.database.session-idle-minutes", min: 0, max: 1440 },
+    snippets: { key: "endue.database.snippets" },
   });
 
 /** The setting keys as the manifest declares them, in order. */
@@ -141,6 +146,11 @@ export function checked(values) {
   for (const [name, { key, min, max, choices }] of Object.entries(KEYS)) {
     if (!(key in values)) continue;
     const value = values[key];
+    // The person's snippets keep each entry that is a name and a template (editor/snippets.js).
+    if (name === "snippets") {
+      settings[name] = ownSnippets(value);
+      continue;
+    }
     const fallback = /** @type {Record<string, unknown>} */ (DEFAULTS)[name];
     const low = min ?? 0;
     const high = max ?? Number.MAX_SAFE_INTEGER;
