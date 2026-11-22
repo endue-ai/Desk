@@ -25,9 +25,14 @@ describe("portable endue scaffolds", () => {
       const folder = join(root, parent, "sample theme");
       const output: string[] = [];
       const write = (line: string) => output.push(line);
-      expect(await main([folder, "--kind", "theme", "--name", "Sample", "--id", "endue.sample"], {
-        cwd: root, desk: join(root, hint), out: write, err: write,
-      })).toBe(0);
+      expect(
+        await main([folder, "--kind", "theme", "--name", "Sample", "--id", "endue.sample"], {
+          cwd: root,
+          desk: join(root, hint),
+          out: write,
+          err: write,
+        }),
+      ).toBe(0);
       expect(readdirSync(folder).sort()).toEqual(["README.md", "plugin.json", "tests"]);
       expect(readdirSync(join(folder, "tests"))).toEqual(["theme.test.ts"]);
       for (const [path, contents] of Object.entries(baseline)) {

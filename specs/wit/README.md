@@ -1,7 +1,7 @@
 # specs/wit
 
 Two packages, parsed as one folder. `desk-host.wit` is the host interface (`desk:host`) logic plugins
-import as Wasm components. It is a subset of the Desk bridge: every function is one bridge method named
+import as Wasm components. It is a subset of the endue bridge: every function is one bridge method named
 `<interface>.<function>`. `desk-connector.wit` holds the nested package `desk:connector`, the world Wasm
 connectors build to (below); it has no top-level `package` line, so the folder stays one main package.
 

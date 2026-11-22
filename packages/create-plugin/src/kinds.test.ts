@@ -65,6 +65,7 @@ describe("the kinds", () => {
     expect(await main([`my-${kind}`, "--kind", kind], io)).toBe(0);
     const manifest = readJson(join(cwd, `my-${kind}`, "plugin.json")) as PluginManifest;
     expect(manifest).toMatchObject({ id: `local.my-${kind}`, kind });
-    expect(out.find((line) => line.includes("plugin test"))).toContain(join(cwd, `my-${kind}`));
+    expect(out).toContain("  endue plugin test .");
+    expect(out.join("\n").includes(cwd)).toBe(false);
   });
 });
