@@ -2,7 +2,7 @@
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
 // a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
 // page and its count, the pages of the shop's people and orders, joined by a foreign key
-// (links-fixture.ts), and fails `select 1/0`. Every other statement gets nothing back. Fixture data
+// (links-fixture.ts), 3,000 rows of rows_demo (PG-22), and fails `select 1/0`. Every other statement gets nothing back. Fixture data
 // only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer } from "./clients";
@@ -88,6 +88,14 @@ export function pgFixtureScript(sql: string): Answer {
     return { rows: [COLUMNS.map(([name]) => name ?? ""), ...ROWS] };
   if (/^SELECT count\(\*\) FROM "public"\."items"/u.test(text))
     return { rows: [["count"], [String(ROWS.length)]] };
+  // A read larger than a page, which a console reads through a cursor (PG-22).
+  if (text === "select n, label from rows_demo")
+    return {
+      rows: [
+        ["n", "label"],
+        ...Array.from({ length: 3000 }, (_, i) => [`${i + 1}`, `row ${i + 1}`]),
+      ],
+    };
   // A statement that fails, for a console's failed transaction (PG-02).
   if (text === "select 1/0") return { error: "division by zero", code: "22012" };
   return {};
