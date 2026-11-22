@@ -367,7 +367,8 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
       draw,
     ),
     ctx.runtime.keymap.onChange(draw),
-    listen(el, "pointerover", (e) => {
+    // Boundary events from a redraw can briefly hit the rail at the same pointer position.
+    listen(el, "pointermove", (e) => {
       if (target(e)?.dataset.rail === "arrange") hover();
       else leave();
     }),
