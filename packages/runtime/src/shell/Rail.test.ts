@@ -233,6 +233,23 @@ describe("the Arrange button (ADR 0220)", () => {
     expect(actions()).not.toBeNull();
   });
 
+  it("stays closed under a stationary pointer when a press redraws the Arrange button", () => {
+    over(button());
+    button()?.click();
+    off(root.querySelector(".rail"));
+    vi.advanceTimersByTime(500);
+    over(button());
+    const pressed = button();
+    pressed?.click();
+    expect(button()).not.toBe(pressed);
+    // Chromium hit-tests the new button under the stationary pointer after the redraw.
+    over(button());
+    expect(actions()).toBeNull();
+    over(root.querySelector('[data-rail="tasks"]'));
+    over(button());
+    expect(actions()).not.toBeNull();
+  });
+
   it("opens over no other popover of the rail", () => {
     store.set({ popover: "tasks" });
     over(button());
