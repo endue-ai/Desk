@@ -201,9 +201,10 @@ describe.skipIf(!uri)("objects changed on a real PostgreSQL", () => {
 
     const totals = await m.host.command("endue.database.edit-source", { ...at, name: "totals" });
     expect(totals).toMatch(/COMMENT ON MATERIALIZED VIEW "obj476"\."totals" IS 'Per person';/u);
+    // Before 16 the server writes the column with its table's name (sum(orders.total)).
     m.view.text = String(totals).replace(
-      "sum(total) AS total",
-      "sum(total) AS total, count(*) AS n",
+      /sum\((\w+\.)?total\) AS total/u,
+      "sum($1total) AS total, count(*) AS n",
     );
     await m.host.command("endue.database.apply-source");
     expect(

@@ -55,8 +55,12 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
     return { cache, sqls };
   };
   const SCHEMAS = ["t446_a", "t446_b"];
+  /** The server's server_version_num: PostgreSQL 18 keeps NOT NULL as constraints of their own. */
+  let version = 0;
 
   beforeAll(async () => {
+    const shown = await elsewhere("SHOW server_version_num");
+    version = Number(shown.result.statements[0]?.sets[0]?.rows[0]?.[0]);
     await elsewhere("DROP SCHEMA IF EXISTS t446_a, t446_b CASCADE");
     await elsewhere(
       "CREATE SCHEMA t446_a; CREATE SCHEMA t446_b;\n" +
@@ -114,6 +118,8 @@ describe.skipIf(!pgUri)("the schema cache on a real PostgreSQL", () => {
         ?.map((p) => [p.kind, p.name]),
     ).toEqual([
       ["check", "orders_total_check"],
+      // From 18 the primary key's column holds a NOT NULL constraint (contype 'n') too.
+      ...(version >= 180000 ? [["constraint", "orders_id_not_null"]] : []),
       ["foreign key", "orders_person_fkey"],
       ["primary key", "orders_pkey"],
       ["index", "orders_person"],

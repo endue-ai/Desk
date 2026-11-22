@@ -4,7 +4,8 @@
 // closing a connection's sessions ends, the scope Cancel stops (the buffer on screen and the
 // plugin's own reads), Disconnect's stop of what runs and what the plugin would start on its own
 // (gate.js, ADR 0339), and the consoles' sessions taken back when the frame wakes; a refused one
-// says how to ask again (connect-gate.js, ADR 0335). No DOM.
+// says how to ask again (connect-gate.js, ADR 0335); a console's transaction across runs, Manual
+// mode's BEGIN and what the header counts of it (transactions.js, PG-20). No DOM.
 
 import { createHelper } from "../auth/helper.js";
 import { createSessions } from "../engines/pg-session.js";
@@ -12,6 +13,7 @@ import { createPassphrases } from "../engines/pg-tls.js";
 import { wordRefusals } from "./connect-gate.js";
 import { createGate } from "./gate.js";
 import { keyOf, sessionLabel } from "./owners.js";
+import { chosenOf, createTransactions } from "./transactions.js";
 import { reasonsOf } from "./words.js";
 
 /**
@@ -64,9 +66,25 @@ export function createPluginSessions(deps) {
       : {}),
   });
   const worded = wordRefusals(sessions);
-  const pg = { ...worded, run: (conn, plan) => gate.run(conn, plan, worded.run) };
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;
+  const transactions = createTransactions({
+    chosen: (owner) => {
+      const target = byOwner(owner);
+      return target?.kind === "console" ? chosenOf(target) : undefined;
+    },
+    held: (owner) => worded.inTransaction((e) => e.owner === owner).length > 0,
+    flagMs: () => deps.settings().transactionIdleMinutes * 60_000,
+    now: () => Date.now(),
+  });
+  const pg = {
+    ...worded,
+    run: (
+      /** @type {Connection} */ conn,
+      /** @type {import("../engines/pg-script.js").Plan} */ plan,
+    ) => transactions.run(conn, plan, (c, p) => gate.run(c, p, worded.run)),
+    state: (/** @type {string} */ owner) => transactions.model(owner, worded.state(owner)),
+  };
 
   return {
     pg,

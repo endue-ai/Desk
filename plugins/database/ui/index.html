@@ -21,6 +21,12 @@
       <h1 id="title">Database</h1>
       <span id="badge" class="tag" hidden></span>
       <span id="session" role="status" hidden><span id="session-label"></span><span class="desk-dot"></span></span>
+      <span id="transaction-bar" hidden>
+        <button type="button" id="tx-mode" data-act="toggleTransactionMode" title="Auto commit: each statement commits by itself. Manual commit: the first statement begins a transaction, kept until Commit or Rollback" class="desk-btn desk-btn-quiet">Auto commit</button>
+        <span id="transaction" hidden></span>
+        <button type="button" id="tx-commit" data-act="commitTransaction" title="Commit the console's transaction (Mod+Shift+Y)" class="desk-btn desk-btn-quiet" hidden>Commit</button>
+        <button type="button" id="tx-rollback" data-act="rollbackTransaction" title="Roll back the console's transaction (Mod+Shift+S)" class="desk-btn desk-btn-quiet" hidden>Rollback</button>
+      </span>
       <button type="button" id="database" data-act="switchDatabase" title="The database it runs on: pick another of its server" class="desk-btn desk-btn-quiet" hidden></button>
       <span id="session-options" title="The role and the search path each session of this connection starts with" hidden></span>
       <nav id="actions" aria-label="Run" hidden>
