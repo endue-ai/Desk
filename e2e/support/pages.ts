@@ -52,8 +52,12 @@ export function pluginPage(url: string, plugin: string): boolean {
   return url.startsWith("desk-plugin://") && new URL(url).pathname.startsWith(`/${plugin}/`);
 }
 
-/** Run `body` in plugin `plugin`'s page, once it has one (15 s at most); back on the desk's after. */
-export async function inPluginPage<T>(plugin: string, body: () => Promise<T>): Promise<T> {
+/** Run `body` in the plugin's page. For per-file surfaces, `matches` selects the open instance. */
+export async function inPluginPage<T>(
+  plugin: string,
+  body: () => Promise<T>,
+  matches?: () => Promise<boolean>,
+): Promise<T> {
   const done: { value?: T } = {};
   await browser.waitUntil(
     async () => {
@@ -61,13 +65,14 @@ export async function inPluginPage<T>(plugin: string, body: () => Promise<T>): P
         `plugin:${plugin}`,
         (url) => pluginPage(url, plugin),
         async () => {
+          if (matches && !(await matches())) return undefined;
           done.value = await body();
           return true;
         },
       );
       return ran === true;
     },
-    { timeout: 15_000, timeoutMsg: `${plugin} has no page of its own` },
+    { timeout: 15_000, timeoutMsg: `${plugin} has no matching page` },
   );
   return done.value as T;
 }
