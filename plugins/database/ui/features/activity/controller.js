@@ -116,8 +116,9 @@ export function createActivity(deps) {
     return picked ? deps.manager.get(picked) : undefined;
   };
 
-  /** Read a panel's connection again; `again` waits for a read in flight and reads once more. */
-  const refresh = async (/** @type {string} */ id, again = false) => {
+  /** Read a panel's connection again; `again` waits for a read in flight and reads once more;
+   * `background` is the panel's period's, which a disconnected connection refuses (ADR 0339). */
+  const refresh = async (/** @type {string} */ id, again = false, background = false) => {
     const running = inFlight.get(id);
     if (running && !again) return running;
     if (running) await running;
@@ -127,7 +128,7 @@ export function createActivity(deps) {
     const work = (async () => {
       update(id, { reading: true, conn: about(conn) });
       try {
-        const read = await reader.read(conn);
+        const read = await reader.read(conn, background);
         update(id, { read, error: "", reading: false });
         return read;
       } catch (error) {

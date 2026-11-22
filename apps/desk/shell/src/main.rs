@@ -124,6 +124,9 @@ fn main() -> ExitCode {
     let restart = shell.restarts_for_stall();
     drop(shell);
     cef::shutdown();
+    // No database session outlives the desk: each ends, a running statement cancelled first, for
+    // five seconds at most (ADR 0339).
+    kept.core.quit_databases(std::time::Duration::from_secs(5));
     // Every quit the desk agrees to ends here (ADR 0187): the next start then has nothing to say.
     if outcome.is_ok() {
         kept.start.quit();
