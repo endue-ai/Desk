@@ -1,7 +1,8 @@
 //! rustls for PostgreSQL's TLS modes, with ring as the provider as in desk-sys. `verify-full`
 //! checks the chain and the host name, `verify-ca` the chain only, against the given authorities or
 //! the OS's trust store; `require` and `prefer` encrypt without checking who answers, unless
-//! authorities are given, when `require` checks the chain as libpq does.
+//! authorities are given, when `require` checks the chain as libpq does. A client certificate, when
+//! given, answers the server's CertificateRequest in every mode.
 
 use std::sync::Arc;
 
@@ -10,14 +11,21 @@ use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, Server
 use rustls::crypto::WebPkiSupportedAlgorithms;
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::sign::SingleCertAndKey;
 use rustls::{
     CertificateError, ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme,
 };
 
+use crate::client_cert::ClientCert;
 use crate::config::TlsMode;
 
-/// The client configuration for `mode`, trusting `ca` (PEM) or the OS's store.
-pub(crate) fn config(mode: TlsMode, ca: Option<&[u8]>) -> Result<Arc<ClientConfig>, String> {
+/// The client configuration for `mode`, trusting `ca` (PEM) or the OS's store, presenting
+/// `client` when the server asks for a certificate.
+pub(crate) fn config(
+    mode: TlsMode,
+    ca: Option<&[u8]>,
+    client: Option<&ClientCert>,
+) -> Result<Arc<ClientConfig>, String> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let builder = ClientConfig::builder_with_provider(provider.clone())
         .with_safe_default_protocol_versions()
@@ -46,10 +54,15 @@ pub(crate) fn config(mode: TlsMode, ca: Option<&[u8]>) -> Result<Arc<ClientConfi
         (TlsMode::Require | TlsMode::VerifyCa, _) => checked(false)?,
         (TlsMode::VerifyFull, _) => checked(true)?,
     };
-    let config = builder
+    let builder = builder
         .dangerous()
-        .with_custom_certificate_verifier(verifier)
-        .with_no_client_auth();
+        .with_custom_certificate_verifier(verifier);
+    let config = match client {
+        Some(client) => {
+            builder.with_client_cert_resolver(Arc::new(SingleCertAndKey::from(client.0.clone())))
+        }
+        None => builder.with_no_client_auth(),
+    };
     Ok(Arc::new(config))
 }
 
@@ -160,14 +173,14 @@ mod tests {
     #[test]
     fn every_mode_but_disable_has_a_configuration() {
         for mode in [TlsMode::Prefer, TlsMode::Require] {
-            assert!(config(mode, None).is_ok(), "{mode:?}");
+            assert!(config(mode, None, None).is_ok(), "{mode:?}");
         }
-        assert!(config(TlsMode::Disable, None).is_err());
+        assert!(config(TlsMode::Disable, None, None).is_err());
     }
 
     #[test]
     fn authorities_must_hold_a_certificate() {
-        let error = config(TlsMode::VerifyFull, Some(b"no PEM here")).unwrap_err();
+        let error = config(TlsMode::VerifyFull, Some(b"no PEM here"), None).unwrap_err();
         assert!(error.contains("no certificate"), "{error}");
     }
 
