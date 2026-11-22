@@ -142,7 +142,7 @@
             <p class="hint">Every session of this connection signs in with these and runs the startup script first. Empty fields keep the server's own.</p>
           </div>
         </details>
-        <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it.</p>
+        <p class="hint">No password is kept with the connection: the client's own files (~/.pgpass, ~/.my.cnf) answer first, and when the server asks, you type it once per session, or once for good when the keychain remembers it; a password command prints a fresh one for each session.</p>
         <p id="form-error" class="error" role="alert"></p>
         <p id="form-note" class="note" role="status"></p>
         <p class="buttons">
