@@ -8,6 +8,7 @@ import { CORE_SETTINGS } from "../core/defaults";
 import { Settings } from "../settings";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
+import korean from "./messages/ko.json";
 import { mountShortcutBar } from "./ShortcutBar";
 import { SHORTCUTS, type Shortcut } from "./shortcuts";
 
@@ -123,7 +124,8 @@ describe("the shortcut bar (ADR 0274)", () => {
     expect(focused()).toBe("shortcuts-filter");
     expect(button("shortcuts-add").getAttribute("aria-expanded")).toBe("true");
     const titles = [...(popover?.querySelectorAll(".pop-title") ?? [])].map((t) => t.textContent);
-    expect(titles).toEqual(["Desk", "Plugins"]);
+    expect(titles).toEqual(["endue", "Plugins"]);
+    expect(korean["system.shortcuts.desk"]).toBe("endue");
     expect(choice("command:desk.palette.open")?.getAttribute("aria-pressed")).toBe("true");
 
     choice("plugin:endue.notes")?.click();
