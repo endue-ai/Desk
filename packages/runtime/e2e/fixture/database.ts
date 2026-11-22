@@ -12,7 +12,9 @@
 // value search over two schemas of tables (search-fixture.ts), and fs.* over a folder in memory
 // with one .sql file (`window.__files`, what saves and exports wrote). dialog.save answers a place
 // in ~/Pictures for an image and the backup's place otherwise; a backup's save and open dialogs,
-// and the scripted pg_dump and pg_restore, are backup-fixture.ts's. Never shipped.
+// and the scripted pg_dump and pg_restore, are backup-fixture.ts's. A connections file waits in
+// ~/Transfer for an import, whose open dialog answers it; an export's save dialog answers a place
+// there. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -58,7 +60,27 @@ const policies = Object.values(manifests).filter(
 );
 
 let emit: (event: BridgeEvent) => void = () => {};
-const files: Record<string, string> = { "~/queries/report.sql": "select * from orders;\n" };
+const TRANSFER = "~/Transfer/team-connections.json";
+const files: Record<string, string> = {
+  "~/queries/report.sql": "select * from orders;\n",
+  [TRANSFER]: `${JSON.stringify({
+    format: "endue.database.connections",
+    version: 1,
+    exported: "2026-11-22T09:00:00.000Z",
+    connections: [
+      { ...FIXTURE_CONNECTION, tag: "staging", readOnly: true },
+      {
+        ...FIXTURE_CONNECTION,
+        id: "c-team-reports",
+        name: "team reports",
+        file: "~/reports.db",
+        group: "Team",
+        color: "chart-3",
+      },
+      { ...FIXTURE_CONNECTION, id: "c-team-wh", name: "Warehouse", file: "~/warehouse.db" },
+    ],
+  })}\n`,
+};
 (window as unknown as { __files: Record<string, string> }).__files = files;
 const fsHandlers: StubHandlers = {
   "fs.read": ({ path, offset, length, encoding }) => {
@@ -86,6 +108,7 @@ const backup = backupHandlers(
   procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>,
 );
 const backupSave = backup["dialog.save"] as NonNullable<StubHandlers["dialog.save"]>;
+const backupOpen = backup["dialog.open"] as NonNullable<StubHandlers["dialog.open"]>;
 const clock = new ManualClock();
 const core = browserCore({
   manifests: [...policies, databaseManifest as PluginManifest],
@@ -124,11 +147,18 @@ const core = browserCore({
     ),
     ...fsHandlers,
     ...backup,
-    // An exported image goes to ~/Pictures; anything else is the backup's to place.
+    // An exported image goes to ~/Pictures, exported connections to ~/Transfer; anything else is
+    // the backup's to place.
     "dialog.save": (params, caller) =>
       /\.(?:svg|png)$/u.test(params.suggestedName ?? "")
         ? { cancelled: false, path: `~/Pictures/${params.suggestedName}` }
-        : backupSave(params, caller),
+        : /\.json$/u.test(params.suggestedName ?? "")
+          ? { cancelled: false, path: `~/Transfer/${params.suggestedName}` }
+          : backupSave(params, caller),
+    "dialog.open": (params, caller) =>
+      /connections/u.test(params.title ?? "")
+        ? { cancelled: false, paths: [TRANSFER] }
+        : backupOpen(params, caller),
   },
   open: () => {},
 });
