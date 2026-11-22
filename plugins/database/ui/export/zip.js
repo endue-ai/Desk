@@ -15,9 +15,9 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
-/** The CRC-32 of bytes, as zip records it. */
-export function crc32(/** @type {Uint8Array} */ data) {
-  let crc = 0xffffffff;
+/** The CRC-32 of bytes, as zip records it; `previous`, the CRC of the bytes before them. */
+export function crc32(/** @type {Uint8Array} */ data, previous = 0) {
+  let crc = (previous ^ 0xffffffff) >>> 0;
   for (let i = 0; i < data.length; i++)
     crc = (CRC_TABLE[(crc ^ (data[i] ?? 0)) & 0xff] ?? 0) ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;

@@ -2062,6 +2062,222 @@
         }
       },
       {
+        "id": "endue.database.export-all",
+        "title": "Database: export every row to a file",
+        "keywords": [
+          "export all",
+          "whole table",
+          "large",
+          "stream",
+          "copy",
+          "csv",
+          "download",
+          "save",
+          "gzip"
+        ],
+        "description": "Exports every row of the result's statement on screen, or of the table a table view shows, straight from the server to a file, however large, without loading the rows into the grid: one read-only transaction with one snapshot, the server's COPY for CSV and TSV when its output matches the options, written under a temporary name and renamed at the end, so a cancel leaves no file. The person always chooses the place in the save dialog. It answers the files, their rows and bytes.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "description": "The connection, by name or id, with sql or table; else the one on screen."
+            },
+            "sql": {
+              "type": "string",
+              "description": "One read to export instead of the result on screen."
+            },
+            "table": {
+              "type": "string",
+              "description": "A table to export, as schema.table (public when no schema)."
+            },
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "compress": {
+              "type": "boolean",
+              "description": "gzip the file (.gz added); not for xlsx."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.export-tables",
+        "title": "Database: export tables to a folder",
+        "keywords": ["export all", "schema", "many tables", "folder", "dump", "csv", "gzip"],
+        "description": "Exports every row of a schema's tables (or the tables named) to a folder the person chooses, one file each, in one read-only transaction with one snapshot, optionally gzipped. A file already there is kept: the next free name is taken.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "description": "The connection, by name or id; picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "description": "The schema; picked when absent."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only these tables of the schema."
+            },
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "compress": {
+              "type": "boolean",
+              "description": "gzip each file (.gz added); not for xlsx."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.export-cancel",
+        "title": "Database: cancel the export",
+        "keywords": ["stop", "abort", "export all"]
+      },
+      {
         "id": "endue.database.add-row",
         "title": "Database: add a row",
         "keywords": ["insert", "new row", "edit"]
