@@ -21,8 +21,8 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   presents a client certificate (`docs/client-cert.md`); a socket folder or an IPv6 host is not supported yet.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
-- A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
-  install them; a setting may name another client or its full path. Check the clients says which one runs and
+- A client is found on the desk's PATH, else in the folders the `path` setting adds and where each system
+  installs them ([`platforms.md`](platforms.md)); a setting may name another client or its full path. Check the clients says which one runs and
   whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
@@ -364,7 +364,7 @@ Modules: `features/routines/`.
   plugin's folder). A plain SQL file runs as a script through run-file, on a session. A read-only connection refuses it and
   production is always asked first.
 - Both forms show the exact command line, never the password; it goes in `PGPASSWORD` of the program's own
-  environment when typed this session, else libpq reads `~/.pgpass`. Each program must be at least the
+  environment when typed this session, else libpq reads `~/.pgpass` (Windows: `%APPDATA%\postgresql\pgpass.conf`). Each program must be at least the
   server's major version (read through a session) and is found by its own setting (`.pg-dump`,
   `.pg-restore`), on the desk's PATH or in the `path` setting's folders.
 - The run has a log panel: the verbose lines as they come, tables written or entries restored, Cancel
