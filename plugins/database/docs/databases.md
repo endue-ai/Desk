@@ -17,5 +17,5 @@ One PostgreSQL connection reaches every database of its server (ADR 0321). The r
 - Agents' `.schema` and `.query` take an optional `database` of the server; `.schema` without a schema also
   lists the databases.
 
-Modules: `databases.js`, `explorer-databases.js`, `explorer-table.js`, `features/databases/`, `manage.js`,
+Modules: `databases.js`, `explorer-databases.js`, `explorer-table.js`, `features/databases/`, `manage-databases.js`,
 `schema-cache/`.

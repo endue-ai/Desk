@@ -87,4 +87,4 @@ another database takes a console id of its own. Agents' `.schema` and `.query` t
 Issue #450 (PG-13), plan #438; ADR 0281 (the core's sessions), ADR 0285 and ADR 0295 (the schema
 cache and its server reader), ADR 0311 (the keychain), ADR 0286 (many consoles). Code:
 `plugins/database/ui/databases.js`, `ui/explorer-databases.js`, `ui/features/databases/`,
-`ui/manage.js`, `ui/schema-cache/index.js`.
+`ui/manage-databases.js`, `ui/schema-cache/index.js`.

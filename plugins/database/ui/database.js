@@ -29,6 +29,7 @@ import { addHistory } from "./history.js";
 import { createImporter } from "./importer.js";
 import { createKeychain } from "./keychain.js";
 import { createManager } from "./manage.js";
+import { onDatabases } from "./manage-databases.js";
 import { answerRequests } from "./requests.js";
 import { createRunner } from "./run.js";
 import { bridgeStore } from "./schema-cache/store.js";
@@ -128,24 +129,26 @@ export function createDatabase({ bridge, commands, state, settings: source }, vi
   // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
   const keychain = createKeychain(bridge, () => changed());
   /** @type {ReturnType<typeof createManager>} */
-  const manager = createManager({
-    bridge,
-    view,
-    pick,
-    confirm,
-    execute: (conn, sql, opts) => execute(conn, sql, opts),
-    keychain,
-    forget: async (connection) => {
-      await catalog.drop(connection);
-      explorer.reread(connection);
-      await consoles.drop(connection);
-    },
-    renamed: (conn) => consoles.renamed(conn),
-    changed: () => changed(),
-    sessions: held.connections,
-    cancelled,
-    ...(options.random ? { random: options.random } : {}),
-  });
+  const manager = onDatabases(
+    createManager({
+      bridge,
+      view,
+      pick,
+      confirm,
+      execute: (conn, sql, opts) => execute(conn, sql, opts),
+      keychain,
+      forget: async (connection) => {
+        await catalog.drop(connection);
+        explorer.reread(connection);
+        await consoles.drop(connection);
+      },
+      renamed: (conn) => consoles.renamed(conn),
+      changed: () => changed(),
+      sessions: held.connections,
+      cancelled,
+      ...(options.random ? { random: options.random } : {}),
+    }),
+  );
   const executor = createExecutor({
     runner,
     output,
