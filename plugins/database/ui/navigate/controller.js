@@ -8,7 +8,6 @@
 // find usages asks the server anything. No DOM.
 import { problemModel } from "../diagnose/model.js";
 import { sqlParser } from "../sql/parse/client.js";
-import { effectivePath } from "../sql/parse/scope.js";
 import { cardOf } from "./card.js";
 import { findUsages } from "./find.js";
 import { aimAt, definitionOf } from "./target.js";
@@ -27,6 +26,14 @@ import { aimAt, definitionOf } from "./target.js";
  */
 
 export const PANEL = "usages";
+
+/**
+ * The schemas an unqualified type name is looked for in: the search path with `$user` as the user,
+ * as sql/parse/scope.js's effectivePath walks it (not imported: that module is the parse worker's,
+ * and the page must not load the parser's modules).
+ */
+export const typePath = (/** @type {string[]} */ searchPath, /** @type {string} */ user) =>
+  searchPath.flatMap((s) => (s === "$user" ? (user ? [user] : []) : [s]));
 /** The server's default search path; a role's or a database's own is not known until a session says. */
 const SEARCH_PATH = ["$user", "public"];
 const NOT_PG = "Go to definition, the card and usages read PostgreSQL consoles.";
@@ -58,7 +65,7 @@ export function createNavigator(deps, parser = sqlParser) {
     if (!view || !model || !sql) return "The schema of this connection is not read yet.";
     const options = { searchPath: [...SEARCH_PATH], user: conn.user };
     const resolve = (/** @type {string} */ text) => sql.resolve(text, model, options);
-    return { shown, conn, view, model, resolve, path: effectivePath(SEARCH_PATH, conn.user) };
+    return { shown, conn, view, model, resolve, path: typePath(SEARCH_PATH, conn.user ?? "") };
   };
 
   /** The aim at the window's caret, with what it was read from. */
