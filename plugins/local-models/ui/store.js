@@ -6,6 +6,8 @@
 export const HOME = "~/.endue/local-models";
 export const THREADS = `${HOME}/threads`;
 export const INDEX = `${HOME}/threads.json`;
+const readScope = { permission: "fs:read", paths: [`${HOME}/**`] };
+const writeScope = { permission: "fs:write", paths: [`${HOME}/**`] };
 
 /**
  * @typedef {import("./net.js").Bridge} Bridge
@@ -27,12 +29,13 @@ export function createStore(bridge, { delayMs = 400 } = {}) {
       content: `${JSON.stringify(value, null, 1)}\n`,
       encoding: "utf8",
       createDirs: true,
+      scope: writeScope,
     });
 
   /** @param {string} path */
   const readJson = async (path) => {
     try {
-      const answer = await bridge.call("fs.read", { path, encoding: "utf8" });
+      const answer = await bridge.call("fs.read", { path, encoding: "utf8", scope: readScope });
       return JSON.parse(answer.content);
     } catch (error) {
       if (codeOf(error) === "not_found") return undefined;
@@ -84,7 +87,7 @@ export function createStore(bridge, { delayMs = 400 } = {}) {
       const old = pending.get(path);
       if (old) clearTimeout(old.timer);
       pending.delete(path);
-      await bridge.call("fs.trash", { path }).catch((error) => {
+      await bridge.call("fs.trash", { path, scope: writeScope }).catch((error) => {
         if (codeOf(error) !== "not_found") throw error;
       });
     },
