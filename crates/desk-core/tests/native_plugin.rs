@@ -47,7 +47,8 @@ fn plugin(parent: &Path, platform: &str, script: Option<&str>) -> PathBuf {
     fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     if let Some(script) = script {
         let program = dir.join("bin/plugin");
-        fs::write(&program, format!("#!/bin/sh\n{script}\n")).unwrap();
+        // Bash accepts the full socket descriptor in the fixture's redirections.
+        fs::write(&program, format!("#!/usr/bin/env bash\n{script}\n")).unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -196,7 +197,7 @@ printf '%s\n' '{"id":2,"method":"socket.agent","params":{"agent":"codex"}}' >&"$
 read -r two <&"$DESK_BRIDGE_FD"; printf '%s\n' "$two" >> out
 printf '%s\n' '{"id":3,"method":"fs.read","params":{"path":"~/x","scope":{"permission":"fs:read","paths":["~/**"]}}}' >&"$DESK_BRIDGE_FD"
 read -r three <&"$DESK_BRIDGE_FD"; printf '%s\n' "$three" >> out
-printf '%s %s %s\n' "$DESK_PLUGIN_ID" "$1" "$(pwd)" > env
+printf '%s %s\n' "$DESK_PLUGIN_ID" "$1" > env
 "#;
         let (_process, rx, dir) = start("bridge", script);
         let end = ended(&rx);
