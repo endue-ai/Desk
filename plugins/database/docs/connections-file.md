@@ -39,7 +39,8 @@ The open dialog picks the file (granted with it). It is read and checked, never 
 each entry: a change to the connection with its id (ticked; the fields it changes), one already here
 (skipped), a name another connection here has (unticked; ticked, added as `Name (2)`), or a new one
 (ticked). Nothing is kept until Import. A change keeps this computer's keychain choice; a kept password
-whose host, port or user changed is forgotten, as Save does.
+whose host, port or user changed is forgotten, and a change to how it signs in closes its sessions
+(asked first while one is in a transaction), as Save does.
 
 A `pg_service.conf` imports too: each `[service]` a PostgreSQL connection named after it, from `host`
 (or `hostaddr`), `port`, `dbname`, `user`, `sslmode` (`allow` as `prefer`) and `sslrootcert`. Its
