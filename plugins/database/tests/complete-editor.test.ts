@@ -170,6 +170,54 @@ describe("completion in the editor", () => {
     answer.mockImplementation(() => ({ from: 0, to: 0, wants: [], place: "none", items: [] }));
     expect(await ed.expandStar()).toBe(false);
   });
+
+  it("Enter takes the option shown, right after the list is replaced and while a new answer is pending", async () => {
+    // Each answer comes 40 ms late, as the parse worker's may; the list for "or" stays while "ord"'s is asked.
+    let asked = 0;
+    const answer = vi.fn(
+      (t: string, caret: number) =>
+        new Promise((resolve) => {
+          asked++;
+          setTimeout(
+            () =>
+              resolve({
+                from: caret - (/\w*$/u.exec(t.slice(0, caret))?.[0].length ?? 0),
+                to: caret,
+                wants: [],
+                place: "none",
+                items: [
+                  item({ label: "orders", kind: "join", insert: "orders on orders.person = p.id" }),
+                ],
+              }),
+            40,
+          );
+        }),
+    );
+    const { view } = setup("select * from people p join o", answer as never);
+    select(view, 29);
+    type(view, "r");
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
+    await vi.waitFor(() => expect(currentCompletions(view.state)).toHaveLength(1));
+    // Pressed at once after the list shows: taken, never a new line.
+    expect(press(view, "Enter")).toBe(true);
+    expect(text(view)).toBe("select * from people p join orders on orders.person = p.id");
+
+    const again = setup("select * from people p join o", answer as never);
+    select(again.view, 29);
+    type(again.view, "r");
+    await vi.waitFor(() => expect(currentCompletions(again.view.state)).toHaveLength(1));
+    const before = asked;
+    type(again.view, "d");
+    // Pressed while "ord" is asked again: no new line; the answer comes and its option is taken.
+    expect(press(again.view, "Enter")).toBe(true);
+    expect(text(again.view)).toBe("select * from people p join ord");
+    await vi.waitFor(() =>
+      expect(text(again.view)).toBe("select * from people p join orders on orders.person = p.id"),
+    );
+    expect(asked).toBeGreaterThan(before);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(text(again.view)).toBe("select * from people p join orders on orders.person = p.id");
+  });
 });
 
 describe("signature help in the editor", () => {
