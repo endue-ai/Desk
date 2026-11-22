@@ -173,7 +173,9 @@ test("a known failure is the machine's pg_dump against another major, and it is 
   assert.deepEqual(knownFailures(18, 18), {});
   assert.deepEqual(knownFailures(16, 16), {});
   assert.match(knownFailures(19, 18)[backup], /pg_dump 18 refuses a newer server/u);
-  assert.match(knownFailures(16, 18)[backup], /SET transaction_timeout/u);
+  // A restore onto 15 or 16 with tools 17 or later skips transaction_timeout and passes (#647).
+  assert.deepEqual(knownFailures(16, 18), {});
+  assert.deepEqual(knownFailures(15, 17), {});
   assert.deepEqual(knownFailures(15, 0), {});
   const known = knownFailures(19, 18);
   const states = markKnown({ [backup]: "failed", "t/x-live.test.ts": "failed" }, known);
