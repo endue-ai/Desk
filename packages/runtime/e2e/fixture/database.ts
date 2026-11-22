@@ -10,12 +10,13 @@
 // foreign keys for the ER diagram (diagram-fixture.ts), the routine forms' functions and
 // procedures on every PostgreSQL connection (routine-fixture.ts), one whose server answers the
 // value search over two schemas of tables (search-fixture.ts), the map's parcels and twenty
-// thousand squares as geometry values on every PostgreSQL connection (geo-fixture.ts), and fs.* over
-// a folder in memory with one .sql file (`window.__files`, what saves and exports wrote).
-// dialog.save answers a place in ~/Pictures for an image and the backup's place otherwise; a
-// backup's save and open dialogs, and the scripted pg_dump and pg_restore, are backup-fixture.ts's.
-// A connections file waits in ~/Transfer for an import, whose open dialog answers it; an export's
-// save dialog answers a place there. Never shipped.
+// thousand squares as geometry values on every PostgreSQL connection (geo-fixture.ts), the roles,
+// ACLs, policies and default privileges of the privileges panel on every PostgreSQL connection
+// (privileges-fixture.ts), and fs.* over a folder in memory with one .sql file (`window.__files`,
+// what saves and exports wrote). dialog.save answers a place in ~/Pictures for an image and the
+// backup's place otherwise; a backup's save and open dialogs, and the scripted pg_dump and
+// pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
+// open dialog answers it; an export's save dialog answers a place there. Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -47,6 +48,7 @@ import {
   OVERVIEW_CONNECTION,
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
+import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
@@ -130,25 +132,27 @@ const core = browserCore({
   }),
   handlers: {
     ...procs,
-    // The map's statements answer first, exactly; then the diagram's connection and the value
-    // search's, each by its database; the table form, the routine forms and the overview answer
-    // their own statements exactly, then the maintenance form its own and the objects feature its
-    // own, before the activity view's looser matches.
+    // The privileges panel's and the map's statements answer first, exactly; then the diagram's
+    // connection and the value search's, each by its database; the table form, the routine forms
+    // and the overview answer their own statements exactly, then the maintenance form its own and
+    // the objects feature its own, before the activity view's looser matches.
     ...dbHandlers(
-      geoServer(
-        diagramServer(
-          searchServer(
-            tableDesignServer(
-              routineServer(
-                overviewServer(
-                  maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                    .script,
-                ),
+      privilegesServer(
+        geoServer(
+          diagramServer(
+            searchServer(
+              tableDesignServer(
+                routineServer(
+                  overviewServer(
+                    maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
+                      .script,
+                  ),
+                ).script,
               ).script,
-            ).script,
+            ),
           ),
         ),
-      ),
+      ).script,
       (event) => emit(event),
     ),
     ...fsHandlers,
