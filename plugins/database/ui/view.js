@@ -320,5 +320,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     /** The signature help and `*` written out in the console on screen (features/completion/). */
     signatures: () => editor.signatures(),
     expandStar: () => editor.expandStar(),
+    /** From the name at the caret to its definition, card or usages (features/navigate/). */
+    navigate: (/** @type {"definition" | "card" | "usages"} */ what) => editor.navigate(what),
   };
 }
