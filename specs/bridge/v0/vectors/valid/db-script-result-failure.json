@@ -1,0 +1,8 @@
+{
+  "target": "DbScriptResult",
+  "description": "db.script cut short after one statement: the session's connection failed",
+  "instance": {
+    "pages": [{ "rows": [], "more": false, "tag": "CREATE TABLE", "transaction": "idle" }],
+    "failure": { "code": "io_error", "message": "connection reset by peer" }
+  }
+}

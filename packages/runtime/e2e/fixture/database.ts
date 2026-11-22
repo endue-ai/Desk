@@ -54,6 +54,7 @@ import {
   overviewServer,
 } from "../../../../plugins/database/tests/overview-fixture";
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
+import { renameServer } from "../../../../plugins/database/tests/refactor-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
@@ -156,7 +157,8 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(fixtureScript).script).script,
+                            objectsServer(activityServer(renameServer(fixtureScript)).script)
+                              .script,
                           ).script,
                         ),
                       ).script,

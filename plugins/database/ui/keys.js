@@ -49,6 +49,7 @@ export const BINDINGS = {
     // The console's transaction (features/transactions/, PG-20): Commit and Rollback.
     { chord: "Mod+Shift+Y", action: "commitTransaction", label: "" },
     { chord: "Mod+Shift+S", action: "rollbackTransaction", label: "" },
+    { chord: "F2", action: "renameAtCaret", label: "" },
     // Eris in a console (features/assist/, PG-90): write, explain, fix, explain the plan.
     { chord: "Mod+I", action: "assistWrite", label: "" },
     { chord: "Mod+E", action: "assistExplain", label: "" },

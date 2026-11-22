@@ -14,8 +14,10 @@ mod copy;
 mod error;
 mod page;
 pub mod pgpass;
+mod script;
 mod select;
 mod session;
+mod shared;
 mod signin;
 mod statement;
 mod task;
@@ -29,6 +31,7 @@ pub use page::{
     Column, Copy, Direction, Limits, MAX_PAGE_BYTES, MAX_PAGE_ROWS, MIN_PAGE_BYTES, PAGE_BYTES,
     PAGE_ROWS, Page, Row, Transaction,
 };
+pub use script::Script;
 pub use session::{CloseReason, CopyInput, Event, Opened, Session, Sink, Statement, open};
 pub use signin::Auth;
 

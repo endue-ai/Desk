@@ -232,6 +232,14 @@ last page's `error`, with every field the server sent by name (`severity`, `loca
 `table`, `column`, `dataType`, `constraint`, `file`, `line`, `routine`, and `other` by code); after it
 the session is ready again. A row over 64 MiB ends its result with `invalid_value`.
 
+**db.script** runs `statements` (each `{ sql, params?, paramTypes? }`, 1 to 10,000) in order on the
+session, each as `db.run` runs one, and answers `pages`: each statement's first page, with the notices
+it heard (ADR 0344). It stops after a page with `more` (the result or the COPY FROM STDIN stays open
+for `db.fetch` and `db.copy`), at the first error unless `goOn`, at a FATAL, and at a `db.cancel`, which
+then also stops it before its next statement (`cancelled: true`). A failure that is not the server's,
+which `db.run` would have answered as a bridge error, is `failure` and belongs to the statement after
+the last page; an empty `statements`, a busy session or another caller's are errors of the call.
+
 **db.fetch** answers the next page; `close: true` ends the result without reading on. With no result
 open it is `invalid_params`.
 
