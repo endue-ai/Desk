@@ -1,6 +1,7 @@
 // The connection form and the password prompt. The form shows the fields the engine uses (a file
 // for SQLite; host, port, database, user and TLS for the others; the keychain choice, the client
-// certificate and key files and the session options for PostgreSQL),
+// certificate and key files, the password command, the pooler choice and the session options for
+// PostgreSQL),
 // says what is wrong next to the buttons, and hands the fields back on Save or Test. The password
 // field is type=password, its value leaves the DOM as soon as it is handed over with the prompt's
 // keychain choice (a key file's passphrase is asked in the same prompt, without the choice), and
@@ -29,6 +30,7 @@ const TEXT_FIELDS = /** @type {const} */ ([
   "sslKey",
   "file",
   "group",
+  "passwordCommand",
   ...OPTIONS,
 ]);
 
@@ -48,6 +50,7 @@ export function createForms(doc, act) {
   const color = /** @type {HTMLSelectElement} */ (byId("f-color"));
   const readOnly = /** @type {HTMLInputElement} */ (byId("f-readOnly"));
   const keychain = /** @type {HTMLInputElement} */ (byId("f-keychain"));
+  const pooler = /** @type {HTMLInputElement} */ (byId("f-pooler"));
   const options = /** @type {HTMLDetailsElement} */ (byId("f-options"));
   const input = (/** @type {string} */ name) => /** @type {HTMLInputElement} */ (byId(`f-${name}`));
   const prompt = /** @type {HTMLFormElement} */ (byId("password"));
@@ -88,6 +91,7 @@ export function createForms(doc, act) {
     tag: /** @type {Connection["tag"]} */ (tag.value),
     readOnly: readOnly.checked,
     keychain: keychain.checked,
+    pooler: pooler.checked,
     color: color.value,
   });
 
@@ -95,7 +99,9 @@ export function createForms(doc, act) {
   // session option is one the connection does not set.
   const cancelFields = () => ({
     ...fields(),
-    ...Object.fromEntries(OPTIONS.map((name) => [name, input(name).value || undefined])),
+    ...Object.fromEntries(
+      [...OPTIONS, "passwordCommand"].map((name) => [name, input(name).value || undefined]),
+    ),
     port: input("port").value,
   });
 
@@ -158,6 +164,7 @@ export function createForms(doc, act) {
         tag.value = conn.tag;
         readOnly.checked = conn.readOnly;
         keychain.checked = /** @type {{ keychain?: boolean }} */ (conn).keychain === true;
+        pooler.checked = conn.pooler === true;
         color.value = conn.color ?? "";
         // The session options show open when the connection sets one (PG-12).
         options.open = OPTIONS.some((name) => Boolean(conn[name]));

@@ -56,6 +56,8 @@ describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
 
   it("plans a join the planner misestimates, with its buffers, and offers the server's options", async () => {
     const version = Number(await value("show server_version_num"));
+    // The tables sit in the role's first schema, which need not be public (a search_path of its own).
+    const schema = String(await value("select current_schema()"));
     m.view.answerDialog = () => ["ANALYZE", "BUFFERS", "VERBOSE", "SETTINGS", "TIMING", "SUMMARY"];
     m.view.text = JOIN;
     await m.host.command("endue.database.explain-options");
@@ -73,7 +75,7 @@ describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
     expect(s?.execution).toBeGreaterThan(0);
     expect((s?.buffers?.sharedHit ?? 0) + (s?.buffers?.sharedRead ?? 0)).toBeGreaterThan(0);
     const nodes = flatten(plan).map(({ node }) => node);
-    const customers = nodes.find((n) => /on public\.plan_customers c/u.test(n.label));
+    const customers = nodes.find((n) => n.label.includes(`on ${schema}.plan_customers c`));
     expect(customers?.actualRows).toBe(666);
     expect(customers?.marks.map((mark) => mark.text)).toContain("67× more rows than estimated");
     expect(nodes.every((n) => n.ownTime !== null && n.ownTime >= 0)).toBe(true);

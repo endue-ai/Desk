@@ -9,6 +9,7 @@
 // the statements its transaction held, and opened again on its own or on Reconnect (reconnect.js,
 // PG-105, ADR 0355). No DOM.
 
+import { createHelper } from "../auth/helper.js";
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
 import { connectHeld, wordRefusals } from "./connect-gate.js";
@@ -31,10 +32,13 @@ import { reasonsOf } from "./words.js";
  *   onBusy(running: number): void,
  *   kept?(conn: Connection): string | undefined,
  *   askPassphrase?(conn: Connection, why: string): Promise<string | undefined>,
+ *   runner?: Parameters<typeof createHelper>[0]["runner"],
+ *   confirm?(title: string, reasons: string[]): Promise<boolean>,
  * }} Deps
  *   `consoles` is a getter: the consoles are made after the sessions they run on; `kept` names the
  *   password the keychain keeps for a connection (ADR 0311), for every session it opens;
- *   `askPassphrase` asks for a key file's passphrase, held in memory (ADR 0331).
+ *   `askPassphrase` asks for a key file's passphrase, held in memory (ADR 0331); `runner` runs a
+ *   connection's password command once `confirm` has the person's yes to it (ADR 0354).
  */
 
 /** @param {Deps} deps */
@@ -64,6 +68,11 @@ export function createPluginSessions(deps) {
     limit: () => deps.settings().sessionsPerConnection,
     ...(deps.kept ? { kept: deps.kept } : {}),
     passphrases,
+    ...(deps.runner && deps.confirm
+      ? {
+          helper: createHelper({ bridge: deps.bridge, runner: deps.runner, confirm: deps.confirm }),
+        }
+      : {}),
   });
   const worded = wordRefusals(sessions);
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
