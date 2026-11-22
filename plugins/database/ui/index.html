@@ -21,6 +21,7 @@
       <h1 id="title">Database</h1>
       <span id="badge" class="tag" hidden></span>
       <span id="session" role="status" hidden><span id="session-label"></span><span class="desk-dot"></span></span>
+      <button type="button" id="session-reconnect" data-act="reconnectSession" title="Open a new session now; nothing of the lost one is run again" class="desk-btn desk-btn-quiet" hidden>Reconnect</button>
       <span id="transaction-bar" hidden>
         <button type="button" id="tx-mode" data-act="toggleTransactionMode" title="Auto commit: each statement commits by itself. Manual commit: the first statement begins a transaction, kept until Commit or Rollback" class="desk-btn desk-btn-quiet">Auto commit</button>
         <span id="transaction" hidden></span>
