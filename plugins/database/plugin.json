@@ -1087,20 +1087,30 @@
               "enum": ["equals", "contains", "starts", "regex"],
               "description": "How a value matches: equals (the default), contains, starts with, or a regular expression (PostgreSQL ~, MySQL and SQLite REGEXP)."
             },
-            "ignoreCase": { "type": "boolean", "description": "Match ignoring case." },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case."
+            },
             "schemas": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "The schemas to search; every one the explorer lists when absent."
             },
             "tables": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Only these tables (name or schema.name, * for any run of characters); every table when absent."
             },
             "types": {
               "type": "array",
-              "items": { "type": "string", "enum": ["text", "number", "uuid", "json", "date"] },
+              "items": {
+                "type": "string",
+                "enum": ["text", "number", "uuid", "json", "date"]
+              },
               "description": "The kinds of column to look in; all five when absent."
             },
             "rowLimit": {
@@ -1846,6 +1856,20 @@
         "kind": "string",
         "default": "",
         "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
+      },
+      "endue.database.sessions-per-connection": {
+        "kind": "integer",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12,
+        "description": "PostgreSQL sessions a connection's consoles and table views keep open at once (1 to 12). At the limit, a table view's idle session closes first; past it, a run says which to close."
+      },
+      "endue.database.session-idle-minutes": {
+        "kind": "integer",
+        "default": 30,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
       }
     }
   }

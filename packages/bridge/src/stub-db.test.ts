@@ -247,6 +247,41 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
     expect(seen[0]).toMatchObject({ readOnly: false, settings: {} });
   });
 
+  it("a failed transaction refuses statements until ROLLBACK, a savepoint keeps it open, and pg_terminate_backend ends the session it names", async () => {
+    const { client, open, events, settle } = setup();
+    const sessionId = await open();
+    const run = (sql: string, id = sessionId) => client.call("db.run", { sessionId: id, sql }, DB);
+    expect((await run("BEGIN")).transaction).toBe("open");
+    expect((await run("SAVEPOINT a")).transaction).toBe("open");
+    expect((await run("SELECT 1/0")).transaction).toBe("failed");
+    const ignored = await run("SELECT id, note FROM orders");
+    expect(valid("DbPage", ignored) && [ignored.error?.code, ignored.transaction]).toEqual([
+      "25P02",
+      "failed",
+    ]);
+    const back = await run("ROLLBACK TO SAVEPOINT a");
+    expect([back.tag, back.transaction]).toEqual(["ROLLBACK", "open"]);
+    expect((await run("RELEASE SAVEPOINT a")).transaction).toBe("open");
+    await run("SELECT 1/0");
+    const ended = await run("COMMIT");
+    expect([ended.tag, ended.transaction]).toEqual(["ROLLBACK", "idle"]);
+
+    const other = await open();
+    const listed = await client.call("db.list", {}, DB);
+    const pid = listed.sessions.find((s) => s.sessionId === sessionId)?.pid;
+    const killed = await run(`SELECT pg_terminate_backend(${pid})`, other);
+    expect(valid("DbPage", killed) && [killed.rows, killed.error]).toEqual([[["t"]], undefined]);
+    await settle();
+    const closed = events.filter((e) => e.event === "db.closed").at(-1);
+    expect(closed && valid("BridgeEvent", closed) && closed.data).toMatchObject({
+      sessionId,
+      reason: "server",
+      error: { severity: "FATAL", code: "57P01" },
+    });
+    await expect(run("SELECT 1/0")).rejects.toMatchObject({ code: "not_found" });
+    expect((await run("SELECT 1/0", other)).transaction).toBe("idle");
+  });
+
   it("without a scripted server, db.open is an io_error", async () => {
     const { open } = setup({ db: undefined });
     await expect(open()).rejects.toMatchObject({ code: "io_error" });
