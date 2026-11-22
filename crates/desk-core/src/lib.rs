@@ -42,6 +42,7 @@ mod core_data;
 mod core_db;
 mod core_db_end;
 mod core_db_passwords;
+mod core_db_script;
 mod core_dialog;
 mod core_directory;
 mod core_events;

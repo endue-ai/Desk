@@ -80,6 +80,7 @@ impl Core {
             R::NetClose(r) => (r.id, self.net_close(caller, r.params)),
             R::DbOpen(r) => (r.id, self.db_open(caller, r.params)),
             R::DbRun(r) => (r.id, self.db_run(caller, r.params)),
+            R::DbScript(r) => (r.id, self.db_script(caller, r.params)),
             R::DbFetch(r) => (r.id, self.db_fetch(caller, r.params)),
             R::DbCopy(r) => (r.id, self.db_copy(caller, r.params)),
             R::DbCancel(r) => (r.id, self.db_cancel(caller, r.params)),

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { Connection } from "../ui/engines/common.js";
 import type { SearchState } from "../ui/features/search/controller.js";
 import { type Mounted, mount } from "./harness";
+import { runsOf } from "./runs-of";
 import { SEARCH_CONNECTION, type SearchServerOptions, searchServer } from "./search-fixture";
 
 const conn = (fields: Partial<Connection>): Connection => ({ ...SEARCH_CONNECTION, ...fields });
@@ -30,7 +31,9 @@ const sqls = (m: Mounted) => m.sessions().flat();
 /** The sessions a table's run had: read-only, its timeout, EXPLAIN, the search, COMMIT. */
 const runs = (m: Mounted) => m.sessions().filter((s) => s.includes("BEGIN READ ONLY"));
 const made = (m: Mounted, method: string) =>
-  m.host.calls.filter((c) => c.method === method).map((c) => c.params as Record<string, unknown>);
+  runsOf(m.host.calls)
+    .filter((c) => c.method === method)
+    .map((c) => c.params as Record<string, unknown>);
 const searches = (m: Mounted) =>
   sqls(m).filter(
     (s) => /^SELECT .* FROM "/u.test(s) && / LIMIT \d+$/u.test(s) && s.includes("CASE WHEN"),
