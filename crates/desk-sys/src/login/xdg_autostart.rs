@@ -1,5 +1,5 @@
 //! Linux: an XDG autostart entry, `<dir>/<id>.desktop`, that the desktop session starts at login.
-//! The entry holds `Type=Application`, `Name=endue Desk`, the `Exec` line and
+//! The entry holds `Type=Application`, `Name=endue`, the `Exec` line and
 //! `X-GNOME-Autostart-enabled=true`, and nothing else. `Exec` quotes as the Desktop Entry spec says:
 //! the program always, an argument when it holds a reserved character; inside quotes `"`, `` ` ``,
 //! `$` and `\` take a backslash, `%` is doubled (field codes), and then the value's own escaping
@@ -10,11 +10,11 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{LoginItems, Registration, file, io_error, text, unreadable};
+use super::{Change, LoginItems, Registration, file, io_error, text, unreadable};
 use crate::Error;
 
 /// The entry's `Name`.
-const NAME: &str = "endue Desk";
+const NAME: &str = "endue";
 
 /// The characters that make the spec require an argument to be quoted.
 const RESERVED: &[char] = &[
@@ -68,6 +68,32 @@ impl LoginItems for XdgAutostart {
 
     fn registered(&self) -> Result<Option<Registration>, Error> {
         Ok(file::read(&self.path)?.map(|text| parse(&text).unwrap_or_else(unreadable)))
+    }
+
+    fn refresh_name(&self) -> Result<Change, Error> {
+        let Some(mut entry) = file::read(&self.path)? else {
+            return Ok(Change::Unchanged);
+        };
+        // Keep the Exec line, disabled state, translations, other groups and line endings verbatim.
+        let mut desktop = false;
+        let mut offset = 0;
+        let mut old = None;
+        for line in entry.split_inclusive('\n') {
+            let key = line.trim_end_matches(['\r', '\n']);
+            if key.starts_with('[') {
+                desktop = key == "[Desktop Entry]";
+            } else if desktop && key == "Name=endue Desk" {
+                old = Some(offset + "Name=".len()..offset + key.len());
+                break;
+            }
+            offset += line.len();
+        }
+        let Some(range) = old else {
+            return Ok(Change::Unchanged);
+        };
+        entry.replace_range(range, NAME);
+        file::write(&self.path, &entry)?;
+        Ok(Change::Registered)
     }
 
     fn register(&self, registration: &Registration) -> Result<(), Error> {

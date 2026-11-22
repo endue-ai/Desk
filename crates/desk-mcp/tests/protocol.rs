@@ -72,14 +72,9 @@ fn without_a_desk_a_tool_call_says_so_and_how_to_fix_it() {
             output["error"]["message"]
                 .as_str()
                 .unwrap()
-                .contains("no desk at")
+                .contains("no endue app at")
         );
-        assert!(
-            output["hint"]
-                .as_str()
-                .unwrap()
-                .contains("Start endue")
-        );
+        assert!(output["hint"].as_str().unwrap().contains("Start endue"));
         assert_eq!(output["caller"], format!("agent:{AGENT}"));
     }
     let resources = mcp.request("resources/list", json!({}));
