@@ -37,7 +37,7 @@ it("closes an empty stdin and passes every byte to a Git command that reads inpu
     const object = await repo.git("hash-object", "-w", file);
     const raw = await gitOutput(["cat-file", "blob", object.stdout.trim()], {
       cwd: repo.root,
-      env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+      env: process.env,
     });
     expect(raw.code).toBe(0);
     expect(raw.stdout).toEqual(bytes);

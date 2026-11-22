@@ -35,11 +35,7 @@ function realBridge() {
         inputs.delete(procId);
         const { code, stdout, stderr } = await gitOutput(params.args as string[], {
           cwd: params.cwd as string,
-          env: {
-            ...process.env,
-            ...(params.env as NodeJS.ProcessEnv),
-            GIT_CONFIG_GLOBAL: "/dev/null",
-          },
+          env: { ...process.env, ...(params.env as NodeJS.ProcessEnv) },
           input,
         }).catch((error: Error) => ({
           code: 1,
