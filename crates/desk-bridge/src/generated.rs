@@ -5208,6 +5208,7 @@ pub enum BridgeRequest {
     DbPasswordsSet(DbPasswordsSetRequest),
     DbPasswordsDelete(DbPasswordsDeleteRequest),
     DbPasswordsList(DbPasswordsListRequest),
+    DbHostKeysDelete(DbHostKeysDeleteRequest),
     AudioCaptureStart(AudioCaptureStartRequest),
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
@@ -7040,6 +7041,8 @@ pub struct DbOpenParams {
     #[serde(rename = "timeoutMs", default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
     pub scope: DbConnectPermission,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh: Option<DbSsh>,
 }
 
 /// How the session uses TLS.
@@ -7065,6 +7068,176 @@ pub struct DbTls {
     pub key_password: Option<String>,
 }
 
+/// An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSsh {
+    /// The SSH server, a host name or an IPv4 address.
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    /// Who signs in on the SSH server.
+    pub user: String,
+    /// The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.
+    #[serde(rename = "keyFile", default, skip_serializing_if = "Option::is_none")]
+    pub key_file: Option<String>,
+    /// The passphrase of an encrypted keyFile: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
+    /// Sign in with the keys the person's SSH agent holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<True>,
+    /// The SSH password: used once for the sign-in and dropped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(
+        rename = "passwordRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub password_ref: Option<DbPasswordName>,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshFingerprint>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump: Option<DbSshHop>,
+}
+
+/// A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshHop {
+    /// The SSH server, a host name or an IPv4 address.
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+    /// Who signs in on the SSH server.
+    pub user: String,
+    /// The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.
+    #[serde(rename = "keyFile", default, skip_serializing_if = "Option::is_none")]
+    pub key_file: Option<String>,
+    /// The passphrase of an encrypted keyFile: used once to decrypt it and dropped.
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<String>,
+    /// Sign in with the keys the person's SSH agent holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<True>,
+    /// The SSH password: used once for the sign-in and dropped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(
+        rename = "passwordRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub password_ref: Option<DbPasswordName>,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshFingerprint>,
+}
+
+/// An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens.
+pub type DbSshFingerprint = String;
+
+/// Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshAnswer {
+    pub hop: DbSshHopName,
+    pub stage: DbSshStage,
+    /// What failed, in words, naming the hop.
+    pub message: String,
+    #[serde(rename = "hostKey", default, skip_serializing_if = "Option::is_none")]
+    pub host_key: Option<DbSshHostKey>,
+    #[serde(
+        rename = "keyPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub key_password: Option<DbKeyPassword>,
+    #[serde(
+        rename = "needsPassword",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub needs_password: Option<True>,
+}
+
+/// Which hop: the jump host, or the SSH host the database is reached from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshHopName {
+    #[serde(rename = "jump")]
+    Jump,
+    #[serde(rename = "host")]
+    Host,
+}
+
+/// Where the hop failed: connect, hostKey, auth or forward.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshStage {
+    #[serde(rename = "connect")]
+    Connect,
+    #[serde(rename = "hostKey")]
+    HostKey,
+    #[serde(rename = "auth")]
+    Auth,
+    #[serde(rename = "forward")]
+    Forward,
+}
+
+/// unknown: not trusted yet. changed: differs from the trusted one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DbSshHostKeyStatus {
+    #[serde(rename = "unknown")]
+    Unknown,
+    #[serde(rename = "changed")]
+    Changed,
+}
+
+/// The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbSshHostKey {
+    pub status: DbSshHostKeyStatus,
+    /// ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...
+    pub algorithm: String,
+    pub fingerprint: DbSshFingerprint,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known: Option<DbSshFingerprint>,
+}
+
+/// Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteRequest {
+    pub id: RequestId,
+    pub method: DbHostKeysDeleteRequestMethod,
+    pub params: DbHostKeysDeleteParams,
+}
+
+/// Parameters of db.hostKeys.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteParams {
+    pub host: String,
+    /// 22 by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u64>,
+}
+
+/// Result of db.hostKeys.delete.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbHostKeysDeleteResult {}
+
 /// disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DbTlsMode {
@@ -7080,7 +7253,7 @@ pub enum DbTlsMode {
     VerifyFull,
 }
 
-/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
+/// Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DbOpenResult {
@@ -7110,6 +7283,8 @@ pub struct DbOpenResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub key_password: Option<DbKeyPassword>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh: Option<DbSshAnswer>,
 }
 
 /// tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected.
@@ -13827,6 +14002,14 @@ pub enum DbOpenRequestMethod {
     #[default]
     #[serde(rename = "db.open")]
     DbOpen,
+}
+
+/// The `method` of [`DbHostKeysDeleteRequest`]: always `"db.hostKeys.delete"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbHostKeysDeleteRequestMethod {
+    #[default]
+    #[serde(rename = "db.hostKeys.delete")]
+    DbHostKeysDelete,
 }
 
 /// The `method` of [`DbRunRequest`]: always `"db.run"`.

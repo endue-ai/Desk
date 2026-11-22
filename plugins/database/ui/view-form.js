@@ -1,7 +1,7 @@
 // The connection form and the password prompt. The form shows the fields the engine uses (a file
 // for SQLite; host, port, database, user and TLS for the others; the keychain choice, the client
-// certificate and key files, the password command, the pooler choice and the session options for
-// PostgreSQL),
+// certificate and key files, the password command, the pooler choice, the SSH tunnel and the session
+// options for PostgreSQL),
 // says what is wrong next to the buttons, and hands the fields back on Save or Test. The password
 // field is type=password, its value leaves the DOM as soon as it is handed over with the prompt's
 // keychain choice (a key file's passphrase is asked in the same prompt, without the choice), and
@@ -9,6 +9,7 @@
 
 import { COLORS, SSL_MODES, TAGS } from "./connections.js";
 import { OPTIONS } from "./engines/pg-options.js";
+import { TUNNEL } from "./tunnel/fields.js";
 
 /**
  * @typedef {import("./manage.js").FormModel} FormModel
@@ -32,6 +33,7 @@ const TEXT_FIELDS = /** @type {const} */ ([
   "group",
   "passwordCommand",
   ...OPTIONS,
+  ...TUNNEL.filter((name) => name !== "sshAuth"),
 ]);
 
 /**
@@ -52,6 +54,8 @@ export function createForms(doc, act) {
   const keychain = /** @type {HTMLInputElement} */ (byId("f-keychain"));
   const pooler = /** @type {HTMLInputElement} */ (byId("f-pooler"));
   const options = /** @type {HTMLDetailsElement} */ (byId("f-options"));
+  const tunnel = /** @type {HTMLDetailsElement} */ (byId("f-tunnel"));
+  const sshAuth = /** @type {HTMLSelectElement} */ (byId("f-sshAuth"));
   const input = (/** @type {string} */ name) => /** @type {HTMLInputElement} */ (byId(`f-${name}`));
   const prompt = /** @type {HTMLFormElement} */ (byId("password"));
   const promptText = byId("password-text");
@@ -92,8 +96,16 @@ export function createForms(doc, act) {
     readOnly: readOnly.checked,
     keychain: keychain.checked,
     pooler: pooler.checked,
+    sshAuth: /** @type {Connection["sshAuth"]} */ (sshAuth.value),
     color: color.value,
   });
+
+  /** A tunnel field as the connection keeps it: none without an SSH host, the port a number. */
+  const tunnelValue = (/** @type {typeof TUNNEL[number]} */ name) => {
+    if (!input("sshHost").value) return undefined;
+    const value = name === "sshAuth" ? sshAuth.value : input(name).value;
+    return name === "sshPort" && value ? Number(value) || value : value || undefined;
+  };
 
   // Keep the port as typed when checking for changes, including invalid or padded input; an empty
   // session option is one the connection does not set.
@@ -102,6 +114,7 @@ export function createForms(doc, act) {
     ...Object.fromEntries(
       [...OPTIONS, "passwordCommand"].map((name) => [name, input(name).value || undefined]),
     ),
+    ...Object.fromEntries(TUNNEL.map((name) => [name, tunnelValue(name)])),
     port: input("port").value,
   });
 
@@ -119,7 +132,8 @@ export function createForms(doc, act) {
       event.target === engine ||
       event.target === ssl ||
       event.target === tag ||
-      event.target === color
+      event.target === color ||
+      event.target === sshAuth
     )
       return;
     event.preventDefault();
@@ -166,8 +180,11 @@ export function createForms(doc, act) {
         keychain.checked = /** @type {{ keychain?: boolean }} */ (conn).keychain === true;
         pooler.checked = conn.pooler === true;
         color.value = conn.color ?? "";
-        // The session options show open when the connection sets one (PG-12).
+        // The session options show open when the connection sets one (PG-12), the tunnel when it
+        // has one (ADR 0359).
         options.open = OPTIONS.some((name) => Boolean(conn[name]));
+        sshAuth.value = conn.sshAuth ?? "key";
+        tunnel.open = Boolean(conn.sshHost);
       }
       // A new error or Test result scrolls into sight above the buttons (the dialog's scroll
       // padding keeps it clear of them).

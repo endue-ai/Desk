@@ -4,9 +4,11 @@
 
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::client_cert::ClientCert;
+use crate::dial::Dial;
 use crate::error::Error;
 
 /// How long the connection and the sign-in take at most, by default and at the most.
@@ -67,6 +69,8 @@ pub struct Config {
     pub read_only: bool,
     /// For the connection and the sign-in together.
     pub timeout: Duration,
+    /// How to reach the server instead of TCP: an SSH tunnel's channels (ADR 0359).
+    pub via: Option<Arc<dyn Dial>>,
 }
 
 impl fmt::Debug for Config {
@@ -86,7 +90,11 @@ impl fmt::Debug for Config {
                 ""
             },
             self.read_only
-        )
+        )?;
+        match &self.via {
+            Some(via) => write!(f, " via {}", via.name()),
+            None => Ok(()),
+        }
     }
 }
 
@@ -109,6 +117,7 @@ impl Config {
             settings: Vec::new(),
             read_only: false,
             timeout: OPEN_TIMEOUT,
+            via: None,
         }
     }
 

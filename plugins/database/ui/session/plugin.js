@@ -12,6 +12,7 @@
 import { createHelper } from "../auth/helper.js";
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
+import { createTunnel } from "../tunnel/open.js";
 import { connectHeld, wordRefusals } from "./connect-gate.js";
 import { createGate } from "./gate.js";
 import { lostLine } from "./lost-words.js";
@@ -44,6 +45,11 @@ import { reasonsOf } from "./words.js";
 /** @param {Deps} deps */
 export function createPluginSessions(deps) {
   const passphrases = createPassphrases(deps.askPassphrase ?? (async () => undefined));
+  // An SSH tunnel's host key is shown with confirm, its secrets asked as a key's (ADR 0359).
+  const tunnel = createTunnel({
+    ...(deps.confirm ? { confirm: deps.confirm } : {}),
+    ...(deps.askPassphrase ? { ask: deps.askPassphrase } : {}),
+  });
   const byOwner = (/** @type {string} */ owner) =>
     deps
       .consoles()
@@ -68,6 +74,7 @@ export function createPluginSessions(deps) {
     limit: () => deps.settings().sessionsPerConnection,
     ...(deps.kept ? { kept: deps.kept } : {}),
     passphrases,
+    tunnel,
     ...(deps.runner && deps.confirm
       ? {
           helper: createHelper({ bridge: deps.bridge, runner: deps.runner, confirm: deps.confirm }),
@@ -150,7 +157,10 @@ export function createPluginSessions(deps) {
       close: (/** @type {string} */ connection) => pg.close(mine(connection)),
       /** Disconnect: what runs on it stops, and nothing of the plugin's own opens a session. */
       disconnect: (/** @type {string} */ connection) => gate.disconnect(connection),
-      forget: (/** @type {string} */ connection) => passphrases.forgetAll(connection),
+      forget: (/** @type {string} */ connection) => {
+        passphrases.forgetAll(connection);
+        tunnel.forgetAll(connection);
+      },
     },
     /** What Cancel stops: the runs of the buffer on screen and the plugin's own reads. */
     scope() {

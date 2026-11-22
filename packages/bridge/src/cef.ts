@@ -71,16 +71,24 @@ export function cefHost(native: DeskNative): CefHost {
 
 /**
  * The bridge adapter of the CEF shell: every request goes to the shell's `bridge_call` command (with
- * the caller it is made for, when it names one); the core's events arrive as `bridge://event`.
+ * the caller it is made for, when it names one); the core's events arrive as `bridge://event`. A
+ * request the shell refuses (one it cannot read as a BridgeRequest, a page that may not call) is
+ * answered as that request's failure, as the core answers a native plugin's line (#566): a rejection
+ * here went unhandled where a plugin's calls are relayed, and its calls were never answered.
  */
 export function cefAdapter(host: CefHost): BridgeAdapter {
   return {
     name: "cef",
-    call: async (request, caller) =>
-      (await host.invoke(
-        "bridge_call",
-        caller === undefined ? { request } : { request, caller },
-      )) as BridgeResponse,
+    call: async (request, caller) => {
+      try {
+        return (await host.invoke(
+          "bridge_call",
+          caller === undefined ? { request } : { request, caller },
+        )) as BridgeResponse;
+      } catch (error) {
+        return refused(request.id, error);
+      }
+    },
     onEvent: (listener) => {
       let unlisten: (() => void) | undefined;
       let cancelled = false;
@@ -96,4 +104,11 @@ export function cefAdapter(host: CefHost): BridgeAdapter {
       };
     },
   };
+}
+
+/** The failure a refused request answers: `invalid_params` for one that is not a bridge request. */
+function refused(id: number, error: unknown): BridgeResponse {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = message.startsWith("not a bridge request") ? "invalid_params" : "internal";
+  return { id, ok: false, error: { code, message } };
 }

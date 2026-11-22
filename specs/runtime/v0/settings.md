@@ -56,7 +56,11 @@ plugins installed or enabled. No new bridge method or generated wire type is nee
   `store` key `preferences`. Loading precedes plugin/session restoration. Invalid records/values
   are ignored and storage failures are shown, not reported as saved. A plugin's setting the person
   sets in the window joins the same record under its full name (`endue.calendar.view`) and is in
-  force in the runtime's settings at once; other session values of plugin keys are not kept.
+  force in the runtime's settings at once; other session values of plugin keys are not kept. The
+  plugin reads it too: the host lays it over what the core answers the plugin's `settings.get` and
+  `settings.list` (after the core's checks; another owner's read needs its `settings:read` scope as
+  before), and setting it or its Reset sends `settings.changed` to the owner, carrying after a Reset
+  the value the core answers now. The person's value wins over one the plugin set itself until Reset.
 - Personal bindings (`desk.keys.bindings`) are not in that record: the runtime's `desk.keys`
   keeps them in `~/.desk/keys.yaml` (ADR 0079, `specs/init/v0/keys.schema.json`) and moves
   `session.parts.keys` there once.

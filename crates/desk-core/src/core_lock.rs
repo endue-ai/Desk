@@ -80,6 +80,7 @@ impl Core {
             eprintln!("desk: secrets.json kept {id}'s secrets: {why}");
         }
         self.forget_db_passwords(id);
+        self.forget_db_ssh_hosts(id);
         self.forget_store(id);
         self.registry().remove(id);
         self.lock_state().digests.remove(id);

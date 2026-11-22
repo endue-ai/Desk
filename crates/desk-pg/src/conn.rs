@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 use bytes::{Buf, BytesMut};
 use postgres_protocol::message::backend::Message;
 use postgres_protocol::message::frontend;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio_rustls::TlsConnector;
 
@@ -16,8 +16,7 @@ use crate::config::{Config, TlsMode};
 use crate::error::{Error, protocol};
 use crate::{MAX_ROW, binding, tls};
 
-pub(crate) trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
-impl<T: AsyncRead + AsyncWrite + Unpin + Send> Io for T {}
+pub(crate) use crate::dial::Io;
 
 /// The TLS a connection ended up with, and SCRAM's binding data for its certificate.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,15 +46,15 @@ impl Conn {
     /// Open the socket for `config`; `prefer` falls back to plain TCP when the server has no TLS
     /// or its handshake fails, as libpq does.
     pub(crate) async fn open(config: &Config) -> Result<Conn, Error> {
-        let stream = tcp(&config.host, config.port).await?;
+        let first = stream(config).await?;
         if config.tls == TlsMode::Disable {
-            return Ok(Conn::new(Box::new(stream), None));
+            return Ok(Conn::new(first, None));
         }
-        match secure(stream, config).await {
+        match secure(first, config).await {
             Ok(conn) => Ok(conn),
             Err(_) if config.tls == TlsMode::Prefer => {
-                let stream = tcp(&config.host, config.port).await?;
-                Ok(Conn::new(Box::new(stream), None))
+                let stream = stream(config).await?;
+                Ok(Conn::new(stream, None))
             }
             Err(error) => Err(error),
         }
@@ -121,6 +120,17 @@ impl Conn {
     }
 }
 
+/// The stream to the config's server: its dial's (ADR 0359), else TCP.
+async fn stream(config: &Config) -> Result<Box<dyn Io>, Error> {
+    match &config.via {
+        Some(via) => via
+            .dial(&config.host, config.port)
+            .await
+            .map_err(|e| Error::Io(e.to_string())),
+        None => Ok(Box::new(tcp(&config.host, config.port).await?)),
+    }
+}
+
 /// TCP to the first of `host`'s addresses that answers, with keepalive and no Nagle delay.
 async fn tcp(host: &str, port: u16) -> Result<TcpStream, Error> {
     let addresses: Vec<SocketAddr> = tokio::net::lookup_host((host, port))
@@ -151,7 +161,7 @@ async fn tcp(host: &str, port: u16) -> Result<TcpStream, Error> {
 }
 
 /// SSLRequest, one byte back (`S` or `N`), then the handshake for the mode.
-async fn secure(mut tcp: TcpStream, config: &Config) -> Result<Conn, Error> {
+async fn secure(mut tcp: Box<dyn Io>, config: &Config) -> Result<Conn, Error> {
     let mut out = BytesMut::new();
     frontend::ssl_request(&mut out);
     tcp.write_all(&out).await?;
@@ -159,7 +169,7 @@ async fn secure(mut tcp: TcpStream, config: &Config) -> Result<Conn, Error> {
     tcp.read_exact(&mut answer).await?;
     match answer[0] {
         b'S' => {}
-        b'N' if config.tls == TlsMode::Prefer => return Ok(Conn::new(Box::new(tcp), None)),
+        b'N' if config.tls == TlsMode::Prefer => return Ok(Conn::new(tcp, None)),
         b'N' => {
             let mode = config.tls.name();
             return Err(Error::Io(format!(

@@ -15,7 +15,7 @@ set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 version() { sed -n 's/^IDENTITY_VERSION=\([0-9][0-9]*\).*/\1/p' "$1" 2>/dev/null | head -1; }
 
-hooks="$(git config --get core.hooksPath || true)"
+hooks="$(git config --path --get core.hooksPath || true)"
 if [ "$(git config --get user.email)" = team@endue.ai ] && [ -n "$hooks" ] && [ -f "$hooks/check.sh" ]; then
   new="$(version "$here/check.sh")"
   old="$(version "$hooks/check.sh")"
@@ -35,7 +35,7 @@ fi
 if [ "$team" = 1 ]; then
   root="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
   if bash "$here/install.sh" --root "$root" >/dev/null; then
-    echo "git-identity: installed for $root: commits as endue-team, identity hooks on (AGENTS.md)"
+    echo "git-identity: installed for this repository. Commits use endue-team and its identity hooks."
   else
     echo "git-identity: install failed; run 'just identity' before committing (AGENTS.md, Boundaries)"
   fi

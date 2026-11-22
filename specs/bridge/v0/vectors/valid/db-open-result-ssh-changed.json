@@ -1,0 +1,17 @@
+{
+  "target": "DbOpenResult",
+  "description": "the SSH host's key changed: refused, with the one trusted before",
+  "instance": {
+    "ssh": {
+      "hop": "host",
+      "stage": "hostKey",
+      "message": "The SSH host bastion.example.test:22 presented a key that differs from the one trusted: refused.",
+      "hostKey": {
+        "status": "changed",
+        "algorithm": "ssh-ed25519",
+        "fingerprint": "SHA256:2i0J2Fh5hb0FDqkrQr1vnEIfCneRwBDLKUNq6XNprcM",
+        "known": "SHA256:Ubaq9T2onfDuuwg1uOh25iUN5F+a4udq4a2mVJFwMuw"
+      }
+    }
+  }
+}
