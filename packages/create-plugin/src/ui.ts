@@ -38,11 +38,11 @@ const WINDOW = { size: { width: 480, height: 360 }, opens: "canvas" } as const;
 
 function readme(options: PluginOptions): string {
   return [
-    ...heading(options, "A Desk UI plugin."),
+    ...heading(options, "An endue UI plugin."),
     ...devSection(
       [
         "Save any file here and only this surface reloads, within a second. The count stays, because it",
-        `lives in plugin state rather than in the page. \`desk cmd run ${options.id}.count\` counts too.`,
+        `lives in plugin state rather than in the page. \`endue cmd run ${options.id}.count\` counts too.`,
       ].join("\n"),
     ),
     "## Its window",
@@ -51,7 +51,7 @@ function readme(options: PluginOptions): string {
     "first time (480 × 360 px here), `minSize` the smallest the person can make it, `resizable:",
     'false` keeps its size, and `opens` is where it opens: `"canvas"`, on the desk, or `"out"`, in',
     "an OS window of its own. The page and its calls are the same in both, and the person moves a",
-    'window out and back (the palette\'s "Pop out window", Window > Move to Desk); each move loads the page',
+    'window out and back (the palette\'s "Pop out window", Window > Move to endue); each move loads the page',
     `again, so keep what must stay in plugin state. \`DESK_APP_WINDOWS=${options.id}\` before the`,
     "command above opens it out without changing the manifest, and `DESK_APP_WINDOWS=off` keeps it",
     "on the canvas.",
@@ -88,7 +88,7 @@ function indexHtml({ name }: PluginOptions): string {
   <head>
     <meta charset="utf-8" />
     <title>${escapeHtml(name)}</title>
-    <!-- Desk serves these under /_desk/: the design tokens and the base sheet for plugin pages, the SDK
+    <!-- endue serves these under /_desk/: the design tokens and the base sheet for plugin pages, the SDK
          and the elements (docs/design-system.md). The import map lets plugins import the two by name. -->
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
@@ -118,7 +118,7 @@ function escapeHtml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-const MAIN_JS = `// The page's entry: it connects the plugin to the desk. Desk serves the SDK and the elements under
+const MAIN_JS = `// The page's entry: it connects the plugin to the desk. endue serves the SDK and the elements under
 // /_desk/, and the page's import map lets this file import them by name.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 // The elements define themselves on import; the page uses <desk-button>.
@@ -129,7 +129,7 @@ defineUiPlugin(plugin);
 `;
 
 const PLUGIN_JS = `// The plugin: what it does once the desk mounts it. It imports nothing from the SDK, so its test
-// runs it on the SDK's test host. While Desk runs this folder as a dev plugin, saving a file reloads
+// runs it on the SDK's test host. While endue runs this folder as a dev plugin, saving a file reloads
 // only this surface, and the count comes back because it lives in plugin state, not in the page.
 export const plugin = {
   async mount(ctx) {
@@ -143,7 +143,7 @@ export const plugin = {
       return value;
     };
     document.querySelector("desk-button").addEventListener("click", add);
-    // The command plugin.json contributes: the palette lists it, and keys and \`desk cmd run\` run it.
+    // The command plugin.json contributes: the palette lists it, and keys and \`endue cmd run\` run it.
     ctx.commands.on(\`\${ctx.pluginId}.count\`, add);
 
     // perm.query needs no permission, so this round trip works before you declare any.
@@ -172,7 +172,7 @@ p {
 `;
 
 const PLUGIN_TEST = `// The plugin on the SDK's test host: a desk in memory that answers the bridge, no app or browser.
-// \`desk plugin test <this folder>\` runs it with vitest, in a jsdom page.
+// \`endue plugin test <this folder>\` runs it with vitest, in a jsdom page.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";

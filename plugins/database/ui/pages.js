@@ -8,6 +8,7 @@ import { tableSql } from "./catalog.js";
 import { engineOf } from "./engines/index.js";
 import { formatCount } from "./format.js";
 import { orderSql, whereWith } from "./grid/filters.js";
+import { createRowsControl, windowed } from "./rows/control.js";
 import { split } from "./sql/split.js";
 import { createNaturalOrder } from "./table-order.js";
 
@@ -20,7 +21,9 @@ import { createNaturalOrder } from "./table-order.js";
  *   run(target: Console, conn: Connection, sql: string, options: { maxRows?: number, history?: boolean, statements?: Statement[] }): Promise<string>,
  *   execute: import("./catalog.js").Execute,
  *   render(): void,
+ *   sessions?: import("./rows/control.js").Deps["sessions"], say?(text: string): void,
  * }} Deps
+ *   `sessions` reads the rows of a console's read its cursor keeps (PG-22, rows/control.js).
  */
 
 const OWN_PAGING = new Set(["LIMIT", "OFFSET", "FETCH", "FOR", "INTO", "PROCEDURE", "TOP"]);
@@ -62,6 +65,7 @@ export function createPages(deps) {
   ) => whereWith(engineOf(conn.engine).dialect, page.where, page.filters ?? []);
 
   const natural = createNaturalOrder(deps.execute);
+  const rows = createRowsControl(deps);
 
   /**
    * Load a table view's page under its filter and order; without an order of the person's, in the
@@ -87,13 +91,24 @@ export function createPages(deps) {
    * typed otherwise drops them.
    * @param {Console} target
    * @param {Connection} conn
+   * A console's read its cursor keeps pages by `rows` (as the grid scrolls), counts every row,
+   * fetches every row (`all`), and takes the grid's keys and filters into the statement.
    * @param {{
-   *   where?: string, order?: string, delta?: number, count?: boolean,
+   *   where?: string, order?: string, delta?: number, count?: boolean, all?: boolean,
+   *   rows?: import("./rows/window.js").Way,
    *   sort?: import("./grid/filters.js").SortKey[] | null, filters?: import("./grid/filters.js").Filter[],
    * }} change
    */
   const page = async (target, conn, change) => {
     const limit = deps.settings().maxRows;
+    if (target.kind === "console" && windowed(target)) {
+      if (change.rows) return rows.scroll(target, conn, change.rows);
+      if (change.delta) return rows.scroll(target, conn, change.delta > 0 ? "next" : "back");
+      if (change.count) return rows.count(target, conn);
+      if (change.all) return rows.all(target, conn);
+      if (change.sort !== undefined || change.filters !== undefined)
+        return rows.shape(target, conn, change);
+    }
     if (target.kind === "console") {
       const at = target.page;
       if (!at || !change.delta)
@@ -145,5 +160,16 @@ export function createPages(deps) {
     return refresh(target, conn);
   };
 
-  return { refresh, page };
+  /** Pick a result tab; a map or chart of a read its cursor keeps reads every row first (PG-22). */
+  const pick = (
+    /** @type {Console} */ target,
+    /** @type {Connection | undefined} */ conn,
+    /** @type {number} */ index,
+  ) => {
+    if (!target.shown || index < 0 || index >= target.shown.tabs.length) return;
+    target.tab = index;
+    if (conn && target.kind === "console" && windowed(target)) void rows.drawn(target, conn);
+  };
+
+  return { refresh, page, pick };
 }

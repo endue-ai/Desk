@@ -37,4 +37,4 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   (ADR 0071): `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)`.
 
 ## Testing
-`pnpm exec vitest run packages/plugin-sdk`; `desk plugin test` runs plugins on `vitest.plugin.config.ts`.
+`endue plugin test` runs the SDK host. Themes import `compileTheme`, `gate` and `enduePalette` from `@endue-ai/plugin-sdk/testing/theme`.

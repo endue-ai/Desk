@@ -38,7 +38,7 @@ function manifest({ id, name, description }: PluginOptions): string {
 
 function readme(options: PluginOptions): string {
   return [
-    ...heading(options, "A Desk policy: a key that opens today."),
+    ...heading(options, "An endue policy: a key that opens today."),
     ...devSection(
       "Press Mod+Alt+T (Command on macOS, Control elsewhere): today opens. Turn the plugin off and the key goes with it.",
     ),
@@ -66,7 +66,7 @@ function readme(options: PluginOptions): string {
   ].join("\n");
 }
 
-const POLICY_TEST = `// The policy on the SDK's test host: a desk in memory with a command registry. \`desk plugin test
+const POLICY_TEST = `// The policy on the SDK's test host: a desk in memory with a command registry. \`endue plugin test
 // <this folder>\` runs it with vitest.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -40,11 +40,11 @@ impl Default for Options {
     }
 }
 
-const INSTRUCTIONS: &str = "endue Desk is a desktop built of plugins: files, notes, mail, \
+const INSTRUCTIONS: &str = "endue is a desktop app built of plugins: files, notes, mail, \
 calendar, git, docker, a terminal and more. list-plugins and list-commands show what the running \
 desk has; run-command runs any plugin's command; call-bridge calls the bridge methods \
 (specs/bridge/v0), such as data.query for the items connectors bring in. Every call runs as one \
-agent of the person's: Desk asks them the first time, holds irreversible actions for their \
+agent of the person's: endue asks them the first time, holds irreversible actions for their \
 approval and logs each call.";
 
 /// Serve one MCP client until it closes `input`. `Err` when `output` cannot be written.
@@ -183,7 +183,7 @@ fn initialize(params: &Value, tools_change: bool) -> Value {
         },
         "serverInfo": {
             "name": SERVER_NAME,
-            "title": "endue Desk",
+            "title": "endue",
             "version": env!("CARGO_PKG_VERSION")
         },
         "instructions": INSTRUCTIONS

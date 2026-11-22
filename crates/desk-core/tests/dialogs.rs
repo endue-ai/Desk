@@ -304,7 +304,7 @@ fn only_the_desk_and_plugins_can_open_a_dialog() {
     let answer = call(&core, "desk", "dialog.open", json!({})).unwrap();
     assert_eq!(answer["paths"], json!(["~/Documents/hello.md"]));
     assert!(
-        person.asked()[0].starts_with("open endue Desk "),
+        person.asked()[0].starts_with("open endue "),
         "{:?}",
         person.asked()
     );
@@ -328,7 +328,7 @@ fn a_plugins_dialog_names_its_id_beside_its_name() {
     let dir = home.join("plugins/impostor");
     std::fs::create_dir_all(dir.join("ui")).unwrap();
     std::fs::write(dir.join("ui/index.html"), "<p>hi</p>").unwrap();
-    let manifest = r#"{ "id": "example.impostor", "name": "endue Desk", "version": "0.1.0",
+    let manifest = r#"{ "id": "example.impostor", "name": "endue", "version": "0.1.0",
         "kind": "ui", "entry": "ui/index.html" }"#;
     std::fs::write(dir.join("plugin.json"), manifest).unwrap();
     core.install_plugin(&dir, false);
@@ -337,7 +337,7 @@ fn a_plugins_dialog_names_its_id_beside_its_name() {
     call(&core, NOTES, "dialog.save", json!({})).unwrap();
     let asked = person.asked();
     assert!(
-        asked[0].starts_with("open endue Desk (example.impostor) "),
+        asked[0].starts_with("open endue (example.impostor) "),
         "{asked:?}"
     );
     assert!(asked[1].starts_with("save example.hello "), "{asked:?}");

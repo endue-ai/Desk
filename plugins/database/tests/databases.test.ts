@@ -76,7 +76,8 @@ const opens = (m: Mounted) =>
 function server() {
   const seen: [string, string][] = [];
   const other: Script = (sql, who) => {
-    seen.push([who.database ?? "", sql]);
+    // The transaction a console's read keeps its cursor in (PG-22) is the plugin's own.
+    if (!/^(START TRANSACTION|END|ABORT)$/u.test(sql)) seen.push([who.database ?? "", sql]);
     if (sql === "select current_database()") return { rows: [["db"], [who.database ?? ""]] };
     return /^select \d/u.test(sql) ? { rows: [["n"], ["1"]] } : {};
   };

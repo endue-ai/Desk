@@ -1,5 +1,5 @@
 //! Linux: an XDG autostart entry, `<dir>/<id>.desktop`, that the desktop session starts at login.
-//! The entry holds `Type=Application`, `Name=endue Desk`, the `Exec` line and
+//! The entry holds `Type=Application`, `Name=endue`, the `Exec` line and
 //! `X-GNOME-Autostart-enabled=true`, and nothing else. `Exec` quotes as the Desktop Entry spec says:
 //! the program always, an argument when it holds a reserved character; inside quotes `"`, `` ` ``,
 //! `$` and `\` take a backslash, `%` is doubled (field codes), and then the value's own escaping
@@ -10,11 +10,11 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{LoginItems, Registration, file, io_error, text, unreadable};
+use super::{Change, LoginItems, Registration, file, io_error, text, unreadable};
 use crate::Error;
 
 /// The entry's `Name`.
-const NAME: &str = "endue Desk";
+const NAME: &str = "endue";
 
 /// The characters that make the spec require an argument to be quoted.
 const RESERVED: &[char] = &[
@@ -68,6 +68,32 @@ impl LoginItems for XdgAutostart {
 
     fn registered(&self) -> Result<Option<Registration>, Error> {
         Ok(file::read(&self.path)?.map(|text| parse(&text).unwrap_or_else(unreadable)))
+    }
+
+    fn refresh_name(&self) -> Result<Change, Error> {
+        let Some(mut entry) = file::read(&self.path)? else {
+            return Ok(Change::Unchanged);
+        };
+        // Keep the Exec line, disabled state, translations, other groups and line endings verbatim.
+        let mut desktop = false;
+        let mut offset = 0;
+        let mut old = None;
+        for line in entry.split_inclusive('\n') {
+            let key = line.trim_end_matches(['\r', '\n']);
+            if key.starts_with('[') {
+                desktop = key == "[Desktop Entry]";
+            } else if desktop && key == "Name=endue Desk" {
+                old = Some(offset + "Name=".len()..offset + key.len());
+                break;
+            }
+            offset += line.len();
+        }
+        let Some(range) = old else {
+            return Ok(Change::Unchanged);
+        };
+        entry.replace_range(range, NAME);
+        file::write(&self.path, &entry)?;
+        Ok(Change::Registered)
     }
 
     fn register(&self, registration: &Registration) -> Result<(), Error> {
@@ -179,4 +205,30 @@ fn split(exec: &str) -> Vec<String> {
         .into_iter()
         .map(|word| word.replace("%%", "%"))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::XdgAutostart;
+    use crate::login::{Change, ID, apply, desk};
+    use std::fs;
+
+    #[test]
+    fn applying_an_existing_login_item_updates_only_its_product_name() {
+        let dir = std::env::temp_dir().join(format!("endue-login-name-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let item = XdgAutostart::in_dir(&dir, ID);
+        let registration = desk("/opt/endue/endue");
+        let entry = "[Desktop Entry]\r\nName=endue Desk\r\nExec=/opt/endue/endue --background\r\nHidden=true\r\n[Desktop Action Other]\r\nName=endue fixture\r\n";
+        fs::write(item.path(), entry).unwrap();
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Registered));
+        let current = entry.replacen("Name=endue Desk", "Name=endue", 1);
+        assert_eq!(fs::read_to_string(item.path()).unwrap(), current);
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Unchanged));
+        let custom = entry.replacen("Name=endue Desk", "Name=endue custom", 1);
+        fs::write(item.path(), &custom).unwrap();
+        assert_eq!(apply(&item, true, &registration), Ok(Change::Unchanged));
+        assert_eq!(fs::read_to_string(item.path()).unwrap(), custom);
+        fs::remove_dir_all(dir).unwrap();
+    }
 }

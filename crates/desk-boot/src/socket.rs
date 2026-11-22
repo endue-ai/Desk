@@ -17,25 +17,20 @@ pub fn serve(core: &Arc<Core>) -> Serving {
         core.grant(CALLER, permission);
     }
     let Some(path) = desk_ipc::socket_path() else {
-        eprintln!(
-            "endue Desk: no data folder for the desk socket; the desk CLI cannot reach this desk"
-        );
+        eprintln!("endue: no data folder for the app socket; the endue CLI cannot reach the app");
         return Serving(Mutex::new(None));
     };
     let listener = match Listener::bind(&path, Arc::clone(core)) {
         Ok(listener) => {
-            eprintln!(
-                "endue Desk: the desk CLI reaches this desk at {}",
-                path.display()
-            );
+            eprintln!("endue: the endue CLI reaches the app at {}", path.display());
             Some(listener)
         }
         Err(why) if why.kind() == io::ErrorKind::Unsupported => {
-            eprintln!("endue Desk: {why}");
+            eprintln!("endue: {why}");
             None
         }
         Err(why) => {
-            eprintln!("endue Desk: no desk socket ({why}); the desk CLI cannot reach this desk");
+            eprintln!("endue: no app socket ({why}); the endue CLI cannot reach the app");
             None
         }
     };

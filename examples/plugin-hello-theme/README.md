@@ -13,25 +13,25 @@ Everything else (material, shape, motion, terminal) stays at its default.
 
 ## Run it
 
-From the repository root, run Desk with this folder as a dev plugin, then choose the theme in the
+From the repository root, run endue with this folder as a dev plugin, then choose the theme in the
 theme studio (the palette button at the top right) or with the CLI:
 
 ```bash
 DESK_DEV_PLUGINS=$PWD/examples/plugin-hello-theme just dev
-cargo run -p desk-cli -- theme apply example.hello-theme
+endue theme apply example.hello-theme
 ```
 
-`cargo run -p desk-cli -- cmd run desk.theme.default` (or the endue card in the studio) puts the endue
+`endue cmd run desk.theme.default` (or the endue card in the studio) puts the endue
 theme back.
 
 ## Check it
 
 ```bash
-cargo run -p desk-cli -- plugin validate examples/plugin-hello-theme
-cargo run -p desk-cli -- plugin test examples/plugin-hello-theme
+endue plugin validate examples/plugin-hello-theme
+endue plugin test examples/plugin-hello-theme
 ```
 
-`desk plugin test` runs `tests/theme.test.ts` with vitest: it compiles both schemes and gates them
+`endue plugin test` runs `tests/theme.test.ts` with vitest: it compiles both schemes and gates them
 over the endue palette with no fixes, and it is the test `pnpm create @endue-ai/plugin --kind theme`
 writes. Licence `Apache-2.0 AND OFL-1.1`: the theme is the repository's, the font is OFL
 (`fonts/OFL.txt`; source and checksum in `fonts/SOURCE.md`).

@@ -51,7 +51,7 @@ impl Tracing {
         {
             let file = trace.file().unwrap_or(Path::new(desk_trace::FILE));
             eprintln!(
-                "endue Desk: the start-up trace was not written to {} ({why})",
+                "endue: the start-up trace was not written to {} ({why})",
                 file.display()
             );
         }
