@@ -19,8 +19,8 @@ export async function mounted(
   options: Omit<Options, "dialog" | "handlers"> & {
     connections?: unknown[];
     files?: Record<string, string>;
-    /** The path the open dialog answers; cancelled when absent. */
-    open?: string;
+    /** The path the open dialog answers (asked each time when a function); cancelled when absent. */
+    open?: string | (() => string);
     answer?: (type: string, model: any) => unknown;
   } = {},
 ): Promise<Files> {
@@ -35,8 +35,10 @@ export async function mounted(
         cancelled: false,
         path: `~/Transfer/${suggestedName}`,
       }),
-      "dialog.open": () =>
-        open ? { cancelled: false, paths: [open] } : { cancelled: true, paths: [] },
+      "dialog.open": () => {
+        const path = typeof open === "function" ? open() : open;
+        return path ? { cancelled: false, paths: [path] } : { cancelled: true, paths: [] };
+      },
       "fs.write": ({ path, content }) => {
         files[path] = content;
         return { bytesWritten: content.length };
