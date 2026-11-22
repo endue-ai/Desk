@@ -1745,6 +1745,16 @@
         "keywords": ["back", "foreign key", "return", "previous", "grid"]
       },
       {
+        "id": "endue.database.chart",
+        "title": "Database: draw the result as a chart",
+        "keywords": ["chart", "graph", "plot", "bar", "line", "pie", "visualize", "result"]
+      },
+      {
+        "id": "endue.database.chart-export",
+        "title": "Database: export the chart as an image",
+        "keywords": ["chart", "export", "image", "png", "svg", "save"]
+      },
+      {
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]

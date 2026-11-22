@@ -35,7 +35,8 @@ export function totalsText(
   if (t.min !== null) parts.push(`Min ${v(t.min)}`);
   if (t.max !== null) parts.push(`Max ${v(t.max)}`);
   if (t.nulls) parts.push(`${formatCount(t.nulls)} NULL`);
-  if (set.truncated) parts.push(`of the ${formatCount(set.rows.length)} rows fetched (more not loaded)`);
+  if (set.truncated)
+    parts.push(`of the ${formatCount(set.rows.length)} rows fetched (more not loaded)`);
   return parts.join(" · ");
 }
 

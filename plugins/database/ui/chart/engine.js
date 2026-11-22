@@ -42,7 +42,8 @@ export function createChartEngine() {
       for (const col of cols)
         if (!columns.has(col)) return { id, error: `The chart's worker has no column ${col}.` };
       const values = function* () {
-        for (const col of cols) for (let i = 0; i < rows.length; i++) yield value(rows[i] ?? 0, col);
+        for (const col of cols)
+          for (let i = 0; i < rows.length; i++) yield value(rows[i] ?? 0, col);
       };
       return { id, totals: totalsOf(values()) };
     }

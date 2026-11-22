@@ -8,7 +8,14 @@ import { el } from "../dom.js";
 import { formatCount } from "../format.js";
 import { chartClient } from "./client.js";
 import { drawChart, tokenPalette } from "./draw.js";
-import { AGGREGATE_NAMES, AGGREGATES, chartTitle, settingsFor, TYPE_NAMES, TYPES } from "./model.js";
+import {
+  AGGREGATE_NAMES,
+  AGGREGATES,
+  chartTitle,
+  settingsFor,
+  TYPE_NAMES,
+  TYPES,
+} from "./model.js";
 
 /**
  * @typedef {import("../tabs.js").Tab} Tab
@@ -78,7 +85,11 @@ export function createCharts(doc, act, startWorker) {
         : [s.x, ...(data.series.length > 1 ? data.series.map((x) => x.name) : [s.y || "rows"])];
     const body =
       s.type === "scatter"
-        ? data.points.map((p) => [p.x, p.y, ...(s.series ? [data.series[p.series]?.name ?? ""] : [])])
+        ? data.points.map((p) => [
+            p.x,
+            p.y,
+            ...(s.series ? [data.series[p.series]?.name ?? ""] : []),
+          ])
         : data.categories.map((k, i) => [k, ...data.series.map((x) => x.values[i] ?? "")]);
     return el(
       doc,
@@ -132,16 +143,31 @@ export function createCharts(doc, act, startWorker) {
       doc,
       "div",
       { class: "chart-bar", role: "toolbar", "aria-label": "Chart" },
-      select("type", "Chart", TYPES.map((t) => [t, TYPE_NAMES[t]]), s.type),
+      select(
+        "type",
+        "Chart",
+        TYPES.map((t) => [t, TYPE_NAMES[t]]),
+        s.type,
+      ),
       select("x", "X", names, s.x),
       select("y", "Y", [["", "Rows"], ...names], s.y),
       select("series", "Series", [["", "None"], ...names], s.series),
-      select("aggregate", "As", AGGREGATES.map((a) => [a, AGGREGATE_NAMES[a]]), s.aggregate),
+      select(
+        "aggregate",
+        "As",
+        AGGREGATES.map((a) => [a, AGGREGATE_NAMES[a]]),
+        s.aggregate,
+      ),
       el(doc, "span", { class: "grow" }),
       el(
         doc,
         "button",
-        { type: "button", class: "desk-btn desk-btn-quiet", "data-chart": "export", title: "Export the chart as a PNG image" },
+        {
+          type: "button",
+          class: "desk-btn desk-btn-quiet",
+          "data-chart": "export",
+          title: "Export the chart as a PNG image",
+        },
         "Export",
       ),
     );

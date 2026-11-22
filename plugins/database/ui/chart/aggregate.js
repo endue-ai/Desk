@@ -229,7 +229,10 @@ export function groupChart({ count, value, columns, settings, rows }) {
   }
   dropped.categories = left.size;
   dropped.series = extra.size;
-  const categories = settings.type === "bar" || settings.type === "pie" ? [...groups.keys()] : ordered([...groups.keys()]);
+  const categories =
+    settings.type === "bar" || settings.type === "pie"
+      ? [...groups.keys()]
+      : ordered([...groups.keys()]);
   let skipped = 0;
   for (const cells of groups.values()) for (const cell of cells.values()) skipped += cell.skipped;
   const series = named().map((name, index) => ({

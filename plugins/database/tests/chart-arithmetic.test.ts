@@ -25,9 +25,9 @@ describe("exact decimals", () => {
     );
     expect(formatDecimal(addDecimal(d("0.1"), d("0.2")))).toBe("0.3");
     expect(formatDecimal(addDecimal(d("1.50"), d("2")))).toBe("3.50");
-    expect(
-      formatDecimal(addDecimal(d("123456789012345678901234567890.123"), d("0.877"))),
-    ).toBe("123456789012345678901234567891.000");
+    expect(formatDecimal(addDecimal(d("123456789012345678901234567890.123"), d("0.877")))).toBe(
+      "123456789012345678901234567891.000",
+    );
     expect(formatDecimal(addDecimal(d("-1e-3"), d("1.5E+2")))).toBe("149.999");
     expect(formatDecimal(addDecimal(d("-0.5"), d("0.25")))).toBe("-0.25");
   });

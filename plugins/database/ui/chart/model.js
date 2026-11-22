@@ -14,7 +14,13 @@ import { parseDecimal } from "./decimal.js";
 
 export const TYPES = /** @type {const} */ (["bar", "line", "area", "scatter", "pie"]);
 export const AGGREGATES = /** @type {const} */ (["sum", "avg", "count", "min", "max"]);
-export const TYPE_NAMES = { bar: "Bar", line: "Line", area: "Area", scatter: "Scatter", pie: "Pie" };
+export const TYPE_NAMES = {
+  bar: "Bar",
+  line: "Line",
+  area: "Area",
+  scatter: "Scatter",
+  pie: "Pie",
+};
 export const AGGREGATE_NAMES = {
   sum: "sum",
   avg: "average",
@@ -48,7 +54,7 @@ export function numberColumns(/** @type {ResultSet} */ set) {
 export function settingsFor(set, given = {}) {
   const numeric = numberColumns(set);
   const text = set.columns.findIndex((_, c) => !numeric[c]);
-  const x = set.columns[text >= 0 ? text : 0] ?? "";
+  const x = set.columns[Math.max(text, 0)] ?? "";
   const y = set.columns.find((name, c) => numeric[c] && name !== x) ?? "";
   /** @type {Settings} */
   const base = { type: "bar", x, y, series: "", aggregate: y ? "sum" : "count" };

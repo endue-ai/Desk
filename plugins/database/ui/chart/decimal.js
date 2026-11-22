@@ -59,7 +59,8 @@ export function addDecimal(/** @type {Decimal} */ a, /** @type {Decimal} */ b) {
 }
 
 /** The order of a value's kind: -Infinity, a number, Infinity, NaN. */
-const rank = (/** @type {Decimal} */ d) => (d.kind === "nan" ? 3 : d.kind === "inf" ? d.sign + 1 : 1);
+const rank = (/** @type {Decimal} */ d) =>
+  d.kind === "nan" ? 3 : d.kind === "inf" ? d.sign + 1 : 1;
 
 /** -1, 0 or 1 as a is below, equal to or above b. */
 export function compareDecimal(/** @type {Decimal} */ a, /** @type {Decimal} */ b) {

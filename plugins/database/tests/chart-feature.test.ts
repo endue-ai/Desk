@@ -7,7 +7,12 @@ import { type ChartPage, provideChartPage } from "../ui/chart/page.js";
 import { mount, SAVED } from "./harness";
 
 const script = () => ({
-  rows: [["team", "amount"], ["red", "1.10"], ["blue", "2"], ["red", "0.20"]],
+  rows: [
+    ["team", "amount"],
+    ["red", "1.10"],
+    ["blue", "2"],
+    ["red", "0.20"],
+  ],
 });
 const page: ChartPage = {
   palette: () => ({
@@ -88,7 +93,10 @@ describe("the Chart tab", () => {
     expect(writes[0]?.content).toContain('fill="#111111"');
     expect(writes[0]?.content).toContain(">red</text>");
     await m.host.command("endue.database.chart-export", { format: "png" });
-    expect(writes[1]).toMatchObject({ path: "~/Pictures/chart-Notes-Chart.png", encoding: "base64" });
+    expect(writes[1]).toMatchObject({
+      path: "~/Pictures/chart-Notes-Chart.png",
+      encoding: "base64",
+    });
     expect(atob(writes[1]?.content ?? "")).toMatch(/^png 960x540 /u);
   });
 

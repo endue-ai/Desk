@@ -89,7 +89,8 @@ export function createChartClient(startWorker, threshold = LARGE) {
           overrides.push([row, col, valueAt(set, changes, row, col).value]);
       changes.inserts.forEach((_, i) => {
         const row = set.rows.length + i;
-        for (const col of columns) overrides.push([row, col, valueAt(set, changes, row, col).value]);
+        for (const col of columns)
+          overrides.push([row, col, valueAt(set, changes, row, col).value]);
       });
     }
     const id = ++next;

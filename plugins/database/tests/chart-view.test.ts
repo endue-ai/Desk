@@ -80,7 +80,11 @@ describe("the selection's totals in the footer", () => {
     press("ArrowDown", { shiftKey: true });
     await flush();
     expect(totals()).toMatch(/^Count 2/u);
-    g.render({ label: "Messages", kind: "messages", statement: -1, lines: [] } as never, true, context);
+    g.render(
+      { label: "Messages", kind: "messages", statement: -1, lines: [] } as never,
+      true,
+      context,
+    );
     await flush();
     expect(totals()).toBe("");
   });
@@ -171,9 +175,7 @@ describe("the Chart tab", () => {
     await flush();
     choose("series", "region");
     await flush();
-    const fills = [...host().querySelectorAll("rect.chart-bar")].map((r) =>
-      r.getAttribute("fill"),
-    );
+    const fills = [...host().querySelectorAll("rect.chart-bar")].map((r) => r.getAttribute("fill"));
     expect(new Set(fills)).toEqual(new Set(SERIES.slice(0, 2).map((t) => `var(${t})`)));
     for (const name of ["light", "dark"] as const) {
       const palette = new Palette(scheme(name), []);
@@ -181,7 +183,12 @@ describe("the Chart tab", () => {
       const card = rgba("--desk-card");
       for (const token of SERIES)
         for (const ground of ["background", "card", "muted", "popover", "hover"])
-          expect([name, token, ground, contrast(rgba(token), over(rgba(`--desk-${ground}`), card)) >= 3]).toEqual([name, token, ground, true]);
+          expect([
+            name,
+            token,
+            ground,
+            contrast(rgba(token), over(rgba(`--desk-${ground}`), card)) >= 3,
+          ]).toEqual([name, token, ground, true]);
     }
   });
 

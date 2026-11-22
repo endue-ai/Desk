@@ -46,7 +46,8 @@ const ESCAPES = /** @type {Record<string, string>} */ ({
   '"': "&quot;",
   "'": "&#39;",
 });
-export const escapeXml = (/** @type {string} */ s) => s.replace(/[&<>"']/gu, (c) => ESCAPES[c] ?? c);
+export const escapeXml = (/** @type {string} */ s) =>
+  s.replace(/[&<>"']/gu, (c) => ESCAPES[c] ?? c);
 const px = (/** @type {number} */ n) => String(Math.round(n * 10) / 10);
 const num = (/** @type {string | null} */ v) => {
   const d = v === null ? null : parseDecimal(v);
@@ -74,7 +75,11 @@ export function drawChart(data, settings, size, palette) {
       `<text class="${cls}" x="${px(x)}" y="${px(y)}" text-anchor="${anchor}" fill="${palette.muted}">${escapeXml(body)}</text>`,
     );
   const legendNames =
-    settings.type === "pie" ? data.categories : data.series.length > 1 ? data.series.map((s) => s.name) : [];
+    settings.type === "pie"
+      ? data.categories
+      : data.series.length > 1
+        ? data.series.map((s) => s.name)
+        : [];
   let lx = 8;
   legendNames.forEach((name, i) => {
     out.push(
@@ -135,23 +140,41 @@ function drawAxes(
   const right = box.w - 16;
   const bottom = box.h - 28;
   const scatter = settings.type === "scatter";
-  const ys = scatter ? data.points.map((p) => num(p.y)) : data.series.flatMap((s) => s.values.map(num));
+  const ys = scatter
+    ? data.points.map((p) => num(p.y))
+    : data.series.flatMap((s) => s.values.map(num));
   const finite = ys.filter(Number.isFinite);
   const yt = ticks(Math.min(0, ...finite), Math.max(0, ...finite));
   const yAt = (/** @type {number} */ v) => place(v, yt.low, yt.high, bottom, box.top);
   for (const v of yt.values) {
     const y = yAt(v);
-    out.push(`<line class="chart-grid" x1="${left}" x2="${px(right)}" y1="${px(y)}" y2="${px(y)}" stroke="${palette.grid}"/>`);
+    out.push(
+      `<line class="chart-grid" x1="${left}" x2="${px(right)}" y1="${px(y)}" y2="${px(y)}" stroke="${palette.grid}"/>`,
+    );
     text(left - 6, y + 4, tickText(v), "end", "chart-tick");
   }
-  out.push(`<line class="chart-axis" x1="${left}" x2="${px(right)}" y1="${px(yAt(0))}" y2="${px(yAt(0))}" stroke="${palette.muted}"/>`);
+  out.push(
+    `<line class="chart-axis" x1="${left}" x2="${px(right)}" y1="${px(yAt(0))}" y2="${px(yAt(0))}" stroke="${palette.muted}"/>`,
+  );
   if (scatter) {
     const xs = data.points.map((p) => num(p.x));
-    const xt = ticks(Math.min(...xs.filter(Number.isFinite)), Math.max(...xs.filter(Number.isFinite)));
-    for (const v of xt.values) text(place(v, xt.low, xt.high, left, right), bottom + 16, tickText(v), "middle", "chart-tick");
+    const xt = ticks(
+      Math.min(...xs.filter(Number.isFinite)),
+      Math.max(...xs.filter(Number.isFinite)),
+    );
+    for (const v of xt.values)
+      text(
+        place(v, xt.low, xt.high, left, right),
+        bottom + 16,
+        tickText(v),
+        "middle",
+        "chart-tick",
+      );
     data.points.forEach((p, i) => {
       const x = place(xs[i] ?? 0, xt.low, xt.high, left, right);
-      out.push(`<circle class="chart-dot" cx="${px(x)}" cy="${px(yAt(num(p.y)))}" r="3" fill="${colour(palette, p.series)}"/>`);
+      out.push(
+        `<circle class="chart-dot" cx="${px(x)}" cy="${px(yAt(num(p.y)))}" r="3" fill="${colour(palette, p.series)}"/>`,
+      );
     });
     return;
   }
@@ -160,11 +183,17 @@ function drawAxes(
   const every = Math.max(1, Math.ceil(56 / band));
   data.categories.forEach((name, i) => {
     if (i % every) return;
-    text(left + band * (i + 0.5), bottom + 16, cut(name, Math.max(3, Math.floor((band * every) / 7))), "middle", "chart-category");
+    text(
+      left + band * (i + 0.5),
+      bottom + 16,
+      cut(name, Math.max(3, Math.floor((band * every) / 7))),
+      "middle",
+      "chart-category",
+    );
   });
   if (settings.type === "bar") {
     const inner = (band * 0.8) / Math.max(1, data.series.length);
-    data.series.forEach((s, si) =>
+    data.series.forEach((s, si) => {
       s.values.forEach((v, i) => {
         const value = num(v);
         if (!Number.isFinite(value)) return;
@@ -173,8 +202,8 @@ function drawAxes(
         out.push(
           `<rect class="chart-bar" x="${px(x)}" y="${px(Math.min(y0, y1))}" width="${px(Math.max(1, inner - 1))}" height="${px(Math.max(1, Math.abs(y0 - y1)))}" fill="${colour(palette, si)}"/>`,
         );
-      }),
-    );
+      });
+    });
     return;
   }
   data.series.forEach((s, si) => {
