@@ -269,6 +269,7 @@
         { "$ref": "net.schema.json#/$defs/NetDataEvent" },
         { "$ref": "net.schema.json#/$defs/NetClosedEvent" },
         { "$ref": "db.schema.json#/$defs/DbNoticeEvent" },
+        { "$ref": "db.schema.json#/$defs/DbCallNoticeEvent" },
         { "$ref": "db.schema.json#/$defs/DbNotificationEvent" },
         { "$ref": "db.schema.json#/$defs/DbParameterEvent" },
         { "$ref": "db.schema.json#/$defs/DbClosedEvent" },

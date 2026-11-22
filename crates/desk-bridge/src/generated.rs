@@ -5426,6 +5426,7 @@ pub enum BridgeEvent {
     NetData(NetDataEvent),
     NetClosed(NetClosedEvent),
     DbNotice(DbNoticeEvent),
+    DbCallNotice(DbCallNoticeEvent),
     DbNotification(DbNotificationEvent),
     DbParameter(DbParameterEvent),
     DbClosed(DbClosedEvent),
@@ -7716,7 +7717,7 @@ pub struct DbPage {
     pub data: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
-    /// The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event. At most 10,000 a page.
+    /// The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event (each also came as a db.call.notice while the call ran). At most 10,000 a page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notices: Option<Vec<DbServerError>>,
     /// Notices past the 10,000 a page keeps, counted and left out.
@@ -7726,6 +7727,9 @@ pub struct DbPage {
         skip_serializing_if = "Option::is_none"
     )]
     pub notices_skipped: Option<u64>,
+    /// The session's number for the call this page answers, counting from 1: a db.call.notice with this number or a lower one is already on a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call: Option<u64>,
 }
 
 /// One row: each value the server's text, or null.
@@ -7860,6 +7864,25 @@ pub struct DbNoticeEvent {
 pub struct DbNoticeData {
     #[serde(rename = "sessionId")]
     pub session_id: DbSessionId,
+    pub notice: DbServerError,
+}
+
+/// A notice the server sent while a call runs, sent as it arrives, so a long statement's progress can be shown before its answer. The call's page carries it too, and the page is the record (ADR 0334, ADR 0358): an event whose call is already answered is late. At most the 10,000 a page keeps.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCallNoticeEvent {
+    pub event: DbCallNoticeEventEvent,
+    pub data: DbCallNoticeData,
+}
+
+/// Payload of db.call.notice.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbCallNoticeData {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// The number of the call that heard it, as that call's pages say (DbPage.call).
+    pub call: u64,
     pub notice: DbServerError,
 }
 
@@ -14106,6 +14129,14 @@ pub enum DbNoticeEventEvent {
     #[default]
     #[serde(rename = "db.notice")]
     DbNotice,
+}
+
+/// The `event` of [`DbCallNoticeEvent`]: always `"db.call.notice"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbCallNoticeEventEvent {
+    #[default]
+    #[serde(rename = "db.call.notice")]
+    DbCallNotice,
 }
 
 /// The `event` of [`DbNotificationEvent`]: always `"db.notification"`.

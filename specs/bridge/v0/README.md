@@ -72,7 +72,7 @@ holds the call after the cap and the permission check and sends `perm.approval` 
 A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
-its processes, `net.data` and `net.closed` for its sockets, `db.notice`, `db.notification`, `db.parameter` and `db.closed` for its database sessions, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+its processes, `net.data` and `net.closed` for its sockets, `db.notice`, `db.call.notice`, `db.notification`, `db.parameter` and `db.closed` for its database sessions, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
@@ -295,7 +295,8 @@ plugin forgets every password it kept. An agent is `permission_denied` (ADR 0311
 A page carries `notices`, every notice the server sent while that call ran, in order (at most 10,000;
 `noticesSkipped` counts the rest), so a statement's notices stay with it whatever order the frame hears
 things in. A session's events go to its caller alone: `db.notice` for a notice sent outside any call
-(with the sign-in, or while idle); `db.notification` for a NOTIFY, also while idle; `db.parameter`
+(with the sign-in, or while idle); `db.call.notice` for each notice a call hears, as it arrives, with the
+call's number (`DbPage.call`), the page still its record; `db.notification` for a NOTIFY, also while idle; `db.parameter`
 for each ParameterStatus; and `db.closed`, the session's last, with `reason` `closed`, `server` (with its FATAL `error` when it sent
 one), `io`, `encoding` (the server's `client_encoding` stopped being `UTF8`), `unloaded` (its plugin
 stopped), `revoked` (the grant that covers it went) or `desk`. The core keeps no timer on a session.
