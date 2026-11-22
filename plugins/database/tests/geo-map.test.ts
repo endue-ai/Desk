@@ -123,7 +123,8 @@ describe("the Map tab", () => {
     canvas.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     expect(document.getElementById("hints")?.textContent).toMatch(/N and P pick a row/u);
     press(canvas, "Enter");
-    expect(acts.at(-1)).toEqual(["showSet", SET]);
+    // Enter waits for a pick still on its way, then shows its row.
+    await vi.waitFor(() => expect(acts.at(-1)).toEqual(["showSet", SET]));
     // Back in the grid, the cursor is on the row the map showed.
     grid.render(rowsTab, true, context);
     expect(grid.cursorCell()?.row).toBe(3);

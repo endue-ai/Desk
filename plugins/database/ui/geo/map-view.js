@@ -2,9 +2,8 @@
 // a scale, no tiles and nothing fetched. Its bar picks the column, all rows held or the rows the
 // grid had selected, and fits or zooms (the canvas's own keys: map-input.js). A picked row is said
 // under the map with its values, and Show in grid opens the rows tab with the cursor on it; the
-// grid's block when the tab opened is what Selected rows draws. Values are read in the map's worker
-// (engine.js); the curves it cannot draw are read as GeoJSON by the viewer's own statement, the
-// `geoRead` action (features/geo/), never by changing the person's.
+// grid's block when the tab opened is what Selected rows draws. The worker reads the values; curves
+// come back as GeoJSON from the viewer's own statement (`geoRead`, features/geo/), never the person's.
 
 import { el } from "../dom.js";
 import { geoClient } from "./client.js";
@@ -271,7 +270,11 @@ export function createMaps(doc, act, startWorker) {
     if (!on?.layer.summary) return;
     setView(await fitted(on.layer).catch(() => fitView(null, 1, 1, "units")));
   };
-  const pick = async (/** @type {Record<string, unknown>} */ ask) => {
+  // Picks run one after another, so quick N presses each step from the row the last one picked.
+  let picking = Promise.resolve();
+  const pick = (/** @type {Record<string, unknown> | (() => Record<string, unknown>)} */ ask) =>
+    (picking = picking.then(() => picked(typeof ask === "function" ? ask() : ask)));
+  const picked = async (/** @type {Record<string, unknown>} */ ask) => {
     if (!on?.layer.summary) return;
     const { link, layer } = on;
     const reply = await client
@@ -301,8 +304,8 @@ export function createMaps(doc, act, startWorker) {
       const [x, y] = toData(view, px, py, width, height);
       return pick({ op: "pick", x, y, tolerance: 4 / view.scale, kx: view.kx });
     },
-    step: (delta) => void pick({ op: "step", from: on?.link.picked ?? -1, delta }),
-    showInGrid,
+    step: (delta) => void pick(() => ({ op: "step", from: on?.link.picked ?? -1, delta })),
+    showInGrid: () => void picking.then(showInGrid),
     unpick() {
       if (!on || on.link.picked < 0) return false;
       on.link.picked = -1;
