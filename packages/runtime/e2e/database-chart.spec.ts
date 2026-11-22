@@ -2,8 +2,8 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 
 // A result's totals and its chart (PG-44, plugins/database/ui/chart/) on the browser stub with the
 // scripted sqlite3 over the fixture's staff table (id, name, note, team): a block of the grid shows
-// its count, distinct count, sum, average, minimum and maximum in the footer; the Chart button opens
-// a Chart tab that draws the ids summed by team as bars in the theme's chart colours, with a table
+// its count, distinct count, sum, average, minimum and maximum in the footer; Database: draw the result as
+// a chart opens a Chart tab that draws the ids summed by team as bars in the theme's chart colours, with a table
 // for screen readers, and draws again as a pie; and the chart exports as a PNG.
 const SURFACE = '[data-surface="endue.database"]';
 
@@ -57,7 +57,7 @@ test("a result is drawn as a chart, read as a table, and exported as an image", 
 }) => {
   const frame = await open(page);
   await query(page, frame);
-  await frame.getByRole("button", { name: "Chart", exact: true }).click();
+  await run(page, "endue.database.chart");
   await expect(frame.getByRole("tab", { name: "Chart" })).toHaveAttribute("aria-selected", "true");
   const chart = frame.locator("#result svg[role=img]");
   await expect(chart).toHaveAttribute("aria-label", "Bar chart of the sum of id by name");

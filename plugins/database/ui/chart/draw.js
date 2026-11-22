@@ -58,9 +58,21 @@ const colour = (/** @type {Palette} */ p, /** @type {number} */ i) =>
 
 /**
  * The chart's SVG document.
- * @param {ChartData} data @param {Settings} settings @param {Size} size @param {Palette} palette
+ * @param {ChartData} data @param {Settings} settings @param {Size} size @param {Palette} given
  */
-export function drawChart(data, settings, size, palette) {
+export function drawChart(data, settings, size, given) {
+  // A resolved font family holds quotes: every palette value is an attribute's, escaped.
+  /** @type {Palette} */
+  const palette = {
+    ...given,
+    series: given.series.map(escapeXml),
+    text: escapeXml(given.text),
+    muted: escapeXml(given.muted),
+    grid: escapeXml(given.grid),
+    background: escapeXml(given.background),
+    font: escapeXml(given.font),
+    size: escapeXml(given.size),
+  };
   const { width: w, height: h } = size;
   const title = chartTitle(settings);
   const out = [];
