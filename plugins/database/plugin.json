@@ -145,6 +145,16 @@
         "keywords": ["url", "dsn"]
       },
       {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
         "id": "endue.database.run",
         "title": "Database: run the statement",
         "keywords": ["execute", "query", "selection"]

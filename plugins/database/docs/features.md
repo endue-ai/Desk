@@ -38,6 +38,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
+- Connections exported to a JSON file without secrets and imported from one or a `pg_service.conf`: [`connections-file.md`](connections-file.md).
 
 Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
 `features/keychain/`.

@@ -4,6 +4,7 @@
 // calls when a client needs one. Passwords live in memory, and in the OS keychain for a PostgreSQL
 // connection whose choice says so (keychain.js, ADR 0311): kept once a typed one works or a URI's
 // on Save, forgotten when the choice goes off, the server or user changes, or the connection goes.
+// An import (features/connections-file/) keeps its connections at once with `adopt`.
 
 import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
@@ -335,6 +336,21 @@ export function createManager(deps) {
           : `Forgot the password of ${conn.name}: the keychain kept none.`,
       );
       return conn.id;
+    },
+    /** Connections from a file, each added or over the one with its id, kept at once as Save keeps one. */
+    async adopt(/** @type {Connection[]} */ incoming) {
+      const byId = new Map(incoming.map((c) => [c.id, c]));
+      const fresh = incoming.filter((c) => !list.some((o) => o.id === c.id));
+      const next = [...list.map((c) => byId.get(c.id) ?? c), ...fresh];
+      for (const conn of incoming) normalize(conn, next);
+      await saveConnections(deps.bridge, next);
+      list = next;
+      for (const conn of incoming) {
+        if (deps.keychain.holds(conn.id) && !(chosen(conn) && deps.keychain.has(conn)))
+          await forgetKept(conn);
+        await deps.renamed(conn);
+      }
+      deps.changed();
     },
     formOpen: () => form !== null,
   };
