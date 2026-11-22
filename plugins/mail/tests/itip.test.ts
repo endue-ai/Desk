@@ -14,6 +14,24 @@ import { INVITE, ME } from "./harness";
 const NOW = Date.UTC(2026, 9, 30);
 
 describe("reading an iTIP message", () => {
+  it("reads invitations written by earlier releases without changing their identity", () => {
+    const invitation = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//endue//Desk Calendar 0.1//EN",
+      "METHOD:REQUEST",
+      "BEGIN:VEVENT",
+      "UID:endue.calendar.sample",
+      "DTSTART:20261103T160000Z",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    expect(readCalendar(invitation).invitations[0]).toMatchObject({
+      uid: "endue.calendar.sample",
+      method: "REQUEST",
+    });
+  });
+
   it("reads a REQUEST: the method, the event, the organizer and the attendees with their status", () => {
     const { method, invitations, problems } = readCalendar(INVITE, "Asia/Seoul");
     expect(method).toBe("REQUEST");
@@ -123,7 +141,7 @@ describe("answering (RFC 5546 §3.2.3, RFC 6047)", () => {
     expect(ics.split("\r\n").slice(0, 4)).toEqual([
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//endue//Desk Mail 0.1//EN",
+      "PRODID:-//endue//endue Mail 0.1//EN",
       "METHOD:REPLY",
     ]);
     const { calendars } = parse(ics);
