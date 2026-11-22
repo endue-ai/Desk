@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use common::{limits, open, run, sql, until, value};
-use desk_pg::{Direction, Limits, Statement, Transaction};
+use desk_pg::{Direction, Event, Limits, Statement, Transaction};
 
 const VAR: &str = "ENDUE_DB_TEST_POSTGRES";
 
@@ -257,5 +257,20 @@ fn a_notice_raised_at_a_statement_s_commit_stays_with_it() {
         .map(|p| p.notices.iter().map(|n| n.message()).collect())
         .collect();
     assert_eq!(said, [vec!["committed 1"], vec![], vec!["committed 2"]]);
-    assert_eq!(events.all().len(), before, "none also as an event");
+    // None is also a session's own notice (ADR 0334); each came while the script ran, as its
+    // call's (ADR 0358), and the pages carry that call.
+    let call = done.pages[0].call;
+    let after = events.all().split_off(before);
+    assert!(
+        !after.iter().any(|e| matches!(e, Event::Notice(_))),
+        "none also as an event"
+    );
+    let raised: Vec<(u64, &str)> = after
+        .iter()
+        .filter_map(|e| match e {
+            Event::CallNotice { call, notice } => Some((*call, notice.message())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(raised, [(call, "committed 1"), (call, "committed 2")]);
 }
