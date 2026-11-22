@@ -4,7 +4,7 @@
 // never 0 or "", and the fixture server's empty text reads as NULL too. No DOM.
 
 import { formatCount } from "../../format.js";
-import { OWN_APPLICATION } from "./sql.js";
+import { FLOOR, HEAD, locksSql, sessionsSql } from "./sql.js";
 import { blockingTree, lockText } from "./tree.js";
 
 export { blockingTree, lockText };
@@ -15,10 +15,13 @@ export { blockingTree, lockText };
  *   application: string | null, client: string | null, backend: string | null,
  *   state: string | null, waitType: string | null, wait: string | null,
  *   stateMs: number | null, xactMs: number | null, queryMs: number | null,
- *   blockedBy: number[], query: string | null, hidden: boolean, own: "" | "view" | "plugin",
+ *   blockedBy: number[], query: string | null, hidden: boolean, own: "" | "view" | "desk",
+ *   reads: boolean,
  * }} Session
- *   `own` marks the session that read the view and the plugin's other sessions; `hidden`, one
- *   whose statement, state and waits the role may not see.
+ *   `own` marks the session that read the view and the plugin's other sessions on this desk (from
+ *   db.list: another desk's are not marked, whatever their application says); `reads`, another
+ *   session running one of the view's own statements (another panel's or another desk's read);
+ *   `hidden`, one whose statement, state and waits the role may not see.
  * @typedef {import("./tree.js").Lock} Lock
  * @typedef {{
  *   version: number, server: string, own: number, database: string, at: number,
@@ -26,8 +29,9 @@ export { blockingTree, lockText };
  * }} Read
  *   `more`: the server holds more locks than were read.
  * @typedef {{ idle: boolean, own: boolean, system: boolean, database: string }} Filters
- *   `idle` hides idle sessions, `own` the view's own, `system` shows background processes, and a
- *   `database` other than "" keeps that one's.
+ *   `idle` hides idle sessions, `own` the view's reads (the session that read and the `reads`
+ *   ones, with their locks), `system` shows background processes, and a `database` other than ""
+ *   keeps that one's.
  * @typedef {"pid" | "user" | "database" | "application" | "client" | "state" | "stateMs" | "xactMs" | "queryMs" | "wait"} SortKey
  * @typedef {{ key: SortKey, desc: boolean }} Sort
  */
@@ -68,9 +72,11 @@ const number = (/** @type {unknown} */ value) => {
  * @param {(string | null)[][]} locks
  * @param {boolean} more
  * @param {number} at when it was read
+ * @param {ReadonlySet<number>} [mine] the process ids of the plugin's sessions on this desk's
+ *   connection to that server
  * @returns {Read}
  */
-export function readOf(head, sessions, locks, more, at) {
+export function readOf(head, sessions, locks, more, at, mine = new Set()) {
   const own = number(head[2]) ?? 0;
   return {
     version: number(head[0]) ?? 0,
@@ -78,24 +84,31 @@ export function readOf(head, sessions, locks, more, at) {
     own,
     database: text(head[3]) ?? "",
     at,
-    sessions: sessions.map((row) => sessionOf(row, own)),
+    sessions: sessions.map((row) => sessionOf(row, own, mine)),
     locks: locks.map(lockOf),
     more,
   };
 }
 
-/** @returns {Session} */
-function sessionOf(/** @type {(string | null)[]} */ row, /** @type {number} */ own) {
+/** The view's own statements (the locks' in either version's words), as a session runs one. */
+const READS = new Set([HEAD, sessionsSql(), ...[FLOOR, Number.POSITIVE_INFINITY].map(locksSql)]);
+
+/**
+ * @param {(string | null)[]} row
+ * @param {number} own
+ * @param {ReadonlySet<number>} mine
+ * @returns {Session}
+ */
+function sessionOf(row, own, mine) {
   const pid = number(row[0]) ?? 0;
   const query = text(row[15]);
   const host = text(row[5]);
-  const application = text(row[4]);
   return {
     pid,
     leader: number(row[1]),
     user: text(row[2]),
     database: text(row[3]),
-    application,
+    application: text(row[4]),
     client: host ?? (number(row[6]) === -1 ? "local" : null),
     backend: text(row[7]),
     state: text(row[8]),
@@ -107,7 +120,8 @@ function sessionOf(/** @type {(string | null)[]} */ row, /** @type {number} */ o
     blockedBy: (text(row[14]) ?? "").split(" ").filter(Boolean).map(Number),
     query: query === HIDDEN ? null : query,
     hidden: query === HIDDEN,
-    own: pid === own ? "view" : application === OWN_APPLICATION ? "plugin" : "",
+    own: pid === own ? "view" : mine.has(pid) ? "desk" : "",
+    reads: pid !== own && query !== null && READS.has(query.trim()),
   };
 }
 
@@ -145,7 +159,7 @@ export function visible(/** @type {Session[]} */ sessions, /** @type {Filters} *
   return sessions.filter(
     (s) =>
       !(filters.idle && s.state === "idle") &&
-      !(filters.own && s.own === "view") &&
+      !(filters.own && (s.own === "view" || s.reads)) &&
       (filters.system || !isBackground(s)) &&
       (filters.database === "" || s.database === filters.database),
   );
@@ -167,6 +181,14 @@ export function sorted(/** @type {Session[]} */ sessions, /** @type {Sort} */ so
 /** What a session waits for in words ("Lock: transactionid"), or null. */
 export const waitText = (/** @type {Session} */ s) =>
   s.waitType === null ? null : `${s.waitType}${s.wait !== null ? `: ${s.wait}` : ""}`;
+
+/** The status line after a read of the connection named. */
+export function saidOf(/** @type {string} */ name, /** @type {Read} */ read) {
+  const waiting = read.sessions.filter((s) => s.blockedBy.length).length;
+  const hidden = read.sessions.filter((s) => s.hidden && !isBackground(s)).length;
+  const hides = hidden === 1 ? "1 hides its statement" : `${hidden} hide their statements`;
+  return `${formatCount(read.sessions.length)} sessions on ${name}, ${waiting || "none"} waiting${hidden ? `; ${hides}` : ""}.`;
+}
 
 /** The sentence about the sessions whose statement the role may not see, or "". */
 export function hiddenOf(/** @type {Session[]} */ sessions) {
