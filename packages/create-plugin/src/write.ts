@@ -29,6 +29,6 @@ async function assertEmpty(dir: string): Promise<void> {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     throw error;
   }
-  if (!info.isDirectory()) throw new FolderError(`${dir} is not a folder`);
-  if ((await readdir(dir)).length > 0) throw new FolderError(`${dir} is not empty`);
+  if (!info.isDirectory()) throw new FolderError("the destination is not a folder");
+  if ((await readdir(dir)).length > 0) throw new FolderError("the destination is not empty");
 }

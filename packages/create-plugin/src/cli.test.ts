@@ -34,10 +34,10 @@ describe("main", () => {
     expect(manifestIn(dir)).toMatchObject({ id: "local.my-plugin", name: "My plugin" });
     expect(existsSync(join(dir, "ui/index.html"))).toBe(true);
     expect(err).toEqual([]);
-    expect(out[0]).toBe(`Created local.my-plugin in ${dir}`);
-    // The folder is quoted on Windows, where the temporary path holds backslashes.
-    expect(out.find((line) => line.includes("plugin validate"))).toContain(dir);
-    expect(out.find((line) => line.includes("DESK_DEV_PLUGINS="))).toContain(dir);
+    expect(out[0]).toBe("Created local.my-plugin.");
+    expect(out).toContain("  endue plugin validate .");
+    expect(out).toContain("  endue plugin test .");
+    expect(out.join("\n").includes(dir)).toBe(false);
     expect(out.join("\n")).toContain("Change the id");
   });
 
@@ -56,7 +56,7 @@ describe("main", () => {
     expect(target).toBeGreaterThan(0);
     expect(build).toBeGreaterThan(target);
     expect(validate).toBeGreaterThan(build);
-    expect(out[build]).toContain(dir);
+    expect(out[build]).toBe("  cargo build --release");
     expect(out.join("\n")).not.toContain("DESK_DEV_PLUGINS");
   });
 
@@ -82,15 +82,17 @@ describe("main", () => {
     const dir = join(cwd, "my-view");
     expect(manifestIn(dir)).toMatchObject({ id: "local.my-view", kind: "view" });
     expect(out.join("\n")).not.toContain("cargo build");
-    expect(out.find((line) => line.includes("DESK_DEV_PLUGINS="))).toContain(dir);
+    expect(out.find((line) => line.includes("DESK_DEV_PLUGINS="))).toContain(
+      'DESK_DEV_PLUGINS="$PWD"',
+    );
   });
 
-  it("quotes a folder with a space in the next commands", async () => {
+  it("checks and launches a folder with spaces using the current directory", async () => {
     expect(await run("my notes")).toBe(0);
     const dir = join(cwd, "my notes");
     expect(manifestIn(dir)).toMatchObject({ id: "local.my-notes", name: "My notes" });
-    expect(out).toContain(`  cargo run -p desk-cli -- plugin validate '${dir}'`);
-    expect(out).toContain(`  DESK_DEV_PLUGINS='${dir}' just dev`);
+    expect(out).toContain("  endue plugin validate .");
+    expect(out).toContain('  DESK_DEV_PLUGINS="$PWD" just --justfile "$DESK_REPO/justfile" dev');
   });
 
   it("takes the id, name and description from options", async () => {

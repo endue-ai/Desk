@@ -1,6 +1,6 @@
-/// Host interface for Desk logic plugins (Wasm components).
+/// Host interface for endue logic plugins (Wasm components).
 ///
-/// A subset of the Desk bridge (specs/bridge/v0): every function here is one bridge method, named
+/// A subset of the endue bridge (specs/bridge/v0): every function here is one bridge method, named
 /// `<interface>.<function>` there. Calls carry no scope argument; the host attaches the plugin's
 /// granted permission from its manifest, and anything not granted fails with permission-denied.
 package desk:host@0.0.0;
@@ -110,7 +110,7 @@ interface ui {
 interface perm {
   use types.{error};
 
-  /// How long a grant lasts: the next call it allows, until Desk quits, or across restarts.
+  /// How long a grant lasts: the next call it allows, until endue quits, or across restarts.
   enum duration {
     once,
     session,
