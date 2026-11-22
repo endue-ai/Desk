@@ -1,8 +1,8 @@
 // A scripted server's answers for bound parameters and the check without running (PG-21, ADR 0353),
 // for the runtime fixture page: a check (db.describe) of a statement on `orders` answers each
 // parameter's type by the column it is compared with and the select list's columns; a run of one
-// with bound values answers two orders; format_type names the types. Every other statement goes to
-// the script behind it. Fixture data only; it needs no Node.
+// with bound values answers two orders; format_type names the types. A plain statement on `orders`
+// and every other statement go to the script behind it. Fixture data only; it needs no Node.
 import type { BridgeEvent } from "../../../packages/bridge/src/index";
 import type { Answer, Script } from "./clients";
 import { dbHandlers } from "./fixtures";
@@ -37,7 +37,10 @@ export function paramsServer(inner: Script): Script {
       const oids = (bound?.params?.[0] ?? "{}").replace(/[{}]/gu, "").split(",");
       return { rows: [["oid", "format_type"], ...oids.map((oid) => [oid, NAMES[oid] ?? oid])] };
     }
-    if (!/\bfrom orders\b/iu.test(sql)) return inner(sql, who, bound);
+    // Only a check or a run with bound values on `orders` is answered here: other specs' plain
+    // statements on `orders` (plans, joins) keep the answers of the script behind.
+    const ours = bound?.describe || (bound?.params?.length ?? 0) > 0;
+    if (!ours || !/\bfrom orders\b/iu.test(sql)) return inner(sql, who, bound);
     const columns = columnsOf(sql);
     if (bound?.describe) {
       const answer: Answer = { paramTypes: paramTypes(sql) };
