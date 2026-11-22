@@ -15,7 +15,7 @@ audio, fenêtres), et tout le reste est du code que vous pouvez modifier sans re
 
 ## Installer ou mettre à jour l’application endue
 
-L’application graphique Desk s’appelle désormais endue. La [version v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) propose deux images disque macOS, pour puce Apple (`aarch64`) ou processeur Intel (`x86_64`). Ouvrez l’image qui correspond à votre Mac et copiez l’application dans le dossier Applications. Cette version porte encore le nom Desk. Comparez le SHA-256 de l’image avec celui indiqué dans `SHA256SUMS-macos` sur la page de la version. La version v0.3.0 n’a pas été notariée par Apple. Si macOS bloque la première ouverture de l’application vérifiée, choisissez « Ouvrir quand même » pour endue Desk dans Réglages Système → Confidentialité et sécurité.
+L’application graphique Desk s’appelle désormais endue. La [version v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) propose deux images disque macOS, pour puce Apple (`aarch64`) ou processeur Intel (`x86_64`). Comparez le SHA-256 de l’image qui correspond à votre Mac avec celui indiqué dans `SHA256SUMS-macos` sur la page de la version, puis ouvrez l’image et copiez endue Desk dans le dossier Applications. La version v0.3.0 n’a pas été notariée par Apple. Si macOS bloque la première ouverture de l’application vérifiée, choisissez « Ouvrir quand même » pour endue Desk dans Réglages Système → Confidentialité et sécurité.
 
 Dès la parution de la première version de bureau nommée **endue app**, choisissez dans les [versions sur GitHub](https://github.com/endue-ai/endue/releases) le programme d’installation adapté à votre système et à votre processeur, puis suivez les étapes ci-dessous.
 

@@ -14,7 +14,7 @@
 
 ## endue 앱 설치 및 업그레이드
 
-endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://github.com/endue-ai/endue/releases/tag/v0.3.0)에는 Apple silicon용(`aarch64`)과 Intel용(`x86_64`) macOS 디스크 이미지가 있습니다. Mac에 맞는 이미지를 열고 앱을 응용 프로그램 폴더에 복사하세요. 이 버전은 Desk로 표시됩니다. 이미지의 SHA-256을 릴리즈에 있는 `SHA256SUMS-macos`와 비교하세요. v0.3.0은 Apple 공증을 받지 않았습니다. 확인한 앱의 첫 실행을 macOS가 차단하면 시스템 설정 → 개인정보 보호 및 보안에서 endue Desk의 **그래도 열기**를 선택하세요.
+endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://github.com/endue-ai/endue/releases/tag/v0.3.0)에는 Apple silicon용(`aarch64`)과 Intel용(`x86_64`) macOS 디스크 이미지가 있습니다. Mac에 맞는 이미지의 SHA-256을 릴리즈에 있는 `SHA256SUMS-macos`와 비교한 뒤 이미지를 열고 endue Desk를 응용 프로그램 폴더에 복사하세요. v0.3.0은 Apple 공증을 받지 않았습니다. 확인한 앱의 첫 실행을 macOS가 차단하면 시스템 설정 → 개인정보 보호 및 보안에서 endue Desk의 **그래도 열기**를 선택하세요.
 
 **endue app**이라는 이름으로 첫 버전이 배포되면 [GitHub 릴리즈](https://github.com/endue-ai/endue/releases)에서 운영체제와 프로세서에 맞는 데스크톱 설치 파일을 선택한 뒤 다음 절차를 따르세요.
 

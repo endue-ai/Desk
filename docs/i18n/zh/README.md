@@ -13,7 +13,7 @@
 
 ## 安装或升级 endue 应用
 
-endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/endue-ai/endue/releases/tag/v0.3.0)提供两种 macOS 磁盘映像，分别适用于 Apple 芯片（`aarch64`）和 Intel 处理器（`x86_64`）。打开与 Mac 匹配的映像，将应用复制到“应用程序”文件夹。此版本仍显示为 Desk。 请将映像的 SHA-256 与发布页上的 `SHA256SUMS-macos` 核对。v0.3.0 未经 Apple 公证。如果 macOS 阻止首次打开已核对的应用，请前往“系统设置”→“隐私与安全性”，为 endue Desk 选择“仍要打开”。
+endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/endue-ai/endue/releases/tag/v0.3.0)提供两种 macOS 磁盘映像，分别适用于 Apple 芯片（`aarch64`）和 Intel 处理器（`x86_64`）。将与 Mac 匹配的映像的 SHA-256 与发布页上的 `SHA256SUMS-macos` 核对后，打开映像，将 endue Desk 复制到“应用程序”文件夹。v0.3.0 未经 Apple 公证。如果 macOS 阻止首次打开已核对的应用，请前往“系统设置”→“隐私与安全性”，为 endue Desk 选择“仍要打开”。
 
 首个标为 **endue app** 的桌面版本发布后，请在 [GitHub 发布页](https://github.com/endue-ai/endue/releases)选择与操作系统和处理器匹配的安装包，然后按照以下步骤操作。
 

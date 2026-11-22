@@ -12,7 +12,7 @@
 
 ## endue アプリのインストールと更新
 
-endue は、これまで Desk と呼ばれていた GUI アプリです。[v0.3.0 の配布ページ](https://github.com/endue-ai/endue/releases/tag/v0.3.0)には Apple シリコン用（`aarch64`）と Intel 用（`x86_64`）の macOS ディスクイメージがあります。お使いの Mac に合うイメージを開き、アプリを「アプリケーション」にコピーしてください。この版は Desk の名前で表示されます。 イメージの SHA-256 をリリースの `SHA256SUMS-macos` と照合してください。v0.3.0 は Apple の公証を受けていません。照合後も初回の起動がブロックされたら、「システム設定」→「プライバシーとセキュリティ」で endue Desk の「このまま開く」を選んでください。
+endue は、これまで Desk と呼ばれていた GUI アプリです。[v0.3.0 の配布ページ](https://github.com/endue-ai/endue/releases/tag/v0.3.0)には Apple シリコン用（`aarch64`）と Intel 用（`x86_64`）の macOS ディスクイメージがあります。お使いの Mac に合うイメージの SHA-256 をリリースの `SHA256SUMS-macos` と照合し、イメージを開いて endue Desk を「アプリケーション」にコピーしてください。v0.3.0 は Apple の公証を受けていません。照合後も初回の起動がブロックされたら、「システム設定」→「プライバシーとセキュリティ」で endue Desk の「このまま開く」を選んでください。
 
 **endue app** の名前で最初のデスクトップ版が公開されたら、[GitHub Releases](https://github.com/endue-ai/endue/releases) で OS とプロセッサーに合うインストーラーを選び、次の手順に従ってください。
 

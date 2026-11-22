@@ -15,7 +15,7 @@ Netzwerk, Audio, Fenster), und alles andere ist Code, der sich ohne Neustart än
 
 ## Die endue-App installieren oder aktualisieren
 
-Die grafische Anwendung Desk heißt jetzt endue. Unter [v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) finden Sie macOS-Disk-Images für Apple-Chips (`aarch64`) und Intel (`x86_64`). Öffnen Sie das passende Image und kopieren Sie die App in den Ordner „Programme“. Diese Version erscheint noch als Desk. Vergleichen Sie die SHA-256-Prüfsumme des Images mit `SHA256SUMS-macos` auf der Release-Seite. Version v0.3.0 wurde von Apple nicht notarisiert. Blockiert macOS den ersten Start der geprüften App, wählen Sie in den Systemeinstellungen unter „Datenschutz & Sicherheit“ für endue Desk „Dennoch öffnen“.
+Die grafische Anwendung Desk heißt jetzt endue. Unter [v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) finden Sie macOS-Disk-Images für Apple-Chips (`aarch64`) und Intel (`x86_64`). Vergleichen Sie die SHA-256-Prüfsumme des passenden Images mit `SHA256SUMS-macos` auf der Release-Seite. Öffnen Sie dann das Image und kopieren Sie endue Desk in den Ordner „Programme“. Version v0.3.0 wurde von Apple nicht notarisiert. Blockiert macOS den ersten Start der geprüften App, wählen Sie in den Systemeinstellungen unter „Datenschutz & Sicherheit“ für endue Desk „Dennoch öffnen“.
 
 Sobald die erste Desktop-Version unter dem Namen **endue app** erscheint, wählen Sie unter [GitHub Releases](https://github.com/endue-ai/endue/releases) das Installationspaket für Ihr Betriebssystem und Ihren Prozessor und gehen wie folgt vor.
 
