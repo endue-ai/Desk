@@ -7,9 +7,9 @@ no password; the desk may keep a PostgreSQL one in the OS keychain (ADR 0311). [
 
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`, `.end-session`,
-`.maintenance`, `.routine`, `.create-table`, `.change-table`, `.paste` and the objects feature's commands serve
-agents (ADR 0088; the cancel, the end, maintenance, a routine's write and the objects' changes reach the server only
-after the person's yes, ADR 0290, ADR 0293, ADR 0312; a paste or a table form waits for the person, ADR 0324).
+`.maintenance`, `.routine`, `.create-table`, `.change-table`, `.paste`, the objects' and the privileges' commands serve
+agents (ADR 0088; a cancel, an end, maintenance, a routine's write, an object's or a privilege's change reach the server
+after the person's yes, ADR 0290, 0293, 0312, 0330; a paste or a table form waits for the person, ADR 0324).
 
 ## Permissions
 
