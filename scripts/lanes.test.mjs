@@ -42,6 +42,25 @@ test("a literal path overlaps exactly the globs that match it", () => {
   assert.ok(!globsOverlap("docs/adr/0015-x.md", "docs/adr/0016-y.md"));
 });
 
+test("a numbered ADR can start beside a different numbered reservation", () => {
+  const reserved = "docs/adr/0326-*.md";
+  const separate = "docs/adr/0333-endue-product-and-installation-identity.md";
+  const matching = "docs/adr/0326-a-decision.md";
+  assert.equal(globsOverlap(reserved, separate), false);
+  assert.equal(globsOverlap(separate, reserved), false);
+  assert.ok(globsOverlap(matching, reserved));
+  assert.ok(globsOverlap("docs/adr", reserved));
+  assert.ok(globsOverlap("docs/adr/0326-feature", "docs/adr/0326-*/notes/*.md"));
+
+  const result = plan({
+    ready: [task(580, [separate]), task(581, [matching])],
+    inFlight: [task(564, [reserved])],
+    openIssues: new Set(),
+  });
+  assert.deepEqual(result.start, [580]);
+  assert.deepEqual(result.waiting.map((entry) => entry.number), [581]);
+});
+
 test("shared files never take a lane", () => {
   assert.deepEqual(
     scopeConflicts(["Cargo.lock", "crates/desk-core/**"], ["Cargo.lock", "crates/desk-bridge/**"]),
