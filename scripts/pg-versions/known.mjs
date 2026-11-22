@@ -18,10 +18,6 @@ export function knownFailures(major, pgDump) {
   const known = {};
   if (pgDump && pgDump < major) {
     known[BACKUP] = `pg_dump ${pgDump} refuses a newer server; install pg_dump ${major} to run it`;
-  } else if (pgDump >= 17 && major < 17) {
-    known[BACKUP] =
-      `pg_dump ${pgDump} writes SET transaction_timeout, which PostgreSQL ${major} refuses: ` +
-      "pg_restore restores the rows and exits 1, and the plugin says the restore failed";
   }
   return known;
 }

@@ -3,7 +3,8 @@
 // or that it is a plain SQL file. The form asks into which connection and how, and which entries;
 // an agent's arguments only fill it. A read-only connection refuses; production is always asked,
 // its environment named. pg_restore runs in its log panel; a plain SQL file runs as a script in a
-// console (run-file.js, PG-24), never through psql -f. No DOM.
+// console (run-file.js, PG-24), never through psql -f. Settings newer than the server that
+// pg_restore sets are skipped, not a failure (restore-outcome.js, #647). No DOM.
 
 import { outputBytes } from "../../run.js";
 import { runFile } from "../consoles/run-file.js";
@@ -25,6 +26,12 @@ import {
   serverVersion,
 } from "./common.js";
 import { logState } from "./job.js";
+import {
+  oneTransactionRefusal,
+  plainSkips,
+  skippedNote,
+  skippedSettings,
+} from "./restore-outcome.js";
 import { errorWords, isPlain, listFile, parseToc } from "./toc.js";
 import { readToc } from "./toc-reader.js";
 
@@ -176,13 +183,19 @@ export async function restore(deps, jobs, args) {
   const conn = deps.manager.get(answer.connection);
   if (conn?.engine !== "postgresql") throw new Error("Restore into a PostgreSQL connection.");
   if (conn.readOnly) throw new Error(`${conn.name} is read-only: nothing is restored into it.`);
-  if (plain || !toc || !client) return runFile(deps, { path, connection: conn.id });
+  const server = await serverVersion(deps, conn);
+  const serverMajor = Math.floor(server / 10000);
+  if (plain || !toc || !client)
+    return runFile(deps, { path, connection: conn.id }, plainSkips(serverMajor));
 
   const chosen = Array.isArray(answer.chosen) ? answer.chosen : null;
   if (chosen && chosen.length === 0) throw new Error("Choose an entry to restore.");
   const chosenOptions = restoreOptions(answer.options ?? {}, toc.format || "custom");
-  const server = await serverVersion(deps, conn);
   const restorer = await programFor(deps, "pg_restore", conn, server);
+  const refused = chosenOptions.singleTransaction
+    ? oneTransactionRefusal(restorer.version, serverMajor)
+    : undefined;
+  if (refused) throw new Error(refused);
   if (conn.tag === "production") {
     const { title, reasons } = question(conn, path, chosenOptions, toc);
     if (!(await deps.confirm(title, reasons))) throw deps.cancelled("Not restored.");
@@ -246,7 +259,9 @@ export async function restore(deps, jobs, args) {
           result: `Cancelled: ${conn.name} holds what was restored so far.`,
         };
       const ignored = /errors ignored on restore: (\d+)/u.exec(outcome.stderr)?.[1];
-      if (outcome.code !== 0)
+      // Settings pg_restore sets that the server does not know are skipped, not a failure (#647).
+      const skipped = outcome.code === 1 ? skippedSettings(outcome.stderr, serverMajor) : null;
+      if (outcome.code !== 0 && !skipped)
         return {
           status: "failed",
           result: ignored
@@ -255,7 +270,7 @@ export async function restore(deps, jobs, args) {
         };
       return {
         status: "done",
-        result: `Restored ${fileName(path)} into ${conn.name} in ${took}: ${total} entries.`,
+        result: `Restored ${fileName(path)} into ${conn.name} in ${took}: ${total} entries.${skipped ? ` ${skippedNote(skipped, serverMajor, restorer.version)}` : ""}`,
       };
     },
   });
