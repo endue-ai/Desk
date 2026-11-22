@@ -108,6 +108,7 @@ export function builtinActions(deps) {
       importer.change(change),
     ),
     importRun: guard(() => importer.run()),
+    importCheck: guard(() => importer.check()),
     importCancel: () => importer.cancel(),
     create: () => manager.create(),
     importUri: guard(() => manager.importUri(undefined)),

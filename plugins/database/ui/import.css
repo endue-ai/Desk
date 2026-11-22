@@ -93,6 +93,56 @@
   display: none;
 }
 
+/* The COPY part on PostgreSQL (PG-60): into the table or a new one, how the file reads, what an
+   error does, the new table's columns, the server's check and the progress. */
+.import-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.import-target,
+.import-checks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.import-target label:last-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.import-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-top: 6px;
+}
+
+.import-read summary {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  cursor: pointer;
+}
+
+.import-map td.new-column {
+  display: flex;
+  gap: 6px;
+}
+
+.import-map td.new-column input {
+  min-width: 12ch;
+}
+
+.import-copy[hidden],
+.import-checks[hidden],
+.import-scroll[hidden] {
+  display: none;
+}
+
 /* Where a drag would land (ctx.dnd marks it with the effect it answers): a table of the explorer,
    which a file is imported into, or the work area. */
 #tree .row[data-desk-drop],

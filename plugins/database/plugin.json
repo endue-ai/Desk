@@ -126,6 +126,11 @@
         "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
       },
       {
+        "id": "endue.database.import-file",
+        "title": "Database: import a file into a table",
+        "keywords": ["csv", "xlsx", "json", "copy", "load"]
+      },
+      {
         "id": "endue.database.import-uri",
         "title": "Database: new connection from a URI",
         "keywords": ["url", "dsn", "connection string"]

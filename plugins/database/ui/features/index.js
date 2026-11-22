@@ -21,6 +21,7 @@ export { feature as exportResult } from "./export/index.js";
 export { feature as format } from "./format/index.js";
 export { feature as geo } from "./geo/index.js";
 export { feature as grid } from "./grid/index.js";
+export { feature as importFile } from "./import-file/index.js";
 export { feature as keychain } from "./keychain/index.js";
 export { feature as links } from "./links/index.js";
 export { feature as maintenance } from "./maintenance/index.js";

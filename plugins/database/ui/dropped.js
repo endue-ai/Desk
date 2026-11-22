@@ -3,10 +3,12 @@
 // (console-files.js), on the connection of the console on screen unless the file remembers one; a
 // .sql, .csv, .tsv or .json file is read with fs.read under the plugin's own grant, asked for once
 // with perm.request (a drop hands over the path, not access to it), a .sql file only up to the
-// editor's limit; a SQLite file opens as a connection. No DOM.
+// editor's limit, a file to import only its first bytes (import-copy/start.js: PostgreSQL copies the
+// rest as it goes, PG-60); a SQLite file opens as a connection. No DOM.
 
 import { EDITOR_MAX, readScope, withGrant } from "./console-files.js";
 import { dropAction } from "./drops.js";
+import { headOf } from "./import-copy/start.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -18,8 +20,8 @@ import { dropAction } from "./drops.js";
  *     choose(ref: string | undefined, title: string): Promise<Connection | undefined> },
  *   consoles: { current(): { kind: string, connection: string } | null,
  *     open(conn: Connection): Promise<unknown> },
- *   importer: { start(input: { path: string, text: string, format: import("./import.js").Format,
- *     into?: Into }): Promise<void> },
+ *   importer: { start(input: { path: string, head: import("./import-copy/start.js").Head,
+ *     text?: string, format: import("./import-copy/wizard.js").CopyFormat, into?: Into }): Promise<void> },
  *   files: { open(path: string, head: import("./console-files.js").Head,
  *     near: Connection | undefined): Promise<unknown> },
  *   view: { insert(text: string): void, focus(where: "editor"): void },
@@ -101,10 +103,15 @@ export function createDropped(deps) {
         return undefined;
       }
       case "import": {
-        const { content: text } = await read(action.path);
+        const head = await headOf(deps.bridge, action.path, action.format === "xlsx");
+        const text =
+          head.whole && action.format !== "xlsx"
+            ? new TextDecoder().decode(Uint8Array.from(atob(head.data), (c) => c.charCodeAt(0)))
+            : undefined;
         await deps.importer.start({
           path: action.path,
-          text,
+          head,
+          ...(text === undefined ? {} : { text }),
           format: action.format,
           ...(into ? { into } : {}),
         });

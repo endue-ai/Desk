@@ -37,6 +37,7 @@ async function wizard(
       return options.confirm === false ? "no" : "yes";
     },
     handlers: {
+      "dialog.open": () => ({ cancelled: false, paths: ["~/data/picked.tsv"] }),
       "fs.read": ({ path, offset = 0, length, encoding }) => {
         const bytes = new TextEncoder().encode(files[path] ?? "");
         const part = bytes.subarray(offset, length === undefined ? undefined : offset + length);
@@ -169,5 +170,23 @@ describe("the import wizard on PostgreSQL", () => {
       "ROLLBACK",
     ]);
     expect(latest()?.copy?.server).toEqual({ columns: ["order_id", "name"], rows: [["1", "Ann"]] });
+  });
+
+  it("opens from the command, on the file it names or one picked in the open dialog", async () => {
+    const { m, latest } = await wizard({
+      files: { "~/data/orders.csv": "id\n1\n", "~/data/picked.tsv": "id\tname\n1\tAnn\n" },
+    });
+    expect(await m.host.command("endue.database.import-file", { path: "~/data/orders.csv" })).toBe(
+      "orders.csv",
+    );
+    await m.settle();
+    expect(latest()).toMatchObject({ file: "orders.csv", fileColumns: ["id"] });
+    expect(await m.host.command("endue.database.import-file")).toBe("picked.tsv");
+    await m.settle();
+    expect(latest()).toMatchObject({
+      file: "picked.tsv",
+      format: "tsv",
+      fileColumns: ["id", "name"],
+    });
   });
 });

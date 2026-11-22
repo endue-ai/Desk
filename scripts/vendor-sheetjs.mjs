@@ -1,6 +1,7 @@
 // Copies the sheets plugin's parser, SheetJS Community Edition, from its release tarball into
 // plugins/sheets/ui/vendor, with its licence and a VERSIONS file that records every file's SHA-256
-// (ADR 0043). SheetJS no longer publishes to npm, so the tarball comes from its own CDN and is
+// (ADR 0043), and the reader alone into plugins/database/ui/vendor/sheetjs for the database
+// plugin's `.xlsx` import (a plugin's frame loads scripts from its own folder only; ADR 0363). SheetJS no longer publishes to npm, so the tarball comes from its own CDN and is
 // pinned by hash. `node scripts/vendor-sheetjs.mjs` runs it; its test checks the committed copy
 // against VERSIONS without the network.
 import { createHash } from "node:crypto";
@@ -11,6 +12,9 @@ import { gunzipSync } from "node:zlib";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const VENDOR = join(ROOT, "plugins/sheets/ui/vendor");
+/** The database plugin's copy: the same pin, the reader and its licence. */
+export const DATABASE_VENDOR = join(ROOT, "plugins/database/ui/vendor/sheetjs");
+export const DATABASE_FILES = ["xlsx.mjs", "LICENSE"];
 
 export const VERSION = "0.20.3";
 export const TARBALL = `https://cdn.sheetjs.com/xlsx-${VERSION}/xlsx-${VERSION}.tgz`;
@@ -83,9 +87,12 @@ export function expected(tarball) {
 }
 
 /** The VERSIONS file: the release and its tarball, then each vendored file and its SHA-256. */
-export function versions(/** @type {Record<string, string>} */ files) {
+export function versions(
+  /** @type {Record<string, string>} */ files,
+  /** @type {string[]} */ names = Object.keys(FILES),
+) {
   const lines = [`xlsx ${VERSION} ${TARBALL} sha256:${TARBALL_SHA256}`];
-  for (const name of Object.keys(FILES)) lines.push(`${name} sha256:${sha256(files[name] ?? "")}`);
+  for (const name of names) lines.push(`${name} sha256:${sha256(files[name] ?? "")}`);
   return `${lines.join("\n")}\n`;
 }
 
@@ -107,12 +114,26 @@ export async function vendor() {
   mkdirSync(VENDOR, { recursive: true });
   for (const name of readdirSync(VENDOR)) if (!(name in files)) rmSync(join(VENDOR, name));
   for (const [name, text] of Object.entries(files)) writeFileSync(join(VENDOR, name), text);
+  const database = databaseFiles(files);
+  mkdirSync(DATABASE_VENDOR, { recursive: true });
+  for (const name of readdirSync(DATABASE_VENDOR))
+    if (!(name in database)) rmSync(join(DATABASE_VENDOR, name));
+  for (const [name, text] of Object.entries(database))
+    writeFileSync(join(DATABASE_VENDOR, name), text);
   return Object.keys(files).sort();
 }
 
-/** The committed copy, file name -> text. */
-export const committed = () =>
-  Object.fromEntries(readdirSync(VENDOR).map((n) => [n, readFileSync(join(VENDOR, n), "utf8")]));
+/** What the database plugin's copy holds, from the sheets plugin's files. */
+export function databaseFiles(/** @type {Record<string, string>} */ files) {
+  /** @type {Record<string, string>} */
+  const picked = Object.fromEntries(DATABASE_FILES.map((n) => [n, files[n] ?? ""]));
+  picked.VERSIONS = versions(picked, DATABASE_FILES);
+  return picked;
+}
+
+/** The committed copy in `folder`, file name -> text. */
+export const committed = (folder = VENDOR) =>
+  Object.fromEntries(readdirSync(folder).map((n) => [n, readFileSync(join(folder, n), "utf8")]));
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const name of await vendor()) console.log(`vendored ${name}`);

@@ -205,10 +205,50 @@
           <label class="check"><input type="checkbox" id="i-header" class="desk-check" /> The first line names the columns</label>
           <label class="check"><input type="checkbox" id="i-empty" class="desk-check" /> Empty fields are NULL</label>
         </p>
+        <div id="import-copy" class="import-copy" hidden>
+          <p class="import-target" role="radiogroup" aria-label="Where the rows go">
+            <label class="check"><input type="radio" name="i-target" id="i-target-existing" value="existing" class="desk-check" /> Into the table</label>
+            <label class="check"><input type="radio" name="i-target" id="i-target-new" value="new" class="desk-check" /> Into a new table</label>
+            <label>Name <input id="i-new-table" class="desk-field" autocomplete="off" spellcheck="false" /></label>
+          </p>
+          <details class="import-read"><summary>How the file reads</summary>
+            <div class="import-fields">
+              <label>Encoding <input id="i-encoding" class="desk-field" list="i-encodings" autocomplete="off" spellcheck="false" /></label>
+              <label>Delimiter <input id="i-delimiter" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label>Quote <input id="i-quote" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label>Escape <input id="i-escape" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label>NULL is <input id="i-null" class="desk-field" placeholder="an empty field" autocomplete="off" spellcheck="false" /></label>
+              <label>Rows to skip <input id="i-skip" class="desk-field" type="number" min="0" step="1" /></label>
+              <label>Dates <select id="i-dates" class="desk-field">
+                <option value="">Year-month-day only</option>
+                <option value="DMY">Day first (23/11/2026)</option>
+                <option value="MDY">Month first (11/23/2026)</option>
+                <option value="YMD">Year first (2026/11/23)</option>
+              </select></label>
+              <label class="check"><input type="checkbox" id="i-trim" class="desk-check" /> Trim spaces around values</label>
+            </div>
+            <datalist id="i-encodings"></datalist>
+            <datalist id="i-types"></datalist>
+          </details>
+          <p class="import-options">
+            <label>On an error <select id="i-on-error" class="desk-field">
+              <option value="stop">Stop and roll back</option>
+              <option value="skip">Skip the row into a reject file</option>
+            </select></label>
+            <label>Rows per transaction <input id="i-batch" class="desk-field" type="number" min="0" step="1000" placeholder="all in one" /></label>
+          </p>
+        </div>
         <h3>Columns</h3>
         <div class="import-scroll"><table id="import-map" class="import-map" aria-label="Which table column each column of the file goes to"></table></div>
         <h3>Preview</h3>
         <div class="import-scroll" tabindex="0"><table id="import-preview" class="import-preview" aria-label="The first rows as they will be inserted"></table></div>
+        <p id="import-checks" class="import-checks" hidden>
+          <button type="button" id="import-check" class="desk-btn desk-btn-quiet">Check on the server</button>
+          <span class="hint">Copies the first rows into a temporary table and rolls back.</span>
+        </p>
+        <div id="import-server-box" class="import-scroll" tabindex="0" hidden><table id="import-server" class="import-preview" aria-label="The first rows as the server read them"></table></div>
+        <p id="import-server-error" class="error"></p>
+        <desk-progress id="import-progress" label="Importing" cancelable hidden></desk-progress>
         <p id="import-summary" class="hint"></p>
         <details class="import-sql"><summary>SQL</summary><pre id="import-sql"></pre></details>
         <p id="import-problem" class="error" role="alert"></p>
