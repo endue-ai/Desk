@@ -6,7 +6,7 @@
 
 import { engineOf } from "../../engines/index.js";
 import { oneLine } from "../../execute.js";
-import { DEFAULT_VIEW, isBackground, PERIODS, SORT_KEYS, summaryOf } from "./model.js";
+import { DEFAULT_VIEW, isBackground, PERIODS, SORT_KEYS, saidOf, summaryOf } from "./model.js";
 import { createReader } from "./read.js";
 import { nothingToCancel, refusal, stop } from "./signal.js";
 
@@ -50,17 +50,33 @@ function pidOf(/** @type {unknown} */ value) {
   return pid;
 }
 
-/** The status line after a read. */
-function said(/** @type {Connection} */ conn, /** @type {Read} */ read) {
-  const waiting = read.sessions.filter((s) => s.blockedBy.length).length;
-  const hidden = read.sessions.filter((s) => s.hidden && !isBackground(s)).length;
-  const hides = hidden === 1 ? "1 hides its statement" : `${hidden} hide their statements`;
-  return `${read.sessions.length} sessions on ${conn.name}, ${waiting || "none"} waiting${hidden ? `; ${hides}` : ""}.`;
+/**
+ * The process ids of the plugin's sessions on this desk to a connection's server (db.list), so
+ * the view marks them; none when the list cannot be had.
+ * @param {Deps["bridge"]} bridge
+ * @param {Connection} conn
+ */
+async function mineOf(bridge, conn) {
+  const host = (conn.host || "localhost").toLowerCase();
+  const port = conn.port ?? 5432;
+  try {
+    const listed = /** @type {{ sessions?: { host: string, port: number, pid: number }[] }} */ (
+      await bridge.call("db.list", {})
+    );
+    return (listed.sessions ?? [])
+      .filter((s) => s.host.toLowerCase() === host && s.port === port)
+      .map((s) => s.pid);
+  } catch {
+    return [];
+  }
 }
 
 /** @param {Deps} deps */
 export function createActivity(deps) {
-  const reader = createReader({ execute: deps.execute });
+  const reader = createReader({
+    execute: deps.execute,
+    mine: (conn) => mineOf(deps.bridge, conn),
+  });
   /** @type {Map<string, Promise<Read | null>>} */
   const inFlight = new Map();
   const panels = () => deps.consoles.list().filter((b) => b.kind === TYPE);
@@ -137,7 +153,7 @@ export function createActivity(deps) {
     const panel = await deps.consoles.openPanel(conn, TYPE, name, state);
     const read = await refresh(panel.id, true);
     if (!read) throw new Error(panelOf(panel.id)?.[TYPE].error || "Not read.");
-    deps.say(said(conn, read));
+    deps.say(saidOf(conn.name, read));
     return summaryOf(read);
   };
 

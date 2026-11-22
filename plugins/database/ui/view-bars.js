@@ -79,6 +79,9 @@ export function createBars(doc) {
               "aria-selected": String(index === model?.tab),
               class: `desk-tab tab-${tab.kind}`,
               "data-index": String(index),
+              title: tab.pin
+                ? `Pinned: ${tab.pin.sql.replace(/\s+/gu, " ").slice(0, 200)}`
+                : undefined,
             },
             tab.label,
           ),
@@ -100,6 +103,10 @@ export function createBars(doc) {
         ? `${formatCount(edit.count)} pending change${edit.count === 1 ? "" : "s"}`
         : "";
       byId("edit-note").textContent = edit?.message ?? "";
+      // A console's result pins (features/compare/); a pinned one unpins.
+      const pin = byId("pin");
+      pin.hidden = model.kind !== "console";
+      pin.textContent = tab?.kind === "pinned" ? "Unpin" : "Pin";
       const pages = byId("console-pages");
       pages.hidden = !(model.kind === "console" && model.page);
       if (model.page) {

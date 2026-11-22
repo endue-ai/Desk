@@ -1,17 +1,22 @@
 // What a run shows: a tab per result set, and a Messages tab with a line per statement (rows, rows
 // affected, the error with its code and detail, not run), the notices, and a summary. The tab that
-// opens is the error's, else the first result's. Pure, so the tests read it without a DOM.
+// opens is the error's, else the first result's. A result set with a column of shapes gets a Map
+// tab right after its own (PG-46, geo/detect.js); the console's pinned tabs follow, kept through its
+// runs (compare/pins.js, PG-26). Pure, so the tests read it without a DOM.
 
 import { oneLine } from "./execute.js";
 import { formatCount, formatDuration } from "./format.js";
+import { spatialColumns } from "./geo/detect.js";
 
 /**
  * @typedef {import("./execute.js").Execution} Execution
  * @typedef {import("./engines/common.js").ResultSet} ResultSet
  * @typedef {import("./engines/common.js").DbError} DbError
  * @typedef {{ level: "ok" | "error" | "notice" | "skipped", text: string, statement: number }} Line
- * @typedef {{ label: string, kind: "rows" | "messages" | "plan", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table" }} Tab
- *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn.
+ * @typedef {{ label: string, kind: "rows" | "messages" | "plan" | "map" | "pinned", set?: ResultSet, statement: number, lines?: Line[], plan?: import("./explain/plan.js").PlanNode, view?: "tree" | "flame" | "table", geo?: { set: ResultSet, columns: import("./geo/detect.js").Spatial[] }, pin?: import("./compare/pins.js").Pin }} Tab
+ *   A plan tab (Explain) holds the plan tree read from the rows tab after it, and how it is drawn;
+ *   a map tab (`geo`) the set before it and the columns that hold its shapes. A pinned tab holds a
+ *   result of an earlier run as it was, `statement` -1: it is no run's.
  * @typedef {{ tabs: Tab[], open: number, summary: string, error?: { statement: number, offset: number } }} Shown
  *   `error.offset` is where the first error is in the editor's text, when the client said.
  */
@@ -19,9 +24,10 @@ import { formatCount, formatDuration } from "./format.js";
 /**
  * @param {Execution} execution
  * @param {number} [base] Where the run's text starts in the editor, for the error's offset.
+ * @param {Tab[]} [pinned] The console's pinned tabs, after the run's.
  * @returns {Shown}
  */
-export function show(execution, base = 0) {
+export function show(execution, base = 0, pinned = []) {
   const { statements, classes, result } = execution;
   /** @type {Tab[]} */
   const tabs = [];
@@ -46,6 +52,14 @@ export function show(execution, base = 0) {
           ? `${index + 1}${outcome.sets.length > 1 ? `.${n + 1}` : ""}`
           : "Result";
       tabs.push({ label, kind: "rows", set, statement: index });
+      const columns = spatialColumns(set);
+      if (columns.length)
+        tabs.push({
+          label: label === "Result" ? "Map" : `Map ${label}`,
+          kind: "map",
+          statement: index,
+          geo: { set, columns },
+        });
     });
     if (outcome.error) {
       lines.push({
@@ -74,9 +88,18 @@ export function show(execution, base = 0) {
       : execution.mode === "transaction"
         ? ", in one transaction"
         : "";
-  const summary = `${failed ? "Failed" : "Done"}: ${formatCount(ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"} ran in ${formatDuration(result.ms)}${tail}`;
+  // A run the person cancelled says so, and counts the statements that finished before it.
+  const cancelled = [result.error, ...result.statements.map((s) => s.error)].some(
+    (e) => e?.kind === "cancelled",
+  );
+  const finished = result.statements.filter((s) => s.ran && !s.error).length;
+  const count = `${formatCount(cancelled ? finished : ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"}`;
+  const summary = cancelled
+    ? `Cancelled: ${count} finished in ${formatDuration(result.ms)}${tail}`
+    : `${failed ? "Failed" : "Done"}: ${count} ran in ${formatDuration(result.ms)}${tail}`;
   tabs.push({ label: "Messages", kind: "messages", statement: -1, lines });
   const open = failed || !tabs.some((t) => t.kind === "rows") ? tabs.length - 1 : 0;
+  tabs.push(...pinned);
   return { tabs, open, summary, ...(error ? { error } : {}) };
 }
 

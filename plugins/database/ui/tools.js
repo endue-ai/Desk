@@ -10,8 +10,10 @@ import { exportResult } from "./export.js";
 import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./history.js";
 import { FORMATS, formatRows } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
-import { loadSettings } from "./settings.js";
 import { split, statementAt } from "./sql/split.js";
+
+/** The client program the footer names when an engine's is not found. */
+const PROGRAMS = { postgresql: "PostgreSQL", mysql: "mysql", sqlite: "sqlite3" };
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -29,7 +31,7 @@ import { split, statementAt } from "./sql/split.js";
  *   explorer: ReturnType<typeof import("./explorer.js").createExplorer>,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client>, reset(): void },
  *   settings(): import("./settings.js").Settings,
- *   reload(settings: import("./settings.js").Settings): void,
+ *   reload(): Promise<import("./settings.js").Settings>,
  * }} Deps
  */
 
@@ -262,23 +264,39 @@ export function createTools(deps) {
       view.say(`Counted ${names.length} table${names.length === 1 ? "" : "s"}.`);
       return counts;
     },
-    /** Find each engine's client again and say what was found; PostgreSQL needs none. */
+    /**
+     * Find each engine's client again and say what was found; PostgreSQL needs none. The footer
+     * holds one line, so it says each client in a few words; the answer has every whole sentence.
+     */
     async checkClients() {
-      deps.reload(await loadSettings(bridge));
+      await deps.reload();
       deps.clients.reset();
-      const lines = await Promise.all(
+      const found = await Promise.all(
         /** @type {const} */ (["postgresql", "mysql", "sqlite"]).map((engine) =>
           deps.clients.get(engine).then(
             (c) =>
               c.command
-                ? `${c.command} ${c.version} (${c.flavor})`
-                : "PostgreSQL: built into the desk, no client program needed",
-            (error) => (error instanceof Error ? error.message : String(error)),
+                ? {
+                    line: `${c.command} ${c.version} (${c.flavor})`,
+                    short: `${c.command} ${c.version}`,
+                  }
+                : {
+                    line: "PostgreSQL: built into the desk, no client program needed",
+                    short: "PostgreSQL built in",
+                  },
+            (error) => {
+              const line = error instanceof Error ? error.message : String(error);
+              const missing = /** @type {{ kind?: string }} */ (error)?.kind === "missing";
+              const short = missing
+                ? `${PROGRAMS[engine]} not found`
+                : (line.split(/[:.](?:\s|$)/u)[0] ?? line);
+              return { line, short };
+            },
           ),
         ),
       );
-      view.say(lines.join(" · "));
-      return lines;
+      view.say(`Clients: ${found.map((f) => f.short).join(" · ")}`);
+      return found.map((f) => f.line);
     },
     addHistory,
   };

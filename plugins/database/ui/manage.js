@@ -6,6 +6,8 @@
 // on Save, forgotten when the choice goes off, the server or user changes, or the connection goes.
 // Disconnect, removing a connection and saving a change to how it signs in close its PostgreSQL
 // sessions (PG-02), asked first while one is in a transaction.
+// An import (features/connections-file/) keeps its connections at once with `adopt`, closing
+// sessions as Save does.
 
 import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
@@ -369,6 +371,28 @@ export function createManager(deps) {
           : `Forgot the password of ${conn.name}: the keychain kept none.`,
       );
       return conn.id;
+    },
+    /** Connections from a file, each added or over the one with its id, kept at once as Save keeps one. */
+    async adopt(/** @type {Connection[]} */ incoming) {
+      const byId = new Map(incoming.map((c) => [c.id, c]));
+      const next = [
+        ...list.map((c) => byId.get(c.id) ?? c),
+        ...incoming.filter((c) => !list.some((o) => o.id === c.id)),
+      ];
+      for (const conn of incoming) normalize(conn, next);
+      const moved = list.filter((c) => SIGN_IN.some((k) => (byId.get(c.id) ?? c)[k] !== c[k]));
+      for (const c of moved)
+        if (!(await letClose(c, `Import over ${c.name}?`)))
+          throw refused(`Not imported: ${c.name}'s sessions stay open.`);
+      for (const c of moved) deps.sessions?.close(c.id);
+      await saveConnections(deps.bridge, next);
+      list = next;
+      for (const conn of incoming) {
+        if (deps.keychain.holds(conn.id) && !(chosen(conn) && deps.keychain.has(conn)))
+          await forgetKept(conn);
+        await deps.renamed(conn);
+      }
+      deps.changed();
     },
     formOpen: () => form !== null,
   };

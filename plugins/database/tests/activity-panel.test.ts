@@ -73,12 +73,13 @@ describe("the activity panel", () => {
     expect(el.querySelector(".activity-status")?.textContent).toContain(
       "PostgreSQL 17.6 · 8 sessions, 2 waiting",
     );
-    // Shown with every filter off, the view's session and the plugin's other one are marked.
+    // Shown with every filter off, the view's session is marked; the other endue Desk session is
+    // not this desk's (db.list does not name it), so it has no mark (activity-own.test.ts).
     const all = draw({ filters: { idle: false, own: false, system: true, database: "" } }).el;
     const marks = (pid: string) =>
       all.querySelector(`[data-part="sessions"] tr[data-pid="${pid}"] .desk-badge`)?.textContent;
     expect(marks("4250")).toBe("this view");
-    expect(marks("4251")).toBe("endue");
+    expect(marks("4251")).toBeUndefined();
     // A selected session shows its statement, and Cancel and End; a read-only connection turns them off.
     const picked = draw({ selected: 4242 }).el;
     expect(picked.querySelector(".activity-query")?.textContent).toBe("SELECT pg_sleep(600)");
