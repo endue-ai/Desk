@@ -1,0 +1,64 @@
+/* A whole export's panel (features/export-all/): its head (title, status, Cancel), the end's
+   sentence, and a line per file. Every colour, font, size and radius comes from the theme's --desk-*
+   tokens; the feature links this sheet itself (features/README.md). */
+
+.export-all {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.export-all-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.export-all-title {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  overflow-wrap: anywhere;
+}
+
+.export-all-status {
+  flex: 1;
+  color: var(--desk-text-muted);
+}
+
+.export-all-result[hidden] {
+  display: none;
+}
+
+.export-all-files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.export-all-file {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+}
+
+.export-all-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--desk-font-mono);
+}
+
+.export-all-count {
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+}

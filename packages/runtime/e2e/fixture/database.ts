@@ -47,6 +47,7 @@ import {
   diagramServer,
 } from "../../../../plugins/database/tests/diagram-fixture";
 import { editJoinsScript } from "../../../../plugins/database/tests/edit-joins-fixture";
+import { exportAllScript } from "../../../../plugins/database/tests/export-all-fixture";
 import {
   FIXTURE_CONNECTION,
   FIXTURE_PG_CONNECTION,
@@ -125,6 +126,17 @@ const fsHandlers: StubHandlers = {
     return { bytesWritten: content.length };
   },
   "fs.watch": () => ({ watchId: "w-fixture" }),
+  // A whole export's temporary file takes its name at the end, or goes (PG-64).
+  "fs.rename": ({ from, to }) => {
+    if (to in files) throw new StubError("already_exists", `${to}: already there`);
+    files[to] = files[from] ?? "";
+    delete files[from];
+    return { crossedDevices: false };
+  },
+  "fs.trash": ({ path }) => {
+    delete files[path];
+    return {};
+  },
 };
 // sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
 // `stock` changes from one read to the next, for the comparison (compare-fixture.ts).
@@ -176,7 +188,9 @@ const core = browserCore({
                           maintenanceServer(
                             objectsServer(
                               activityServer(
-                                renameServer(showServer(transferServer(copyScript(joins)))),
+                                renameServer(
+                                  showServer(exportAllScript(transferServer(copyScript(joins)))),
+                                ),
                               ).script,
                             ).script,
                           ).script,

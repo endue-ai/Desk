@@ -25,7 +25,7 @@ change to exporting adds its line here.
 - HTML marks a NULL cell `data-null`; XML writes `<rows><row><value column="…">`, NULL as `null="true"`,
   and a value with a character XML cannot hold as `encoding="base64"`.
 - An export of the rows held says so, in the status line and as `partial` in the answer, when the server
-  has more. Exporting every row of a large table is PG-64.
+  has more. Database: export every row to a file writes all of them ([`export-all.md`](export-all.md)).
 - The comparison's difference (`features/compare/`) is exported through the same save dialog.
 
 Modules: `export.js`, `export/` (options, text, bytes, cells, xlsx, zip, file, client, worker),
