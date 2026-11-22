@@ -91,7 +91,8 @@ export function createSessions(bridge, options = {}) {
   const jobs = new Set();
   /** Every session this frame opened, so a frame that wakes closes only another's. */
   const own = new Set();
-  /** Where each session's notices go: the statement that runs, by session id. */
+  /** Each session's own notices (db.notice: raised outside any call, ADR 0334) not shown yet, by
+   * session id: a run on it shows them as the run's (pg-script.js). */
   const sinks = /** @type {Map<string, string[]>} */ (new Map());
   const slots = createSlots();
 
@@ -208,9 +209,15 @@ export function createSessions(bridge, options = {}) {
   });
 
   bridge.onEvent((event) => {
-    if (event.event === "db.notice")
-      sinks.get(event.data.sessionId)?.push(...noticeOf(event.data.notice));
-    if (event.event === "db.closed") keeper.closed(event.data);
+    if (event.event === "db.notice") {
+      const id = event.data.sessionId;
+      if (!sinks.has(id) && own.has(id)) sinks.set(id, []);
+      sinks.get(id)?.push(...noticeOf(event.data.notice));
+    }
+    if (event.event === "db.closed") {
+      sinks.delete(event.data.sessionId);
+      keeper.closed(event.data);
+    }
   });
 
   /** A run on a short session of its own, opened and closed around it. */
@@ -266,7 +273,6 @@ export function createSessions(bridge, options = {}) {
         }
         const done = await script(job, { ...plan, timeoutMs: entry.timeoutMs }, entry.transaction);
         entry.transaction = job.transaction ?? entry.transaction;
-        sinks.delete(entry.sessionId);
         if (job.ended) keeper.lost(entry.sessionId, job.ended);
         return { ...done, notices: [...notes, ...done.notices] };
       },
