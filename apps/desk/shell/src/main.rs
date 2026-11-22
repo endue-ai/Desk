@@ -1,4 +1,4 @@
-//! The endue Desk shell on CEF: the browser process, and on Linux and Windows every CEF subprocess.
+//! The endue shell on CEF: the browser process, and on Linux and Windows every CEF subprocess.
 
 use std::process::ExitCode;
 
