@@ -42,7 +42,7 @@ export async function startPipe(job, startWorker) {
   let worker;
   try {
     worker = startWorker?.(new URL("./pipe-worker.js", import.meta.url), {
-      name: "Database export",
+      name: "Export every row",
     });
   } catch {
     worker = undefined;
@@ -67,7 +67,8 @@ export async function startPipe(job, startWorker) {
     }
   };
   w.onerror = () => {
-    for (const waiter of waiting.values()) waiter.reject(new Error("The export's worker stopped."));
+    for (const waiter of waiting.values())
+      waiter.reject(new Error("The worker of the export stopped."));
     waiting.clear();
   };
   const ask = (/** @type {Record<string, unknown>} */ message) =>
