@@ -10,7 +10,7 @@ import { functionsOf, keywordsOf } from "./words.js";
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
  * @typedef {import("../sql/lexer.js").Token} Token
- * @typedef {"keyword" | "function" | "string" | "number" | "comment" | "name" | "param" | "op" | "plain"} Kind
+ * @typedef {"keyword" | "function" | "string" | "number" | "comment" | "name" | "param" | "variable" | "op" | "plain"} Kind
  * @typedef {{ text: string, kind: Kind }} Run
  * @typedef {{ from: number, to: number, kind: Kind }} Span
  */

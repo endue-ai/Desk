@@ -2826,7 +2826,7 @@
       "endue.database.problems-warnings-off": {
         "kind": "array",
         "default": [],
-        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal."
+        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal, and in PL/pgSQL bodies unused-variable, unreachable-code."
       },
       "endue.database.pg-dump": {
         "kind": "string",

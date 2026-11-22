@@ -1,8 +1,8 @@
 // The SQL console's language for the editor component, all from the plugin's own lexer: the token
 // cache (tokens.js) kept in the editor state, the highlighting of the lines on screen as `tok-*`
-// classes (work.css), the bracket and quote at the caret marked with their partner, the fold
-// service, and the background checking of the checkpoints in slices of at most 4 ms while the
-// frame is idle.
+// classes (editor.css), a PL/pgSQL body's own tokens inside its dollar quotes (plpgsql.js), the
+// bracket and quote at the caret marked with their partner, the fold service, and the background
+// checking of the checkpoints in slices of at most 4 ms while the frame is idle.
 
 import {
   Decoration,
@@ -16,6 +16,7 @@ import {
 } from "../vendor/editor/editor-component.mjs";
 import { runsOf } from "./highlight.js";
 import { foldsIn, pairAt } from "./pairs.js";
+import { withBodies } from "./plpgsql.js";
 import { Lexed } from "./tokens.js";
 
 /**
@@ -102,7 +103,8 @@ const highlighter = ViewPlugin.fromClass(
       for (const { from, to } of view.visibleRanges) {
         const { tokens, exact } = lexed.tokens(from, to);
         if (!exact) this.waiting = true;
-        for (const span of runsOf(tokens, lexed.dialect, from, to))
+        const spans = runsOf(tokens, lexed.dialect, from, to);
+        for (const span of withBodies(lexed, tokens, spans, from, to))
           builder.add(span.from, span.to, mark(span.kind));
       }
       if (!lexed.done) this.schedule();
