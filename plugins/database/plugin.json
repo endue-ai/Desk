@@ -161,6 +161,11 @@
         "keywords": ["keychain", "password", "forget", "disconnect"]
       },
       {
+        "id": "endue.database.forget-ssh-host-key",
+        "title": "Database: forget the SSH host key",
+        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
+      },
+      {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
         "keywords": ["url", "dsn"]

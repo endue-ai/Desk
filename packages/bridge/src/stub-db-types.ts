@@ -52,6 +52,8 @@ export interface StubDatabase {
   /** What the server reports at the sign-in; server_version and client_encoding by default. */
   parameters?: Record<string, string>;
   statements: StubStatement[];
+  /** The SSH servers db.open's `ssh` goes through (stub-db-ssh.ts, ADR 0359). */
+  ssh?: StubSsh;
   /** Answers a statement none of `statements` matches, on the session it runs on, with the values
    * db.run or db.script bound to it (`describe` for db.describe); undefined leaves it unanswered
    * (0A000). */
@@ -61,4 +63,15 @@ export interface StubDatabase {
 export interface StubDbOptions {
   /** A scripted database server; with it the stub's db.open signs in (stub-db.ts). */
   db?: StubDatabase;
+}
+
+/** Scripted SSH servers: the key each presents by `host:port` (else STUB_HOST_KEY), the password
+ * and the passphrase they take, whether they refuse key files, and the `host:port`s the SSH host
+ * cannot reach. */
+export interface StubSsh {
+  hostKeys?: Record<string, string>;
+  password?: string;
+  keyPassword?: string;
+  refuseKey?: boolean;
+  unreachable?: string[];
 }

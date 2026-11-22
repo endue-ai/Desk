@@ -31,7 +31,8 @@ fn main() {
     std::fs::create_dir_all(&home).expect("the core's home");
     let keychain = Arc::new(FakeKeychain::new());
     let core = Core::new(Roots { home: home.clone() })
-        .with_db_passwords(Some(keychain), Some(home.join("db-passwords.json")));
+        .with_db_passwords(Some(keychain), Some(home.join("db-passwords.json")))
+        .with_db_ssh_hosts(Some(home.join("db-ssh-hosts.json")));
     let core = Arc::new(core);
 
     let out = Arc::new(Mutex::new(std::io::stdout()));
