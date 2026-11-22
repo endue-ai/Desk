@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Copy one target's bundles into the release folder under canonical names (ADR 0054):
-// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install image
+// endue_<version>_<target><ext> from 0.4, each updater artifact with its .sig, the first-install image
 // (.dmg) without. Tauri names its output after the product ("endue Desk"), with spaces, and so
 // does cargo-packager for the CEF desk (scripts/cef-package.mjs, same folder layout); R2 keys and URLs
 // should not have them. The two shells ship slightly different sets: the CEF desk adds an MSI (#46),
@@ -13,6 +13,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { desktopPrefix } from "./release-assets.mjs";
 
 /** What each OS's bundle folder holds: updater artifacts are signed, first-install images are not. */
 export const KINDS = {
@@ -52,6 +53,7 @@ export function collect({ bundle, version, target, out, shell = "tauri", install
     throw new Error(`${target} has no first-install image apart from its updater artifacts`);
   mkdirSync(out, { recursive: true });
   const written = [];
+  const prefix = desktopPrefix(version);
   const preRelease = version.includes("-");
   for (const kind of kinds) {
     if (kind.releasesOnly && preRelease) continue;
@@ -63,7 +65,7 @@ export function collect({ bundle, version, target, out, shell = "tauri", install
     if (found.length !== 1) {
       throw new Error(`expected one ${kind.ext} in ${folder}, found ${found.length}`);
     }
-    const name = `endue-desk_${version}_${target}${kind.ext}`;
+    const name = `${prefix}${target}${kind.ext}`;
     copyFileSync(join(folder, found[0]), join(out, name));
     written.push(name);
     if (kind.signed) {

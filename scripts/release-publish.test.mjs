@@ -23,6 +23,20 @@ const NAMES = [
 ];
 
 describe("release-publish", () => {
+  it("refuses unlisted files before any release upload without printing their names", () => {
+    const files = ["release.json", "release.json.sig", "endue_0.4.0_linux-x86_64.deb"];
+    for (const extra of [
+      "endue-fixture.txt",
+      "endue_0.4.0_local.fixture",
+      "endue_0.4.0_linux-x86_64.AppImage.sig",
+    ]) {
+      assert.throws(
+        () => releasePlan({ dist: "dist", names: [...files, extra], version: "0.4.0" }),
+        { message: "Unexpected or unpaired file in release folder." },
+      );
+    }
+  });
+
   it("uploads artifacts with their signatures, then the sums, then release.json", () => {
     const plan = releasePlan({ dist: "dist", names: NAMES, version: "0.2.0" });
     assert.deepEqual(

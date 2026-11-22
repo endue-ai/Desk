@@ -2,9 +2,8 @@
 # The endue commit identity (AGENTS.md, Boundaries) as git hooks for every repository under one
 # folder (install.sh). A repository whose remote is GitHub's endue-ai is strict: author, committer and
 # every email in a message are team@endue.ai or Claude (noreply@anthropic.com), and none of the strings
-# in this machine's `endue.block` config appears; a pushed commit may also have GitHub as its committer,
-# which is who commits a pull request's squash merge. The list never lives in a repository: install.sh
-# writes it to the machine's own config. Any other repository (GitLab) refuses only identities git
+# in ENDUE_IDENTITY_BLOCK or an existing `endue.block` rule appears. GitHub can commit a squash
+# merge. New private rules live only in the process environment. Other repositories refuse identities git
 # guessed from the host name (an address ending in .local).
 #
 # usage: check.sh pre-commit | commit-msg <file> | pre-push <remote> <url>   (stdin as git gives it)
@@ -12,7 +11,7 @@ set -uf -o pipefail
 export LC_ALL=C
 
 # ensure.sh installs this file over an older one only; raise it with every change.
-IDENTITY_VERSION=3
+IDENTITY_VERSION=4
 
 hook="${1:?usage: check.sh pre-commit | commit-msg <file> | pre-push <remote> <url>}"
 shift
@@ -28,9 +27,10 @@ mode_here() {
 }
 
 # Records on stdin: "I<TAB>label<TAB>Name <email>" or "M<TAB>label<TAB>message line".
-# Prints each refused record and exits 1 when there is one.
+# Report the reason without reproducing the rejected record.
 scan() {
-  ENDUE_BLOCK="$(git config --get-all endue.block 2>/dev/null)" \
+  ENDUE_BLOCK="$(git config --get-all endue.block 2>/dev/null)
+${ENDUE_IDENTITY_BLOCK-}" \
     awk -F '\t' -v mode="$1" '
       function listed(s, list,   n, i, item) {
         n = split(list, item, "\n")
@@ -54,16 +54,17 @@ scan() {
         else if (mode == "strict" && listed(low, block)) why = "a personal identity"
         else if (mode == "strict" && $1 == "I") {
           e = low; sub(/.*</, "", e); sub(/>.*/, "", e)
-          if (e !~ allowed && !($2 ~ / committer$/ && low ~ merger)) why = "not team@endue.ai or Claude"
+          if (e == "team@endue.ai" && text != "endue-team <team@endue.ai>") why = "unapproved team display name"
+          else if (e !~ allowed && !($2 ~ / committer$/ && low ~ merger)) why = "not team@endue.ai or Claude"
         } else if (mode == "strict") {
           s = low
           while (match(s, email)) {
             e = substr(s, RSTART, RLENGTH)
-            if (e !~ allowed) { why = "names " e; break }
+            if (e !~ allowed) { why = "an unapproved email in the message"; break }
             s = substr(s, RSTART + RLENGTH)
           }
         }
-        if (why != "") { bad++; if (bad <= 20) printf "  %s: %s\n    %s\n", $2, why, text }
+        if (why != "") { bad++; if (bad <= 20) printf "  %s: %s\n", $2, why }
       }
       END { if (bad > 20) printf "  ... and %d more\n", bad - 20; exit (bad > 0) }'
 }
@@ -85,7 +86,7 @@ chain() {
   if [ -x "$own" ]; then "$own" "$@"; fi
 }
 
-ident() { git var "$1" | sed -E 's/ [0-9]+ [-+][0-9]{4}$//'; }
+ident() { git var "$1" 2>/dev/null | sed -E 's/ [0-9]+ [-+][0-9]{4}$//'; }
 
 case "$hook" in
   pre-commit)
@@ -127,12 +128,12 @@ case "$hook" in
         git log --format='%x01%h%n%B' "${revs[@]}" |
           awk '/^\001/ { h = substr($0, 2); next } { print "M\t" h " message\t" $0 }'
       } | scan "$mode" >&2 || failed=1
-      [ "$failed" = 0 ] || refuse "$mode" "the push of $rref"
+      [ "$failed" = 0 ] || refuse "$mode" "the push"
     done <<<"$input"
     printf '%s\n' "$input" | chain "$remote" "$url"
     ;;
   *)
-    echo "check.sh: unknown hook $hook" >&2
+    echo "check.sh: unknown hook" >&2
     exit 2
     ;;
 esac
