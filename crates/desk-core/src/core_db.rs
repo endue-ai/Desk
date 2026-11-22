@@ -1,7 +1,8 @@
 //! The database side of `Core`: db.open, db.run, db.fetch, db.copy, db.cancel, db.close and
 //! db.list over PostgreSQL sessions of `desk-pg` (ADR 0281), behind `db:connect` as `net:connect`
 //! guards sockets (`core_sockets.rs`). A session belongs to its caller: another caller's id is
-//! `not_found`, and it ends when the caller unloads or its grants no longer cover the host and port.
+//! `not_found`, and it ends at db.close, when the caller unloads, when its grants no longer cover
+//! the host and port, and when the desk quits (`core_db_end.rs`, ADR 0339).
 //! Its events go to that caller alone; `db.closed` once its entry has left the table. The table is
 //! never locked while a session's call waits on the server.
 
@@ -30,18 +31,18 @@ pub(crate) const MAX_SESSIONS: usize = 16;
 /// The one engine the core speaks.
 const POSTGRESQL: &str = "postgresql";
 
-struct DbEntry {
-    caller: String,
-    scope: Permission,
-    host: String,
-    port: u16,
+pub(crate) struct DbEntry {
+    pub(crate) caller: String,
+    pub(crate) scope: Permission,
+    pub(crate) host: String,
+    pub(crate) port: u16,
     database: String,
     user: String,
     pid: i64,
     /// `None` while it signs in.
-    session: Option<Arc<Session>>,
+    pub(crate) session: Option<Arc<Session>>,
     /// Why the desk let it go while it signed in; the sign-in then ends it so.
-    ended: Option<CloseReason>,
+    pub(crate) ended: Option<CloseReason>,
 }
 
 /// The sessions callers opened, by id. Shared with each session's sink, which removes the entry
@@ -49,7 +50,7 @@ struct DbEntry {
 #[derive(Default)]
 pub(crate) struct Databases {
     next: u64,
-    entries: BTreeMap<String, DbEntry>,
+    pub(crate) entries: BTreeMap<String, DbEntry>,
 }
 
 impl Core {
@@ -284,73 +285,9 @@ impl Core {
             .ok_or_else(|| error(ErrorCode::NotFound, format!("{caller} has no session {id}")))
     }
 
-    /// The caller unloaded: its sessions end (`unloaded`).
-    pub(crate) fn drop_databases(&self, caller: &str) {
-        self.end_databases(caller, CloseReason::Unloaded, |_| true);
-    }
-
-    /// End the caller's sessions that its grants no longer cover (`revoked`).
-    pub(crate) fn prune_databases(&self, caller: &str) {
-        let permissions = self.permissions();
-        let lost = |entry: &DbEntry| {
-            let target = Target::Endpoint {
-                host: &entry.host,
-                port: entry.port,
-            };
-            permissions
-                .authorize(caller, &entry.scope, &target)
-                .is_err()
-        };
-        let ended = take(
-            &mut lock(&self.databases),
-            caller,
-            CloseReason::Revoked,
-            lost,
-        );
-        drop(permissions);
-        close_all(ended, CloseReason::Revoked);
-    }
-
-    fn end_databases(&self, caller: &str, reason: CloseReason, ends: impl Fn(&DbEntry) -> bool) {
-        let ended = take(&mut lock(&self.databases), caller, reason, ends);
-        close_all(ended, reason);
-    }
-
     /// How many sessions are open or signing in, for tests and diagnostics.
     pub fn database_count(&self) -> usize {
         lock(&self.databases).entries.len()
-    }
-}
-
-/// Take the caller's signed-in sessions `ends` picks out of the table; mark those still signing in.
-fn take(
-    databases: &mut Databases,
-    caller: &str,
-    reason: CloseReason,
-    ends: impl Fn(&DbEntry) -> bool,
-) -> Vec<Arc<Session>> {
-    let mut ended = Vec::new();
-    databases.entries.retain(|_, entry| {
-        if entry.caller != caller || !ends(entry) {
-            return true;
-        }
-        match entry.session.take() {
-            Some(session) => {
-                ended.push(session);
-                false
-            }
-            None => {
-                entry.ended.get_or_insert(reason);
-                true
-            }
-        }
-    });
-    ended
-}
-
-fn close_all(sessions: Vec<Arc<Session>>, reason: CloseReason) {
-    for session in sessions {
-        session.close(reason);
     }
 }
 

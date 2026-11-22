@@ -26,9 +26,15 @@ export function wordsOf(/** @type {Pick<DbError, "message" | "detail">} */ error
 
 /** @param {{ execute: import("../../catalog.js").Execute }} deps */
 export function createReader(deps) {
-  /** Each statement's rows; a failure throws its words. */
-  const sets = async (/** @type {Connection} */ conn, /** @type {string[]} */ sqls) => {
-    const { result } = await deps.execute(conn, sqls.join(";\n"), { catalog: true, maxRows: ROWS });
+  /** Each statement's rows; a failure throws its words. `background` is a read of the plugin's
+   * own (progress, the statistics after), which a disconnected connection refuses (ADR 0339). */
+  const sets = async (
+    /** @type {Connection} */ conn,
+    /** @type {string[]} */ sqls,
+    background = false,
+  ) => {
+    const options = { catalog: true, maxRows: ROWS, ...(background ? { background: true } : {}) };
+    const { result } = await deps.execute(conn, sqls.join(";\n"), options);
     if (result.error) throw new Error(wordsOf(result.error));
     const failed = result.statements.find((s) => s.error)?.error;
     if (failed) throw new Error(wordsOf(failed));
@@ -39,14 +45,14 @@ export function createReader(deps) {
     /** The server, the target's size and statistics, its indexes or a schema's tables. */
     facts: async (/** @type {Connection} */ conn, /** @type {Target} */ target) =>
       readOf(target, (await sets(conn, factsSql(target))).slice(1)),
-    /** The target's statistics now (after a run). */
-    async stats(/** @type {Connection} */ conn, /** @type {Target} */ target) {
-      const [, row = [], indexes = []] = await sets(conn, statsQueries(target));
+    /** The target's statistics now (after a run: `background`). */
+    async stats(/** @type {Connection} */ conn, /** @type {Target} */ target, background = false) {
+      const [, row = [], indexes = []] = await sets(conn, statsQueries(target), background);
       return statsOf(row[0] ?? [], indexesOf(indexes), target.kind === "index" ? target.index : "");
     },
     /** Where the run of `sql` is, or null while its session is not found. */
     async progress(/** @type {Connection} */ conn, /** @type {string} */ sql) {
-      const [rows = []] = await sets(conn, [progressSql(sql)]);
+      const [rows = []] = await sets(conn, [progressSql(sql)], true);
       return progressOf(rows);
     },
     /** Cancel the run of `sql` on the server; resolves with how many sessions were signalled. */

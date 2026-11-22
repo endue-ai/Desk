@@ -268,6 +268,7 @@ export function createConsoles(deps) {
     execute,
     render,
     typed,
+    pages,
   });
 
   /** The editor's text changed: keep it, a moment later, in the store; a file's, mark it. */

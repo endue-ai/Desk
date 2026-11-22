@@ -149,7 +149,8 @@ the plugin's commands, whose read-only, production and agent guards hold.
 
 **Lifetime.** A session belongs to the plugin that opened it. It ends at `db.close`, when the server
 or the network ends it, when the plugin stops (turned off, removed, the desk quits) and when its grant
-goes; never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
+goes (amended by ADR 0339: also when the window that opened it closes, and every end cancels a
+running statement before Terminate); never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
 on). A window whose frame sleeps (ADR 0134) keeps its sessions and finds them again with `db.list`;
 what was notified meanwhile is lost. A caller holds 16 sessions at most.
 

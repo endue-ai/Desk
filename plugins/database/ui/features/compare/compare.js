@@ -222,7 +222,7 @@ export async function copyDifference(/** @type {Deps} */ deps, /** @type {unknow
   return text;
 }
 
-/** Database: export the difference of two results to a file in ~/Downloads. */
+/** Database: export the difference of two results to a file where the person chooses. */
 export async function exportDifference(/** @type {Deps} */ deps, /** @type {unknown} */ format) {
   const state = comparisonOf(deps);
   const chosen = await formatOf(deps, format, "Database: export the difference as");
@@ -233,6 +233,7 @@ export async function exportDifference(/** @type {Deps} */ deps, /** @type {unkn
     name: "difference",
     options: optionsOf(state),
   });
+  if (!done) throw deps.cancelled("Not exported.");
   const kept = set.truncated
     ? ` (the first ${state.rows.length.toLocaleString("en-US")} of ${state.total.toLocaleString("en-US")} differences)`
     : "";

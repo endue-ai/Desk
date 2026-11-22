@@ -4,14 +4,17 @@
 // Other consoles, or one whose cache lists nothing yet, complete on the page from the catalog
 // (quietly from its cache when it can): the schemas, the default schema's objects and the columns
 // of the tables the statement names, at most four of them. Either way the person's picks rank
-// candidates (picks.js) and the snippets the settings add are offered where they fit. Inside a
-// PL/pgSQL body (ADR 0343) the worker completes even without a cache, for the body's variables. No
-// DOM.
+// candidates (picks.js) and the snippets the settings add are offered where they fit. A server the
+// plugin holds no db:connect grant for is not read while the person types (connectHeld, ADR 0335):
+// it completes from what is cached already, and the question comes from a run, Test or Connect.
+// Inside a PL/pgSQL body (ADR 0343) the worker completes even without a cache, for the body's
+// variables. No DOM.
 
 import { problemModel } from "../../diagnose/model.js";
 import { complete } from "../../editor/complete.js";
 import { snippetsOf } from "../../editor/snippets.js";
 import { engineOf } from "../../engines/index.js";
+import { connectHeld } from "../../session/connect-gate.js";
 import { sqlParser } from "../../sql/parse/client.js";
 import { bodyAt } from "../../sql/plpgsql/bodies.js";
 import { picksFor } from "./picks.js";
@@ -43,6 +46,8 @@ export function createCompletion(deps, parser = sqlParser) {
   ) => {
     const { dialect } = engineOf(conn.engine);
     const first = deps.catalog.snapshot(conn);
+    if (!(await connectHeld(deps.bridge, conn)))
+      return complete(text, caret, dialect, first, options);
     await Promise.all([
       quiet(deps.catalog.schemas(conn, true)),
       ...(first.defaultSchema
