@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { aimAt, definitionOf, matches } from "../ui/navigate/target.js";
 import { marked, shopResolver } from "./navigate-fixture";
 
-let at: (text: string) => ReturnType<typeof aimAt> & { text: string };
+let at: (text: string) => (NonNullable<ReturnType<typeof aimAt>> & { text: string }) | null;
 let resolve: Awaited<ReturnType<typeof shopResolver>>["resolve"];
 
 beforeAll(async () => {
@@ -66,7 +66,7 @@ describe("the name at the caret", () => {
 
   it("says where the name at the caret is written", () => {
     const hit = at("select p.name from peo|ple p");
-    expect(hit && hit.text.slice(hit.from, hit.to)).toBe("people");
+    expect(hit?.text.slice(hit.from, hit.to)).toBe("people");
   });
 
   it("finds where an alias, a CTE and an output name are defined", () => {

@@ -101,10 +101,10 @@ describe("navigation's feature", () => {
     ).toEqual(["catalog view", "catalog foreign key", "parsed console", "parsed console"]);
     const plain = text.replace("|", "");
     const place = state.items[3];
-    await m.app.navigateOpen(state.connection, place);
+    await m.app.navigateOpen?.(state.connection, place);
     expect(m.shown()?.id).toBe(console?.id);
     expect(selected).toEqual([[plain.lastIndexOf("people"), plain.length]]);
-    await m.app.navigateOpen(state.connection, state.items[0]);
+    await m.app.navigateOpen?.(state.connection, state.items[0]);
     await until(m, () => m.shown()?.kind === "ddl");
   });
 

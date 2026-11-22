@@ -1740,6 +1740,21 @@
         "keywords": ["star", "asterisk", "columns", "expand", "select list"]
       },
       {
+        "id": "endue.database.go-to-definition",
+        "title": "Database: go to the definition of the name at the caret",
+        "keywords": ["definition", "jump", "navigate", "DDL", "CTE", "alias", "F12"]
+      },
+      {
+        "id": "endue.database.show-card",
+        "title": "Database: show what the name at the caret is",
+        "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
+      },
+      {
+        "id": "endue.database.find-usages",
+        "title": "Database: find the usages of the name at the caret",
+        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
+      },
+      {
         "id": "endue.database.follow-key",
         "title": "Database: go to the row this key points at",
         "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]

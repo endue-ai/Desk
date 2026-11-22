@@ -75,9 +75,10 @@ test("F12 on a CTE selects its definition, and on a table opens its DDL", async 
 
 test("resting on a table shows its card, and Alt+F12 a column's", async ({ page }) => {
   const { frame } = await open(page);
-  const box = await frame.evaluate((word) => {
-    const content = document.querySelector(".cm-content") as HTMLElement;
-    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  // The pointer rests on "people", placed within its line (Playwright maps it through the frame).
+  const spot = await frame.evaluate((word) => {
+    const line = document.querySelector(".cm-line") as HTMLElement;
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const at = (node.textContent ?? "").indexOf(word);
       if (at < 0) continue;
@@ -85,19 +86,19 @@ test("resting on a table shows its card, and Alt+F12 a column's", async ({ page 
       range.setStart(node, at + 1);
       range.setEnd(node, at + 3);
       const r = range.getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      const box = line.getBoundingClientRect();
+      return { x: r.x - box.x + r.width / 2, y: r.y - box.y + r.height / 2 };
     }
     return null;
   }, "people");
-  if (!box) throw new Error("no people in the editor");
-  const frameBox = await page.locator(`${SURFACE} iframe`).boundingBox();
-  await page.mouse.move((frameBox?.x ?? 0) + box.x, (frameBox?.y ?? 0) + box.y);
+  if (!spot) throw new Error("no people in the editor");
+  await frame.locator(".cm-line").first().hover({ position: spot });
   const card = frame.locator(".nav-card");
   await expect(card).toContainText("public.people");
   await expect(card).toContainText("Who buys");
   await expect(card.locator(".nav-card-col")).toContainText(["id", "name", "joined"]);
   await page.screenshot({ path: test.info().outputPath("navigate-card.png") });
-  await page.mouse.move(0, 0);
+  await frame.locator("#tree").hover();
   await expect(card).toHaveCount(0);
 
   await caretAt(frame, TEXT.indexOf("name") + 1);
