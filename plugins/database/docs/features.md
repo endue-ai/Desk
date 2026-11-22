@@ -244,8 +244,7 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result to `~/Downloads` in any copy format, as `<table>-<time>.<extension>` so it never overwrites
-  an earlier one, and show it in the file manager.
+- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
   like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
   Read-only connections refuse it and production asks.
