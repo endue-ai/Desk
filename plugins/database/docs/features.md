@@ -245,7 +245,8 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md).
+- Export a result where the person chooses, in ten formats with their options: see [`export.md`](export.md); a
+  console's `COPY ... TO STDOUT` and `COPY ... FROM STDIN` through a file: [`copy.md`](copy.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
   like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
   Read-only connections refuse it and production asks.
@@ -253,8 +254,7 @@ Modules: `links/`, `features/links/`.
 - Rows of a result drag as `db/rows` `{ connection, engine, schema?, table?, columns, rows }`, as INSERT
   statements (`desk/text`) and as TSV (`text/plain`).
 
-Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`,
-`view-import.js`.
+Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd.js`, `view-dnd.js`, `view-import.js`.
 
 ## Server activity
 

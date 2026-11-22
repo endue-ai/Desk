@@ -117,6 +117,10 @@
         "content": { "description": "The new file content.", "type": "string" },
         "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
         "createDirs": { "description": "Create missing parent folders.", "type": "boolean" },
+        "append": {
+          "description": "Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.",
+          "type": "boolean"
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
       },
       "required": ["path", "content", "scope"],

@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.write appending a chunk to an existing file",
+  "instance": {
+    "id": 3,
+    "method": "fs.write",
+    "params": {
+      "path": "~/Downloads/rows.tsv",
+      "content": "MQlvbmUK",
+      "encoding": "base64",
+      "append": true,
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Downloads/rows.tsv"]
+      }
+    }
+  }
+}
