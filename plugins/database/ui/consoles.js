@@ -364,13 +364,17 @@ export function createConsoles(deps) {
       render();
     },
     /**
-     * Move a console or a table view to another database of its server (PG-13): pending changes
-     * are asked about first; a console keeps its text, a table view reads the table there.
+     * Move a console or a table view to another database of its server (PG-13), its session closed
+     * (asked first in a transaction); a console keeps its text, a table view reads the table there.
      */
     async rebind(/** @type {Console} */ target, /** @type {Connection} */ conn) {
       if (target.running || target.filing)
         throw new Error("A run is going on in this console: cancel it first.");
       await discard(target);
+      const open = closing(target);
+      if (open.length && !(await deps.confirm(`Move it to ${conn.name}?`, open)))
+        throw deps.cancelled("Not moved: it stays on its database.");
+      release(target); // its session closes (PG-02): the next run opens one on the new database
       target.edit = null;
       if (target.kind === "console") await many.bind(target, conn);
       else target.connection = conn.id;
