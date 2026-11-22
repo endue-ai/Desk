@@ -20,7 +20,8 @@ const { fields, password } = uri ? parseUri(uri) : { fields: {}, password: undef
 const server = liveSessions(uri, "endue lost");
 const LIVE = (uri ? normalize({ ...fields, id: "c-live-lost", name: "live" }) : {}) as Connection;
 const TABLE = "t500_lost";
-const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) };
+// The plugin holds the server's grant, as perm.query tells it.
+const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) as never };
 
 async function live(): Promise<Mounted> {
   const procs = realProcs(password ? { password } : {});
@@ -60,28 +61,36 @@ const runningPid = async (like: string) => {
 const done = (m: Mounted) => m.host.command("endue.database.disconnect", { connection: "live" });
 
 describe.skipIf(!uri)("a lost connection on a real server", () => {
+  /** Each statement as the URI's role, one after another. */
+  const admins = async (...sqls: string[]) => {
+    for (const sql of sqls) await server.admin(sql);
+  };
+  const drop = () =>
+    admins(
+      `DROP TABLE IF EXISTS ${TABLE}, t500_slow, t500_edit`,
+      "DROP FUNCTION IF EXISTS t500_sleep()",
+    );
+
   beforeAll(async () => {
     await server.end();
-    await server.admin(
-      `DROP TABLE IF EXISTS ${TABLE}, t500_slow, t500_edit; ` +
-        `CREATE TABLE ${TABLE} (id int); ` +
-        "CREATE TABLE t500_slow (on_update boolean, on_commit boolean); " +
-        "CREATE TABLE t500_edit (id int primary key, name text); " +
-        "INSERT INTO t500_edit VALUES (1, 'ann'), (2, 'bob'); " +
-        "CREATE OR REPLACE FUNCTION t500_sleep() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN " +
+    await drop();
+    await admins(
+      `CREATE TABLE ${TABLE} (id int)`,
+      "CREATE TABLE t500_slow (on_update boolean, on_commit boolean)",
+      "CREATE TABLE t500_edit (id int primary key, name text)",
+      "INSERT INTO t500_edit VALUES (1, 'ann'), (2, 'bob')",
+      "CREATE FUNCTION t500_sleep() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN " +
         "IF EXISTS (SELECT 1 FROM t500_slow WHERE on_update AND TG_WHEN = 'BEFORE') OR " +
         "EXISTS (SELECT 1 FROM t500_slow WHERE on_commit AND TG_WHEN = 'AFTER') THEN PERFORM pg_sleep(20); END IF; " +
-        "RETURN NEW; END $$; " +
-        "CREATE TRIGGER t500_before BEFORE UPDATE ON t500_edit FOR EACH ROW EXECUTE FUNCTION t500_sleep(); " +
-        "CREATE CONSTRAINT TRIGGER t500_commit AFTER UPDATE ON t500_edit DEFERRABLE INITIALLY DEFERRED " +
+        "RETURN NEW; END $$",
+      "CREATE TRIGGER t500_before BEFORE UPDATE ON t500_edit FOR EACH ROW EXECUTE FUNCTION t500_sleep()",
+      "CREATE CONSTRAINT TRIGGER t500_commit AFTER UPDATE ON t500_edit DEFERRABLE INITIALLY DEFERRED " +
         "FOR EACH ROW EXECUTE FUNCTION t500_sleep()",
     );
   });
   afterAll(async () => {
     await server.end("application_name = 'endue Desk'");
-    await server.admin(
-      `DROP TABLE IF EXISTS ${TABLE}, t500_slow, t500_edit; DROP FUNCTION IF EXISTS t500_sleep()`,
-    );
+    await drop();
   });
 
   it("an idle console's session comes back on its own, and the next run works", async () => {
@@ -149,7 +158,7 @@ describe.skipIf(!uri)("a lost connection on a real server", () => {
       render: () => {},
       reload: h.reload,
     });
-    await server.admin("TRUNCATE t500_slow; INSERT INTO t500_slow VALUES (true, false)");
+    await admins("TRUNCATE t500_slow", "INSERT INTO t500_slow VALUES (true, false)");
     const shown = await h.show("select id, name from t500_edit order by id");
     await e.editCell(shown, h.conn, 0, 1, "ann b");
     const submitted = e.submit(shown, h.conn).catch((error: Error) => error.message);
@@ -169,7 +178,7 @@ describe.skipIf(!uri)("a lost connection on a real server", () => {
       render: () => {},
       reload: h.reload,
     });
-    await server.admin("TRUNCATE t500_slow; INSERT INTO t500_slow VALUES (false, true)");
+    await admins("TRUNCATE t500_slow", "INSERT INTO t500_slow VALUES (false, true)");
     const shown = await h.show("select id, name from t500_edit order by id");
     await e.editCell(shown, h.conn, 1, 1, "bob c");
     const submitted = e.submit(shown, h.conn).catch((error: Error) => error.message);

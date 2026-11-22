@@ -19,6 +19,7 @@ describe("a transaction lost with its session", () => {
         reason: "server",
         error: {
           severity: "FATAL",
+          localSeverity: "FATAL",
           code: "57P01",
           message: "terminating connection due to administrator command",
         },

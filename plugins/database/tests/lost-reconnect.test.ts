@@ -24,6 +24,7 @@ function fake(answers: Attempt[] = [], allowed = true) {
     may: async () => allowed,
     lost: () => lost,
     say: (_owner: string, line: (label: string) => string) => said.push(line("Shop")),
+    label: () => "Shop",
     onState: () => {},
     setTimer: (fn: () => void, ms: number) => {
       const timer = { fn, ms, live: true };
@@ -152,7 +153,8 @@ describe("a lost session comes back in the plugin", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
   };
-  const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) };
+  // The plugin holds the server's grant, as perm.query tells it.
+  const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) as never };
 
   it("an idle console's session the network dropped opens again on its own", async () => {
     const m = await shop({ handlers: granted });
