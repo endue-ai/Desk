@@ -25,7 +25,7 @@ impl Session {
                     sections.insert(section.to_owned(), data);
                 }
                 Err((code, message)) => {
-                    eprintln!("desk: {code}: {message}");
+                    eprintln!("{}: {code}: {message}", crate::name());
                     return Ok(ExitCode::from(1));
                 }
             }

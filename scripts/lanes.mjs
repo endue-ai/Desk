@@ -9,7 +9,7 @@
 
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { globToRegExp, parseLinkedIssue, parseScope } from "./scope-check.mjs";
+import { parseLinkedIssue, parseScope } from "./scope-check.mjs";
 
 /** Parallel tasks at once (ADR 0015); each one still ends in a PR a person approves. */
 export const MAX_IN_FLIGHT = 15;
@@ -33,7 +33,8 @@ function root(glob) {
   const pattern = glob.trim().replace(/^\.?\//, "");
   const index = pattern.search(WILDCARD);
   if (index === -1) return { literal: true, path: pattern.replace(/\/$/, "") };
-  return { literal: false, path: pattern.slice(0, pattern.lastIndexOf("/", index) + 1) };
+  const prefix = pattern.slice(0, index);
+  return { literal: false, prefix, path: prefix.slice(0, prefix.lastIndexOf("/") + 1) };
 }
 
 function under(path, dir) {
@@ -45,14 +46,14 @@ function under(path, dir) {
 }
 
 /**
- * Whether two globs can match a common file. Exact when either side is a literal path; otherwise
- * conservative: globs rooted in nested or equal directories overlap.
+ * A literal scope covers the named path and its descendants. Every path in a wildcard scope starts
+ * with the text before its first wildcard. Two wildcard scopes conservatively reserve their roots.
  */
 export function globsOverlap(a, b) {
   const ra = root(a);
   const rb = root(b);
-  if (ra.literal)
-    return globToRegExp(b).test(ra.path) || under(ra.path, rb.path) || under(rb.path, ra.path);
+  if (ra.literal && rb.literal) return under(ra.path, rb.path) || under(rb.path, ra.path);
+  if (ra.literal) return ra.path.startsWith(rb.prefix) || under(rb.prefix, ra.path);
   if (rb.literal) return globsOverlap(b, a);
   return under(ra.path, rb.path) || under(rb.path, ra.path);
 }
