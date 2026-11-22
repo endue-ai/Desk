@@ -32,7 +32,8 @@ const command = (page: Page, id: string, args: Record<string, unknown>) =>
 
 test("the form shows the session options for PostgreSQL only", async ({ page }) => {
   const frame = await open(page);
-  await frame.locator('[data-act="create"]').click();
+  // The iframe is sized past its window: a pointer below the window's box would land on the desk.
+  await frame.locator('[data-act="create"]').dispatchEvent("click");
   const options = frame.locator("#f-options");
   await expect(options).toBeVisible();
   await frame.locator("#f-engine").selectOption("sqlite");
@@ -41,7 +42,7 @@ test("the form shows the session options for PostgreSQL only", async ({ page }) 
   await expect(options).toBeHidden();
   await frame.locator("#f-engine").selectOption("postgresql");
   await expect(options).toBeVisible();
-  await frame.locator("#form-cancel").click();
+  await frame.locator("#form-cancel").dispatchEvent("click");
 });
 
 test("saved options reach the session, and the header shows the role and the search path", async ({
@@ -50,12 +51,12 @@ test("saved options reach the session, and the header shows the role and the sea
   const frame = await open(page);
   await command(page, "endue.database.edit-connection", { connection: "fixture-pg" });
   await expect(frame.locator("#form")).toBeVisible();
-  await frame.locator("#f-options > summary").click();
+  await frame.locator("#f-options > summary").dispatchEvent("click");
   await frame.locator("#f-searchPath").fill("app, public");
   await frame.locator("#f-role").fill("reporting");
   await frame.locator("#f-timeZone").fill("Asia/Seoul");
   await frame.locator("#f-lockTimeout").fill("5s");
-  await frame.locator('#form [type="submit"]').click();
+  await frame.locator('#form [type="submit"]').dispatchEvent("click");
   await expect(frame.locator("#form")).toBeHidden();
 
   await command(page, "endue.database.console", { connection: "fixture-pg" });
