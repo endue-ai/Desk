@@ -23,7 +23,15 @@ export function wordsOf(/** @type {Pick<DbError, "message" | "detail">} */ error
   return more ? `${error.message}. ${more}` : error.message;
 }
 
-/** @param {{ execute: import("../../catalog.js").Execute, now?(): number }} deps */
+/**
+ * @param {{
+ *   execute: import("../../catalog.js").Execute, now?(): number,
+ *   mine?(conn: Connection): Promise<number[]>,
+ * }} deps
+ *   `mine` answers the process ids of the plugin's sessions on this desk to the connection's
+ *   server; it is asked before and after the read, so a session that ends or begins meanwhile is
+ *   still known.
+ */
 export function createReader(deps) {
   /** @type {Map<string, { version: number, server: string }>} */
   const versions = new Map();
@@ -59,13 +67,16 @@ export function createReader(deps) {
         versions.delete(conn.id);
         throw new Error(old);
       }
+      const early = deps.mine?.(conn) ?? Promise.resolve([]);
       const [head, sessions, locks] = await sets(conn, [HEAD, sessionsSql(), locksSql(version)]);
+      const late = (await deps.mine?.(conn)) ?? [];
       const read = readOf(
         head?.rows[0] ?? [],
         sessions?.rows ?? [],
         locks?.rows ?? [],
         locks?.truncated ?? false,
         deps.now?.() ?? Date.now(),
+        new Set([...(await early), ...late]),
       );
       if (read.version !== version) versions.delete(conn.id);
       return read;

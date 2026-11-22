@@ -155,11 +155,11 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
 - A grid that draws only the rows in view. A result keeps `max-rows` rows and More rows (`m`) loads four times
   as many; a console's single SELECT pages. Sort (`s`), filter the rows on screen (`/`), one row as a record
   (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
-- A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, and counts its rows on request.
+- A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, counts its rows on request, and
+  unsorted reads a PostgreSQL table by its primary key (`ctid` without one), so rows keep their places.
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
   resized (a header's grip, `(` `)`, `w` or a double click on the grip fits). A table view keeps them across
-  restarts, a console's result while it is among the last 20 (ADR 0288). Copy, export and drags take the
-  columns on screen, in their order.
+  restarts, a console's result while among the last 20 (ADR 0288); copy, export and drags take them as shown.
 - Sort by more than one column (Shift+click or `S` adds the next key, numbered in the header). Quick filters
   from the cursor's cell (`f` menu, `=` equals, `F` clears): =, ≠, >, <, contains, empty, NULL, not NULL,
   each a chip that says whether it runs on the server (a table view: its keys go to ORDER BY and its filters
@@ -259,9 +259,9 @@ Modules: `export.js`, `import.js`, `importer.js`, `drops.js`, `dropped.js`, `dnd
 ## Server activity
 
 - A panel per PostgreSQL connection (13 and later) with its sessions from `pg_stat_activity`: process id,
-  user, database, application, client, state, wait event, how long in its state, transaction and statement,
-  and the statement; the selected one's whole statement below. Columns sort; filters hide idle sessions
-  and this view's own, show background processes, and keep one database.
+  user, database, application, client, state, wait event, time in its state, transaction and statement, and
+  the statement, whole below; columns sort; filters hide idle sessions and the view's reads (with their locks),
+  show background processes and keep one database; `this view` and `this desk` (`db.list`) mark the desk's own.
 - Who waits for whom (`pg_blocking_pids`) as a tree, the longest wait first, with the lock waited for and
   how its blocker holds it; the locks from `pg_locks` (5,000 at most), the waiting ones first.
 - Read again by hand (Refresh, `g`) and every 2, 5, 10, 30 or 60 seconds while on screen; Pause (`p`)
