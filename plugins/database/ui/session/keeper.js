@@ -37,8 +37,11 @@ import { closedWhy, idleWhy, modelOf, newSession } from "./words.js";
  *   onLost(owner: string, line: (label: string) => string, gone: Gone): void,
  *   idleMs(): number, limit(): number, now(): number, monotonic?(): number,
  *   setTimer(fn: () => void, ms: number): unknown, clearTimer(timer: unknown): void,
+ *   holds?(owner: string): boolean, ended?(owner: string): void,
  * }} Deps
- *   `monotonic` is a clock a sleep does not move (performance.now by default).
+ *   `monotonic` is a clock a sleep does not move (performance.now by default); `holds` keeps an
+ *   owner's session the idle timer would close (one that listens, PG-25); `ended` hears an owner's
+ *   session go, before `onLost`.
  * @typedef {{ sessionId: string, pid: number } | { error: DbError }} Opened
  */
 
@@ -69,6 +72,7 @@ export function createKeeper(deps) {
     owners.delete(entry.sessionId);
     deps.clearTimer(entry.timer);
     deps.slots.give("kept");
+    deps.ended?.(entry.owner);
     return true;
   };
   /** End an entry's session: the person's close (no `why`), or the idle timer's. */
@@ -120,7 +124,11 @@ export function createKeeper(deps) {
     const ms = deps.idleMs();
     if (entries.get(entry.owner) !== entry || ms <= 0) return;
     const left = entry.at + ms - deps.now();
-    const busy = entry.running || entry.transaction !== "idle" || turns.has(entry.owner);
+    const busy =
+      entry.running ||
+      entry.transaction !== "idle" ||
+      turns.has(entry.owner) ||
+      deps.holds?.(entry.owner) === true;
     if (busy || left > 0) arm(entry, left > 0 ? left : ms);
     else shut(entry, idleWhy(ms));
   };
@@ -261,6 +269,8 @@ export function createKeeper(deps) {
     /** The sessions `test` takes that are in a transaction, open or failed. */
     inTransaction: (/** @type {(entry: Entry) => boolean} */ test) =>
       [...entries.values()].filter((e) => test(e) && e.transaction !== "idle"),
+    /** The owner of a kept session. */
+    ownerOf: (/** @type {string} */ sessionId) => owners.get(sessionId),
     /** What the header shows for an owner. */
     state: (/** @type {string} */ owner) => modelOf(entries.get(owner), gone.get(owner)),
     /** The consoles' sessions, for the surface state. @returns {Kept[]} */

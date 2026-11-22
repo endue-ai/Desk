@@ -126,7 +126,7 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server (`statement_timeout`).
 - On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
-  sees (ADR 0320): [`sessions.md`](sessions.md).
+  sees (ADR 0320): [`sessions.md`](sessions.md); live notices and LISTEN: [`notifications.md`](notifications.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -245,11 +245,11 @@ Modules: `links/`, `features/links/`.
 
 ## Import and export
 
-- Export a result where the person chooses, in ten formats: [`export.md`](export.md); a console's `COPY` through a
-  file: [`copy.md`](copy.md); tables or a query's result copied to another database: [`transfer.md`](transfer.md).
+- Export in ten formats: [`export.md`](export.md); every row, or a schema's tables: [`export-all.md`](export-all.md);
+  `COPY` through a file: [`copy.md`](copy.md); tables or a result to another database: [`transfer.md`](transfer.md).
 - A dropped `.csv`, `.tsv` or `.json` file opens an import (ADR 0119): into the table it landed on or one named
-  like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most.
-  Read-only connections refuse it and production asks.
+  like it, with a column mapping and a preview, every INSERT in one transaction, 512 KiB of SQL at most; on
+  PostgreSQL a file of any size, JSON lines and `.xlsx` too, goes in by COPY: [`import.md`](import.md).
 - A dropped file is read with `fs.read` and asked for once (see the README's permissions).
 - Rows of a result drag as `db/rows` `{ connection, engine, schema?, table?, columns, rows }`, as INSERT
   statements (`desk/text`) and as TSV (`text/plain`).

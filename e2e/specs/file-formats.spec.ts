@@ -12,6 +12,7 @@ import { $, browser, expect } from "@wdio/globals";
 import { deskOk } from "../support/cli";
 import { inFrame, press, shellReady } from "../support/desk";
 import { HOME_VAR } from "../support/driver";
+import { inPluginPage } from "../support/pages";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -26,6 +27,13 @@ function media(): string {
 
 const open = (path: string) =>
   deskOk(["cmd", "run", "desk.files.open", "--args", JSON.stringify({ path })]);
+
+/** Images keeps one page per file, including the previously opened picture. */
+function inImage(name: string, check: () => Promise<void>): Promise<void> {
+  return inPluginPage("endue.images", check, () =>
+    browser.execute((file: string) => document.querySelector("#name")?.textContent === file, name),
+  );
+}
 
 /** A 4 × 2 little-endian TIFF of one uncompressed 8-bit RGB strip, every pixel (200, 40, 10). */
 function plainTiff(): Uint8Array {
@@ -95,7 +103,7 @@ describe("file formats: what this build plays and shows, or says it does not", (
     const photo = join(media(), "photo.heic");
     copyFileSync(join(root, "plugins/images/tests/fixtures/exif.heic"), photo);
     open(photo);
-    await inFrame("endue.images", async () => {
+    await inImage("photo.heic", async () => {
       await expect($("#name")).toHaveText("photo.heic", { wait: 15_000 });
       // The webview's <img> is tried first: decoded, or its error turns it into the card.
       await browser.waitUntil(
@@ -121,7 +129,7 @@ describe("file formats: what this build plays and shows, or says it does not", (
     const scan = join(media(), "scan.tif");
     writeFileSync(scan, plainTiff());
     open(scan);
-    await inFrame("endue.images", async () => {
+    await inImage("scan.tif", async () => {
       await expect($("#name")).toHaveText("scan.tif", { wait: 15_000 });
       await expect($("#format")).toHaveText("TIFF · 4 × 2");
       await browser.waitUntil(

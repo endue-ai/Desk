@@ -28,5 +28,8 @@ plugin's other parts use for the same stream. A change to it adds its line here.
   conn, sql, source, options)` run through `deps.execute`, so the guards, the console's session and Cancel
   hold; `fileSink(bridge, path)` and `fileSource(bridge, path)` make a sink and a source of a file, and any
   object with `write(chunk)` (and `close()`) or `read()` serves.
+- A whole export (PG-64, [`export-all.md`](export-all.md)) runs its COPY through the same call: `direct.js` says
+  when the server's CSV or text bytes are the file, `text.js` reads the text format back into rows, and
+  `partial.js` writes under a temporary name renamed at the end.
 - Code: `ui/copy/statement.js` (which way a COPY goes), `plan.js` (when it may run), `stream.js` (the chunks,
   cancel and the line), `files.js`, `console.js` (the dialogs and the bar), `index.js`.

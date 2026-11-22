@@ -96,6 +96,8 @@ pub(crate) struct Task {
     pub(crate) heard: Option<(Vec<ServerError>, u64)>,
     /// A stop came while a call waited on the server: its statement may still run there.
     pub(crate) interrupted: bool,
+    /// The calls served so far: the number of the one that runs (ADR 0358).
+    call: u64,
 }
 
 impl Task {
@@ -121,6 +123,7 @@ impl Task {
             settled: None,
             heard: None,
             interrupted: false,
+            call: 0,
         }
     }
 
@@ -178,6 +181,7 @@ impl Task {
     }
 
     async fn serve(&mut self, command: Command) -> Result<(), End> {
+        self.call += 1;
         self.heard = Some((Vec::new(), 0));
         let (reply, outcome) = match command {
             Command::Script(statements, limits, go_on, reply) => {
@@ -223,6 +227,7 @@ impl Task {
             Ok(mut page) => {
                 page.notices = notices;
                 page.notices_skipped = skipped;
+                page.call = self.call;
                 Ok(page)
             }
             Err(error) => {
@@ -266,7 +271,8 @@ impl Task {
         }
     }
 
-    /// Hand what arrives unasked to the sink (a notice while a call runs to the call, ADR 0334);
+    /// Hand what arrives unasked to the sink (a notice while a call runs to the call, ADR 0334, and
+    /// to the sink as it arrives, ADR 0358);
     /// answer everything else. A FATAL error is kept for the `Closed` event and still answered.
     fn absorb(&mut self, message: Message) -> Option<Message> {
         let text = |r: std::io::Result<&str>| r.map(str::to_owned).unwrap_or_default();
@@ -274,7 +280,14 @@ impl Task {
             Message::NoticeResponse(body) => {
                 let notice = ServerError::read(body.fields());
                 match &mut self.heard {
-                    Some((kept, _)) if kept.len() < MAX_NOTICES => kept.push(notice),
+                    Some((kept, _)) if kept.len() < MAX_NOTICES => {
+                        let call = self.call;
+                        (self.sink)(Event::CallNotice {
+                            call,
+                            notice: notice.clone(),
+                        });
+                        kept.push(notice);
+                    }
                     Some((_, skipped)) => *skipped += 1,
                     None => (self.sink)(Event::Notice(notice)),
                 }

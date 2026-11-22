@@ -110,6 +110,9 @@ pub struct Page {
     /// `MAX_NOTICES`, and `notices_skipped` counts the rest.
     pub notices: Vec<ServerError>,
     pub notices_skipped: u64,
+    /// The session's number for the call this page answers, from 1: each notice it carries also
+    /// went to the sink as `Event::CallNotice` with this number while the call ran (ADR 0358).
+    pub call: u64,
 }
 
 /// The notices one page keeps.
