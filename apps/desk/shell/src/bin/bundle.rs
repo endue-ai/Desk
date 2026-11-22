@@ -25,7 +25,7 @@ fn main() -> std::process::ExitCode {
         return std::process::ExitCode::FAILURE;
     }
     let info = BundleInfo::new(
-        "endue-desk",
+        "endue",
         "ai.endue.desk",
         "endue",
         "English",

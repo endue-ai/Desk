@@ -80,6 +80,7 @@ detach
 test "$(cat "$apps/endue.app/marker")" == foreign
 test "$(plutil -extract CFBundleIdentifier raw -o - "$apps/Studio.app/Contents/Info.plist")" == ai.endue.desk
 test "$(plutil -extract CFBundleDisplayName raw -o - "$apps/Studio.app/Contents/Info.plist")" == endue
+test "$(plutil -extract CFBundleName raw -o - "$apps/Studio.app/Contents/Info.plist")" == endue
 codesign --verify --strict --deep "$apps/Studio.app"
 launch
 workspace
