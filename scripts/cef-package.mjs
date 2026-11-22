@@ -223,11 +223,15 @@ function collectOutputs(r) {
 /** Write the updater archive beside the sealed macOS app. */
 export function archiveMacApp(app) {
   const name = basename(app);
-  // COPYFILE_DISABLE: no AppleDouble ._ entries for the updater to unpack.
-  run("tar", ["-czf", `${name}.tar.gz`, name], {
-    cwd: dirname(app),
-    env: { ...process.env, COPYFILE_DISABLE: "1" },
-  });
+  // macOS bsdtar drops account names with --numeric-owner. The bundle keeps modes and links.
+  run(
+    "/usr/bin/tar",
+    ["--uid", "0", "--gid", "0", "--numeric-owner", "-czf", `${name}.tar.gz`, name],
+    {
+      cwd: dirname(app),
+      env: { ...process.env, COPYFILE_DISABLE: "1" },
+    },
+  );
 }
 
 export function packageCef(r) {
