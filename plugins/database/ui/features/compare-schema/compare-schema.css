@@ -1,0 +1,137 @@
+/* Two schemas compared (PG-53): the sides and the status, a list of objects beside the chosen one's
+   DDL on both sides, then the script with what it will not write and its buttons. Layout only; every
+   colour, font, size and radius comes from the theme's --desk-* tokens. */
+
+.sc {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sc-head,
+.sc-script-head,
+.sc-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.sc-head {
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.sc-sides {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-sides p,
+.sc-status,
+.sc-hint,
+.sc-more {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.sc-status,
+.sc-more {
+  padding: var(--desk-space-1) var(--desk-space-3);
+}
+
+.sc-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr;
+  gap: var(--desk-space-2);
+  min-height: 200px;
+  max-height: 55%;
+  padding: 0 var(--desk-space-3);
+}
+
+.sc-list,
+.sc-detail {
+  min-height: 0;
+  overflow: auto;
+}
+
+.sc-group,
+.sc-ddl h3,
+.sc-script-head h3 {
+  margin: var(--desk-space-2) 0 var(--desk-space-1);
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.sc-script-head h3 {
+  flex: 1;
+  margin: 0;
+}
+
+.sc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  border-radius: var(--desk-radius-sm);
+}
+
+.sc-row.sc-selected {
+  background: var(--desk-hover);
+}
+
+.sc-name {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.sc-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--desk-space-2);
+}
+
+.sc-ddl {
+  min-width: 0;
+}
+
+.sc-ddl pre,
+.sc-script {
+  margin: 0;
+  padding: var(--desk-space-2);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  white-space: pre;
+}
+
+.sc-script {
+  margin: 0 var(--desk-space-3);
+  max-height: 40%;
+  min-height: 80px;
+}
+
+.sc-held {
+  margin: 0 var(--desk-space-3) var(--desk-space-2);
+  padding-left: var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-warning-text);
+}
+
+@media (max-width: 640px) {
+  .sc-body,
+  .sc-detail {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+}
