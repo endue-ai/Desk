@@ -1,0 +1,183 @@
+/* The source search (PG-82): a header, the form in rows that wrap, the progress, then the results as
+   hairline sections per object with their lines, each a number and the code with its matches marked.
+   A long line is cut with an ellipsis inside its button, so nothing reaches past the panel box. Every
+   colour, font, size and radius comes from the theme's --desk-* tokens; the feature links this sheet
+   itself (features/README.md). */
+
+.src {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  min-width: 0;
+  padding: var(--desk-space-4);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.src-form,
+.src-results,
+.src-notes,
+.src-list,
+.src-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  min-width: 0;
+}
+
+.src-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--desk-space-2) var(--desk-space-4);
+  min-width: 0;
+}
+
+.src-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  min-width: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.src-field[hidden] {
+  display: none;
+}
+
+.src-field .desk-field {
+  max-width: 100%;
+}
+
+.src-text {
+  flex: 1 1 calc(var(--desk-space-16) * 3);
+}
+
+.src-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  min-height: var(--desk-control-sm);
+  white-space: nowrap;
+}
+
+.src-set {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.src-set legend {
+  margin-bottom: var(--desk-space-1);
+  padding: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.src-progress:empty,
+.src-notes:empty {
+  display: none;
+}
+
+.src-summary,
+.src-status,
+.src-more {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.src-summary {
+  color: var(--desk-text);
+}
+
+.src-status {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.src-object {
+  min-width: 0;
+  padding-top: var(--desk-space-3);
+  border-top: 1px solid var(--desk-border);
+}
+
+.src-object-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+
+.src-object-name {
+  overflow: hidden;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.src-where,
+.src-number {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.src-where {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.src-lines {
+  margin: var(--desk-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.src-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--desk-space-2);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--desk-control-sm);
+  padding-block: 0;
+  text-align: left;
+}
+
+.src-number {
+  flex: none;
+  min-width: var(--desk-space-8);
+  text-align: right;
+}
+
+.src-code {
+  overflow: hidden;
+  min-width: 0;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+.src-mark {
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-primary-soft);
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.src-more {
+  padding-left: var(--desk-space-4);
+  font-size: var(--desk-text-xs);
+}

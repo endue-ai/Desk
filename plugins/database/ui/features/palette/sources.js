@@ -102,9 +102,13 @@ export function createSources(deps) {
       hidden = Promise.resolve(now);
       return hide;
     },
-    /** Every source the palette searches, in the connections' order, each one's own database first. */
-    async all() {
-      const skip = await this.hidden();
+    /**
+     * The cache of every PostgreSQL connection on its own database and each other database of its
+     * server that has one, in the connections' order; with `skipHidden`, not those hidden here.
+     * The source search (PG-82) reads the same caches.
+     */
+    async views(skipHidden = false) {
+      const skip = skipHidden ? await this.hidden() : new Set();
       const conns = deps
         .connections()
         .filter((c) => c.engine === "postgresql" && !skip.has(baseOf(c.id)));
@@ -117,17 +121,27 @@ export function createSources(deps) {
             .map((db) => onDatabase(conn, db.name))
             .filter((db) => db !== conn && (kept.has(storeIdOf(db.id)) || deps.view(db)));
           const views = await Promise.all(more.map(viewFor));
-          /** @type {Source[]} */
-          const sources = [];
-          if (own) sources.push({ conn, blocks: namesOf(own) });
+          /** @type {{ conn: Connection, view: CacheView }[]} */
+          const found = own ? [{ conn, view: own }] : [];
           more.forEach((db, i) => {
             const view = views[i];
-            if (view) sources.push({ conn: db, blocks: namesOf(view) });
+            if (view) found.push({ conn: db, view });
           });
-          return sources;
+          return found;
         }),
       );
       return lists.flat();
+    },
+    /** What the cache holds of a connection on a database: memory first, else the store. */
+    viewFor,
+    /** Every source the palette searches, in the connections' order, each one's own database first. */
+    async all() {
+      /** @type {Source[]} */
+      const sources = (await this.views(true)).map(({ conn, view }) => ({
+        conn,
+        blocks: namesOf(view),
+      }));
+      return sources;
     },
   };
 }
