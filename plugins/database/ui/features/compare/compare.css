@@ -106,3 +106,10 @@
   margin-left: 6px;
   text-decoration: none;
 }
+
+/* At the narrowest page the result's toolbar keeps to one row: Compare stays in the palette. */
+@media (max-width: 560px) {
+  #grid-bar [data-act="compareResults"] {
+    display: none;
+  }
+}
