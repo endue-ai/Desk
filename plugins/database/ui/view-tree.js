@@ -3,7 +3,7 @@
 // and close (or go to the parent), Enter to open a console, a table or an object's DDL, single keys
 // for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table, m the
 // maintenance form, x a function's or procedure's form, f the value search, o, the context-menu key
-// and a right click the row's menu of what can be done to it).
+// and a right click the row's menu of what can be done to it, p its privileges).
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
@@ -25,20 +25,29 @@ const ROWS = new Set([
   "objectMenu",
   "renameObject",
   "editSource",
+  "privileges",
 ]);
 
 /**
  * @param {Document} doc
  * @param {HTMLElement} tree
  * @param {Act} act
+ * @param {(connection: Node | undefined) => void} [moved] Told the connection row the cursor is in
+ *   each time the cursor or the rows change.
  */
-export function createTree(doc, tree, act) {
+export function createTree(doc, tree, act, moved = () => {}) {
   /** @type {Node[]} */
   let rows = [];
   /** @type {HTMLElement[]} */
   let els = [];
   let cursor = 0;
   let cursorKey = "";
+
+  /** The connection row the cursor is in. */
+  const connectionRow = () => {
+    const id = rows[cursor]?.connection;
+    return id ? rows.find((row) => row.kind === "connection" && row.connection === id) : undefined;
+  };
 
   const render = (/** @type {Node[]} */ next) => {
     rows = next;
@@ -81,6 +90,7 @@ export function createTree(doc, tree, act) {
     if (rows.length === 0)
       tree.append(el(doc, "p", { class: "empty" }, "No connections yet. Press n to add one."));
     if (hadFocus) els[cursor]?.focus();
+    moved(connectionRow());
   };
 
   const moveTo = (/** @type {number} */ index) => {
@@ -90,6 +100,7 @@ export function createTree(doc, tree, act) {
     if (els[cursor]) /** @type {HTMLElement} */ (els[cursor]).tabIndex = -1;
     cursor = next;
     cursorKey = rows[cursor]?.key ?? "";
+    moved(connectionRow());
     const node = els[cursor];
     if (!node) return;
     node.tabIndex = 0;

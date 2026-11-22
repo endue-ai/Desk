@@ -52,7 +52,8 @@ test("the explorer of a PostgreSQL connection shows every kind", async ({ page }
   await expect(row(frame, "Server")).toBeVisible();
 
   await expand(page, frame, "public");
-  const folders = await labels(frame, 3).allTextContents();
+  // Under the connection's own database (PG-13), so a level deeper.
+  const folders = await labels(frame, 4).allTextContents();
   expect(folders).toEqual(
     expect.arrayContaining(["Types", "Aggregates", "Operators", "Collations", "Text search"]),
   );

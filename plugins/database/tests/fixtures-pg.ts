@@ -1,8 +1,9 @@
 // The fixture's PostgreSQL connection (fixtures.ts): its scripted server answers the catalog of one
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
 // a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
-// page and its count, and the pages of the shop's people and orders, joined by a foreign key
-// (links-fixture.ts). Every other statement gets nothing back. Fixture data only.
+// page and its count, the pages of the shop's people and orders, joined by a foreign key
+// (links-fixture.ts), and fails `select 1/0`. Every other statement gets nothing back. Fixture data
+// only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer } from "./clients";
 import { pagesOf, SHOP_ROWS } from "./links-fixture";
@@ -68,6 +69,14 @@ export function pgFixtureScript(sql: string): Answer {
         ]),
       ],
     };
+  // The table view's order (ui/table-order.js): a table keyed by id.
+  if (/^SELECT c\.relkind, /u.test(text) && text.includes("'items'"))
+    return {
+      rows: [
+        ["relkind", "key"],
+        ["r", '"id"'],
+      ],
+    };
   if (/^WITH RECURSIVE d/u.test(text) && text.includes("'items'"))
     return {
       rows: [
@@ -79,5 +88,7 @@ export function pgFixtureScript(sql: string): Answer {
     return { rows: [COLUMNS.map(([name]) => name ?? ""), ...ROWS] };
   if (/^SELECT count\(\*\) FROM "public"\."items"/u.test(text))
     return { rows: [["count"], [String(ROWS.length)]] };
+  // A statement that fails, for a console's failed transaction (PG-02).
+  if (text === "select 1/0") return { error: "division by zero", code: "22012" };
   return {};
 }

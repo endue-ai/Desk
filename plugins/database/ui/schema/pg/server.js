@@ -1,7 +1,9 @@
-// The server's roles and tablespaces (PG-50), in one small statement with the database level of a
-// pass, never per schema. A role is read from pg_roles without its password (pg_authid is not read);
-// predefined `pg_*` roles and the built-in tablespaces are left out. The fingerprint is an md5 of
-// pg_roles' columns, since pg_authid's row versions cannot be read by most roles. Pure.
+// The server's roles and tablespaces (PG-50) and the databases the user may connect to (PG-13), in
+// one small statement with the database level of a pass, never per schema. A role is read from
+// pg_roles without its password (pg_authid is not read); predefined `pg_*` roles and the built-in
+// tablespaces are left out; a database is listed when it takes connections and the user has
+// CONNECT on it, a template marked so. The fingerprint is an md5 of pg_roles' columns, since
+// pg_authid's row versions cannot be read by most roles, and of pg_database's. Pure.
 
 import { assemble, commentOn, ident, literal } from "./ddl.js";
 import { countOf, described, digestOf, json } from "./sql.js";
@@ -35,28 +37,41 @@ const TABLESPACES =
   `d.description FROM pg_catalog.pg_tablespace t ${described("pg_tablespace", "t.oid", "d", "pg_shdescription")} ` +
   "WHERE t.oid >= 16384";
 
+// The databases the explorer lists under a connection (explorer-databases.js), never their size.
+const DATABASES =
+  "SELECT '', 'database', d.datname, CASE WHEN d.datistemplate THEN 'template' ELSE '' END, '{}', " +
+  "pg_catalog.pg_get_userbyid(d.datdba), d.oid::text, s.description FROM pg_catalog.pg_database d " +
+  `${described("pg_database", "d.oid", "s", "pg_shdescription")} WHERE d.datallowconn AND ` +
+  "pg_catalog.has_database_privilege(d.oid, 'CONNECT')";
+
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "server",
-  label: "roles and tablespaces",
+  label: "roles, tablespaces and databases",
   level: "database",
   marks: [
     digestOf("pg_catalog.pg_roles r", `pg_catalog.concat_ws(':', ${ROLE_COLUMNS})`),
     countOf("pg_catalog.pg_auth_members x", "x"),
     countOf("pg_catalog.pg_tablespace x", "x"),
     countOf("pg_catalog.pg_shdescription x", "x"),
+    digestOf(
+      "pg_catalog.pg_database x",
+      "pg_catalog.concat_ws(':', x.oid, x.datname, x.datistemplate, x.datallowconn, x.datacl::text)",
+    ),
   ],
-  sql: () => `${ROLES} UNION ALL ${TABLESPACES} ORDER BY 1, 2, 3`,
+  sql: () => `${ROLES} UNION ALL ${TABLESPACES} UNION ALL ${DATABASES} ORDER BY 1, 2, 3`,
 };
 
-/** The server's roles and tablespaces from the reader's rows. */
+const KINDS = new Set(["tablespace", "database"]);
+
+/** The server's roles, tablespaces and databases from the reader's rows. */
 export function objectsOf(/** @type {Row[]} */ rows) {
   return rows.map(
     ([kind, name, detail, extra, owner, oid, comment]) =>
       /** @type {SchemaObject} */ ({
         schema: "",
         name: name ?? "",
-        kind: kind === "tablespace" ? "tablespace" : "role",
+        kind: KINDS.has(kind ?? "") ? kind : "role",
         detail: detail ?? "",
         rows: null,
         ident: oid ?? "",

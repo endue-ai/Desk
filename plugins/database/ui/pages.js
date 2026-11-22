@@ -9,6 +9,7 @@ import { engineOf } from "./engines/index.js";
 import { formatCount } from "./format.js";
 import { orderSql, whereWith } from "./grid/filters.js";
 import { split } from "./sql/split.js";
+import { createNaturalOrder } from "./table-order.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -60,7 +61,12 @@ export function createPages(deps) {
     /** @type {Connection} */ conn,
   ) => whereWith(engineOf(conn.engine).dialect, page.where, page.filters ?? []);
 
-  /** Load a table view's page under its filter and order. */
+  const natural = createNaturalOrder(deps.execute);
+
+  /**
+   * Load a table view's page under its filter and order; without an order of the person's, in the
+   * table's own (its primary key, table-order.js), so the rows keep their places when read again.
+   */
   const refresh = async (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
     const page = /** @type {NonNullable<Console["table"]>} */ (target.table);
     const limit = deps.settings().maxRows;
@@ -68,7 +74,7 @@ export function createPages(deps) {
       schema: page.schema,
       table: page.name,
       where: whereOf(page, conn),
-      order: page.order,
+      order: page.order.trim() || (await natural(conn, page)),
       limit,
       offset: page.offset,
     });

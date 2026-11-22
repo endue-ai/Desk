@@ -39,6 +39,7 @@ export const BINDINGS = {
     { chord: "ContextMenu", action: "objectMenu", label: "" },
     { chord: "F2", action: "renameObject", label: "rename" },
     { chord: "s", action: "editSource", label: "source" },
+    { chord: "p", action: "privileges", label: "privileges" },
   ],
   editor: [
     { chord: "Mod+Enter", action: "run", label: "run statement" },
