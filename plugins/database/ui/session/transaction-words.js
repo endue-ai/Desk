@@ -99,7 +99,7 @@ export function clock(/** @type {number} */ ms) {
 /** "1 statement", "3 statements". */
 export const statementsLine = (/** @type {number} */ n) => `${n} statement${n === 1 ? "" : "s"}`;
 
-const KEYS = "Commit (Mod+Shift+Y) or Rollback (Mod+Shift+H) ends it";
+const KEYS = "Commit (Mod+Shift+Y) or Rollback (Mod+Shift+S) ends it";
 const ASKS =
   "Closing the console or Disconnect asks first; quitting the desk rolls it back without asking.";
 
@@ -123,7 +123,7 @@ export function transactionLine(model, now) {
   const points = model.savepoints?.length ? `; savepoints ${model.savepoints.join(", ")}` : "";
   const detail =
     model.state === "failed"
-      ? `A statement failed in this transaction: the server ignores every statement until Rollback (Mod+Shift+H), or Rollback to a savepoint. ${ASKS}`
+      ? `A statement failed in this transaction: the server ignores every statement until Rollback (Mod+Shift+S), or Rollback to a savepoint. ${ASKS}`
       : `${flagged ? `Idle for ${minutes} min with the transaction open: it holds its locks until it ends. ` : ""}Open for ${open} with ${count}${points}. ${KEYS}. ${ASKS}`;
   return { text, flagged, tone: flagged ? "danger" : model.tone, detail };
 }

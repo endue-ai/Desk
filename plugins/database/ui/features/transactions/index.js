@@ -46,7 +46,7 @@ async function mode(/** @type {Deps} */ deps, /** @type {Record<string, unknown>
     h.transaction !== "idle" ? " Its open transaction stays open until Commit or Rollback." : "";
   deps.say(
     next === "manual"
-      ? `${h.label}: manual commit. The first statement begins a transaction, kept until Commit (Mod+Shift+Y) or Rollback (Mod+Shift+H).${stays}`
+      ? `${h.label}: manual commit. The first statement begins a transaction, kept until Commit (Mod+Shift+Y) or Rollback (Mod+Shift+S).${stays}`
       : `${h.label}: auto commit. Each statement commits by itself.${stays}`,
   );
   return next;

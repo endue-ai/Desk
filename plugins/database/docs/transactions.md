@@ -10,7 +10,7 @@ How a PostgreSQL console holds a transaction open across runs (PG-20). The sessi
   plugin sends in the same run, after the guards and the confirmation before dangerous statements (which do
   not change). A run that starts with the person's own `BEGIN`, `COMMIT`, `ROLLBACK` or savepoint is left
   alone, and In a transaction and Dry run keep their own savepoint inside an open transaction.
-- Commit (`Mod+Shift+Y` in the editor) and Rollback (`Mod+Shift+H`) are commands and header buttons. A failed
+- Commit (`Mod+Shift+Y` in the editor) and Rollback (`Mod+Shift+S`) are commands and header buttons. A failed
   transaction offers only Rollback: Commit is refused, as the server would roll it back.
 - While a transaction is open the header shows how many statements it holds and how long it has been open,
   counted each second; the plugin's own control statements are not counted. Once no run used it for

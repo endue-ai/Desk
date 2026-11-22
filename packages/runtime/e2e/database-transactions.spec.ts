@@ -71,7 +71,7 @@ test("a manual console holds a transaction over two runs; the header shows it wi
   await expect(session).toHaveText("In a failed transaction");
   await expect(rollback).toBeVisible();
   await expect(commit).toBeHidden();
-  await editor.press("ControlOrMeta+Shift+H");
+  await editor.press("ControlOrMeta+Shift+S");
   await expect(session).toHaveText("Idle");
 
   // Commit by its key.

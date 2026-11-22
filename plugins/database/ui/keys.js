@@ -1,6 +1,6 @@
 // The keys inside the Database surface, one table per area. The explorer and the grid take single
 // keys; the editor takes Mod+Enter (run the statement), Mod+Shift+Enter (run the script),
-// Mod+Shift+F (format), Mod+Shift+Y and Mod+Shift+H (commit and roll back the console's transaction,
+// Mod+Shift+F (format), Mod+Shift+Y and Mod+Shift+S (commit and roll back the console's transaction,
 // PG-20), and Escape only while a run goes on; the grid takes Mod+Enter (submit the
 // pending changes), Mod+F (find in the result: the grid's own, never the editor's) and Mod+Z (undo a
 // pending change). Mod+V is listed for the hint line but left to the browser, whose paste event the
@@ -46,8 +46,14 @@ export const BINDINGS = {
     { chord: "Mod+Enter", action: "run", label: "run statement" },
     { chord: "Mod+Shift+Enter", action: "runAll", label: "run script" },
     { chord: "Mod+Shift+F", action: "format", label: "format" },
+    // The console's transaction (features/transactions/, PG-20): Commit and Rollback.
     { chord: "Mod+Shift+Y", action: "commitTransaction", label: "" },
-    { chord: "Mod+Shift+H", action: "rollbackTransaction", label: "" },
+    { chord: "Mod+Shift+S", action: "rollbackTransaction", label: "" },
+    // Eris in a console (features/assist/, PG-90): write, explain, fix, explain the plan.
+    { chord: "Mod+I", action: "assistWrite", label: "" },
+    { chord: "Mod+E", action: "assistExplain", label: "" },
+    { chord: "Mod+J", action: "assistFix", label: "" },
+    { chord: "Mod+Shift+H", action: "assistPlan", label: "" },
     { chord: "Escape", action: "cancel", label: "cancel" },
   ],
   grid: [
@@ -103,15 +109,11 @@ export const BINDINGS = {
 };
 
 /** Chords this surface keeps from the desk, by area. */
-const CHORDS = new Set([
-  "Mod+Enter",
-  "Mod+Shift+Enter",
-  "Mod+Shift+F",
-  "Mod+Shift+Y",
-  "Mod+Shift+H",
-  "Mod+F",
-  "Mod+Z",
-]);
+const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F", "Mod+Z"]);
+// Eris's keys in the editor (features/assist/), which no desk-wide key takes.
+for (const chord of ["Mod+I", "Mod+E", "Mod+J", "Mod+Shift+H"]) CHORDS.add(chord);
+// Commit and Rollback in the editor (features/transactions/), which no desk-wide key takes.
+for (const chord of ["Mod+Shift+Y", "Mod+Shift+S"]) CHORDS.add(chord);
 
 /**
  * The action a key press runs in an area, or undefined when the desk (or the field) should have it.
