@@ -220,6 +220,16 @@ function collectOutputs(r) {
   return moved;
 }
 
+/** Write the updater archive beside the sealed macOS app. */
+export function archiveMacApp(app) {
+  const name = basename(app);
+  // COPYFILE_DISABLE: no AppleDouble ._ entries for the updater to unpack.
+  run("tar", ["-czf", `${name}.tar.gz`, name], {
+    cwd: dirname(app),
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
+}
+
 export function packageCef(r) {
   for (const [path, what] of [
     [r.paths.cef, `the pinned CEF (node scripts/cef-fetch.mjs --target ${r.target})`],
@@ -259,14 +269,7 @@ export function packageCef(r) {
     // No .dmg, so no hook ran before it: sign the app here.
     run("bash", [SIGN_MACOS, "app", r.app]);
   }
-  if (r.os === "macos") {
-    const app = basename(r.app);
-    // COPYFILE_DISABLE: no AppleDouble ._ entries for the updater to unpack.
-    run("tar", ["-czf", `${app}.tar.gz`, app], {
-      cwd: r.paths.out,
-      env: { ...process.env, COPYFILE_DISABLE: "1" },
-    });
-  }
+  if (r.os === "macos") archiveMacApp(r.app);
   const outputs = collectOutputs(r);
   const installed = r.os === "macos" ? treeSize(r.app) : treeSize(r.paths.stage);
   return { outputs, installed };
