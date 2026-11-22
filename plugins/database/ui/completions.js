@@ -6,6 +6,7 @@
 
 import { complete } from "./editor/complete.js";
 import { engineOf } from "./engines/index.js";
+import { connectHeld } from "./session/connect-gate.js";
 
 const COMPLETE_READS = 4;
 
@@ -14,10 +15,13 @@ const COMPLETE_READS = 4;
  *   consoles: { current(): import("./consoles.js").Console | null },
  *   manager: { get(id: string): import("./engines/common.js").Connection | undefined },
  *   catalog: ReturnType<typeof import("./catalog.js").createCatalog>,
- *   held?(conn: import("./engines/common.js").Connection): Promise<boolean>,
- * }} deps `held`: whether the connection may be read without asking (session/connect-gate.js).
+ *   bridge?: import("./session/connect-gate.js").Bridge,
+ * }} deps `bridge`: to ask whether the connection may be read without asking (connectHeld in
+ *   session/connect-gate.js); without it every connection may be.
  */
-export function createCompletions({ consoles, manager, catalog, held = async () => true }) {
+export function createCompletions({ consoles, manager, catalog, bridge }) {
+  const held = (/** @type {import("./engines/common.js").Connection} */ c) =>
+    bridge ? connectHeld(bridge, c) : Promise.resolve(true);
   /** @param {string} text @param {number} caret */
   return async (text, caret) => {
     const shown = consoles.current();

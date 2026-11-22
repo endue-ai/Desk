@@ -6,8 +6,11 @@
 // on Save, forgotten when the choice goes off, the server or user changes, or the connection goes.
 // Disconnect, removing a connection and saving a change to how it signs in close its PostgreSQL
 // sessions (PG-02), asked first while one is in a transaction.
+// A key file's passphrase (ADR 0331) is asked in the same prompt and forgotten with the password.
+// An import (features/connections-file/) keeps its connections at once with `adopt`, closing
+// sessions as Save does.
 
-import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
+import { blank, newId, normalize, parseUri, SIGN_IN, saveConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
 import { formatDuration } from "./format.js";
 import { clearHistory } from "./history.js";
@@ -29,23 +32,15 @@ import { chosen, offered, withChoice } from "./keychain.js";
  *   renamed(conn: Connection): Promise<void>,
  *   changed(): void,
  *   random?(): number,
- *   sessions?: { reasons(connection: string): string[], close(connection: string): void },
+ *   sessions?: {
+ *     reasons(connection: string): string[],
+ *     close(connection: string): void,
+ *     forget?(connection: string): void,
+ *   },
  *   cancelled?(message: string): Error,
  * }} Deps
  *   `sessions` are the connection's kept PostgreSQL sessions: what closing them ends, and the close.
  */
-
-/** The fields a session signs in with: a change to any closes the connection's sessions. */
-const SIGN_IN = /** @type {const} */ ([
-  "engine",
-  "host",
-  "port",
-  "database",
-  "user",
-  "ssl",
-  "sslCa",
-  "readOnly",
-]);
 
 /** @param {Deps} deps */
 export function createManager(deps) {
@@ -187,13 +182,13 @@ export function createManager(deps) {
       },
       /** The name db.open takes as passwordRef when the keychain keeps the connection's password. */
       ref: (/** @type {Connection} */ conn) => deps.keychain.ref(conn),
-      /** Ask in the surface; resolves undefined when the person cancels. */
-      ask: (/** @type {Connection} */ conn, /** @type {string} */ why) =>
+      /** Ask in the surface; undefined when cancelled. A key file's passphrase: no keychain. */
+      ask: (/** @type {Connection} */ conn, /** @type {string} */ why, keyFile = false) =>
         new Promise((resolve) => {
           answer?.(undefined);
           answer = resolve;
-          asking = conn;
-          const remember = offered(conn) ? { remember: chosen(conn) } : {};
+          asking = keyFile ? null : conn;
+          const remember = !keyFile && offered(conn) ? { remember: chosen(conn) } : {};
           deps.view.password({ connection: conn.name, message: why, ...remember });
         }),
     },
@@ -336,6 +331,7 @@ export function createManager(deps) {
       await saveConnections(deps.bridge, next);
       list = next;
       passwords.delete(conn.id);
+      deps.sessions?.forget?.(conn.id);
       await forgetKept(conn);
       await clearHistory(deps.bridge, conn.id);
       await deps.bridge.call("store.set", { key: `console:${conn.id}`, value: "" }).catch(() => {});
@@ -352,6 +348,7 @@ export function createManager(deps) {
       deps.sessions?.close(conn.id);
       passwords.delete(conn.id);
       const closed = conn.engine === "postgresql" ? "its sessions are closed and " : "";
+      deps.sessions?.forget?.(conn.id);
       const kept = deps.keychain.has(conn) ? "; the keychain still remembers it" : "";
       deps.view.say(`Disconnected ${conn.name}: ${closed}its password is forgotten${kept}.`);
       return conn.id;
@@ -361,6 +358,7 @@ export function createManager(deps) {
       const conn = await choose(ref, "Database: forget the password of which connection?");
       if (!conn) return undefined;
       passwords.delete(conn.id);
+      deps.sessions?.forget?.(conn.id);
       const was = await forgetKept(conn);
       await setChoice(conn, false);
       deps.view.say(
@@ -369,6 +367,28 @@ export function createManager(deps) {
           : `Forgot the password of ${conn.name}: the keychain kept none.`,
       );
       return conn.id;
+    },
+    /** Connections from a file, each added or over the one with its id, kept at once as Save keeps one. */
+    async adopt(/** @type {Connection[]} */ incoming) {
+      const byId = new Map(incoming.map((c) => [c.id, c]));
+      const next = [
+        ...list.map((c) => byId.get(c.id) ?? c),
+        ...incoming.filter((c) => !list.some((o) => o.id === c.id)),
+      ];
+      for (const conn of incoming) normalize(conn, next);
+      const moved = list.filter((c) => SIGN_IN.some((k) => (byId.get(c.id) ?? c)[k] !== c[k]));
+      for (const c of moved)
+        if (!(await letClose(c, `Import over ${c.name}?`)))
+          throw refused(`Not imported: ${c.name}'s sessions stay open.`);
+      for (const c of moved) deps.sessions?.close(c.id);
+      await saveConnections(deps.bridge, next);
+      list = next;
+      for (const conn of incoming) {
+        if (deps.keychain.holds(conn.id) && !(chosen(conn) && deps.keychain.has(conn)))
+          await forgetKept(conn);
+        await deps.renamed(conn);
+      }
+      deps.changed();
     },
     formOpen: () => form !== null,
   };

@@ -1,8 +1,10 @@
 // The connection form and the password prompt. The form shows the fields the engine uses (a file
-// for SQLite; host, port, database, user and TLS for the others; the keychain choice for PostgreSQL),
+// for SQLite; host, port, database, user and TLS for the others; the keychain choice and the client
+// certificate and key files for PostgreSQL),
 // says what is wrong next to the buttons, and hands the fields back on Save or Test. The password
 // field is type=password, its value leaves the DOM as soon as it is handed over with the prompt's
-// keychain choice, and Escape cancels either.
+// keychain choice (a key file's passphrase is asked in the same prompt, without the choice), and
+// Escape cancels either.
 
 import { COLORS, SSL_MODES, TAGS } from "./connections.js";
 
@@ -22,6 +24,8 @@ const TEXT_FIELDS = /** @type {const} */ ([
   "database",
   "user",
   "sslCa",
+  "sslCert",
+  "sslKey",
   "file",
   "group",
 ]);

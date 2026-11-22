@@ -4,7 +4,8 @@
 // when it was read and which part it is, so one left by an interrupted write is never read as the
 // schema. Text, not nested JSON: the core writes its store file pretty-printed, where every array
 // item would take a line. Whole schemas past the cap are not kept (the default schema first, then
-// by name); they are read again after a restart.
+// by name); they are read again after a restart. Another database of a connection's server is kept
+// as one more connection, `<id>.d-<hash>` (databases.js), listed under `schema-cache.<id>.databases`.
 
 import { sizeOf } from "./model.js";
 
@@ -25,6 +26,9 @@ export const CHUNKS = 16;
 const KEY_LIMIT = 64 * 1024;
 
 export const indexKey = (/** @type {string} */ connection) => `schema-cache.${connection}`;
+/** The store ids of the other databases a connection's caches were written for (PG-13). */
+export const databasesKey = (/** @type {string} */ connection) =>
+  `schema-cache.${connection}.databases`;
 export const chunkKey = (/** @type {string} */ connection, /** @type {number} */ n) =>
   `schema-cache.${connection}.${n}`;
 

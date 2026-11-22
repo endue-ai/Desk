@@ -6,8 +6,8 @@
  * focus the compositor's keys follow stay the desk's page's. Shift+Tab out of a plugin's first part
  * stops at its own window's chrome and Tab past its last part at the next window's, with the keys
  * left with the desk's page, as when the windows lay in the page and their tools came before their
- * panes. Without the stops, the places sat side by side and Shift+Tab out of one plugin entered the
- * plugin of another window.
+ * panes. The last window also has a chrome stop after its plugins so the native browser keeps the
+ * page's focus there and Shift+Tab can return to its last control.
  */
 
 export interface Anchors {
@@ -25,16 +25,25 @@ export function surfaceAnchors(layer: HTMLElement): Anchors {
   layer.append(anchors);
   const groups = new Map<string, HTMLElement>();
 
-  const make = (id: string) => {
+  const chromeStop = () => {
     const chrome = doc.createElement("span");
     chrome.className = "surface-anchor-chrome";
     chrome.tabIndex = 0;
+    return chrome;
+  };
+  const end = chromeStop();
+  const label = (stop: Element, name: string) => {
+    if (stop.getAttribute("aria-label") !== name) stop.setAttribute("aria-label", name);
+  };
+  const make = (id: string) => {
     const group = doc.createElement("div");
     group.className = "surface-anchor";
     group.dataset.window = id;
-    group.append(chrome);
+    group.append(chromeStop());
     groups.set(id, group);
-    anchors.append(group);
+    // Insert new windows before the end stop so an app user resting there keeps the focus.
+    if (!end.parentNode) anchors.append(end);
+    anchors.insertBefore(group, end);
     return group;
   };
 
@@ -45,7 +54,8 @@ export function surfaceAnchors(layer: HTMLElement): Anchors {
       if (!group) return;
       const name = el.getAttribute("aria-label") ?? "";
       const chrome = group.firstElementChild as HTMLElement;
-      if (chrome.getAttribute("aria-label") !== name) chrome.setAttribute("aria-label", name);
+      label(chrome, name);
+      if (group.nextElementSibling === end) label(end, name);
       // A move drops the focus of what it moves: a place the session gave the focus as the desk
       // started, before its window's page opened, keeps it.
       const active = doc.activeElement as HTMLElement | null;
@@ -57,6 +67,9 @@ export function surfaceAnchors(layer: HTMLElement): Anchors {
     drop(id) {
       groups.get(id)?.remove();
       groups.delete(id);
+      const last = end.previousElementSibling?.firstElementChild;
+      if (last) label(end, last.getAttribute("aria-label") ?? "");
+      else end.remove();
     },
   };
 }

@@ -34,8 +34,32 @@ describe("surface anchors", () => {
     anchors.hold(a.id, a.el, a.body);
     anchors.hold(b.id, b.el, b.body);
     // Shift+Tab from p.a's place stops at Notes' chrome, not in p.b; Tab past p.a stops at Mail's.
-    expect(order(layer)).toEqual(["Notes", "p.a", "Mail", "p.b"]);
+    expect(order(layer)).toEqual(["Notes", "p.a", "Mail", "p.b", "Mail"]);
     expect(a.body.querySelector(".desk-surface")).toBeNull();
+  });
+
+  it("keeps one reachable chrome stop after the last plugin as windows open and close", () => {
+    const layer = document.createElement("div");
+    document.body.append(layer);
+    const anchors = surfaceAnchors(layer);
+    const a = window("a", "Notes", "p.a");
+    const b = window("b", "Mail", "p.b");
+    anchors.hold(a.id, a.el, a.body);
+    const lastStop = () => [...layer.querySelectorAll<HTMLElement>('[tabindex="0"]')].at(-1);
+    const stop = lastStop();
+    expect(order(layer)).toEqual(["Notes", "p.a", "Notes"]);
+    stop?.focus();
+    anchors.hold(b.id, b.el, b.body);
+    expect(lastStop()).toBe(stop);
+    expect(document.activeElement).toBe(stop);
+    expect(stop?.getAttribute("aria-label")).toBe("Mail");
+    b.el.setAttribute("aria-label", "Inbox");
+    anchors.hold(b.id, b.el, b.body);
+    expect(stop?.getAttribute("aria-label")).toBe("Inbox");
+    anchors.drop(b.id);
+    expect(order(layer)).toEqual(["Notes", "p.a", "Notes"]);
+    anchors.drop(a.id);
+    expect(order(layer)).toEqual([]);
   });
 
   it("name a window's stop as the window is named now", () => {

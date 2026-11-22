@@ -140,8 +140,8 @@ test("the actions that do not fit are behind More, each once, and run from there
   await expect(menu).toBeVisible();
   const behind = await menu.locator("[data-action]:visible").allTextContents();
   expect(shown.length).toBeGreaterThanOrEqual(2);
-  expect([...shown, ...behind]).toHaveLength(13);
-  expect(new Set([...shown, ...behind]).size).toBe(13);
+  expect([...shown, ...behind]).toHaveLength(14);
+  expect(new Set([...shown, ...behind]).size).toBe(14);
   // The menu lies inside the page.
   const b = await boxes(frame, ["#actions-menu"]);
   const view = await viewport(frame);
@@ -171,7 +171,7 @@ test("the actions that do not fit are behind More, each once, and run from there
     .toBeGreaterThan(shown.length + 4);
   await resize(1200);
   await expect(more).toBeHidden();
-  await expect(frame.locator("#actions > [data-act]:visible")).toHaveCount(13);
+  await expect(frame.locator("#actions > [data-act]:visible")).toHaveCount(14);
 });
 
 for (const [name, size] of [

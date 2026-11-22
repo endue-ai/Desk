@@ -1,8 +1,11 @@
 // The plugin's desk buffers: its consoles, table views, DDL views and the features' panels, which
 // of them is on screen (and when each was last), and the desk's side of each (opened under a name,
-// shown, closed, closed with its connection). Every change draws the buffer on screen and tells the
-// controller, which keeps what comes back after a restart. A buffer drawn is decorated first (its
-// PostgreSQL session's state, PG-02), and one that goes is told (its session closes). No DOM.
+// shown, closed, closed with its connection, on any of its databases). Every change draws the
+// buffer on screen and tells the controller, which keeps what comes back after a restart. A buffer
+// drawn is decorated first (its PostgreSQL session's state, PG-02), and one that goes is told (its
+// session closes). No DOM.
+
+import { baseOf } from "./databases.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -99,9 +102,10 @@ export function createBuffers(deps) {
     closed(/** @type {string} */ id) {
       if (forget(id)) render();
     },
-    /** Close every buffer of a connection (it was removed). */
+    /** Close every buffer of a connection, on each of its databases (it was removed). */
     async drop(/** @type {string} */ connection) {
-      for (const target of [...all.values()].filter((c) => c.connection === connection)) {
+      const of = (/** @type {Console} */ c) => baseOf(c.connection) === connection;
+      for (const target of [...all.values()].filter(of)) {
         forget(target.id);
         await deps.commands.run("desk.buffers.close", { id: target.id }).catch(() => {});
       }

@@ -1,0 +1,5 @@
+{
+  "target": "DbRunResult",
+  "description": "noticesSkipped is left out when nothing was skipped, never zero",
+  "instance": { "rows": [], "more": false, "notices": [], "noticesSkipped": 0 }
+}
