@@ -26,7 +26,8 @@ const PREFIX = "endue password-command";
 const server = liveSessions(uri, PREFIX);
 const ROLE = `t451_${databaseOf(uri)}_tok`.slice(0, 63);
 const SECRET = randomBytes(18).toString("base64url");
-const folder = mkdtempSync(join(tmpdir(), "t451-helper-"));
+// Made only when the live tests run, and removed after them.
+const folder = uri ? mkdtempSync(join(tmpdir(), "t451-helper-")) : "";
 const program = join(folder, "token.mjs");
 // The program: prints the secret file's line; `stale` prints a wrong one at its first run (a count
 // file says which run it is); `fail` says why on standard error and exits 4.
