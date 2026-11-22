@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.script with three statements, one with a parameter",
+  "instance": {
+    "id": 24,
+    "method": "db.script",
+    "params": {
+      "sessionId": "d-1",
+      "statements": [
+        { "sql": "INSERT INTO t VALUES (1)" },
+        { "sql": "INSERT INTO t VALUES ($1)", "params": ["2"], "paramTypes": [23] },
+        { "sql": "SELECT * FROM t" }
+      ],
+      "pageRows": 500
+    }
+  }
+}

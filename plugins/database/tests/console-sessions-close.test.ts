@@ -10,7 +10,16 @@ import { type Handlers, mount, scriptedDb } from "./harness";
 import { dbBridge } from "./pg-host";
 import { closed, made, messages, PG, run, script, sessionOf, shop, state } from "./session-helpers";
 
-const DB = ["db.open", "db.run", "db.fetch", "db.copy", "db.cancel", "db.close", "db.list"];
+const DB = [
+  "db.open",
+  "db.run",
+  "db.script",
+  "db.fetch",
+  "db.copy",
+  "db.cancel",
+  "db.close",
+  "db.list",
+];
 const table = (name: string) => ({ connection: "Shop", schema: "public", table: name });
 const pageOf = (m: Awaited<ReturnType<typeof shop>>, name: string) =>
   made(m, "db.run").find((p) => String(p.sql).includes(`"public"."${name}"`))?.sessionId;

@@ -15,6 +15,7 @@ import type { SearchState } from "../ui/features/search/controller.js";
 import { serverSession } from "./core-bridge";
 import { type Mounted, mount } from "./harness";
 import { databaseOf, liveSessions } from "./live-sessions";
+import { runsOf } from "./runs-of";
 import { realProcs } from "./scripted";
 
 const uri = process.env.ENDUE_DB_TEST_POSTGRES ?? "";
@@ -262,7 +263,7 @@ describe.skipIf(!uri)("the value search on a real PostgreSQL", () => {
       method: string;
       params?: Record<string, string>;
     }[];
-    const audit = calls
+    const audit = runsOf(calls)
       .filter((c) => c.method === "db.run" && c.params?.sql?.includes(`"${SCHEMA}"."audit"`))
       .at(-1);
     expect(calls.filter((c) => c.method === "db.cancel").map((c) => c.params?.sessionId)).toEqual([

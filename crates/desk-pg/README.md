@@ -18,7 +18,7 @@ Layer: Rust core. Status: PostgreSQL 3.0, text results; the core serves it (`cra
 - `Session::run(Statement, Limits)`, `fetch(Limits, close)`, `copy(CopyInput)` answer a `Page`:
   columns with type and origin, rows of the server's text (`None` is NULL), `more`, and with the
   last page the tag, the row count over all pages, the transaction state, or the server's error.
-  A run closes the result left open; one statement runs at a time (`Error::Invalid` otherwise).
+  A run closes the result left open; one call at a time. `script` runs several: a `Script` (ADR 0344).
 - `Limits::new(rows, bytes)`: 1000 rows (1 to 10,000) and 4 MiB (64 KiB to 16 MiB) a page, always
   one row; one row is read past the page so `more` is exact. A row over `MAX_ROW` (64 MiB) is read
   past as it streams and ends its result with `Error::TooLarge`.
@@ -32,9 +32,9 @@ Layer: Rust core. Status: PostgreSQL 3.0, text results; the core serves it (`cra
 
 ## Testing
 
-`cargo test -p desk-pg`: unit tests in the modules. `tests/live.rs` and `tests/live_session.rs` run
-against the server `ENDUE_DB_TEST_POSTGRES` names (a `postgresql://` URI without TLS);
+`cargo test -p desk-pg`: unit tests in the modules. `tests/live.rs`, `live_session.rs`, `live_notices.rs`
+and `live_script.rs` run against `ENDUE_DB_TEST_POSTGRES` (a `postgresql://` URI without TLS);
 `tests/live_tls.rs` against `ENDUE_DB_TEST_POSTGRES_TLS` (verify-full to `localhost` with
 `sslrootcert`) and `ENDUE_DB_TEST_POSTGRES_OTHER_CA`; `tests/live_client_cert.rs` against
-`ENDUE_DB_TEST_POSTGRES_CLIENT_CERT` (`clientcert=verify-full`, with `sslcert`, `sslkey`, `sslpassword`).
-Each skips when its variable is unset.
+`ENDUE_DB_TEST_POSTGRES_CLIENT_CERT` (`clientcert=verify-full`, `sslcert`, `sslkey`, `sslpassword`); each
+skips when its variable is unset.

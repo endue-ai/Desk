@@ -3,6 +3,7 @@
 // helpers that type and run SQL in the console on screen and read which session ran what.
 import type { Connection } from "../ui/engines/common.js";
 import { type Mounted, mount, type Script } from "./harness";
+import { runsOf } from "./runs-of";
 
 export const PG: Connection = {
   id: "c-pg",
@@ -66,12 +67,15 @@ const params = (call: Call) => (call.params ?? {}) as Record<string, unknown>;
 
 /** The session the first db.run of `sql` went to. */
 export const sessionOf = (m: Mounted, sql: string) =>
-  params(m.host.calls.find((c) => c.method === "db.run" && params(c).sql === sql) ?? { method: "" })
-    .sessionId as string | undefined;
+  params(
+    runsOf(m.host.calls).find((c) => c.method === "db.run" && params(c).sql === sql) ?? {
+      method: "",
+    },
+  ).sessionId as string | undefined;
 
 /** Every statement a session ran, in order. */
 export const ranOn = (m: Mounted, sessionId: string | undefined) =>
-  m.host.calls
+  runsOf(m.host.calls)
     .filter((c) => c.method === "db.run" && params(c).sessionId === sessionId)
     .map((c) => params(c).sql);
 
@@ -81,7 +85,9 @@ export const closed = (m: Mounted) =>
 
 /** Every db.call of `method`, its params. */
 export const made = (m: Mounted, method: string) =>
-  m.host.calls.filter((c) => c.method === method).map(params);
+  runsOf(m.host.calls)
+    .filter((c) => c.method === method)
+    .map(params);
 
 /** The session state the header shows for the buffer on screen. */
 export const state = (m: Mounted) => m.shown()?.session?.state;
