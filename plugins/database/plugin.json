@@ -3152,6 +3152,11 @@
         "id": "endue.database.transfer-cancel",
         "title": "Database: cancel the copy",
         "keywords": ["copy", "transfer", "stop", "abort"]
+      },
+      {
+        "id": "endue.database.forget-ssh-host-key",
+        "title": "Database: forget the SSH host key",
+        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
       }
     ],
     "keys": [

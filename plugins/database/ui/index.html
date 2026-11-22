@@ -137,6 +137,24 @@
         <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> Remember the password in the keychain</label>
         <label data-for="postgresql">Password command <input id="f-passwordCommand" placeholder="/usr/local/bin/db-token --user app (optional)" autocomplete="off" spellcheck="false" class="desk-field" /></label>
         <label class="check" data-for="postgresql"><input type="checkbox" id="f-pooler" class="desk-check" /> Through a pooler in transaction mode: keep nothing on the session</label>
+        <details id="f-tunnel" data-for="postgresql">
+          <summary>SSH tunnel</summary>
+          <div class="options">
+            <label>SSH host <input id="f-sshHost" placeholder="bastion.example.com (empty: no tunnel)" spellcheck="false" class="desk-field" /></label>
+            <label>SSH port <input id="f-sshPort" inputmode="numeric" placeholder="22" class="desk-field" /></label>
+            <label>SSH user <input id="f-sshUser" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label>Sign in with
+              <select id="f-sshAuth" class="desk-field">
+                <option value="key">a key file</option>
+                <option value="agent">the SSH agent</option>
+                <option value="password">a password, asked when connecting</option>
+              </select>
+            </label>
+            <label>SSH key file <input id="f-sshKey" placeholder="~/.ssh/id_ed25519" spellcheck="false" class="desk-field" /></label>
+            <label>Jump host <input id="f-sshJump" placeholder="deploy@gate.example.com:22 (optional)" spellcheck="false" class="desk-field" /></label>
+            <p class="hint">The desk opens the tunnel itself, for each session and its own: no port is opened on this computer. The host and the database are reached from the SSH host. The first time, you check the server's key fingerprint; a key that changes later is refused. No key, passphrase or password is kept with the connection.</p>
+          </div>
+        </details>
         <details id="f-options" data-for="postgresql">
           <summary>Session options</summary>
           <div class="options">

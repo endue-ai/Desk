@@ -163,8 +163,8 @@ describe("release-collect", () => {
 
   it("the_cef_desk_adds_an_msi_beside_nsis_and_ships_no_rpm", () => {
     const windows = bundle({
-      nsis: ["endue Desk_0.5.0_x64-setup.exe", "endue Desk_0.5.0_x64-setup.exe.sig"],
-      msi: ["endue Desk_0.5.0_x64_en-US.msi", "endue Desk_0.5.0_x64_en-US.msi.sig"],
+      nsis: ["endue_0.5.0_x64-setup.exe", "endue_0.5.0_x64-setup.exe.sig"],
+      msi: ["endue_0.5.0_x64_en-US.msi", "endue_0.5.0_x64_en-US.msi.sig"],
     });
     assert.deepEqual(
       collect({
@@ -175,10 +175,10 @@ describe("release-collect", () => {
         shell: "cef",
       }),
       [
-        "endue-desk_0.5.0_windows-x86_64-setup.exe",
-        "endue-desk_0.5.0_windows-x86_64-setup.exe.sig",
-        "endue-desk_0.5.0_windows-x86_64.msi",
-        "endue-desk_0.5.0_windows-x86_64.msi.sig",
+        "endue_0.5.0_windows-x86_64-setup.exe",
+        "endue_0.5.0_windows-x86_64-setup.exe.sig",
+        "endue_0.5.0_windows-x86_64.msi",
+        "endue_0.5.0_windows-x86_64.msi.sig",
       ],
       "an MSI install updates through the MSI, so it carries the updater signature (#47)",
     );
@@ -194,8 +194,8 @@ describe("release-collect", () => {
       /expected one \.msi/u,
     );
     const linux = bundle({
-      appimage: ["endue-desk_0.5.0_x86_64.AppImage", "endue-desk_0.5.0_x86_64.AppImage.sig"],
-      deb: ["endue-desk_0.5.0_amd64.deb", "endue-desk_0.5.0_amd64.deb.sig"],
+      appimage: ["endue_0.5.0_x86_64.AppImage", "endue_0.5.0_x86_64.AppImage.sig"],
+      deb: ["endue_0.5.0_amd64.deb", "endue_0.5.0_amd64.deb.sig"],
     });
     const names = collect({
       bundle: linux,

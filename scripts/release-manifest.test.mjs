@@ -50,6 +50,21 @@ const entry = (version, date) => ({
 const NOW = "2026-11-20T09:00:00Z";
 
 describe("release-manifest", () => {
+  it("identifies the formal 0.4.0 installers independently from the server CLI", () => {
+    const version = "0.4.0";
+    for (const [suffix, targets] of [
+      ["darwin-aarch64.app.tar.gz", ["darwin-aarch64", "darwin-aarch64-app"]],
+      ["windows-x86_64-setup.exe", ["windows-x86_64-nsis", "windows-x86_64"]],
+      ["windows-x86_64.msi", ["windows-x86_64-msi"]],
+      ["linux-x86_64.deb", ["linux-x86_64-deb"]],
+      ["linux-x86_64.AppImage", ["linux-x86_64-appimage", "linux-x86_64"]],
+    ]) {
+      assert.deepEqual(targetsOf(`endue_${version}_${suffix}`, version), targets);
+    }
+    assert.deepEqual(targetsOf("endue-cli_0.4.0_linux-x86_64.tar.gz", version), []);
+    assert.deepEqual(targetsOf("endue_0.4.0_linux-x86_64.deb.sig", version), []);
+  });
+
   it("release.json lists every updater artifact under each target name the updater looks up", () => {
     const files = readDist(dist(), "0.2.0");
     assert.deepEqual(files.map((f) => f.name).sort(), [

@@ -19,6 +19,7 @@ use desk_bridge::{
 use desk_pg::{CloseReason, Config, CopyInput, Limits, Session, Statement};
 
 use crate::agents::agent_of;
+use crate::core_db_ssh::{Tunnelled, hops_of};
 use crate::db_wire::{
     KeyCheck, auth, client_cert, empty_open, event, page, server_error, tls_info, tls_mode,
     transaction,
@@ -36,6 +37,8 @@ pub(crate) struct DbEntry {
     pub(crate) scope: Permission,
     pub(crate) host: String,
     pub(crate) port: u16,
+    /// Its SSH tunnel's hops, the jump host first (ADR 0359).
+    pub(crate) hops: Vec<(String, u16)>,
     database: String,
     user: String,
     pid: i64,
@@ -64,6 +67,7 @@ impl Core {
             port,
         };
         self.check(caller, &scope, &target)?;
+        self.db_ssh_check(caller, &scope, &params)?;
         if params.engine != POSTGRESQL {
             let why = format!("the desk speaks {POSTGRESQL}, not {}", params.engine);
             return Err(error(ErrorCode::Unsupported, why));
@@ -81,6 +85,23 @@ impl Core {
             Err(KeyCheck::Refused(refused)) => return Err(refused),
         };
         let id = self.db_reserve(caller, scope, &params, port)?;
+        if let Some(ssh) = &params.ssh {
+            let at = (params.host.as_str(), port);
+            match self.db_tunnel(caller, ssh, at, config.timeout) {
+                Ok(Tunnelled::Via(via)) => config.via = Some(via),
+                Ok(Tunnelled::Answer(answer)) => {
+                    lock(&self.databases).entries.remove(&id);
+                    return json(DbOpenResult {
+                        ssh: Some(answer),
+                        ..empty_open()
+                    });
+                }
+                Err(refused) => {
+                    lock(&self.databases).entries.remove(&id);
+                    return Err(refused);
+                }
+            }
+        }
         let sink = event(
             id.clone(),
             caller.to_owned(),
@@ -182,6 +203,7 @@ impl Core {
             scope,
             host: params.host.clone(),
             port,
+            hops: hops_of(params),
             database: params.database.clone(),
             user: params.user.clone(),
             pid: 0,

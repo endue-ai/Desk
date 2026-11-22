@@ -12,15 +12,18 @@
 // options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). A connection's
 // password command gives each new session its password, run again once when the server refuses it;
 // one through a pooler signs in with its application name alone and keeps nothing with SET (PG-14,
-// ADR 0354: auth/). A console's single read scrolls a cursor (pg-cursor.js, PG-22). No DOM.
+// ADR 0354: auth/). A console's single read scrolls a cursor (pg-cursor.js, PG-22). Through an SSH
+// tunnel, db:connect covers every hop (tunnel/, ADR 0359). No DOM.
 
 import { commandFor } from "../auth/fields.js";
 import { pooled, pooledSettings } from "../auth/pooler.js";
 import { keptPassword, signInWithCommand } from "../auth/sign-in.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
+import { createTunnel, scopeOf } from "../tunnel/open.js";
 import { failedRun } from "./common.js";
 import { createCursors, own as own_ } from "./pg-cursor.js";
+import { codeOf, openFailed, textOf } from "./pg-open-failed.js";
 import { sessionSettings } from "./pg-options.js";
 import { noticeOf, refusedOf } from "./pg-result.js";
 import { cursorRows } from "./pg-rows.js";
@@ -52,11 +55,6 @@ const PER_CONNECTION = 8;
 const cancelled = () => ({ kind: "cancelled", message: "Cancelled." });
 /** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
 const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
-
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
-const textOf = (/** @type {unknown} */ error) =>
-  error instanceof Error ? error.message : String(error);
 
 /** The server and the sign-in a connection names, or the sentence why it cannot be reached. */
 export function targetOf(/** @type {Connection} */ conn) {
@@ -90,16 +88,19 @@ export const settingsOf = (
  *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
  *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
  *   passphrases?: import("./pg-tls.js").Passphrases, helper?: import("../auth/helper.js").Helper,
+ *   tunnel?: ReturnType<typeof createTunnel>,
  * }} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
  *   with the status line's words for its label; `idleMs` closes a session no run used that long
  *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
  *   password the keychain keeps (manager.passwords.ref, ADR 0311); `passphrases` holds and asks for
- *   key files' passphrases (ADR 0331); `helper` runs a connection's password command (ADR 0354).
+ *   key files' passphrases (ADR 0331); `helper` runs a connection's password command (ADR 0354);
+ *   `tunnel` asks what a connection's SSH tunnel needs (ADR 0359).
  */
 export function createSessions(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
   const kept = options.kept ?? (() => undefined);
   const tls = createTls(bridge, options.passphrases);
+  const tunnel = options.tunnel ?? createTunnel();
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -150,7 +151,7 @@ export function createSessions(bridge, options = {}) {
     } catch (error) {
       return { error: { kind: "connect", message: textOf(error) } };
     }
-    const scope = /** @type {const} */ ({ permission: "db:connect", hosts: [where] });
+    const scope = scopeOf(where, conn);
     const helper = commandFor(conn) && plan.password === undefined ? options.helper : undefined;
     const params = {
       engine: "postgresql",
@@ -167,7 +168,9 @@ export function createSessions(bridge, options = {}) {
           await granted(
             () =>
               tls.open(conn, secure, plan.quiet === true, (t) =>
-                call("db.open", { ...params, ...given, ...(t ? { tls: t } : {}) }),
+                tunnel.open(conn, plan.quiet === true, (via) =>
+                  call("db.open", { ...params, ...given, ...(t && { tls: t }), ...via }),
+                ),
               ),
             scope,
             conn,
@@ -184,6 +187,7 @@ export function createSessions(bridge, options = {}) {
         if (failed) return { error: failed };
         return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
       }
+      if (opened.ssh) return { error: tunnel.refused(conn, opened.ssh) };
       if (opened.keyPassword) return { error: tls.refused(conn, opened.keyPassword) };
       if (opened.error) return { error: refusedOf(opened.error) };
       const message =
@@ -192,19 +196,7 @@ export function createSessions(bridge, options = {}) {
           : `${where} asks for a password, and the password file has none for ${target.user}.`;
       return { error: { kind: "auth", message } };
     } catch (error) {
-      const code = codeOf(error);
-      if (code === "permission_denied")
-        return { error: { kind: "refused", message: `Not allowed to connect to ${where}.` } };
-      if (code === "unsupported")
-        return {
-          error: {
-            kind: "client",
-            message: "This desk cannot open database sessions: db.* is unsupported.",
-          },
-        };
-      return {
-        error: { kind: "connect", message: `Could not connect to ${where}: ${textOf(error)}` },
-      };
+      return openFailed(error, where);
     }
   };
 
