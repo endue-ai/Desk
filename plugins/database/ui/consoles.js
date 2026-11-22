@@ -5,8 +5,10 @@
 // for its parameters first), in one of three modes (run, in one transaction, dry run), explains it
 // as a plan tree, formats it, and pages or loads more rows of a single read. Changes in the grid
 // wait as pending changes (edits.js); a new run asks before it drops them. A console's text is
-// kept under its own id (console-text.js), a run's statements in the history. No DOM: the view
-// gets a model and hands back the editor's text and selection.
+// kept under its own id (console-text.js), a run's statements in the history. On PostgreSQL a
+// console and a table view each run on a session of their own (PG-02, ADR 0320), whose state the
+// model carries (`session`) and which closes with the buffer, asked first while a transaction is
+// open. No DOM: the view gets a model and hands back the editor's text and selection.
 
 import { createBuffers } from "./buffers.js";
 import { createMany } from "./console-many.js";
@@ -15,6 +17,8 @@ import { createTexts } from "./console-text.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
 import { createPanels } from "./panels.js";
+import { keyOf, ownerOf, sessionLabel } from "./session/owners.js";
+import { reasonsOf, rolledBackOnClose } from "./session/words.js";
 import { show, summaryOf } from "./tabs.js";
 
 /**
@@ -37,7 +41,7 @@ import { show, summaryOf } from "./tabs.js";
  *   tab: number, maxRows: number, edit: import("./edits.js").EditState | null,
  *   page: { statement: Statement, offset: number } | null,
  *   consoleId?: string, number?: number, title?: string, file?: SqlFile, visited?: true,
- *   used?: number, filing?: boolean,
+ *   used?: number, filing?: boolean, session?: import("./session/words.js").SessionModel,
  *   [panel: string]: any,
  * }} Console
  *   `kind` is "console", "table", "ddl" or a feature's panel type, whose state sits under that
@@ -45,7 +49,8 @@ import { show, summaryOf } from "./tabs.js";
  *   SELECT that can be paged. A console has its own id (`consoleId`, console-list.js), its number
  *   among its connection's, the person's name for it (`title`), a bound .sql file (`file`);
  *   `visited` when the desk opened its buffer for a file; `used` counts when it was on screen
- *   last; `filing` while a file runs in it (features/consoles/run-file.js).
+ *   last; `filing` while a file runs in it (features/consoles/run-file.js); `session` the state
+ *   of its PostgreSQL session, as the header shows it.
  * @typedef {{
  *   console(model: Console | null, conn: Connection | null): void,
  *   closed?(id: string): void,
@@ -74,19 +79,45 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction">,
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
  *   and `bound` its connection picked (console-files.js); `readPlan` reads a big plan in the plan
- *   worker (explain/reader.js), and plans are read in place without it.
+ *   worker (explain/reader.js), and plans are read in place without it; `sessions` keeps the
+ *   PostgreSQL sessions (engines/pg-session.js).
  */
 
 /** @param {Deps} deps */
 export function createConsoles(deps) {
-  const buffers = createBuffers(deps);
+  const who = (/** @type {Console} */ target) =>
+    ownerOf(target, deps.connection(target.connection));
+  /** A buffer's session in a transaction, with what the person calls the buffer. */
+  const inTransaction = (/** @type {Console} */ target) => {
+    const owner = who(target)?.owner;
+    const open = owner ? (deps.sessions?.inTransaction((e) => e.owner === owner) ?? []) : [];
+    const label = sessionLabel(target, deps.connection(target.connection));
+    return open.map((e) => ({ label, transaction: e.transaction }));
+  };
+  /** The sentence a close asks with while the buffer's transaction is open. */
+  const closing = (/** @type {Console} */ target) => reasonsOf(inTransaction(target));
+  /** A buffer that goes, or moves to another connection: its session closes. */
+  const release = (/** @type {Console} */ target) => {
+    const owner = keyOf(target);
+    if (owner) deps.sessions?.forget(owner);
+  };
+  const buffers = createBuffers({
+    ...deps,
+    decorate: (model) => {
+      const owner = who(model)?.owner;
+      if (owner && deps.sessions) model.session = deps.sessions.state(owner);
+      else delete model.session;
+    },
+    gone: (target) => release(target),
+  });
   const panels = createPanels(buffers, deps);
   const texts = createTexts(deps);
-  const many = createMany(buffers, texts, deps);
+  const many = createMany(buffers, texts, { ...deps, closing, release });
   const { render } = buffers;
   /** The values typed for parameters this session, by console and name. */
   /** @type {Map<string, string>} */
@@ -181,10 +212,12 @@ export function createConsoles(deps) {
     render();
     try {
       const maxRows = options.maxRows ?? deps.settings().maxRows;
+      const session = ownerOf(target, conn);
       const execution = await deps.execute(conn, sql, {
         mode: options.mode ?? "run",
         maxRows,
         ...(options.statements ? { statements: options.statements } : {}),
+        ...(session ? { session } : {}),
         ...(options.agent ? { agent: true, interactive: false } : {}),
       });
       target.execution = execution;
@@ -308,7 +341,13 @@ export function createConsoles(deps) {
       render();
     },
     show: buffers.showId,
-    closed: many.closed,
+    /** The desk closed one of the plugin's buffers: its session closes, a transaction said. */
+    closed(/** @type {string} */ id) {
+      const target = buffers.get(id);
+      const [open] = target ? inTransaction(target) : [];
+      many.closed(id);
+      if (open) deps.view.say(rolledBackOnClose(open.label));
+    },
     drop: buffers.drop,
     /** Rename a connection's consoles and table views after an edit. */
     async renamed(/** @type {Connection} */ conn) {

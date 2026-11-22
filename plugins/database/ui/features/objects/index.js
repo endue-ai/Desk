@@ -7,6 +7,7 @@
 // the person's answer (ADR 0312). kinds.js says what each engine's kinds take. No DOM here.
 
 import { openRoutine } from "../routines/index.js";
+import { openTableEntry, tableEntries } from "../table-design/index.js";
 import { createObjects } from "./controller.js";
 import { operationDialog } from "./dialog.js";
 import { applySource, openSource } from "./source.js";
@@ -52,8 +53,10 @@ async function fromMenu(
   const { conn, target } = await objects.resolve(ref, undefined);
   const runs =
     conn.engine === "postgresql" && (target.kind === "function" || target.kind === "procedure");
-  const picked = await objects.menu(conn, target, runs ? [RUN] : []);
+  const tables = tableEntries(conn, target);
+  const picked = await objects.menu(conn, target, [...(runs ? [RUN] : []), ...tables]);
   if (picked === "run") return openRoutine(deps, conn, target);
+  if (tables.some((t) => t.id === picked)) return openTableEntry(deps, conn, target, picked);
   if (picked.startsWith("generate:")) return objects.generate(conn, target, picked.slice(9));
   if (picked === "source") return openSource(deps, conn, target);
   return objects.operate(conn, /** @type {Op} */ (picked), target, {});

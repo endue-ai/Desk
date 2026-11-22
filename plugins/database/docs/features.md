@@ -15,10 +15,10 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
 
 ## Connections
 
-- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program to install: a run
-  opens a session, runs each statement and closes it; the plugin asks for `db:connect` on a server's host and
-  port at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA
-  file; a client certificate is not supported yet, nor a socket folder or an IPv6 host.
+- PostgreSQL runs on the desk core's own sessions (`db.*`, ADR 0281), with no client program: a console and a
+  table view keep one each (ADR 0320), other runs open one and close it; `db:connect` is asked for a host and port
+  at its first run. TLS follows the connection's mode (`require`, `verify-ca`, `verify-full`) and CA file; a
+  client certificate is not supported yet, nor a socket folder or an IPv6 host.
 - MySQL / MariaDB and SQLite run their own client and never a shell, in a mode that cannot reach past the
   database (ADR 0038): `mysql --binary-mode --local-infile=0`, `sqlite3 -safe`.
 - A client is found on the desk's PATH, else in the folders the `path` setting adds and where package managers
@@ -96,6 +96,10 @@ kinds in `schema/pg/`), `view-tree.js`.
 
 Modules: `features/objects/`.
 
+## Table design
+
+A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
+
 ## Console
 
 - As many consoles per connection as the person opens (Database: new console), each a desk buffer that Mod+B
@@ -118,6 +122,8 @@ Modules: `features/objects/`.
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server
   (`statement_timeout`).
+- On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
+  sees (ADR 0320): [`sessions.md`](sessions.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.
@@ -130,8 +136,8 @@ Modules: `features/objects/`.
   part; a progress line, and the first error stops it at its line in the file.
 
 Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`, `console-files.js`,
-`console-run.js`, `features/consoles/`, `execute.js`, `history.js`, `tools.js`, `sql/`, `editor/`,
-`view-editor.js`.
+`console-run.js`, `features/consoles/`, `execute.js`, `engines/pg-session.js`, `history.js`, `tools.js`, `sql/`,
+`editor/`, `view-editor.js`.
 
 ## Format SQL and SQL problems
 
@@ -389,5 +395,7 @@ Modules: `features/backup/`.
   the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
   the result's first 50 rows and the notices.
 - `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
+- `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
+  not agents' tools, so the person runs it (ADR 0324).
 
 Modules: `agent.js`.
