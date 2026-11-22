@@ -5,17 +5,17 @@
  * caller, sessions their caller's alone, pages whose `more` is exact and whose last page counts
  * every page, one statement at a time, cancel, COPY, and db.closed when the session ends; a
  * transaction as the server keeps it (stub-db-transaction.ts), and pg_terminate_backend's FATAL. A
- * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311).
+ * password kept with db.passwords.* signs in by `passwordRef` (stub-db-passwords.ts, ADR 0311);
+ * db.script runs several statements as db.run runs each (stub-db-script.ts, ADR 0344).
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type {
   BridgeEvent,
-  DbColumn,
   DbConnectPermission,
   DbPage,
+  DbRunParams,
   DbServerError,
   DbSessionInfo,
-  DbTls,
   DbTransaction,
   DbValue,
   Permission,
@@ -31,6 +31,7 @@ import {
   refuseAgents,
   tagOf,
 } from "./stub-db-rules";
+import { type Scripting, stubDbScript } from "./stub-db-script";
 import {
   controlTag,
   endsFailed,
@@ -41,62 +42,13 @@ import {
   terminated,
   transactionAfter,
 } from "./stub-db-transaction";
+import type { StubDatabase, StubSession, StubStatement } from "./stub-db-types";
+
+export type { StubDbOptions } from "./stub-db-types";
 
 export type DbServed =
-  | `db.${"open" | "run" | "fetch" | "copy" | "cancel" | "close" | "list"}`
+  | `db.${"open" | "run" | "script" | "fetch" | "copy" | "cancel" | "close" | "list"}`
   | DbPasswordsServed;
-
-/** One statement a scripted server answers. */
-export interface StubStatement {
-  /** The statement it answers: the same text, or the text the pattern matches. */
-  sql: string | RegExp;
-  columns?: DbColumn[];
-  rows?: DbValue[][];
-  /** The command tag; `SELECT <rows>` when there are columns, else the first word. */
-  tag?: string;
-  /** The server's error, which ends the statement. */
-  error?: DbServerError;
-  /** Notices it raises while it runs: they come with its first page (ADR 0334). */
-  notices?: DbServerError[];
-  /** Notices the session sends after its answer, outside any call: db.notice events a turn later. */
-  afterwards?: DbServerError[];
-  /** It runs until db.cancel, then answers 57014. */
-  waits?: boolean;
-  /** A COPY: `in` waits for db.copy; `out` answers `data`. */
-  copy?: { direction: "in"; columns: number } | { direction: "out"; data: string };
-}
-
-/** Who a session signed in as, and how: what its db.open asked for. */
-export interface StubSession {
-  host: string;
-  port: number;
-  database: string;
-  user: string;
-  readOnly: boolean;
-  settings: Record<string, string>;
-  tls?: DbTls;
-}
-
-/** A scripted database server. */
-export interface StubDatabase {
-  /** The password the sign-in needs: a wrong one is refused (28P01), none answers needsPassword.
-   * Without it every sign-in is let in. */
-  password?: string;
-  /** The passphrase of every encrypted client key (a key whose PEM says ENCRYPTED): none given
-   * answers keyPassword "needed", another "wrong" (ADR 0331). */
-  keyPassword?: string;
-  /** What the server reports at the sign-in; server_version and client_encoding by default. */
-  parameters?: Record<string, string>;
-  statements: StubStatement[];
-  /** Answers a statement none of `statements` matches, on the session it runs on; undefined
-   * leaves it unanswered (0A000). */
-  answer?: (sql: string, session: StubSession) => StubStatement | undefined;
-}
-
-export interface StubDbOptions {
-  /** A scripted database server; with it the stub's db.open signs in (stub-db.ts). */
-  db?: StubDatabase;
-}
 
 /** The stub's grant check: throws permission_denied unless a grant covers `scope` and `fits`. */
 type Check = (caller: string | undefined, scope: Permission, fits: boolean) => void;
@@ -110,6 +62,7 @@ interface Session {
   result?: { rows: DbValue[][]; at: number; tag: string };
   copying?: { lines: number };
   running?: () => void;
+  scripting?: Scripting;
 }
 
 export function stubDb(
@@ -131,7 +84,8 @@ export function stubDb(
     return session;
   };
   const idle = (session: Session) => {
-    if (session.running) throw new StubError("invalid_params", "a statement runs on the session");
+    if (session.running || session.scripting)
+      throw new StubError("invalid_params", "a statement runs on the session");
     if (session.copying)
       throw new StubError("invalid_params", "a COPY FROM STDIN waits for its data");
   };
@@ -239,6 +193,27 @@ export function stubDb(
     return failed(session, failure("0A000", "the stub's script has no answer for this statement"));
   };
 
+  /** One statement on an idle session, as db.run answers it. */
+  const run = async (session: Session, params: DbRunParams): Promise<DbPage> => {
+    const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);
+    session.result = undefined;
+    const { sql } = params;
+    const before = session.transaction;
+    if (before === "failed" && !endsFailed(sql)) return failed(session, IGNORED);
+    const done = await respond(session, sql, pageRows, pageBytes);
+    // The last page of a statement that succeeded carries the state ReadyForQuery reports.
+    if (!done.error && done.transaction) {
+      session.transaction = transactionAfter(sql, before);
+      done.transaction = session.transaction;
+      if (before === "failed" && isControl(sql)) done.tag = controlTag(sql, before);
+    }
+    const pid = terminated(sql);
+    for (const [id, other] of [...sessions])
+      if (pid !== undefined && !done.error && other.info.pid === pid && id !== params.sessionId)
+        end(id, "server", TERMINATED);
+    return done;
+  };
+
   const handlers: Required<Pick<StubHandlers, DbServed>> = {
     ...kept.handlers,
     "db.open": (params, caller) => {
@@ -310,27 +285,20 @@ export function stubDb(
         parameters: { server_version: "17.6", client_encoding: "UTF8", ...script.parameters },
       };
     },
-    "db.run": async (params, caller) => {
-      const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);
+    "db.run": (params, caller) => {
+      limits(params.pageRows, params.pageBytes);
       const session = mine(caller, params.sessionId);
       idle(session);
-      session.result = undefined;
-      const { sql } = params;
-      const before = session.transaction;
-      if (before === "failed" && !endsFailed(sql)) return failed(session, IGNORED);
-      const done = await respond(session, sql, pageRows, pageBytes);
-      // The last page of a statement that succeeded carries the state ReadyForQuery reports.
-      if (!done.error && done.transaction) {
-        session.transaction = transactionAfter(sql, before);
-        done.transaction = session.transaction;
-        if (before === "failed" && isControl(sql)) done.tag = controlTag(sql, before);
-      }
-      const pid = terminated(sql);
-      for (const [id, other] of [...sessions])
-        if (pid !== undefined && !done.error && other.info.pid === pid && id !== params.sessionId)
-          end(id, "server", TERMINATED);
-      return done;
+      return run(session, params);
     },
+    ...stubDbScript({
+      idle: (caller, sessionId) => {
+        const session = mine(caller, sessionId);
+        idle(session);
+        return session;
+      },
+      run,
+    }),
     "db.fetch": (params, caller) => {
       const { pageRows, pageBytes } = limits(params.pageRows, params.pageBytes);
       const session = mine(caller, params.sessionId);
@@ -358,7 +326,9 @@ export function stubDb(
       return last(session, `COPY ${copying.lines}`, { rowCount: copying.lines });
     },
     "db.cancel": (params, caller) => {
-      mine(caller, params.sessionId).running?.();
+      const session = mine(caller, params.sessionId);
+      if (session.scripting) session.scripting.cancelled = true;
+      session.running?.();
       return {};
     },
     "db.close": (params, caller) => {
@@ -374,7 +344,7 @@ export function stubDb(
       return {
         sessions: listed.map((s) => ({
           ...s.info,
-          running: s.running !== undefined,
+          running: s.running !== undefined || s.scripting !== undefined,
           more: s.result !== undefined || s.copying !== undefined,
           transaction: s.transaction,
         })),
