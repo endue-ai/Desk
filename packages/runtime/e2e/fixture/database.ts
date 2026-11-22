@@ -68,6 +68,7 @@ import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/te
 import { showServer } from "../../../../plugins/database/tests/session-options-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
+import { transferServer } from "../../../../plugins/database/tests/transfer-fixture";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -174,7 +175,9 @@ const core = browserCore({
                         overviewServer(
                           maintenanceServer(
                             objectsServer(
-                              activityServer(renameServer(showServer(copyScript(joins)))).script,
+                              activityServer(
+                                renameServer(showServer(transferServer(copyScript(joins)))),
+                              ).script,
                             ).script,
                           ).script,
                         ),

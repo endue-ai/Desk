@@ -146,13 +146,8 @@ export function transferDialog(doc, model, done) {
         tables ? `From ${model.source}` : `From ${model.source}: ${model.what}`,
       ),
       labelled("Into", target, "target"),
-      el(
-        doc,
-        "p",
-        { class: "transfer-pair" },
-        labelled("Database", database, "database"),
-        labelled("Schema", schema, "schema"),
-      ),
+      labelled("Database", database, "database"),
+      labelled("Schema", schema, "schema"),
       ...(name.hidden ? [] : [labelled(tables ? "Name" : "Table", name, "name")]),
       ...(tables ? [labelled("Copy", content, "content"), keys.label] : [append.label]),
       el(

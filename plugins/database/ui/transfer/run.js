@@ -93,7 +93,8 @@ export async function runTransfer(deps, job) {
       }).finally(() => pipe.fail(new Error(STOPPED)));
       const [outFailed, inRun] = await Promise.all([out, read.catch((error) => error)]);
       if (signal.aborted) throw new Error("Cancelled.");
-      if (outFailed && outFailed !== STOPPED) throw new Error(`${source.name}: ${outFailed}`);
+      if (outFailed && !outFailed.includes(STOPPED))
+        throw new Error(`${source.name}: ${outFailed}`);
       if (inRun instanceof Error) throw new Error(`${target.name}: ${inRun.message}`);
       const inFailed = failureOf(inRun);
       if (inFailed) throw new Error(`${target.name}: ${inFailed}`);

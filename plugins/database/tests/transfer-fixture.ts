@@ -1,7 +1,9 @@
 // A copy between two scripted PostgreSQL databases (PG-63): `shop` holds public.items (an id with
 // its key, a name with an index) and answers the catalog reads and its rows as COPY's text; the
 // target `archive` has an empty public schema, takes BEGIN, the structure, COPY ... FROM STDIN and
-// COMMIT, and refuses the statements `fail` names. Fixture data only.
+// COMMIT, and refuses the statements `fail` names. The runtime page answers through transferServer:
+// a read of public.items, and any statement on `archive`, before the page's other answers. Fixture
+// data only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer, Script } from "./clients";
 import { PG } from "./session-helpers";
@@ -76,7 +78,11 @@ const TARGET: [RegExp, Answer][] = [
 /** The two databases; `fail` makes the target refuse a statement that matches it. */
 export function transferScript(fail?: RegExp): Script {
   return (sql, who) => {
-    if (/^SELECT current_setting\('server_version_num'\)/u.test(sql))
+    if (
+      /^SELECT current_setting\('server_version_num'\), current_setting\('server_version'\)$/u.test(
+        sql,
+      )
+    )
       return {
         rows: [["n", "v"], who.database === "archive" ? ["150004", "15.4"] : ["170002", "17.2"]],
       };
@@ -84,5 +90,20 @@ export function transferScript(fail?: RegExp): Script {
       return { error: 'relation "public.items" already exists', code: "42P07" };
     const answers = who.database === "archive" ? TARGET : SOURCE;
     return answers.find(([pattern]) => pattern.test(sql))?.[1] ?? {};
+  };
+}
+
+/** The runtime page's copy (PG-63): items' reads and the `archive` database, else `inner`. */
+export function transferServer(inner: Script): Script {
+  const own = transferScript();
+  return (sql, who, bound) => {
+    const items =
+      /'items'|"public"\."items"/u.test(sql) ||
+      /^SELECT current_setting\('server_version_num'\), current_setting\('server_version'\)$/u.test(
+        sql,
+      );
+    if (who.database === "archive" || (who.database === "shop" && items))
+      return own(sql, who, bound);
+    return inner(sql, who, bound);
   };
 }

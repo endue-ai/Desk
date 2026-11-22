@@ -1,7 +1,8 @@
 // The stream between a copy's two sessions (PG-63): one chunk at a time, the end and a failure on
-// either side reaching the other, and a cancel stopping both.
+// either side reaching the other, a cancel stopping both, and a page past db.copy's limit cut on a
+// character's edge.
 import { describe, expect, it } from "vitest";
-import { createPipe } from "../ui/transfer/pipe.js";
+import { createPipe, piecesOf } from "../ui/transfer/pipe.js";
 
 const chunk = (data: string) => ({ data, encoding: "utf8" as const, bytes: data.length });
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -49,5 +50,16 @@ describe("the pipe of a copy", () => {
     control.abort();
     await expect(reading).rejects.toThrow("Cancelled.");
     await expect(pipe.sink.write(chunk("a"))).rejects.toThrow("Cancelled.");
+  });
+
+  it("cuts a chunk past the limit on a character's edge", () => {
+    const text = "abécdé";
+    const parts = piecesOf({ data: text, encoding: "utf8", bytes: 8 }, 3);
+    expect(parts.map((p) => p.data)).toEqual(["ab", "éc", "dé"]);
+    expect(parts.map((p) => p.bytes)).toEqual([2, 3, 3]);
+    const raw = btoa("0123456789");
+    const base = piecesOf({ data: raw, encoding: "base64", bytes: 10 }, 6);
+    expect(base.map((p) => atob(p.data)).join("")).toBe("0123456789");
+    expect(Math.max(...base.map((p) => p.bytes))).toBeLessThanOrEqual(6);
   });
 });

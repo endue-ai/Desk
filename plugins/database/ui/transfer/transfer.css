@@ -1,18 +1,7 @@
-/* A copy between databases (transfer/): the form's pair of fields, and the panel (its head, the
+/* A copy between databases (transfer/): the form's problem line, and the panel (its head, the
    report, an append's mapping, each table's line, the result and the target's script). Every
    colour, font, size and radius comes from the theme's --desk-* tokens; the feature links this
    sheet itself (features/README.md). */
-
-.transfer-pair {
-  display: flex;
-  gap: var(--desk-space-2);
-  margin: 0;
-}
-
-.transfer-pair > label {
-  flex: 1 1 0;
-  min-width: 0;
-}
 
 .transfer-problem {
   color: var(--desk-danger-text);
@@ -79,6 +68,12 @@
   flex: 0 1 12em;
   overflow-wrap: anywhere;
   font-family: var(--desk-font-mono);
+}
+
+.transfer-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .transfer-steps .desk-list-text {
