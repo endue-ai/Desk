@@ -1,7 +1,7 @@
 // The rows a console holds of a read its cursor keeps (PG-22, ADR 0352): the window model
 // (rows/window.js) and the console's requests on the browser stub's cursors (rows/control.js):
 // pages forward let the far ones go, pages back are fetched again, the end makes the count exact,
-// Count every row and Fetch every row, and a fetch that fails.
+// Count every row and Fetch every row, and a cursor whose session ended.
 import { describe, expect, it } from "vitest";
 import type { ResultSet } from "../ui/engines/common.js";
 import { ALL_MAX } from "../ui/rows/control.js";
@@ -120,14 +120,15 @@ describe("a console's requests for the rows of its cursor", () => {
     expect(set(m).rows).toHaveLength(500);
   });
 
-  it("a fetch that fails leaves the rows held and says the rest cannot be read", async () => {
+  it("a cursor whose session ended keeps the rows held, says the rest is gone and fetches nothing", async () => {
     const m = await shop({ script });
     await run(m, "select n from big");
     // Disconnect ends the console's session, and the cursor with it.
     await m.host.command("endue.database.disconnect", { connection: "Shop" });
+    const before = sent(m).length;
     await m.app.page({ rows: "next" });
-    expect(m.view.said.at(-1)).toMatch(/cannot be read/u);
+    expect(sent(m).slice(before)).toEqual([]);
     expect(set(m).rows).toHaveLength(500);
-    expect(set(m).window?.gone).toMatch(/cannot be read/u);
+    expect(set(m).window?.gone).toMatch(/went with its session/u);
   });
 });

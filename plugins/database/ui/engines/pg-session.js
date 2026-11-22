@@ -12,7 +12,7 @@
 // options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). A connection's
 // password command gives each new session its password, run again once when the server refuses it;
 // one through a pooler signs in with its application name alone and keeps nothing with SET (PG-14,
-// ADR 0354: auth/). No DOM.
+// ADR 0354: auth/). A console's single read scrolls a cursor (pg-cursor.js, PG-22). No DOM.
 
 import { commandFor } from "../auth/fields.js";
 import { pooled, pooledSettings } from "../auth/pooler.js";
@@ -214,8 +214,7 @@ export function createSessions(bridge, options = {}) {
     script,
     close: (/** @type {string} */ id) => call("db.close", { sessionId: id }),
   };
-  // A console's single read keeps a scroll cursor (PG-22, ADR 0352), ended before its next run.
-  const cursors = createCursors({ script });
+  const cursors = createCursors({ script, kept: () => keeper.kept() });
   const keeper = createKeeper({
     call,
     slots,
@@ -362,6 +361,7 @@ export function createSessions(bridge, options = {}) {
   return {
     run,
     rows: cursorRows({ jobs, onBusy, keeper, cursors }),
+    rowsGone: cursors.gone,
     cancel,
     running: () => jobs.size,
     /** What the header shows for an owner's session. */

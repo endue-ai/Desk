@@ -3,7 +3,9 @@
 // held bounded, the last rows equal the server's, scrolling back reads rows let go again, Count
 // every row is exact, the statement is declared once, and a cancel mid-way leaves the session idle
 // with no transaction open. Through a pooler (the option on, against the plain server) a read
-// outside the person's transaction keeps no cursor, and inside it one does. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
+// outside the person's transaction keeps no cursor, and inside it one does. A session ended
+// mid-scroll (pg_terminate_backend) says at once that the rest is gone, and nothing fetches on the
+// session that replaces it. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
@@ -23,9 +25,13 @@ const PAGE = 10_000;
 const MILLION = 1_000_000;
 const READ = "select g, md5(g::text) as h from generate_series(1, 1000000) g";
 
+// The plugin holds the server's grant, so a lost session opens again on its own (PG-105).
+const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) as never };
+
 async function live(conn: Connection = LIVE): Promise<Mounted> {
   const procs = realProcs(password ? { password } : {});
-  const m = await mount({ store: { connections: [conn] }, handlers: procs.handlers });
+  const handlers = { ...procs.handlers, ...granted };
+  const m = await mount({ store: { connections: [conn] }, handlers });
   procs.attach((event) => m.host.emit(event));
   await m.host.call(
     "settings.set",
@@ -150,6 +156,29 @@ describe.skipIf(!uri)("a console's read through a cursor on a real server", () =
         /START TRANSACTION/u.test(String((c.params as { sql?: string }).sql)),
       ),
     ).toBe(false);
+    await done(m);
+  }, 60_000);
+
+  it("a session ended mid-scroll says the rest is gone at once; nothing fetches on the new one", async () => {
+    const m = await live();
+    await run(m, READ);
+    await m.app.page({ rows: "next" });
+    const pid = m.shown()?.session?.pid;
+    await server.admin(`select pg_terminate_backend(${Number(pid)})::text`);
+    await until(() => state(m) === "lost");
+    expect(set(m).window?.gone).toMatch(/went with its session/u);
+    expect(set(m).rows).toHaveLength(2 * PAGE);
+    await until(() => state(m) === "idle");
+    expect(m.shown()?.session?.pid).not.toBe(pid);
+    const before = rawRunsOf(m.host.calls).length;
+    await m.app.page({ rows: "next" });
+    await m.settle();
+    const sent = rawRunsOf(m.host.calls).slice(before);
+    expect(
+      sent.filter((c) => /FETCH|MOVE/u.test(String((c.params as { sql?: string }).sql))),
+    ).toEqual([]);
+    await run(m, "select 7");
+    expect(set(m).rows).toEqual([["7"]]);
     await done(m);
   }, 60_000);
 });

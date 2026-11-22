@@ -4,7 +4,9 @@
 // FORWARD ALL` counts every row. Outside a transaction the cursor lives in one of the plugin's own,
 // which the header does not show; inside the person's it is theirs. The cursor ends before any other
 // run on the session (`END` of the plugin's own transaction, else `CLOSE`), at a read that fits
-// one page, and at a cancel or an error, which roll the plugin's own transaction back (`ABORT`). No DOM.
+// one page, and at a cancel or an error, which roll the plugin's own transaction back (`ABORT`). A
+// session the keeper no longer holds (lost, PG-105) takes its cursor with it: the result says at once
+// that the rest is gone, and no fetch goes to the session that replaces it. No DOM.
 
 import { controlOf } from "../session/transaction-words.js";
 import { classify } from "../sql/classify.js";
@@ -67,9 +69,13 @@ export const own = (/** @type {string} */ text) => ({
 });
 
 /**
- * @param {{ script(job: Job, plan: Plan, before?: import("@endue-ai/bridge").DbTransaction): Promise<RunResult> }} deps
+ * @param {{
+ *   script(job: Job, plan: Plan, before?: import("@endue-ai/bridge").DbTransaction): Promise<RunResult>,
+ *   kept?(): { sessionId: string }[],
+ * }} deps
+ *   `kept`: the sessions the keeper still holds; a cursor on any other is gone.
  */
-export function createCursors({ script }) {
+export function createCursors({ script, kept = () => [] }) {
   /** @type {Map<string, Open>} */
   const open = new Map();
   let made = 0;
@@ -126,6 +132,17 @@ export function createCursors({ script }) {
     hidden: (/** @type {string} */ sessionId) => open.get(sessionId)?.own === true,
     /** The session ended: its cursor went with it. */
     closed: (/** @type {string} */ sessionId) => open.delete(sessionId),
+    /** Why the rows past those a window holds cannot be read any more, or undefined while they can. */
+    gone(/** @type {string} */ id) {
+      const sessionId = id.slice(0, id.lastIndexOf("#"));
+      if (!kept().some((k) => k.sessionId === sessionId)) {
+        open.delete(sessionId);
+        return "the rows past these went with its session";
+      }
+      return open.get(sessionId)?.id === id
+        ? undefined
+        : "the rows past these went when the console ran again";
+    },
 
     /**
      * Declare the plan's read and fetch its first page; a read that fits one page ends its cursor.

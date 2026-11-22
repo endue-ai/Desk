@@ -54,4 +54,7 @@ frame's memory (ADR 0352). Modules: `ui/engines/pg-cursor.js` (the cursor on the
 - A cancel or an error during a fetch ends the cursor (`ABORT` of the plugin's own transaction). In the
   person's transaction the cancel fails it, as any cancelled statement does. The rows held stay, and the
   summary says the rest cannot be read.
+- A lost session (PG-105) takes its cursor with it: the summary says at once that the rows past those
+  held went with it, and the rows held stay. The automatic reconnect and a scroll fetch nothing on the
+  new session; run the statement again to read on.
 - Pending changes in the grid stop the window from moving until they are submitted or dropped.

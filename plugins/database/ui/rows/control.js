@@ -3,7 +3,8 @@
 // cursor moved to its end), Fetch every row (up to ALL_MAX, after which the result is whole and
 // sorts in the frame), and the grid's sort keys and quick filters put into the statement, which runs
 // again with ORDER BY and WHERE around it, since sorting a result not fully read needs every row.
-// A fetch that fails leaves the rows held and says the rest cannot be read. No DOM.
+// A fetch that fails leaves the rows held and says the rest cannot be read; so does a cursor whose
+// session was lost (PG-105), as soon as the console is drawn, with no fetch tried. No DOM.
 
 import { engineOf } from "../engines/index.js";
 import { formatCount } from "../format.js";
@@ -36,6 +37,27 @@ export function windowed(/** @type {Console} */ target) {
   return target.execution?.result.statements[0]?.sets.find((set) => set.window);
 }
 
+/** Put `next` where `old` was: in the run's outcome and in every tab that shows it. */
+function replace(
+  /** @type {Console} */ target,
+  /** @type {ResultSet} */ old,
+  /** @type {ResultSet} */ next,
+) {
+  const outcome = target.execution?.result.statements[0];
+  if (outcome) outcome.sets = outcome.sets.map((s) => (s === old ? next : s));
+  for (const tab of target.shown?.tabs ?? []) if (tab.set === old) tab.set = next;
+}
+
+/** A console's read whose cursor is gone (`gone` says why) says so, without asking the server. */
+export function lapse(
+  /** @type {Console} */ target,
+  /** @type {(id: string) => string | undefined} */ gone,
+) {
+  const set = windowed(target);
+  const why = set?.window && !set.window.gone && !whole(set) ? gone(set.window.id) : undefined;
+  if (set && why) replace(target, set, lost(set, why));
+}
+
 /** The statement with the grid's keys and filters around it; `base` as it is without either. */
 export function shapedSql(
   /** @type {string} */ base,
@@ -55,15 +77,13 @@ export function createRowsControl(deps) {
   /** @type {WeakMap<Console, Promise<string>>} */
   const busy = new WeakMap();
 
-  /** Put `next` where `old` was: in the run's outcome and in every tab that shows it. */
+  /** Put `next` where `old` was, and draw it. */
   const swap = (
     /** @type {Console} */ target,
     /** @type {ResultSet} */ old,
     /** @type {ResultSet} */ next,
   ) => {
-    const outcome = target.execution?.result.statements[0];
-    if (outcome) outcome.sets = outcome.sets.map((s) => (s === old ? next : s));
-    for (const tab of target.shown?.tabs ?? []) if (tab.set === old) tab.set = next;
+    replace(target, old, next);
     deps.render();
   };
   const owner = (/** @type {Console} */ target, /** @type {Connection} */ conn) => {

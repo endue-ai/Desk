@@ -19,6 +19,7 @@ import { baseOf } from "./databases.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
 import { createPanels } from "./panels.js";
+import { lapse } from "./rows/control.js";
 import { keyOf, ownerOf, sessionLabel } from "./session/owners.js";
 import { reasonsOf, rolledBackOnClose } from "./session/words.js";
 import { show, summaryOf } from "./tabs.js";
@@ -81,7 +82,7 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
- *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows">,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows" | "rowsGone">,
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
@@ -114,6 +115,7 @@ export function createConsoles(deps) {
       const owner = who(model)?.owner;
       if (owner && deps.sessions) model.session = deps.sessions.state(owner);
       else delete model.session;
+      if (owner && deps.sessions?.rowsGone) lapse(model, deps.sessions.rowsGone);
     },
     gone: (target) => release(target),
   });

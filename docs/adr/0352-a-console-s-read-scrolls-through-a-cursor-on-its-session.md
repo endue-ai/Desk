@@ -43,6 +43,12 @@ A cursor lives in a transaction. Outside one the plugin opens its own (`START TR
 tell them apart) and hides it from the header; inside the person's the cursor is theirs. Either way the
 cursor ends before the console's next run, at a cancel or an error during a fetch, and with the session.
 
+A lost session (PG-105, ADR 0355) takes its cursor with it. The console's result says at once, when it
+is drawn, that the rows past those held went with the session; the rows held stay. Neither the
+automatic reconnect nor a scroll sends a `FETCH` to the session that replaces it: a cursor is known by
+the session it was declared on, and the keeper no longer holds that one. Running the statement again is
+the person's act.
+
 In manual commit (PG-20) the plugin's BEGIN for the person's transaction goes first in the same call,
 and the cursor is the person's from the start.
 
@@ -75,7 +81,7 @@ is what the single-page read already does with one statement fewer.
 
 ### Confirmation
 
-`plugins/database/tests/rows-cursor.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
+`plugins/database/tests/rows-cursor.test.ts`, `rows-lost.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
 `packages/bridge/src/stub-db-cursor.test.ts` on the stub; `rows-live.test.ts` on a real server through the
 core; `packages/runtime/e2e/database-rows.spec.ts` in the runtime page.
 
