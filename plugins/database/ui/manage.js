@@ -296,7 +296,7 @@ export function createManager(deps) {
       const original = opened;
       const changed = Object.entries(fields).some(([key, value]) => {
         const before = original[/** @type {keyof Connection} */ (key)];
-        if (key === "keychain") return value !== (before === true);
+        if (key === "keychain" || key === "pooler") return value !== (before === true);
         return value !== (key === "port" ? String(before ?? "") : before);
       });
       if (changed) {

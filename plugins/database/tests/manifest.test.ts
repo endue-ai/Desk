@@ -244,6 +244,7 @@ describe("permissions", () => {
       // A dropped .sql, .csv, .tsv or .json file anywhere (dropped.js): asked for each file.
       { permission: "fs:read", paths: ["/**"] },
       // The client a setting names by another name or a path (run.js): asked for each program.
+      // A PostgreSQL connection's password command too, after the person's yes (auth/, ADR 0354).
       { permission: "proc:spawn", commands: ["*"] },
       // Saving a .sql file the person opened, anywhere (console-files.js): asked for each file.
       { permission: "fs:write", paths: ["/**"] },

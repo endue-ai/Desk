@@ -115,6 +115,9 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
     // dead rows a VACUUM may not remove yet: the run is seen in its time, never in more dead rows.
     expect(plain.after).toMatchObject({ lastVacuum: expect.any(String) });
     expect(Number(plain.after?.dead)).toBeLessThanOrEqual(Number(plain.before.dead));
+    // BUFFER_USAGE_LIMIT came in PostgreSQL 16: the plugin leaves it out for an older server.
+    const version = Number(await admin("SHOW server_version_num"));
+    const limit = (size: string) => (version >= 160000 ? `, BUFFER_USAGE_LIMIT '${size}'` : "");
     const runs: Array<[string, Record<string, unknown>, string]> = [
       [
         "vacuum",
@@ -124,14 +127,14 @@ describe.skipIf(!uri)("maintenance on a real PostgreSQL", () => {
       [
         "vacuum",
         { truncate: "off", parallel: 0, processToast: false, bufferUsageLimit: "256kB" },
-        `VACUUM (VERBOSE, TRUNCATE OFF, PARALLEL 0, PROCESS_TOAST OFF, BUFFER_USAGE_LIMIT '256kB') public.${TABLE}`,
+        `VACUUM (VERBOSE, TRUNCATE OFF, PARALLEL 0, PROCESS_TOAST OFF${limit("256kB")}) public.${TABLE}`,
       ],
       ["vacuum", { full: true }, `VACUUM (FULL, VERBOSE) public.${TABLE}`],
       ["analyze", {}, `ANALYZE (VERBOSE) public.${TABLE}`],
       [
         "analyze",
         { verbose: false, skipLocked: true, bufferUsageLimit: "1MB" },
-        `ANALYZE (SKIP_LOCKED, BUFFER_USAGE_LIMIT '1MB') public.${TABLE}`,
+        `ANALYZE (SKIP_LOCKED${limit("1MB")}) public.${TABLE}`,
       ],
       ["reindex", {}, `REINDEX (VERBOSE) TABLE CONCURRENTLY public.${TABLE}`],
       [

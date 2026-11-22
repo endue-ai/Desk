@@ -100,9 +100,11 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     busy();
     view.reading?.(reads);
   });
-  // PostgreSQL on the core's sessions (ADR 0281): consoles and table views keep theirs (ADR 0320).
+  // PostgreSQL's runs on the core's sessions (ADR 0281, 0320); a password command runs (ADR 0354).
   const held = createPluginSessions({
     bridge,
+    runner,
+    confirm: (title, reasons) => confirm(title, reasons),
     view,
     consoles: () => consoles,
     connection: (id) => manager.get(id),
@@ -111,8 +113,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
       sessions = count;
       busy();
     },
-    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
-    kept: (conn) => manager.passwords.ref(conn),
+    kept: (conn) => manager.passwords.ref(conn), // the keychain's password signs in (ADR 0311)
     askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
   const cancel = () => {
@@ -306,8 +307,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
   const guard = guarded(view);
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
-  // The settings while the plugin runs (PG-104): a change is in force at the next run, and what is
-  // open takes it where that is safe; a value that falls back is said once.
+  // Settings while running (PG-104): in force at the next run, open takes it where safe; said once.
   const effects = effectsOf({
     clients,
     catalog,
