@@ -186,9 +186,9 @@ describe("a URI's options and application name", () => {
   });
 
   it("refuses a setting it does not keep, naming it", () => {
-    expect(() =>
-      parseUri("postgresql://app@db.example/shop?options=-c%20work_mem%3D64MB"),
-    ).toThrow(/options: work_mem is not one of the connection's session options/u);
+    expect(() => parseUri("postgresql://app@db.example/shop?options=-c%20work_mem%3D64MB")).toThrow(
+      /options: work_mem is not one of the connection's session options/u,
+    );
   });
 
   it("writes them back, and a round trip keeps them", () => {

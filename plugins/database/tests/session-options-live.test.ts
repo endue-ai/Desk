@@ -23,29 +23,33 @@ const READ =
   "current_setting('idle_in_transaction_session_timeout') AS idle, " +
   "current_setting('application_name') AS app, current_user::text AS who, " +
   "current_setting('work_mem') AS mem";
-const SET = (uri
-  ? normalize({
-      ...fields,
-      id: "c-live-options",
-      name: "live",
-      searchPath: "so_app, public",
-      role: ROLE,
-      timeZone: "Asia/Seoul",
-      lockTimeout: "4s",
-      idleTimeout: "90s",
-      applicationName: `${PREFIX} live`,
-      startup: "set work_mem = '7MB'",
-    } as Partial<Connection>)
-  : {}) as Connection;
-const BROKEN = (uri
-  ? normalize({
-      ...fields,
-      id: "c-live-broken",
-      name: "broken",
-      applicationName: `${PREFIX} broken`,
-      startup: "set work_mem = '7MB';\nselect * from so_missing_table",
-    } as Partial<Connection>)
-  : {}) as Connection;
+const SET = (
+  uri
+    ? normalize({
+        ...fields,
+        id: "c-live-options",
+        name: "live",
+        searchPath: "so_app, public",
+        role: ROLE,
+        timeZone: "Asia/Seoul",
+        lockTimeout: "4s",
+        idleTimeout: "90s",
+        applicationName: `${PREFIX} live`,
+        startup: "set work_mem = '7MB'",
+      } as Partial<Connection>)
+    : {}
+) as Connection;
+const BROKEN = (
+  uri
+    ? normalize({
+        ...fields,
+        id: "c-live-broken",
+        name: "broken",
+        applicationName: `${PREFIX} broken`,
+        startup: "set work_mem = '7MB';\nselect * from so_missing_table",
+      } as Partial<Connection>)
+    : {}
+) as Connection;
 const EXPECTED = ["so_app, public", "Asia/Seoul", "4s", "90s", `${PREFIX} live`, ROLE, "7MB"];
 
 async function live(): Promise<Mounted> {

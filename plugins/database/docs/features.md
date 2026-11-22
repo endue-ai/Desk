@@ -28,7 +28,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), its URI copied back without the password; many moved in one file ([`connections-file.md`](connections-file.md)).
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
-  and can be read-only.
+  and can be read-only; a PostgreSQL one signs in with its session options ([`session-options.md`](session-options.md)).
 - Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
   the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
   the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,

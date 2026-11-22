@@ -55,6 +55,7 @@ import {
 import { privilegesServer } from "../../../../plugins/database/tests/privileges-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
+import { showServer } from "../../../../plugins/database/tests/session-options-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
 import "../../src/desk.css";
@@ -143,9 +144,9 @@ const core = browserCore({
     // the objects feature its own, before the activity view's looser matches.
     // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
     // reads, which carry their own marker (PG-53).
-    // `SHOW` answers each session's own settings first (session-options-fixture.ts, PG-12).
+    // Innermost, `SHOW` answers each session's own settings (session-options-fixture.ts, PG-12).
     ...dbHandlers(
-      showServer(withDatabases(
+      withDatabases(
         schemaCompareServer(
           privilegesServer(
             geoServer(
@@ -156,7 +157,7 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(fixtureScript).script).script,
+                            objectsServer(activityServer(showServer(fixtureScript)).script).script,
                           ).script,
                         ),
                       ).script,
@@ -168,7 +169,7 @@ const core = browserCore({
             ),
           ).script,
         ).script,
-      )),
+      ),
       (event) => emit(event),
     ),
     ...fsHandlers,

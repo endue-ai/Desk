@@ -2,9 +2,11 @@
 // format name and a version; each connection carries the fields a connection is made of and nothing
 // else, so no password, passphrase or keychain entry can be in it. Reading checks every entry as the
 // form does and refuses the whole file with the field named; a pg_service.conf is read by service.js.
-// Nothing in a file is ever run. No DOM.
+// Nothing in a file is ever run: a connection's session options travel, its startup script does not
+// (PG-12), so a file never brings statements that run at each sign-in. No DOM.
 
 import { blank, newId, normalize } from "../../connections.js";
+import { OPTIONS } from "../../engines/pg-options.js";
 import { looksLikeService, readService } from "./service.js";
 
 /**
@@ -23,14 +25,17 @@ const MAX_ENTRIES = 1000;
 export const SECRET = /pass|secret|token|credential/iu;
 const ID = /^[a-z0-9-]{1,40}$/u;
 
+/** The session options a file carries when a connection sets them: all but the startup script. */
+const OPTIONAL = OPTIONS.filter((key) => key !== "startup");
 /** The fields the file carries: those a connection is made of, never a secret's. */
-export const FIELDS = Object.keys(blank()).filter((key) => !SECRET.test(key));
+export const FIELDS = [...Object.keys(blank()).filter((key) => !SECRET.test(key)), ...OPTIONAL];
 
 /** The connection as the file holds it: its fields, in their order, without the keychain choice. */
 export function entryOf(/** @type {Connection} */ conn) {
   const base = /** @type {Record<string, unknown>} */ (blank(conn.engine));
   const fields = /** @type {Record<string, unknown>} */ (conn);
-  return Object.fromEntries(FIELDS.map((key) => [key, fields[key] ?? base[key]]));
+  const set = FIELDS.filter((key) => !OPTIONAL.includes(/** @type {never} */ (key)) || fields[key]);
+  return Object.fromEntries(set.map((key) => [key, fields[key] ?? base[key]]));
 }
 
 /** The file's text for these connections. */

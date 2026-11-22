@@ -66,6 +66,7 @@ describe("a connection's session options on every session", () => {
       data: { sessionId: kept ?? "", reason: "io", message: "connection reset by peer" },
     });
     await m.settle();
+    await m.host.command("endue.database.consoles", { console: "Shop" });
     await run(m, "select 4");
     const again = sessionOf(m, "select 4");
     expect(again).not.toBe(kept);
@@ -136,8 +137,8 @@ describe("names without a schema, read on the connection's search path", () => {
   });
 
   it("problems check against the path and the role", () => {
-    const context = (problems.actions?.(deps as never) as Record<string, () => unknown>)
-      .problemsContext?.() as { searchPath: string[]; user: string };
+    const actions = problems.actions?.(deps as never) as Record<string, () => unknown>;
+    const context = actions.problemsContext?.() as { searchPath: string[]; user: string };
     expect(context.searchPath).toEqual(["Sales", "app"]);
     expect(context.user).toBe("reporting");
   });

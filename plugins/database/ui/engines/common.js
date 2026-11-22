@@ -12,9 +12,12 @@
  *   id: string, name: string, engine: EngineId, host: string, port: number | null,
  *   database: string, user: string, ssl: SslMode, sslCa: string, file: string,
  *   tag: Tag, readOnly: boolean, group?: string, color?: string, sslCert?: string, sslKey?: string,
+ *   searchPath?: string, role?: string, timeZone?: string, lockTimeout?: string,
+ *   idleTimeout?: string, applicationName?: string, startup?: string,
  * }} Connection
  *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
- *   (ADR 0331); paths only.
+ *   (ADR 0331); paths only. `searchPath` to `startup`: a PostgreSQL connection's session options,
+ *   each only when set (pg-options.js).
  * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[] }} ResultSet
  *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription).
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
