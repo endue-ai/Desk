@@ -122,7 +122,11 @@ test("the query step opens the plugin, waits for its query command and needs the
     "--timeout",
     "60",
   ]);
-  answers.query = { status: 0, answer: { result: { statements: [{ results: [{ rows: [[41]] }] }] } }, text: "41" };
+  answers.query = {
+    status: 0,
+    answer: { result: { statements: [{ results: [{ rows: [[41]] }] }] } },
+    text: "41",
+  };
   await assert.rejects(run("desk", "linux", fake), /did not answer 42/u);
   assert.equal(answered({ rows: [{ answer: "42" }] }), true);
   assert.equal(answered({ result: "42" }), false);

@@ -54,7 +54,9 @@ describe("the command line on each system", () => {
     expect(passwordNote(undefined, "linux")).toBe(
       "No password given: libpq reads ~/.pgpass, else the server must not ask for one.",
     );
-    expect(passwordNote("typed", "windows")).toMatch(/PGPASSWORD of the program's environment only/u);
+    expect(passwordNote("typed", "windows")).toMatch(
+      /PGPASSWORD of the program's environment only/u,
+    );
   });
 
   it("the clients say which system they find programs on, for the forms", () => {

@@ -38,9 +38,9 @@ describe("PostgreSQL's programs on each system", () => {
     );
     expect(INSTALL_FOLDERS.linux.filter((f) => f.startsWith("/usr/pgsql-"))).toEqual(redHat);
     const kegs = MAJORS.map((n) => `/opt/homebrew/opt/postgresql@${n}/bin`);
-    expect(INSTALL_FOLDERS.mac.filter((f) => f.startsWith("/opt/homebrew/opt/postgresql@"))).toEqual(
-      kegs,
-    );
+    expect(
+      INSTALL_FOLDERS.mac.filter((f) => f.startsWith("/opt/homebrew/opt/postgresql@")),
+    ).toEqual(kegs);
     // The settings' folders first; Windows separates PATH with `;`, the others with `:`.
     const path = searchPath("windows", ["D:\\pg\\bin"]).split(";");
     expect(path[0]).toBe("D:\\pg\\bin");
@@ -69,14 +69,21 @@ describe("PostgreSQL's programs on each system", () => {
       flavor: "postgresql",
       version: "17.2",
     });
-    expect(parseVersion("3.45.1 2024-01-30 16:01:20 e876e51a0ed5c5b3126f52e532044363a014bc594cfefa87ffb5b82257ccalt1\r")).toEqual({
+    expect(
+      parseVersion(
+        "3.45.1 2024-01-30 16:01:20 e876e51a0ed5c5b3126f52e532044363a014bc594cfefa87ffb5b82257ccalt1\r",
+      ),
+    ).toEqual({
       flavor: "sqlite",
       version: "3.45.1",
     });
     const seen: string[] = [];
     const clients = createClients(
       runnerSaying("pg_dump (PostgreSQL) 17.2\r\nmore\r\n", seen),
-      () => fromValues({ "endue.database.pg-dump": "C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe" }),
+      () =>
+        fromValues({
+          "endue.database.pg-dump": "C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe",
+        }),
       "windows",
     );
     expect(await clients.program("pg_dump")).toEqual({
