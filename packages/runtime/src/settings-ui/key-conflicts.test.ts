@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { type KeyEntry, resolveBindings } from "../sequences/conflicts";
-import { conflictReason, type ConflictWords, conflictsPanel } from "./key-conflicts";
+import { type ConflictWords, conflictReason, conflictsPanel } from "./key-conflicts";
 
 // Settings › Keyboard's conflicts in a person's words (#158 finding 16): no file path, no id.
 const titles: Record<string, string> = {
@@ -35,7 +35,10 @@ describe("the conflicts panel", () => {
     ["Mod+Q", "quits endue", "endue를 종료합니다"],
     ["Mod+H", "hides endue", "endue를 가립니다"],
   ])("localizes the current native action for %s", (key, does, translated) => {
-    const [conflict] = resolveBindings([{ key, command: "endue.open", owner: "desk" }], "mac").conflicts;
+    const [conflict] = resolveBindings(
+      [{ key, command: "endue.open", owner: "desk" }],
+      "mac",
+    ).conflicts;
     if (!conflict?.reserved) throw new Error("the system shortcut must be reserved");
     const native = { ...conflict, reserved: { ...conflict.reserved, does } };
     expect(conflictReason(native, words("ko"))).toContain(translated);
