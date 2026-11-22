@@ -29,6 +29,7 @@ import {
   activityServer,
 } from "../../../../plugins/database/tests/activity-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
+import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
 import {
   DIAGRAM_CONNECTION,
   diagramServer,
@@ -106,7 +107,8 @@ const fsHandlers: StubHandlers = {
   "fs.watch": () => ({ watchId: "w-fixture" }),
 };
 // sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
-const procs = procHandlers(fixtureScript, (event) => emit(event));
+// `stock` changes from one read to the next, for the comparison (compare-fixture.ts).
+const procs = procHandlers(stockScript(fixtureScript), (event) => emit(event));
 const backup = backupHandlers(
   files,
   procs["proc.spawn"] as NonNullable<StubHandlers["proc.spawn"]>,

@@ -2279,6 +2279,36 @@
         "id": "endue.database.import-connections",
         "title": "Database: import connections from a file",
         "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       }
     ],
     "keys": [
