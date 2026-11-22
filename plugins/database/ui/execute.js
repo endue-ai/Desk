@@ -20,9 +20,10 @@ import { split } from "./sql/split.js";
  * @typedef {import("./settings.js").Settings} Settings
  * @typedef {"run" | "transaction" | "dry-run"} Mode
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], signal?: AbortSignal }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[], signal?: AbortSignal, shown?: string[] }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing; `signal` cancels this run alone, as Cancel does every run.
+ *   plugin's own reading and asks nothing; `signal` cancels this run alone, as Cancel does every run; `shown` is what a
+ *   question shows of the statements instead of their text (a role's password masked).
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
@@ -63,7 +64,8 @@ export function createExecutor(deps) {
       throw new Refusal("Nothing to run: the editor holds no statement.");
     const classes = statements.map((statement) => classify(statement, engine.dialect));
     check(conn, engine.ddlCommits, classes, mode);
-    if (!options.catalog) await confirm(conn, statements, classes, mode, options.agent === true);
+    if (!options.catalog)
+      await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
     const timeoutMs = settings.timeoutSeconds * 1000;
@@ -138,8 +140,9 @@ export function createExecutor(deps) {
    * @param {Class[]} classes
    * @param {Mode} mode
    * @param {boolean} agent
+   * @param {string[]} [shown] What to show of the statements instead of their text.
    */
-  const confirm = async (conn, statements, classes, mode, agent) => {
+  const confirm = async (conn, statements, classes, mode, agent, shown) => {
     if (mode === "dry-run") return;
     const writes = classes.some((c) => c.kind === "write" || c.kind === "ddl" || c.opensWrite);
     const dangerous = classes.flatMap((c, i) =>
@@ -152,7 +155,7 @@ export function createExecutor(deps) {
       ...(agent && writes ? ["An agent asks to change data."] : []),
       ...(production ? [`${conn.name} is tagged production.`] : []),
       ...dangerous,
-      ...statements.slice(0, 3).map((s) => oneLine(s.text)),
+      ...(shown ?? statements.map((s) => s.text)).slice(0, 3).map(oneLine),
       ...(statements.length > 3
         ? [`and ${formatCount(statements.length - 3)} more statements`]
         : []),
