@@ -18,6 +18,10 @@ case "$1" in
     sign "$work/release.json"
     files=()
     for sig in "$dist"/endue-desk_*.sig; do files+=("${sig%.sig}" "$sig"); done
+    if [[ "$1" == packages && -f "$dist/endue-cli_${version}_linux-x86_64.tar.gz" ]]; then
+      cli="$dist/endue-cli_${version}_linux-x86_64.tar.gz"
+      files+=("$cli" "$cli.sig" "$dist/SHA256SUMS-cli")
+    fi
     upload "${files[@]}"
     upload "$work/release.json.sig"
     upload "$work/release.json"

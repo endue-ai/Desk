@@ -31,6 +31,7 @@ import {
 } from "../../../../plugins/database/tests/activity-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
+import { schemaCompareServer } from "../../../../plugins/database/tests/compare-schema-fixture";
 import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   DIAGRAM_CONNECTION,
@@ -138,24 +139,28 @@ const core = browserCore({
     // connection and the value search's, each by its database; the table form, the routine forms
     // and the overview answer their own statements exactly, then the maintenance form its own and
     // the objects feature its own, before the activity view's looser matches.
-    // fixture-pg's other databases answer before all of them (PG-13).
+    // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
+    // reads, which carry their own marker (PG-53).
     ...dbHandlers(
       withDatabases(
-        privilegesServer(
-          geoServer(
-            diagramServer(
-              searchServer(
-                tableDesignServer(
-                  routineServer(
-                    overviewServer(
-                      maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                        .script,
-                    ),
+        schemaCompareServer(
+          privilegesServer(
+            geoServer(
+              diagramServer(
+                searchServer(
+                  tableDesignServer(
+                    routineServer(
+                      overviewServer(
+                        maintenanceServer(
+                          objectsServer(activityServer(fixtureScript).script).script,
+                        ).script,
+                      ),
+                    ).script,
                   ).script,
-                ).script,
+                ),
               ),
             ),
-          ),
+          ).script,
         ).script,
       ),
       (event) => emit(event),

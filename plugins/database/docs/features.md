@@ -98,7 +98,7 @@ Modules: `features/objects/`.
 
 ## Table design
 
-A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md).
+A PostgreSQL table created and changed in a form that shows its script first: [`table-design.md`](table-design.md). Two schemas compared and the migration script between them: [`schema-compare.md`](schema-compare.md).
 
 ## Roles and privileges
 
@@ -331,7 +331,7 @@ Modules: `features/maintenance/`.
 
 ## Value search
 
-Looking for a value across a connection's tables, with its limits: [`search.md`](search.md).
+Looking for a value across a connection's tables, with its limits: [`search.md`](search.md); for an object by its name from the desk's palette: [`palette.md`](palette.md).
 
 ## Routines
 
