@@ -19,6 +19,7 @@ export { feature as links } from "./links/index.js";
 export { feature as maintenance } from "./maintenance/index.js";
 export { feature as objects } from "./objects/index.js";
 export { feature as overview } from "./overview/index.js";
+export { feature as palette } from "./palette/index.js";
 export { feature as paste } from "./paste/index.js";
 export { feature as plans } from "./plans/index.js";
 export { feature as privileges } from "./privileges/index.js";

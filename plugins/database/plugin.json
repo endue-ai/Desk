@@ -298,6 +298,21 @@
         "keywords": ["schema", "cache", "system schemas", "catalog"]
       },
       {
+        "id": "endue.database.find-objects",
+        "title": "Database: find objects by name",
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
+      },
+      {
+        "id": "endue.database.copy-name",
+        "title": "Database: copy a qualified name",
+        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
+      },
+      {
+        "id": "endue.database.palette-hide",
+        "title": "Database: hide a connection from the palette, or show it again",
+        "keywords": ["palette", "hide", "show", "search", "connection"]
+      },
+      {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
         "keywords": ["find", "search", "objects"]
@@ -2331,6 +2346,7 @@
         "agent": true
       }
     ],
+    "paletteProviders": [{ "command": "endue.database.find-objects", "title": "Database objects" }],
     "keys": [
       {
         "key": "Mod+Shift+B",
