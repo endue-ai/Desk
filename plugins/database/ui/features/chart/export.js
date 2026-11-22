@@ -36,7 +36,9 @@ export async function exportChart(deps, args) {
   const { target, tab } = chartTarget(deps);
   const chart = tab?.kind === "chart" ? tab.chart : undefined;
   if (!target || !tab || !chart?.settings)
-    throw new Error("Export a chart from its tab: open one with Database: draw the result as a chart.");
+    throw new Error(
+      "Export a chart from its tab: open one with Database: draw the result as a chart.",
+    );
   const page = chartPageOf();
   if (!page) throw new Error("This page cannot draw the chart as an image.");
   const format =
