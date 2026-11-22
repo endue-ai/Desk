@@ -16,7 +16,8 @@
 // what saves and exports wrote). dialog.save answers a place in ~/Pictures for an image and the
 // backup's place otherwise; a backup's save and open dialogs, and the scripted pg_dump and
 // pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
-// open dialog answers it; an export's save dialog answers a place there. Never shipped.
+// open dialog answers it; an export's save dialog answers a place there. fixture-pg's server has more
+// databases (databases-fixture.ts, PG-13). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -30,6 +31,7 @@ import {
 } from "../../../../plugins/database/tests/activity-fixture";
 import { backupHandlers } from "../../../../plugins/database/tests/backup-fixture";
 import { stockScript } from "../../../../plugins/database/tests/compare-fixture";
+import { withDatabases } from "../../../../plugins/database/tests/databases-fixture";
 import {
   DIAGRAM_CONNECTION,
   diagramServer,
@@ -136,23 +138,26 @@ const core = browserCore({
     // connection and the value search's, each by its database; the table form, the routine forms
     // and the overview answer their own statements exactly, then the maintenance form its own and
     // the objects feature its own, before the activity view's looser matches.
+    // fixture-pg's other databases answer before all of them (PG-13).
     ...dbHandlers(
-      privilegesServer(
-        geoServer(
-          diagramServer(
-            searchServer(
-              tableDesignServer(
-                routineServer(
-                  overviewServer(
-                    maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
-                      .script,
-                  ),
+      withDatabases(
+        privilegesServer(
+          geoServer(
+            diagramServer(
+              searchServer(
+                tableDesignServer(
+                  routineServer(
+                    overviewServer(
+                      maintenanceServer(objectsServer(activityServer(fixtureScript).script).script)
+                        .script,
+                    ),
+                  ).script,
                 ).script,
-              ).script,
+              ),
             ),
           ),
-        ),
-      ).script,
+        ).script,
+      ),
       (event) => emit(event),
     ),
     ...fsHandlers,

@@ -67,7 +67,7 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
   a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
   a connection, `u` adds one from a URI.
-- A table drags its qualified name.
+- A table drags its qualified name; a PostgreSQL connection lists its server's databases ([`databases.md`](databases.md)).
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
 kinds in `schema/pg/`), `view-tree.js`.

@@ -12,8 +12,10 @@
 
 import { createBuffers } from "./buffers.js";
 import { createMany } from "./console-many.js";
+import { createRebind } from "./console-rebind.js";
 import { createRunning } from "./console-run.js";
 import { createTexts } from "./console-text.js";
+import { baseOf } from "./databases.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
 import { createPanels } from "./panels.js";
@@ -355,18 +357,30 @@ export function createConsoles(deps) {
       if (open) deps.view.say(rolledBackOnClose(open.label));
     },
     drop: buffers.drop,
-    /** Rename a connection's consoles and table views after an edit. */
+    /** Rename a connection's consoles and table views (on each of its databases) after an edit. */
     async renamed(/** @type {Connection} */ conn) {
       await many.renamed(conn);
       for (const target of buffers.list()) {
-        if (target.connection !== conn.id || target.kind !== "table" || !target.table) continue;
-        target.name = tableName(conn, target.table);
+        if (baseOf(target.connection) !== conn.id || target.kind !== "table" || !target.table)
+          continue;
+        target.name = tableName(deps.connection(target.connection) ?? conn, target.table);
         await deps.commands
           .run("desk.buffers.update", { id: target.id, name: target.name })
           .catch(() => {});
       }
       render();
     },
+    /** Move a console or a table view to another database of its server (PG-13). */
+    rebind: createRebind({
+      deps,
+      discard,
+      closing,
+      release,
+      bind: (target, conn) => many.bind(target, conn),
+      refresh: (target, conn) => pages.refresh(target, conn),
+      tableName,
+      render,
+    }),
     current: buffers.current,
     list: buffers.list,
   };

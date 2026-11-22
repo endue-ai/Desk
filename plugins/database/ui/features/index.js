@@ -8,6 +8,7 @@ export { feature as cellValues } from "./cell-values/index.js";
 export { feature as compare } from "./compare/index.js";
 export { feature as connectionsFile } from "./connections-file/index.js";
 export { feature as consoles } from "./consoles/index.js";
+export { feature as databases } from "./databases/index.js";
 export { feature as diagram } from "./diagram/index.js";
 export { feature as format } from "./format/index.js";
 export { feature as geo } from "./geo/index.js";
