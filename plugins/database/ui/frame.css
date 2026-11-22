@@ -25,6 +25,21 @@ header .tag {
   white-space: nowrap;
 }
 
+/* The PostgreSQL session's state (PG-02): its words, then its status dot. */
+#session {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+#session[hidden] {
+  display: none;
+}
+
 /* The actions take the room the title leaves; the ones that do not fit are behind More, so the
    row's width never depends on them. They are the design system's buttons at its smallest size. */
 nav {
