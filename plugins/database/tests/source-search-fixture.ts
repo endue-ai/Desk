@@ -110,9 +110,10 @@ const literal = (sql: string, after: string) =>
 
 /** The definitions' answers, or undefined for another statement. */
 export function definitions(sql: string): Answer | undefined {
-  const batch = /pg_get_functiondef\(p\.oid\) FROM pg_catalog\.pg_proc p WHERE p\.oid IN \(([\d, ]+)\)/u.exec(
-    sql,
-  );
+  const batch =
+    /pg_get_functiondef\(p\.oid\) FROM pg_catalog\.pg_proc p WHERE p\.oid IN \(([\d, ]+)\)/u.exec(
+      sql,
+    );
   if (batch)
     return {
       rows: [
@@ -131,7 +132,10 @@ export function definitions(sql: string): Answer | undefined {
   if (sql.includes("c.relname = "))
     return { rows: [["pg_get_viewdef"], [views[literal(sql, "c.relname")] ?? ""]] };
   return {
-    rows: [["relname", "pg_get_viewdef"], ...Object.entries(views).map(([name, def]) => [name, def])],
+    rows: [
+      ["relname", "pg_get_viewdef"],
+      ...Object.entries(views).map(([name, def]) => [name, def]),
+    ],
   };
 }
 

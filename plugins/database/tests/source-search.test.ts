@@ -73,9 +73,8 @@ describe("the source search", () => {
     expect(fn?.lines[1]).toEqual({
       line: 7,
       text: "  SELECT sum(total) FROM public.orders o WHERE o.customer = $1",
-      ranges: [[50, 58]],
+      ranges: [[49, 57]],
     });
-    // A default's and a check's own names are not what is searched for a default: its expression.
     expect(m.view.said.at(-1)).toMatch(/^Found 9 lines in 7 objects of 2 schemas, in .+\.$/u);
     // The bodies: one batch of routines and one of views per schema, with PG-56's reads.
     expect(reads(m, /pg_get_functiondef\(p\.oid\)/u)).toHaveLength(1);
@@ -168,7 +167,8 @@ describe("the source search", () => {
     await expect(m.host.command("endue.database.search-source-cancel")).rejects.toThrow(
       "No source search is going on.",
     );
-    for (const sql of sqls(m)) expect(sql).not.toMatch(/^\s*(?:UPDATE|INSERT|DELETE|ALTER|CREATE|DROP|COMMENT)\b/iu);
+    for (const sql of sqls(m))
+      expect(sql).not.toMatch(/^\s*(?:UPDATE|INSERT|DELETE|ALTER|CREATE|DROP|COMMENT)\b/iu);
     // Replace is not offered here: a rename goes through its own command.
     const manifest = JSON.parse(readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"));
     const ids = manifest.contributes.commands

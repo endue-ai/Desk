@@ -27,4 +27,5 @@ export { feature as problems } from "./problems/index.js";
 export { feature as routines } from "./routines/index.js";
 export { feature as schemaCache } from "./schema-cache/index.js";
 export { feature as search } from "./search/index.js";
+export { feature as sourceSearch } from "./source-search/index.js";
 export { feature as tableDesign } from "./table-design/index.js";

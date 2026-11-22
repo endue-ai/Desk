@@ -22,9 +22,13 @@ const BODY = [
 
 describe("the source search's matcher", () => {
   it("finds the lines of a text or a regular expression", () => {
-    const found = linesOf("one\ncustomer_id = 2\nCUSTOMER\nno", testOf({ text: "customer", regex: false, ignoreCase: false }), {
-      comments: true,
-    });
+    const found = linesOf(
+      "one\ncustomer_id = 2\nCUSTOMER\nno",
+      testOf({ text: "customer", regex: false, ignoreCase: false }),
+      {
+        comments: true,
+      },
+    );
     expect(found).toEqual({
       count: 1,
       lines: [{ line: 2, text: "customer_id = 2", ranges: [[0, 8]] }],
@@ -33,25 +37,43 @@ describe("the source search's matcher", () => {
       comments: true,
     });
     expect(any?.lines.map((l) => l.line)).toEqual([1]);
-    const cased = linesOf("x Customer y customer", testOf({ text: "customer", regex: false, ignoreCase: true }), {
-      comments: true,
-    });
+    const cased = linesOf(
+      "x Customer y customer",
+      testOf({ text: "customer", regex: false, ignoreCase: true }),
+      {
+        comments: true,
+      },
+    );
     expect(cased?.lines[0]?.ranges).toEqual([
       [2, 10],
       [13, 21],
     ]);
-    const re = linesOf("total_1\ntotal\ntotal_22", testOf({ text: "total_\\d+$", regex: true, ignoreCase: false }), {
-      comments: true,
-    });
+    const re = linesOf(
+      "total_1\ntotal\ntotal_22",
+      testOf({ text: "total_\\d+$", regex: true, ignoreCase: false }),
+      {
+        comments: true,
+      },
+    );
     expect(re?.lines.map((l) => [l.line, l.ranges])).toEqual([
       [1, [[0, 7]]],
       [3, [[0, 8]]],
     ]);
-    expect(linesOf("nothing", testOf({ text: "x", regex: false, ignoreCase: false }), { comments: true })).toBeNull();
-    expect(() => testOf({ text: "(", regex: true, ignoreCase: false })).toThrow(/^Not a regular expression: /u);
-    expect(() => testOf({ text: "", regex: false, ignoreCase: false })).toThrow("Type the text to find first.");
+    expect(
+      linesOf("nothing", testOf({ text: "x", regex: false, ignoreCase: false }), {
+        comments: true,
+      }),
+    ).toBeNull();
+    expect(() => testOf({ text: "(", regex: true, ignoreCase: false })).toThrow(
+      /^Not a regular expression: /u,
+    );
+    expect(() => testOf({ text: "", regex: false, ignoreCase: false })).toThrow(
+      "Type the text to find first.",
+    );
     // An empty match never loops nor counts.
-    expect(linesOf("abc", testOf({ text: "x*", regex: true, ignoreCase: false }), { comments: true })).toBeNull();
+    expect(
+      linesOf("abc", testOf({ text: "x*", regex: true, ignoreCase: false }), { comments: true }),
+    ).toBeNull();
   });
 
   it("cuts a long line around its first match and caps the lines kept", () => {
