@@ -1560,7 +1560,100 @@
       {
         "id": "endue.database.export",
         "title": "Database: export the result to a file",
-        "keywords": ["download", "save", "csv", "json", "sql"]
+        "keywords": [
+          "download",
+          "save",
+          "csv",
+          "json",
+          "sql",
+          "xlsx",
+          "spreadsheet",
+          "html",
+          "xml",
+          "template"
+        ],
+        "description": "Exports the result on screen (or the grid's selection) as a file in a format, with that format's options; the person always chooses the place in the save dialog, which no argument can skip. Without a format the palette asks, then the options dialog. It answers the path, the rows written, their bytes, and partial when the server has more rows than the result holds.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "sheets": {
+              "enum": ["shown", "all"],
+              "description": "For xlsx: the result on screen, or every result of the console as a sheet each."
+            }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.database.add-row",
