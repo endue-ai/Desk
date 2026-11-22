@@ -2,8 +2,8 @@
 // role may create databases: one connection lists the server's databases, its own first; a second
 // database's own table is read once its row opens, on sessions of that database; a database dropped
 // after the list was read says so on its own row and nothing else changes; an agent's query runs on
-// the second. Other runs use the same server at once, so only this run's databases are named and
-// dropped. On the desk core's sessions (core-bridge.ts).
+// the second; a console switched to it runs there, its old session gone from pg_stat_activity.
+// Other runs use the same server at once, so only this run's databases are named and dropped. On the desk core's sessions (core-bridge.ts).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Node } from "../ui/explorer.js";
@@ -110,5 +110,23 @@ describe.skipIf(!uri)("one connection, every database of a real server", () => {
       sql: "select current_database()",
     })) as { statements: { results?: { rows: string[][] }[] }[] };
     expect(answer.statements[0]?.results?.[0]?.rows).toEqual([[second]]);
+
+    // A console switched to the second database: its old session is gone, its next run is there.
+    const value = async (sql: string) => {
+      m.view.text = sql;
+      m.app.edited(sql);
+      await m.host.command("endue.database.run");
+      return m.shown()?.shown?.tabs[0]?.set?.rows[0]?.[0];
+    };
+    await m.host.command("endue.database.console", { connection: "Server" });
+    const pid = await value("select pg_backend_pid()");
+    expect(await value("select current_database()")).toBe(own);
+    await m.host.command("endue.database.switch-database", { database: second });
+    expect(await value("select current_database()")).toBe(second);
+    const alive = () =>
+      admin(own, `SELECT count(*) FROM pg_stat_activity WHERE pid = ${Number(pid)}`);
+    for (let i = 0; i < 200 && (await alive()) !== "0"; i++)
+      await new Promise((r) => setTimeout(r, 25));
+    expect(await alive()).toBe("0");
   });
 });
