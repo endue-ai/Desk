@@ -68,10 +68,10 @@ export async function runTransfer(deps, job) {
     for (const [index, step] of plan.steps.entries()) {
       job.step(index);
       const pipe = createPipe(signal);
+      // The source's COPY keeps every guard: a query that writes (RETURNING) asks as a run would.
       const out = copyOut(deps.execute, source, step.out, pipe.sink, {
         ...own,
         signal,
-        catalog: true,
         progress: (p) => {
           if (p) job.progress(index, p.bytes);
         },
