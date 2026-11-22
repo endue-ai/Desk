@@ -3,12 +3,11 @@
 //! closes) and stops when told to: a statement still running on the server is cancelled before
 //! Terminate (ADR 0339). Its last act is the `Closed` event, after the state says closed.
 
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use postgres_protocol::message::backend::Message;
-use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::cancel;
@@ -17,51 +16,19 @@ use crate::error::{Error, ServerError, protocol};
 use crate::page::{Limits, MAX_NOTICES, Page, Row, Transaction};
 use crate::select::{Either, select};
 use crate::session::{CloseReason, CopyInput, Event, Sink, Statement};
+use crate::shared::Shared;
 
 /// How long a session told to stop waits for its cancel request to be taken, then for Terminate.
 pub(crate) const CLOSE_STEP: Duration = Duration::from_secs(2);
 
-/// What the handle and the task share: the state `db.list` shows and how the task is stopped.
-#[derive(Default)]
-pub(crate) struct Shared {
-    pub(crate) running: AtomicBool,
-    /// A result has pages left, or a COPY FROM STDIN waits for data.
-    pub(crate) open: AtomicBool,
-    transaction: AtomicU8,
-    closed: AtomicBool,
-    stopping: AtomicBool,
-    why: Mutex<Option<CloseReason>>,
-    stop: Notify,
-}
-
-impl Shared {
-    pub(crate) fn transaction(&self) -> Transaction {
-        Transaction::of(self.transaction.load(Ordering::SeqCst))
-    }
-
-    pub(crate) fn set_transaction(&self, status: u8) {
-        self.transaction.store(status, Ordering::SeqCst);
-    }
-
-    pub(crate) fn closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
-    }
-
-    /// Stop the task; the first reason given is the one its `Closed` event names.
-    pub(crate) fn stop(&self, reason: CloseReason) {
-        let mut why = self.why.lock().unwrap_or_else(|p| p.into_inner());
-        why.get_or_insert(reason);
-        self.stopping.store(true, Ordering::SeqCst);
-        self.stop.notify_one();
-    }
-}
-
-pub(crate) type Reply = std::sync::mpsc::SyncSender<Result<Page, Error>>;
+pub(crate) type Reply<T = Page> = std::sync::mpsc::SyncSender<Result<T, Error>>;
 
 pub(crate) enum Command {
     Run(Statement, Limits, Reply),
     Fetch(Limits, bool, Reply),
     Copy(CopyInput, Reply),
+    Script(Vec<Statement>, Limits, bool, Reply<crate::script::Script>),
+    Describe(Statement, Reply<crate::describe::Described>),
 }
 
 /// Why the connection is done.
@@ -111,18 +78,24 @@ pub(crate) struct Task {
     pub(crate) conn: Conn,
     commands: UnboundedReceiver<Command>,
     pub(crate) shared: Arc<Shared>,
-    sink: Sink,
+    pub(crate) sink: Sink,
     pub(crate) cancel: cancel::Target,
     pub(crate) open: Open,
     /// A FATAL error the server sent before it closed.
-    fatal: Option<ServerError>,
+    pub(crate) fatal: Option<ServerError>,
     /// A message over the limit was skipped: the result it belongs to cannot be answered whole.
     pub(crate) too_large: bool,
     encoding: bool,
+    /// A script runs (ADR 0344): a Sync goes out with the next statement, not on its own.
+    pub(crate) deferring: bool,
+    /// Syncs sent or buffered whose ReadyForQuery has not been read.
+    pub(crate) unsynced: u32,
+    /// What the last deferred Sync answered, for the statement before it.
+    pub(crate) settled: Option<crate::script::Settled>,
     /// While a call runs, the notices it hears (they go with its page) and how many past the cap.
-    heard: Option<(Vec<ServerError>, u64)>,
+    pub(crate) heard: Option<(Vec<ServerError>, u64)>,
     /// A stop came while a call waited on the server: its statement may still run there.
-    interrupted: bool,
+    pub(crate) interrupted: bool,
 }
 
 impl Task {
@@ -143,6 +116,9 @@ impl Task {
             fatal: None,
             too_large: false,
             encoding: false,
+            deferring: false,
+            unsynced: 0,
+            settled: None,
             heard: None,
             interrupted: false,
         }
@@ -204,6 +180,12 @@ impl Task {
     async fn serve(&mut self, command: Command) -> Result<(), End> {
         self.heard = Some((Vec::new(), 0));
         let (reply, outcome) = match command {
+            Command::Script(statements, limits, go_on, reply) => {
+                return self.script(statements, limits, go_on, reply).await;
+            }
+            Command::Describe(statement, reply) => {
+                return self.serve_describe(statement, reply).await;
+            }
             Command::Run(statement, limits, reply) => {
                 (reply, self.run_statement(statement, limits).await)
             }
@@ -235,7 +217,7 @@ impl Task {
 
     /// The call's answer with the notices it heard; an answer with no page sends them to the sink
     /// first, as the session's own, so none is lost.
-    fn with_notices(&mut self, answer: Result<Page, Error>) -> Result<Page, Error> {
+    pub(crate) fn with_notices(&mut self, answer: Result<Page, Error>) -> Result<Page, Error> {
         let (notices, skipped) = self.heard.take().unwrap_or_default();
         match answer {
             Ok(mut page) => {
@@ -321,16 +303,29 @@ impl Task {
         None
     }
 
-    /// Sync, then everything up to ReadyForQuery: the transaction state it reports.
+    /// Sync, then everything up to ReadyForQuery: the transaction state it reports. While a
+    /// script runs the Sync waits in the buffer for the next statement (`settle` reads it then).
     pub(crate) async fn sync(&mut self) -> Result<Transaction, Fail> {
         postgres_protocol::message::frontend::sync(&mut self.conn.out);
+        self.unsynced += 1;
+        if self.deferring {
+            return Ok(self.shared.transaction());
+        }
         self.send().await?;
-        loop {
+        self.settle().await
+    }
+
+    /// Everything up to the ReadyForQuery of each Sync sent: the state the last one reports.
+    pub(crate) async fn settle(&mut self) -> Result<Transaction, Fail> {
+        let mut state = self.shared.transaction();
+        while self.unsynced > 0 {
             if let Message::ReadyForQuery(body) = self.next().await? {
+                self.unsynced -= 1;
                 self.shared.set_transaction(body.status());
-                return Ok(Transaction::of(body.status()));
+                state = Transaction::of(body.status());
             }
         }
+        Ok(state)
     }
 
     /// A cancel request for what this session runs (closing a COPY out early).

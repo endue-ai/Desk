@@ -55,6 +55,8 @@
         { "$ref": "net.schema.json#/$defs/NetCloseRequest" },
         { "$ref": "db.schema.json#/$defs/DbOpenRequest" },
         { "$ref": "db.schema.json#/$defs/DbRunRequest" },
+        { "$ref": "db.schema.json#/$defs/DbScriptRequest" },
+        { "$ref": "db.schema.json#/$defs/DbDescribeRequest" },
         { "$ref": "db.schema.json#/$defs/DbFetchRequest" },
         { "$ref": "db.schema.json#/$defs/DbCopyRequest" },
         { "$ref": "db.schema.json#/$defs/DbCancelRequest" },

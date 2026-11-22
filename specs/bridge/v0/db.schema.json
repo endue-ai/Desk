@@ -200,6 +200,144 @@
       "description": "Result of db.run: the statement's first page.",
       "$ref": "#/$defs/DbPage"
     },
+    "DbScriptRequest": {
+      "description": "Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.script" },
+        "params": { "$ref": "#/$defs/DbScriptParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbScriptParams": {
+      "description": "Parameters of db.script.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "statements": {
+          "description": "The statements, in the order they run.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbScriptStatement" },
+          "minItems": 1,
+          "maxItems": 10000
+        },
+        "goOn": {
+          "description": "Run on past a statement's error instead of stopping there.",
+          "type": "boolean"
+        },
+        "pageRows": {
+          "description": "Rows each statement's first page holds: 1000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "pageBytes": {
+          "description": "Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger.",
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 16777216
+        }
+      },
+      "required": ["sessionId", "statements"],
+      "additionalProperties": false
+    },
+    "DbScriptStatement": {
+      "description": "One statement of db.script and its parameters, as db.run takes them.",
+      "type": "object",
+      "properties": {
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "params": {
+          "description": "$1, $2, ... as text, or null.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbValue" },
+          "maxItems": 65535
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        }
+      },
+      "required": ["sql"],
+      "additionalProperties": false
+    },
+    "DbScriptResult": {
+      "description": "Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page).",
+      "type": "object",
+      "properties": {
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/DbPage" } },
+        "cancelled": {
+          "description": "A db.cancel came while the script ran: no statement after the last page started.",
+          "type": "boolean"
+        },
+        "failure": {
+          "description": "What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error).",
+          "$ref": "bridge.schema.json#/$defs/BridgeError"
+        }
+      },
+      "required": ["pages"],
+      "additionalProperties": false
+    },
+    "DbDescribeRequest": {
+      "description": "Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.describe" },
+        "params": { "$ref": "#/$defs/DbDescribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbDescribeParams": {
+      "description": "Parameters of db.describe.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        }
+      },
+      "required": ["sessionId", "sql"],
+      "additionalProperties": false
+    },
+    "DbDescribeResult": {
+      "description": "Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it.",
+      "type": "object",
+      "properties": {
+        "paramTypes": {
+          "description": "The type OID of $1, $2, ..., as the server infers them; empty with an error.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+        },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/DbColumn" } },
+        "transaction": { "$ref": "#/$defs/DbTransaction" },
+        "error": { "$ref": "#/$defs/DbServerError" },
+        "notices": {
+          "description": "The notices the server sent while this call ran.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbServerError" },
+          "maxItems": 10000
+        }
+      },
+      "required": ["paramTypes"],
+      "additionalProperties": false
+    },
     "DbFetchRequest": {
       "description": "The next page of the session's open result, or close it without reading on.",
       "type": "object",

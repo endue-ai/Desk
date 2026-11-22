@@ -4,10 +4,16 @@
 // pg-session.js), sqlite3 (-bail) and the mysql client stop before COMMIT and the server rolls the
 // open transaction back when the session ends. An UPDATE or DELETE that matched no row is said:
 // the row changed or went since it was read. A refusal whose position falls in a cell's literal
-// names that cell's column (PG-40). No DOM.
+// names that cell's column (PG-40). A guarded change (keyed by ctid or by its values, edit/tables.js)
+// that did not change exactly one row fails on the server and says whether its row moved or could
+// not be told apart; a foreign key that held against changes to several tables says so (PG-45). A
+// session that ended under a Submit (PG-105, ADR 0355) is said for what it means: before COMMIT
+// nothing was committed, during COMMIT it is unknown whether the server committed, with how to check;
+// the changes stay pending either way. No DOM.
 
 import { split } from "../sql/split.js";
 import { planChanges } from "./pending.js";
+import { MATCHED } from "./tables.js";
 
 /**
  * @typedef {import("./pending.js").Target} Target
@@ -51,6 +57,15 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
   const execution = await execute(conn, sql, { mode: "transaction", statements });
   const { result } = execution;
   const count = `${plan.length} change${plan.length === 1 ? "" : "s"}`;
+  const allRan = plan.every((_, i) => result.statements[i]?.ran && !result.statements[i]?.error);
+  if (result.error && allRan && ended(result.error))
+    return {
+      ok: false,
+      plan,
+      execution,
+      missed: [],
+      message: `Unknown whether the server committed ${count}: the session ended while COMMIT was on its way. They are still pending. Refresh reads the rows again: if the changes are there, Revert them; if not, Submit again.`,
+    };
   if (result.error)
     return {
       ok: false,
@@ -63,7 +78,7 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
   if (at >= 0 || result.statements.some((s) => !s.ran)) {
     const failed = plan[at];
     const error = result.statements[at]?.error;
-    const why = error?.message ?? "the run stopped before the end";
+    const why = whyOf(failed, error, target);
     const position = error?.position;
     const span =
       position === undefined
@@ -71,6 +86,7 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
         : failed?.cells.find((c) => position >= c.start && position < c.end);
     const column = span ? target.columns[span.col]?.name : undefined;
     const where = failed ? `${describe(failed, set)}${column ? `, column ${column}` : ""}: ` : "";
+    const gone = error && ended(error);
     return {
       ok: false,
       plan,
@@ -78,7 +94,9 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
       ...(failed ? { failed } : {}),
       ...(failed && span ? { cell: { row: failed.row, col: span.col } } : {}),
       missed: [],
-      message: `Rolled back, nothing was changed: ${where}${why}`,
+      message: gone
+        ? `Not committed: the session ended at ${failed ? describe(failed, set) : "a change"}, before COMMIT, so the server rolled the changes back. They are still pending: Submit again once the server answers. (${error.message})`
+        : `Rolled back, nothing was changed: ${where}${why}`,
     };
   }
   const missed = plan.filter(
@@ -88,6 +106,30 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
     ? `Committed ${count}; ${missed.map((c) => describe(c, set)).join(", ")} matched no row: it changed or went since it was read.`
     : `Committed ${count} in one transaction.`;
   return { ok: true, plan, execution, missed, message };
+}
+
+/** Whether an error says the session ended: the server's (class 08, 57P01-57P03) or the call's. */
+function ended(/** @type {import("../engines/common.js").DbError} */ error) {
+  const code = error.code ?? "";
+  if (/^08|^57P0[1-3]$/u.test(code)) return true;
+  return error.kind === "client" && /session (has )?ended|^COMMIT: /iu.test(error.message);
+}
+
+/** What a failed statement's error means, in words. */
+function whyOf(
+  /** @type {Change | undefined} */ failed,
+  /** @type {import("../engines/common.js").DbError | undefined} */ error,
+  /** @type {Target} */ target,
+) {
+  const message = error?.message ?? "the run stopped before the end";
+  const count = failed?.guarded && MATCHED.test(message) ? /"(\d+) rows/u.exec(message)?.[1] : "";
+  if (count === "0")
+    return `it matched no row of ${failed?.guarded}: the row moved or went since it was read (its ctid changes on every update). Read the rows again.`;
+  if (count)
+    return `it matched ${count} rows of ${failed?.guarded}: its values do not tell it apart from another row. Select a key or ctid to change one of them.`;
+  if (error?.code === "23503" && (target.tables?.length ?? 0) > 1)
+    return `${message}. A foreign key between ${target.tables?.map((t) => t.name).join(" and ")} holds against these changes in one Submit: submit them apart.`;
+  return message;
 }
 
 /** A change as words: "row 3 (update)". */

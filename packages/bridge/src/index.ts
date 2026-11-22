@@ -43,7 +43,8 @@ export {
   type StubSurface,
   stubCommands,
 } from "./stub-commands";
-export { type StubDatabase, type StubSession, type StubStatement, stubDb } from "./stub-db";
+export { stubDb } from "./stub-db";
+export type { StubDatabase, StubSession, StubStatement } from "./stub-db-types";
 export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
 export { type StubOpened, shellLink } from "./stub-shell";
 export {

@@ -186,6 +186,11 @@
         "keywords": ["rollback", "preview", "test"]
       },
       {
+        "id": "endue.database.check",
+        "title": "Database: check the statement without running it",
+        "keywords": ["check", "validate", "describe", "parameters", "types", "columns", "syntax"]
+      },
+      {
         "id": "endue.database.explain",
         "title": "Database: explain the statement",
         "keywords": ["plan", "query plan"]
@@ -2987,6 +2992,48 @@
         "keywords": ["palette", "hide", "show", "search", "connection"]
       },
       {
+        "id": "endue.database.commit",
+        "title": "Database: commit the console's transaction",
+        "keywords": ["commit", "transaction", "manual", "save", "end"]
+      },
+      {
+        "id": "endue.database.rollback",
+        "title": "Database: roll back the console's transaction",
+        "keywords": ["rollback", "transaction", "undo", "discard", "abort"]
+      },
+      {
+        "id": "endue.database.transaction-mode",
+        "title": "Database: switch the console between auto and manual commit",
+        "keywords": ["autocommit", "manual", "auto", "commit", "transaction", "mode"]
+      },
+      {
+        "id": "endue.database.transaction-options",
+        "title": "Database: isolation level and read-only of the next transaction",
+        "keywords": [
+          "isolation",
+          "serializable",
+          "repeatable read",
+          "read committed",
+          "read only",
+          "transaction"
+        ]
+      },
+      {
+        "id": "endue.database.savepoint",
+        "title": "Database: set a savepoint",
+        "keywords": ["savepoint", "transaction", "mark", "nested"]
+      },
+      {
+        "id": "endue.database.rollback-to-savepoint",
+        "title": "Database: roll back to a savepoint",
+        "keywords": ["savepoint", "rollback", "undo", "transaction"]
+      },
+      {
+        "id": "endue.database.release-savepoint",
+        "title": "Database: release a savepoint",
+        "keywords": ["savepoint", "release", "forget", "transaction"]
+      },
+      {
         "id": "endue.database.allow-connect",
         "title": "Database: allow connecting",
         "keywords": ["permission", "refused", "connect", "server", "ask again"]
@@ -3037,6 +3084,11 @@
         "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
       },
       {
+        "id": "endue.database.find-usages",
+        "title": "Database: find the usages of the name at the caret",
+        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
+      },
+      {
         "id": "endue.database.rename-at-caret",
         "title": "Database: rename the name at the caret",
         "keywords": ["rename", "refactor", "alias", "CTE", "parameter", "F2"]
@@ -3062,9 +3114,9 @@
         "keywords": ["qualify", "schema", "alias", "names", "refactor"]
       },
       {
-        "id": "endue.database.find-usages",
-        "title": "Database: find the usages of the name at the caret",
-        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
+        "id": "endue.database.reconnect",
+        "title": "Database: reconnect the lost session",
+        "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
       }
     ],
     "keys": [
@@ -3223,6 +3275,13 @@
         "minimum": 0,
         "maximum": 1440,
         "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
+      },
+      "endue.database.transaction-idle-minutes": {
+        "kind": "integer",
+        "default": 5,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Flag a console's open PostgreSQL transaction in its header once no run used it for this many minutes; 0 never. The transaction stays open: only Commit or Rollback ends it."
       },
       "endue.database.snippets": {
         "kind": "object",

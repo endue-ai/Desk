@@ -2,8 +2,10 @@
 // connections here. The same id is a change (ticked, naming the fields that change) or already here
 // (skipped); a name another connection here has is taken (unticked; ticked, it is added under a
 // free name); the rest are added. The kept connections follow the ticks: a change keeps this
-// computer's keychain choice, and every name stays unique. No DOM.
+// computer's keychain choice and its startup script (PG-12) when the file's fields still pass its
+// guards, and every name stays unique. No DOM.
 
+import { normalize } from "../../connections.js";
 import { chosen, withChoice } from "../../keychain.js";
 import { entryOf, FIELDS } from "./file.js";
 
@@ -23,6 +25,11 @@ const LABELS = /** @type {Record<string, string>} */ ({
   tag: "environment",
   readOnly: "read-only",
   color: "colour",
+  searchPath: "search path",
+  timeZone: "time zone",
+  lockTimeout: "lock timeout",
+  idleTimeout: "idle in transaction timeout",
+  applicationName: "application name",
 });
 const lower = (/** @type {string} */ name) => name.toLowerCase();
 
@@ -47,6 +54,16 @@ export function planImport(local, entries) {
     if (taken) return { conn, kind: "taken", was: taken.name, changes: [], notes, ticked: false };
     return { conn, kind: "add", was: "", changes: [], notes, ticked: true };
   });
+}
+
+/** A file never carries a startup script: the one this computer keeps stays, while it passes the
+ * guards of the connection the file makes (a write on one now read-only or production does not). */
+function withStartup(/** @type {Connection} */ conn, /** @type {string} */ startup) {
+  try {
+    return normalize({ ...conn, startup });
+  } catch {
+    return conn;
+  }
 }
 
 /** `name`, or `name (2)`, `name (3)` … when it is taken; at most 80 characters. */
@@ -75,7 +92,8 @@ export function applyImport(local, rows, ticks) {
   const taken = new Set(local.filter((c) => !replaced.has(c.id)).map((c) => lower(c.name)));
   return use.map(({ row, index }) => {
     const here = local.find((c) => c.id === row.conn.id);
-    const conn = here ? withChoice(row.conn, chosen(here)) : withChoice(row.conn, false);
+    const kept = here?.startup ? withStartup(row.conn, here.startup) : row.conn;
+    const conn = here ? withChoice(kept, chosen(here)) : withChoice(row.conn, false);
     const name = freeName(conn.name, taken);
     taken.add(lower(name));
     return { index, conn: name === conn.name ? conn : { ...conn, name } };

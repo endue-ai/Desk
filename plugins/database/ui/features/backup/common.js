@@ -3,6 +3,7 @@
 // the grant of a path asked for once, and what a backup wrote measured. No DOM.
 
 import { engineOf } from "../../engines/index.js";
+import { fileName, passwordFile } from "../../platform.js";
 import { errorText } from "../../tabs.js";
 import { majorOf } from "./args.js";
 
@@ -125,11 +126,13 @@ export async function sizeOf(/** @type {Pick<Deps, "bridge">} */ deps, /** @type
 }
 
 /** Where the password comes from, as the panel says it (never the password itself). */
-export const passwordNote = (/** @type {string | undefined} */ password) =>
+export const passwordNote = (
+  /** @type {string | undefined} */ password,
+  /** @type {import("../../clients.js").Platform} */ platform = "mac",
+) =>
   password
     ? "The password typed this session goes in PGPASSWORD of the program's environment only."
-    : "No password given: libpq reads ~/.pgpass, else the server must not ask for one.";
+    : `No password given: libpq reads ${passwordFile(platform)}, else the server must not ask for one.`;
 
-/** The last line of a path. */
-export const fileName = (/** @type {string} */ path) =>
-  path.replace(/\/+$/u, "").split("/").at(-1) ?? path;
+/** The last part of a path, with either separator. */
+export { fileName };

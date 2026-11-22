@@ -9,7 +9,7 @@ import { createAgentCommands } from "./agent.js";
 import { answerer, guarded } from "./answer.js";
 import { createAsk } from "./ask.js";
 import { createCatalog } from "./catalog.js";
-import { createClients, searchPath } from "./clients.js";
+import { createClients, runsOn } from "./clients.js";
 import { registerCommands } from "./commands.js";
 import { loadConnections, newId, normalize, saveConnections } from "./connections.js";
 import { createConsoleFiles } from "./console-files.js";
@@ -92,17 +92,18 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
         running = count;
         busy();
       },
-      searchPath: () => searchPath(options.platform ?? "mac", settings.path),
+      ...runsOn(options.platform ?? "mac", () => settings.path),
     });
   const output = options.output((reads) => {
     reading = reads;
     busy();
     view.reading?.(reads);
   });
-  // PostgreSQL's runs on the core's sessions (ADR 0281): a console's and a table view's kept, any
-  // other run's its own (PG-02, ADR 0320).
+  // PostgreSQL's runs on the core's sessions (ADR 0281, 0320); a password command runs (ADR 0354).
   const held = createPluginSessions({
     bridge,
+    runner,
+    confirm: (title, reasons) => confirm(title, reasons),
     view,
     consoles: () => consoles,
     connection: (id) => manager.get(id),
@@ -111,8 +112,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
       sessions = count;
       busy();
     },
-    // A password the keychain keeps signs the session in, so none is asked for (ADR 0311).
-    kept: (conn) => manager.passwords.ref(conn),
+    kept: (conn) => manager.passwords.ref(conn), // the keychain's password signs in (ADR 0311)
     askPassphrase: (conn, why) => manager.passwords.ask(conn, why, true), // ADR 0331
   });
   const pg = held.pg;
@@ -122,7 +122,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     pg.cancel(held.scope());
     output.cancel();
   };
-  const clients = createClients(runner, () => settings);
+  const clients = createClients(runner, () => settings, options.platform ?? "mac");
   const { pick, confirm } = createAsk(commands);
   const list = options.features ?? Object.values(features);
 

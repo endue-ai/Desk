@@ -103,6 +103,8 @@ describe.skipIf(!uri)("agents' tools on a real PostgreSQL", () => {
     ).toEqual({
       checked: true,
       ok: true,
+      params: [],
+      columns: [],
     });
     expect(
       await asAgent(m, "endue.database.check-statement", {

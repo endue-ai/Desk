@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.script needs at least one statement",
+  "instance": {
+    "id": 25,
+    "method": "db.script",
+    "params": { "sessionId": "d-1", "statements": [] }
+  }
+}

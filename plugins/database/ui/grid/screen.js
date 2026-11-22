@@ -104,7 +104,7 @@ export function createScreen(doc, st, hooks) {
       type: column?.type ?? "",
       editor: column?.editor,
       editable: edit?.status === "ready" && (column?.known ?? false) && !fixed && !cell.deleted,
-      reason: fixed || (edit?.status === "refused" ? edit.reason : ""),
+      reason: fixed || column?.why || (edit?.status === "refused" ? edit.reason : ""),
     };
   };
 

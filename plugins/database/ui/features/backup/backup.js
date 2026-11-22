@@ -29,11 +29,12 @@ import { errorWords } from "./toc.js";
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
  * @typedef {import("../../engines/common.js").Connection} Connection
+ * @typedef {import("../../clients.js").Platform} Platform
  * @typedef {import("./args.js").DumpOptions} DumpOptions
  * @typedef {ReturnType<typeof import("./job.js").createJobs>} Jobs
  * @typedef {{
  *   connection: string, database: string, tag: string, server: string,
- *   program: { command: string, version: string }, schemas: string[], path: string,
+ *   program: { command: string, version: string, platform?: Platform }, schemas: string[], path: string,
  *   env: Record<string, string>, password: string, options: DumpOptions,
  * }} BackupModel
  *   What the backup form shows; `env` has no password; `path` is "" until the save dialog names one.
@@ -112,11 +113,15 @@ export async function backup(deps, jobs, args) {
     database: conn.database,
     tag: conn.tag,
     server: release(server),
-    program: { command: program.command, version: program.version },
+    program: {
+      command: program.command,
+      version: program.version,
+      platform: deps.clients.platform,
+    },
     schemas,
     path: typeof args.path === "string" ? args.path : "",
     env: shown,
-    password: passwordNote(password),
+    password: passwordNote(password, deps.clients.platform),
     options: given(args, major),
   };
   const answer = /** @type {Record<string, unknown> | undefined} */ (
@@ -132,8 +137,8 @@ export async function backup(deps, jobs, args) {
     {
       kind: "backup",
       title: `Back up ${conn.name} to ${fileName(path)}`,
-      command: commandLine(program.command, argv, shown),
-      password: passwordNote(password),
+      command: commandLine(program.command, argv, shown, deps.clients.platform),
+      password: passwordNote(password, deps.clients.platform),
       noun: "tables",
     },
     Date.now(),

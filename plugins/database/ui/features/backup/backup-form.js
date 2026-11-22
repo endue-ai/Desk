@@ -187,7 +187,7 @@ export function backupDialog(doc, model, done) {
       const options = dumpOptions(raw, major);
       const argv = dumpArgs(options, model.path || "~/chosen", major);
       const target = model.path ? argv : [...argv.slice(0, -1)];
-      const line = commandLine(model.program.command, target, model.env);
+      const line = commandLine(model.program.command, target, model.env, model.program.platform);
       command.textContent = model.path ? line : `${line} --file=(chosen next)`;
       problem.textContent = "";
       submit.disabled = false;

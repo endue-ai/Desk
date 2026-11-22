@@ -1,0 +1,14 @@
+/* Reconnect beside a lost PostgreSQL session in the header (features/reconnect/, PG-105): a quiet
+   button at the actions' size, so the header keeps its one row and the actions that no longer fit
+   go behind More. Every size comes from the theme's --desk-* tokens; the feature links this sheet. */
+
+#session-reconnect {
+  --desk-button-height: var(--desk-control-xs);
+  --desk-button-padding-x: var(--desk-space-2);
+  flex: none;
+  white-space: nowrap;
+}
+
+#session-reconnect[hidden] {
+  display: none;
+}
