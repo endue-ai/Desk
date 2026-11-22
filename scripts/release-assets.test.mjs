@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -94,4 +94,51 @@ describe("release-assets", () => {
     assert.equal(other.status, 1);
     assert.match(other.stderr, /v0\.4\.1 is not version 0\.4\.2/u);
   });
+});
+
+it("requires a signed Linux CLI and lists each app and CLI download once on a retry", (t) => {
+  const dist = mkdtempSync(join(tmpdir(), "endue-release-"));
+  t.after(() => rmSync(dist, { recursive: true, force: true }));
+  const version = "0.4.0";
+  const tag = `v${version}`;
+  const cli = `endue-cli_${version}_linux-x86_64.tar.gz`;
+  const desktop = [...macImages(version), SUMS];
+  for (const file of desktop) writeFileSync(join(dist, file), file);
+  const files = [SCRIPT, "files", dist, "--version", version, "--cli"];
+  assert.notEqual(spawnSync("node", files).status, 0);
+  for (const file of [cli, `${cli}.sig`, "SHA256SUMS-cli"]) writeFileSync(join(dist, file), file);
+  const listed = execFileSync("node", files, { encoding: "utf8" }).trim().split("\n");
+  assert.deepEqual(
+    listed,
+    [...desktop, cli, `${cli}.sig`, "SHA256SUMS-cli"].map((file) => join(dist, file)),
+  );
+  const body = join(dist, "body.md");
+  writeFileSync(body, "Release notes.\n");
+  const notes = () =>
+    execFileSync(
+      "node",
+      [
+        SCRIPT,
+        "notes",
+        body,
+        "--repo",
+        "endue-ai/endue",
+        "--tag",
+        tag,
+        "--version",
+        version,
+        "--signed",
+        "true",
+        "--cli",
+      ],
+      { encoding: "utf8" },
+    );
+  const first = notes();
+  writeFileSync(body, first);
+  assert.equal(notes(), first);
+  assert.ok(first.includes("endue app") && first.includes("endue CLI"));
+  assert.ok(
+    first.includes(`https://github.com/endue-ai/endue/releases/download/${tag}/${cli}.sig`),
+  );
+  assert.ok(first.includes("SHA256SUMS-cli") && first.includes("Linux x86_64"));
 });

@@ -42,6 +42,7 @@ jobs:
       commit: ${{ steps.version.outputs.commit }}
       signed: ${{ steps.apple.outputs.signed }}
       updates: ${{ steps.version.outputs.updates }}
+      cli: ${{ steps.version.outputs.cli }}
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -65,6 +66,15 @@ jobs:
           author="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.author.type')"
           if [ "$author" = Bot ]; then HAS_UPDATER_KEY=false; fi
           echo "updates=$HAS_UPDATER_KEY" >> "$GITHUB_OUTPUT"
+          cli=false
+          if [ "$author" != Bot ] && git cat-file -e "$commit:scripts/package-cli.py" 2>/dev/null; then
+            if [ "$HAS_UPDATER_KEY" != true ]; then
+              echo "::error::Configure the protected CLI signing key and DESK_UPDATER_PUBKEY before attaching downloads"
+              exit 1
+            fi
+            cli=true
+          fi
+          echo "cli=$cli" >> "$GITHUB_OUTPUT"
       - id: apple
         name: Is the build signed with the Developer ID?
         env:
@@ -89,9 +99,60 @@ jobs:
       installers-only: ${{ needs.gate.outputs.updates != 'true' }}
     secrets: inherit
 
+  cli:
+    name: Linux x86_64 CLI
+    needs: gate
+    if: needs.gate.outputs.cli == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    environment: signing
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.commit }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build just the public CLI at the app's tag
+        env:
+          DESK_VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          rustup toolchain install
+          source scripts/package-cli-build-env.sh
+          cargo build --locked -p desk-cli --bin endue --release --target x86_64-unknown-linux-gnu
+          python3 -B scripts/package-cli-licenses/test_archive.py
+          python3 -B scripts/package-cli.py target/x86_64-unknown-linux-gnu/release/endue "$VERSION" --out dist
+      - name: Sign the CLI archive
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      - name: Download and install on minimal Debian
+        env:
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/endue-cli_*.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: endue-linux-cli
+          path: dist/
+          if-no-files-found: error
+
   attach:
     name: attach
-    needs: [gate, build]
+    needs: [gate, build, cli]
+    if: always() && needs.gate.result == 'success' && needs.build.result == 'success' && (needs.cli.result == 'success' || needs.cli.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: signing
@@ -101,6 +162,7 @@ jobs:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       VERSION: ${{ needs.gate.outputs.version }}
       SIGNED: ${{ needs.gate.outputs.signed }}
+      CLI: ${{ needs.gate.outputs.cli }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
@@ -109,10 +171,17 @@ jobs:
           pattern: desk-darwin-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        if: needs.gate.outputs.cli == 'true'
+        with:
+          name: endue-linux-cli
+          path: dist
       - name: Attach the disk images and their checksums
         run: |
           (cd dist && sha256sum endue-desk_*.dmg > SHA256SUMS-macos)
-          files="$(node scripts/release-assets.mjs files dist --version "$VERSION")"
+          cli=()
+          if [ "$CLI" = true ]; then cli+=(--cli); fi
+          files="$(node scripts/release-assets.mjs files dist --version "$VERSION" "${cli[@]}")"
           mapfile -t files <<<"$files"
           gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
       - uses: pnpm/action-setup@v6
@@ -135,8 +204,10 @@ jobs:
       - name: Say in the notes where they are and whether Apple knows the build
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md
+          cli=()
+          if [ "$CLI" = true ]; then cli+=(--cli); fi
           node scripts/release-assets.mjs notes body.md --repo "$GITHUB_REPOSITORY" --tag "$TAG" \
-            --version "$VERSION" --signed "$SIGNED" > notes.md
+            --version "$VERSION" --signed "$SIGNED" "${cli[@]}" > notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
           if [ "$SIGNED" = true ]; then state="signed with the Developer ID and notarised"; else state="ad-hoc signed, not notarised"; fi
           echo "::notice::$TAG carries the macOS app for Apple silicon and Intel ($state)"

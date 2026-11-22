@@ -59,7 +59,7 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
 
 test("it attaches the disk images and their checksums and writes the notes' macOS section", () => {
   const attach = workflow("release-macos").jobs.attach;
-  assert.deepEqual(attach.needs, ["gate", "build"]);
+  assert.deepEqual(attach.needs, ["gate", "build", "cli"]);
   assert.deepEqual(attach.permissions, { contents: "write" }, "the only job that writes");
   const download = attach.steps.find((step) => String(step.uses).startsWith("actions/download-"));
   assert.equal(download.with.pattern, "desk-darwin-*");

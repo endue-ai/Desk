@@ -20,7 +20,11 @@ endue は、これまで Desk と呼ばれていた GUI アプリです。[v0.3.
 - Windows と Linux では、リリースに含まれている場合、以前と同じ形式のパッケージを使います。Windows のインストール先と Debian のパッケージ名 `endue-desk` は引き継がれます。
 - アプリを開くと、`~/.desk` のプロファイルと `plugins.lock`、設定、許可、認証情報への参照を引き続き使えます。v0.3.0 などインストーラーのみの Desk からは、新しいインストーラーで手動更新してください。
 
-公式コマンドは `endue` です。ソースからは `cargo run -p desk-cli -- --help` で試せます。v0.3.0 のディスクイメージには CLI は含まれていません。現在のメジャーバージョンでは既存のスクリプトで `desk` を引き続き使えます。Linux サーバー用の単体 CLI は公開時に別のダウンロードとして掲載されます。
+公式コマンドは `endue` です。ソースからは `cargo run -p desk-cli -- --help` で試せます。v0.3.0 のディスクイメージには CLI は含まれていません。現在のメジャーバージョンでは既存のスクリプトで `desk` を引き続き使えます。
+
+### Linux x86_64 サーバー
+
+リリースに **endue CLI for Linux x86_64** が掲載されたら、アーカイブ、署名、`SHA256SUMS-cli` を空のディレクトリにダウンロードします。`sha256sum -c SHA256SUMS-cli` で確認し、`tar -xzf endue-cli_*_linux-x86_64.tar.gz` で展開します。`ENDUE_BRAIN_URL` に利用する brain v0 サービスの URL を設定して、`./endue-cli_*/bin/endue run "hello"` を実行します。v0.3.0 で公開されているのは macOS アプリのみです。 [配布元の署名を確認する](../../releasing.md#verify-a-linux-cli-download)
 
 ## なぜ endue か
 
