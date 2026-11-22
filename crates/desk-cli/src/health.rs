@@ -138,7 +138,7 @@ fn folder(named: Option<PathBuf>, json: bool) -> Option<PathBuf> {
         let error = json!({ "code": "not_found", "message": why });
         println!("{}", json!({ "ok": false, "error": error }));
     } else {
-        eprintln!("desk doctor: {why}");
+        eprintln!("{} doctor: {why}", crate::name());
     }
     None
 }

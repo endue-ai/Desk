@@ -1,5 +1,6 @@
 {
-  "name": "desk",
+  "name": "endue",
+  "repository": "https://github.com/endue-ai/endue",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.12.0",

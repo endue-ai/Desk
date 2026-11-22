@@ -2,7 +2,7 @@
 
 The endue market's views (ADR 0107): `index.json`, a `MarketIndex` (`specs/market/v0`), and the
 `.desk-plugin` bundles it lists, each a view plugin (`kind: view`, data only). Desks read it from
-`https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json`, the default of the
+`https://raw.githubusercontent.com/endue-ai/endue/main/market/views/index.json`, the default of the
 setting `desk.market.indexes`, and Settings, Market lists its views with every other kind.
 
 ## Publishing a view

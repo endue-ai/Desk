@@ -11,8 +11,8 @@ info:
     reads and sends (ADR 0122). Bodies are snake_case. Readers ignore fields this document does not
     name, and read null as absent.
   contact:
-    name: endue Desk maintainers
-    url: https://github.com/endue-ai/Desk
+    name: endue maintainers
+    url: https://github.com/endue-ai/endue
   license:
     name: Apache-2.0
 servers:

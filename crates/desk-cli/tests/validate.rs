@@ -32,6 +32,23 @@ fn the_examples_and_built_in_plugins_validate() {
 }
 
 #[test]
+fn both_commands_return_the_same_offline_json_and_status() {
+    let dir = repo().join("examples/plugin-hello-ui");
+    let args = ["--json", "plugin", "validate", dir.to_str().unwrap()];
+    let legacy = desk(&args);
+    let path = env!("CARGO_BIN_EXE_endue");
+    let primary = Command::new(path)
+        .args(args)
+        .output()
+        .expect("the endue command is built");
+    assert_eq!(primary.status.code(), Some(0));
+    assert_eq!(
+        (primary.stdout, primary.stderr),
+        (legacy.stdout, legacy.stderr)
+    );
+}
+
+#[test]
 fn the_github_connector_validates_as_an_http_connector_without_an_entry() {
     let dir = repo().join("plugins/github");
     let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);

@@ -25,7 +25,7 @@ pub fn trace(file: &Path, json: bool) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(why) => {
-            eprintln!("desk: {why}");
+            eprintln!("{}: {why}", crate::name());
             ExitCode::from(1)
         }
     }
