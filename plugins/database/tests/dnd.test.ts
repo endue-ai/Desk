@@ -173,7 +173,9 @@ describe("dropping on the Database surface", () => {
   it("refuses a file it cannot do anything with, and says what it takes", async () => {
     const { drop, view } = await database();
     expect(await drop(paths("/Users/me/photo.png"))).toBe("none");
-    expect(view.said.at(-1)).toMatch(/drop a \.sql file, a \.csv or \.json file/);
+    expect(view.said.at(-1)).toMatch(
+      /drop a \.sql file, a \.csv, \.tsv, \.json, \.jsonl or \.xlsx file/,
+    );
   });
 });
 
