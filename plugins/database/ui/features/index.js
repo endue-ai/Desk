@@ -3,6 +3,7 @@
 // feature merge without a conflict.
 
 export { feature as activity } from "./activity/index.js";
+export { feature as assist } from "./assist/index.js";
 export { feature as backup } from "./backup/index.js";
 export { feature as cellValues } from "./cell-values/index.js";
 export { feature as chart } from "./chart/index.js";

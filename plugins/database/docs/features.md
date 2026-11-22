@@ -144,7 +144,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 ## Format SQL, SQL problems and completion
 
-Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md); Eris writing, explaining and fixing a console's SQL, and what is sent: [`assist.md`](assist.md).
 
 ## Results
 

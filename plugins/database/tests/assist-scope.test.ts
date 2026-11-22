@@ -1,7 +1,7 @@
 // The schema Eris is sent (PG-90): a large schema cut to the tables a statement or a sentence names
 // and their neighbours by foreign key, both ways, within the stated budget of tables and characters.
 import { describe, expect, it } from "vitest";
-import { BUDGET, fit, namesIn, pick } from "../ui/features/assist/scope.js";
+import { BUDGET, keepWithin, namesIn, pick } from "../ui/features/assist/scope.js";
 
 type Key = { schema: string; table: string; refSchema: string; refTable: string };
 
@@ -66,7 +66,7 @@ describe("the schema cut", () => {
       columns: Array.from({ length: 40 }, (_, c) => ({ name: `column_${c}`, type: "text" })),
       references: [],
     }));
-    const kept = fit(wide, BUDGET.chars);
+    const kept = keepWithin(wide, BUDGET.chars);
     expect(JSON.stringify(kept.tables).length).toBeLessThanOrEqual(BUDGET.chars);
     expect(kept.tables.length).toBeGreaterThan(0);
     expect(kept.tables.length + kept.left).toBe(30);

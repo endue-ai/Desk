@@ -102,10 +102,11 @@ describe("Eris writes a statement from a sentence", () => {
     m.view.caret = 8;
     await m.host.command("endue.database.assist-write");
     await m.settle();
-    const proposal = dialogs().at(-1)?.model;
-    expect(proposal?.write).toBe(true);
-    expect((proposal?.marks as string[]).join(" ")).toMatch(/DELETE/u);
-    expect((proposal?.marks as string[]).join(" ")).toMatch(/read-only/u);
+    const proposal = dialogs().at(-1)?.model ?? {};
+    const marks = (proposal.marks ?? []) as string[];
+    expect(proposal.write).toBe(true);
+    expect(marks.join(" ")).toMatch(/DELETE/u);
+    expect(marks.join(" ")).toMatch(/read-only/u);
     expect(m.view.text).toBe("select 1");
     expect(m.view.said.at(-1)).toMatch(/put aside/u);
     expect(ran().some((sql) => /^delete/iu.test(sql))).toBe(false);
