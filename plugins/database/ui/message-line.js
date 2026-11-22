@@ -12,12 +12,7 @@ export function lineOf(doc, line, act) {
   const li = el(doc, "li", { class: `line ${line.level}` }, line.text);
   const offer = line.act;
   if (!offer) return li;
-  const press = el(
-    doc,
-    "button",
-    { type: "button", class: "desk-btn line-act" },
-    offer.label,
-  );
+  const press = el(doc, "button", { type: "button", class: "desk-btn line-act" }, offer.label);
   press.addEventListener("click", () => act(offer.action, ...offer.args));
   li.append(press);
   return li;
