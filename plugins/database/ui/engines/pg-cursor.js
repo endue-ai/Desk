@@ -8,6 +8,7 @@
 // session the keeper no longer holds (lost, PG-105) takes its cursor with it: the result says at once
 // that the rest is gone, and no fetch goes to the session that replaces it. No DOM.
 
+import { placed } from "../editor/bind.js";
 import { controlOf } from "../session/transaction-words.js";
 import { classify } from "../sql/classify.js";
 
@@ -17,7 +18,7 @@ import { classify } from "../sql/classify.js";
  * @typedef {import("./common.js").DbError} DbError
  * @typedef {import("./pg-script.js").Plan} Plan
  * @typedef {import("./pg-script.js").Job} Job
- * @typedef {import("../sql/split.js").Statement} Statement
+ * @typedef {import("../editor/bind.js").Bound} Statement
  * @typedef {{ sessionId: string, transaction: import("@endue-ai/bridge").DbTransaction }} Entry
  * @typedef {{ id: string, own: boolean, at: number | undefined, page: number }} Open
  *   `own`: in the plugin's own transaction; `at` the rows before the server's position, when known.
@@ -159,7 +160,8 @@ export function createCursors({ script, kept = () => [] }) {
         maxRows: page,
         statements: [
           ...(lead ? [lead] : mine ? [own(BEGIN)] : []),
-          { ...statement, text: `${PREFIX}${statement.text}` },
+          // Its bound values go with DECLARE, which takes the read's `$n` (ADR 0353).
+          { ...statement, shifts: undefined, text: `${PREFIX}${statement.text}` },
           own(`FETCH FORWARD ${page} FROM ${CURSOR}`),
         ],
       });
@@ -177,12 +179,13 @@ export function createCursors({ script, kept = () => [] }) {
       const result = { ...ran, statements: lead ? [ran.statements[0], outcome] : [outcome] };
       if (failure) {
         const at = failure.position;
-        outcome.error =
+        const error =
           at !== undefined && at >= PREFIX.length
             ? { ...failure, position: at - PREFIX.length }
-            : failure;
-        if (failure.position !== undefined && at !== undefined && at < PREFIX.length)
-          delete outcome.error.position;
+            : { ...failure };
+        if (at !== undefined && at < PREFIX.length) delete error.position;
+        // A bound statement's position goes back to the person's text (ADR 0353).
+        outcome.error = placed(statement, { ...outcome, error }).error;
         outcome.sets = [];
         if (mine) await steps({ ...job, cancelled: false }, plan, [ROLLBACK]);
         if (mine) job.transaction = "idle";

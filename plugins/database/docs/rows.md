@@ -14,7 +14,8 @@ frame's memory (ADR 0352). Modules: `ui/engines/pg-cursor.js` (the cursor on the
 - The read is declared once on the console's kept session (`DECLARE endue_desk_rows SCROLL CURSOR FOR
   ...`) and its first page fetched (`FETCH FORWARD <page>`), in one `db.script` call. The page is the
   `max-rows` setting, 10,000 rows at most. A read that fits one page ends its cursor at once and reads as
-  any result did.
+  any result did. A read with parameters (PG-21) is declared with its bound values, and scrolls the
+  same way.
 
 ## Scrolling
 

@@ -49,6 +49,10 @@ automatic reconnect nor a scroll sends a `FETCH` to the session that replaces it
 the session it was declared on, and the keeper no longer holds that one. Running the statement again is
 the person's act.
 
+A read with bound values (PG-21, ADR 0353) is declared with them: `DECLARE ... CURSOR FOR` takes the
+read's `$n`, and its values and types go beside DECLARE's text as they would beside the read's; the
+FETCHes take none. An error's position is counted back past DECLARE's prefix, then to the person's text.
+
 In manual commit (PG-20) the plugin's BEGIN for the person's transaction goes first in the same call,
 and the cursor is the person's from the start.
 
@@ -84,7 +88,7 @@ is what the single-page read already does with one statement fewer.
 
 ### Confirmation
 
-`plugins/database/tests/rows-cursor.test.ts`, `rows-lost.test.ts`, `rows-views.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
+`plugins/database/tests/rows-cursor.test.ts`, `rows-lost.test.ts`, `rows-views.test.ts`, `rows-bound.test.ts`, `rows-window.test.ts`, `rows-shape.test.ts` and
 `packages/bridge/src/stub-db-cursor.test.ts` on the stub; `rows-live.test.ts` on a real server through the
 core; `packages/runtime/e2e/database-rows.spec.ts` in the runtime page.
 

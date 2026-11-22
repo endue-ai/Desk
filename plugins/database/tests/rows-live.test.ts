@@ -5,7 +5,7 @@
 // with no transaction open. Through a pooler (the option on, against the plain server) a read
 // outside the person's transaction keeps no cursor, and inside it one does. A session ended
 // mid-scroll (pg_terminate_backend) says at once that the rest is gone, and nothing fetches on the
-// session that replaces it. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
+// session that replaces it. A read with bound values declares its cursor with them. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
@@ -28,10 +28,10 @@ const READ = "select g, md5(g::text) as h from generate_series(1, 1000000) g";
 // The plugin holds the server's grant, so a lost session opens again on its own (PG-105).
 const granted = { "perm.query": () => ({ grants: [{ permission: "db:connect" }] }) as never };
 
-async function live(conn: Connection = LIVE): Promise<Mounted> {
+async function live(conn: Connection = LIVE, pick?: () => string): Promise<Mounted> {
   const procs = realProcs(password ? { password } : {});
   const handlers = { ...procs.handlers, ...granted };
-  const m = await mount({ store: { connections: [conn] }, handlers });
+  const m = await mount({ store: { connections: [conn] }, handlers, ...(pick ? { pick } : {}) });
   procs.attach((event) => m.host.emit(event));
   await m.host.call(
     "settings.set",
@@ -179,6 +179,21 @@ describe.skipIf(!uri)("a console's read through a cursor on a real server", () =
     ).toEqual([]);
     await run(m, "select 7");
     expect(set(m).rows).toEqual([["7"]]);
+    await done(m);
+  }, 60_000);
+
+  it("a read with bound values declares its cursor with them, and scrolls", async () => {
+    const m = await live(LIVE, () => "10");
+    const text = "select g from generate_series(1, 1000000) g where g > :low";
+    m.view.text = text;
+    m.view.caret = text.length;
+    m.app.edited(text);
+    await m.host.command("endue.database.run");
+    await m.settle();
+    expect(set(m).window).toMatchObject({ known: PAGE, done: false });
+    expect(set(m).rows[0]).toEqual(["11"]);
+    await m.app.page({ rows: "next" });
+    expect(set(m).rows.at(-1)).toEqual([String(2 * PAGE + 10)]);
     await done(m);
   }, 60_000);
 });
