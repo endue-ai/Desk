@@ -1,7 +1,9 @@
-// PostgreSQL's own parser, libpg_query built to WebAssembly (ui/vendor, ADR 0283), behind two calls:
-// a script in, its raw parse tree as libpg_query's JSON or the server's error out; and a script in,
-// the server's scanner's tokens out (the layout reads them, ADR 0292). No DOM and no fetch: the
-// caller hands over the wasm, so the same module runs in the parse worker and in Node for the tests.
+// PostgreSQL's own parser, libpg_query built to WebAssembly (ui/vendor, ADR 0283), behind three calls:
+// a script in, its raw parse tree as libpg_query's JSON or the server's error out; a script in,
+// the server's scanner's tokens out (the layout reads them, ADR 0292); and a routine's statement in,
+// PL/pgSQL's own tree of its body or its grammar's message out (the problems read it, ADR 0343). No
+// DOM and no fetch: the caller hands over the wasm, so the same module runs in the parse worker and
+// in Node for the tests.
 import PgQueryModule from "../../vendor/libpg-query.mjs";
 
 /**
@@ -12,7 +14,11 @@ import PgQueryModule from "../../vendor/libpg-query.mjs";
  *   `start` and `end` are UTF-8 bytes; `keywordKind` is 0 for none, then unreserved, column name,
  *   type or function name and reserved (1 to 4), as the server's keyword list has them.
  * @typedef {{ tokens: RawToken[] } | { error: string }} RawScan
- * @typedef {{ parse(text: string): RawResult, scan(text: string): RawScan, broken(): boolean }} RawParser
+ * @typedef {{ funcs: Array<Record<string, any>> } | { error: string }} RawPlpgsql
+ *   PL/pgSQL's own parse of the routines of a CREATE FUNCTION, CREATE PROCEDURE or DO statement
+ *   (ADR 0343): each routine's `PLpgSQL_function` tree, or the grammar's message (no position).
+ * @typedef {{ parse(text: string): RawResult, scan(text: string): RawScan,
+ *   plpgsql(text: string): RawPlpgsql, broken(): boolean }} RawParser
  */
 
 // libpg_query's PgQueryParseResult and PgQueryError, 32-bit pointers.
@@ -68,6 +74,33 @@ export async function loadLibpgQuery(wasm) {
         if (!answer.startsWith("{")) return { error: answer };
         const { tokens = [] } = JSON.parse(answer);
         return { tokens };
+      } catch (error) {
+        if (error instanceof SyntaxError) throw error;
+        broken = true;
+        throw error;
+      } finally {
+        if (!broken) {
+          if (result) module._wasm_free_string(result);
+          module._free(input);
+        }
+      }
+    },
+    plpgsql(text) {
+      if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
+      const sent = sendable(text);
+      const size = module.lengthBytesUTF8(sent) + 1;
+      const input = module._malloc(size);
+      if (!input) throw new Error("The SQL parser is out of memory.");
+      let result = 0;
+      try {
+        module.stringToUTF8(sent, input, size);
+        result = module._wasm_parse_plpgsql(input);
+        if (!result) throw new Error("The SQL parser is out of memory.");
+        const answer = module.UTF8ToString(result);
+        // The routines' trees as JSON, or the grammar's message as plain text.
+        if (!answer.startsWith("{")) return { error: answer };
+        const { plpgsql_funcs: funcs = [] } = JSON.parse(answer);
+        return { funcs };
       } catch (error) {
         if (error instanceof SyntaxError) throw error;
         broken = true;

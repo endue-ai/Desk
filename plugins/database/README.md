@@ -8,8 +8,7 @@ no password; the desk may keep a PostgreSQL one in the OS keychain (ADR 0311); [
 `Mod+Shift+B` opens it; every operation is a command `endue.database.*` (`plugin.json`), and
 `endue.database.connections`, `.schema`, `.query`, `.search-data`, `.activity`, `.cancel-session`, `.end-session`,
 `.maintenance`, `.routine`, `.create-table`, `.change-table`, `.paste`, the objects' and the privileges' commands serve
-agents (ADR 0088; a cancel, an end, maintenance, a routine's write, an object's or a privilege's change reach the server
-after the person's yes, ADR 0290, 0293, 0312, 0330; a paste or a table form waits for the person, ADR 0324).
+agents (ADR 0088; a cancel, an end, maintenance, a routine's write, an object's or a privilege's change reach the server after the person's yes, ADR 0290, 0293, 0312, 0330; a paste or a table form waits for the person, ADR 0324).
 
 ## Permissions
 
@@ -29,6 +28,7 @@ path by a case-sensitive pattern under one root: only `*` covers a program a set
 | `fs:write` (`${home}/.endue/database/**`) | Writing that text there, and the entries a restore chose for `pg_restore --use-list` |
 | `proc:spawn` (`*`) | The client a setting (`endue.database.mysql`, `.sqlite3`, `.pg-dump`, `.pg-restore`) names by another name or a full path (`run.js`): that program is asked for at its first run |
 | `db:connect` (`*`) | A PostgreSQL session on a connection's host and port (`engines/pg-session.js`, ADR 0281): each server is asked for at its first run; agents never hold one, they go through the plugin's commands. It also lets the plugin keep that server's password in the OS keychain (`keychain.js`, ADR 0311) |
+| `brain:ask` | Eris's help in a console (`features/assist/`, ADR 0345): a statement written from a sentence, explained or fixed, a plan explained, each asked through `brain.ask` in a session of its own and shown as a proposal, never run; what is sent is shown first: never rows unless a sample is ticked |
 
 ## Tests
 

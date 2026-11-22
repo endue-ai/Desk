@@ -46,6 +46,11 @@ export const BINDINGS = {
     { chord: "Mod+Shift+Enter", action: "runAll", label: "run script" },
     { chord: "Mod+Shift+F", action: "format", label: "format" },
     { chord: "F2", action: "renameAtCaret", label: "" },
+    // Eris in a console (features/assist/, PG-90): write, explain, fix, explain the plan.
+    { chord: "Mod+I", action: "assistWrite", label: "" },
+    { chord: "Mod+E", action: "assistExplain", label: "" },
+    { chord: "Mod+J", action: "assistFix", label: "" },
+    { chord: "Mod+Shift+H", action: "assistPlan", label: "" },
     { chord: "Escape", action: "cancel", label: "cancel" },
   ],
   grid: [
@@ -102,6 +107,8 @@ export const BINDINGS = {
 
 /** Chords this surface keeps from the desk, by area. */
 const CHORDS = new Set(["Mod+Enter", "Mod+Shift+Enter", "Mod+Shift+F", "Mod+F", "Mod+Z"]);
+// Eris's keys in the editor (features/assist/), which no desk-wide key takes.
+for (const chord of ["Mod+I", "Mod+E", "Mod+J", "Mod+Shift+H"]) CHORDS.add(chord);
 
 /**
  * The action a key press runs in an area, or undefined when the desk (or the field) should have it.

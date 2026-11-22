@@ -1,10 +1,8 @@
 // The Database plugin without its DOM: the connections, the explorer, the consoles (as many per
-// connection as the person opens, and .sql files bound to one: console-files.js), table and DDL
-// views and the features' panels as desk buffers, the plugin's commands (commands.js), the
-// features (features/, feature-host.js), the commands for agents and the desk's requests. It talks
-// only to ctx.bridge, ctx.commands and ctx.state and a view, so the SDK's test host runs it with a
-// recording view and scripted clients. The view's actions come back here by name (the object this
-// returns: actions.js and the features').
+// connection as the person opens; console-files.js binds .sql files), table, DDL and feature panels
+// as desk buffers, the commands (commands.js, feature-host.js, agents': each call watched for who
+// makes it, features/audit/) and the desk's requests. It talks only to ctx.bridge, ctx.commands,
+// ctx.state and a view, so the SDK's test host runs it; the view's actions come back here by name.
 
 import { builtinActions } from "./actions.js";
 import { createAgentCommands } from "./agent.js";
@@ -23,6 +21,7 @@ import { createDropped } from "./dropped.js";
 import { createExecutor } from "./execute.js";
 import { createExplorer } from "./explorer.js";
 import { panelsOf, registerFeatures } from "./feature-host.js";
+import { createAgents } from "./features/audit/agents.js";
 import { createCompletion } from "./features/completion/controller.js";
 import * as features from "./features/index.js";
 import { addHistory } from "./history.js";
@@ -76,7 +75,8 @@ import { createTools } from "./tools.js";
  *   `features` are features/index.js's unless given; `plans` reads big plans in a worker;
  *   `startWorker` starts a feature's worker (none: a feature reads in place).
  */
-export function createDatabase({ bridge, commands, state, settings: source }, view, options) {
+export function createDatabase({ bridge, commands: raw, state, settings: source }, view, options) {
+  const commands = createAgents(bridge, () => featureDeps).gate.watch(raw);
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));

@@ -16,10 +16,20 @@ pub fn dist() -> PathBuf {
     if let Some(dir) = std::env::var_os("DESK_SHELL_DIST") {
         return PathBuf::from(dir);
     }
-    if let Some(dir) = bundled(&std::env::current_exe().unwrap_or_default()) {
-        return dir;
+    let exe = std::env::current_exe().unwrap_or_default();
+    let development = option_env!("DESK_PACKAGED_SHELL")
+        .is_none()
+        .then(|| Path::new(env!("CARGO_MANIFEST_DIR")));
+    dist_from(&exe, development)
+}
+
+/// Packaged programs resolve the installed shell even when an installation is incomplete.
+/// Only an unpackaged development binary can fall back to the build checkout.
+fn dist_from(exe: &Path, development: Option<&Path>) -> PathBuf {
+    if let Some(root) = development {
+        return bundled(exe).unwrap_or_else(|| root.join("../dist"));
     }
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../dist")
+    resource(exe, "shell").expect("cannot locate the packaged shell relative to its executable")
 }
 
 /// The shell's files inside a bundle around `exe`, when they are there.
@@ -94,7 +104,7 @@ pub fn home_dir() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{IDENTIFIER, bundled, bundled_plugins, data_dir};
+    use super::{IDENTIFIER, bundled, bundled_plugins, data_dir, dist_from};
     use std::fs;
 
     #[test]
@@ -166,6 +176,12 @@ mod tests {
         } else {
             dir.join("shell")
         };
+        let development = dir.join("checkout/apps/desk/shell");
+        assert_eq!(
+            dist_from(&exe, Some(&development)),
+            development.join("../dist")
+        );
+        assert_eq!(dist_from(&exe, None), shell);
         fs::create_dir_all(&shell).unwrap();
         fs::write(shell.join("index.html"), "<!doctype html>").unwrap();
         assert_eq!(bundled(&exe), Some(shell));

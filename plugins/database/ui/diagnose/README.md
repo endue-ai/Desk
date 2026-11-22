@@ -17,6 +17,8 @@ words. The worker side reads the script; the page side asks for it and draws it.
   problems, each with the server's message and hint.
 - `warnings.js`, `warn-*.js`, `ignore.js` (worker): the warnings (ADR 0328), each rule on a
   statement's tree and bound names, and the `-- endue-ignore` lines.
+- `plpgsql.js`, `plpgsql-checks.js` (worker): a routine's PL/pgSQL body by PL/pgSQL's own grammar
+  (ADR 0343): syntax at the statement it fails in, undeclared names, unused variables, unreachable code.
 - `text.js`: edit distance, the nearest name, a message as one sentence, where a token ends.
 - `model.js` (page): `problemModel(connectionId, view)`, the schema cache's view as the parser's
   model, read schemas only, with the comments, defaults, keys and types completion shows.

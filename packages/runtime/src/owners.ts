@@ -5,6 +5,7 @@
  * not missed.
  */
 import type {
+  BrainAskResult,
   BrainSayResult,
   BridgeEvent,
   BridgeRequest,
@@ -53,6 +54,9 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
   switch (request.method) {
     case "brain.say":
       return `turn:${(response.result as BrainSayResult).turnId}`;
+    // An ask's turn is the asker's as a say's is (ADR 0059): it carries the answer.
+    case "brain.ask":
+      return `turn:${(response.result as BrainAskResult).turnId}`;
     case "fs.watch":
       return `watch:${(response.result as FsWatchResult).watchId}`;
     case "data.subscribe":

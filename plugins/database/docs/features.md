@@ -144,8 +144,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 ## Format SQL, SQL problems and completion
 
-Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md).
-Renaming a name with what keeps its dependents working, extracting and inlining CTEs, qualifying names: [`refactor.md`](refactor.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md). Eris writing, explaining and fixing a console's SQL, and what is sent: [`assist.md`](assist.md). Renaming with what keeps the dependents working, extracting and inlining CTEs, qualifying names: [`refactor.md`](refactor.md).
 
 ## Results
 
@@ -397,4 +396,4 @@ Modules: `features/backup/`.
 - `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
   not agents' tools, so the person runs it (ADR 0324).
 
-Modules: `agent.js`.
+Modules: `agent.js`. More read tools, what agents may reach and their audit list: [`agents.md`](agents.md).

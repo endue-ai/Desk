@@ -1,7 +1,9 @@
 // What pairs up in a script, read from the lexer's tokens (tokens.js), so a bracket inside a string
 // or a comment is never matched: the bracket or quote at the caret and its partner, and the ranges
 // lines fold (a statement over several lines, a block comment or a string over several lines, a
-// parenthesized group). Pure.
+// parenthesized group, a PL/pgSQL body's blocks: plpgsql.js). Pure.
+
+import { bodyFolds } from "./plpgsql.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Token} Token
@@ -179,5 +181,7 @@ export function foldsIn(lexed, from, to) {
   const folds = new Map();
   for (const [at, range] of [...groups, ...others, ...statements])
     if (at >= from && at < to && range.to > range.from) folds.set(at, range);
+  for (const [at, range] of bodyFolds(lexed, tokens))
+    if (!folds.has(at) && at >= from && at < to && range.to > range.from) folds.set(at, range);
   return folds;
 }

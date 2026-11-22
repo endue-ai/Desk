@@ -6,7 +6,7 @@
 
 /**
  * @typedef {"column" | "alias" | "cte" | "table" | "view" | "schema" | "type" | "function" | "keyword"
- *   | "join" | "columns" | "expand" | "snippet"} ItemKind
+ *   | "join" | "columns" | "expand" | "snippet" | "variable" | "parameter"} ItemKind
  * @typedef {{
  *   label: string, kind: ItemKind, detail: string, insert: string, info?: string, snippet?: boolean,
  *   range?: { from: number, to: number }, key: string, scope?: number, type?: string,
@@ -24,6 +24,8 @@ export const SCOPE = {
   columns: 0,
   expand: 0,
   column: 1,
+  variable: 2,
+  parameter: 2,
   alias: 3,
   cte: 3,
   table: 4,
