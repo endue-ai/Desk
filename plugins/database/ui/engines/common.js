@@ -14,10 +14,11 @@
  *   tag: Tag, readOnly: boolean, group?: string, color?: string, sslCert?: string, sslKey?: string,
  *   searchPath?: string, role?: string, timeZone?: string, lockTimeout?: string,
  *   idleTimeout?: string, applicationName?: string, startup?: string,
+ *   passwordCommand?: string, pooler?: boolean,
  * }} Connection
  *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
  *   (ADR 0331); paths only. `searchPath` to `startup`: a PostgreSQL connection's session options,
- *   each only when set (pg-options.js).
+ *   each only when set (pg-options.js). `passwordCommand` and `pooler`: PG-14's (auth/fields.js).
  * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[], origins?: { table: number, column: number }[] }} ResultSet
  *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription); `origins` each
  *   column's table OID and column number there (0 and 0 for an expression; ctid is column -1).
@@ -34,9 +35,10 @@
  * @typedef {{
  *   command: string, args: string[], env: Record<string, string>, cwd?: string,
  *   nonce: string, statements: Statement[], maxRows: number,
- *   counter?: Counter, stopAfter: number,
+ *   counter?: Counter, stopAfter: number, reason?: string,
  * }} Invocation
- *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows).
+ *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows);
+ *   `reason` is what the desk's ask for the program says, when not the client's words.
  * @typedef {{
  *   code: number | null, signal: string | null, stdout: string, stderr: string,
  *   stopped: boolean, cancelled: boolean, timedOut: boolean, overflow: boolean, ms: number,

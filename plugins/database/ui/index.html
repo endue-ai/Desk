@@ -127,6 +127,8 @@
         <label>Colour <select id="f-color" class="desk-field"></select></label>
         <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
         <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> Remember the password in the keychain</label>
+        <label data-for="postgresql">Password command <input id="f-passwordCommand" placeholder="/usr/local/bin/db-token --user app (optional)" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+        <label class="check" data-for="postgresql"><input type="checkbox" id="f-pooler" class="desk-check" /> Through a pooler in transaction mode: keep nothing on the session</label>
         <details id="f-options" data-for="postgresql">
           <summary>Session options</summary>
           <div class="options">
