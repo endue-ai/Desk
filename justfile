@@ -57,6 +57,14 @@ test-unit:
 test-e2e *args:
     node scripts/e2e.mjs test "$@"
 
+# The database plugin's live tests against real PostgreSQL 15 to 19, each in a throwaway container
+# (PG-101, ADR 0351): as the superuser, as a role that is not one with its own search_path, and over
+# TLS with a client certificate. `--versions 17,18`, `--variants main,app,cert`, file names narrow it;
+# skipped with one line where no container runtime answers
+[positional-arguments]
+test-pg-versions *args:
+    node scripts/pg-versions.mjs "$@"
+
 # Static checks: formatting, lints, types, workflows, specs and the theme market (not the CEF shell)
 check:
     cargo fmt --all -- --check

@@ -14,8 +14,8 @@ import { programReply } from "./backup-fixture";
 
 /**
  * What a scripted statement gives back: rows (the first is the header; on PostgreSQL a value may be
- * null), changes, or an error; on PostgreSQL also the columns' type OIDs (text by default), the
- * error's fields, notices with the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
+ * null), changes, or an error; on PostgreSQL also the columns' type OIDs (text by default), their
+ * tables of origin (table OID and column number, 0 and 0 by default), the error's fields, notices with the answer (the server's notices, VERBOSE's INFO, as `INFO:  ...`
  * lines), notices the session sends after it (`afterwards`, db.notice events a turn later, ADR 0334),
  * or a statement that runs until it is cancelled.
  */
@@ -28,6 +28,7 @@ export interface Answer {
   hint?: string;
   position?: number;
   types?: number[];
+  origins?: [number, number][];
   notices?: string[];
   afterwards?: string[];
   waits?: boolean;
@@ -86,13 +87,13 @@ export function scriptedReply(
   return sqliteRun(args, script, env);
 }
 
-const column = (name: string, typeOid = 25): DbColumn => ({
+const column = (name: string, typeOid = 25, [tableOid, columnNumber] = [0, 0]): DbColumn => ({
   name,
   typeOid,
   typeModifier: -1,
   typeSize: -1,
-  tableOid: 0,
-  columnNumber: 0,
+  tableOid,
+  columnNumber,
 });
 const serverError = (message: string, fields: Partial<DbServerError> = {}): DbServerError => ({
   severity: "ERROR",
@@ -129,7 +130,9 @@ export function statementOf(sql: string, answer: Answer): StubStatement {
   }
   if (answer.rows) {
     const [head = [], ...rows] = answer.rows;
-    const columns = head.map((name, i) => column(name ?? "", answer.types?.[i]));
+    const columns = head.map((name, i) =>
+      column(name ?? "", answer.types?.[i], answer.origins?.[i]),
+    );
     return { sql, columns, rows, ...more };
   }
   return { sql, tag: tagOf(sql, answer.changes), ...more };

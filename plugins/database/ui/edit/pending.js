@@ -2,29 +2,49 @@
 // are kept apart from the rows the server sent, drawn as a diff, and turned into one transaction of
 // statements keyed on the table's primary key. Nothing here runs SQL; submit.js does. A result can
 // be changed only when it is one table's rows with every primary key column in it, on a connection
-// that is not read-only. A column's typed editor (cell-editors/, PG-40) writes its literals and says
+// that is not read-only; on PostgreSQL a result is mapped by its columns' origins instead, a join's
+// cells each by its own table (edit/origin-target.js, edit/tables.js, ADR 0350). A column's typed editor (cell-editors/, PG-40) writes its literals and says
 // why a generated column cannot change; DEFAULT is a pending value of its own. Pure, so every rule
 // is tested without a DOM or a client.
 
 import { literalFor } from "../cell-editors/values.js";
 import { qualified } from "../sql/quote.js";
+import { planTables, rowsRefusal, whereOf } from "./tables.js";
 import { isDefault, literal } from "./values.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
  * @typedef {import("../engines/common.js").ResultSet} ResultSet
- * @typedef {{ name: string, type: string, key: boolean, known: boolean, editor?: import("../cell-editors/resolve.js").Editor }} TargetColumn
+ * @typedef {{
+ *   name: string, type: string, key: boolean, known: boolean,
+ *   editor?: import("../cell-editors/resolve.js").Editor, table?: number, why?: string,
+ * }} TargetColumn
  *   One per result column: its table column's type, whether it is part of the primary key,
  *   `known: false` for a result column that is no column of the table (an expression), and the
- *   editor its type gives it (cell-editors/resolve.js).
- * @typedef {{ dialect: Dialect, schema: string, name: string, columns: TargetColumn[], key: number[] }} Target
- *   `key` holds the result columns of the primary key, in the key's order.
+ *   editor its type gives it (cell-editors/resolve.js). Mapped by origins: `table` is its table in
+ *   `tables` and `why` says why a column that is not `known` cannot change.
+ * @typedef {{
+ *   schema: string, name: string, kind: string, by: "primary" | "unique" | "ctid" | "row",
+ *   key: number[], match: number[], insert: boolean, delete: boolean, rank: number,
+ * }} TargetTable
+ *   A table (or view) a result's columns come from: what finds its rows (`by`), the result columns
+ *   of that key (`key`; the ctid column for "ctid") and those compared by value (`match`: its other
+ *   columns for "ctid", every column for "row"), whether it takes new and deleted rows, and its
+ *   place among the result's tables by foreign key (`rank`, 0 first).
+ * @typedef {{
+ *   dialect: Dialect, schema: string, name: string, columns: TargetColumn[], key: number[],
+ *   tables?: TargetTable[], joined?: string[],
+ * }} Target
+ *   `key` holds the result columns of the primary key, in the key's order (mapped by origins, every
+ *   table's key columns); `schema` and `name` are the first table's; `joined` names every relation
+ *   a result of more than one reads.
  * @typedef {(string | null | undefined)[]} NewRow `undefined` leaves the column to its default.
  * @typedef {{ updates: Map<number, Map<number, string | null>>, inserts: NewRow[], deletes: Set<number> }} Changes
  * @typedef {{ col: number, start: number, end: number }} Span Where a cell's literal is in a statement.
- * @typedef {{ kind: "update" | "insert" | "delete", row: number, sql: string, cells: Span[] }} Change
+ * @typedef {{ kind: "update" | "insert" | "delete", row: number, sql: string, cells: Span[], guarded?: string }} Change
  *   `row` is the result row (for an insert, rows.length + its index among the inserts); `cells`
- *   where each changed cell's literal is, so a refusal that points into the statement names it.
+ *   where each changed cell's literal is, so a refusal that points into the statement names it;
+ *   `guarded` names the table when the statement must change exactly one row (edit/tables.js).
  */
 
 /** @returns {Changes} */
@@ -47,6 +67,11 @@ export function refusalOf(conn, target, missing = "") {
   if (conn.readOnly) return `${conn.name} is read-only: its rows cannot be changed here.`;
   if (!target)
     return missing || "Only one table's rows can be changed: this result does not come from one.";
+  if (target.tables) {
+    if (target.columns.some((c) => c.known)) return "";
+    const whys = [...new Set(target.columns.map((c) => c.why ?? "").filter(Boolean))];
+    return `No cell of this result can change. ${whys.slice(0, 3).join(" ")}`.trim();
+  }
   if (target.key.length === 0)
     return `${target.name} has no primary key, so its rows cannot be told apart: edits are refused.`;
   return "";
@@ -120,7 +145,8 @@ export function editCell(changes, target, set, row, col, value) {
   const column = target.columns[col];
   if (!column?.known)
     throw new Error(
-      `${column?.name ?? "This"} is not a column of ${target.name}: it cannot change.`,
+      column?.why ||
+        `${column?.name ?? "This"} is not a column of ${target.name}: it cannot change.`,
     );
   if (column.editor?.fixed) throw new Error(column.editor.fixed);
   if (isDefault(value) && target.dialect === "sqlite" && row < set.rows.length)
@@ -136,7 +162,8 @@ export function editCell(changes, target, set, row, col, value) {
   if (changes.deletes.has(row)) throw new Error("That row is deleted: restore it first.");
   const original = set.rows[row];
   if (!original) throw new Error("That row is gone.");
-  keyOf(target, original);
+  if (target.tables) whereOf(target, column.table ?? 0, original);
+  else keyOf(target, original);
   const update = changes.updates.get(row) ?? new Map();
   if ((original[col] ?? null) === value) update.delete(col);
   else update.set(col, value);
@@ -150,6 +177,8 @@ export function addRow(
   /** @type {Target} */ target,
   /** @type {ResultSet} */ set,
 ) {
+  const refused = target.tables ? rowsRefusal(target, "insert") : "";
+  if (refused) throw new Error(refused);
   changes.inserts.push(target.columns.map(() => undefined));
   return set.rows.length + changes.inserts.length - 1;
 }
@@ -161,11 +190,14 @@ export function deleteRows(
   /** @type {ResultSet} */ set,
   /** @type {number[]} */ rows,
 ) {
+  const refused = target.tables ? rowsRefusal(target, "delete") : "";
+  if (refused) throw new Error(refused);
   const added = rows.filter((r) => r >= set.rows.length).map((r) => r - set.rows.length);
   for (const row of rows) {
     const original = set.rows[row];
     if (row >= set.rows.length || !original) continue;
-    keyOf(target, original);
+    if (target.tables) whereOf(target, 0, original);
+    else keyOf(target, original);
     changes.updates.delete(row);
     changes.deletes.add(row);
   }
@@ -201,6 +233,7 @@ export function revertRows(
  * @returns {Change[]}
  */
 export function planChanges(target, set, changes) {
+  if (target.tables) return planTables(target, set, changes);
   const { dialect } = target;
   const table = qualified(dialect, dialect === "sqlite" ? "" : target.schema, target.name);
   const name = (/** @type {number} */ c) => qualified(dialect, "", target.columns[c]?.name ?? "");

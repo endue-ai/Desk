@@ -4,10 +4,14 @@
 // pg-session.js), sqlite3 (-bail) and the mysql client stop before COMMIT and the server rolls the
 // open transaction back when the session ends. An UPDATE or DELETE that matched no row is said:
 // the row changed or went since it was read. A refusal whose position falls in a cell's literal
-// names that cell's column (PG-40). No DOM.
+// names that cell's column (PG-40). A guarded change (keyed by ctid or by its values, edit/tables.js)
+// that did not change exactly one row fails on the server and says whether its row moved or could
+// not be told apart; a foreign key that held against changes to several tables says so (PG-45). No
+// DOM.
 
 import { split } from "../sql/split.js";
 import { planChanges } from "./pending.js";
+import { MATCHED } from "./tables.js";
 
 /**
  * @typedef {import("./pending.js").Target} Target
@@ -63,7 +67,7 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
   if (at >= 0 || result.statements.some((s) => !s.ran)) {
     const failed = plan[at];
     const error = result.statements[at]?.error;
-    const why = error?.message ?? "the run stopped before the end";
+    const why = whyOf(failed, error, target);
     const position = error?.position;
     const span =
       position === undefined
@@ -88,6 +92,23 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
     ? `Committed ${count}; ${missed.map((c) => describe(c, set)).join(", ")} matched no row: it changed or went since it was read.`
     : `Committed ${count} in one transaction.`;
   return { ok: true, plan, execution, missed, message };
+}
+
+/** What a failed statement's error means, in words. */
+function whyOf(
+  /** @type {Change | undefined} */ failed,
+  /** @type {import("../engines/common.js").DbError | undefined} */ error,
+  /** @type {Target} */ target,
+) {
+  const message = error?.message ?? "the run stopped before the end";
+  const count = failed?.guarded && MATCHED.test(message) ? /"(\d+) rows/u.exec(message)?.[1] : "";
+  if (count === "0")
+    return `it matched no row of ${failed?.guarded}: the row moved or went since it was read (its ctid changes on every update). Read the rows again.`;
+  if (count)
+    return `it matched ${count} rows of ${failed?.guarded}: its values do not tell it apart from another row. Select a key or ctid to change one of them.`;
+  if (error?.code === "23503" && (target.tables?.length ?? 0) > 1)
+    return `${message}. A foreign key between ${target.tables?.map((t) => t.name).join(" and ")} holds against these changes in one Submit: submit them apart.`;
+  return message;
 }
 
 /** A change as words: "row 3 (update)". */
