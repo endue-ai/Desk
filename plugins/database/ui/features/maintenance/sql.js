@@ -22,8 +22,6 @@ import { clusterable, LABELS, on, partitionedTooOld, TITLES } from "./options.js
 export const FLOOR = 130000;
 const FOURTEEN = 140000;
 const SEVENTEEN = 170000;
-/** The plugin's own sessions' application_name (engines/pg-session.js's APPLICATION). */
-export const OWN_APPLICATION = "endue Desk";
 /** A size read waits this long for a lock another session holds, then says so. */
 export const LOCK_TIMEOUT = "SET lock_timeout = 2000";
 
@@ -217,10 +215,12 @@ export function statsQueries(/** @type {Target} */ t) {
   ];
 }
 
-/** The run's own session: the plugin's, this role's, this database's, running this statement. */
+/** The run's own session: the plugin's, this sign-in's, this database's, running this statement. Its
+ * application name and sign-in are this session's own, so a connection's own application name or
+ * role (PG-12) finds it too. */
 const own = (/** @type {string} */ sql) =>
   [
-    `a.application_name = ${text(OWN_APPLICATION)} AND a.usename = current_user`,
+    "a.application_name = pg_catalog.current_setting('application_name') AND a.usename = session_user",
     "AND a.datname = current_database() AND a.pid <> pg_catalog.pg_backend_pid()",
     `AND a.state = 'active' AND a.query <> '' AND starts_with(${text(sql)}, a.query)`,
   ].join(" ");

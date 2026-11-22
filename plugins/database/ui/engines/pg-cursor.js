@@ -52,7 +52,7 @@ export function cursorable(/** @type {Statement} */ statement) {
 }
 
 /** A statement of the plugin's own, as pg-script.js runs one. @returns {Statement} */
-const own = (/** @type {string} */ text) => ({
+export const own = (/** @type {string} */ text) => ({
   text,
   start: 0,
   end: text.length,
@@ -76,17 +76,18 @@ export function createCursors({ script }) {
     /** @type {string[]} */ sqls,
   ) => script(job, { ...plan, mode: "run", statements: sqls.map(own) });
 
-  /** End the session's cursor, if it has one: before another run, or after a failure. */
+  /** End the session's cursor, if it has one, before another run; the entry's transaction follows. */
   const end = async (
     /** @type {Job} */ job,
     /** @type {Plan} */ plan,
-    /** @type {string} */ sessionId,
+    /** @type {Entry} */ entry,
   ) => {
-    const held = open.get(sessionId);
+    const held = open.get(entry.sessionId);
     if (!held) return [];
-    open.delete(sessionId);
+    open.delete(entry.sessionId);
     if (job.transaction === "failed" && !held.own) return [];
     const done = await steps(job, plan, [held.own ? COMMIT : `CLOSE ${CURSOR}`]);
+    entry.transaction = job.transaction ?? entry.transaction;
     return done.notices;
   };
 

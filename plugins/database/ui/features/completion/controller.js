@@ -14,6 +14,7 @@ import { problemModel } from "../../diagnose/model.js";
 import { complete } from "../../editor/complete.js";
 import { snippetsOf } from "../../editor/snippets.js";
 import { engineOf } from "../../engines/index.js";
+import { pathOf } from "../../engines/pg-options.js";
 import { connectHeld } from "../../session/connect-gate.js";
 import { sqlParser } from "../../sql/parse/client.js";
 import { bodyAt } from "../../sql/plpgsql/bodies.js";
@@ -26,8 +27,6 @@ import { picksFor } from "./picks.js";
  */
 
 const COMPLETE_READS = 4;
-/** The server's default search path; a role's or a database's own is not known until a session says. */
-const SEARCH_PATH = ["$user", "public"];
 
 /**
  * @param {Pick<Deps, "consoles" | "manager" | "catalog" | "settings" | "bridge">} deps
@@ -96,8 +95,8 @@ export function createCompletion(deps, parser = sqlParser) {
           doc: shown.id,
           caret,
           offset,
-          searchPath: [...SEARCH_PATH],
-          user: conn.user,
+          // The connection's search path and role (PG-12), else the server's default path.
+          ...pathOf(conn),
           ...options,
         });
       return onPage(conn, text, caret, options);

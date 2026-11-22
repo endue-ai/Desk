@@ -96,3 +96,67 @@ function nameOf(/** @type {Token | undefined} */ token, /** @type {Dialect} */ d
   const inner = token.text.slice(1, -1);
   return close === "]" ? inner : inner.replaceAll(`${close}${close}`, close ?? "");
 }
+
+/** Words that make a statement write; UPDATE after FOR or KEY is a row lock (FOR NO KEY UPDATE). */
+const WRITES = new Set(["INSERT", "UPDATE", "DELETE", "MERGE", "INTO", "CALL", "COPY"]);
+
+/**
+ * Whether a statement only reads, so reading its rows again after a Submit writes nothing: SELECT,
+ * TABLE, VALUES or WITH, with no INSERT, UPDATE, DELETE, MERGE or SELECT INTO at any depth.
+ * @param {Statement} statement
+ */
+export function readsOnly(statement) {
+  const words = statement.tokens.filter((t) => t.type === "word").map((t) => t.text.toUpperCase());
+  if (!["SELECT", "TABLE", "VALUES", "WITH"].includes(words[0] ?? "")) return false;
+  return !words.some(
+    (w, i) =>
+      WRITES.has(w) && !(w === "UPDATE" && (words[i - 1] === "FOR" || words[i - 1] === "KEY")),
+  );
+}
+
+/**
+ * The names a statement reads more than once, so a column of theirs cannot be told to come from
+ * one row (PG-45): every name that is not a qualifier (followed by ".") counts, at any depth, so a
+ * self-join, a subquery over the same table or a column named like its table count twice; and a
+ * WITH query named more than once besides its definition (a CTE read twice, or recursive) makes
+ * every name repeated, since its rows may join with themselves.
+ * @param {Statement} statement
+ * @param {Dialect} dialect
+ * @returns {(name: string) => boolean} Whether `name` (as the catalog writes it) is read twice.
+ */
+export function repeatedNames(statement, dialect) {
+  const tokens = statement.tokens.filter((t) => t.type !== "space" && t.type !== "comment");
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  tokens.forEach((token, i) => {
+    const next = tokens[i + 1];
+    if (next?.type === "op" && next.text === ".") return;
+    const name =
+      token.type === "word" || token.type === "name" ? nameOf(token, dialect) : undefined;
+    if (name !== undefined) counts.set(name, (counts.get(name) ?? 0) + 1);
+  });
+  const twice = withNames(tokens, dialect).some((name) => (counts.get(name) ?? 0) > 2);
+  return (name) => twice || (counts.get(name) ?? 0) > 1;
+}
+
+/** The names a WITH defines: at the top level, each name right before AS, until the main query. */
+function withNames(/** @type {Token[]} */ tokens, /** @type {Dialect} */ dialect) {
+  if (tokens[0]?.type !== "word" || tokens[0].text.toUpperCase() !== "WITH") return [];
+  /** @type {string[]} */
+  const names = [];
+  let depth = 0;
+  /** @type {Token | undefined} */
+  let before;
+  for (const token of tokens.slice(1)) {
+    if (token.type === "op" && token.text === "(") depth++;
+    else if (token.type === "op" && token.text === ")") depth--;
+    else if (depth === 0) {
+      const word = token.type === "word" ? token.text.toUpperCase() : "";
+      if (["SELECT", "TABLE", "VALUES"].includes(word)) break;
+      const name = before && nameOf(before, dialect);
+      if (word === "AS" && name !== undefined) names.push(name);
+      before = token;
+    }
+  }
+  return names;
+}

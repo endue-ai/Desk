@@ -18,7 +18,8 @@
 // backup's place otherwise; a backup's save and open dialogs, and the scripted pg_dump and
 // pg_restore, are backup-fixture.ts's. A connections file waits in ~/Transfer for an import, whose
 // open dialog answers it; an export's save dialog answers a place there. fixture-pg's server has more
-// databases (databases-fixture.ts, PG-13). Never shipped.
+// databases (databases-fixture.ts, PG-13) and answers a join of orders and people with its columns'
+// origins (edit-joins-fixture.ts, PG-45). Never shipped.
 import {
   type BridgeEvent,
   type PluginManifest,
@@ -39,6 +40,7 @@ import {
   DIAGRAM_CONNECTION,
   diagramServer,
 } from "../../../../plugins/database/tests/diagram-fixture";
+import { editJoinsScript } from "../../../../plugins/database/tests/edit-joins-fixture";
 import {
   dbHandlers,
   FIXTURE_CONNECTION,
@@ -57,6 +59,7 @@ import { privilegesServer } from "../../../../plugins/database/tests/privileges-
 import { renameServer } from "../../../../plugins/database/tests/refactor-fixture";
 import { routineServer } from "../../../../plugins/database/tests/routine-fixture";
 import { SEARCH_CONNECTION, searchServer } from "../../../../plugins/database/tests/search-fixture";
+import { showServer } from "../../../../plugins/database/tests/session-options-fixture";
 import { sourceServer } from "../../../../plugins/database/tests/source-search-fixture";
 import { tableDesignServer } from "../../../../plugins/database/tests/table-design-fixture";
 import "../../src/desk.css";
@@ -115,6 +118,8 @@ const fsHandlers: StubHandlers = {
 };
 // sqlite3 runs scripted; backupHandlers adds pg_dump and pg_restore in front of it.
 // `stock` changes from one read to the next, for the comparison (compare-fixture.ts).
+// A join of orders and people with its columns' origins (edit-joins-fixture.ts, PG-45).
+const joins = editJoinsScript(fixtureScript);
 const procs = procHandlers(stockScript(fixtureScript), (event) => emit(event));
 const backup = backupHandlers(
   files,
@@ -145,6 +150,7 @@ const core = browserCore({
     // the objects feature its own, before the activity view's looser matches.
     // fixture-pg's other databases answer before all of them (PG-13), then the schema comparison's
     // reads, which carry their own marker (PG-53).
+    // Innermost, `SHOW` answers each session's own settings (session-options-fixture.ts, PG-12).
     ...dbHandlers(
       withDatabases(
         schemaCompareServer(
@@ -157,7 +163,7 @@ const core = browserCore({
                       routineServer(
                         overviewServer(
                           maintenanceServer(
-                            objectsServer(activityServer(renameServer(fixtureScript)).script)
+                            objectsServer(activityServer(renameServer(showServer(joins))).script)
                               .script,
                           ).script,
                         ),

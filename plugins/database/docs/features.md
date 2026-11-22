@@ -28,7 +28,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), its URI copied back without the password; many moved in one file ([`connections-file.md`](connections-file.md)).
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
-  and can be read-only.
+  and can be read-only; a PostgreSQL one signs in with its session options ([`session-options.md`](session-options.md)), may get its password from a command and may go through a pooler ([`password-command.md`](password-command.md)).
 - Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
   the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
   the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
@@ -152,10 +152,9 @@ Laying SQL out, underlining what the server would refuse, completion: [`editor.m
   code and detail, not run), the notices and a summary.
 - Markers split the output per statement and keep NULL, `''` and `'NULL'` apart. A worker decodes and reads
   it, never the frame's thread, with a bar and Cancel after 300 ms (#38); a run keeps at most 64 MiB of output.
-- A grid that draws only the rows in view. A PostgreSQL console's single read of any size scrolls to its end
-  through a cursor on its session ([`rows.md`](rows.md)); elsewhere a result keeps `max-rows` rows and More
-  rows (`m`) loads four times as many. Sort (`s`), filter the rows on screen (`/`), one row as a record
-  (`t`), and the value viewer (`v`: JSON laid out, text, bytes as a hex dump).
+- A grid that draws only the rows in view. A PostgreSQL console's single read scrolls to its end through a
+  cursor ([`rows.md`](rows.md)); elsewhere a result keeps `max-rows` rows and More rows (`m`) loads four times
+  as many. Sort (`s`), filter (`/`), a row as a record (`t`), the value viewer (`v`: JSON, text, hex dump).
 - A table's view filters (WHERE) and orders (ORDER BY) on the server, pages, counts its rows on request, and
   unsorted reads a PostgreSQL table by its primary key (`ctid` without one), so rows keep their places.
 - Columns hidden (`h`, `H` shows one again), moved (`<` `>`, or a header dragged), pinned at the left (`P`),
@@ -196,8 +195,9 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR 0115).
 - Preview (`p`) shows their SQL; Submit (`Mod+Enter`) runs them in one transaction keyed on the primary key and
   reads the rows again, and a failure rolls all of them back.
-- Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
-  that matched no row is said.
+- On PostgreSQL a join, a table without a primary key and a view are edited by each column's table: [`edit-rows.md`](edit-rows.md).
+- Refused without a key, when the key is not in the result, and on a read-only connection; a change that
+  matched no row is said.
 - A cell is edited by its column's type (ADR 0287): a toggle for a boolean, the labels of an enum, text with
   a picker for a date, time or timestamp (the session's time zone shown for one with a zone), an interval,
   JSON laid out with Format, an array as its elements each checked by the element's type, bytes as hex with
