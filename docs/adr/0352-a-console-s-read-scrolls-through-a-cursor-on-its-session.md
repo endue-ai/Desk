@@ -53,6 +53,9 @@ cursor ends before the console's next run, at a cancel or an error during a fetc
 * Bad, because only a single read qualifies (`DECLARE` takes `SELECT`, `VALUES` and `TABLE`, not `FOR
   UPDATE` or `INTO`), and sorting or filtering a result not fully read runs the statement again with
   ORDER BY and WHERE around it.
+* Bad, because the server's own views name what runs as the cursor's statements: while a page is read,
+  `pg_stat_activity.query` of the console's session reads `FETCH FORWARD ... FROM endue_desk_rows`,
+  not the read as typed.
 * Bad, because a SCROLL cursor over a plan that cannot run backwards makes the server materialize the rows
   read so far (in work_mem, then temporary files).
 

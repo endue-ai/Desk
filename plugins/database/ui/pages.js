@@ -103,6 +103,7 @@ export function createPages(deps) {
     const limit = deps.settings().maxRows;
     if (target.kind === "console" && windowed(target)) {
       if (change.rows) return rows.scroll(target, conn, change.rows);
+      if (change.delta) return rows.scroll(target, conn, change.delta > 0 ? "next" : "back");
       if (change.count) return rows.count(target, conn);
       if (change.all) return rows.all(target, conn);
       if (change.sort !== undefined || change.filters !== undefined)

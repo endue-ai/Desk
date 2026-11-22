@@ -54,21 +54,30 @@ describe.skipIf(!uri)("a console's read through a cursor on a real server", () =
     const m = await live();
     await run(m, READ);
     expect(set(m).window).toMatchObject({ first: 0, known: PAGE, done: false });
+    const gc = (globalThis as { gc?: () => void }).gc;
+    m.view.consoles.splice(0, m.view.consoles.length - 1);
+    gc?.();
     const heap = process.memoryUsage().heapUsed;
     let most = 0;
     const started = Date.now();
     while (!set(m).window?.done) {
       await m.app.page({ rows: "next" });
       most = Math.max(most, set(m).rows.length);
+      // The recording view keeps a copy of every model it drew; only the last is the plugin's.
+      m.view.consoles.splice(0, m.view.consoles.length - 1);
       expect(set(m).window?.gone).toBeUndefined();
     }
     const ms = Date.now() - started;
+    gc?.();
     const grown = (process.memoryUsage().heapUsed - heap) / (1024 * 1024);
     // The measurement in the PR: how long the scroll took and how far the heap moved.
     console.info(
       `rows-live: ${MILLION} rows in ${ms} ms, at most ${most} held, heap ${grown.toFixed(1)} MiB`,
     );
     expect(most).toBeLessThanOrEqual(HOLD_PAGES * PAGE);
+    // Flat: the frame's heap grows by about the rows held, not by the million read (measured
+    // after a collection, when the test runs with --expose-gc).
+    if (gc) expect(grown).toBeLessThan(200);
     const w = set(m).window;
     expect(w).toMatchObject({ known: MILLION, done: true });
     expect(set(m).rows.at(-1)).toEqual([String(MILLION), md5(MILLION)]);

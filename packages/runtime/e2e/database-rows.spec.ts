@@ -50,7 +50,13 @@ test("a read larger than a page scrolls on past its first page, and Count every 
   await expect(summary).toContainText("of at least 1,000");
   await bottom();
   await expect(summary).toContainText("of at least 1,500");
+  await bottom();
   await expect(frame.locator("#result [role=gridcell]", { hasText: /^row 1500$/u })).toBeVisible();
+  // Past 2,000 rows held the first page is let go: the rows held start at 501.
+  await expect(summary).toContainText("of at least 2,000");
+  await bottom();
+  await expect(summary).toContainText("Rows 501–2,500 of at least 2,500");
+  await expect(frame.locator("#result [role=gridcell]", { hasText: /^row 2000$/u })).toBeVisible();
 
   await page.evaluate(() =>
     window.__desk.runtime.commands.run("endue.database.count-result-rows", {}),
