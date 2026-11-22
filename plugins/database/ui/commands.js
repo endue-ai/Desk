@@ -4,6 +4,7 @@
 
 import { formatUri, loadConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
+import { settle } from "./features/transactions/settle.js";
 import { formatDuration } from "./format.js";
 
 /**
@@ -50,7 +51,22 @@ export function registerCommands(deps) {
   answer("endue.database.edit-connection", ({ connection }) => manager.edit(connection));
   answer("endue.database.duplicate-connection", ({ connection }) => manager.duplicate(connection));
   answer("endue.database.remove-connection", ({ connection }) => manager.remove(connection));
-  answer("endue.database.disconnect", ({ connection }) => manager.disconnect(connection));
+  // An open transaction of its consoles asks commit, roll back or stay first (PG-20).
+  answer("endue.database.disconnect", async ({ connection }) => {
+    const conn = await manager.choose(connection, "Database: disconnect which connection?");
+    if (!conn) return undefined;
+    const mine = consoles.consoles().filter((c) => c.connection === conn.id);
+    const cancelled = (/** @type {string} */ message) =>
+      Object.assign(new Error(message), { code: "cancelled" });
+    const asks = { consoles, connection: manager.get, execute: deps.execute, pick: deps.pick };
+    await settle(
+      { ...asks, say: (text) => view.say(text), cancelled },
+      mine,
+      `Disconnect ${conn.name}?`,
+      "Not disconnected.",
+    );
+    return manager.disconnect(conn.id);
+  });
   answer("endue.database.test-connection", async ({ connection }) => {
     const conn = await manager.choose(connection, "Database: test which connection?");
     if (!conn) return undefined;

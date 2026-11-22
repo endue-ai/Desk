@@ -1,0 +1,29 @@
+/* A PostgreSQL console's transaction in the header (features/transactions/, PG-20): the Auto or
+   Manual button, and while a transaction is open its statements and time, flagged when it sits
+   idle, beside Commit and Rollback. Quiet buttons at the actions' size. Every colour, font, size
+   and radius comes from the theme's --desk-* tokens; the feature links this sheet itself. */
+
+#transaction-bar {
+  --desk-button-height: var(--desk-control-xs);
+  --desk-button-padding-x: var(--desk-space-2);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-1);
+  white-space: nowrap;
+}
+
+#transaction-bar[hidden],
+#transaction-bar [hidden] {
+  display: none;
+}
+
+#transaction {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+#transaction[data-flagged="true"] {
+  color: var(--desk-danger-text);
+}
