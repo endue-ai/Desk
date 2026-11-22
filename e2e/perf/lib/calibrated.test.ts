@@ -23,6 +23,8 @@ describe("a budget judged against the machine's calibration", () => {
     expect(limitOf(BASE, 2000)).toBe(150 * 6);
     expect(limitOf({ ...BASE, slack: 10 }, 40)).toBe(320);
     expect(limitOf({ ...BASE, baseline: null }, 20)).toBeNull();
+    // Memory is not slowed by a busy machine.
+    expect(limitOf({ ...BASE, unit: "MiB" }, 40)).toBe(150);
   });
 
   it("a value past its limit fails, one within it passes, one without a baseline is reported", () => {
@@ -37,6 +39,12 @@ describe("a budget judged against the machine's calibration", () => {
 
   it("a baseline from another platform is reported, never failed", () => {
     expect(judge(BASE, 1000, 20, "linux-x64")).toMatchObject({ verdict: "report" });
+  });
+
+  it("past twice as many runs as cores a value past its limit is busy, not failed", () => {
+    expect(judge(BASE, 1000, 20, "darwin-arm64", 2)).toMatchObject({ verdict: "fail" });
+    expect(judge(BASE, 1000, 20, "darwin-arm64", 2.1)).toMatchObject({ verdict: "busy" });
+    expect(judge(BASE, 100, 20, "darwin-arm64", 3)).toMatchObject({ verdict: "pass" });
   });
 
   it("record keeps the value with the calibration and the load it was taken at", () => {
@@ -69,6 +77,7 @@ describe("a budget judged against the machine's calibration", () => {
       () => clock,
     );
     expect(ms).toBe(10);
+    expect(await fastest(2, (run) => [7, 4][run])).toBe(4);
     expect(calibrate(2)).toBeGreaterThan(0);
   });
 });
