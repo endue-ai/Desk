@@ -176,7 +176,7 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   statement: a write runs in a transaction rolled back at the end, under the same guards as any run.
 - Two plans compared side by side, from a console's last eight or from two consoles: the nodes paired by type
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
-  plan over 64 KiB is read in a worker.
+  plan over 64 KiB is read in a worker. Two results compared, and pinned ones: [`results.md`](results.md).
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 - A Map tab draws a result's geometry and geography values, linked to the grid: [`map.md`](map.md).

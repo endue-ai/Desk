@@ -198,20 +198,6 @@
         "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
       },
       {
-        "id": "endue.database.show-map",
-        "title": "Database: show the result on a map",
-        "keywords": [
-          "geometry",
-          "geography",
-          "spatial",
-          "shapes",
-          "map",
-          "point",
-          "polygon",
-          "srid"
-        ]
-      },
-      {
         "id": "endue.database.plan-view",
         "title": "Database: show the plan as a tree, flame or table",
         "keywords": ["query plan", "flame graph", "icicle", "where the time goes"]
@@ -220,6 +206,36 @@
         "id": "endue.database.copy-plan",
         "title": "Database: copy the query plan",
         "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       },
       {
         "id": "endue.database.compare-plans",
@@ -1732,6 +1748,20 @@
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.show-map",
+        "title": "Database: show the result on a map",
+        "keywords": [
+          "geometry",
+          "geography",
+          "spatial",
+          "shapes",
+          "map",
+          "point",
+          "polygon",
+          "srid"
+        ]
       },
       {
         "id": "endue.database.export-connections",
