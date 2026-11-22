@@ -5198,6 +5198,7 @@ pub enum BridgeRequest {
     NetClose(NetCloseRequest),
     DbOpen(DbOpenRequest),
     DbRun(DbRunRequest),
+    DbScript(DbScriptRequest),
     DbFetch(DbFetchRequest),
     DbCopy(DbCopyRequest),
     DbCancel(DbCancelRequest),
@@ -7183,6 +7184,65 @@ pub struct DbRunParams {
 
 /// Result of db.run: the statement's first page.
 pub type DbRunResult = DbPage;
+
+/// Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptRequest {
+    pub id: RequestId,
+    pub method: DbScriptRequestMethod,
+    pub params: DbScriptParams,
+}
+
+/// Parameters of db.script.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptParams {
+    #[serde(rename = "sessionId")]
+    pub session_id: DbSessionId,
+    /// The statements, in the order they run.
+    pub statements: Vec<DbScriptStatement>,
+    /// Run on past a statement's error instead of stopping there.
+    #[serde(rename = "goOn", default, skip_serializing_if = "Option::is_none")]
+    pub go_on: Option<bool>,
+    /// Rows each statement's first page holds: 1000 by default.
+    #[serde(rename = "pageRows", default, skip_serializing_if = "Option::is_none")]
+    pub page_rows: Option<u64>,
+    /// Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger.
+    #[serde(rename = "pageBytes", default, skip_serializing_if = "Option::is_none")]
+    pub page_bytes: Option<u64>,
+}
+
+/// One statement of db.script and its parameters, as db.run takes them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptStatement {
+    /// One statement; two are the server's 42601.
+    pub sql: String,
+    /// $1, $2, ... as text, or null.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<Vec<DbValue>>,
+    /// The parameters' type OIDs; 0, or a missing one, is the server's inference.
+    #[serde(
+        rename = "paramTypes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub param_types: Option<Vec<u64>>,
+}
+
+/// Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DbScriptResult {
+    pub pages: Vec<DbPage>,
+    /// A db.cancel came while the script ran: no statement after the last page started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cancelled: Option<bool>,
+    /// What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<BridgeError>,
+}
 
 /// The next page of the session's open result, or close it without reading on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -13727,6 +13787,14 @@ pub enum DbRunRequestMethod {
     #[default]
     #[serde(rename = "db.run")]
     DbRun,
+}
+
+/// The `method` of [`DbScriptRequest`]: always `"db.script"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DbScriptRequestMethod {
+    #[default]
+    #[serde(rename = "db.script")]
+    DbScript,
 }
 
 /// The `method` of [`DbFetchRequest`]: always `"db.fetch"`.

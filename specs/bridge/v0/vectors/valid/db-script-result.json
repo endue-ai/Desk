@@ -1,0 +1,26 @@
+{
+  "target": "DbScriptResult",
+  "description": "db.script stopped at the second statement's error, each page with its own notices",
+  "instance": {
+    "pages": [
+      {
+        "rows": [],
+        "more": false,
+        "tag": "INSERT 0 1",
+        "rowCount": 1,
+        "transaction": "idle",
+        "notices": [{ "severity": "NOTICE", "code": "00000", "message": "row 1 checked" }]
+      },
+      {
+        "rows": [],
+        "more": false,
+        "transaction": "idle",
+        "error": {
+          "severity": "ERROR",
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"t_pkey\""
+        }
+      }
+    ]
+  }
+}
