@@ -39,8 +39,16 @@ import { nextPaint, reportStartup } from "./startup";
 import { followSystemNotices } from "./system-notices";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
-// The shell window's uncaught errors become local crash reports from here on (#322).
-const stopCrashReports = reportCrashes(window, (command, args) => invoke(command, args));
+// The shell window's uncaught errors become local crash reports once the desk is ready (#322, #566).
+let deskReady = () => {};
+const reportsStart = new Promise<void>((resolve) => {
+  deskReady = resolve;
+});
+const stopCrashReports = reportCrashes(
+  window,
+  (command, args) => invoke(command, args),
+  reportsStart,
+);
 window.addEventListener("pagehide", stopCrashReports, { once: true });
 
 // Start-up phases for the app's trace (DESK_TRACE=1): from the page's time origin to this code.
@@ -266,6 +274,7 @@ const disposeUpdates = installUpdates({
 window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
+deskReady();
 const ready = performance.now();
 const painted = nextPaint();
 // The native palette window has no runtime of its own: it follows the theme in force here (TH-08).
