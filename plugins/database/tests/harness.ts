@@ -15,6 +15,7 @@ import type { Feature } from "../ui/feature-host.js";
 import type { FormModel, PasswordModel } from "../ui/manage.js";
 import { type Script, scriptedDb, scriptedReply } from "./clients";
 import { inProcessOutput } from "./output";
+import { runsOf } from "./runs-of";
 
 export { type Answer, type Script, scriptedDb, sqliteRun } from "./clients";
 
@@ -257,10 +258,10 @@ export async function mount(
   };
 }
 
-/** The SQL of every db.run, by session in the order each first ran. */
+/** The SQL of every db.run (and db.script's statements), by session in the order each first ran. */
 export function sessionsOf(calls: readonly { method: string; params?: unknown }[]): string[][] {
   const by = new Map<string, string[]>();
-  for (const call of calls) {
+  for (const call of runsOf(calls)) {
     if (call.method !== "db.run") continue;
     const { sessionId, sql } = call.params as { sessionId: string; sql: string };
     by.set(sessionId, [...(by.get(sessionId) ?? []), sql]);

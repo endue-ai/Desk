@@ -3227,6 +3227,7 @@ export type BridgeRequest =
   | NetCloseRequest
   | DbOpenRequest
   | DbRunRequest
+  | DbScriptRequest
   | DbFetchRequest
   | DbCopyRequest
   | DbCancelRequest
@@ -4581,6 +4582,45 @@ export interface DbRunParams {
 
 /** Result of db.run: the statement's first page. */
 export type DbRunResult = DbPage;
+
+/** Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's. */
+export interface DbScriptRequest {
+  id: RequestId;
+  method: "db.script";
+  params: DbScriptParams;
+}
+
+/** Parameters of db.script. */
+export interface DbScriptParams {
+  sessionId: DbSessionId;
+  /** The statements, in the order they run. */
+  statements: DbScriptStatement[];
+  /** Run on past a statement's error instead of stopping there. */
+  goOn?: boolean;
+  /** Rows each statement's first page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+}
+
+/** One statement of db.script and its parameters, as db.run takes them. */
+export interface DbScriptStatement {
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** $1, $2, ... as text, or null. */
+  params?: DbValue[];
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+}
+
+/** Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page). */
+export interface DbScriptResult {
+  pages: DbPage[];
+  /** A db.cancel came while the script ran: no statement after the last page started. */
+  cancelled?: boolean;
+  /** What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error). */
+  failure?: BridgeError;
+}
 
 /** The next page of the session's open result, or close it without reading on. */
 export interface DbFetchRequest {
@@ -8099,6 +8139,7 @@ export interface BridgeMethodMap {
   "net.close": { params: NetCloseParams; result: NetCloseResult };
   "db.open": { params: DbOpenParams; result: DbOpenResult };
   "db.run": { params: DbRunParams; result: DbRunResult };
+  "db.script": { params: DbScriptParams; result: DbScriptResult };
   "db.fetch": { params: DbFetchParams; result: DbFetchResult };
   "db.copy": { params: DbCopyParams; result: DbCopyResult };
   "db.cancel": { params: DbCancelParams; result: DbCancelResult };
@@ -8300,6 +8341,7 @@ export const BRIDGE_METHODS = [
   "net.close",
   "db.open",
   "db.run",
+  "db.script",
   "db.fetch",
   "db.copy",
   "db.cancel",

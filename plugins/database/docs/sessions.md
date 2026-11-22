@@ -29,6 +29,9 @@ Which session a PostgreSQL run goes to, and what stays on it (ADR 0320). The res
 - A statement's notices are those its pages carry, so they stay with it whatever order things arrive in
   (ADR 0334); a COMMIT's (a deferred trigger's) and those the session sends outside any run are the run's
   own lines, on the next run of a kept session.
+- A script's statements go to the session in batches (`db.script`, ADR 0344): 200 statements or 1 MiB
+  of SQL a call, each with its own rows, notices and error, so a long script or `.sql` file is not held
+  up by a bridge call per statement; the first error still stops it there, and Cancel stops the batch.
 - Connecting is asked only from the person's act (ADR 0335): the first run, Test or Connect raises the
   `db:connect` question for a server; the completions read its catalog only once the plugin holds the grant
   (`perm.query`, which asks nothing), so typing never raises it. A refused run says "Allow connecting to

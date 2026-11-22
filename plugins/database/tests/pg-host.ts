@@ -16,6 +16,7 @@ import { createSessions } from "../ui/engines/pg-session.js";
 import type { Passphrases } from "../ui/engines/pg-tls.js";
 import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
+import { runsOf } from "./runs-of";
 
 export const ME = "endue.database";
 
@@ -101,6 +102,9 @@ export function sessionExecutor(
     cancelled: (message) => Object.assign(new Error(message), { code: "cancelled" }),
   });
   /** Every call of `method`, in order. */
-  const made = (method: string) => calls.filter((c) => c.method === method).map((c) => c.params);
+  const made = (method: string) =>
+    (method === "db.run" ? runsOf(calls) : calls)
+      .filter((c) => c.method === method)
+      .map((c) => c.params);
   return { execute: executor.execute, sessions, calls, made, core, asked, kept };
 }

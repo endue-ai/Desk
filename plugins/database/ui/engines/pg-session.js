@@ -8,14 +8,17 @@
 // `passwordRef`, ADR 0311; the core reads the password file first), and starts read-only for a read-only connection. Cancel is
 // db.cancel, for the runs of the console on screen, or of one run its signal stops (a kept session
 // stays open); the statement timeout is the server's statement_timeout, which a kept session takes
-// again with SET when the setting changed. No DOM.
+// again with SET when the setting changed. Every session signs in with the connection's session
+// options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). No DOM.
 
 import { endpoint } from "../keychain.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
 import { failedRun } from "./common.js";
+import { sessionSettings } from "./pg-options.js";
 import { noticeOf, refusedOf } from "./pg-result.js";
 import { createScript } from "./pg-script.js";
+import { runStartup } from "./pg-startup.js";
 import { createTls } from "./pg-tls.js";
 
 /**
@@ -57,11 +60,16 @@ export function targetOf(/** @type {Connection} */ conn) {
   return { host, port: conn.port ?? 5432, database: conn.database || conn.user, user: conn.user };
 }
 
-/** The session's settings: its name on the server, ISO dates, the statement timeout. */
-export const settingsOf = (/** @type {number} */ timeoutMs) => ({
+/** The session's settings: its name on the server, ISO dates, the statement timeout, then the
+ * connection's own session options (its application name over the plugin's). */
+export const settingsOf = (
+  /** @type {number} */ timeoutMs,
+  /** @type {Connection | undefined} */ conn = undefined,
+) => ({
   application_name: APPLICATION,
   DateStyle: "ISO",
   ...(timeoutMs > 0 ? { statement_timeout: String(timeoutMs) } : {}),
+  ...(conn ? sessionSettings(conn) : {}),
 });
 
 /**
@@ -151,7 +159,7 @@ export function createSessions(bridge, options = {}) {
       engine: "postgresql",
       ...target,
       ...signIn(conn, target, plan),
-      settings: settingsOf(plan.timeoutMs),
+      settings: settingsOf(plan.timeoutMs, conn),
       ...(conn.readOnly ? { readOnly: true } : {}),
       timeoutMs: SIGN_IN_MS,
       scope,
@@ -169,6 +177,8 @@ export function createSessions(bridge, options = {}) {
       );
       if (opened.sessionId) {
         own.add(opened.sessionId);
+        const failed = await runStartup(first, conn, opened.sessionId, plan.timeoutMs);
+        if (failed) return { error: failed };
         return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
       }
       if (opened.keyPassword) return { error: tls.refused(conn, opened.keyPassword) };
@@ -196,6 +206,11 @@ export function createSessions(bridge, options = {}) {
   };
 
   const { script } = createScript({ call, sinks, setTimer, clearTimer });
+  /** What the startup script runs on, before the session is handed out. */
+  const first = {
+    script,
+    close: (/** @type {string} */ id) => call("db.close", { sessionId: id }),
+  };
   const keeper = createKeeper({
     call,
     slots,

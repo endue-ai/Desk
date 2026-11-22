@@ -34,6 +34,8 @@ impl Task {
         let messages = messages(&statement, limits).map_err(Fail::Call)?;
         self.conn.out.extend_from_slice(&messages);
         self.send().await?;
+        // A script's last Sync went out with these messages: its answer comes first.
+        self.settle_deferred().await?;
         let described = loop {
             match self.next().await? {
                 Message::ParseComplete | Message::BindComplete => {}

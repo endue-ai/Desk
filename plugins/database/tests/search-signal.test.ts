@@ -37,8 +37,9 @@ describe("a run's own signal on PostgreSQL's sessions", () => {
       signal: mine.signal,
     });
     const other = t.execute(PG, "select pg_sleep(60)", { catalog: true });
-    await until(() => t.made("db.run").length === 2);
-    const [first, second] = t.made("db.run").map((p) => p.sessionId);
+    // The run's two statements go in one batch (ADR 0344), the other run's in a db.run.
+    await until(() => new Set(t.made("db.run").map((p) => p.sessionId)).size === 2);
+    const [first, second] = [...new Set(t.made("db.run").map((p) => p.sessionId))];
     expect(first).not.toBe(second);
 
     mine.abort();
@@ -48,10 +49,11 @@ describe("a run's own signal on PostgreSQL's sessions", () => {
       [false, undefined],
     ]);
     expect(t.made("db.cancel")).toEqual([{ sessionId: first }]);
-    // The other run still waits on its session; nothing after the cancelled statement ran.
+    // The other run still waits on its session; nothing after the cancelled statement ran, and
+    // the cancelled run started nothing more.
     expect(t.sessions.running()).toBe(1);
-    expect(t.made("db.run").map((p) => p.sql)).toEqual([
-      "select pg_sleep(60)",
+    expect(t.made("db.script")).toHaveLength(1);
+    expect(t.calls.filter((c) => c.method === "db.run").map((c) => c.params.sql)).toEqual([
       "select pg_sleep(60)",
     ]);
 
@@ -82,7 +84,9 @@ describe("a run's own signal on PostgreSQL's sessions", () => {
       [true, undefined],
       [false, undefined],
     ]);
-    expect(t.made("db.run").map((p) => p.sql)).toEqual(["select 1"]);
+    // Both went in one batch; the cancel stopped it before the second, which nothing sent again.
+    expect(t.made("db.script")).toHaveLength(1);
+    expect(t.calls.filter((c) => c.method === "db.run")).toEqual([]);
 
     const before = new AbortController();
     before.abort();

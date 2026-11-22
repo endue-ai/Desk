@@ -31,7 +31,11 @@ async function open(page: Page) {
   // The explorer opens the connection's schema cache; completion reads only what it holds.
   await row.click();
   await page.keyboard.press("ArrowRight");
-  await expect(frame.locator("#tree [role=treeitem]", { hasText: "public" })).toBeVisible();
+  // The schema row by its own label: while the cache reads, "publications" is in other rows too.
+  const schema = frame.locator("#tree [role=treeitem]", {
+    has: frame.locator(".label", { hasText: /^public$/u }),
+  });
+  await expect(schema.first()).toBeVisible();
   await page.evaluate(() =>
     window.__desk.runtime.commands.run("endue.database.console", { connection: "fixture-pg" }),
   );

@@ -144,7 +144,8 @@ describe("PostgreSQL on a session through the bridge", () => {
       position: sql.indexOf("nope"),
     });
     expect(after?.ran).toBe(false);
-    expect(t.made("db.run")).toHaveLength(1);
+    // Both went in one db.script batch (ADR 0344), which stopped at the error; nothing after it.
+    expect(t.calls.map((c) => c.method)).toEqual(["db.open", "db.script", "db.close"]);
   });
 
   it("a script in one transaction and a dry run", async () => {

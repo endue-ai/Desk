@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import { type Handlers, type Mounted, mount, SAVED } from "./harness";
 
 const PASSWORD = "fixture-keychain-password";
-const DB = ["open", "run", "fetch", "copy", "cancel", "close", "list"].map((m) => `db.${m}`);
+const DB = ["open", "run", "script", "fetch", "copy", "cancel", "close", "list"].map(
+  (m) => `db.${m}`,
+);
 const KEPT = ["set", "delete", "list"].map((m) => `db.passwords.${m}`);
 const one = () => ({ rows: [["?column?"], ["1"]] });
 

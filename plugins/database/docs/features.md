@@ -28,7 +28,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
   `sqlite:`), its URI copied back without the password; many moved in one file ([`connections-file.md`](connections-file.md)).
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
-  and can be read-only.
+  and can be read-only; a PostgreSQL one signs in with its session options ([`session-options.md`](session-options.md)).
 - Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
   the person types one for the session. A PostgreSQL connection can have the OS keychain remember it (ADR 0311):
   the choice in the form and in the password prompt keeps a typed password once it works, or a URI's on Save,
@@ -144,7 +144,7 @@ Modules: `consoles.js`, `console-many.js`, `console-list.js`, `console-text.js`,
 
 ## Format SQL, SQL problems and completion
 
-Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md). Eris writing, explaining and fixing a console's SQL, and what is sent: [`assist.md`](assist.md).
+Laying SQL out, underlining what the server would refuse, completion: [`editor.md`](editor.md). From a name to its definition, its card and its usages: [`navigate.md`](navigate.md). Eris writing, explaining and fixing a console's SQL, and what is sent: [`assist.md`](assist.md). Renaming with what keeps the dependents working, extracting and inlining CTEs, qualifying names: [`refactor.md`](refactor.md).
 
 ## Results
 
@@ -195,8 +195,9 @@ Modules: `tabs.js`, `results.js`, `clipboard.js`, `pages.js`, `grid-model.js`, `
   row (`+`), delete rows (Delete), revert them (`u`). The changes stay pending and are drawn as a diff (ADR 0115).
 - Preview (`p`) shows their SQL; Submit (`Mod+Enter`) runs them in one transaction keyed on the primary key and
   reads the rows again, and a failure rolls all of them back.
-- Refused without a primary key, when the key is not in the result, and on a read-only connection; a change
-  that matched no row is said.
+- On PostgreSQL a join, a table without a primary key and a view are edited by each column's table: [`edit-rows.md`](edit-rows.md).
+- Refused without a key, when the key is not in the result, and on a read-only connection; a change that
+  matched no row is said.
 - A cell is edited by its column's type (ADR 0287): a toggle for a boolean, the labels of an enum, text with
   a picker for a date, time or timestamp (the session's time zone shown for one with a zone), an interval,
   JSON laid out with Format, an array as its elements each checked by the element's type, bytes as hex with
