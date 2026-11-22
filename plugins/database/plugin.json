@@ -163,16 +163,6 @@
         "keywords": ["url", "dsn"]
       },
       {
-        "id": "endue.database.export-connections",
-        "title": "Database: export connections to a file",
-        "keywords": ["export", "move", "share", "json", "connections", "backup"]
-      },
-      {
-        "id": "endue.database.import-connections",
-        "title": "Database: import connections from a file",
-        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
-      },
-      {
         "id": "endue.database.run",
         "title": "Database: run the statement",
         "keywords": ["execute", "query", "selection"]
@@ -216,6 +206,36 @@
         "id": "endue.database.copy-plan",
         "title": "Database: copy the query plan",
         "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       },
       {
         "id": "endue.database.compare-plans",
@@ -1725,19 +1745,19 @@
         "keywords": ["back", "foreign key", "return", "previous", "grid"]
       },
       {
+        "id": "endue.database.chart",
+        "title": "Database: draw the result as a chart",
+        "keywords": ["chart", "graph", "plot", "bar", "line", "pie", "visualize", "result"]
+      },
+      {
+        "id": "endue.database.chart-export",
+        "title": "Database: export the chart as an image",
+        "keywords": ["chart", "export", "image", "png", "svg", "save"]
+      },
+      {
         "id": "endue.database.pick-key",
         "title": "Database: pick the key from the referenced table",
         "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
-      },
-      {
-        "id": "endue.database.fix-problem",
-        "title": "Database: fix the SQL warning at the caret",
-        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
-      },
-      {
-        "id": "endue.database.switch-database",
-        "title": "Database: switch the database",
-        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
       },
       {
         "id": "endue.database.show-map",
@@ -1752,6 +1772,26 @@
           "polygon",
           "srid"
         ]
+      },
+      {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
+        "id": "endue.database.fix-problem",
+        "title": "Database: fix the SQL warning at the caret",
+        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
+      },
+      {
+        "id": "endue.database.switch-database",
+        "title": "Database: switch the database",
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
       },
       {
         "id": "endue.database.privileges",
@@ -2289,36 +2329,6 @@
           "additionalProperties": false
         },
         "agent": true
-      },
-      {
-        "id": "endue.database.pin-result",
-        "title": "Database: pin the result tab",
-        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
-      },
-      {
-        "id": "endue.database.unpin-result",
-        "title": "Database: unpin a result tab",
-        "keywords": ["unpin", "let go", "result", "tab", "memory"]
-      },
-      {
-        "id": "endue.database.compare-results",
-        "title": "Database: compare two results",
-        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
-      },
-      {
-        "id": "endue.database.run-again-and-compare",
-        "title": "Database: run again and compare with before",
-        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
-      },
-      {
-        "id": "endue.database.copy-difference",
-        "title": "Database: copy the difference of two results",
-        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
-      },
-      {
-        "id": "endue.database.export-difference",
-        "title": "Database: export the difference of two results",
-        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       }
     ],
     "keys": [

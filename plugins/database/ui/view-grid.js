@@ -81,6 +81,7 @@ export function createGrid(doc, host, act, options = {}) {
     found: (value) => finder.marks(value),
     sortKeys: () => shaping.sortKeys(),
     link: (col) => links.title(col),
+    startWorker: options.startWorker,
   });
   const { scroller, head, spacer, body, grid, set, changes, cellOf, size, moveTo } = screen;
   const { blockRows, cursorCell, selection } = screen;
