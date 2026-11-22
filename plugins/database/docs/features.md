@@ -26,7 +26,7 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   whether it is new enough (mysql 8.0.19, mariadb 10.5, sqlite3 3.37), and that PostgreSQL needs none.
 - New, change, duplicate, remove (asked first; its history and buffers go with it), test (the server's version
   and the time it took) and disconnect. A connection from a URI (`postgres://`, `mysql://`, `mariadb://`,
-  `sqlite:`), and its URI copied back without the password.
+  `sqlite:`), its URI copied back without the password; many moved in one file ([`connections-file.md`](connections-file.md)).
 - A connection has a group and a colour, an environment tag (production draws a band at the top of the page)
   and can be read-only.
 - Passwords are never kept with a connection: `~/.pgpass` (read by the desk core) and `~/.my.cnf` work, else
@@ -38,7 +38,6 @@ Modules: `main.js` (the only one that imports the SDK), `database.js` (the contr
   (`keychain.js`, `engines/pg-session.js`).
 - A SQLite file (`*.sqlite`, `*.sqlite3`, `*.db3`) opened on the desk or dropped on the page opens as a
   connection, added the first time.
-- Connections exported to a JSON file without secrets and imported from one or a `pg_service.conf`: [`connections-file.md`](connections-file.md).
 
 Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.js`, `run.js`, `engines/`,
 `features/keychain/`.
