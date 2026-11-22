@@ -130,6 +130,11 @@
   color: var(--desk-danger-text);
 }
 
+/* A PL/pgSQL body's variables and parameters (plpgsql.js). */
+.tok-variable {
+  color: var(--desk-code-tag);
+}
+
 /* The completion list keeps the console's look: a popover of mono rows, the detail at the right. */
 #editor-box .cm-tooltip {
   border: 1px solid var(--desk-border);
