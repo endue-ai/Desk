@@ -141,7 +141,12 @@ describe.skipIf(!uri)("a password command and the pooler choice on a real server
             name: "pool",
             pooler: true,
           } as Partial<Connection>),
-          normalize({ ...pool, id: "c-live-plain", name: "plain" } as Partial<Connection>),
+          normalize({
+            ...pool,
+            id: "c-live-plain",
+            name: "plain",
+            readOnly: true,
+          } as Partial<Connection>),
         ];
         const m = await live(conns, password);
         await m.host.command("endue.database.console", { connection: "pool" });
@@ -167,10 +172,12 @@ describe.skipIf(!uri)("a password command and the pooler choice on a real server
         expect(firstRow(m)).toEqual(["7"]);
         await m.host.command("endue.database.disconnect", { connection: "pool" });
         if (at !== pooler) return;
-        // Not marked, the same pooler refuses the plugin's own startup parameters.
+        // Not marked, a read-only connection's startup parameter is dropped by the pooler (or the
+        // sign-in refused): what the server holds is not what the plugin asked for.
         await m.host.command("endue.database.console", { connection: "plain" });
-        await run(m, "select 1");
-        expect(messages(m).join("\n")).toMatch(/startup parameter/iu);
+        await run(m, "select current_setting('default_transaction_read_only')");
+        const said = messages(m).join("\n");
+        expect(firstRow(m)?.[0] === "off" || /startup parameter/iu.test(said), said).toBe(true);
       },
     );
 });
