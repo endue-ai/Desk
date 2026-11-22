@@ -12,7 +12,7 @@ mod storage_tests;
 mod time;
 
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -172,16 +172,43 @@ impl Crashes {
     }
 
     fn write_at(&self, report: &Report, now: SystemTime) -> io::Result<PathBuf> {
+        let mut bytes = serde_json::to_vec_pretty(report).map_err(io::Error::other)?;
+        bytes.push(b'\n');
         fs::create_dir_all(&self.dir)?;
+        // Different processes can report to the same app data directory at once.
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(self.dir.join(".write.lock"))?;
+        lock.lock()?;
+
         let stamp = time::stamp(now);
-        let mut path = self.dir.join(format!("{stamp}.json"));
-        let mut n = 0;
-        while path.exists() {
-            n += 1;
-            path = self.dir.join(format!("{stamp}-{n}.json"));
+        let latest = self
+            .names()
+            .iter()
+            .rev()
+            .map(|n| order(n))
+            .find(|(t, _)| t == &stamp);
+        let name = match latest {
+            Some((_, n)) => {
+                let next = n
+                    .checked_add(1)
+                    .ok_or_else(|| io::Error::other("report sequence exhausted"))?;
+                format!("{stamp}-{next}.json")
+            }
+            None => format!("{stamp}.json"),
+        };
+        let path = self.dir.join(name);
+        // Readers only open published JSON. A later writer replaces an interrupted staging file.
+        let pending = self.dir.join(".pending");
+        match fs::remove_file(&pending) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+            _ => {}
         }
-        let text = serde_json::to_string_pretty(report).map_err(io::Error::other)?;
-        fs::write(&path, format!("{text}\n"))?;
+        fs::File::create_new(&pending)?.write_all(&bytes)?;
+        fs::rename(pending, &path)?;
         for old in self.names().iter().rev().skip(KEEP) {
             let _ = fs::remove_file(self.dir.join(old));
         }
@@ -268,7 +295,7 @@ pub fn install_hook(data: PathBuf, context: Arc<Context>) {
             &context,
         );
         if let Err(why) = crashes.write(&report) {
-            eprintln!("endue Desk: the crash report was not written ({why})");
+            eprintln!("endue could not write the crash report ({})", why.kind());
         }
         previous(info);
     }));

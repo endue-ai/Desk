@@ -22,7 +22,11 @@ fn report(n: usize) -> Report {
 #[test]
 fn pruning_preserves_the_order_within_a_millisecond() {
     with_crashes("order", |crashes| {
+        fs::create_dir_all(crashes.dir()).unwrap();
+        fs::write(crashes.dir().join(".pending"), "endue").unwrap();
+        assert!(crashes.newest().is_none());
         let first = crashes.write_at(&report(0), UNIX_EPOCH).unwrap();
+        assert!(!crashes.dir().join(".pending").exists());
         assert_eq!(first.file_name().unwrap(), "19700101T000000000Z.json");
         for n in 1..KEEP + 5 {
             let last = crashes.write_at(&report(n), UNIX_EPOCH).unwrap();
