@@ -1,7 +1,8 @@
 // The plugin's settings, from `init.get` (the layer the core serves today) over the defaults the
 // manifest declares. A value of the wrong type, out of range or not one of its choices keeps the
 // default. The `format-*` settings hold Format SQL's style (ui/sql/layout/style.js, ADR 0292) and
-// whether Save lays a bound .sql file out first (`format-on-save`).
+// whether Save lays a bound .sql file out first (`format-on-save`); the `problems-*` settings which
+// of the editor's SQL problems and warnings are told (ADR 0294, ADR 0328).
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
 
 /**
@@ -11,6 +12,7 @@ import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
  *   formatKeywordCase: string, formatIndent: number, formatLineWidth: number, formatComma: string,
  *   formatAndOr: string, formatJoins: string, formatOneLine: string, formatLists: string,
  *   formatOnSave: boolean, problemsSyntax: boolean, problemsNames: boolean,
+ *   problemsWarnings: boolean, problemsWarningsOff: string[],
  *   pgDump: string, pgRestore: string,
  * }} Settings
  */
@@ -37,6 +39,8 @@ export const DEFAULTS = Object.freeze({
   formatOnSave: false,
   problemsSyntax: true,
   problemsNames: true,
+  problemsWarnings: true,
+  problemsWarningsOff: [],
   pgDump: "",
   pgRestore: "",
 });
@@ -72,6 +76,8 @@ const KEYS =
     formatOnSave: { key: "endue.database.format-on-save" },
     problemsSyntax: { key: "endue.database.problems-syntax" },
     problemsNames: { key: "endue.database.problems-names" },
+    problemsWarnings: { key: "endue.database.problems-warnings" },
+    problemsWarningsOff: { key: "endue.database.problems-warnings-off" },
     pgDump: { key: "endue.database.pg-dump" },
     pgRestore: { key: "endue.database.pg-restore" },
   });
