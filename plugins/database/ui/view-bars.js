@@ -112,7 +112,8 @@ export function createBars(doc) {
       byId("changes-count").textContent = edit?.count
         ? `${formatCount(edit.count)} pending change${edit.count === 1 ? "" : "s"}`
         : "";
-      byId("edit-note").textContent = edit?.message ?? tab?.note ?? "";
+      byId("edit-note").textContent =
+        tab?.kind === "notifications" ? (tab.note ?? "") : (edit?.message ?? "");
       byId("notifications-bar").hidden = tab?.kind !== "notifications";
       byId("listen-again").hidden = !tab?.stopped;
       // A console's result pins (features/compare/); a pinned one unpins.

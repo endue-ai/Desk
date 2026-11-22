@@ -126,7 +126,7 @@ What a role may do and why, and its privileges changed by the exact script: [`pr
   the other clients SIGINT (mysql cancels the query on the server, sqlite3 interrupts it), then SIGKILL a
   second later; `timeout-seconds` stops a long run, and PostgreSQL ends it on the server (`statement_timeout`).
 - On PostgreSQL each console and each table view keeps a session of its own, so what one run sets the next
-  sees (ADR 0320): [`sessions.md`](sessions.md).
+  sees (ADR 0320): [`sessions.md`](sessions.md); live notices and LISTEN: [`notifications.md`](notifications.md).
 - History of what ran on each connection, searched from the palette (never results, never a statement that
   carries a password), and starred queries.
 - SQL text dropped on the page goes into the console on screen, or the console of a connection the person picks.

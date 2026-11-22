@@ -46,7 +46,6 @@ test("a NOTIFY from another console shows on the listening console's Notificatio
   await runs("LISTEN jobs");
   const tab = frame.locator("#tabs [role=tab].tab-notifications");
   await expect(tab).toHaveText("Notifications");
-  await expect(frame.locator("#edit-note")).toHaveText("Listening on jobs.");
 
   await command(page, "endue.database.new-console", { connection: "fixture-pg" });
   await runs("NOTIFY jobs, 'order 7 paid'");
@@ -60,6 +59,7 @@ test("a NOTIFY from another console shows on the listening console's Notificatio
   const grid = frame.locator("#result");
   await expect(grid).toContainText("order 7 paid");
   await expect(grid).toContainText("jobs");
+  await expect(frame.locator("#edit-note")).toHaveText("Listening on jobs.");
   await expect(frame.locator("#notifications-bar")).toBeVisible();
   await expect(frame.locator("#listen-again")).toBeHidden();
   await page.screenshot({ path: test.info().outputPath("listen-tab.png") });

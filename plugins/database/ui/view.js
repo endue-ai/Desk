@@ -251,7 +251,9 @@ export function createView(doc, act, features = Object.values(all), options = {}
     if (charted) charts.show(byId("result"), tab);
     drawn = key;
     if (fresh) record.setAttribute("aria-pressed", String(grid.recording()));
-    if (tab?.set && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
+    // What a session heard is no table's rows: nothing to edit (PG-25).
+    const rows = tab?.set && tab.kind !== "notifications";
+    if (rows && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
       asked = key;
       act("canEdit");
     }
