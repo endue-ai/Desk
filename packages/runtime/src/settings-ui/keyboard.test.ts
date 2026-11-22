@@ -332,10 +332,10 @@ describe("keyboard settings' list", () => {
       ["All commands (4)", "false"],
     ]);
     expect(shown()).toEqual(["desk.a.keyed", "endue.notes.new"]);
-    expect(headings()).toEqual(["Desk", "Notes"]);
+    expect(headings()).toEqual(["endue", "Notes"]);
     click('[data-key="keys-view-all"]');
     expect(shown()).toEqual(["desk.a.keyed", "desk.a.bare", "endue.git.pull", "endue.notes.new"]);
-    expect(headings()).toEqual(["Desk", "Git", "Notes"]);
+    expect(headings()).toEqual(["endue", "Git", "Notes"]);
   });
 
   it("keeps a row whose key was cleared, and a search looks in every command", () => {
@@ -359,7 +359,7 @@ describe("keyboard settings' list", () => {
       Element.prototype.scrollIntoView = had;
     });
     const index = [...keyboard.el.querySelectorAll<HTMLButtonElement>(".settings-jump button")];
-    expect(index.map((b) => b.textContent)).toEqual(["Desk", "Notes"]);
+    expect(index.map((b) => b.textContent)).toEqual(["endue", "Notes"]);
     index[1]?.click();
     expect(scrolled).toEqual(["Notes"]);
     expect(document.activeElement?.textContent).toBe("Notes");

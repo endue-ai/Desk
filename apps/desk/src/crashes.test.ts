@@ -49,7 +49,7 @@ describe("crash reports from the shell's window (#322)", () => {
     expect(await showLastCrash(document.body, invoke, async () => {})).toBe(true);
     const cards = document.querySelectorAll(".crash-card");
     expect(cards).toHaveLength(1);
-    expect(cards[0]?.querySelector(".crash-title")?.textContent).toBe("Desk crashed last time.");
+    expect(cards[0]?.querySelector(".crash-title")?.textContent).toBe("endue crashed last time.");
     const labels = [...document.querySelectorAll(".crash-actions button")].map(
       (b) => b.textContent,
     );

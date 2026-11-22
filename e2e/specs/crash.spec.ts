@@ -55,7 +55,7 @@ describe("crash: a webview error writes a redacted report, and the next start sh
     await shellReady();
     const card = $(".crash-card");
     await expect(card).toBeDisplayed({ wait: 10_000 });
-    await expect($(".crash-card .crash-title")).toHaveText("Desk crashed last time.");
+    await expect($(".crash-card .crash-title")).toHaveText("endue crashed last time.");
     await expect($$(".crash-card")).toBeElementsArrayOfSize(1);
   });
 

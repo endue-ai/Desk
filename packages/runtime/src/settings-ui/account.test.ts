@@ -147,7 +147,7 @@ describe("Settings, endue account", () => {
     // The switch shows what endue keeps again: still on.
     expect($<HTMLInputElement>(panel.el, "account-notify-agent-notice").checked).toBe(true);
     expect(panel.el.querySelector('[role="status"]')?.textContent).toBe(
-      "Couldn't save: Desk could not reach endue. Check your connection and try again.",
+      "Couldn't save: Could not reach endue.ai. Check your connection and try again.",
     );
     panel.dispose();
   });
@@ -202,7 +202,7 @@ describe("the settings sidebar's identity", () => {
   it("stays the plain desk without an endue ID", async () => {
     const identity = mountAccountIdentity(new BridgeClient(browserStub({})), "en", () => {});
     await identity.refresh();
-    expect(identity.el.textContent).toBe("endue DeskSettings for this device");
+    expect(identity.el.textContent).toBe("endueSettings for this device");
     identity.dispose();
   });
 });

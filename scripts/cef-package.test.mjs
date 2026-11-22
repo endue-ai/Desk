@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { readPin } from "./cef-fetch.mjs";
+import "./cef-package/macos-install.test.mjs";
 import {
   bundleFolder,
   helperApps,
@@ -31,7 +32,7 @@ describe("cef-package", () => {
   it("lays out the CEF framework and the five helper apps CEF looks for on macOS", () => {
     const config = render("aarch64-apple-darwin", { hook: "bash sign.sh hook app" });
     assert.deepEqual(config.formats, ["app", "dmg"]);
-    assert.equal(config.productName, "endue Desk");
+    assert.equal(config.productName, "endue");
     assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }]);
     assert.deepEqual(config.macos.frameworks, [
       "/cef/Chromium Embedded Framework.framework",
@@ -143,6 +144,20 @@ describe("cef-package", () => {
       undefined,
       "the launcher is /usr/bin/endue-desk itself, where a Tauri desk restarts after this .deb went in (#47)",
     );
+  });
+
+  it("shows endue while preserving the OS identities of an installed Desk", () => {
+    for (const target of ["aarch64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]) {
+      const config = render(target);
+      assert.equal(config.productName, "endue");
+      assert.equal(config.identifier, "ai.endue.desk");
+      assert.equal(config.binaries[0].path, "endue-desk");
+    }
+    const win = render("x86_64-pc-windows-msvc");
+    assert.equal(win.nsis.template, join(paths.stage, "installer.nsi"));
+    assert.equal(win.wix.template, join(paths.stage, "main.wxs"));
+    assert.equal(render("x86_64-unknown-linux-gnu").deb.packageName, "endue-desk");
+    assert.equal(targets(render("aarch64-apple-darwin"))["install-endue"], join(paths.stage, "install-endue"));
   });
 
   it("writes each helper's Info.plist with Apple's numeric version", () => {
