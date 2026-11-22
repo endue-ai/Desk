@@ -1,7 +1,7 @@
-# The Database plugin's pinned results and comparisons
+# The Database plugin's pinned results, comparisons, totals and charts
 
 A result kept through later runs, and two results compared row by row (PG-26, ADR 0329). The rest of the
-plugin is in [`features.md`](features.md); a change to pinning or comparing adds its line here.
+plugin is in [`features.md`](features.md); a change to pinning, comparing, totals or charts adds its line here.
 
 - Database: pin the result tab (Pin in the result's toolbar) keeps a console's result through its later
   runs, as a tab after the run's tabs named after its statement and the time it ran (`select * from stock ·
@@ -37,3 +37,28 @@ plugin is in [`features.md`](features.md); a change to pinning or comparing adds
   `~/Downloads/difference-<time>.<ext>`.
 
 Modules: `compare/` (`diff.js`, `client.js`, `worker.js`, `pins.js`), `features/compare/`, `tabs.js`.
+
+## Totals and charts (PG-44, ADR 0336)
+
+- A block of the grid that is more than one cell shows its totals in the footer: Count (values that are not
+  NULL), Distinct, Sum, Average, Min and Max, the NULLs, and `of the N rows fetched (more not loaded)` when the
+  result has more rows than it loaded. Every number is exact decimal text (`chart/decimal.js`): the digits as
+  a BigInt and the places after the point, never floating point, so a bigint past 2^53 and 0.1 + 0.2 sum as on
+  the server; the sum keeps the values' largest scale, the average is rounded half away from zero to six
+  places past it, and NaN and the infinities follow PostgreSQL. When a value is not a number the totals count
+  text and show its minimum and maximum by code point. Pending changes count; the record view shows none.
+- Database: draw the result as a chart (Chart in the result's toolbar) opens a Chart tab right after the
+  result's own: bar, line, area, scatter or pie, of an X column, a Y column (or the count of rows), a series
+  column, and sum, average, count, minimum or maximum of each group, exact as the totals; the command takes
+  `type`, `x`, `y`, `series` and `aggregate`. It draws in the theme's chart tokens that reach 3:1 in both
+  schemes (`--desk-chart-1`, `-4`, `-5`, `-6`, `-8`, `-10`), with a table of the same values for screen
+  readers. It draws at most 50 bars (2,000 points of a line or area), 6 series, 6 slices and 5,000 dots, and
+  says what it left out, the values that are not numbers, and when not every row was fetched.
+- Totals and charts over more than 20,000 cells are counted in the chart's worker (`chart/worker.js`).
+- Database: export the chart as an image writes SVG or PNG (960 by 540) where the person picks; Export in the
+  tab writes a PNG.
+- A chart of a starred query keeps its settings with it (the store's `charts:<connection>`, by the query's
+  name and SQL), so the query's next run draws the same chart.
+
+Modules: `chart/` (`decimal.js`, `aggregate.js`, `engine.js`, `worker.js`, `client.js`, `totals.js`,
+`model.js`, `scale.js`, `draw.js`, `view.js`, `page.js`, `kept.js`), `features/chart/`.

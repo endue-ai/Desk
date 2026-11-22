@@ -6,6 +6,7 @@
 // and a status live region at the bottom. Mod chords other than the surface's own are never
 // prevented, so the desk's keymap gets them.
 
+import { createCharts } from "./chart/view.js";
 import { copyText } from "./clipboard.js";
 import { engineOf } from "./engines/index.js";
 import { dialogsOf, panelsOf } from "./feature-host.js";
@@ -105,6 +106,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     (action, ...args) => (action === "say" ? say(String(args[0])) : act(action, ...args)),
     () => shown?.running ?? false,
   );
+  const charts = createCharts(doc, act, options.startWorker);
   const forms = createForms(doc, act);
   const imports = createImportView(doc, act);
   const bars = createBars(doc);
@@ -233,18 +235,22 @@ export function createView(doc, act, features = Object.values(all), options = {}
     const fresh = key !== drawn;
     if (fresh && quick.value) quick.value = "";
     const page = model.kind === "table" ? model.table : null;
-    grid.render(model.shown.tabs[model.tab] ?? null, fresh, {
-      edit: model.edit,
-      server: Boolean(page),
-      ordered: Boolean(page?.order),
-      // A table view's columns are the table's (kept across restarts), a result's its own.
-      key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
-      sort: page?.sort ?? [],
-      filters: page?.filters ?? [],
-    });
+    const tab = model.shown.tabs[model.tab];
+    // A Chart tab (chart/view.js) takes the result's box from the grid, and keeps it while shown.
+    const charted = tab?.kind === "chart";
+    if (!charted || !charts.showing(tab))
+      grid.render(charted ? null : (tab ?? null), fresh, {
+        edit: model.edit,
+        server: Boolean(page),
+        ordered: Boolean(page?.order),
+        // A table view's columns are the table's (kept across restarts), a result's its own.
+        key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
+        sort: page?.sort ?? [],
+        filters: page?.filters ?? [],
+      });
+    if (charted) charts.show(byId("result"), tab);
     drawn = key;
     if (fresh) record.setAttribute("aria-pressed", String(grid.recording()));
-    const tab = model.shown.tabs[model.tab];
     if (tab?.set && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
       asked = key;
       act("canEdit");

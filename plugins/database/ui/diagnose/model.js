@@ -2,7 +2,8 @@
 // cache holds now (schema-cache/view.js), read without asking the server. A schema the cache lists
 // but did not read is in the model by name alone, so its names are "not read" rather than missing;
 // a system schema it did not read is left out (the resolver knows pg_catalog's own names); sequences
-// have no column list. Partitions, which the cache reads under their root table (PG-50, ADR 0295),
+// have no column list. For the warnings (ADR 0328) a column says when it is NOT NULL and a relation
+// carries its indexes' definitions (pg_get_indexdef's words). Partitions, which the cache reads under their root table (PG-50, ADR 0295),
 // are relations of the schema each lives in, with the root's columns. The model is kept per
 // connection while the cache does not change, so the worker gets it once.
 
@@ -23,10 +24,22 @@ function schemaOf(/** @type {CacheView} */ view, /** @type {string} */ name) {
     .filter((o) => RELATIONS.has(o.kind))
     .map((o) => {
       const columns = o.kind === "sequence" ? undefined : view.columns(name, o.name);
+      const indexes = (view.parts(name, o.name) ?? []).flatMap((p) =>
+        p.kind === "index" && p.detail ? [p.detail] : [],
+      );
       return {
         name: o.name,
         kind: o.kind,
-        ...(columns ? { columns: columns.map((c) => ({ name: c.name, type: c.type })) } : {}),
+        ...(columns
+          ? {
+              columns: columns.map((c) => ({
+                name: c.name,
+                type: c.type,
+                ...(c.nullable === false ? { notNull: true } : {}),
+              })),
+            }
+          : {}),
+        ...(indexes.length > 0 ? { indexes } : {}),
       };
     });
   const routines = (view.routines(name) ?? []).map((r) => ({

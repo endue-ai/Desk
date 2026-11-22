@@ -67,7 +67,7 @@ Modules: `connections.js`, `manage.js`, `keychain.js`, `view-form.js`, `clients.
   a connection, schema, table or index, `x` opens the form of a PostgreSQL function or procedure, `f` searches
   a connection's, schema's or table's values (Value search below), `n`, `e` and Delete add, change and remove
   a connection, `u` adds one from a URI.
-- A table drags its qualified name.
+- A table drags its qualified name; a PostgreSQL connection lists its server's databases ([`databases.md`](databases.md)).
 
 Modules: `explorer.js`, `catalog.js`, `schema-cache/`, `features/schema-cache/`, `schema/` (PostgreSQL's other
 kinds in `schema/pg/`), `view-tree.js`.
@@ -179,7 +179,7 @@ How the console lays SQL out and underlines what the server would refuse: [`edit
   statement: a write runs in a transaction rolled back at the end, under the same guards as any run.
 - Two plans compared side by side, from a console's last eight or from two consoles: the nodes paired by type
   and relation, and what changed in each (its type, cost and time). A plan copies as text or as JSON; a JSON
-  plan over 64 KiB is read in a worker. Two results compared, and pinned ones: [`results.md`](results.md).
+  plan over 64 KiB is read in a worker. Pinned results, comparisons, totals and charts: [`results.md`](results.md).
 - Copy the result, or the selected block, as TSV, CSV, JSON, Markdown, INSERT or UPDATE statements, from a
   key or button in the page and from the palette alike (the Clipboard API first, `clipboard.js`).
 - A Map tab draws a result's geometry and geography values, linked to the grid: [`map.md`](map.md).
