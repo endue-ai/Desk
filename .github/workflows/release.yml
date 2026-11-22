@@ -140,13 +140,15 @@ jobs:
           merge-multiple: true
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: dist/endue-desk_*
+          subject-path: |
+            dist/endue-desk_*
+            dist/endue-cli_*
       - name: Write and sign release.json
         run: |
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum endue-desk_* endue-cli_* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"

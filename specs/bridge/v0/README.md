@@ -325,7 +325,8 @@ grants (`session` or `always`) already covers is granted at once with that grant
 answer answers them all; a `once` answer gives each its own grant. A refusal the person makes is
 remembered for the session for that caller and that permission: asking again answers `granted: false`
 with `reason: "refused-earlier"` at once, without a prompt, until the caller is granted a permission
-that covers it. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
+that covers it, or until the caller sends `again: true`, which it does only from the person's own press
+(an Allow button beside the refusal, ADR 0335): that request is asked again. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
 manifest does not declare answers `reason: "undeclared"` at once (ADR 0260).
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.

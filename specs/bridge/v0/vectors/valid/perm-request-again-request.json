@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.request asks again after a refusal when the person pressed Allow in the caller",
+  "instance": {
+    "id": 9,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "db:connect",
+        "hosts": ["db.example.com:5432"]
+      },
+      "reason": "To run SQL on Orders, a PostgreSQL server",
+      "again": true
+    }
+  }
+}

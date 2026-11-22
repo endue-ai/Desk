@@ -25,7 +25,11 @@
           "type": "string",
           "minLength": 1
         },
-        "duration": { "$ref": "#/$defs/GrantDuration" }
+        "duration": { "$ref": "#/$defs/GrantDuration" },
+        "again": {
+          "description": "The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.",
+          "type": "boolean"
+        }
       },
       "required": ["permission"],
       "additionalProperties": false

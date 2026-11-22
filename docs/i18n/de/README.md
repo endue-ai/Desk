@@ -23,7 +23,11 @@ Sobald die erste Desktop-Version unter dem Namen **endue app** erscheint, wähle
 - Verwenden Sie unter Windows und Linux das bisherige Paketformat, sofern die Version es anbietet. Windows behält das Installationsverzeichnis bei. Das Debian-Paket heißt weiterhin `endue-desk`.
 - Beim nächsten Start verwendet die App Ihre Profile und `plugins.lock` in `~/.desk` sowie die bisherigen Einstellungen, Berechtigungen und Verweise auf Anmeldedaten. Ältere Desk-Versionen wie v0.3.0, die nur als Installationspaket ausgeliefert wurden, aktualisieren Sie manuell mit dem neuen Paket.
 
-Der offizielle Befehl heißt `endue`. Im Quellverzeichnis können Sie ihn mit `cargo run -p desk-cli -- --help` ausprobieren. Die Disk-Images von v0.3.0 enthalten die CLI noch nicht. Bestehende Skripte können `desk` in der aktuellen Hauptversion weiter verwenden. Die eigenständige Linux-CLI für Server erhält bei Veröffentlichung einen eigenen Download.
+Der offizielle Befehl heißt `endue`. Im Quellverzeichnis können Sie ihn mit `cargo run -p desk-cli -- --help` ausprobieren. Die Disk-Images von v0.3.0 enthalten die CLI noch nicht. Bestehende Skripte können `desk` in der aktuellen Hauptversion weiter verwenden.
+
+### Linux-Server mit x86_64
+
+Wenn eine Version **endue CLI for Linux x86_64** anbietet, laden Sie das Archiv, die Signatur und `SHA256SUMS-cli` in ein leeres Verzeichnis. Prüfen Sie das Archiv mit `sha256sum -c SHA256SUMS-cli` und entpacken Sie es mit `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Setzen Sie `ENDUE_BRAIN_URL` auf die Adresse Ihres brain-v0-Dienstes und führen Sie `./endue-cli_*/bin/endue run "hello"` aus. Die Version v0.3.0 enthält nur die macOS-App. [Signatur des Herausgebers prüfen](../../releasing.md#verify-a-linux-cli-download)
 
 ## Warum endue
 

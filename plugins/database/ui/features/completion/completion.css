@@ -1,0 +1,25 @@
+/* Completion's info box (a candidate's comment) and the signature help over a call, on the
+   completion list's popover look (editor/editor.css). */
+#editor-box .cm-completionInfo {
+  max-width: 320px;
+  padding: 4px 8px;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-sans);
+  white-space: pre-wrap;
+}
+
+#editor-box .signature-help {
+  max-width: 480px;
+  padding: 4px 8px;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+#editor-box .signature-arg {
+  color: var(--desk-primary-text);
+  font-weight: 600;
+}
+
+#editor-box .signature-count,
+#editor-box .signature-comment {
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+}

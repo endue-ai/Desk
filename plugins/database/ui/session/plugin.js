@@ -3,10 +3,12 @@
 // drawn on the buffer on screen, a lost one said on the status line by its buffer's name, what
 // closing a connection's sessions ends, the scope Cancel stops (the buffer on screen and the
 // plugin's own reads), Disconnect's stop of what runs and what the plugin would start on its own
-// (gate.js, ADR 0339), and the consoles' sessions taken back when the frame wakes. No DOM.
+// (gate.js, ADR 0339), and the consoles' sessions taken back when the frame wakes; a refused one
+// says how to ask again (connect-gate.js, ADR 0335). No DOM.
 
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
+import { wordRefusals } from "./connect-gate.js";
 import { createGate } from "./gate.js";
 import { keyOf, sessionLabel } from "./owners.js";
 import { reasonsOf } from "./words.js";
@@ -52,7 +54,8 @@ export function createPluginSessions(deps) {
     ...(deps.kept ? { kept: deps.kept } : {}),
     passphrases,
   });
-  const pg = { ...sessions, run: (conn, plan) => gate.run(conn, plan, sessions.run) };
+  const worded = wordRefusals(sessions);
+  const pg = { ...worded, run: (conn, plan) => gate.run(conn, plan, worded.run) };
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
     e.connection === connection;
 
