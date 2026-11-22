@@ -5,6 +5,8 @@
 // a read of public.items, and any statement on `archive`, before the page's other answers. Fixture
 // data only.
 import type { Connection } from "../ui/engines/common.js";
+import { ddlQueries } from "../ui/schema/postgres.js";
+import { foreignKeysSql } from "../ui/transfer/read.js";
 import type { Answer, Script } from "./clients";
 import { PG } from "./session-helpers";
 
@@ -93,17 +95,27 @@ export function transferScript(fail?: RegExp): Script {
   };
 }
 
-/** The runtime page's copy (PG-63): items' reads and the `archive` database, else `inner`. */
+/** The statements a copy of public.items sends to `shop`, exactly as read.js and plan.js write them. */
+const ASKED = new Set([
+  ...ddlQueries({
+    schema: "public",
+    name: "items",
+    kind: "table",
+    detail: "",
+    rows: null,
+    ident: "",
+  } as never),
+  foreignKeysSql("public", "items"),
+  'COPY (SELECT "id", "name" FROM "public"."items") TO STDOUT',
+  "SELECT current_setting('server_version_num'), current_setting('server_version')",
+]);
+
+/** The runtime page's copy (PG-63): the `archive` database, and shop's statements of a copy of
+ * public.items; any other statement goes to `inner`. */
 export function transferServer(inner: Script): Script {
   const own = transferScript();
-  return (sql, who, bound) => {
-    const items =
-      /'items'|"public"\."items"/u.test(sql) ||
-      /^SELECT current_setting\('server_version_num'\), current_setting\('server_version'\)$/u.test(
-        sql,
-      );
-    if (who.database === "archive" || (who.database === "shop" && items))
-      return own(sql, who, bound);
-    return inner(sql, who, bound);
-  };
+  return (sql, who, bound) =>
+    who.database === "archive" || (who.database === "shop" && ASKED.has(sql.trim()))
+      ? own(sql, who, bound)
+      : inner(sql, who, bound);
 }
