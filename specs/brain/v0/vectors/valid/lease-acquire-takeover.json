@@ -1,6 +1,6 @@
 {
   "target": "LeaseAcquireRequest",
-  "description": "another Desk takes the session over",
+  "description": "another endue client takes the session over",
   "instance": {
     "holder": {
       "deskId": "desk-b",

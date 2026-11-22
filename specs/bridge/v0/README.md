@@ -1,4 +1,4 @@
-# Desk bridge v0
+# endue bridge v0
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
@@ -349,7 +349,7 @@ stays, whether do-not-disturb holds it back and how much history is kept is the 
 
 **perm.request** asks the person for a permission, showing the reason when there is one, and resolves
 when they answer. `duration` says how long the grant should last: `once` (the next call it allows, then it
-expires), `session` (until Desk quits, the default) or `always` (kept on disk across restarts). The person
+expires), `session` (until endue quits, the default) or `always` (kept on disk across restarts). The person
 may choose another duration, and the grant carries the one they chose. A refusal is `granted: false`, not
 an error. It needs no scope.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/native.schema.json",
-  "title": "Desk surface protocol v0: a native plugin's page messages",
+  "title": "endue surface protocol v0: a native plugin's page messages",
   "description": "What a native plugin's surface and the desk say to each other besides the surface itself: the messages a web plugin's page and the desk post to each other (desk:hello, desk:init, desk:ping and desk:pong, desk:state, ...), carried on the surface's connection because a native plugin has no page. See native.md.",
   "$defs": {
     "SurfacePageMessage": {

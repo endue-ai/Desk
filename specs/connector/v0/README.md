@@ -1,6 +1,6 @@
-# Desk connector v0
+# endue connector v0
 
-A connector brings an app's data into Desk as items (`specs/item/v0`) and its actions as commands; it
+A connector brings an app's data into endue as items (`specs/item/v0`) and its actions as commands; it
 has no screen of its own (ADR 0032). One contract, three bindings: `wasm`, a component the plugin's
 `entry` names (local and light, no VM), `mcp`, an MCP server inside the VM (ADR 0002), and `http`,
 requests and a mapping the core runs from the manifest, with no code and no `entry` (ADR 0106). A plugin of

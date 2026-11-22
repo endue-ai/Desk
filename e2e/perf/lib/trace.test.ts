@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FIRST_FRAME, READY_LINE, startedAt, startupTimes } from "./trace";
 
 const events = [
-  { name: "process_name", ph: "M", pid: 1, tid: 0, args: { name: "endue Desk" } },
+  { name: "process_name", ph: "M", pid: 1, tid: 0, args: { name: "endue" } },
   { name: "core init", cat: "core", ph: "X", ts: 10_000, dur: 30_000, pid: 1, tid: 1 },
   { name: "ready line", cat: "core", ph: "i", s: "p", ts: 905_250, pid: 1, tid: 1 },
   {

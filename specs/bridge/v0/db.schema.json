@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/db.schema.json",
-  "title": "Desk bridge v0: db",
+  "title": "endue bridge v0: db",
   "description": "Database sessions (ADR 0281): PostgreSQL sessions the core opens, scoped by db:connect hosts. A session belongs to the caller that opened it: its notices, notifications, parameter changes and end arrive as db.* events, to that caller alone.",
   "$defs": {
     "DbOpenRequest": {

@@ -90,7 +90,7 @@ pub struct ReleasePlatform {
 /// A minisign signature as the Tauri CLI writes it: the base64 of the .sig file, whose trusted comment names the signed file's version (version:<v>). One updater key signs the index, the manifests and the artifacts.
 pub type ReleaseSignature = String;
 
-/// What Desk adds to the Tauri format.
+/// What endue adds to the Tauri format.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReleaseDesk {
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1,4 +1,4 @@
-//! Kernel of endue Desk: permission engine, event bus, plugin registry, session store, settings and
+//! Kernel of endue: permission engine, event bus, plugin registry, session store, settings and
 //! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
 //! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
 //! item index, connectors and views; ADR 0036), the desk's own updates (ADR 0054), the person's

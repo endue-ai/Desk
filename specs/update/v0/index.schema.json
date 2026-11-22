@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/update/v0/index.schema.json",
-  "title": "Desk update v0: the channel index",
+  "title": "endue update v0: the channel index",
   "description": "desk/channels/<channel>/index.json on the release origin (Cloudflare R2, ADR 0054): the builds on one channel, newest first, signed by the updater key in index.json.sig. A desk reads only this file to choose its next build; release.json then gives the artifact. Unknown fields are allowed, so an installed desk keeps reading what a newer release script writes.",
   "$defs": {
     "ReleaseChannel": {

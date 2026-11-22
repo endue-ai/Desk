@@ -44,8 +44,8 @@ describe("blame", () => {
     ]);
     expect(lines[1]?.sha).toBe(second);
     expect(commits.get(second)).toMatchObject({
-      author: "Test",
-      email: "test@example.com",
+      author: "endue-team",
+      email: "team@endue.ai",
       summary: "Add two",
     });
     expect(commits.get(lines[0]?.sha ?? "")?.summary).toBe("First");

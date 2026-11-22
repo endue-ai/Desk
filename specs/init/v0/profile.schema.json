@@ -10,7 +10,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "description": "The format version. Default 0. Desk ignores a file with a version newer than it reads.",
+          "description": "The format version. Default 0. endue ignores a file with a version newer than it reads.",
           "type": "integer",
           "minimum": 0,
           "maximum": 0

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/drag.schema.json",
-  "title": "Desk surface protocol v0: drag and drop",
+  "title": "endue surface protocol v0: drag and drop",
   "description": "ADR 0119's drag broker, run by the compositor: a surface starts a drag of desk data while a press on it is held; the compositor draws it and offers its types to the surface under the pointer, which answers with an effect; only the surface it lands on receives the items. A drop hands over paths and data, never access. See input.md.",
   "$defs": {
     "SurfaceDropEffect": {

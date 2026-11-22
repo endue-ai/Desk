@@ -5,6 +5,20 @@ import { gitOutput, realGit, tempRepo } from "./real-git";
 
 const input = "test input\n".repeat(400_000);
 
+it("keeps both fixture Git identities on the endue project", async () => {
+  for (const role of ["AUTHOR", "COMMITTER"]) {
+    const result = await gitOutput(["var", `GIT_${role}_IDENT`], {
+      env: {
+        ...process.env,
+        [`GIT_${role}_NAME`]: "endue-fixture",
+        [`GIT_${role}_EMAIL`]: "fixture@endue.invalid",
+      },
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout.toString().startsWith("endue-team <team@endue.ai> ")).toBe(true);
+  }
+});
+
 it("closes an empty stdin and passes every byte to a Git command that reads input", async () => {
   const repo = await tempRepo();
   try {
@@ -23,7 +37,7 @@ it("closes an empty stdin and passes every byte to a Git command that reads inpu
     const object = await repo.git("hash-object", "-w", file);
     const raw = await gitOutput(["cat-file", "blob", object.stdout.trim()], {
       cwd: repo.root,
-      env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+      env: process.env,
     });
     expect(raw.code).toBe(0);
     expect(raw.stdout).toEqual(bytes);

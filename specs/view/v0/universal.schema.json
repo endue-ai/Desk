@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/view/v0/universal.schema.json",
-  "title": "Desk universal view v0",
+  "title": "endue universal view v0",
   "description": "A universal view: one presentation (timeline, calendar, kanban, list, text, chat or agent) of entries from any source that serves the universal data format, written as data (ADR 0087). Every source answers the same document, so a view written for an inline list works on a file, a URL, a plugin's command or the desk's item index alike. People and plugins write both as YAML; on the wire they are JSON of the same shape.",
   "$defs": {
     "UniversalView": {

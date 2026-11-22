@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/log.schema.json",
-  "title": "Desk bridge v0: log",
+  "title": "endue bridge v0: log",
   "description": "The desk's log, one channel per caller. A caller writes to its own channel without a scope; reading the log needs log:read.",
   "$defs": {
     "LogLevel": {

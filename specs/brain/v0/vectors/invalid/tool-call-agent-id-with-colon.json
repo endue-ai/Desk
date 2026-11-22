@@ -1,6 +1,6 @@
 {
   "target": "TurnEvent",
-  "description": "agentId is the brain's id, without the agent: prefix Desk adds",
+  "description": "agentId is the brain's id, without the agent: prefix endue adds",
   "instance": {
     "type": "tool.call",
     "turnId": "t2",
