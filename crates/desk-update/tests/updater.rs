@@ -204,13 +204,13 @@ fn a_failed_install_keeps_the_build_staged() {
     let key = Key::new();
     let desk = desk("refused", &key);
     desk.updater.check_now(CANARY);
-    *desk.installer.refuse.lock().unwrap() = Some("Desk could not replace the app".to_owned());
+    *desk.installer.refuse.lock().unwrap() = Some("endue could not replace the app".to_owned());
     let status = desk.updater.apply_now().unwrap();
     assert_eq!(status.state, State::Failed);
     assert!(status.staged);
     assert_eq!(
         status.reason.as_deref(),
-        Some("Desk could not replace the app")
+        Some("endue could not replace the app")
     );
     *desk.installer.refuse.lock().unwrap() = None;
     assert_eq!(desk.updater.apply_now().unwrap().state, State::Applying);

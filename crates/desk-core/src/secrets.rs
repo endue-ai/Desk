@@ -1,4 +1,4 @@
-//! Connector secrets until Desk uses the OS keychain (ADR 0036): one JSON file in the data folder,
+//! Connector secrets until endue uses the OS keychain (ADR 0036): one JSON file in the data folder,
 //! readable by this user only (mode 0600 on Unix; the profile folder's ACL on Windows), rewritten
 //! whole through a temp file and a rename. Secrets are never listed and never handed to a guest;
 //! disconnecting an instance removes its own. Only the core reads one: an http connector's token,
@@ -18,7 +18,7 @@ use serde_json::{Map, Value};
 
 const VERSION: u32 = 1;
 const NOTE: &str =
-    "connector secrets in plain text until Desk uses the OS keychain; readable by this user only";
+    "connector secrets in plain text until endue uses the OS keychain; readable by this user only";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct SecretsFile {

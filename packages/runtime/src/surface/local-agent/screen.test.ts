@@ -78,14 +78,14 @@ describe("a local agent's screen", () => {
     expect(titles(el)).toEqual(["Old CI migration"]);
   });
 
-  it("imports sessions and the archive into the desk, then shows them under In endue", async () => {
+  it("imports sessions into endue and shows them in the local tab", async () => {
     const { el, local } = await mount();
     const imported = vi.spyOn(local, "import");
     click(el, '[data-import="local"]');
     await settle();
     expect(imported).toHaveBeenCalledWith("claude", "local");
     expect(el.querySelector(".local-notice")?.textContent).toBe(
-      "Imported 4 into the desk · 0 already up to date",
+      "Imported 4 into endue · 0 already up to date",
     );
     click(el, '[data-import="archive"]');
     await settle();

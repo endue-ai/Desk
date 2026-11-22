@@ -141,7 +141,7 @@ describe("answering (RFC 5546 §3.2.3, RFC 6047)", () => {
     expect(ics.split("\r\n").slice(0, 4)).toEqual([
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//endue//endue Mail 0.1//EN",
+      "PRODID:-//endue//Mail 0.1//EN",
       "METHOD:REPLY",
     ]);
     const { calendars } = parse(ics);

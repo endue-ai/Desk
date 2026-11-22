@@ -3,7 +3,7 @@
   "name": "Profiles",
   "version": "0.1.0",
   "kind": "policy",
-  "description": "Profiles: a plugin set plus settings, switched as one, like an init file you can change while Desk runs.",
+  "description": "Profiles: a plugin set plus settings, switched as one, like an init file you can change while endue runs.",
   "contributes": {
     "profiles": [
       {

@@ -34,7 +34,7 @@ export const PRESENTATIONS: UniversalType[] = [
 const SWITCH: UniversalType[] = ["list", "kanban", "timeline", "calendar"];
 
 const GUIDE = [
-  "A universal view is data that Desk draws, never code: one presentation (type: timeline,",
+  "A universal view is data that endue draws, never code: one presentation (type: timeline,",
   "calendar, kanban for a board, list, text, chat or agent) of entries from one source. The source",
   "is items (the desk's index: an item query with kinds, where, sort, limit; an event's start, a",
   "task's status as its group and a message's sender as its author come with them), url (an http or",
@@ -87,7 +87,7 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
       tool ??= {
         name: "propose_universal_view",
         description:
-          "Propose one Desk universal view (specs/view/v0/universal.schema.json) that shows what the person asked for, from the source they named: its title, type, types, source, map and options. The desk names it and records where it came from.",
+          "Propose one universal view for endue (specs/view/v0/universal.schema.json) that shows what the person asked for, from the source they named: its title, type, types, source, map and options. The desk names it and records where it came from.",
         schema: specs().bundle(UNIVERSAL, { omit: DESKS }),
       };
       return tool;
