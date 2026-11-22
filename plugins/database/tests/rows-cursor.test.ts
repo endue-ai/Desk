@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import type { Script } from "./harness";
 import { rawRunsOf } from "./runs-of";
-import { script as base, messages, run, shop, state } from "./session-helpers";
+import { script as base, messages, PG, run, shop, state } from "./session-helpers";
 
 /** `count` rows of one column n, 1 to count, as the scripted server answers them. */
 const numbers = (count: number) => [
@@ -88,5 +88,39 @@ describe("a console's read through a cursor", () => {
     await run(m, "select n from small;\nselect 1");
     await run(m, "insert into seen values (1)");
     expect(sent(m).some((sql) => sql.startsWith("DECLARE"))).toBe(false);
+  });
+
+  it("through a pooler a read outside the person's transaction reads one page, as before; inside it, a cursor", async () => {
+    const m = await shop({ script }, [{ ...PG, pooler: true } as typeof PG]);
+    await run(m, "select n from big");
+    // A pooler in transaction mode may hand the next call to another server: nothing is kept.
+    expect(sent(m).some((sql) => /DECLARE|START TRANSACTION/u.test(sql))).toBe(false);
+    expect(set(m)?.rows).toHaveLength(500);
+    expect(set(m)?.window).toBeUndefined();
+    await run(m, "begin");
+    await run(m, "select n from big");
+    expect(sent(m).slice(-2)).toEqual([
+      "DECLARE endue_desk_rows SCROLL CURSOR FOR\nselect n from big",
+      "FETCH FORWARD 500 FROM endue_desk_rows",
+    ]);
+    expect(set(m)?.window).toMatchObject({ known: 500, done: false });
+  });
+
+  it("in manual commit the BEGIN goes first and the cursor is the person's; Commit ends it", async () => {
+    const m = await shop({ script });
+    await m.host.command("endue.database.transaction-mode", { mode: "manual" });
+    await run(m, "select n from big");
+    expect(sent(m)).toEqual([
+      "BEGIN",
+      "DECLARE endue_desk_rows SCROLL CURSOR FOR\nselect n from big",
+      "FETCH FORWARD 500 FROM endue_desk_rows",
+    ]);
+    expect(set(m)?.window).toMatchObject({ known: 500, done: false });
+    expect(state(m)).toBe("open");
+    expect(m.shown()?.session).toMatchObject({ statements: 1 });
+    await m.host.command("endue.database.commit");
+    await m.settle();
+    expect(sent(m).slice(-2)).toEqual(["CLOSE endue_desk_rows", "COMMIT"]);
+    expect(state(m)).toBe("idle");
   });
 });

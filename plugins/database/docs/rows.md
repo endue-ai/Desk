@@ -45,8 +45,12 @@ frame's memory (ADR 0352). Modules: `ui/engines/pg-cursor.js` (the cursor on the
 - Outside a transaction the cursor lives in a transaction of the plugin's own (`START TRANSACTION`),
   which the header does not show: the console reads Idle. It ends with `END` before the console's next
   run of any kind, when a read fits one page, or when the session closes.
-- Inside the person's transaction (one they began, or manual commit, PG-20) the cursor is theirs: the
-  next run sends `CLOSE endue_desk_rows` first, and their COMMIT or ROLLBACK would end it anyway.
+- Inside the person's transaction (one they began, or manual commit, PG-20, whose BEGIN goes first in
+  the same call) the cursor is theirs: the next run sends `CLOSE endue_desk_rows` first, and their COMMIT
+  or ROLLBACK would end it anyway.
+- Through a pooler (the connection's pooler option, PG-14) a read outside the person's transaction keeps
+  no cursor and reads one page as before: the pooler may hand the next call to another server. Inside
+  their transaction the pooler keeps one server, and the read scrolls.
 - A cancel or an error during a fetch ends the cursor (`ABORT` of the plugin's own transaction). In the
   person's transaction the cancel fails it, as any cancelled statement does. The rows held stay, and the
   summary says the rest cannot be read.

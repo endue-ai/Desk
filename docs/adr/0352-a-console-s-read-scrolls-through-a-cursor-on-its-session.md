@@ -43,6 +43,18 @@ A cursor lives in a transaction. Outside one the plugin opens its own (`START TR
 tell them apart) and hides it from the header; inside the person's the cursor is theirs. Either way the
 cursor ends before the console's next run, at a cancel or an error during a fetch, and with the session.
 
+In manual commit (PG-20) the plugin's BEGIN for the person's transaction goes first in the same call,
+and the cursor is the person's from the start.
+
+Through a pooler (the connection's `pooler` option, PG-14, ADR 0354) nothing a session keeps between
+transactions survives: in transaction mode the next call may reach another server. A cursor in the
+plugin's own transaction would have to stay open across calls, so on such a connection a read outside
+the person's transaction keeps no cursor and reads one page as before (the max-rows setting, then the
+existing "more rows" path). Inside the person's transaction, manual commit's included, the pooler keeps
+one server for the whole transaction, so the cursor is kept and scrolls. Holding the plugin's own
+transaction only within one call was the other way; it would read the first page and nothing more, which
+is what the single-page read already does with one statement fewer.
+
 ### Consequences
 
 * Good, because a result of any size opens at once and scrolls to its end; a test scrolls a million rows
@@ -56,6 +68,8 @@ cursor ends before the console's next run, at a cancel or an error during a fetc
 * Bad, because the server's own views name what runs as the cursor's statements: while a page is read,
   `pg_stat_activity.query` of the console's session reads `FETCH FORWARD ... FROM endue_desk_rows`,
   not the read as typed.
+* Bad, because through a pooler a result past one page scrolls only inside a transaction the person
+  holds; outside one it reads one page, as before PG-22.
 * Bad, because a SCROLL cursor over a plan that cannot run backwards makes the server materialize the rows
   read so far (in work_mem, then temporary files).
 

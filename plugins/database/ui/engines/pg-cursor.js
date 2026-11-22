@@ -6,6 +6,7 @@
 // run on the session (`END` of the plugin's own transaction, else `CLOSE`), at a read that fits
 // one page, and at a cancel or an error, which roll the plugin's own transaction back (`ABORT`). No DOM.
 
+import { controlOf } from "../session/transaction-words.js";
 import { classify } from "../sql/classify.js";
 
 /**
@@ -50,6 +51,10 @@ export function cursorable(/** @type {Statement} */ statement) {
   const kind = classify(statement, "postgresql");
   return kind.kind === "read" && !kind.opensWrite;
 }
+
+/** Whether the plan is manual commit's BEGIN and one statement after it. */
+const begins = (/** @type {Plan} */ plan) =>
+  plan.statements.length === 2 && controlOf(plan.statements[0]?.text ?? "").does === "begin";
 
 /** A statement of the plugin's own, as pg-script.js runs one. @returns {Statement} */
 export const own = (/** @type {string} */ text) => ({
@@ -104,14 +109,18 @@ export function createCursors({ script }) {
   };
 
   return {
-    /** Whether a run reads through a cursor: a console's single read in a run, not an agent's. */
-    wanted: (/** @type {Plan} */ plan, /** @type {Entry} */ entry) =>
+    /** Whether a run reads through a cursor: a console's single read in a run, not an agent's, or
+     * manual commit's BEGIN and the read; through a pooler only in the person's transaction, which
+     * keeps one server (ADR 0352). */
+    wanted: (/** @type {Plan} */ plan, /** @type {Entry} */ entry, pooled = false) =>
       plan.session?.kind === "console" &&
       plan.mode === "run" &&
       !plan.agent &&
-      plan.statements.length === 1 &&
       entry.transaction !== "failed" &&
-      cursorable(/** @type {Statement} */ (plan.statements[0])),
+      (plan.statements.length === 1
+        ? !(pooled && entry.transaction === "idle")
+        : plan.statements.length === 2 && begins(plan)) &&
+      cursorable(/** @type {Statement} */ (plan.statements.at(-1))),
     end,
     /** Whether the session's open transaction is only the plugin's own, for its cursor. */
     hidden: (/** @type {string} */ sessionId) => open.get(sessionId)?.own === true,
@@ -123,33 +132,32 @@ export function createCursors({ script }) {
      * @param {Job} job @param {Plan} plan @param {Entry} entry @returns {Promise<RunResult>}
      */
     async declare(job, plan, entry) {
-      const statement = /** @type {Statement} */ (plan.statements[0]);
-      const mine = entry.transaction === "idle";
+      const statement = /** @type {Statement} */ (plan.statements.at(-1));
+      // Manual commit's BEGIN goes first and opens the person's transaction (PG-20).
+      const lead = begins(plan) ? plan.statements[0] : undefined;
+      const mine = entry.transaction === "idle" && !lead;
       const page = pageOf(plan.maxRows);
-      const sqls = [
-        ...(mine ? [BEGIN] : []),
-        `${PREFIX}${statement.text}`,
-        `FETCH FORWARD ${page} FROM ${CURSOR}`,
-      ];
       const ran = await script(job, {
         ...plan,
         maxRows: page,
-        statements: sqls.map((text, i) =>
-          i === sqls.length - 2 ? { ...statement, text } : own(text),
-        ),
+        statements: [
+          ...(lead ? [lead] : mine ? [own(BEGIN)] : []),
+          { ...statement, text: `${PREFIX}${statement.text}` },
+          own(`FETCH FORWARD ${page} FROM ${CURSOR}`),
+        ],
       });
-      const base = mine ? 1 : 0;
+      const base = mine || lead ? 1 : 0;
       const declared = ran.statements[base];
       const fetched = ran.statements[base + 1];
       const failure = declared?.error ?? fetched?.error ?? ran.statements[0]?.error;
       /** @type {StatementOutcome} */
       const outcome = {
         ...(fetched?.ran ? fetched : (declared ?? fetched ?? ran.statements[0])),
-        index: 0,
+        index: lead ? 1 : 0,
         ran: true,
         notices: [...(declared?.notices ?? []), ...(fetched?.notices ?? [])],
       };
-      const result = { ...ran, statements: [outcome] };
+      const result = { ...ran, statements: lead ? [ran.statements[0], outcome] : [outcome] };
       if (failure) {
         const at = failure.position;
         outcome.error =

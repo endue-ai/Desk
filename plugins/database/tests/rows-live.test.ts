@@ -2,7 +2,8 @@
 // core's sessions (core-bridge.ts): a million rows scroll to their end page by page with the rows
 // held bounded, the last rows equal the server's, scrolling back reads rows let go again, Count
 // every row is exact, the statement is declared once, and a cancel mid-way leaves the session idle
-// with no transaction open. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
+// with no transaction open. Through a pooler (the option on, against the plain server) a read
+// outside the person's transaction keeps no cursor, and inside it one does. It runs when ENDUE_DB_TEST_POSTGRES holds a URI of a scratch database.
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
@@ -22,9 +23,9 @@ const PAGE = 10_000;
 const MILLION = 1_000_000;
 const READ = "select g, md5(g::text) as h from generate_series(1, 1000000) g";
 
-async function live(): Promise<Mounted> {
+async function live(conn: Connection = LIVE): Promise<Mounted> {
   const procs = realProcs(password ? { password } : {});
-  const m = await mount({ store: { connections: [LIVE] }, handlers: procs.handlers });
+  const m = await mount({ store: { connections: [conn] }, handlers: procs.handlers });
   procs.attach((event) => m.host.emit(event));
   await m.host.call(
     "settings.set",
@@ -125,6 +126,30 @@ describe.skipIf(!uri)("a console's read through a cursor on a real server", () =
     await run(m, "select 7");
     expect(set(m).rows).toEqual([["7"]]);
     expect(state(m)).toBe("idle");
+    await done(m);
+  }, 60_000);
+
+  it("through a pooler a read outside a transaction keeps no cursor; inside the person's it scrolls", async () => {
+    const m = await live({ ...LIVE, pooler: true } as Connection);
+    await run(m, READ);
+    expect(set(m).rows).toHaveLength(PAGE);
+    expect(set(m).window).toBeUndefined();
+    const pid = m.shown()?.session?.pid;
+    const open = `select (xact_start is null)::text from pg_stat_activity where pid = ${pid}`;
+    expect(await server.admin(open)).toBe("true");
+    await run(m, "begin");
+    await run(m, READ);
+    expect(set(m).window).toMatchObject({ known: PAGE, done: false });
+    await m.app.page({ rows: "next" });
+    expect(set(m).rows.at(-1)).toEqual([String(2 * PAGE), md5(2 * PAGE)]);
+    await run(m, "commit");
+    expect(await server.admin(open)).toBe("true");
+    expect(state(m)).toBe("idle");
+    expect(
+      rawRunsOf(m.host.calls).some((c) =>
+        /START TRANSACTION/u.test(String((c.params as { sql?: string }).sql)),
+      ),
+    ).toBe(false);
     await done(m);
   }, 60_000);
 });
