@@ -285,6 +285,11 @@ mod tests {
         assert!(secure.is_secure());
         assert_eq!(secure.url(), "https://endue.ai:443/v0");
         assert!(Endpoint::parse("ftp://x").is_err());
+        assert_eq!(
+            Endpoint::parse("http://[::1]/v0").unwrap().url(),
+            "http://[::1]:80/v0"
+        );
+        assert!(Endpoint::parse("https://brain.example.test/v0?token=fixture-only").is_err());
     }
 
     #[test]
