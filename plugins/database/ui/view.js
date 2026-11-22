@@ -13,6 +13,7 @@ import { dialogsOf, panelsOf } from "./feature-host.js";
 import * as all from "./features/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
+import { rowsLine, whole } from "./rows/window.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
 import { createDialogs } from "./view-dialog.js";
@@ -236,17 +237,21 @@ export function createView(doc, act, features = Object.values(all), options = {}
     if (fresh && quick.value) quick.value = "";
     const page = model.kind === "table" ? model.table : null;
     const tab = model.shown.tabs[model.tab];
+    // A read its cursor keeps, not fully held, sorts and filters on the server (PG-22).
+    const held = tab?.set?.window && !whole(tab.set) ? tab.set.window : null;
+    if (tab?.set?.window && !model.running)
+      summary.textContent = `${model.shown.summary} · ${rowsLine(tab.set, formatCount)}`;
     // A Chart tab (chart/view.js) takes the result's box from the grid, and keeps it while shown.
     const charted = tab?.kind === "chart";
     if (!charted || !charts.showing(tab))
       grid.render(charted ? null : (tab ?? null), fresh, {
         edit: model.edit,
-        server: Boolean(page),
+        server: Boolean(page ?? held),
         ordered: Boolean(page?.order),
         // A table view's columns are the table's (kept across restarts), a result's its own.
         key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
-        sort: page?.sort ?? [],
-        filters: page?.filters ?? [],
+        sort: page?.sort ?? held?.sort ?? [],
+        filters: page?.filters ?? held?.filters ?? [],
       });
     if (charted) charts.show(byId("result"), tab);
     drawn = key;
