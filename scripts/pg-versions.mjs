@@ -99,15 +99,26 @@ export function runEnv(base, own) {
   return { ...env, ...own };
 }
 
-/** Vitest on `files`, one file at a time; answers each file's state from its JSON report. */
-function vitest(files, env, report) {
+function runVitestFile(file, env, report) {
   const cli = join(root, "node_modules/vitest/vitest.mjs");
   const args = [cli, "run", "--no-file-parallelism", "--reporter=default", "--reporter=json"];
-  args.push(`--outputFile.json=${report}`, ...files);
+  args.push(`--outputFile.json=${report}`, file);
   return new Promise((done) => {
     const child = spawn(process.execPath, args, { cwd: root, env, stdio: "inherit" });
-    child.on("exit", () => done(readReport(report, files)));
+    child.once("error", () => done(1));
+    child.once("close", (code) => done(code ?? 1));
   });
+}
+
+/** Wait for each file's process and teardown before another file uses the same database. */
+export async function runLiveFiles(files, env, reportPrefix, runFile = runVitestFile) {
+  const states = {};
+  for (const file of files) {
+    const report = `${reportPrefix}-${basename(file)}.json`;
+    const code = await runFile(file, env, report);
+    states[file] = code === 0 ? readReport(report, [file])[file] : "failed";
+  }
+  return states;
 }
 
 /** Each file's state: "passed", "failed" or "skipped" (every test skipped). A missing report fails all. */
@@ -201,9 +212,12 @@ async function main(argv) {
         const { files, env } = plan(variant, urls, options.files);
         if (!files.length) continue;
         console.log(`pg-versions: ${variant}, ${files.length} files`);
-        const report = join(work, `${major}-${variant}.json`);
+        const reportPrefix = join(work, `${major}-${variant}`);
         const known = knownFailures(major, pgDump);
-        const states = markKnown(await vitest(files, runEnv(process.env, env), report), known);
+        const states = markKnown(
+          await runLiveFiles(files, runEnv(process.env, env), reportPrefix),
+          known,
+        );
         rows.push({ version, variant, states, known });
       }
       stopServer(server);
