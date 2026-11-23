@@ -111,20 +111,20 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
   assert.equal(runtime["timeout-minutes"], 15);
   assert.deepEqual(runtime.strategy.matrix.shard, [1, 2, 3, 4]);
   assert.equal(runtime.strategy["fail-fast"], false);
+  const expression = (body) => `\${{ ${body} }}`;
+  const shard = expression("matrix.shard");
   assert.ok(
-    runtime.steps.some(
-      (step) => step.run === "just test-e2e --shard=${{ matrix.shard }}/4 --workers=1",
-    ),
+    runtime.steps.some((step) => step.run === `just test-e2e --shard=${shard}/4 --workers=1`),
   );
   const report = runtime.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
   assert.equal(report.if, "failure()");
-  assert.equal(report.with.name, "playwright-report-${{ matrix.shard }}");
+  assert.equal(report.with.name, `playwright-report-${shard}`);
   const gate = jobs["runtime-e2e"];
   assert.equal(gate.name, "runtime-e2e");
   assert.equal(gate.if, "always()");
   assert.equal(gate.needs, "runtime-e2e-shard");
   const result = gate.steps.find((step) => step.env?.SHARD_RESULT);
-  assert.equal(result.env.SHARD_RESULT, "${{ needs.runtime-e2e-shard.result }}");
+  assert.equal(result.env.SHARD_RESULT, expression("needs.runtime-e2e-shard.result"));
   assert.equal(result.run, 'test "$SHARD_RESULT" = success');
   assert.deepEqual(jobs.ci.needs, [
     "changes",
@@ -138,25 +138,29 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
   ]);
 });
 
-test("the Linux shell build installs its native build headers through configured APT", async () => {
-  const { jobs } = await workflow("ci");
-  const shell = jobs["shell-build"];
-  const apt = configuredBefore(shell, "libgtk-3-dev");
-  assert.equal(apt.if, "runner.os == 'Linux'");
-  const install = shell.steps.find((step) => step.run?.includes("libgtk-3-dev"));
-  assert.equal(install.if, "runner.os == 'Linux'");
-  for (const pkg of [
+test("the Linux shell builds install the native headers before checking or launching the app", async () => {
+  const ci = await workflow("ci");
+  const e2e = await workflow("e2e");
+  const headers = [
     "cmake",
     "ninja-build",
+    "libgtk-3-dev",
     "libxdo-dev",
     "libayatana-appindicator3-dev",
     "libasound2-dev",
+  ];
+  for (const [job, recipe, condition, packages] of [
+    [ci.jobs["shell-build"], "just check-shell", "runner.os == 'Linux'", headers],
+    [e2e.jobs["app-e2e"], "just build-shell", "runner.os == 'Linux'", [...headers, "xvfb"]],
+    [e2e.jobs.perf, "just build-shell", undefined, [...headers, "xvfb"]],
   ]) {
-    assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+    const apt = configuredBefore(job, "libgtk-3-dev");
+    assert.equal(apt.if, condition);
+    const install = job.steps.find((step) => step.run?.includes("libgtk-3-dev"));
+    assert.equal(install.if, condition);
+    for (const pkg of packages) assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+    assert.ok(job.steps.indexOf(install) < job.steps.findIndex((step) => step.run === recipe));
   }
-  assert.ok(
-    shell.steps.indexOf(install) < shell.steps.findIndex((step) => step.run === "just check-shell"),
-  );
 });
 
 test("app e2e configures APT and changes to the helper exercise the existing packaged-app gates", async () => {
