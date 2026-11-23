@@ -138,6 +138,19 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
   ]);
 });
 
+test("the Linux unit tests have the Vulkan loader and software driver for offscreen rendering", async () => {
+  const { jobs } = await workflow("ci");
+  const job = jobs["check-linux"];
+  configuredBefore(job, "mesa-vulkan-drivers");
+  const install = job.steps.find((step) => step.run?.includes("mesa-vulkan-drivers"));
+  for (const pkg of ["libasound2-dev", "libvulkan1", "mesa-vulkan-drivers"]) {
+    assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+  }
+  assert.ok(
+    job.steps.indexOf(install) < job.steps.findIndex((step) => step.run === "just test-unit"),
+  );
+});
+
 test("the Linux shell builds install the native headers before checking or launching the app", async () => {
   const ci = await workflow("ci");
   const e2e = await workflow("e2e");

@@ -83,10 +83,10 @@ jobs:
           sudo mv actionlint /usr/local/bin/
       - name: Configure Ubuntu package downloads
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the ALSA headers (cpal, for desk-sys audio)
+      - name: Install audio build headers and the headless Vulkan driver
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libasound2-dev libvulkan1 mesa-vulkan-drivers
       - run: pnpm install --frozen-lockfile
       - run: just check
       - run: just test-unit
