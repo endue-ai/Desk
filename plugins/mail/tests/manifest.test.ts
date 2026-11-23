@@ -85,6 +85,13 @@ describe("plugin.json", () => {
     expect(contributes?.settings?.[`${ID}.mark-read`]?.choices).toEqual(["open", "never"]);
   });
 
+  it("marks what sends or drops the person's words irreversible, so an agent's call waits", () => {
+    const commands = manifest().contributes?.commands ?? [];
+    const of = (id: string) => commands.find((c) => c.id === `${ID}.${id}`);
+    for (const id of ["send", "send-message", "discard"])
+      expect(of(id)?.irreversible, id).toBe(true);
+  });
+
   it("takes no key the desk's default keymap binds", () => {
     const taken = new Set(DEFAULT_KEYS.map((k) => k.key));
     for (const key of manifest().contributes?.keys ?? []) expect(taken.has(key.key)).toBe(false);

@@ -38,6 +38,37 @@ export const PERSON_ONLY = new Set([
   "endue.database.agent-access",
   "endue.database.agent-audit-clear",
 ]);
+/**
+ * The person's own runs: the console's SQL, pending edits, the forms' scripts, a copy, and what
+ * they keep for a connection. They run with the person's session, unmasked and writable, so an
+ * agent or an MCP server never runs them; agents read through the tools above, read-only and
+ * masked (ADR 0346, ADR 0367).
+ */
+export const PERSON_RUNS = new Set(
+  [
+    "run",
+    "run-all",
+    "run-file",
+    "run-transaction",
+    "run-again-and-compare",
+    "dry-run",
+    "commit",
+    "submit-changes",
+    "table-design-run",
+    "table-design-dry-run",
+    "schema-compare-run",
+    "schema-compare-dry-run",
+    "maintenance-run",
+    "routine-run",
+    "transfer-start",
+    "transfer-query",
+    "forget-password",
+    "forget-ssh-host-key",
+  ].map((id) => `endue.database.${id}`),
+);
+/** An agent of the brain or an MCP server, as cmd.invoked names them. */
+const outsideCaller = (/** @type {string} */ caller) =>
+  caller.startsWith("agent:") || caller.startsWith("mcp:");
 
 /** A refusal of the gate's: the call never reached its command. */
 export class AgentRefusal extends Error {
@@ -98,6 +129,10 @@ export function createGate(deps) {
   const check = async (/** @type {Call} */ call, /** @type {Record<string, unknown>} */ args) => {
     if (PERSON_ONLY.has(call.command) && isAgent(call))
       throw new AgentRefusal("Only the person changes what agents may reach.");
+    if (PERSON_RUNS.has(call.command) && outsideCaller(call.caller))
+      throw new AgentRefusal(
+        "Only the person runs this: agents read with endue.database.query, read-only and masked.",
+      );
     if (!isAgent(call)) return;
     const ref = args.connection;
     if (typeof ref === "string") {

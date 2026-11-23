@@ -113,7 +113,10 @@ impl Core {
             self.log_approval(caller, scope, &action, &earlier, task.as_deref(), given);
             return Ok(());
         }
-        let (id, verdict) = self.ask_approval(caller, scope, &action, task.as_deref());
+        // A task answer is offered only for an act it can be narrowed to, and perm.approve takes
+        // none for an approval that offers none (ADR 0367).
+        let offered = task.as_deref().filter(|_| action.narrows());
+        let (id, verdict) = self.ask_approval(caller, scope, &action, offered);
         let given = match verdict {
             Verdict::Once => Some(ApprovalAnswer::Once),
             Verdict::Task => {

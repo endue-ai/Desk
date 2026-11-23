@@ -39,8 +39,9 @@ const GUIDE = [
   "is items (the desk's index: an item query with kinds, where, sort, limit; an event's start, a",
   "task's status as its group and a message's sender as its author come with them), url (an http or",
   "https address that answers YAML or JSON entries), file (a .yaml or .json file on the desk),",
-  "command (a plugin's command that answers entries: desk.universal.folder { path } lists a folder,",
-  "its files' modified times as start and their kinds as group) or data (entries written inline).",
+  "command (a plugin's read-only command that answers entries: desk.universal.folder { path }",
+  "lists a folder, its files' modified times as start and their kinds as group) or data (entries",
+  "written inline).",
   "map says which entry field plays which role (title, start, end, group, author, status, text,",
   "detail, tags, url) when the source names it otherwise; options.groups orders a board's columns.",
   "Give it a short title and types, the presentations the person may switch to. Use what the",
@@ -50,7 +51,12 @@ const GUIDE = [
 export interface UniversalKindOptions {
   bridge: BridgeClient;
   /** desk.universal.drafting, preview, open and close go through the registry. */
-  commands: { run(id: string, args?: unknown): Promise<unknown>; has?(id: string): boolean };
+  commands: {
+    run(id: string, args?: unknown): Promise<unknown>;
+    has?(id: string): boolean;
+    /** Whether a command only reads: a proposed view's source must (ADR 0367). */
+    reads?(id: string): boolean;
+  };
   /** Wall-clock milliseconds, for provenance. */
   now(): number;
   /** The profile in force. */
@@ -140,6 +146,7 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
       };
       const problems = specs().validate(value, UNIVERSAL);
       if (problems.length === 0) problems.push(...unknownCommands(value, commands.has));
+      if (problems.length === 0) problems.push(...changingSource(value, commands.reads));
       return problems.length ? { problems } : { value: value as unknown as UniversalView };
     },
 
@@ -173,6 +180,21 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
       });
     },
   };
+}
+
+/**
+ * A proposed view's source command that does not only read. The preview runs the source before the
+ * person has said yes, as desk.universal and under its grants, so a source the brain wrote may only
+ * answer data (`readOnly`), never act (ADR 0367). The view's actions, move and send run on the
+ * person's own press, so they may.
+ */
+export function changingSource(
+  view: Record<string, unknown>,
+  reads: ((id: string) => boolean) | undefined,
+): string[] {
+  const id = (view.source as { command?: unknown } | undefined)?.command;
+  if (!reads || typeof id !== "string" || reads(id)) return [];
+  return [`/source/command: ${id} does not only read, so it cannot be a view's source`];
 }
 
 /** The commands a view names (its source, actions, move and send) that the desk does not have. */

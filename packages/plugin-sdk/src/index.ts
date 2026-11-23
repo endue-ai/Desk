@@ -35,7 +35,12 @@ export type {
   ViewSummary,
 } from "@endue-ai/bridge";
 export { BridgeCallError } from "@endue-ai/bridge";
-export { CommandFailed, type CommandInfo, type PluginCommands } from "./commands";
+export {
+  CommandFailed,
+  type CommandInfo,
+  type Invocation,
+  type PluginCommands,
+} from "./commands";
 export type {
   PluginEvents,
   PluginLog,

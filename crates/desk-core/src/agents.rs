@@ -3,8 +3,9 @@
 //! holds anything: the cap holds at use time, so a grant the agent kept from a wider list allows
 //! nothing outside the current one. Inside it, or with an empty list, a call no grant covers asks
 //! the person for its scope, remembered per agent by the prompt policy; a command an installed
-//! plugin provides runs without the question, since installing the plugin was the person's yes to
-//! what it offers (ADR 0268). Every agent call is logged on the `perm` channel (`perm_log`).
+//! plugin offers agents runs without the question, since installing the plugin was the person's yes
+//! to what it offers (ADR 0268), and no agent runs a command of a plugin that answers the person's
+//! questions (ADR 0367). Every agent call is logged on the `perm` channel (`perm_log`).
 
 use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
 
@@ -66,15 +67,40 @@ impl Core {
         outside.then_some(RefusalReason::OutsideAllowlist)
     }
 
-    /// Whether `scope` on `target` runs a command an installed plugin provides: the person
-    /// installed the plugin, so an agent runs what it offers without being asked about (ADR 0268).
-    /// The desk's own commands and an MCP server's are not a plugin's.
+    /// Whether `scope` on `target` runs a command an installed plugin provides and offers agents
+    /// (`agent`): the person installed the plugin, so an agent runs what it offers agents without
+    /// being asked about (ADR 0268, ADR 0367). A command the plugin keeps for the person, the
+    /// desk's own commands and an MCP server's are not offered that way: they ask.
     pub(crate) fn installed_command(&self, scope: &Permission, target: &Target<'_>) -> bool {
         let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
             return false;
         };
-        let provider = self.command(id).map(|info| info.provider);
-        provider.is_some_and(|plugin| self.registry().get(&plugin).is_some())
+        let Some(info) = self.command(id) else {
+            return false;
+        };
+        info.agent == Some(true) && self.registry().get(&info.provider).is_some()
+    }
+
+    /// Whether `scope` on `target` runs a command of a plugin that answers the person's questions
+    /// (its manifest declares `perm:manage`, as the Permissions plugin's does): no agent runs one,
+    /// whatever it holds, so an agent never answers an approval or a prompt, its own or another's
+    /// (ADR 0367).
+    pub(crate) fn answers_for_the_person(&self, scope: &Permission, target: &Target<'_>) -> bool {
+        let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
+            return false;
+        };
+        self.command(id)
+            .is_some_and(|info| self.manages_permissions(&info.provider))
+    }
+
+    /// Whether `provider` is a plugin whose manifest declares `perm:manage`: it answers the
+    /// person's questions, so none of its commands is an agent's tool (ADR 0367).
+    pub(crate) fn manages_permissions(&self, provider: &str) -> bool {
+        let registry = self.registry();
+        let declared = registry.declared(provider).unwrap_or_default();
+        declared
+            .iter()
+            .any(|p| matches!(p, Permission::PermManage(_)))
     }
 
     /// Whether `caller` is Eris running one of the desk's own commands she needs to do what the
@@ -96,9 +122,10 @@ impl Core {
             && self.command(id).is_some_and(|info| info.provider == DESK)
     }
 
-    /// The check of an agent's call: refused outside its allowlist whatever it holds, allowed for
-    /// an installed plugin's command, Eris's desk commands or by a grant of its own, or else the person is asked for the
-    /// scope, for the session, as shell.open asks. Each call is one `perm` log entry.
+    /// The check of an agent's call: refused outside its allowlist whatever it holds and for a
+    /// command of a plugin that answers the person's questions, allowed for a command an installed
+    /// plugin offers agents, Eris's desk commands or by a grant of its own, or else the person is
+    /// asked for the scope, for the session, as shell.open asks. Each call is one `perm` log entry.
     pub(crate) fn check_agent(
         &self,
         caller: &str,
@@ -111,6 +138,15 @@ impl Core {
                 return Err(denied(Denied {
                     permission: scope.clone(),
                     reason: refusal(caller, Some(reason)),
+                }));
+            }
+            if self.answers_for_the_person(scope, target) {
+                self.refused(caller, scope, Some(target), None);
+                let reason =
+                    format!("{caller} may not run a command that answers the person's questions");
+                return Err(denied(Denied {
+                    permission: scope.clone(),
+                    reason,
                 }));
             }
             if self.installed_command(scope, target)

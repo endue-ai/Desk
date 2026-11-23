@@ -283,8 +283,10 @@ fn callers_that_are_not_plugins_keep_their_rules() {
     assert_eq!(request(&core, "agent:mira", notes)["granted"], true);
     assert_eq!(person.asked(), 3);
 
-    // An agent without an allowlist runs an installed plugin's command without a question (ADR 0268).
-    let command = json!({ "id": "example.viewer.show", "title": "Show" });
+    // An agent without an allowlist runs a command an installed plugin offers agents without a
+    // question (ADR 0268, ADR 0367).
+    let command = json!({ "id": "example.viewer.show", "title": "Show",
+        "description": "Show the note.", "agent": true });
     call(&core, VIEWER, "cmd.register", command).unwrap();
     let invoke = json!({ "id": "example.viewer.show",
         "scope": { "permission": "cmd:invoke", "ids": ["example.viewer.show"] } });

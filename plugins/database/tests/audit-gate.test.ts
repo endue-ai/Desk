@@ -73,6 +73,22 @@ describe("the person's own commands", () => {
     expect(m.store["agent-access"]).toBeUndefined();
   });
 
+  it("run the console only for the person: an agent or an MCP server is refused and runs nothing", async () => {
+    const { m, seen } = await auditMount();
+    const before = seen.length;
+    for (const [id, caller] of [
+      ["endue.database.run", "agent:helper"],
+      ["endue.database.run-all", "agent:helper"],
+      ["endue.database.submit-changes", "mcp:tools"],
+      ["endue.database.commit", "agent:helper"],
+      ["endue.database.forget-password", "mcp:tools"],
+    ] as const)
+      await expect(asAgent(m, id, { connection: "shop" }, caller), id).rejects.toThrow(
+        /Only the person runs this/u,
+      );
+    expect(seen.length).toBe(before);
+  });
+
   it("are no agent's tools, and the tools are read-only", () => {
     const commands = manifest.contributes.commands as Array<{
       id: string;

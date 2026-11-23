@@ -43,6 +43,8 @@ export interface CommandInfo {
   keywords: string[];
   /** The caller that provides it: `desk` for built-ins, else a plugin id. */
   provider: string;
+  /** It answers data and changes nothing the person keeps (the provider's manifest says so). */
+  readOnly?: boolean;
 }
 
 export type CommandErrorCode = "unknown_command" | "failed" | "cancelled";
@@ -125,6 +127,11 @@ export class Commands {
 
   has(id: string): boolean {
     return this.#known.has(id);
+  }
+
+  /** Whether the registered command `id` only reads (`readOnly`): answers data, changes nothing. */
+  readOnly(id: string): boolean {
+    return this.#known.get(id)?.readOnly === true;
   }
 
   /**
@@ -323,7 +330,13 @@ export class Commands {
     this.#known = new Map(
       listed.commands.map((c) => [
         c.id,
-        { id: c.id, title: c.title, keywords: c.keywords ?? [], provider: c.provider },
+        {
+          id: c.id,
+          title: c.title,
+          keywords: c.keywords ?? [],
+          provider: c.provider,
+          ...(c.readOnly ? { readOnly: true } : {}),
+        },
       ]),
     );
     for (const listener of this.#changes) listener();

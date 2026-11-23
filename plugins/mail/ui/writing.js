@@ -248,13 +248,16 @@ export function createWriting(deps) {
       return result;
     },
 
-    /** Close the composer and drop the draft, without asking: endue.mail.discard, for agents. */
+    /**
+     * Close the composer and drop the draft, without asking: endue.mail.discard. The command is
+     * irreversible, so an agent's call of it waited for the person's approval first (ADR 0078).
+     */
     discard,
 
     /**
      * The person's Discard: a draft with text goes only once they pick Discard in the palette; Keep
      * or a closed palette keeps it. An empty draft goes without a question. Agents run discard(),
-     * which never asks, because their own approval path already did.
+     * which never asks, because the core held their call for the person's approval.
      */
     confirmDiscard: async () => {
       if (!draft) return false;

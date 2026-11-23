@@ -1,7 +1,8 @@
 // ctx.commands: the plugin's side of the core's command registry (bridge cmd.*, ADR 0017). `run`
 // is cmd.invoke and waits for cmd.answered; `list` is cmd.list; `tools` is cmd.tools, the agent
 // commands the plugin's grants cover (ADR 0088); `on` answers this plugin's commands when
-// cmd.invoked arrives (with cmd.answer), and the desk's requests to it (desk.files.visit, ...).
+// cmd.invoked arrives (with cmd.answer), handing the handler who invoked it, and the desk's requests
+// to it (desk.files.visit, ...), which come with no invocation.
 import type { BridgeEvent, CmdAnsweredData, CommandTool, ParamsOf } from "@endue-ai/bridge";
 import type { CommandOutcome } from "./protocol";
 
@@ -26,9 +27,21 @@ export class CommandFailed extends Error {
   }
 }
 
+/** Who invoked a command, as cmd.invoked says: absent for a request the desk sends by name. */
+export interface Invocation {
+  invocationId: string;
+  /** `desk` (the person), a plugin's id, `agent:<id>` or `mcp:<name>`. */
+  caller: string;
+}
+
+type Handler = (args: unknown, invocation?: Invocation) => unknown;
+
 export interface PluginCommands {
-  /** Answer a command this plugin provides, or a request the desk sends it, by name. */
-  on(name: string, handler: (args: unknown) => unknown): () => void;
+  /**
+   * Answer a command this plugin provides, or a request the desk sends it, by name. The handler
+   * hears who invoked it (cmd.invoked); a request the desk sends has no invocation.
+   */
+  on(name: string, handler: Handler): () => void;
   /** Run any registered command (needs a `cmd:invoke` grant covering it) and get its answer. */
   run<T = unknown>(name: string, args?: Record<string, unknown>): Promise<T>;
   list(): Promise<CommandInfo[]>;
@@ -62,16 +75,16 @@ export function commandsFor(
   /** Resolves once the plugin has mounted: commands that arrive earlier wait for their handler. */
   mounted: Promise<void>,
 ) {
-  const handlers = new Map<string, Set<(args: unknown) => unknown>>();
+  const handlers = new Map<string, Set<Handler>>();
   const waiting = new Map<string, (data: CmdAnsweredData) => void>();
   const early = new Map<string, CmdAnsweredData>();
 
-  const handle = async (name: string, args: unknown): Promise<Outcome> => {
+  const handle = async (name: string, args: unknown, invocation?: Invocation): Promise<Outcome> => {
     if (!handlers.get(name)?.size) await mounted;
     const own = [...(handlers.get(name) ?? [])];
     try {
       if (own.length === 0) throw new CommandFailed(name, "unknown_command", "no handler");
-      const results = await Promise.all(own.map((handler) => handler(args)));
+      const results = await Promise.all(own.map((handler) => handler(args, invocation)));
       return { ok: true, result: results[0] };
     } catch (error) {
       const code = error instanceof CommandFailed ? error.code : "failed";
@@ -137,8 +150,8 @@ export function commandsFor(
     /** cmd.invoked for this plugin's commands, cmd.answered for its runs. */
     event: (event: BridgeEvent) => {
       if (event.event === "cmd.invoked") {
-        const { invocationId, id, args } = event.data;
-        void handle(id, args ?? {}).then((outcome) => {
+        const { invocationId, id, args, caller } = event.data;
+        void handle(id, args ?? {}, { invocationId, caller }).then((outcome) => {
           const params = outcome.ok
             ? { invocationId, ...(outcome.result === undefined ? {} : { result: outcome.result }) }
             : {
