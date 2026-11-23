@@ -64,6 +64,27 @@ async function openCanvasWindow(): Promise<string> {
   return id;
 }
 
+/** A wheel over Notes needs its pane at that point in the window's own page. */
+async function openCanvasNotes() {
+  const id = await openCanvasWindow();
+  await run("desk.shell.open-notes");
+  const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+  const at = bodyAt(rectOf(win));
+  await browser.waitUntil(
+    () =>
+      inWindowPage(id, () =>
+        browser.execute(
+          (x: number, y: number) =>
+            Boolean(document.elementFromPoint(x, y)?.closest('[data-pane][data-view="notes"]')),
+          at.x - win.x,
+          at.y - win.y,
+        ),
+      ),
+    { timeoutMsg: "Notes did not cover the wheel point in its window" },
+  );
+  return win;
+}
+
 /** Shift + drag from the empty canvas by (`dx`, `dy`). */
 async function pan(dx: number, dy: number): Promise<void> {
   const desk = await deskNow();
@@ -204,9 +225,7 @@ describe("canvas: resizing and the pan (#82)", () => {
   });
 
   it("the wheel over a pane does not pan; over the canvas it does", async () => {
-    const id = await openCanvasWindow();
-    await run("desk.shell.open-notes");
-    const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+    const win = await openCanvasNotes();
     await wheel(bodyAt(rectOf(win)), 0, 120);
     await browser.pause(300);
     expect(panOf(await deskNow())).toEqual({ x: 0, y: 0 });
@@ -214,13 +233,11 @@ describe("canvas: resizing and the pan (#82)", () => {
     await browser.waitUntil(async () => panOf(await deskNow()).y === -120, {
       timeoutMsg: "the wheel over the canvas did not pan it by 120",
     });
-    expect(rectOf(await windowNow(id))).toEqual({ ...rectOf(win), y: win.y - 120 });
+    expect(rectOf(await windowNow(win.id))).toEqual({ ...rectOf(win), y: win.y - 120 });
   });
 
   it("a wheel's run pans on once a window comes under the pointer, and a rest ends it", async () => {
-    const id = await openCanvasWindow();
-    await run("desk.shell.open-notes");
-    const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+    const win = await openCanvasNotes();
     const at = emptyAt(await deskNow());
     const body = bodyAt(rectOf(win));
     // The first wheel, over the empty canvas, brings the window's body under the pointer.
