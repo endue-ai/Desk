@@ -10,6 +10,11 @@ use desk_pg::{Auth, Error, Limits, Statement, TlsMode, Transaction};
 const VAR: &str = "ENDUE_DB_TEST_POSTGRES";
 
 #[test]
+fn the_public_default_application_name_identifies_endue() {
+    assert_eq!(desk_pg::APPLICATION_NAME, "endue");
+}
+
+#[test]
 fn signs_in_with_scram_and_reports_the_server() {
     let config = live!(VAR);
     let (opened, _) = open(&config);
@@ -25,7 +30,10 @@ fn signs_in_with_scram_and_reports_the_server() {
     };
     assert!(parameter("server_version").is_some());
     assert_eq!(parameter("client_encoding").as_deref(), Some("UTF8"));
-    assert_eq!(parameter("application_name").as_deref(), Some("endue"));
+    assert_eq!(
+        parameter("application_name").as_deref(),
+        Some(desk_pg::APPLICATION_NAME)
+    );
     let pid = value(&opened.session, "SELECT pg_backend_pid()");
     assert_eq!(pid, Some(opened.pid.to_string()));
 

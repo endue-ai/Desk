@@ -4,18 +4,22 @@
 // never the password; and the password note names the password file libpq reads there.
 import { describe, expect, it } from "vitest";
 import { createClients } from "../ui/clients.js";
-import { commandLine, powershellWord } from "../ui/features/backup/args.js";
+import { normalize } from "../ui/connections.js";
+import { commandLine, connectionEnv, powershellWord } from "../ui/features/backup/args.js";
 import { passwordNote } from "../ui/features/backup/common.js";
 import { fromValues } from "../ui/settings.js";
 
-const ENV = {
-  PGHOST: "db.example",
-  PGPORT: "5432",
-  PGDATABASE: "shop",
-  PGUSER: "app",
-  PGPASSWORD: "s3cret pass",
-  PGAPPNAME: "endue",
-};
+const ENV = connectionEnv(
+  normalize({
+    id: "endue",
+    engine: "postgresql",
+    host: "db.example",
+    port: 5432,
+    database: "shop",
+    user: "app",
+  }),
+  "s3cret pass",
+);
 
 describe("the command line on each system", () => {
   it("shows the command line as PowerShell on Windows", () => {
@@ -28,7 +32,8 @@ describe("the command line on each system", () => {
     expect(line).not.toContain("s3cret");
     expect(line).not.toContain("PGPASSWORD");
     expect(line).toBe(
-      "$env:PGHOST='db.example'; $env:PGPORT='5432'; $env:PGDATABASE='shop'; $env:PGUSER='app'; $env:PGAPPNAME='endue'; " +
+      "$env:PGHOST='db.example'; $env:PGPORT='5432'; $env:PGDATABASE='shop'; $env:PGUSER='app'; " +
+        "$env:PGCONNECT_TIMEOUT='10'; $env:PGAPPNAME='endue'; $env:LC_ALL='C'; " +
         "& 'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe' --format=custom '--table=public.it''s' --file=./Backups/shop.dump '--schema=a,b'",
     );
     // A bare program name, and words PowerShell would read as something else, quoted.
@@ -41,7 +46,7 @@ describe("the command line on each system", () => {
 
   it("keeps POSIX shell words on macOS and Linux", () => {
     const posix =
-      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGAPPNAME=endue pg_dump --verbose";
+      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGCONNECT_TIMEOUT=10 PGAPPNAME=endue LC_ALL=C pg_dump --verbose";
     expect(commandLine("pg_dump", ["--verbose"], ENV, "linux")).toBe(posix);
     expect(commandLine("pg_dump", ["--verbose"], ENV, "mac")).toBe(posix);
     expect(commandLine("pg_dump", ["--verbose"], ENV)).toBe(posix);

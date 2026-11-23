@@ -106,6 +106,7 @@ describe("reading the activity", () => {
       0,
     );
     expect(real.sessions[0]).toMatchObject({ pid: 7, stateMs: null, blockedBy: [], query: null });
+    expect(OWN_APPLICATION).toBe("endue");
     expect(OWN_APPLICATION).toBe(settingsOf(0).application_name);
   });
 

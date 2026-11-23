@@ -80,6 +80,12 @@ describe("the activity panel", () => {
       all.querySelector(`[data-part="sessions"] tr[data-pid="${pid}"] .desk-badge`)?.textContent;
     expect(marks("4250")).toBe("this view");
     expect(marks("4251")).toBeUndefined();
+    const entries = activityRows();
+    const local = draw({
+      read: readOf(entries.head, entries.sessions, entries.locks, false, 0, new Set([4251])),
+      filters: { idle: false, own: false, system: true, database: "" },
+    }).el;
+    expect(local.querySelector('tr[data-pid="4251"] .desk-badge')?.textContent).toBe("this app");
     // A selected session shows its statement, and Cancel and End; a read-only connection turns them off.
     const picked = draw({ selected: 4242 }).el;
     expect(picked.querySelector(".activity-query")?.textContent).toBe("SELECT pg_sleep(600)");
