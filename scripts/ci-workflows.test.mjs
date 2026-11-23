@@ -25,14 +25,18 @@ test("macOS and Windows checks run only for a pull request into release/**", asy
   for (const name of ["check-macos", "check-windows"]) {
     assert.equal(jobs[name].if, RELEASE_PR, `${name} runs for release pull requests only`);
   }
-  for (const name of ["check-linux", "runtime-e2e-shard", "codegen-check"]) {
+  for (const name of ["linux-verification", "runtime-e2e-shard", "codegen-check"]) {
     assert.ok(jobs[name], `${name} exists`);
     assert.equal(jobs[name].if, undefined, `${name} runs on every pull request`);
   }
 });
 
 test("Linux runs all checks within the hosted disk budget", async () => {
-  const check = (await workflow("ci")).jobs["check-linux"];
+  const { jobs } = await workflow("ci");
+  const check = jobs["linux-verification"];
+  assert.ok(check, "static checks and unit tests run on separate Linux runners");
+  assert.deepEqual(check.strategy.matrix.recipe, ["check", "test-unit"]);
+  assert.equal(check.strategy["fail-fast"], false);
   for (const profile of ["DEV", "TEST"]) {
     assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG`], "0");
     assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG_ASSERTIONS`], undefined);
@@ -40,8 +44,17 @@ test("Linux runs all checks within the hosted disk budget", async () => {
   }
   assert.equal(check.env.CARGO_INCREMENTAL, "0");
   assert.equal(check["timeout-minutes"], 30);
-  assert.ok(check.steps.some((step) => step.run === "just check"));
-  assert.ok(check.steps.some((step) => step.run === "just test-unit"));
+  for (const recipe of check.strategy.matrix.recipe) {
+    const step = check.steps.find((step) => step.run === `just ${recipe}`);
+    assert.equal(step?.if, `matrix.recipe == '${recipe}'`);
+    assert.equal(step["continue-on-error"], undefined);
+  }
+  const gate = jobs["check-linux"];
+  assert.equal(gate.name, "check (linux)");
+  assert.equal(gate.if, "always()");
+  assert.equal(gate.needs, "linux-verification");
+  assert.equal(gate.steps[0].env.RESULT, expr("needs.linux-verification.result"));
+  assert.equal(gate.steps[0].run, 'test "$RESULT" = success');
 });
 
 test("the CEF shell is built on every OS for an app change and for a release", async () => {

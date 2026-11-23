@@ -51,11 +51,15 @@ jobs:
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
           echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
-  check-linux:
-    name: check (linux)
+  linux-verification:
+    name: linux (${{ matrix.recipe }})
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: [check, test-unit]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Clippy and the full test suite share the hosted runner's disk.
+    # Fit debug-profile builds on the hosted runner while retaining debug assertions.
     env:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -74,6 +78,7 @@ jobs:
         with:
           tool: just
       - name: Install actionlint
+        if: matrix.recipe == 'check'
         run: |
           base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
           tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
@@ -89,7 +94,21 @@ jobs:
           sudo apt-get install -y libasound2-dev libvulkan1 mesa-vulkan-drivers fonts-noto-cjk
       - run: pnpm install --frozen-lockfile
       - run: just check
+        if: matrix.recipe == 'check'
       - run: just test-unit
+        if: matrix.recipe == 'test-unit'
+
+  check-linux:
+    name: check (linux)
+    if: always()
+    needs: linux-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require Linux static checks and unit tests
+        env:
+          RESULT: ${{ needs.linux-verification.result }}
+        run: test "$RESULT" = success
 
   runtime-e2e-shard:
     name: runtime-e2e (shard ${{ matrix.shard }}/4)

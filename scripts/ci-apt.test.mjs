@@ -140,7 +140,7 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
 
 test("the Linux unit tests have the Vulkan loader and software driver for offscreen rendering", async () => {
   const { jobs } = await workflow("ci");
-  const job = jobs["check-linux"];
+  const job = jobs["linux-verification"];
   configuredBefore(job, "mesa-vulkan-drivers");
   const install = job.steps.find((step) => step.run?.includes("mesa-vulkan-drivers"));
   for (const pkg of ["libasound2-dev", "libvulkan1", "mesa-vulkan-drivers"]) {
@@ -152,7 +152,7 @@ test("the Linux unit tests have the Vulkan loader and software driver for offscr
 });
 
 test("the Linux compositor can draw Hangul, Han and kana window titles", async () => {
-  const job = (await workflow("ci")).jobs["check-linux"];
+  const job = (await workflow("ci")).jobs["linux-verification"];
   configuredBefore(job, "fonts-noto-cjk");
   const installAt = job.steps.findIndex((step) =>
     /\bapt-get install [^\n]*\bfonts-noto-cjk\b/u.test(step.run ?? ""),
