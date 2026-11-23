@@ -104,13 +104,16 @@ describe("the activity view's own sessions", () => {
     expect(m.host.calls.filter((c) => c.method === "db.list").length).toBeGreaterThanOrEqual(1);
   });
 
-  it.each(["endue", "endue Desk"])("identifies a reader from %s by its query and session", (name) => {
-    const rows = activityRows();
-    const reader = [...READER];
-    reader[4] = name;
-    const sessions = readOf(rows.head, [reader], [], false, 0, new Set()).sessions;
-    expect(sessions[0]).toMatchObject({ application: name, own: "", reads: true });
-  });
+  it.each(["endue", "endue Desk"])(
+    "identifies a reader from %s by its query and session",
+    (name) => {
+      const rows = activityRows();
+      const reader = [...READER];
+      reader[4] = name;
+      const sessions = readOf(rows.head, [reader], [], false, 0, new Set()).sessions;
+      expect(sessions[0]).toMatchObject({ application: name, own: "", reads: true });
+    },
+  );
 
   it("hides the view's reads with their locks", () => {
     const hidden = draw().el;

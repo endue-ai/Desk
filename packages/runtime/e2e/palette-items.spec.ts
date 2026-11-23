@@ -28,7 +28,9 @@ async function load(page: Page): Promise<FrameLocator> {
 async function type(page: Page, palette: FrameLocator, text: string): Promise<void> {
   await page.keyboard.press("Control+K");
   await expect(page.locator(PALETTE)).toBeVisible();
-  await expect(palette.getByTestId("query")).toBeFocused();
+  await expect(
+    palette.getByRole("combobox", { name: "Search endue and this computer" }),
+  ).toBeFocused();
   await page.keyboard.type(text);
 }
 
