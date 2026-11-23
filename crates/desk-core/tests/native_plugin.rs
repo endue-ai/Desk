@@ -47,7 +47,8 @@ fn plugin(parent: &Path, platform: &str, script: Option<&str>) -> PathBuf {
     fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
     if let Some(script) = script {
         let program = dir.join("bin/plugin");
-        fs::write(&program, format!("#!/bin/sh\n{script}\n")).unwrap();
+        // Bash accepts the full socket descriptor in the fixture's redirections.
+        fs::write(&program, format!("#!/usr/bin/env bash\n{script}\n")).unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -151,10 +152,15 @@ mod process {
         assert_eq!(core.install_plugin(&dir, false).status, PluginStatus::Ready);
         let launch = core.native_launch(ID).unwrap();
         let (tx, rx) = mpsc::channel();
+        // The child can inherit sockets above descriptor 9 even when the tests run serially.
+        let occupied: Vec<_> = (0..10)
+            .map(|_| fs::File::open("/dev/null").unwrap())
+            .collect();
         let process = native::NativeProcess::start(&core, &launch, &[], move |ended| {
             let _ = tx.send(ended);
         })
         .expect("the program starts");
+        drop(occupied);
         (process, rx, dir)
     }
 
@@ -191,7 +197,7 @@ printf '%s\n' '{"id":2,"method":"socket.agent","params":{"agent":"codex"}}' >&"$
 read -r two <&"$DESK_BRIDGE_FD"; printf '%s\n' "$two" >> out
 printf '%s\n' '{"id":3,"method":"fs.read","params":{"path":"~/x","scope":{"permission":"fs:read","paths":["~/**"]}}}' >&"$DESK_BRIDGE_FD"
 read -r three <&"$DESK_BRIDGE_FD"; printf '%s\n' "$three" >> out
-printf '%s %s %s\n' "$DESK_PLUGIN_ID" "$1" "$(pwd)" > env
+printf '%s %s\n' "$DESK_PLUGIN_ID" "$1" > env
 "#;
         let (_process, rx, dir) = start("bridge", script);
         let end = ended(&rx);
@@ -202,9 +208,12 @@ printf '%s %s %s\n' "$DESK_PLUGIN_ID" "$1" "$(pwd)" > env
         assert_eq!(answers[0]["result"]["value"], 1.5, "its own setting");
         assert_eq!(answers[1]["ok"], false, "a plugin never becomes an agent");
         assert_eq!(answers[2]["ok"], false, "fs:read is not in its manifest");
-        let env = fs::read_to_string(dir.join("env")).unwrap();
-        let dir = fs::canonicalize(&dir).unwrap();
-        assert_eq!(env.trim(), format!("{ID} --hello {}", dir.display()));
+        let env = fs::read_to_string(dir.join("env"))
+            .expect("the fixture wrote its relative output in the plugin directory");
+        assert!(
+            env.trim() == format!("{ID} --hello"),
+            "the fixture output should contain only the plugin ID and argument"
+        );
     }
 
     #[test]
