@@ -105,10 +105,27 @@ function configuredBefore(job, install) {
 
 test("the runtime e2e installs with configured APT while retaining commands, deadlines and gates", async () => {
   const { jobs } = await workflow("ci");
-  const runtime = jobs["runtime-e2e"];
+  const runtime = jobs["runtime-e2e-shard"];
+  assert.ok(runtime, "Chromium runs on independent Linux shards");
   configuredBefore(runtime, "playwright install --with-deps chromium");
   assert.equal(runtime["timeout-minutes"], 15);
-  assert.ok(runtime.steps.some((step) => step.run === "just test-e2e"));
+  assert.deepEqual(runtime.strategy.matrix.shard, [1, 2, 3, 4]);
+  assert.equal(runtime.strategy["fail-fast"], false);
+  assert.ok(
+    runtime.steps.some(
+      (step) => step.run === "just test-e2e --shard=${{ matrix.shard }}/4 --workers=1",
+    ),
+  );
+  const report = runtime.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+  assert.equal(report.if, "failure()");
+  assert.equal(report.with.name, "playwright-report-${{ matrix.shard }}");
+  const gate = jobs["runtime-e2e"];
+  assert.equal(gate.name, "runtime-e2e");
+  assert.equal(gate.if, "always()");
+  assert.equal(gate.needs, "runtime-e2e-shard");
+  const result = gate.steps.find((step) => step.env?.SHARD_RESULT);
+  assert.equal(result.env.SHARD_RESULT, "${{ needs.runtime-e2e-shard.result }}");
+  assert.equal(result.run, 'test "$SHARD_RESULT" = success');
   assert.deepEqual(jobs.ci.needs, [
     "changes",
     "check-linux",
@@ -119,6 +136,27 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
     "red-on-base",
     "release-dry-run",
   ]);
+});
+
+test("the Linux shell build installs its native build headers through configured APT", async () => {
+  const { jobs } = await workflow("ci");
+  const shell = jobs["shell-build"];
+  const apt = configuredBefore(shell, "libgtk-3-dev");
+  assert.equal(apt.if, "runner.os == 'Linux'");
+  const install = shell.steps.find((step) => step.run?.includes("libgtk-3-dev"));
+  assert.equal(install.if, "runner.os == 'Linux'");
+  for (const pkg of [
+    "cmake",
+    "ninja-build",
+    "libxdo-dev",
+    "libayatana-appindicator3-dev",
+    "libasound2-dev",
+  ]) {
+    assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+  }
+  assert.ok(
+    shell.steps.indexOf(install) < shell.steps.findIndex((step) => step.run === "just check-shell"),
+  );
 });
 
 test("app e2e configures APT and changes to the helper exercise the existing packaged-app gates", async () => {

@@ -25,9 +25,23 @@ test("macOS and Windows checks run only for a pull request into release/**", asy
   for (const name of ["check-macos", "check-windows"]) {
     assert.equal(jobs[name].if, RELEASE_PR, `${name} runs for release pull requests only`);
   }
-  for (const name of ["check-linux", "runtime-e2e", "codegen-check"]) {
+  for (const name of ["check-linux", "runtime-e2e-shard", "codegen-check"]) {
+    assert.ok(jobs[name], `${name} exists`);
     assert.equal(jobs[name].if, undefined, `${name} runs on every pull request`);
   }
+});
+
+test("Linux runs all checks within the hosted disk budget", async () => {
+  const check = (await workflow("ci")).jobs["check-linux"];
+  for (const profile of ["DEV", "TEST"]) {
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG`], "0");
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG_ASSERTIONS`], undefined);
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_OVERFLOW_CHECKS`], undefined);
+  }
+  assert.equal(check.env.CARGO_INCREMENTAL, "0");
+  assert.equal(check["timeout-minutes"], 30);
+  assert.ok(check.steps.some((step) => step.run === "just check"));
+  assert.ok(check.steps.some((step) => step.run === "just test-unit"));
 });
 
 test("the CEF shell is built on every OS for an app change and for a release", async () => {
