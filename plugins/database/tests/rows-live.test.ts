@@ -55,7 +55,7 @@ const done = (m: Mounted) => m.host.command("endue.database.disconnect", { conne
 
 describe.skipIf(!uri)("a console's read through a cursor on a real server", () => {
   beforeAll(() => server.end());
-  afterAll(() => server.end("application_name = 'endue Desk'"));
+  afterAll(() => server.end("application_name = 'endue'"));
 
   it("scrolls a million rows to the end with the rows held bounded; the end equals the server's", async () => {
     const m = await live();

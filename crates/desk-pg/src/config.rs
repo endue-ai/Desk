@@ -218,7 +218,7 @@ mod tests {
                 "user=ada",
                 "database=app",
                 "client_encoding=UTF8",
-                "application_name=endue Desk",
+                "application_name=endue",
                 "TimeZone=UTC",
                 "default_transaction_read_only=on",
             ]

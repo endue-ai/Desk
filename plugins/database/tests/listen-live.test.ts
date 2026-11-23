@@ -43,7 +43,7 @@ const done = (m: Mounted) => m.host.command("endue.database.disconnect", { conne
 
 describe.skipIf(!uri)("live notices and LISTEN on a real server", () => {
   afterAll(async () => {
-    await server.end("application_name = 'endue Desk'");
+    await server.end("application_name = 'endue'");
   });
 
   it("a long statement's RAISE NOTICEs show before it ends, in order, and once after", async () => {

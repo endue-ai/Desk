@@ -60,7 +60,7 @@ describe("reading the activity", () => {
       own: "",
       reads: false,
     });
-    // NULL is no age, never 0; 0 stays 0. The view's own session is marked; an endue Desk session
+    // NULL is no age, never 0; 0 stays 0. The view's own session is marked; an endue session
     // db.list does not name is another desk's, with no mark (activity-own.test.ts).
     const byPid = (pid: number) => sessions.find((s) => s.pid === pid);
     expect(byPid(4251)?.xactMs).toBeNull();

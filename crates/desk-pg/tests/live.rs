@@ -25,7 +25,7 @@ fn signs_in_with_scram_and_reports_the_server() {
     };
     assert!(parameter("server_version").is_some());
     assert_eq!(parameter("client_encoding").as_deref(), Some("UTF8"));
-    assert_eq!(parameter("application_name").as_deref(), Some("endue Desk"));
+    assert_eq!(parameter("application_name").as_deref(), Some("endue"));
     let pid = value(&opened.session, "SELECT pg_backend_pid()");
     assert_eq!(pid, Some(opened.pid.to_string()));
 

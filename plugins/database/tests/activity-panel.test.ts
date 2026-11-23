@@ -73,7 +73,7 @@ describe("the activity panel", () => {
     expect(el.querySelector(".activity-status")?.textContent).toContain(
       "PostgreSQL 17.6 · 8 sessions, 2 waiting",
     );
-    // Shown with every filter off, the view's session is marked; the other endue Desk session is
+    // Shown with every filter off, the view's session is marked; the other endue session is
     // not this desk's (db.list does not name it), so it has no mark (activity-own.test.ts).
     const all = draw({ filters: { idle: false, own: false, system: true, database: "" } }).el;
     const marks = (pid: string) =>

@@ -14,7 +14,7 @@ const ENV = {
   PGDATABASE: "shop",
   PGUSER: "app",
   PGPASSWORD: "s3cret pass",
-  PGAPPNAME: "endue Desk",
+  PGAPPNAME: "endue",
 };
 
 describe("the command line on each system", () => {
@@ -28,7 +28,7 @@ describe("the command line on each system", () => {
     expect(line).not.toContain("s3cret");
     expect(line).not.toContain("PGPASSWORD");
     expect(line).toBe(
-      "$env:PGHOST='db.example'; $env:PGPORT='5432'; $env:PGDATABASE='shop'; $env:PGUSER='app'; $env:PGAPPNAME='endue Desk'; " +
+      "$env:PGHOST='db.example'; $env:PGPORT='5432'; $env:PGDATABASE='shop'; $env:PGUSER='app'; $env:PGAPPNAME='endue'; " +
         "& 'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe' --format=custom '--table=public.it''s' --file=./Backups/shop.dump '--schema=a,b'",
     );
     // A bare program name, and words PowerShell would read as something else, quoted.
@@ -41,7 +41,7 @@ describe("the command line on each system", () => {
 
   it("keeps POSIX shell words on macOS and Linux", () => {
     const posix =
-      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGAPPNAME='endue Desk' pg_dump --verbose";
+      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGAPPNAME=endue pg_dump --verbose";
     expect(commandLine("pg_dump", ["--verbose"], ENV, "linux")).toBe(posix);
     expect(commandLine("pg_dump", ["--verbose"], ENV, "mac")).toBe(posix);
     expect(commandLine("pg_dump", ["--verbose"], ENV)).toBe(posix);

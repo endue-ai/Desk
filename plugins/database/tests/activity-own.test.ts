@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Which sessions of the activity view are the desk's own (#564): the session that read is "this
 // view", one of the plugin's sessions on this desk (db.list, on the connection's server) is "this
-// desk", and another desk's `endue Desk` session has no mark. "Hide the view's reads" hides the
+// desk", and another desk's `endue` session has no mark. "Hide the view's reads" hides the
 // session that read and any other running one of the view's statements, in Sessions and in Locks.
 // The footer's count follows each read while it still shows the panel's sentence, and the time of
 // a read is on the explorer's 24-hour clock.
@@ -17,7 +17,7 @@ if (!panel) throw new Error("the activity feature draws an activity panel");
 
 /** Another desk's view reading the sessions this moment, holding its locks on the catalog. */
 const READER = [
-  ...["4252", "", "app", "warehouse", "endue Desk", "10.0.0.9", "50700", "client backend"],
+  ...["4252", "", "app", "warehouse", "endue", "10.0.0.9", "50700", "client backend"],
   ...["active", "", "", "0", "0", "0", "", sessionsSql()],
 ];
 const READER_LOCKS = [
@@ -71,7 +71,7 @@ describe("the activity view's own sessions", () => {
     expect(read([4251]).sessions.find((s) => s.pid === 4251)?.own).toBe("desk");
     const el = draw({ read: read([4251]), filters: ALL }).el;
     expect(mark(el, "4250")).toBe("this view");
-    expect(mark(el, "4251")).toBe("this desk");
+    expect(mark(el, "4251")).toBe("this app");
     // Another desk's endue session: its Application says so, and no mark.
     expect(mark(draw({ filters: ALL }).el, "4251")).toBeUndefined();
   });
@@ -102,6 +102,14 @@ describe("the activity view's own sessions", () => {
     expect(sessions.find((s) => s.pid === 4251)?.own).toBe("desk");
     expect(sessions.find((s) => s.pid === 4300)?.own).toBe("");
     expect(m.host.calls.filter((c) => c.method === "db.list").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it.each(["endue", "endue Desk"])("identifies a reader from %s by its query and session", (name) => {
+    const rows = activityRows();
+    const reader = [...READER];
+    reader[4] = name;
+    const sessions = readOf(rows.head, [reader], [], false, 0, new Set()).sessions;
+    expect(sessions[0]).toMatchObject({ application: name, own: "", reads: true });
   });
 
   it("hides the view's reads with their locks", () => {

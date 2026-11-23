@@ -42,7 +42,7 @@ describe("pg_restore --list", () => {
   it("writes the list file of the chosen entries in the archive's order", () => {
     const toc = parseToc(FIXTURE_TOC);
     expect(listFile(toc.entries, [3432, 218])).toBe(
-      "; Chosen in endue Desk: 2 of 9 entries\n" +
+      "; Chosen in endue: 2 of 9 entries\n" +
         "218; 1259 16384 TABLE public orders app\n" +
         "3432; 0 16384 TABLE DATA public orders app\n",
     );

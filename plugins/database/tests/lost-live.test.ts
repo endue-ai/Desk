@@ -89,7 +89,7 @@ describe.skipIf(!uri)("a lost connection on a real server", () => {
     );
   });
   afterAll(async () => {
-    await server.end("application_name = 'endue Desk'");
+    await server.end("application_name = 'endue'");
     await drop();
   });
 

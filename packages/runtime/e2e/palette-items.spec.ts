@@ -71,7 +71,7 @@ test.describe("desk.palette providers", () => {
     expect(order.indexOf("result")).toBeGreaterThan(order.lastIndexOf("command"));
   });
 
-  test("Enter on an item runs its first action and the item opens in Desk", async ({ page }) => {
+  test("Enter on an item runs its first action and the item opens in endue", async ({ page }) => {
     const palette = await load(page);
     await type(page, palette, WORD);
     const result = palette
@@ -80,7 +80,7 @@ test.describe("desk.palette providers", () => {
       .filter({ hasText: "Buy groceries" });
     await expect(result).toBeVisible();
     await select(page, palette, result);
-    await expect(palette.getByTestId("actions")).toContainText("Open in Desk");
+    await expect(palette.getByTestId("actions")).toContainText("Open in endue");
     await page.keyboard.press("Enter");
     await expect(page.locator(PALETTE)).toBeHidden();
     await expect(page.locator(UNIVERSAL)).toBeVisible();

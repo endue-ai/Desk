@@ -87,7 +87,7 @@ describe("commandEntries", () => {
   const listed = [
     { id: "desk.shell.desktop-10", title: "Desktop · 10", provider: "desk" },
     { id: "desk.frames.stop", title: "Not responding · stop", provider: "desk", argsSchema: needs },
-    { id: "desk.palette.open", title: "Search Desk", provider: "desk.palette" },
+    { id: "desk.palette.open", title: "Search endue", provider: "desk.palette" },
     { id: "desk.shell.desktop-2", title: "Desktop · 2", provider: "desk", keywords: ["two"] },
     { id: "desk.inbox.open", title: "inbox", provider: "desk" },
     {
