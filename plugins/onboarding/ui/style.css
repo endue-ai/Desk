@@ -25,6 +25,7 @@ body {
 
 #skip {
   position: absolute;
+  z-index: 3;
   top: 20px;
   right: 24px;
 }
@@ -151,6 +152,23 @@ body {
 
   #formslot {
     min-height: 0;
+  }
+}
+
+/* Wrapped captions share a grid cell while one fades out. The taller line reserves its full height
+   above the next control. */
+@media (max-width: 640px) {
+  #cap {
+    display: grid;
+    align-items: start;
+    height: auto;
+    min-height: 2.4em;
+    font-size: var(--desk-text-2xl);
+  }
+
+  #cap > .wrap {
+    position: relative;
+    grid-area: 1 / 1;
   }
 }
 

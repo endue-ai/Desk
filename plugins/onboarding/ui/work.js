@@ -14,26 +14,34 @@ const FAILED = "Something went wrong on my side. Try that again in a moment.";
 export function task(d, at) {
   const question = d.say(SAY.work, at, { stay: true });
   const offered = examplesFor(d.state.connections, EXAMPLES);
+  let networkWait;
   const start = (value) => {
     const text = value.trim();
     if (!text) return;
     const now = d.timeline.time;
     d.answered();
     $("edge").replaceChildren();
-    d.drop(question, now);
+    if (networkWait) networkWait.abort();
+    else d.drop(question, now);
     d.rise(text, now);
     // The examples are built from what was connected; anything else needs endue.
     const kind = matchExample(text, offered) ?? "answer";
-    if (kind !== "answer") return build(d, kind, text, now);
-    d.whenOnline(now + 1500, (when, waited) => build(d, kind, text, waited ? when - 1500 : now));
+    if (kind !== "answer" || navigator.onLine) return build(d, kind, text, now);
+    networkWait = d.waitForConnection(SAY.offlineTask, () => {
+      $("edge").replaceChildren();
+      build(d, kind, text, d.timeline.time);
+    });
+    d.edge(choices, "btn example")[0]?.focus();
   };
-  d.timeline.at(at + 600, () => {
-    d.edge(
-      offered.map((example) => ({ label: example.text, pick: () => start(example.text) })),
-      "btn example",
-    );
+  const choices = offered.map(({ text }) => ({ label: text, pick: () => start(text) }));
+  d.ask(at, {
+    question,
+    label: "Type a task",
+    placeholder: "Find time for a walk",
+    answer: start,
+    choices,
+    choiceClass: "btn example",
   });
-  d.ask(at, { question, label: "Type a task", placeholder: "Or say it", answer: start });
 }
 
 const SCREENS = { tomorrow, folder, week, answer };
@@ -175,12 +183,13 @@ export function layout(d, at) {
     d.pose("centre", saved.out + 300);
     d.advance(saved.out + 1300);
   };
-  d.timeline.at(at + 600, () => d.edge([{ label: "Not now", pick: notNow }], "btn quiet"));
   d.ask(at, {
     question: () => question,
     label: "Name this layout",
     placeholder: "Morning",
     answer: named,
+    choices: [{ label: "Not now", pick: notNow }],
+    choiceClass: "btn quiet",
   });
 }
 

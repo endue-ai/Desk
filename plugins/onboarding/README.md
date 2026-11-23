@@ -17,8 +17,9 @@ their size, the form also when Eris stands up or aside); `ui/flow.js` the scene 
 for the microphone and name before the first task; outside the US, or after Skip for now, the agents
 scene is left out); `ui/script.js` every line and time; `ui/samples.js` the sample calendar and folder.
 
-Branches: 8 s of silence nudge once, then the question again; offline waits and resumes the scene;
-three failed sign-ins add a help line. A line that starts while the one before it scatters sends it off.
+Offline sign-in offers Continue offline. A typed task waits for reconnection or lets the person choose
+a local example. Choosing the example cancels the pending send. An unanswered voice prompt nudges
+once after 8 s, and three failed sign-ins add a help line.
 Progress is kept with `store.set("first-run", …)` at every scene from the microphone on, so a first run
 that was quit resumes there ("Where were we?"); a finished one only greets by the hour ("Morning,
 <name>.", Afternoon, Evening) after a 1.2 s assembly. Layouts are kept under `layouts.endue`. Reduced
@@ -31,7 +32,6 @@ account-name question after sign-in; the "new device" and later-visit introducti
 Every colour, font, size, radius and duration comes from the theme's `--desk-*` tokens; Eris's orb takes
 the `eris*` tokens through `eris/soul-text.css`, the agents the category colours `chart-2`, `-6`, `-5`.
 
-Tests: `plugins/onboarding/tests` (vitest; `theme.test.ts` for the tokens), `packages/runtime/e2e/`
-`onboarding.spec.ts` and `first-run-tour.spec.ts` (render-tree snapshots on a fake clock, every branch)
-and `first-run-fits.spec.ts` (every scene's choices inside 1024×500, 1280×800 and 1500×950, none on
-another, the theme's buttons). Frame time: `just perf-opening`.
+Run `pnpm exec vitest run plugins/onboarding` for the scene logic and theme checks. Run
+`just test-e2e e2e/onboarding.spec.ts e2e/first-run` for the tour, layout and interaction checks,
+and an offline first install through completion. `just perf-opening` measures the opening frame time.
