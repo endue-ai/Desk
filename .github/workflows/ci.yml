@@ -83,10 +83,10 @@ jobs:
           sudo mv actionlint /usr/local/bin/
       - name: Configure Ubuntu package downloads
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install audio build headers and the headless Vulkan driver
+      - name: Install audio headers, the headless Vulkan driver and CJK fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libvulkan1 mesa-vulkan-drivers
+          sudo apt-get install -y libasound2-dev libvulkan1 mesa-vulkan-drivers fonts-noto-cjk
       - run: pnpm install --frozen-lockfile
       - run: just check
       - run: just test-unit

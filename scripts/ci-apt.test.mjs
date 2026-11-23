@@ -151,6 +151,16 @@ test("the Linux unit tests have the Vulkan loader and software driver for offscr
   );
 });
 
+test("the Linux compositor can draw Hangul, Han and kana window titles", async () => {
+  const job = (await workflow("ci")).jobs["check-linux"];
+  configuredBefore(job, "fonts-noto-cjk");
+  const installAt = job.steps.findIndex((step) =>
+    /\bapt-get install [^\n]*\bfonts-noto-cjk\b/u.test(step.run ?? ""),
+  );
+  const testsAt = job.steps.findIndex((step) => step.run === "just test-unit");
+  assert.ok(installAt >= 0 && installAt < testsAt);
+});
+
 test("the Linux shell builds install the native headers before checking or launching the app", async () => {
   const ci = await workflow("ci");
   const e2e = await workflow("e2e");
