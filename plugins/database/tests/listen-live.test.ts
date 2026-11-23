@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { normalize, parseUri } from "../ui/connections.js";
 import type { Connection } from "../ui/engines/common.js";
 import { type Mounted, mount } from "./harness";
-import { liveSessions } from "./live-sessions";
+import { appSessions, liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 import { messages, run, start } from "./session-helpers";
 
@@ -43,7 +43,7 @@ const done = (m: Mounted) => m.host.command("endue.database.disconnect", { conne
 
 describe.skipIf(!uri)("live notices and LISTEN on a real server", () => {
   afterAll(async () => {
-    await server.end("application_name = 'endue'");
+    await server.end(appSessions);
   });
 
   it("a long statement's RAISE NOTICEs show before it ends, in order, and once after", async () => {
