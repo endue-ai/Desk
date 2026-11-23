@@ -35,3 +35,21 @@ test("plugin validation runs the official endue command on the manifests", () =>
   assert.match(step.name, /\bendue\b/u);
   assert.match(step.run, /\.\/target\/debug\/endue plugin validate "\$dir"/u);
 });
+
+test("plugin validation builds native examples before checking the program paths", () => {
+  const config = workflow("plugin-validate.yml");
+  for (const event of [config.on.pull_request, config.on.push]) {
+    assert.ok(event.paths.includes(".github/workflows/plugin-validate.yml"));
+    assert.ok(event.paths.includes("scripts/example.mjs"));
+  }
+  const job = config.jobs["plugin-validate"];
+  assert.equal(job["timeout-minutes"], 10);
+  assert.equal(job.env.CARGO_PROFILE_DEV_DEBUG, "0");
+  assert.equal(job.env.CARGO_INCREMENTAL, "0");
+  const commands = job.steps.map((step) => step.run ?? "");
+  assert.ok(commands.includes("cargo build --locked -p desk-cli --bin endue"));
+  const build = commands.findIndex((cmd) => cmd.includes("node scripts/example.mjs build"));
+  const check = commands.findIndex((cmd) => cmd.includes("endue plugin validate"));
+  assert.ok(build >= 0 && build < check);
+  assert.match(commands[build], /examples\/\*\/plugin\.json/u);
+});
