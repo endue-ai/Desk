@@ -292,4 +292,13 @@ fn callers_that_are_not_plugins_keep_their_rules() {
         "scope": { "permission": "cmd:invoke", "ids": ["example.viewer.show"] } });
     call(&core, "agent:theo", "cmd.invoke", invoke).unwrap();
     assert_eq!(person.asked(), 3);
+    // One the plugin keeps for the person asks first, once for the session.
+    let kept = json!({ "id": "example.viewer.clear", "title": "Clear" });
+    call(&core, VIEWER, "cmd.register", kept).unwrap();
+    let invoke = json!({ "id": "example.viewer.clear",
+        "scope": { "permission": "cmd:invoke", "ids": ["example.viewer.clear"] } });
+    call(&core, "agent:theo", "cmd.invoke", invoke.clone()).unwrap();
+    assert_eq!(person.asked(), 4);
+    call(&core, "agent:theo", "cmd.invoke", invoke).unwrap();
+    assert_eq!(person.asked(), 4);
 }
