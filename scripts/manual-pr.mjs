@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 export function parseNumber(value) {
@@ -46,15 +45,6 @@ function main() {
   );
   for (const [key, value] of Object.entries(selectPull(pull, number, repository))) {
     appendFileSync(process.env.GITHUB_OUTPUT, key + "=" + value + "\n");
-  }
-  if (process.argv.includes("--scope-event")) {
-    // The trusted checker on an older base reads this subset of the pull request event.
-    const { body, user } = pull;
-    writeFileSync(
-      join(process.env.RUNNER_TEMP, "scope-pr.json"),
-      JSON.stringify({ pull_request: { number, body, user: { login: user.login } } }),
-      { mode: 0o600 },
-    );
   }
 }
 

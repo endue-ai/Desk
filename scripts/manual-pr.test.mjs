@@ -56,3 +56,12 @@ test("review excludes forks, dependency changes and drafts but their scope can s
     assert.equal(selectPull({ ...pull, ...change }, 1, repository).review, false);
   }
 });
+
+test("scope checks use the PR base and accept only the default branch or the selected PR head", () => {
+  const steps = workflow("scope-check").jobs["scope-check"].steps;
+  assert.equal(steps[0].id, "pr");
+  assert.match(steps[0].run, /\.state == "open" and \(\$ref == \$default or \.head == \$sha\)/u);
+  const checkout = steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+  assert.equal(checkout.with.ref, "${{ steps.pr.outputs.base }}");
+  assert.equal(checkout.with["persist-credentials"], false);
+});
