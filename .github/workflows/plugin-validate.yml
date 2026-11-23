@@ -33,12 +33,12 @@ jobs:
 
       - run: cargo build -p desk-cli --locked
 
-      - name: desk plugin validate, for every folder with a plugin.json
+      - name: Validate plugin manifests with endue
         run: |
           status=0
           for manifest in plugins/*/plugin.json examples/*/plugin.json; do
             [ -f "$manifest" ] || continue
             dir="$(dirname "$manifest")"
-            if ./target/debug/desk plugin validate "$dir"; then :; else status=1; fi
+            if ./target/debug/endue plugin validate "$dir"; then :; else status=1; fi
           done
           exit "$status"
