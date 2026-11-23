@@ -48,6 +48,7 @@ test("the CEF shell is built on every OS for an app change and for a release", a
   const { jobs } = await workflow("ci");
   assert.equal(jobs["app-build"], undefined, "the Tauri app's build went with it (#97)");
   const build = jobs["shell-build"];
+  assert.ok(scripts(jobs.changes).includes("\\.github/workflows/ci\\.yml$"));
   assert.match(build.if, /needs\.changes\.outputs\.app == 'true'/u);
   assert.ok(build.if.includes(RELEASE_PR), build.if);
   assert.deepEqual(build.strategy.matrix.os, ["ubuntu-latest", "macos-latest", "windows-latest"]);
