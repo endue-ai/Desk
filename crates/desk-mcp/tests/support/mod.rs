@@ -66,8 +66,8 @@ impl Desk {
         );
         plugin(&core, &home, "example.notes", &[("open", false)]);
         let open = json!({ "id": "example.notes.open", "title": "Notes: open", "description":
-            "Open a note.", "argsSchema": { "type": "object", "properties": { "path":
-            { "type": "string" } }, "required": ["path"] } });
+            "Open a note.", "agent": true, "argsSchema": { "type": "object", "properties": {
+            "path": { "type": "string" } }, "required": ["path"] } });
         call(&core, "example.notes", "cmd.register", open);
         let toggle = json!({ "id": "desk.theme.toggle", "title": "Switch theme" });
         call(&core, "desk", "cmd.register", toggle);
