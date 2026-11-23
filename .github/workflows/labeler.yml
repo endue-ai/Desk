@@ -1,17 +1,41 @@
 name: labeler
 
-# pull_request_target so labels can be written on fork PRs too. Safe because no job checks out or runs
-# PR code: actions/labeler reads .github/labeler.yml from the base branch, and size uses the API only.
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open pull request number
+        required: true
+        type: string
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
+  pull:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      lines: ${{ steps.pr.outputs.lines }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read the selected pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+        run: node scripts/manual-pr.mjs
+
   area:
+    needs: pull
     name: label-area
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -19,8 +43,10 @@ jobs:
       - uses: actions/labeler@v7
         with:
           sync-labels: true
+          pr-number: ${{ needs.pull.outputs.number }}
 
   size:
+    needs: pull
     name: label-size
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -29,11 +55,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-          ADDED: ${{ github.event.pull_request.additions }}
-          DELETED: ${{ github.event.pull_request.deletions }}
+          PR: ${{ needs.pull.outputs.number }}
+          lines: ${{ needs.pull.outputs.lines }}
         run: |
-          lines=$((ADDED + DELETED))
           if   [ "$lines" -lt 10 ];  then size=xs
           elif [ "$lines" -lt 50 ];  then size=s
           elif [ "$lines" -lt 200 ]; then size=m
