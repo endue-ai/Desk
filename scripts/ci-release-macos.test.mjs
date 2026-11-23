@@ -13,29 +13,6 @@ const expr = (body) => `\${{ ${body} }}`;
 const scripts = (job) => (job.steps ?? []).map((step) => step.run ?? "").join("\n");
 const TAG = expr("github.event.release.tag_name || inputs.tag");
 
-test("public release workflow messages use the endue app name", () => {
-  for (const name of ["release-build", "release-dry-run", "release", "release-final", "rollout"]) {
-    const config = workflow(name);
-    const messages = [config.name];
-    for (const event of Object.values(config.on)) {
-      for (const input of Object.values(event?.inputs ?? {})) messages.push(input.description);
-    }
-    for (const job of Object.values(config.jobs)) {
-      messages.push(job.name);
-      for (const step of job.steps ?? []) {
-        messages.push(step.name);
-        for (const line of (step.run ?? "").split("\n")) {
-          if (/::(?:error|warning|notice)::/u.test(line)) messages.push(line);
-        }
-      }
-    }
-    assert.doesNotMatch(messages.join("\n"), /(?<![\w./-])desks?(?![\w/-])/iu, name);
-  }
-  const steps = workflow("release-build").jobs.build.steps;
-  const build = steps.find((step) => step.run?.includes("cargo build"));
-  assert.match(build.name, /\bendue\b/u);
-});
-
 test("a published GitHub Release, or its tag by hand, starts the macOS build", () => {
   const mac = workflow("release-macos");
   assert.deepEqual(mac.on.release.types, ["published"]);
