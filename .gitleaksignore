@@ -1,0 +1,13 @@
+# Reviewed historic examples. A later commit creates a different fingerprint.
+# These entries identify three keyboard shortcuts, a form field, a parser fixture and an invalid vector.
+b85798c419ba6e2ef312ac0689011bcacae520a3:specs/bridge/v0/vectors/invalid/studio-api-key-with-secret.json:stripe-access-token:7
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/api-studio/tests/auth-import.test.ts:curl-auth-user:29
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/api-studio/ui/auth.js:generic-api-key:129
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/terminal/plugin.json:generic-api-key:366
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/terminal/plugin.json:generic-api-key:380
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/terminal/plugin.json:generic-api-key:387
+c4ae209323f37bd3356c0c142dcf1271d42d99ee:specs/bridge/v0/vectors/invalid/studio-api-key-with-secret.json:stripe-access-token:7
+cccf3383646218468df4be1e20da9cd5b01a24f8:specs/bridge/v0/vectors/invalid/studio-api-key-with-secret.json:stripe-access-token:7
+d411bac7d51a9a0aba1c607f7463dc529c435508:plugins/terminal/plugin.json:generic-api-key:366
+d411bac7d51a9a0aba1c607f7463dc529c435508:plugins/terminal/plugin.json:generic-api-key:380
+d411bac7d51a9a0aba1c607f7463dc529c435508:plugins/terminal/plugin.json:generic-api-key:387
