@@ -1,4 +1,4 @@
-# endue Desk 메일(Mail) 요구사항
+# endue 메일(Mail) 요구사항
 
 2026-10-31 · Team endue
 

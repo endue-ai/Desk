@@ -1,15 +1,15 @@
-# endue Desk Docker 플러그인 요구사항
+# endue Docker 플러그인 요구사항
 
 2026-10-31 · Team endue
 
-> 컨테이너 관리 표면을 Desk 의 기본 플러그인 `endue.docker`(`plugins/docker`) 가 프로덕션 수준에서 맡으려면 무엇이
+> 컨테이너 관리 표면을 endue의 기본 플러그인 `endue.docker`(`plugins/docker`) 가 프로덕션 수준에서 맡으려면 무엇이
 > 있어야 하는지를 번호를 붙여 적은 문서입니다. `desk-requirements.md` 의 BASE 표에서 한 줄(`docker`)을 차지하고, 이 문서가
 > 그 줄을 펼칩니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 왜 Engine API 소켓이 아니라 docker CLI 인지는
 > ADR 0039 이, 코드가 하는 일은 `plugins/docker/README.md` 가 말합니다. *현재* 열은 이 문서와 함께 들어간 첫 판(0.1.0)과
 > 개요를 먼저 여는 개편(ADR 0114, #539) 기준입니다.
 
 좋은 컨테이너 표면의 값어치는 셋입니다. 엔진의 *지금*(무엇이 돌고, 무엇이 죽었고, 무엇이 자리를 차지하는지)이 한 화면에
-늘 최신으로 있고, 그 위에서 글자 하나로 일하고(`s` `x` `l` `e`), 되돌리기 어려운 일은 한 번 더 묻습니다. Desk 에서는 하나가
+늘 최신으로 있고, 그 위에서 글자 하나로 일하고(`s` `x` `l` `e`), 되돌리기 어려운 일은 한 번 더 묻습니다. endue에서는 하나가
 더 붙습니다. 모든 동작이 커맨드라 키 · 팔레트 · Eris · 에이전트가 같은 길로 같은 일을 하고, 에이전트는 인자 스키마를 보고 부릅니다.
 
 ## 표준
@@ -36,9 +36,9 @@
 
 ## 빌린 개념
 
-Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼 · 커맨드 · 알림은 Desk 의 것으로 바꿔 답니다.
+Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼 · 커맨드 · 알림은 endue의 것으로 바꿔 답니다.
 
-| 관용 | Desk `endue.docker` | 요구사항 |
+| 관용 | endue `endue.docker` | 요구사항 |
 | --- | --- | --- |
 | 프로젝트별로 묶인 컨테이너 목록(Docker Desktop) | 컨테이너 뷰: Compose 프로젝트 섹션(서비스 이름) + 나머지, 접기 | DOCK-03 |
 | 대시보드(Docker Desktop) | 개요: 엔진 · 상태별 컨테이너 · 스택 · 가장 바쁜 것 · 디스크(회수 가능) · 이미지 · 볼륨 · 네트워크. 줄마다 거르기 된 목록으로 | DOCK-25 |
@@ -112,7 +112,7 @@ Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼
 | NF-10 | Windows: named pipe · 경로 · 신호. 앱 e2e 가 Linux 를 먼저 덮는다 | 없음 | C |
 | NF-11 | 테스트: 파서는 실제 Docker 29 출력에서 뜬 픽스처, 검사 · 실행기 · 로그 · 감시 · 동작 · 컨트롤러 · 렌더러 · 키 · 설정 · 매니페스트, 개요 · 일괄 · 검색과 정렬 · stats 스트림 · 대비 · 이미지 · 파일 · 가짜 DOM 위 화면(`plugins/docker/tests`, 164). 실제 엔진 스모크(실행 · 로그 · 상세 · 정지 · 삭제 · Compose up/down)는 사람이 돌린다. 런타임 e2e 는 스텁의 가짜 proc(D4) 뒤 | 일부 (단위만) | A · B |
 
-## 의존: Desk 쪽에서 해야 하는 것
+## 의존: endue 쪽에서 해야 하는 것
 
 | ID | 무엇 | 어디 | 없으면 |
 | --- | --- | --- | --- |

@@ -1,4 +1,4 @@
-# endue Desk 업데이터 요구사항
+# endue 업데이터 요구사항
 
 2026-11-02 · Team endue
 
@@ -27,13 +27,13 @@ R2 에는 정적 파일만 있고, 판단은 전부 기기 안에서 합니다.
 
 ## 빌린 개념
 
-| 관용 | 어디서 | Desk | 요구사항 |
+| 관용 | 어디서 | endue | 요구사항 |
 | --- | --- | --- | --- |
 | 뒤에서 받아 두고 "Restart to Update" 한 줄 | VS Code | 레일의 attention 행 + 트레이 항목 + `desk.update.apply` | UPD-14 |
 | 채널(canary → beta → stable)과 단계적 롤아웃 | Chrome(Omaha) | 채널별 `index.json`, `rollout` 비율, 기기 안의 난수 버킷 | UPD-01 · UPD-08 |
 | 정적 appcast + EdDSA 서명 | Sparkle | R2 의 정적 JSON + minisign(Ed25519) | UPD-01 · UPD-02 |
 | 메타데이터도 서명, 동결 · 다운그레이드 방어 | TUF | `index.json.sig` · `release.json.sig`, `requireSignedVersion`, 버전 단조 증가 | UPD-02 · UPD-08 |
-| 매니페스트 형식 · OS 별 설치 · 서명 검증 | Tauri updater 플러그인 | 형식과 서명은 그대로 쓴다. OS 별 설치는 CEF 데스크가 `desk_update::install` 로 같은 아티팩트를 직접 한다(ADR 0147). 정책(어느 판 · 언제)은 Desk 가 더한다 | UPD-11 · UPD-12 |
+| 매니페스트 형식 · OS 별 설치 · 서명 검증 | Tauri updater 플러그인 | 형식과 서명은 그대로 쓴다. OS 별 설치는 CEF 데스크가 `desk_update::install` 로 같은 아티팩트를 직접 한다(ADR 0147). 정책(어느 판 · 언제)은 endue가 더한다 | UPD-11 · UPD-12 |
 | 받아 둔 뒤 `quitAndInstall` | Electron autoUpdater | 받아 두기와 적용을 나눈 상태 기계 | UPD-09 · UPD-11 |
 
 ## 아키텍처 매핑

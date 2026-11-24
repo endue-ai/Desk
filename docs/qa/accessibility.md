@@ -10,8 +10,8 @@ tree there, as before.
 One AccessKit tree on the compositor window (NSAccessibility on macOS, UI Automation on Windows,
 AT-SPI on Linux), built only while an assistive technology is active:
 
-- the window `endue Desk`, then:
-  - `Desk`: the shell page's own tree (the bars, Eris, menus, the system layer);
+- the window `endue`, then:
+  - the `endue` group contains the shell page's own tree (the bars, Eris, menus, the system layer);
   - `Windows`: a list, back to front; each window has its title bar (its title), the tools the page draws
     in its title bar (Window menu, Pop out where the window shows one plugin, Close: the page's
     buttons, pressed as the page's own, each named by its name; the window menu's tool says it has a
@@ -19,7 +19,7 @@ AT-SPI on Linux), built only while an assistive technology is active:
     names, ADR 0255), and its content: the plugin's tree, or the card the compositor draws (asleep,
     stopped, crashed, loading, not responding) with its buttons (Wait, Stop, Reload); a window of
     several tabs has the strip of its tabs;
-  - the window menu, when open, is in `Desk` (a menu of New tab, Maximize or restore, Floating mode
+  - the window menu, when open, is in the `endue` group (a menu of New tab, Maximize or restore, Floating mode
     and Pin as checked items, Put in drawer and the "Move to" items); Escape or Tab gives the focus
     back to its tool;
   - the plugins the page lays out over the windows (the dock, edge bars), one group each.
@@ -60,7 +60,7 @@ not possible, per OS, in the table under the steps.
 
 VoiceOver (macOS; Cmd+F5, VO = Control+Option):
 
-1. VO+Shift+Down into the window, VO+Right through it: `Desk`, then the window list `Windows, list` with
+1. VO+Shift+Down into the window, VO+Right through it to the `endue` group, then the window list `Windows, list` with
    its count, each window by title.
 2. Into a window: its title bar reads the title; its tools read Split right … Close; VO+Space on Close
    closes the window.
@@ -93,8 +93,8 @@ flat review and Enter to press.
 - Actions find their node through the browser's DevTools agent first (the full tree); a node in another
   frame's document is only pressed where its box is. Scroll offsets are read the same way after each
   location change (CEF 156 drops Chromium's scroll changes).
-- The chrome's words (`endue Desk`, `Desk`, `Windows`) are English; the runtime's own words are the
-  page's language.
+- The window and shell group are named `endue`. The window list is named `Windows`. Labels supplied
+  by the runtime follow the page's language.
 - Only the desktop in front is in the tree; spread view and the minimap have no nodes yet.
 - A native plugin (#59, ADR 0154) gets `a11y.enable` and `a11y.action` like a web surface, but its
   window holds only its title bar until the plugin answers with `a11y.update`; the example
