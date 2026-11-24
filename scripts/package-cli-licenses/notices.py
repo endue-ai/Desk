@@ -13,6 +13,7 @@ LICENSE_NAME = re.compile(r"^(?:licen[cs]e|copyright|copying|unlicense|notice)s?
 # from each released crate's .cargo_vcs_info.json. Boa offers the Unlicense as one of two choices.
 SIBLING = {
     "805a0f15320e8836cf2b9f001b53d884bf866c89": "wasmtime",
+    "886e27a66092807b6dfa3b1159e49c3aea37eb87": "wasmtime",
     "0b657fa991c9333908e8c51e8a582d602aac5391": "jsonschema",
 }
 UPSTREAM = {
