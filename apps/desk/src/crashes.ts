@@ -30,7 +30,7 @@ export function reportCrashes(win: Window, invoke: Invoke, ready?: Promise<unkno
   });
   const send = (message: string, stack: string) => {
     if (!started) {
-      console.warn(`endue Desk: before the desk was ready, not a crash: ${message}`);
+      console.warn(`endue startup warning — ${message}`);
       return;
     }
     if (!message || sent.has(message) || sent.size >= MAX_REPORTS) return;
@@ -54,7 +54,7 @@ export function reportCrashes(win: Window, invoke: Invoke, ready?: Promise<unkno
 }
 
 /**
- * The card for last time's crash, when there is a report not shown yet: "Desk crashed last time."
+ * The card for last time's crash, when there is a report not shown yet: "endue crashed last time."
  * with Show report (the redacted JSON), Copy and a close button. Resolves with whether it showed.
  */
 export async function showLastCrash(
@@ -81,7 +81,7 @@ export async function showLastCrash(
     role: "alertdialog",
     "aria-labelledby": "crash-title",
   });
-  const title = el("p", { id: "crash-title", class: "crash-title" }, "Desk crashed last time.");
+  const title = el("p", { id: "crash-title", class: "crash-title" }, "endue crashed last time.");
   const detail = el(
     "p",
     { class: "crash-detail" },

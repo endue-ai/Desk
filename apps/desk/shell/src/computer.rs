@@ -95,7 +95,7 @@ pub fn attach(core: &Arc<Core>, pump: &Pump, data: &Path) -> Arc<Mutex<Watch>> {
             }
         });
     if let Err(why) = spawned {
-        eprintln!("endue Desk: computer use is not watched ({why})");
+        eprintln!("endue: computer use is not watched ({why})");
     }
     watch
 }
@@ -198,7 +198,7 @@ fn hold_key(pump: &Pump, core: &Core, watch: &Arc<Mutex<Watch>>) {
     };
     pump.run(move |shell, _| {
         if let Err(why) = shell.hotkeys.register(Action::StopComputer, &key) {
-            eprintln!("endue Desk: the stop key {key} is unavailable ({why}); use Stop");
+            eprintln!("endue: the stop key {key} is unavailable ({why}); use Stop");
         }
         if let Some(pane) = shell.pane(Role::Banner) {
             let text = serde_json::to_string(&label).unwrap_or_default();

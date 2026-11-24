@@ -122,7 +122,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     let pane = match Pane::open(event_loop, attributes, &ask.url, client) {
         Ok(pane) => pane,
         Err(why) => {
-            eprintln!("endue Desk: {}'s window did not open ({why})", ask.plugin);
+            eprintln!("endue: {}'s window did not open ({why})", ask.plugin);
             return;
         }
     };

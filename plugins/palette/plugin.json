@@ -32,7 +32,7 @@
     "commands": [
       {
         "id": "desk.palette.open",
-        "title": "Search Desk and this computer",
+        "title": "Search endue and this computer",
         "keywords": ["m-x", "commands", "palette", "search", "spotlight", "files", "plugins"]
       },
       {

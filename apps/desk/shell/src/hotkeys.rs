@@ -1,4 +1,4 @@
-//! Global shortcuts (`global-hotkey`, as `tauri-plugin-global-shortcut` was): Search Desk's
+//! Global shortcuts (`global-hotkey`, as `tauri-plugin-global-shortcut` was): Search endue's
 //! (`DESK_PALETTE_SHORTCUT`, else `desk.palette.shortcut`, else ⌘⇧Space; `palette/shortcut.rs`), Eris's (ADR 0121, `shortcut.rs`) and the computer-use
 //! stop key while an agent acts (ADR 0123). Shortcuts are written as Tauri's plugin read them
 //! (`CommandOrControl+Shift+Space`, `Alt+Enter`, `Escape`): the same parser. Presses reach the event
@@ -11,14 +11,14 @@ use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
 use crate::pump::Pump;
 
-/// Search Desk's shortcut unless `DESK_PALETTE_SHORTCUT` or the setting names another: it leaves
+/// Search endue's shortcut unless `DESK_PALETTE_SHORTCUT` or the setting names another: it leaves
 /// macOS Spotlight's and the input-source shortcuts alone.
 pub const PALETTE_DEFAULT: &str = "CommandOrControl+Shift+Space";
 
 /// What a global shortcut does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Action {
-    /// Show or hide Search Desk.
+    /// Show or hide Search endue.
     Palette,
     /// Summon Eris (ADR 0121).
     Eris,
@@ -82,7 +82,7 @@ impl Hotkeys {
         let manager = match GlobalHotKeyManager::new() {
             Ok(manager) => Some(manager),
             Err(why) => {
-                eprintln!("endue Desk: no global shortcuts ({why}); use the tray");
+                eprintln!("endue: no global shortcuts ({why}); use the tray");
                 None
             }
         };
@@ -115,7 +115,7 @@ impl Hotkeys {
         if let Some(before) = self.table.hold(action, key) {
             let _ = manager.unregister(before);
         }
-        eprintln!("endue Desk: the shortcut {text} is held for {action:?}");
+        eprintln!("endue: the shortcut {text} is held for {action:?}");
         Ok(())
     }
 

@@ -135,7 +135,7 @@ pub fn start(core: &Arc<Core>, pump: &Pump) {
         }
     });
     if let Err(why) = followed {
-        eprintln!("endue Desk: desk.language is not followed ({why})");
+        eprintln!("endue: desk.language is not followed ({why})");
     }
 }
 

@@ -34,7 +34,7 @@ pub fn answer(args: &Value) -> Result<Value, String> {
         Change::Unchanged => "unchanged",
     };
     if change != "unchanged" {
-        eprintln!("endue Desk: start at login {change} ({})", items.location());
+        eprintln!("endue: start at login {change} ({})", items.location());
     }
     Ok(json!({ "change": change }))
 }
@@ -56,7 +56,7 @@ fn items() -> Option<Box<dyn LoginItems>> {
         return Some(Box::new(login::LaunchAgent::in_dir(dir, login::ID)));
     }
     login::os(login::ID)
-        .map_err(|why| eprintln!("endue Desk: no login items ({})", why.message))
+        .map_err(|why| eprintln!("endue: no login items ({})", why.message))
         .ok()
 }
 
@@ -68,7 +68,7 @@ mod tests {
 
     use super::match_setting;
 
-    const PROGRAM: &str = "/Applications/endue Desk.app/Contents/MacOS/endue-desk";
+    const PROGRAM: &str = "/Applications/endue.app/Contents/MacOS/endue-desk";
 
     /// `<a fresh HOME under the temp folder>/Library/LaunchAgents`, not made yet.
     fn agents(name: &str) -> PathBuf {

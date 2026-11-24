@@ -56,7 +56,10 @@ describe("crash reports from the shell's window (#322)", () => {
     window.dispatchEvent(early);
     window.dispatchEvent(new ErrorEvent("error", { error: new Error("early"), message: "early" }));
     expect(invoke).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls).toEqual([
+      ["endue startup warning — Unhandled rejection: Error: not a bridge request"],
+      ["endue startup warning — Error: early"],
+    ]);
     started();
     await ready;
     window.dispatchEvent(new ErrorEvent("error", { error: new Error("late"), message: "late" }));
@@ -74,7 +77,7 @@ describe("crash reports from the shell's window (#322)", () => {
     expect(await showLastCrash(document.body, invoke, async () => {})).toBe(true);
     const cards = document.querySelectorAll(".crash-card");
     expect(cards).toHaveLength(1);
-    expect(cards[0]?.querySelector(".crash-title")?.textContent).toBe("Desk crashed last time.");
+    expect(cards[0]?.querySelector(".crash-title")?.textContent).toBe("endue crashed last time.");
     const labels = [...document.querySelectorAll(".crash-actions button")].map(
       (b) => b.textContent,
     );
