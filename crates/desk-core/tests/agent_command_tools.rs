@@ -283,12 +283,12 @@ fn a_tool_call_naming_no_command_fails_with_what_desk_has() {
     let said = answer(&core, &deliveries, &turn, json!(null), &mut invoked);
     assert!(invoked.is_empty());
     assert!(
-        said.contains("Desk has no command example.git.nothing"),
+        said.contains("endue has no command example.git.nothing"),
         "{said}"
     );
     assert!(said.contains("desk-run takes { command, args? }"), "{said}");
     assert!(
-        said.contains("Desk has no tool named example_git_nothing"),
+        said.contains("endue has no tool named example_git_nothing"),
         "{said}"
     );
 }

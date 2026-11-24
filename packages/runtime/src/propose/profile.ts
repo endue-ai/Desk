@@ -29,7 +29,7 @@ const PLUGINS = { permission: "plugin:manage" } as const;
 const SCALAR = new Set(["boolean", "integer", "number", "string"]);
 
 const GUIDE = [
-  "A profile is a plugin set plus settings that Desk switches as one. plugins.enabled turns plugins",
+  "A profile is a plugin set plus settings that endue switches as one. plugins.enabled turns plugins",
   "on and plugins.disabled turns them off; a plugin named in neither keeps its state, except one an",
   "earlier profile turned off, which comes back: to keep a plugin off, name it in disabled. Turn the",
   "apps (kind ui) on and off and leave the desk's own (kind policy) as they are. settings take the",
@@ -104,7 +104,7 @@ export function profileKind(options: ProfileKindOptions): ProposalKind<ProfileCo
       tool ??= {
         name: "propose_profile",
         description:
-          "Propose one Desk profile (ProfileContribution of specs/plugin/v0) as the person asked: its name, description, the plugins it turns on and off, and its settings. The desk makes its id.",
+          "Propose one profile for endue (ProfileContribution of specs/plugin/v0) as the person asked: its name, description, the plugins it turns on and off, and its settings. The desk makes its id.",
         schema: specs().bundle(PROFILE, { omit: ["id"] }),
       };
       return tool;

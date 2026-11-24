@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use desk_update::Transport;
-use desk_update::https::{Https, USER_AGENT};
+use desk_update::https::Https;
 
 /// A one-file-per-path origin; answers 404 for anything else. Records each request's head.
 fn origin(files: Vec<(&'static str, Vec<u8>)>) -> (String, Arc<Mutex<Vec<String>>>) {
@@ -63,10 +63,7 @@ fn reads_a_document_whole_and_names_no_one() {
         .unwrap();
     assert_eq!(body, b"{\"serial\":1}");
     let head = heads.lock().unwrap()[0].to_ascii_lowercase();
-    assert!(
-        head.contains(&format!("user-agent: {USER_AGENT}")),
-        "{head}"
-    );
+    assert!(head.lines().any(|line| line == "user-agent: endue"));
     assert!(!head.contains("cookie"), "{head}");
 }
 

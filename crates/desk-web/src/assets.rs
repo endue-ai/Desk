@@ -83,7 +83,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(
             dir.path().join("index.html"),
-            "<!doctype html><title>desk</title>",
+            "<!doctype html><title>endue</title>",
         )
         .unwrap();
         fs::create_dir(dir.path().join("assets")).unwrap();

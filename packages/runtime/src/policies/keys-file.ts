@@ -3,7 +3,7 @@
  * start into the session layer of `desk.keys.bindings`, over a profile's and init.yaml's, as the
  * session record used to put them back; a rebinding writes it; a hand edit applies at once. A file
  * that does not parse or check is ignored with a notice naming its line and is never overwritten:
- * changes made meanwhile last until Desk quits. Bindings an older desk kept in the session record
+ * changes made meanwhile last until endue quits. Bindings an older desk kept in the session record
  * (`parts.keys`) move to the file once. The line of each binding is shared with desk.keys, so a key
  * conflict names it (ADR 0118).
  */
@@ -20,8 +20,8 @@ export const KEYS_FILE = `${DESK_DIR}/keys.yaml`;
 
 const HEADER = [
   "Your key bindings (specs/init/v0/keys.schema.json), over every plugin's: a later binding of the",
-  'same key wins, and command: "" takes a key away. A key may be a sequence: Ctrl+X Ctrl+F. Desk',
-  "writes this file when you rebind a key; edit it freely, Desk applies a change at once.",
+  'same key wins, and command: "" takes a key away. A key may be a sequence: Ctrl+X Ctrl+F. endue',
+  "writes this file when you rebind a key; edit it freely, endue applies a change at once.",
 ].join("\n");
 
 export interface KeysFilePolicy extends Installed {
@@ -123,7 +123,7 @@ export function installKeysFile(
         notify({
           caller: "desk",
           title: "keys.yaml is not in force",
-          body: "Fix the file to keep this change: until then it lasts until Desk quits.",
+          body: "Fix the file to keep this change: until then it lasts until endue quits.",
           level: "warning",
         });
         return;

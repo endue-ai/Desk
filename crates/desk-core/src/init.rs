@@ -95,7 +95,7 @@ impl Init {
             && version > INIT_VERSION
         {
             return Err(format!(
-                "version {version} is newer than this Desk reads ({INIT_VERSION}); update Desk"
+                "version {version} is newer than endue supports ({INIT_VERSION}); update endue"
             ));
         }
         let problems: Vec<String> = validator()

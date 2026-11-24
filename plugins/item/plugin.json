@@ -3,7 +3,7 @@
   "name": "Item",
   "version": "0.1.0",
   "kind": "view",
-  "description": "One item in Desk: what the palette's Open in Desk shows.",
+  "description": "One item in endue: what the palette's Open in endue shows.",
   "view": {
     "id": "desk.item",
     "title": "Item",
@@ -45,6 +45,6 @@
         "limit": 1
       }
     },
-    "empty": "This item is not in Desk any more."
+    "empty": "This item is not in endue any more."
   }
 }

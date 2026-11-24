@@ -49,7 +49,7 @@ pub fn run(program: &str, args: &[String]) -> Result<(), Refusal> {
         .args(args)
         .stdin(Stdio::null())
         .output()
-        .map_err(|e| Refusal::Failed(format!("Desk could not run {program}: {e}")))?;
+        .map_err(|e| Refusal::Failed(format!("endue could not run {program}: {e}")))?;
     judge(&output)
 }
 
@@ -180,8 +180,8 @@ mod tests {
 
     #[test]
     fn an_osascript_error_says_only_its_words() {
-        let error = "0:263: execution error: the update changed after Desk checked it (65)\n";
-        assert_eq!(said(error), "the update changed after Desk checked it");
+        let error = "0:263: execution error: the update changed after endue checked it (65)\n";
+        assert_eq!(said(error), "the update changed after endue checked it");
         let pkexec = "Error executing command as another user";
         assert_eq!(said(pkexec), pkexec);
         assert_eq!(said("  it ended (badly)  "), "it ended (badly)");

@@ -7,6 +7,8 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+pub(crate) const USER_AGENT: &str = "endue";
+
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 /// How long a response may stay silent; turn streams send events well within it.
 const READ_TIMEOUT: Duration = Duration::from_secs(60);
@@ -150,7 +152,7 @@ pub fn send(
 
     let payload = body.map(|b| b.to_string()).unwrap_or_default();
     let mut head = format!(
-        "{method} {}{path} HTTP/1.1\r\nHost: {}\r\nUser-Agent: endue-desk\r\n\
+        "{method} {}{path} HTTP/1.1\r\nHost: {}\r\nUser-Agent: {USER_AGENT}\r\n\
          Accept: application/json, text/event-stream\r\nConnection: close\r\n",
         endpoint.prefix,
         endpoint.authority()

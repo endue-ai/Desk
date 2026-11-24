@@ -51,7 +51,7 @@ describe("a local agent's screen", () => {
     expect([...el.querySelectorAll(".local-tabs .segment")].map((t) => t.textContent)).toEqual([
       "Sessions 4",
       "Archive 2",
-      "In Desk 0",
+      "In endue 0",
     ]);
     expect(titles(el)).toEqual([
       "Fix the flaky upload test",
@@ -78,19 +78,19 @@ describe("a local agent's screen", () => {
     expect(titles(el)).toEqual(["Old CI migration"]);
   });
 
-  it("imports sessions and the archive into the desk, then shows them under In Desk", async () => {
+  it("imports sessions into endue and shows them in the local tab", async () => {
     const { el, local } = await mount();
     const imported = vi.spyOn(local, "import");
     click(el, '[data-import="local"]');
     await settle();
     expect(imported).toHaveBeenCalledWith("claude", "local");
     expect(el.querySelector(".local-notice")?.textContent).toBe(
-      "Imported 4 into the desk · 0 already up to date",
+      "Imported 4 into endue · 0 already up to date",
     );
     click(el, '[data-import="archive"]');
     await settle();
     expect(imported).toHaveBeenLastCalledWith("claude", "archive");
-    expect(el.querySelector('[data-tab="desk"]')?.textContent).toBe("In Desk 6");
+    expect(el.querySelector('[data-tab="desk"]')?.textContent).toBe("In endue 6");
     click(el, '[data-tab="desk"]');
     await settle();
     expect(titles(el)).toHaveLength(6);
@@ -219,7 +219,7 @@ describe("a local agent's screen", () => {
 it("loads older turns without losing the selection or replacing it with a stale result", async () => {
   const { el, local } = await mount();
   const reader = el.querySelector("desk-agent-session");
-  expect(reader?.shadowRoot, "the Desk screen uses the session reader").toBeTruthy();
+  expect(reader?.shadowRoot, "the endue screen uses the session reader").toBeTruthy();
   const root = reader!.shadowRoot!;
   const [one, two] = local.fixture.sessions;
   if (!one || !two) throw Error("two sessions required");
