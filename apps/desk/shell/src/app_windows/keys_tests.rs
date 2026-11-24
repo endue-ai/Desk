@@ -41,6 +41,19 @@ fn event(kind: KeyEventType, code: &str, typed: char, chord: bool) -> KeyEvent {
 
 // One test: the reported keymap is the process's, which other tests would change under it.
 #[test]
+fn windows_matches_the_same_physical_key_across_repeat_and_release() {
+    let enter = (0x1c << 16) | 1;
+    let repeated = (0x1c << 16) | (1 << 30) | 2;
+    let released = enter | (1 << 30) | i32::MIN;
+    assert_eq!(super::windows_scan(enter), super::windows_scan(repeated));
+    assert_eq!(super::windows_scan(enter), super::windows_scan(released));
+    assert_ne!(
+        super::windows_scan(enter),
+        super::windows_scan(enter | (1 << 24))
+    );
+}
+
+#[test]
 fn a_chord_the_desk_binds_is_the_desks_in_an_app_window_with_its_character_and_release() {
     report(
         Platform::current(),
