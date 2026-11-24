@@ -16,6 +16,7 @@ export function createNoteEditor(field, edit, load = () => import("./large-edito
   let viewport;
   /** @type {string | undefined} */
   let buffer;
+  let requested = false;
   let large = false;
   let scroll = 0;
 
@@ -36,22 +37,32 @@ export function createNoteEditor(field, edit, load = () => import("./large-edito
     }
   }
 
-  // When the asset arrives, the field already holds the current buffer, text and selection,
-  // including edits typed into a large note while its editor was loading.
-  load().then(
-    (module) => {
-      mount = module.mountLargeEditor;
-      attach();
-    },
-    () => {},
-  );
+  function prepareViewport() {
+    if (!large || requested) return;
+    requested = true;
+    // A user may edit or switch notes before the module arrives. Attach to the current field.
+    load().then(
+      (module) => {
+        mount = module.mountLargeEditor;
+        attach();
+      },
+      () => {},
+    );
+  }
 
   field.focus = (options) => {
     if (viewport) viewport.focus();
     else nativeFocus(options);
   };
   field.setSelectionRange = (start, end, direction) => {
-    nativeSelection(start, end, direction);
+    if (
+      !viewport ||
+      field.selectionStart !== start ||
+      field.selectionEnd !== end ||
+      (start !== end && direction !== field.selectionDirection)
+    ) {
+      nativeSelection(start, end, direction);
+    }
     viewport?.select();
   };
   field.addEventListener("input", () => edit(field.value));
@@ -73,8 +84,10 @@ export function createNoteEditor(field, edit, load = () => import("./large-edito
       const changed = field.value !== value;
       if (changed) {
         field.value = value;
+        if (large && !viewport) nativeSelection(0, 0);
         viewport?.reset();
       }
+      prepareViewport();
       attach();
       return changed;
     },
