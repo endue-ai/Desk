@@ -15,6 +15,29 @@ import {
  * @param {(start: number, end: number, direction?: "forward" | "backward" | "none") => void} nativeSelection
  */
 export function mountLargeEditor(field, edit, nativeSelection) {
+  let pendingText = false;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let finishComposition;
+
+  function syncField(/** @type {EditorView} */ view, /** @type {boolean} */ docChanged) {
+    pendingText ||= docChanged;
+    if (view.compositionStarted) return;
+    const value = pendingText ? view.state.doc.toString() : undefined;
+    pendingText = false;
+    const changed = value !== undefined && field.value !== value;
+    if (changed) field.value = value;
+    const range = view.state.selection.main;
+    const direction = range.head < range.anchor ? "backward" : "forward";
+    if (
+      field.selectionStart !== range.from ||
+      field.selectionEnd !== range.to ||
+      (!range.empty && field.selectionDirection !== direction)
+    ) {
+      nativeSelection(range.from, range.to, direction);
+    }
+    if (changed) edit(value);
+  }
+
   const extensions = [
     EditorView.lineWrapping,
     EditorView.editorAttributes.of({ class: "note-viewport" }),
@@ -27,12 +50,17 @@ export function mountLargeEditor(field, edit, nativeSelection) {
       spellcheck: "false",
     }),
     EditorView.updateListener.of((update) => {
-      if (update.docChanged) field.value = update.state.doc.toString();
-      if (update.docChanged || update.selectionSet) {
-        const range = update.state.selection.main;
-        nativeSelection(range.from, range.to, range.head < range.anchor ? "backward" : "forward");
-      }
-      if (update.docChanged) edit(field.value);
+      if (update.docChanged || update.selectionSet) syncField(update.view, update.docChanged);
+    }),
+    EditorView.domEventObservers({
+      compositionend(_event, view) {
+        // Chromium can deliver the final DOM mutation after compositionend.
+        // Keep provisional text inside the editor until it accepts or cancels the candidate.
+        clearTimeout(finishComposition);
+        finishComposition = setTimeout(() => {
+          if (pendingText) syncField(view, false);
+        }, 0);
+      },
     }),
   ];
   const selection = () =>
@@ -45,9 +73,22 @@ export function mountLargeEditor(field, edit, nativeSelection) {
   return {
     element: view.dom,
     focus: () => view.focus(),
-    destroy: () => view.destroy(),
-    reset: () => view.setState(state()),
-    select: () => view.dispatch({ selection: selection(), scrollIntoView: true }),
+    destroy() {
+      clearTimeout(finishComposition);
+      view.destroy();
+    },
+    reset() {
+      clearTimeout(finishComposition);
+      pendingText = false;
+      view.setState(state());
+    },
+    select() {
+      const next = selection();
+      const current = view.state.selection.main;
+      if (next.anchor !== current.anchor || next.head !== current.head) {
+        view.dispatch({ selection: next, scrollIntoView: true });
+      }
+    },
     insert(/** @type {string} */ value) {
       view.dispatch(view.state.replaceSelection(value), {
         scrollIntoView: true,
