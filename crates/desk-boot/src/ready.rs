@@ -42,4 +42,43 @@ mod tests {
         assert!(!is_ready_line("desk cannot reach the core · bridge: tauri"));
         assert!(!is_ready_line("QA {\"id\":0}"));
     }
+
+    #[test]
+    fn a_connection_error_keeps_the_saved_start_in_progress() {
+        use std::fs;
+        use std::sync::Arc;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        use desk_core::{Core, LastStart, Roots};
+        use serde_json::Value;
+
+        use super::{McpServers, Start, Tracing, ready};
+
+        let now = SystemTime::now();
+        let stamp = now.duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let dir = std::env::temp_dir().join(format!("endue-ready-{}-{stamp}", std::process::id()));
+        fs::create_dir(&dir).unwrap();
+        let file = dir.join("last-start.json");
+        let core = Arc::new(Core::new(Roots { home: dir.clone() }));
+        let (last, _) = LastStart::begin(&file, now, std::process::id());
+        let start = Start::new(&core, &dir, last);
+        let mcp = McpServers::new(&core, dir.clone());
+        let trace = Tracing::default();
+        let phase =
+            || serde_json::from_slice::<Value>(&fs::read(&file).unwrap()).unwrap()["phase"].clone();
+
+        ready(
+            "endue cannot reach the core · bridge: cef",
+            &trace,
+            &start,
+            &mcp,
+        );
+        let after_error = phase();
+        ready("endue ready · bridge: cef", &trace, &start, &mcp);
+        let after_ready = phase();
+        drop(mcp);
+        fs::remove_dir_all(dir).unwrap();
+        assert_eq!(after_error, "starting");
+        assert_eq!(after_ready, "ready");
+    }
 }
