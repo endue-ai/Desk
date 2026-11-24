@@ -27,7 +27,7 @@ too) and through `ctx.theme`; reduced motion is `data-motion="reduce"` on the ro
 Commands: `desk.theme.toggle`, `.light`, `.dark`, `.system`, `.contrast`, `.motion`, `.use` (`{ "id" }`,
 an installed theme plugin) and `.default` (back to endue). The theme chosen (`desk.theme.active`) comes
 back with the session. A scheme, contrast or motion change, by command or in Settings, is the person's
-own: Desk keeps it in the preferences record across quits, over `init.yaml` and the profile
+own: endue keeps it in the preferences record across quits, over `init.yaml` and the profile
 (`specs/runtime/v0/settings.md`). `init.yaml` (`settings: { desk.theme.scheme: light }`) or a profile
 gives the value until the person changes it.
 

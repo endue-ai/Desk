@@ -33,7 +33,7 @@ Chords always reach the desk.
 | Folder | Purpose |
 | --- | --- |
 | `ui/pptx/`, `ui/odp/`, `ui/ppt/`, `ui/other.js` | The readers, on `ui/zip.js`, `ui/cfb.js` and `DOMParser` |
-| `ui/slides.js`, `reading.js`, `keep.js`, `worker.js`, `view.js`, `play.js`, `style.css` | Desk requests, ranged reads, progress, links, sleep; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
+| `ui/slides.js`, `reading.js`, `keep.js`, `worker.js`, `view.js`, `play.js`, `style.css` | endue requests, ranged reads, progress, links, sleep; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
 
 `pnpm exec vitest run plugins/slides` · `cargo run -p desk-cli -- plugin validate plugins/slides` ·
 `plugins/slides/tests/fixtures/make.sh` (real-world fixtures, Docker; `ppt/make.sh`: the .ppt deck)

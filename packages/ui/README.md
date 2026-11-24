@@ -1,6 +1,6 @@
 # @endue-ai/ui
 
-The shared Desk design system, endue.ai/design's (ADR 0265): semantic colors and scale, base page styles
+The shared endue design system, endue.ai/design's (ADR 0265): semantic colors and scale, base page styles
 and patterns, and framework-free custom elements. The shell and plugin frames read the same `--desk-*`
 properties; a theme restyles both. See [the guide](../../docs/design-system.md) and ADR 0022.
 

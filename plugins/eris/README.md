@@ -21,7 +21,7 @@ onboarding plugin's import map maps `eris/` to `../../endue.eris/ui/`.
 
 The manifest declares the shortcut that summons Eris from any app (ADR 0280), read by the app:
 `endue.eris.shortcut` (`Alt+Enter`, ⌥↩ on macOS; `DESK_ERIS_SHORTCUT` overrides it), set in init.yaml.
-The shortcut and the tray's Talk to Eris bring Desk forward and open the talk line.
+The shortcut and the tray's Talk to Eris bring endue forward and open the talk line.
 
 Attach open text file uses the saved file; unsaved edits are excluded. Its visible excerpt is sent
 only with the next message, up to the bridge's 8,000-character message limit. Failed sends retain

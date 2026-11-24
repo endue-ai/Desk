@@ -1,9 +1,9 @@
 # desk-bridge
 
-Rust side of the Desk bridge: the types generated from `specs/bridge/v0`, `specs/plugin/v0`,
+Rust side of the endue bridge: the types generated from `specs/bridge/v0`, `specs/plugin/v0`,
 `specs/item/v0`, `specs/view/v0`, `specs/connector/v0` and `specs/init/v0`.
 
-Layer: Desk bridge (see `docs/architecture.md`). Status: generated types only; traits arrive with the core.
+Layer: endue bridge (see `docs/architecture.md`). Status: generated types only; traits arrive with the core.
 
 ## Public API
 

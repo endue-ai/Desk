@@ -2,11 +2,11 @@
 
 `desk.palette` searches installed plugins, explicitly published plugin data, commands and the OS
 index through the core bridge. Enter opens a result; arrows select; Escape closes. A separate native
-window hosts the same UI above other apps, independently of profiles and the main Desk window.
+window hosts the same UI above other apps, independently of profiles and the main endue window.
 
 - **Global shortcut:** `Cmd+Shift+Space` (macOS), `Ctrl+Shift+Space` elsewhere; Settings › Keyboard
   changes it at once (`desk.palette.shortcut`), `DESK_PALETTE_SHORTCUT` wins, the tray opens it too.
-- **In Desk:** `Mod+K` opens the overlay and, pressed again, closes it; `desk.palette.pick` remains.
+- **In endue:** `Mod+K` opens the overlay and, pressed again, closes it; `desk.palette.pick` remains.
 - **OS results:** macOS Spotlight (`mdfind`), Windows Search index, Linux `locate` (install and update
   its database). Only indexed paths are searched; a row shows the end of the file's folder, home as ~.
 - **Plugin results:** every installed UI plugin can be launched, including disabled or closed ones.
