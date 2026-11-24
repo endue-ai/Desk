@@ -9,6 +9,14 @@ on:
         type: choice
         options: ["release-shell", "cef"]
         default: release-shell
+      verify-intel-tag:
+        description: Existing release tag to install on an Intel Mac, including a draft
+        required: false
+        type: string
+      intel-sha256:
+        description: Expected SHA-256 of the Intel disk image
+        required: false
+        type: string
   workflow_call:
     inputs:
       ref:
@@ -25,7 +33,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  intel-install:
+    name: Install the selected disk image on Intel
+    if: inputs.verify-intel-tag != '' || inputs.intel-sha256 != ''
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download and verify the exact disk image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.verify-intel-tag }}
+          EXPECTED: ${{ inputs.intel-sha256 }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          [[ "$EXPECTED" =~ ^[a-f0-9]{64}$ ]] || { echo "::error::Supply the Intel SHA-256 digest"; exit 1; }
+          version="$(node scripts/release-assets.mjs version "$TAG")"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$version")"
+          file="${prefix}darwin-x86_64.dmg"
+          mkdir -p "$RUNNER_TEMP/endue-installer"
+          cd "$RUNNER_TEMP/endue-installer"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$file"
+          printf '%s  %s\n' "$EXPECTED" "$file" | shasum -a 256 -c -
+          echo "INSTALLER=$PWD/$file" >> "$GITHUB_ENV"
+      - name: Install and launch endue
+        run: bash e2e/smoke/install-and-launch.sh "$INSTALLER"
+
   key:
+    if: inputs.verify-intel-tag == '' && inputs.intel-sha256 == ''
     name: key
     runs-on: ubuntu-latest
     timeout-minutes: 15
