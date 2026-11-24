@@ -74,7 +74,10 @@ serde.workspace = true
 serde_json.workspace = true
 tray-icon = "0.25"
 url = "2.5"
-winit = "0.30"
+# Crossfont draws native Wayland titles with the system font rasterizer.
+winit = { version = "0.30", default-features = false, features = [
+    "rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita-crossfont",
+] }
 wgpu.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]

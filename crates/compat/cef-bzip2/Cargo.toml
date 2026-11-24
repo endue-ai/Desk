@@ -1,0 +1,10 @@
+[package]
+name = "bzip2"
+version = "0.6.1"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+description = "Use the independent crabz2 stream decoder for CEF distribution archives"
+
+[dependencies]
+crabz2 = "=0.7.0"
