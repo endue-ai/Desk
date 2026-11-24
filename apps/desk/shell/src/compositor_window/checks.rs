@@ -35,8 +35,11 @@ impl CompositorWindow {
         let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), w, h);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
+        // Capture runs on the event loop while the compositor continues presenting frames.
+        encoder.set_compression(png::Compression::Fast);
         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
         writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
+        writer.finish().map_err(|e| e.to_string())?;
         Ok(json!({ "path": path, "width": w, "height": h, "nodes": self.scene.len() }))
     }
 
