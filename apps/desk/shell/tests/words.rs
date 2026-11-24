@@ -25,22 +25,22 @@ fn the_tray_is_built_in_each_language() {
     assert_eq!(
         labels(&staged),
         [
-            (Choice::Search, "Search Desk"),
+            (Choice::Search, "Search endue"),
             (Choice::Eris, "Talk to Eris"),
-            (Choice::Desk, "Open Desk"),
+            (Choice::Desk, "Open endue"),
             (Choice::Update, "Restart to update (1.4.0)"),
-            (Choice::Quit, "Quit Desk"),
+            (Choice::Quit, "Quit endue"),
         ]
     );
     let korean = tray::items(Language::Ko, Some("1.4.0"));
     assert_eq!(
         labels(&korean),
         [
-            (Choice::Search, "Desk 검색"),
+            (Choice::Search, "endue 검색"),
             (Choice::Eris, "Eris에게 말하기"),
-            (Choice::Desk, "Desk 열기"),
+            (Choice::Desk, "endue 열기"),
             (Choice::Update, "다시 시작해 업데이트 (1.4.0)"),
-            (Choice::Quit, "Desk 종료"),
+            (Choice::Quit, "endue 종료"),
         ]
     );
     for language in Language::ALL {
@@ -81,8 +81,8 @@ fn the_menu_bar_is_built_in_each_language() {
     let english = shape(Language::En);
     let korean = shape(Language::Ko);
     let titles = |bar: &[(String, Vec<_>)]| bar.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>();
-    assert_eq!(titles(&english), ["endue Desk", "Edit", "Window"]);
-    assert_eq!(titles(&korean), ["endue Desk", "편집", "윈도우"]);
+    assert_eq!(titles(&english), ["endue", "Edit", "Window"]);
+    assert_eq!(titles(&korean), ["endue", "편집", "윈도우"]);
     let words = |bar: &[(String, Vec<Row>)], at: usize| {
         bar[at]
             .1
@@ -93,29 +93,29 @@ fn the_menu_bar_is_built_in_each_language() {
     assert_eq!(
         words(&english, 0),
         [
-            "About endue Desk",
+            "About endue",
             "",
             "Services",
             "",
-            "Hide endue Desk",
+            "Hide endue",
             "Hide Others",
             "Show All",
             "",
-            "Quit endue Desk",
+            "Quit endue",
         ]
     );
     assert_eq!(
         words(&korean, 0),
         [
-            "endue Desk에 관하여",
+            "endue에 관하여",
             "",
             "서비스",
             "",
-            "endue Desk 가리기",
+            "endue 가리기",
             "기타 가리기",
             "모두 보기",
             "",
-            "endue Desk 종료",
+            "endue 종료",
         ]
     );
     assert_eq!(
@@ -136,11 +136,11 @@ fn the_menu_bar_is_built_in_each_language() {
     );
     assert_eq!(
         words(&english, 2),
-        ["Minimize", "Move to Desk", "Close Window"]
+        ["Minimize", "Move to endue", "Close Window"]
     );
     assert_eq!(
         words(&korean, 2),
-        ["최소화", "데스크로 되돌리기", "윈도우 닫기"]
+        ["최소화", "endue로 되돌리기", "윈도우 닫기"]
     );
     // The same items, in the same places and with the same keys, in either language.
     let kinds = |bar: &[(String, Vec<Row>)]| {
@@ -197,7 +197,7 @@ fn the_language_is_the_one_chosen_else_the_oss() {
 
 #[test]
 fn a_word_korean_lacks_reads_in_english_then_as_its_id() {
-    assert_eq!(words::text(Language::Ko, "desk.tray.search"), "Desk 검색");
+    assert_eq!(words::text(Language::Ko, "desk.tray.search"), "endue 검색");
     assert_eq!(
         words::text(Language::Ko, "desk.no.suchWord"),
         "desk.no.suchWord"

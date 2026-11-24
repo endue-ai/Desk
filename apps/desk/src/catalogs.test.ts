@@ -27,7 +27,7 @@ describe("the app's catalogs", () => {
       current: { version: "0.1.0" },
       release: { version: "0.2.0" },
     } as unknown as UpdateStatus;
-    expect(rowFor(status, "en")?.text).toBe("Desk 0.2.0 is available");
+    expect(rowFor(status, "en")?.text).toBe("endue 0.2.0 is available");
     expect(rowFor(status, "en")?.action?.label).toBe(en["desk.updates.download"]);
     expect(rowFor(status, "ko")?.text).toBe(
       String(ko["desk.updates.available"]).replace("{v}", "0.2.0"),

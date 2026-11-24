@@ -40,7 +40,7 @@ describe("cef-package", () => {
   it("lays out the CEF framework and the five helper apps CEF looks for on macOS", () => {
     const config = render("aarch64-apple-darwin", { hook: "bash sign.sh hook app" });
     assert.deepEqual(config.formats, ["app", "dmg"]);
-    assert.equal(config.productName, "endue Desk");
+    assert.equal(config.productName, "endue");
     assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }]);
     assert.deepEqual(config.macos.frameworks, [
       "/cef/Chromium Embedded Framework.framework",
