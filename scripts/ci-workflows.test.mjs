@@ -1,8 +1,4 @@
-// Which workflows run when (ADR 0081, ADR 0092): pull requests into main and the merge queue run the
-// Linux gates; a pull request into a release line release/vX.Y also runs macOS, Windows and the CEF
-// shell on every OS; a push to a line builds a candidate for beta; a final, by hand, tags it and
-// lists it on stable for a tenth of the desks; canary builds nightly or by hand, with macOS and
-// Windows checks.
+// Cross-platform gates and release operations selected by a manual workflow dispatch.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -12,7 +8,7 @@ import { parse } from "yaml";
 const workflow = async (name) =>
   parse(await readFile(new URL(`../.github/workflows/${name}.yml`, import.meta.url), "utf8"));
 
-const RELEASE_PR = "startsWith(github.base_ref, 'release/')";
+const RELEASE_PR = "needs.changes.outputs.release-line == 'true'";
 
 /** A workflow expression as the YAML spells it: expr("github.sha") is "${{ github.sha }}". */
 const expr = (body) => `\${{ ${body} }}`;
@@ -25,15 +21,43 @@ test("macOS and Windows checks run only for a pull request into release/**", asy
   for (const name of ["check-macos", "check-windows"]) {
     assert.equal(jobs[name].if, RELEASE_PR, `${name} runs for release pull requests only`);
   }
-  for (const name of ["check-linux", "runtime-e2e", "codegen-check"]) {
-    assert.equal(jobs[name].if, undefined, `${name} runs on every pull request`);
+  for (const name of ["linux-verification", "runtime-e2e-shard", "codegen-check"]) {
+    assert.ok(jobs[name], `${name} exists`);
+    assert.equal(jobs[name].if, undefined, `${name} runs for every CI dispatch`);
   }
+});
+
+test("Linux runs all checks within the hosted disk budget", async () => {
+  const { jobs } = await workflow("ci");
+  const check = jobs["linux-verification"];
+  assert.ok(check, "static checks and unit tests run on separate Linux runners");
+  assert.deepEqual(check.strategy.matrix.recipe, ["check", "test-unit"]);
+  assert.equal(check.strategy["fail-fast"], false);
+  for (const profile of ["DEV", "TEST"]) {
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG`], "0");
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_DEBUG_ASSERTIONS`], undefined);
+    assert.equal(check.env?.[`CARGO_PROFILE_${profile}_OVERFLOW_CHECKS`], undefined);
+  }
+  assert.equal(check.env.CARGO_INCREMENTAL, "0");
+  assert.equal(check["timeout-minutes"], 30);
+  for (const recipe of check.strategy.matrix.recipe) {
+    const step = check.steps.find((step) => step.run === `just ${recipe}`);
+    assert.equal(step?.if, `matrix.recipe == '${recipe}'`);
+    assert.equal(step["continue-on-error"], undefined);
+  }
+  const gate = jobs["check-linux"];
+  assert.equal(gate.name, "check (linux)");
+  assert.equal(gate.if, "always()");
+  assert.equal(gate.needs, "linux-verification");
+  assert.equal(gate.steps[0].env.RESULT, expr("needs.linux-verification.result"));
+  assert.equal(gate.steps[0].run, 'test "$RESULT" = success');
 });
 
 test("the CEF shell is built on every OS for an app change and for a release", async () => {
   const { jobs } = await workflow("ci");
   assert.equal(jobs["app-build"], undefined, "the Tauri app's build went with it (#97)");
   const build = jobs["shell-build"];
+  assert.ok(scripts(jobs.changes).includes("\\.github/workflows/ci\\.yml$"));
   assert.match(build.if, /needs\.changes\.outputs\.app == 'true'/u);
   assert.ok(build.if.includes(RELEASE_PR), build.if);
   assert.deepEqual(build.strategy.matrix.os, ["ubuntu-latest", "macos-latest", "windows-latest"]);
@@ -48,7 +72,7 @@ test("the CEF shell is built on every OS for an app change and for a release", a
 test("a release pull request runs the release dry run inside ci when it changes the release files", async () => {
   const dry = await workflow("release-dry-run");
   assert.ok("workflow_call" in dry.on, "release-dry-run can be called");
-  assert.ok(dry.on.pull_request.paths.includes(".github/workflows/release-final.yml"));
+  assert.equal(dry.on.workflow_call.inputs.ref.required, true);
   const { jobs } = await workflow("ci");
   const call = jobs["release-dry-run"];
   assert.equal(call.uses, "./.github/workflows/release-dry-run.yml");
@@ -61,10 +85,10 @@ test("a release pull request runs the release dry run inside ci when it changes 
   assert.ok(jobs.ci.needs.includes("release-dry-run"), "the required check waits for it");
 });
 
-test("a push to a release line builds a candidate and lists it on beta, never on stable", async () => {
+test("dispatching on a release line builds a candidate and lists it on beta", async () => {
   const release = await workflow("release");
-  assert.deepEqual(release.on.push.branches, ["release/v*"]);
-  assert.equal(release.on.push.tags, undefined, "a tag starts nothing");
+  assert.deepEqual(Object.keys(release.on), ["workflow_dispatch"]);
+  assert.equal(release.jobs.gate.if, "startsWith(github.ref, 'refs/heads/release/v')");
   assert.match(
     scripts(release.jobs.gate),
     /release-version\.mjs --line "\$GITHUB_REF_NAME" --run/u,
@@ -160,20 +184,13 @@ test("release lines and release tags are created only by the release app and adm
   assert.equal(review.required_approving_review_count, 1, "a person reviews what reaches desks");
 });
 
-test("canary builds nightly or by hand, not on every push, and checks macOS and Windows", async () => {
+test("a manual canary checks macOS and Windows from the default branch", async () => {
   const canary = await workflow("canary");
-  assert.equal(canary.on.push, undefined);
-  assert.ok(Array.isArray(canary.on.schedule) && canary.on.schedule.length === 1);
-  assert.ok("workflow_dispatch" in canary.on);
-  const gate = scripts(canary.jobs.gate);
-  assert.match(gate, /gh run list --workflow canary/u, "it compares main with the last canary");
-  assert.match(gate, /moved=false/u);
-  assert.match(canary.jobs.build.if, /needs\.gate\.outputs\.moved == 'true'/u);
+  assert.deepEqual(Object.keys(canary.on), ["workflow_dispatch"]);
+  assert.match(canary.jobs.gate.if, /github\.event\.repository\.default_branch/u);
+  assert.equal(canary.jobs.build.if, "needs.gate.outputs.publish == 'true'");
   const check = canary.jobs.check;
-  assert.equal(
-    check.if,
-    "needs.gate.outputs.moved == 'true'",
-    "checks run before the secrets exist",
-  );
+  assert.equal(check.needs, "gate");
+  assert.equal(check.if, undefined, "the OS checks run even before signing is configured");
   assert.deepEqual(check.strategy.matrix.os, ["macos-latest", "windows-latest"]);
 });

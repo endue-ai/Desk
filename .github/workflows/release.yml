@@ -1,14 +1,8 @@
 name: release
 
-# A push to a release line release/vX.Y builds its next candidate (ADR 0092, amending ADR 0081): check
-# and unit tests on every OS, the four targets built and signed as X.Y.Z-rc.<run>, uploaded to R2 and
-# listed on beta. release-cut.yml's new branch builds the line's first candidate; each merged
-# cherry-pick builds the next. Stable comes from release-final.yml once a candidate has been on beta
-# three days. A branch that is not a line (release/vX.Y.Z) builds nothing, and without the updater key,
-# its public key or the R2 credentials the run fails: a line is meant to ship.
+# Dispatch on a release/vX.Y branch to check every OS and publish its next candidate on beta.
 on:
-  push:
-    branches: ["release/v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,6 +15,7 @@ concurrency:
 
 jobs:
   gate:
+    if: startsWith(github.ref, 'refs/heads/release/v')
     name: gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,9 +29,11 @@ jobs:
           fetch-depth: 0
       - id: version
         name: The candidate's version
-        run: echo "version=$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - id: shell
-        name: The desk the line builds (.github/release-shell, #46)
+        name: Select the endue shell for this release line
         run: |
           shell="$(tr -d '[:space:]' < .github/release-shell)"
           case "$shell" in tauri | cef) ;; *) echo "::error::.github/release-shell names $shell, not tauri or cef"; exit 1 ;; esac
@@ -85,7 +82,7 @@ jobs:
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the ALSA headers (cpal, for desk-sys audio)
+      - name: Install ALSA headers for endue audio
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
