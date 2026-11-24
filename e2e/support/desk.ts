@@ -11,7 +11,7 @@ import { HOME_VAR, LOG_VAR } from "./driver";
 import { inPluginPage } from "./pages";
 
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
-export const READY = "desk ready · bridge: cef";
+export const READY = "endue ready · bridge: cef";
 
 /** The shell's layers: the desk's own controls, and what a profile lays out over the runtime. */
 export const SYSTEM = '#desk.shell [data-layer="system"]';
@@ -28,7 +28,7 @@ export const surface = (plugin: string) => $(`${MODE} .desk-surface[data-surface
 export const drawerButton = () => $(`${MODE} .drawer-button`);
 
 /**
- * Wait until the shell is in: both layers are mounted, the status line reads READY (not "desk cannot
+ * Wait until the shell is in: both layers are mounted, the status line reads READY (not "endue cannot
  * reach the core ..."), and the agent bar's agents group is no longer busy. The shell clears
  * `aria-busy` when the agent directory was read, which it does after the plugins mounted and the saved
  * session was put back; with no brain the directory is offline and the bar shows `.bar-offline`.

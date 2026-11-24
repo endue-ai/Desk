@@ -43,7 +43,7 @@ launch() {
   env -i HOME="$home" PATH="$PATH" LANG=en_US.UTF-8 DESK_ENDUE_PLATFORM_URL=http://127.0.0.1:1 DESK_ENDUE_AUTH_URL=http://127.0.0.1:1 "$app" >"$work/app.log" 2>&1 &
   pid=$!
   for _ in {1..240}; do
-    if grep -q '^desk ready' "$work/app.log" && desk ping >/dev/null 2>&1; then return; fi
+    if grep -Eq '^(endue|desk) ready' "$work/app.log" && desk ping >/dev/null 2>&1; then return; fi
     kill -0 "$pid"
     sleep .25
   done

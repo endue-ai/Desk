@@ -199,14 +199,16 @@ fi
 pid=$!
 
 step="ready"
+ready_line='^(endue|desk) ready'
+failed_line='^(endue|desk) cannot reach the core'
 for ((tick = 0; tick < ready_within * 10; tick++)); do
-  if grep -q '^desk ready' "$out"; then break; fi
-  if grep -q '^desk cannot reach the core' "$out"; then fail "$(grep -m1 '^desk cannot' "$out")"; fi
+  if grep -Eq "$ready_line" "$out"; then break; fi
+  if grep -Eq "$failed_line" "$out"; then fail "$(grep -Em1 "$failed_line" "$out")"; fi
   kill -0 "$pid" 2>/dev/null || { wait "$pid" && code=0 || code=$?; fail "the app exited ($code) before printing a ready line"; }
   sleep 0.1
 done
-grep -q '^desk ready' "$out" || fail "no ready line within $ready_within s"
-echo "smoke: $(grep -m1 '^desk ready' "$out")"
+grep -Eq "$ready_line" "$out" || fail "no ready line within $ready_within s"
+echo "smoke: $(grep -Em1 "$ready_line" "$out")"
 
 if [ -n "${DESK_SMOKE_POSTGRES:-}" ]; then
   step="database"

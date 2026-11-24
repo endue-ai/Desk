@@ -11,8 +11,8 @@ use crate::trace::Tracing;
 /// line attaches init.yaml's MCP servers (ADR 0098): their grant prompts need the runtime.
 pub fn ready(status: &str, tracing: &Tracing, start: &Start, mcp: &McpServers) -> bool {
     println!("{status}");
-    start.ready();
     if is_ready_line(status) {
+        start.ready();
         tracing.instant(desk_trace::READY_LINE);
         tracing.write();
         mcp.attach_once();
@@ -24,10 +24,9 @@ pub fn ready(status: &str, tracing: &Tracing, start: &Start, mcp: &McpServers) -
     tracing.on()
 }
 
-/// Whether `status` is the ready line the install smoke waits for (`^desk ready`, e2e/smoke), not
-/// "desk cannot reach the core" or another line printed through this command.
+/// Recognize the startup status from this runtime and from earlier clients.
 fn is_ready_line(status: &str) -> bool {
-    status.starts_with("desk ready")
+    status.starts_with("endue ready") || status.starts_with("desk ready")
 }
 
 #[cfg(test)]
