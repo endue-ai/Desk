@@ -133,8 +133,22 @@ test("a wrapped note retains keyboard composition and fits a narrow themed windo
     node.focus();
     node.setSelectionRange(0, 0);
   });
+  const original = await field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 12));
+  const firstLine = editor.locator(".cm-line").first();
   const session = await page.context().newCDPSession(page);
   try {
+    await session.send("Input.imeSetComposition", {
+      text: "초안",
+      selectionStart: 2,
+      selectionEnd: 2,
+    });
+    await expect(firstLine).toHaveText(/^초안/u);
+    // A candidate is visible while the buffer kept for saves still holds the accepted text.
+    expect(await field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 12))).toBe(
+      original,
+    );
+    await session.send("Input.imeSetComposition", { text: "", selectionStart: 0, selectionEnd: 0 });
+    await expect.poll(() => firstLine.textContent()).toContain(original);
     await session.send("Input.imeSetComposition", {
       text: "메모",
       selectionStart: 2,
@@ -145,7 +159,7 @@ test("a wrapped note retains keyboard composition and fits a narrow themed windo
     await session.detach();
   }
   await expect
-    .poll(() => field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 2)))
-    .toBe("메모");
+    .poll(() => field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 14)))
+    .toBe("메모" + original);
   await expect(notes.locator("#note-count")).toContainText("4194306 characters");
 });
