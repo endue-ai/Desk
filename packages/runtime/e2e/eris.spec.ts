@@ -56,6 +56,39 @@ test.describe("talking to Eris", () => {
     await expect.poll(() => said(page)).toBe(before + 1);
   }
 
+  test("the first message can be entered once the composer is listening", async ({ page }) => {
+    const module = "**/plugins/endue.eris/ui/main.js*";
+    let resume!: () => void;
+    const paused = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    await page.route(module, async (route) => {
+      await paused;
+      await route.continue();
+    });
+    const frame = page.frameLocator('[data-surface="endue.eris"] iframe');
+    try {
+      await Promise.all([
+        page.waitForRequest(module),
+        page.goto("/onboarding.html?plugins=eris&brain=echo", { waitUntil: "domcontentloaded" }),
+      ]);
+      const field = frame.locator("#say-text");
+      await expect(field).toBeVisible();
+      const canFocus = await field.evaluate((input: HTMLInputElement) => {
+        input.focus();
+        return input.ownerDocument.activeElement === input;
+      });
+      expect(canFocus).toBe(false);
+    } finally {
+      resume();
+    }
+    const field = frame.getByRole("textbox", { name: "Talk to Eris" });
+    await field.fill("endue ready");
+    await field.press("Enter");
+    await expect(frame.locator("#live p").last()).toHaveText("endue ready");
+    expect(await said(page)).toBe(1);
+  });
+
   test("a typed line rises into her centre and the echo streams back as soul text", async ({
     page,
   }) => {
