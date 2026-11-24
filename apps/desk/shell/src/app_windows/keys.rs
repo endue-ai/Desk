@@ -85,6 +85,12 @@ impl Default for Keys {
     }
 }
 
+// A Windows key message stores the scan code and extended-key bit in bits 16 through 24.
+// The repeat count, previous key state and transition flags change during one key press.
+fn windows_scan(lparam: i32) -> i32 {
+    (lparam >> 16) & 0x1ff
+}
+
 impl Keys {
     fn refresh(&mut self) {
         let r = reported().lock().unwrap_or_else(|e| e.into_inner());
@@ -104,7 +110,11 @@ impl Keys {
     /// it when the desk takes it, and whether the page must not hear it (the press, or the
     /// character or release of one the desk took).
     pub fn event(&mut self, event: &KeyEvent, surface: &str) -> (bool, Option<Value>) {
-        let native = event.native_key_code;
+        let native = if cfg!(target_os = "windows") {
+            windows_scan(event.native_key_code)
+        } else {
+            event.native_key_code
+        };
         match event.type_ {
             KeyEventType::RAWKEYDOWN | KeyEventType::KEYDOWN => {
                 let like = like_of(event);
