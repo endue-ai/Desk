@@ -13,7 +13,7 @@ import { setTimeout as delay } from "node:timers/promises";
 export function cefBinary(root: string, platform = process.platform): string {
   if (process.env.DESK_APP) return resolve(process.env.DESK_APP);
   if (platform === "darwin") {
-    return join(root, "target/bundle/endue-desk.app/Contents/MacOS/endue-desk");
+    return join(root, "target/bundle/endue.app/Contents/MacOS/endue-desk");
   }
   return join(root, "target/debug", platform === "win32" ? "endue-desk.exe" : "endue-desk");
 }

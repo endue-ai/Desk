@@ -2,7 +2,7 @@
   "name": "@endue-ai/desk-app",
   "version": "0.0.0",
   "private": true,
-  "description": "The endue Desk web frontend the CEF shell (apps/desk/shell) serves, mounting the runtime on the Rust core; its devDependency @tauri-apps/cli is the updater's signer (`tauri signer`) the release workflows run.",
+  "description": "The endue web frontend the CEF shell (apps/desk/shell) serves, mounting the runtime on the Rust core; its devDependency @tauri-apps/cli is the updater's signer (`tauri signer`) the release workflows run.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {

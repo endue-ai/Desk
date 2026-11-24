@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { readPin } from "./cef-fetch.mjs";
+import "./cef-package/macos-install.test.mjs";
 import {
   bundleFolder,
   helperApps,
@@ -25,6 +26,7 @@ import {
   packagerConfig,
   pluginFiles,
 } from "./cef-package/config.mjs";
+import { nsisIdentity, wixIdentity } from "./cef-package/windows.mjs";
 import { archiveMacApp, pickFormats, stagePlugins } from "./cef-package.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -38,7 +40,7 @@ const targets = (config) => Object.fromEntries(config.resources.map((r) => [r.ta
 
 describe("cef-package", () => {
   it("lays out the CEF framework and the five helper apps CEF looks for on macOS", () => {
-    const config = render("aarch64-apple-darwin", { hook: "bash sign.sh hook app" });
+    const config = render("aarch64-apple-darwin");
     assert.deepEqual(config.formats, ["app", "dmg"]);
     assert.equal(config.productName, "endue");
     assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }]);
@@ -58,11 +60,6 @@ describe("cef-package", () => {
       targets(config)["licenses/CEF-LICENSE.txt"],
       "/cef/LICENSE.txt",
       "CEF's BSD licence ships",
-    );
-    assert.equal(
-      config.beforeEachPackageCommand,
-      "bash sign.sh hook app",
-      "the app is signed before the dmg",
     );
   });
 
@@ -179,6 +176,54 @@ with tarfile.open(sys.argv[1]) as archive:
       undefined,
       "the launcher is /usr/bin/endue-desk itself, where a Tauri desk restarts after this .deb went in (#47)",
     );
+  });
+
+  it("shows endue while preserving the OS identities of an installed Desk", () => {
+    for (const target of [
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+    ]) {
+      const config = render(target);
+      assert.equal(config.productName, "endue");
+      assert.equal(config.identifier, "ai.endue.desk");
+      assert.equal(config.binaries[0].path, "endue-desk");
+    }
+    const win = render("x86_64-pc-windows-msvc");
+    assert.equal(win.nsis.template, join(paths.stage, "installer.nsi"));
+    assert.equal(win.wix.template, join(paths.stage, "main.wxs"));
+    assert.equal(render("x86_64-unknown-linux-gnu").deb.packageName, "endue-desk");
+    assert.equal(
+      targets(render("aarch64-apple-darwin"))["install-endue"],
+      join(paths.stage, "install-endue"),
+    );
+  });
+
+  it("uses the same Windows install receipts after the name change and protects occupied shortcuts", () => {
+    const nsis = nsisIdentity(
+      [
+        '!define UNINSTKEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${PRODUCTNAME}"',
+        '!define MANUPRODUCTKEY "Software\\${MANUFACTURER}\\${PRODUCTNAME}"',
+        '  WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"',
+        '  StrCpy $INSTDIR "$LOCALAPPDATA\\${PRODUCTNAME}"',
+        "  ; Uninstall previous WiX installation if exists.",
+        "  wix_done:",
+        '  CreateShortcut "$DESKTOP\\${PRODUCTNAME}.lnk" "$INSTDIR\\${MAINBINARYNAME}.exe"',
+        '  ApplicationID::Set "$DESKTOP\\${PRODUCTNAME}.lnk" "${IDENTIFIER}"',
+        "Section EarlyChecks",
+      ].join("\n"),
+    );
+    assert.ok(nsis.includes('Uninstall\\endue Desk"'));
+    assert.ok(nsis.includes('WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"'));
+    assert.ok(nsis.includes('$LOCALAPPDATA\\endue Desk"'));
+    assert.ok(nsis.includes('MsiEnumRelatedProductsW(w "{6DF1A592-6BAD-590D-9FF0-F3C26EC6A138}"'));
+    assert.ok(nsis.includes('IfFileExists "$DESKTOP\\${PRODUCTNAME}.lnk" endue_shortcut_done'));
+    assert.ok(nsis.includes('ReadRegStr $4 SHCTX "${MANUPRODUCTKEY}" ""'));
+    const wix = wixIdentity(
+      '<Directory Id="INSTALLDIR" Name="{{product_name}}"/><Property Id="INSTALLDIR"><Shortcut Id="ApplicationDesktopShortcut"/>',
+    );
+    assert.ok(wix.includes('Id="INSTALLDIR" Name="endue Desk"'));
+    assert.ok(wix.includes("NOT ENDUE_DESKTOP_LINK OR ENDUE_OWNS_DESKTOP_LINK"));
   });
 
   it("writes each helper's Info.plist with Apple's numeric version", () => {

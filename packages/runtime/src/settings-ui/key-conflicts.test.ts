@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { type KeyEntry, resolveBindings } from "../sequences/conflicts";
-import { type ConflictWords, conflictsPanel } from "./key-conflicts";
+import { type ConflictWords, conflictReason, conflictsPanel } from "./key-conflicts";
 
 // Settings › Keyboard's conflicts in a person's words (#158 finding 16): no file path, no id.
 const titles: Record<string, string> = {
   "desk.shell.move-to-desktop-3": "Window · To desktop 3",
   "example.a.open": "Open the list",
   "example.b.new": "New item",
-  "desk.palette.open": "Search Desk",
+  "desk.palette.open": "Search endue",
 };
 const words = (language: "en" | "ko" = "en"): ConflictWords => ({
   platform: "mac",
@@ -17,7 +17,7 @@ const words = (language: "en" | "ko" = "en"): ConflictWords => ({
   plugin: (id) => ({ "desk.shell": "Shell", "example.a": "List", "example.b": "Items" })[id] ?? id,
 });
 const source = {
-  file: "/Users/someone/desk/plugins/shell/plugin.json",
+  file: "/endue/plugins/shell/plugin.json",
   path: "contributes.keys[11]",
 };
 const panel = (entries: KeyEntry[], language: "en" | "ko" = "en") =>
@@ -31,6 +31,19 @@ const rows = (el: HTMLElement | null) =>
   }));
 
 describe("the conflicts panel", () => {
+  it.each([
+    ["Mod+Q", "quits endue", "endue를 종료합니다"],
+    ["Mod+H", "hides endue", "endue를 가립니다"],
+  ])("localizes the current native action for %s", (key, does, translated) => {
+    const [conflict] = resolveBindings(
+      [{ key, command: "endue.open", owner: "desk" }],
+      "mac",
+    ).conflicts;
+    if (!conflict?.reserved) throw new Error("the system shortcut must be reserved");
+    const native = { ...conflict, reserved: { ...conflict.reserved, does } };
+    expect(conflictReason(native, words("ko"))).toContain(translated);
+  });
+
   it("says what macOS does with a key, who set it, and what to do; never a path", () => {
     const el = panel([
       { key: "Mod+Shift+3", command: "desk.shell.move-to-desktop-3", owner: "desk.shell", source },
@@ -77,7 +90,7 @@ describe("the conflicts panel", () => {
     expect(taken?.querySelector("summary")?.textContent).toBe("Taken over by another shortcut (1)");
     expect(rows(taken as HTMLElement)[0]).toMatchObject({
       title: "Open the list",
-      why: "“Search Desk” has this key too and runs instead (set by you).",
+      why: "“Search endue” has this key too and runs instead (set by you).",
       who: "Built in",
     });
   });

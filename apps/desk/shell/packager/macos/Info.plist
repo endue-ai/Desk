@@ -7,17 +7,17 @@
 <plist version="1.0">
 <dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>endue Desk shows your calendar events in the views you open. They stay on this Mac.</string>
+	<string>endue shows your calendar events in the views you open. They stay on this Mac.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>endue Desk shows your calendar events in the views you open. They stay on this Mac.</string>
+	<string>endue shows your calendar events in the views you open. They stay on this Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>endue Desk and the plugins you allow can hear the microphone, such as Eris when you click her and talk.</string>
+	<string>endue and the plugins you allow can hear the microphone, such as Eris when you click her and talk.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Eris turns what you say to her into words, so she can answer it.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>endue Desk shows your reminders in the views you open. They stay on this Mac.</string>
+	<string>endue shows your reminders in the views you open. They stay on this Mac.</string>
 	<key>NSRemindersUsageDescription</key>
-	<string>endue Desk shows your reminders in the views you open. They stay on this Mac.</string>
+	<string>endue shows your reminders in the views you open. They stay on this Mac.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>A plugin you opened asks for the camera. The picture stays on this Mac.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

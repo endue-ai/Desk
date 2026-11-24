@@ -8,7 +8,7 @@ import { followDeskTheme } from "./palette-theme";
 const root = document.getElementById("desk");
 if (!root) throw new Error("No palette root");
 const frame = document.createElement("iframe");
-frame.title = "Search Desk";
+frame.title = "Search endue";
 frame.setAttribute("sandbox", "allow-scripts");
 // The CEF shell serves desk-plugin:// on every OS.
 const base = "desk-plugin://localhost";

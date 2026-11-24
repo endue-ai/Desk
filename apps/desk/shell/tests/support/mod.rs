@@ -18,7 +18,7 @@ fn binary() -> Result<PathBuf, String> {
     let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let target = std::env::var_os("CARGO_TARGET_DIR")
         .map_or_else(|| workspace.join("target"), PathBuf::from);
-    let bundled = target.join("bundle/endue-desk.app/Contents/MacOS/endue-desk");
+    let bundled = target.join("bundle/endue.app/Contents/MacOS/endue-desk");
     let modified = |p: &PathBuf| std::fs::metadata(p).and_then(|m| m.modified()).ok();
     match (modified(&bundled), modified(&built)) {
         (None, _) => Err(format!(

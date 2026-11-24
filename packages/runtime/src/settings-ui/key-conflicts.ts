@@ -37,9 +37,15 @@ const keyOf = (phrase: string) =>
     .map((w, i) => (i ? w.charAt(0).toUpperCase() : w.charAt(0).toLowerCase()) + w.slice(1))
     .join("");
 
+// Both versions of the native shortcuts use the same translation keys.
+const productActions = new Map<string, Copy>([
+  ["quits endue", "does.quitsDesk"],
+  ["hides endue", "does.hidesDesk"],
+]);
+
 /** What the system does with a reserved chord: from the catalog, else `Reserved.does` as is. */
 function doesText(words: ConflictWords, does: string): string {
-  const key = `does.${keyOf(does)}` as Copy;
+  const key = productActions.get(does) ?? (`does.${keyOf(does)}` as Copy);
   const said = say(words, key);
   return said === `settingsUi.conflicts.${key}` ? does : said;
 }

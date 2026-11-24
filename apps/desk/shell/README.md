@@ -31,7 +31,7 @@ Packages (`packager/`, #46; `icons/`) carry the built-in plugins (the dev bundle
 ## Run and test
 
 ```bash
-just dev            # builds the runtime and the shell; on macOS runs target/bundle/endue-desk.app
+just dev            # builds the runtime and the shell; on macOS runs target/bundle/endue.app
 just check-shell    # clippy -D warnings and the crate's tests (downloads CEF on first build)
 ```
 
