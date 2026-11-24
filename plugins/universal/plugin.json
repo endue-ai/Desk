@@ -85,7 +85,8 @@
       {
         "id": "desk.universal.folder",
         "title": "A folder as universal data",
-        "keywords": ["folder", "files", "timeline"]
+        "keywords": ["folder", "files", "timeline"],
+        "readOnly": true
       }
     ]
   }

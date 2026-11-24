@@ -66,6 +66,23 @@ describe("Commands", () => {
     ]);
   });
 
+  it("knows which registered commands only read, as a proposed view's source must (ADR 0367)", async () => {
+    const { commands, client } = setup();
+    const notes = { caller: "example.notes" };
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.list", title: "List", readOnly: true },
+      notes,
+    );
+    await client.call("cmd.register", { id: "example.notes.send", title: "Send" }, notes);
+    commands.retitle();
+    await commands.settled();
+    expect(commands.has("example.notes.send")).toBe(true);
+    expect(commands.readOnly("example.notes.list")).toBe(true);
+    expect(commands.readOnly("example.notes.send")).toBe(false);
+    expect(commands.readOnly("example.notes.gone")).toBe(false);
+  });
+
   it("registers a built-in while its owner is on, and runs it through the registry", async () => {
     const { commands, registry } = setup();
     commands.define("desk.buffers.next", { title: "Next", owner: "desk.buffers", run: () => 1 });

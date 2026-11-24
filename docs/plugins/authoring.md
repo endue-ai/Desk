@@ -323,6 +323,12 @@ at run time takes the same fields (`description`, `argsSchema`, `resultSchema`, 
 `cmd.register`, and `ctx.commands.tools()` lists the agent commands your grants cover. The built-in
 git, terminal, docker, calendar and database plugins are examples.
 
+An agent runs a command you mark `agent` without asking the person, since installing your plugin was
+their yes to what it offers (ADR 0268). A command you leave unmarked asks the person before an agent
+runs it, and no agent runs any command of a plugin that declares `perm:manage` (ADR 0367). A handler
+gets who invoked it as its second argument, `{ invocationId, caller }`; an agent's caller starts with
+`agent:` or `mcp:`, so a command can refuse an agent what only the person may do.
+
 ## Editing files: edit tiers
 
 A file opener reads first and edits later (ADR 0045). Once it edits, every format it opens has an edit

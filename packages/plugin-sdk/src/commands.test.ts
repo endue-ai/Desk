@@ -32,6 +32,26 @@ describe("commands", () => {
     expect(host.calls.map((c) => c.method)).toEqual(["cmd.register", "cmd.answer"]);
   });
 
+  it("hands the handler who invoked it, and nothing for a request the desk sends", async () => {
+    const host = createTestHost({ pluginId: "desk.palette" });
+    const heard: unknown[] = [];
+    const ctx = await defineUiPlugin(
+      {
+        mount(ctx) {
+          ctx.commands.on("desk.palette.pick", (_args, invocation) => {
+            heard.push(invocation);
+            return "ok";
+          });
+        },
+      },
+      host.transport,
+    );
+    await ctx.bridge.call("cmd.register", { id: "desk.palette.pick", title: "Pick one" });
+    await host.invoke("desk.palette.pick", {});
+    await host.command("desk.palette.pick", {});
+    expect(heard).toEqual([{ invocationId: expect.any(String), caller: "desk" }, undefined]);
+  });
+
   it("runs and lists the registry's commands (cmd.invoke, cmd.list)", async () => {
     const host = createTestHost({
       pluginId: "endue.eris",

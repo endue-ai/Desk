@@ -412,12 +412,14 @@
       {
         "id": "endue.mail.send",
         "title": "Send the message being written",
-        "keywords": ["mail", "send"]
+        "keywords": ["mail", "send"],
+        "irreversible": true
       },
       {
         "id": "endue.mail.discard",
         "title": "Discard the message being written",
-        "keywords": ["mail", "discard", "draft", "cancel"]
+        "keywords": ["mail", "discard", "draft", "cancel"],
+        "irreversible": true
       },
       {
         "id": "endue.mail.archive",

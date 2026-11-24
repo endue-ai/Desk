@@ -111,7 +111,10 @@ impl Core {
     /// The registered commands marked `agent`, in registration order.
     pub(crate) fn agent_commands(&self) -> Vec<CommandInfo> {
         let registered = self.registered().into_iter();
-        registered.filter(|c| c.agent == Some(true)).collect()
+        let offered = registered.filter(|c| c.agent == Some(true));
+        offered
+            .filter(|c| !self.manages_permissions(&c.provider))
+            .collect()
     }
 
     /// The registered command a tool call names: by its id, or by its tool name.

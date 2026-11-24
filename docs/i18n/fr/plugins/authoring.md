@@ -340,6 +340,13 @@ prend les mêmes champs (`description`, `argsSchema`, `resultSchema`, `agent`, `
 `cmd.register`, et `ctx.commands.tools()` liste les commandes pour agents que vos autorisations couvrent.
 Les plugins intégrés git, terminal, docker, calendar et database en sont des exemples.
 
+Un agent exécute sans demander à la personne une commande que vous marquez `agent`, car installer votre
+plugin était son accord à ce qu'il offre (ADR 0268). Une commande non marquée demande à la personne
+avant qu'un agent l'exécute, et aucun agent n'exécute une commande d'un plugin qui déclare
+`perm:manage` (ADR 0367). Un gestionnaire reçoit en second argument qui l'a invoqué,
+`{ invocationId, caller }` ; l'appelant d'un agent commence par `agent:` ou `mcp:`, si bien qu'une
+commande peut refuser à un agent ce que seule la personne peut faire.
+
 ## Modifier des fichiers : niveaux d'édition
 
 Un plugin qui ouvre des fichiers lit d'abord et modifie ensuite (ADR 0045). Dès qu'il modifie, chaque

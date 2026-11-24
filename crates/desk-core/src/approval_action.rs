@@ -49,6 +49,13 @@ pub(crate) enum Action<'a> {
 }
 
 impl<'a> Action<'a> {
+    /// Whether a `task` answer can be narrowed to this act's one target (`task_scope`): a computer
+    /// act that reaches no known app cannot, so it is offered and approved once at a time, and a
+    /// task answer never covers every app (ADR 0367).
+    pub(crate) fn narrows(&self) -> bool {
+        !matches!(self, Self::Computer { app: None, .. })
+    }
+
     pub(crate) fn kind(&self) -> ApprovalAction {
         match self {
             Self::Write { .. } => ApprovalAction::FsWrite,

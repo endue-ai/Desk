@@ -344,6 +344,13 @@ registrierter Befehl nimmt dieselben Felder (`description`, `argsSchema`, `resul
 Berechtigungen abdecken. Die eingebauten Plugins git, terminal, docker, calendar und database sind
 Beispiele.
 
+Einen Befehl, den Sie als `agent` markieren, führt ein Agent aus, ohne die Person zu fragen, denn die
+Installation Ihres Plugins war ihr Ja zu dem, was es anbietet (ADR 0268). Ein nicht markierter Befehl
+fragt die Person, bevor ein Agent ihn ausführt, und kein Agent führt einen Befehl eines Plugins aus,
+das `perm:manage` deklariert (ADR 0367). Ein Handler erhält als zweites Argument, wer ihn aufgerufen
+hat, `{ invocationId, caller }`; der Aufrufer eines Agenten beginnt mit `agent:` oder `mcp:`, sodass ein
+Befehl einem Agenten verweigern kann, was nur die Person darf.
+
 ## Dateien bearbeiten: Bearbeitungsstufen
 
 Ein Plugin, das Dateien öffnet, liest zuerst und bearbeitet später (ADR 0045). Sobald es bearbeitet, hat

@@ -79,3 +79,4 @@ the act and the app it reaches, and the card the person already answers can say 
 Issue #548; desk-computer is #545 (ADR 0120); the floating Eris is #546 (ADR 0121). Code:
 `crates/desk-core/src/core_computer.rs`, `crates/desk-core/src/computer/`, `plugins/computer/`,
 `apps/desk/src-tauri/src/computer.rs`. Follow-ups: an AX `set` tool, Linux and Windows drivers.
+Narrowed by ADR 0367: an act that reaches no known app is not offered "Allow for this task".

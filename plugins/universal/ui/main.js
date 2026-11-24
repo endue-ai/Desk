@@ -6,6 +6,7 @@
 // it always shows its way out: Close, Escape, a press beside the view (leave.js).
 import "@endue-ai/ui";
 import { defineUiPlugin, parseYaml } from "@endue-ai/plugin-sdk";
+import { refuseAgentCommandSource } from "./agents.js";
 import { createBuilder } from "./builder.js";
 import { folderData } from "./folder.js";
 import { createLeave } from "./leave.js";
@@ -60,8 +61,9 @@ defineUiPlugin({
     /** @param {unknown} args */
     const argsOf = (args) => /** @type {Record<string, any>} */ (args ?? {});
 
-    ctx.commands.on("desk.universal.open", async (args) => {
+    ctx.commands.on("desk.universal.open", async (args, invocation) => {
       const given = argsOf(args);
+      refuseAgentCommandSource(invocation, given.view);
       // Opened again under the id it is drawn with (Apply): keep what is drawn, read nothing.
       const view =
         given.id !== undefined && screen.view?.id === given.id && !given.view
@@ -92,8 +94,9 @@ defineUiPlugin({
       ctx.surface.show();
       return { shown: true };
     });
-    ctx.commands.on("desk.universal.preview", async (args) => {
+    ctx.commands.on("desk.universal.preview", async (args, invocation) => {
       const { view, note } = argsOf(args);
+      refuseAgentCommandSource(invocation, view);
       if (!isView(view))
         throw new Error("view: not a universal view (it needs a type and a source)");
       mode(false);
@@ -103,8 +106,9 @@ defineUiPlugin({
       if (choice.choice === "discard" && !screen.bar.waiting) close();
       return choice;
     });
-    ctx.commands.on("desk.universal.build", async (args) => {
+    ctx.commands.on("desk.universal.build", async (args, invocation) => {
       const given = argsOf(args);
+      refuseAgentCommandSource(invocation, given.view);
       const view =
         given.id !== undefined || given.view !== undefined
           ? await viewOf(/** @type {import("./open.js").OpenArgs} */ (given), io)
