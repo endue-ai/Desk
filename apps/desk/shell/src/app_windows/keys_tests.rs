@@ -47,7 +47,10 @@ fn windows_matches_the_same_physical_key_across_repeat_and_release() {
     let released = enter | (1 << 30) | i32::MIN;
     assert_eq!(super::windows_scan(enter), super::windows_scan(repeated));
     assert_eq!(super::windows_scan(enter), super::windows_scan(released));
-    assert_ne!(super::windows_scan(enter), super::windows_scan(enter | (1 << 24)));
+    assert_ne!(
+        super::windows_scan(enter),
+        super::windows_scan(enter | (1 << 24))
+    );
 }
 
 #[test]
