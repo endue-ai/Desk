@@ -1,5 +1,7 @@
 # Reviewed historic examples. A later commit creates a different fingerprint.
 # These entries identify three keyboard shortcuts, a form field, a parser fixture and an invalid vector.
+2120e95a0b73b41637d64762e32fa3e9ece3d01c:plugins/api-studio/ui/auth.js:generic-api-key:127
+3cc4474fe23a7c4d406eec42cbb224440a634d83:plugins/api-studio/tests/auth-import.test.ts:curl-auth-user:29
 b85798c419ba6e2ef312ac0689011bcacae520a3:specs/bridge/v0/vectors/invalid/studio-api-key-with-secret.json:stripe-access-token:7
 c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/api-studio/tests/auth-import.test.ts:curl-auth-user:29
 c4ae209323f37bd3356c0c142dcf1271d42d99ee:plugins/api-studio/ui/auth.js:generic-api-key:129
