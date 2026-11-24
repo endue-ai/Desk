@@ -73,7 +73,9 @@ export function lexFrom(dialect, source, start, state, to, onLine) {
   /** @type {State} */
   let s = { delimiter, fresh, stmt, stmtDelimiter };
   let at = start;
-  let span = Math.min(SLICE, Math.max(CHUNK, to - at + MARGIN));
+  // A line callback can stop early. Tokenize only one checkpoint ahead of it.
+  const batch = onLine ? CHUNK : SLICE;
+  let span = Math.min(batch, Math.max(CHUNK, to - at + MARGIN));
   let past = false;
   while (at < n && !past) {
     const end = Math.min(n, at + span);
@@ -101,7 +103,7 @@ export function lexFrom(dialect, source, start, state, to, onLine) {
         break;
       }
     }
-    span = moved ? Math.min(SLICE, Math.max(CHUNK, to - at + MARGIN)) : span * 2;
+    span = moved ? Math.min(batch, Math.max(CHUNK, to - at + MARGIN)) : span * 2;
   }
   return { tokens, end: at, state: s };
 }
@@ -126,6 +128,8 @@ export class Lexed {
     this.marks = from.marks ?? [];
     this.checked = from.checked ?? 0;
     this.known = from.known ?? 0;
+    /** The last safe line of a slice that yielded between sparse checkpoints. @type {Point | undefined} */
+    this.resume = undefined;
     /** @type {{ from: number, to: number, tokens: Token[] } | null} */
     this.window = null;
   }
@@ -146,6 +150,7 @@ export class Lexed {
     });
     if (first === Number.POSITIVE_INFINITY) return this;
     const points = this.points.filter((p) => p.pos <= first);
+    if (this.resume && this.resume.pos <= first) points.push(this.resume);
     const last = /** @type {Point} */ (points[points.length - 1]).pos;
     const inside = (/** @type {number} */ pos) => ranges.some(([a, b]) => a < pos && pos < b);
     const stale = [...this.points.filter((p) => p.pos > first), ...this.stale]
@@ -188,7 +193,8 @@ export class Lexed {
    */
   extend(to, stop) {
     if (this.checked >= to) return;
-    const from = /** @type {Point} */ (this.points[this.points.length - 1]);
+    const from = this.resume ?? /** @type {Point} */ (this.points[this.points.length - 1]);
+    this.resume = undefined;
     const target = Math.min(to, this.source.length);
     const { end } = lexFrom(this.dialect, this.source, from.pos, from, target, (pos, state) => {
       while ((this.stale[0]?.pos ?? Number.POSITIVE_INFINITY) < pos) this.stale.shift();
@@ -199,10 +205,12 @@ export class Lexed {
       }
       if (old?.pos === pos) this.stale.shift();
       const last = /** @type {Point} */ (this.points[this.points.length - 1]);
+      const pause = stop?.() ?? false;
       if (pos - last.pos >= CHUNK) this.points.push({ ...state, pos });
+      else if (pause && pos > last.pos) this.resume = { ...state, pos };
       this.checked = Math.max(this.checked, pos);
       this.marks = this.marks.filter((m) => m > pos);
-      return stop?.() ?? false;
+      return pause;
     });
     if (end >= this.source.length) this.checked = this.source.length;
   }

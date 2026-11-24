@@ -8,6 +8,7 @@ name: ci
 # job is the required check. The merge queue runs it again on each PR combined with main and the PRs
 # ahead of it (ADR 0015).
 on:
+  workflow_dispatch:
   pull_request:
   merge_group:
   push:
@@ -45,16 +46,25 @@ jobs:
           else
             files="apps/desk/shell/"
           fi
-          if grep -qE '^(apps/desk/shell/|crates/desk-web/|crates/desk-sys/)' <<<"$files"; then app=true; else app=false; fi
+          if grep -qE '^(apps/desk/shell/|crates/desk-web/|crates/desk-sys/|\.github/workflows/ci\.yml$)' <<<"$files"; then app=true; else app=false; fi
           # The files the release dry run proves (its own pull_request paths).
           if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/cef-.*|e2e/smoke/(verify-signature|install-and-launch)\.sh|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
           echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
-  check-linux:
-    name: check (linux)
+  linux-verification:
+    name: linux (${{ matrix.recipe }})
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: [check, test-unit]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Fit debug-profile builds on the hosted runner while retaining debug assertions.
+    env:
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -69,6 +79,7 @@ jobs:
         with:
           tool: just
       - name: Install actionlint
+        if: matrix.recipe == 'check'
         run: |
           base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
           tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
@@ -78,16 +89,34 @@ jobs:
           sudo mv actionlint /usr/local/bin/
       - name: Configure Ubuntu package downloads
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the ALSA headers (cpal, for desk-sys audio)
+      - name: Install audio headers, the headless Vulkan driver and CJK fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libasound2-dev libvulkan1 mesa-vulkan-drivers fonts-noto-cjk
       - run: pnpm install --frozen-lockfile
       - run: just check
+        if: matrix.recipe == 'check'
       - run: just test-unit
+        if: matrix.recipe == 'test-unit'
 
-  runtime-e2e:
-    name: runtime-e2e
+  check-linux:
+    name: check (linux)
+    if: always()
+    needs: linux-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require Linux static checks and unit tests
+        env:
+          RESULT: ${{ needs.linux-verification.result }}
+        run: test "$RESULT" = success
+
+  runtime-e2e-shard:
+    name: runtime-e2e (shard ${{ matrix.shard }}/4)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -105,13 +134,25 @@ jobs:
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
       - name: Install Chromium
         run: pnpm --filter @endue-ai/runtime exec playwright install --with-deps chromium
-      - run: just test-e2e
+      - run: just test-e2e --shard=${{ matrix.shard }}/4 --workers=1
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: packages/runtime/test-results
           retention-days: 7
+
+  runtime-e2e:
+    name: runtime-e2e
+    if: always()
+    needs: runtime-e2e-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every browser shard passed
+        env:
+          SHARD_RESULT: ${{ needs.runtime-e2e-shard.result }}
+        run: test "$SHARD_RESULT" = success
 
   check-macos:
     name: check (macos)
@@ -183,11 +224,24 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: just
-      - name: Install cmake and ninja
-        if: runner.os != 'Windows'
-        run: ${{ runner.os == 'macOS' && 'brew install cmake ninja' || 'sudo apt-get update && sudo apt-get install -y cmake ninja-build' }}
+      - name: Configure Ubuntu package downloads
+        if: runner.os == 'Linux'
+        run: sudo "$(command -v node)" scripts/ci-apt.mjs
+      - name: Install the Linux shell build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev xvfb xauth
+      - name: Install the macOS shell build tools
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja
       - run: pnpm install --frozen-lockfile
-      - run: just check-shell
+      - name: Check the Linux shell and launch its CEF probes
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" just check-shell
+      - name: Check the macOS and Windows shell
+        if: runner.os != 'Linux'
+        run: just check-shell
       - run: just build-shell
 
   codegen-check:

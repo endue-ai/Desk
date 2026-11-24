@@ -5,6 +5,7 @@
 //! sends (`bridge.rs`), each event for it alone (`events.rs`). The surface connection is the
 //! shell's: it speaks `specs/surface` with the compositor.
 
+#[cfg(any(unix, test))]
 mod events;
 mod launch;
 

@@ -8,12 +8,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use desk_bridge::PluginStatus;
-use desk_core::native::{self, Exit};
+use desk_core::native;
 use desk_core::{Core, Roots};
-use serde_json::{Value, json};
+use serde_json::json;
 
 const ID: &str = "example.native-test";
 
@@ -136,6 +136,10 @@ mod process {
     use super::*;
     use std::io::{BufRead, BufReader};
     use std::sync::mpsc;
+    use std::time::Instant;
+
+    use desk_core::native::Exit;
+    use serde_json::Value;
 
     /// Start the plugin whose program is `script`; its end comes on the channel.
     fn start(

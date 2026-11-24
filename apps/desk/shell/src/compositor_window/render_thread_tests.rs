@@ -54,10 +54,37 @@ fn a_scene_handed_to_the_render_thread_is_presented_while_the_main_thread_is_bus
     let late = Instant::now();
     render.hand(handed(4, late));
     render.hand(handed(5, late + every));
-    std::thread::sleep(every * 4);
+    // This checks that both queued frames eventually draw. The GPU can finish after four ticks.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while render.state().last.map(|(n, _)| n) != Some(5) && Instant::now() < deadline {
+        std::thread::sleep(every);
+    }
     let state = render.state();
     assert_eq!(state.drawn, 4, "both drawn");
     assert_eq!(state.last.map(|(n, _)| n), Some(5));
+}
+
+#[test]
+fn a_restarted_beat_draws_an_overdue_frame_before_rebuilding_its_margin() {
+    for rate in [60, 120] {
+        let every = interval(rate);
+        let start = Instant::now();
+        let mut behind = Behind::default();
+        let mut last = start;
+        for n in 0..12 {
+            let slot = start + every * n;
+            last = behind.draw_at(slot, slot, every);
+        }
+        // The main thread missed a beat and handed a fresh slot after the next draw was due.
+        let handed = last + every + every / 3;
+        assert_eq!(behind.draw_at(handed, handed, every), handed, "{rate} Hz");
+        let next = handed + every;
+        assert_eq!(
+            behind.draw_at(next, next, every),
+            next + every / 8,
+            "{rate} Hz: build the margin back one step at a time"
+        );
+    }
 }
 
 #[test]

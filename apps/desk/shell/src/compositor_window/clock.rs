@@ -148,7 +148,6 @@ impl Due {
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct Behind {
     last: Option<Instant>,
-    behind: Duration,
 }
 
 impl Behind {
@@ -160,15 +159,16 @@ impl Behind {
     /// When to draw the frame laid out on `slot`, seen at `now`, the display's frames `every`
     /// apart: never before the last drawn by half an interval, and at once when late.
     pub(super) fn draw_at(&mut self, slot: Instant, now: Instant, every: Duration) -> Instant {
-        let in_a_row = (self.last).is_some_and(|t| now.saturating_duration_since(t) < every * 2);
-        self.behind = if in_a_row {
-            (self.behind + every / 8).min(Self::most(every))
-        } else {
-            Duration::ZERO
-        };
-        let mut at = (slot + self.behind).max(now);
-        if let Some(last) = self.last {
-            at = at.max(last + every / 2);
+        let mut at = slot.max(now);
+        if let Some(last) = self
+            .last
+            .filter(|t| now.saturating_duration_since(*t) < every * 2)
+        {
+            // Grow the margin from the last draw. A restarted beat may already be late enough
+            // to use all of it before the newly laid-out scene reaches the render thread.
+            let next = last + every;
+            let deadline = (slot + Self::most(every)).min(next + every / 8);
+            at = at.max(deadline).max(last + every / 2);
         }
         self.last = Some(at);
         at

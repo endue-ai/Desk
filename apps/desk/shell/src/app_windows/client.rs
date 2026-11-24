@@ -100,7 +100,7 @@ wrap_keyboard_handler! {
             &self,
             _browser: Option<&mut Browser>,
             event: Option<&KeyEvent>,
-            _os_event: *mut u8,
+            _os_event: crate::cef_input::OsEvent<'_>,
             _is_keyboard_shortcut: Option<&mut ::std::os::raw::c_int>,
         ) -> ::std::os::raw::c_int {
             let Some(event) = event else { return 0 };

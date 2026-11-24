@@ -1,6 +1,7 @@
-// The DOM for the notes plugin: one text area for the note on screen, named by its file name, with
-// its path, unsaved mark and counts, and a status live region for refusals and errors. The text area is
-// the only control. Chords (Mod+S, Mod+O, Mod+W) are never prevented, so the SDK passes them to the desk.
+// The editor, note title, unsaved mark, counts and status. Ordinary notes use a native field.
+// The large-note viewport exposes the same text, selection and shell shortcuts.
+
+import { createNoteEditor } from "./editor.js";
 
 /**
  * @typedef {import("./notes.js").NoteModel} NoteModel
@@ -75,7 +76,7 @@ export function createView(doc, actions, counter) {
     typed = setTimeout(() => updateCount(value, false), TYPING_PAUSE_MS);
     actions.edit(value);
   };
-  text.addEventListener("input", () => typing(text.value));
+  const editor = createNoteEditor(text, typing);
   const main = /** @type {HTMLElement} */ (doc.querySelector("main"));
 
   return {
@@ -87,8 +88,7 @@ export function createView(doc, actions, counter) {
       text.hidden = !model;
       // Typing already put this text there: setting it again would move the caret to the end.
       const value = model ? model.text : "";
-      const fresh = text.value !== value;
-      if (fresh) text.value = value;
+      const fresh = editor.show(model?.buffer, value);
       clearTimeout(typed);
       if (model) updateCount(value, fresh);
       else {
@@ -110,25 +110,23 @@ export function createView(doc, actions, counter) {
 
     /** Where the caret and the scroll are, to come back to (ADR 0070). */
     where() {
-      return { start: text.selectionStart, end: text.selectionEnd, scroll: text.scrollTop };
+      return { start: text.selectionStart, end: text.selectionEnd, scroll: editor.scroll };
     },
 
     /** The whole page takes drops (ADR 0119): on the note when one is open, else on the page. */
     dropTarget: doc,
-    landing: () => (text.hidden ? main : text),
+    landing: () => (text.hidden ? main : editor.element),
 
     /** Put dropped text in at the caret, over the selection, as typing it would. */
     insert(/** @type {string} */ value) {
       if (text.hidden) return;
-      text.focus();
-      text.setRangeText(value, text.selectionStart, text.selectionEnd, "end");
-      typing(text.value);
+      editor.insert(value);
     },
 
     /** Put the caret and the scroll back, without taking the focus. */
     place(/** @type {{ start: number, end: number, scroll: number }} */ at) {
       text.setSelectionRange(at.start, at.end);
-      text.scrollTop = at.scroll;
+      editor.scroll = at.scroll;
     },
   };
 }

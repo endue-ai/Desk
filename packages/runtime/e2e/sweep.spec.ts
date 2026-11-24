@@ -3,10 +3,6 @@ import { DESK, openShell } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 
-/** Cmd on the Mac, Ctrl elsewhere: what the page reads as the platform's modifier. */
-const modifier = (page: Page) =>
-  page.evaluate(() => (/Mac/.test(navigator.platform) ? "Meta" : "Control"));
-
 /** A point on the empty canvas, and the centre of the first window in view. */
 async function spots(page: Page) {
   return page.evaluate(() => {
@@ -26,8 +22,12 @@ async function spots(page: Page) {
   });
 }
 
-async function sweep(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
-  const mod = await modifier(page);
+async function sweep(
+  page: Page,
+  mod: "Meta" | "Control",
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) {
   await page.keyboard.down(mod);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
@@ -36,31 +36,34 @@ async function sweep(page: Page, from: { x: number; y: number }, to: { x: number
   await page.keyboard.up(mod);
 }
 
-test.describe("Cmd+drag sweeps an area of the desk (ADR 0296)", () => {
-  test.beforeEach(async ({ page }) => {
-    await openShell(page, "?lang=en");
-  });
-
-  test("Select picks the windows the area touches; Ask Eris hands them to her next line", async ({
-    page,
-  }) => {
-    // The fixture's third desktop holds a window (notes).
-    await page.evaluate(() => window.__shell.desk.runtime.commands.run("desk.shell.desktop-3"));
-    await expect(page.locator('[data-surface="notes"]')).toBeVisible();
-    const at = await spots(page);
-    expect(at, "an empty spot on the canvas next to a window").toBeDefined();
-    if (!at) return;
-    await sweep(page, at.empty, at.window);
-    await expect(page.locator(".sweep-ring")).toHaveCount(1);
-    const bar = page.getByRole("toolbar", { name: "Sweep" });
-    await expect(bar).toContainText("1 selected");
-    await bar.getByRole("button", { name: "Ask Eris" }).click();
-    await expect(bar).toContainText("For Eris: 1 window");
-    await bar.getByRole("button", { name: "Clear the selection" }).click();
-    await expect(page.locator(".sweep-ring")).toHaveCount(0);
-  });
+test.describe("Sweeping an area of the canvas (ADR 0296)", () => {
+  for (const [platform, modifier] of [
+    ["mac", "Meta"],
+    ["other", "Control"],
+  ] as const) {
+    test(`${platform}: ${modifier}+drag selects windows and Ask Eris receives them`, async ({
+      page,
+    }) => {
+      await openShell(page, `?lang=en&platform=${platform}`);
+      // The fixture's third desktop holds a window (notes).
+      await page.evaluate(() => window.__shell.desk.runtime.commands.run("desk.shell.desktop-3"));
+      await expect(page.locator('[data-surface="notes"]')).toBeVisible();
+      const at = await spots(page);
+      expect(at, "an empty spot on the canvas next to a window").toBeDefined();
+      if (!at) return;
+      await sweep(page, modifier, at.empty, at.window);
+      await expect(page.locator(".sweep-ring")).toHaveCount(1);
+      const bar = page.getByRole("toolbar", { name: "Sweep" });
+      await expect(bar).toContainText("1 selected");
+      await bar.getByRole("button", { name: "Ask Eris" }).click();
+      await expect(bar).toContainText("For Eris: 1 window");
+      await bar.getByRole("button", { name: "Clear the selection" }).click();
+      await expect(page.locator(".sweep-ring")).toHaveCount(0);
+    });
+  }
 
   test("the mode is a command, and the bar shows it while sweeping", async ({ page }) => {
+    await openShell(page, "?lang=en");
     await page.evaluate(() =>
       window.__shell.desk.runtime.commands.run("desk.sweep.mode", { mode: "arrange" }),
     );

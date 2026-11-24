@@ -143,7 +143,7 @@ fn desk_key(key: &KeyLike) -> Value {
 
 /// CEF's key `event` as the keymap reads it: the DOM's `key` and `code`, and the modifiers.
 pub fn like_of(event: &KeyEvent) -> KeyLike {
-    let held = |f: F| event.modifiers & f.0 != 0;
+    let held = |f: F| event.modifiers & key_codes::modifier_bits(f) != 0;
     let code = key_codes::code_of(event.native_key_code, event.windows_key_code);
     let typed = char::from_u32(u32::from(event.unmodified_character))
         .filter(|c| !c.is_control() && !('\u{f700}'..='\u{f8ff}').contains(c));
