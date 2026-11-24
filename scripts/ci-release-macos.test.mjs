@@ -112,3 +112,23 @@ test("canary, a line's candidate, its final and the dry run build every target w
     assert.equal(build.with["installers-only"], undefined, name);
   }
 });
+
+test("a manual Intel install check downloads the selected draft and never requests signing", () => {
+  const dry = workflow("release-dry-run");
+  const smoke = dry.jobs["intel-install"];
+  assert.ok(smoke);
+  assert.equal(smoke["runs-on"], "macos-15-intel");
+  assert.deepEqual(smoke.permissions, { contents: "read" });
+  assert.equal(smoke.environment, undefined);
+  assert.ok(dry.on.workflow_dispatch.inputs["verify-intel-tag"]);
+  assert.ok(dry.on.workflow_dispatch.inputs["intel-sha256"]);
+  assert.equal(dry.jobs.key.if, "inputs.verify-intel-tag == '' && inputs.intel-sha256 == ''");
+  assert.equal(smoke.steps[0].with["persist-credentials"], false);
+  const download = smoke.steps.find((step) => step.run?.includes("gh release download"));
+  assert.match(download.run, /shasum -a 256 -c/u);
+  assert.ok(download.env.GH_TOKEN);
+  const boot = smoke.steps.at(-1);
+  assert.equal(boot.env?.GH_TOKEN, undefined);
+  assert.match(boot.run, /e2e\/smoke\/install-and-launch\.sh/u);
+  assert.doesNotMatch(JSON.stringify(smoke), /secrets\.|signer sign|--clobber/u);
+});
