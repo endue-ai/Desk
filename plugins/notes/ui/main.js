@@ -1,4 +1,4 @@
-// The notes plugin: Markdown and text files in one plain text area, beside a shelf of the notes in
+// The notes plugin: Markdown and text files in a plain-text editor, beside a shelf of the notes in
 // ~/Notes. It uses only the public SDK and bridge API, exactly as a community plugin would.
 import {
   applyTextChange,
