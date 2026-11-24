@@ -31,13 +31,16 @@ jobs:
           [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::Enter a positive PR number."; exit 1; }
           event="$RUNNER_TEMP/scope-pr.json"
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
-            --jq '{pull_request: {number, body, user: {login: .user.login}, state, base: .base.sha, head: .head.sha}}' > "$event"
-          base="$(jq -er --arg ref "$GITHUB_REF" --arg default "refs/heads/$DEFAULT_BRANCH" --arg sha "$GITHUB_SHA" '
+            --jq '{pull_request: {number, body, user: {login: .user.login}, state, base_ref: .base.ref, head: .head.sha}}' > "$event"
+          base_ref="$(jq -er --arg ref "$GITHUB_REF" --arg default "refs/heads/$DEFAULT_BRANCH" --arg sha "$GITHUB_SHA" '
             .pull_request | select(.state == "open" and ($ref == $default or .head == $sha))
-            | .base | select(test("^[0-9a-f]{40}$"))' "$event")" || {
+            | .base_ref | select(type == "string" and length > 0)' "$event")" || {
             echo "::error::Select the default branch or the current head of the open PR."
             exit 1
           }
+          path="$(jq -nr --arg name "$base_ref" '$name | split("/") | map(@uri) | join("/")')"
+          base="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$path" | jq -er --arg ref "refs/heads/$base_ref" '
+            select(.ref == $ref and .object.type == "commit") | .object.sha | select(test("^[0-9a-f]{40}$"))')"
           echo "base=$base" >> "$GITHUB_OUTPUT"
       - name: Check out the trusted base version of the scope checker
         uses: actions/checkout@v7

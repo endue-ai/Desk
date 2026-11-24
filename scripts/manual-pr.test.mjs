@@ -28,21 +28,25 @@ const pull = {
   head: { sha: "b".repeat(40), repo: { full_name: repository } },
 };
 
+const baseRef = { ref: "refs/heads/main", object: { type: "commit", sha: pull.base.sha } };
+
 test("manual PR metadata identifies one open PR and its immutable endpoints", async () => {
   const { selectPull, parseNumber } = await import("./manual-pr.mjs");
   for (const input of ["", "0", "-1", "1.5", "2/commits", "1\n", "1e2"]) {
     assert.throws(() => parseNumber(input), /positive PR number/);
   }
   assert.equal(parseNumber("1"), 1);
-  const metadata = selectPull(pull, 1, repository);
+  const metadata = selectPull(pull, 1, repository, baseRef);
   assert.equal(metadata.base, pull.base.sha);
   assert.equal(metadata.head, pull.head.sha);
   assert.equal(metadata.lines, 7);
   assert.equal(metadata.review, true);
-  assert.throws(() => selectPull({ ...pull, state: "closed" }, 1, repository));
-  assert.throws(() => selectPull(pull, 2, repository));
-  assert.throws(() => selectPull(pull, 1, "endue-ai/endue-test"));
-  assert.throws(() => selectPull({ ...pull, head: { ...pull.head, sha: "main" } }, 1, repository));
+  assert.throws(() => selectPull({ ...pull, state: "closed" }, 1, repository, baseRef));
+  assert.throws(() => selectPull(pull, 2, repository, baseRef));
+  assert.throws(() => selectPull(pull, 1, "endue-ai/endue-test", baseRef));
+  assert.throws(() =>
+    selectPull({ ...pull, head: { ...pull.head, sha: "main" } }, 1, repository, baseRef),
+  );
 });
 
 test("review excludes forks, dependency changes and drafts but their scope can still be checked", async () => {
@@ -53,7 +57,7 @@ test("review excludes forks, dependency changes and drafts but their scope can s
     { head: { sha: pull.head.sha, repo: { full_name: "endue-test/endue" } } },
     { head: { sha: pull.head.sha, repo: null } },
   ]) {
-    assert.equal(selectPull({ ...pull, ...change }, 1, repository).review, false);
+    assert.equal(selectPull({ ...pull, ...change }, 1, repository, baseRef).review, false);
   }
 });
 

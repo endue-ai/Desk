@@ -10,7 +10,7 @@ export function parseNumber(value) {
   return number;
 }
 
-export function selectPull(pull, number, repository) {
+export function selectPull(pull, number, repository, currentBase) {
   if (
     pull.number !== number ||
     pull.state !== "open" ||
@@ -20,13 +20,21 @@ export function selectPull(pull, number, repository) {
   }
   const { base, head } = pull;
   const sha = /^[a-f0-9]{40}$/u;
-  if (!sha.test(base.sha) || !sha.test(head.sha)) throw new Error("Invalid PR commit.");
+  if (
+    !sha.test(base.sha) ||
+    !sha.test(head.sha) ||
+    currentBase?.ref !== "refs/heads/" + base.ref ||
+    currentBase.object?.type !== "commit" ||
+    !sha.test(currentBase.object.sha)
+  ) {
+    throw new Error("Invalid PR commit.");
+  }
   const lines = pull.additions + pull.deletions;
   if (!Number.isSafeInteger(lines) || lines < 0) throw new Error("Invalid PR size.");
   const labels = pull.labels.map((label) => label.name);
   return {
     number,
-    base: base.sha,
+    base: currentBase.object.sha,
     head: head.sha,
     release: base.ref.startsWith("release/"),
     refactor: labels.includes("kind:refactor"),
@@ -38,12 +46,15 @@ export function selectPull(pull, number, repository) {
 function main() {
   const number = parseNumber(process.env.PR);
   const repository = process.env.GITHUB_REPOSITORY;
-  const pull = JSON.parse(
-    execFileSync("gh", ["api", "repos/" + repository + "/pulls/" + number], {
-      encoding: "utf8",
-    }),
-  );
-  for (const [key, value] of Object.entries(selectPull(pull, number, repository))) {
+  const api = (path) =>
+    JSON.parse(
+      execFileSync("gh", ["api", "repos/" + repository + "/" + path], { encoding: "utf8" }),
+    );
+  const pull = api("pulls/" + number);
+  // The PR summary can retain its previous base after GitHub has rebuilt the merge commit.
+  const branch = pull.base.ref.split("/").map(encodeURIComponent).join("/");
+  const currentBase = api("git/ref/heads/" + branch);
+  for (const [key, value] of Object.entries(selectPull(pull, number, repository, currentBase))) {
     appendFileSync(process.env.GITHUB_OUTPUT, key + "=" + value + "\n");
   }
 }
