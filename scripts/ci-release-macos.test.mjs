@@ -113,22 +113,33 @@ test("canary, a line's candidate, its final and the dry run build every target w
   }
 });
 
-test("a manual Intel install check downloads the selected draft and never requests signing", () => {
+test("a manual Intel install checks the draft hash and isolates the app from the download token", () => {
   const dry = workflow("release-dry-run");
   const smoke = dry.jobs["intel-install"];
   assert.ok(smoke);
   assert.equal(smoke["runs-on"], "macos-15-intel");
-  assert.deepEqual(smoke.permissions, { contents: "read" });
+  assert.deepEqual(smoke.permissions, { contents: "write" });
   assert.equal(smoke.environment, undefined);
   assert.ok(dry.on.workflow_dispatch.inputs["verify-intel-tag"]);
   assert.ok(dry.on.workflow_dispatch.inputs["intel-sha256"]);
   assert.equal(dry.jobs.key.if, "inputs.verify-intel-tag == '' && inputs.intel-sha256 == ''");
-  assert.equal(smoke.steps[0].with["persist-credentials"], false);
+  assert.equal(
+    smoke.steps.find((step) => step.uses?.startsWith("actions/checkout")).with[
+      "persist-credentials"
+    ],
+    false,
+  );
   const download = smoke.steps.find((step) => step.run?.includes("gh release download"));
   assert.match(download.run, /shasum -a 256 -c/u);
   assert.ok(download.env.GH_TOKEN);
+  assert.equal(smoke.steps[0], download);
+  assert.doesNotMatch(
+    download.run,
+    /node |pnpm |git (push|commit)|gh (api|release (edit|upload|create))/u,
+  );
   const boot = smoke.steps.at(-1);
   assert.equal(boot.env?.GH_TOKEN, undefined);
+  assert.match(boot.run, /env -i HOME=/u);
   assert.match(boot.run, /e2e\/smoke\/install-and-launch\.sh/u);
   assert.doesNotMatch(JSON.stringify(smoke), /secrets\.|signer sign|--clobber/u);
 });

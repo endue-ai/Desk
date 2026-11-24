@@ -38,12 +38,11 @@ jobs:
     if: inputs.verify-intel-tag != '' || inputs.intel-sha256 != ''
     runs-on: macos-15-intel
     timeout-minutes: 15
+    # GitHub limits reading draft releases to callers with push access. Only the download step
+    # receives the token. The installer runs with an empty environment and no checkout credentials.
     permissions:
-      contents: read
+      contents: write
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
       - name: Download and verify the exact disk image
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,16 +52,21 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = x86_64
           [[ "$EXPECTED" =~ ^[a-f0-9]{64}$ ]] || { echo "::error::Supply the Intel SHA-256 digest"; exit 1; }
-          version="$(node scripts/release-assets.mjs version "$TAG")"
-          prefix="$(node scripts/release-assets.mjs desktop-prefix "$version")"
-          file="${prefix}darwin-x86_64.dmg"
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "::error::Supply a stable version tag"; exit 1; }
+          file="endue_${TAG#v}_darwin-x86_64.dmg"
           mkdir -p "$RUNNER_TEMP/endue-installer"
           cd "$RUNNER_TEMP/endue-installer"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$file"
           printf '%s  %s\n' "$EXPECTED" "$file" | shasum -a 256 -c -
           echo "INSTALLER=$PWD/$file" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install and launch endue
-        run: bash e2e/smoke/install-and-launch.sh "$INSTALLER"
+        run: |
+          mkdir -p "$RUNNER_TEMP/endue-smoke-home"
+          env -i HOME="$RUNNER_TEMP/endue-smoke-home" PATH="$PATH" TMPDIR="$TMPDIR" LANG=en_US.UTF-8 \
+            bash e2e/smoke/install-and-launch.sh "$INSTALLER"
 
   key:
     if: inputs.verify-intel-tag == '' && inputs.intel-sha256 == ''
