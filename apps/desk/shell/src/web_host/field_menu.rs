@@ -84,7 +84,7 @@ fn entries(params: &ContextMenuParams) -> Option<Vec<Entry>> {
     let mac = cfg!(target_os = "macos");
     if params.is_editable() == 1 {
         let flags: cef::sys::cef_context_menu_edit_state_flags_t = params.edit_state_flags().into();
-        return Some(model::field(flags.0, mac));
+        return Some(model::field(u32::from_ne_bytes(flags.0.to_ne_bytes()), mac));
     }
     let selected = CefString::from(&params.selection_text()).to_string();
     (!selected.trim().is_empty()).then(|| model::selection(mac))

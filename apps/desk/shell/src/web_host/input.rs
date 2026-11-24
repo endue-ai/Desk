@@ -12,6 +12,7 @@ use desk_surface::generated::{
     SurfaceWheelUnit,
 };
 
+use super::key_codes::modifier_bits;
 use super::{field_menu, key_codes};
 
 #[path = "edit_keys.rs"]
@@ -20,15 +21,11 @@ pub mod edit_keys;
 /// Pixels a wheel line scrolls in Chromium.
 const LINE: f64 = 40.0;
 
-fn flag(f: cef::sys::cef_event_flags_t) -> u32 {
-    f.0
-}
-
 fn modifiers(mods: &[SurfaceModifier], buttons: &[SurfacePointerButton]) -> u32 {
     use cef::sys::cef_event_flags_t as F;
     let mut all = 0;
     for m in mods {
-        all |= flag(match m {
+        all |= modifier_bits(match m {
             SurfaceModifier::Shift => F::EVENTFLAG_SHIFT_DOWN,
             SurfaceModifier::Ctrl => F::EVENTFLAG_CONTROL_DOWN,
             SurfaceModifier::Alt => F::EVENTFLAG_ALT_DOWN,
@@ -38,9 +35,9 @@ fn modifiers(mods: &[SurfaceModifier], buttons: &[SurfacePointerButton]) -> u32 
     }
     for b in buttons {
         all |= match b {
-            SurfacePointerButton::Left => flag(F::EVENTFLAG_LEFT_MOUSE_BUTTON),
-            SurfacePointerButton::Middle => flag(F::EVENTFLAG_MIDDLE_MOUSE_BUTTON),
-            SurfacePointerButton::Right => flag(F::EVENTFLAG_RIGHT_MOUSE_BUTTON),
+            SurfacePointerButton::Left => modifier_bits(F::EVENTFLAG_LEFT_MOUSE_BUTTON),
+            SurfacePointerButton::Middle => modifier_bits(F::EVENTFLAG_MIDDLE_MOUSE_BUTTON),
+            SurfacePointerButton::Right => modifier_bits(F::EVENTFLAG_RIGHT_MOUSE_BUTTON),
             _ => 0,
         };
     }
@@ -159,7 +156,7 @@ pub fn deliver(host: &BrowserHost, message: &M, composing: &mut Option<String>, 
                 false,
             );
             if k.repeat {
-                event.modifiers |= flag(cef::sys::cef_event_flags_t::EVENTFLAG_IS_REPEAT);
+                event.modifiers |= modifier_bits(cef::sys::cef_event_flags_t::EVENTFLAG_IS_REPEAT);
             }
             // The Mac's editing keys go down with their edit commands (#156, `edit_keys.rs`).
             if !edit_keys::send(host, &event, &k.code, &k.key, &k.modifiers, k.repeat) {
@@ -254,7 +251,7 @@ fn underline_style(style: SurfaceUnderlineStyle) -> CompositionUnderlineStyle {
 }
 
 /// The flag of the modifier key at DOM `code`, if it is one.
-fn modifier_flag(code: &str) -> Option<u32> {
+fn modifier_modifier_bits(code: &str) -> Option<u32> {
     use cef::sys::cef_event_flags_t as F;
     let f = match code.trim_end_matches("Left").trim_end_matches("Right") {
         "Shift" => F::EVENTFLAG_SHIFT_DOWN,
@@ -263,7 +260,7 @@ fn modifier_flag(code: &str) -> Option<u32> {
         "Meta" => F::EVENTFLAG_COMMAND_DOWN,
         _ => return None,
     };
-    Some(flag(f))
+    Some(modifier_bits(f))
 }
 
 /// One CEF key event for the key at DOM `code` meaning `key`.
@@ -296,7 +293,7 @@ fn key_event(
     let mut modifiers = modifiers(mods, &[]);
     // A modifier key's own flag says whether it went down or up (macOS reads its events as
     // `flagsChanged`), whatever order the window reported the key and the modifiers in.
-    if let Some(own) = modifier_flag(code) {
+    if let Some(own) = modifier_modifier_bits(code) {
         if up {
             modifiers &= !own;
         } else {
@@ -304,12 +301,12 @@ fn key_event(
         }
     }
     if code.starts_with("Numpad") {
-        modifiers |= flag(cef::sys::cef_event_flags_t::EVENTFLAG_IS_KEY_PAD);
+        modifiers |= modifier_bits(cef::sys::cef_event_flags_t::EVENTFLAG_IS_KEY_PAD);
     }
     if code.ends_with("Left") && code != "ArrowLeft" {
-        modifiers |= flag(cef::sys::cef_event_flags_t::EVENTFLAG_IS_LEFT);
+        modifiers |= modifier_bits(cef::sys::cef_event_flags_t::EVENTFLAG_IS_LEFT);
     } else if code.ends_with("Right") && code != "ArrowRight" {
-        modifiers |= flag(cef::sys::cef_event_flags_t::EVENTFLAG_IS_RIGHT);
+        modifiers |= modifier_bits(cef::sys::cef_event_flags_t::EVENTFLAG_IS_RIGHT);
     }
     KeyEvent {
         size: std::mem::size_of::<cef::sys::cef_key_event_t>(),
