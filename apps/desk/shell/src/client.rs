@@ -89,7 +89,7 @@ wrap_display_handler! {
         fn on_cursor_change(
             &self,
             _browser: Option<&mut Browser>,
-            _cursor: *mut u8,
+            _cursor: crate::cef_input::CursorHandle,
             type_: CursorType,
             custom_cursor_info: Option<&CursorInfo>,
         ) -> ::std::os::raw::c_int {
