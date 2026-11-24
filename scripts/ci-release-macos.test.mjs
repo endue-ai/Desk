@@ -1,4 +1,4 @@
-// A GitHub Release a person publishes builds the macOS app and attaches it (ADR 0229):
+// A maintainer selects a published tag to build and attach the macOS app (ADR 0229).
 // release-macos.yml builds both macOS targets through release-build.yml. The updater key enables
 // the signed upgrade path. Installer-only builds still ship without signing credentials or R2.
 import assert from "node:assert/strict";
@@ -11,20 +11,14 @@ const workflow = (name) =>
   parse(readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), "utf8"));
 const expr = (body) => `\${{ ${body} }}`;
 const scripts = (job) => (job.steps ?? []).map((step) => step.run ?? "").join("\n");
-const TAG = expr("github.event.release.tag_name || inputs.tag");
+const TAG = expr("inputs.tag");
 
-test("a published GitHub Release, or its tag by hand, starts the macOS build", () => {
+test("a maintainer starts the macOS build by selecting an existing release tag", () => {
   const mac = workflow("release-macos");
-  assert.deepEqual(mac.on.release.types, ["published"]);
+  assert.deepEqual(Object.keys(mac.on), ["workflow_dispatch"]);
   assert.equal(mac.on.workflow_dispatch.inputs.tag.required, true);
-  assert.equal(mac.on.push, undefined, "a tag alone starts nothing: the release does");
   assert.deepEqual(mac.permissions, { contents: "read" });
   const gate = mac.jobs.gate;
-  assert.equal(
-    gate.if,
-    "github.event_name != 'release' || github.event.release.author.type != 'Bot'",
-    "a final's release is the release app's: its build is on R2 (ADR 0092)",
-  );
   assert.equal(gate.env.TAG, TAG);
   assert.match(scripts(gate), /release-assets\.mjs version "\$TAG"/u, "the tag names the version");
   assert.match(scripts(gate), /git rev-parse 'FETCH_HEAD\^\{commit\}'/u, "and the commit");
