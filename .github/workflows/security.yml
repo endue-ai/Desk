@@ -2,6 +2,11 @@ name: security
 
 on:
   workflow_dispatch:
+    inputs:
+      qualify-codeql:
+        description: Verify CodeQL analysis before switching the default branch to advanced setup
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +20,7 @@ env:
 
 jobs:
   cargo-deny:
+    if: inputs.qualify-codeql != true
     name: cargo-deny
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -25,6 +31,7 @@ jobs:
           command: check
 
   cargo-audit:
+    if: inputs.qualify-codeql != true
     name: cargo-audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -38,6 +45,7 @@ jobs:
       - run: cargo audit
 
   pnpm-audit:
+    if: inputs.qualify-codeql != true
     name: pnpm-audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -50,6 +58,7 @@ jobs:
       - run: pnpm audit --audit-level high
 
   gitleaks:
+    if: inputs.qualify-codeql != true
     name: gitleaks
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -67,3 +76,53 @@ jobs:
           sudo mv gitleaks /usr/local/bin/
       - name: Scan for secrets
         run: gitleaks git --redact --no-banner .
+
+  preflight-codeql:
+    if: inputs.qualify-codeql == true
+    name: CodeQL (${{ matrix.language }})
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, c-cpp, javascript-typescript, python, rust, swift]
+    runs-on: ${{ matrix.language == 'swift' && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.language == 'swift' && 'manual' || 'none' }}
+      - name: Compile the macOS icon utility
+        if: matrix.language == 'swift'
+        run: xcrun swiftc scripts/app-icons.swift -o "$RUNNER_TEMP/endue-app-icons"
+      - uses: github/codeql-action/analyze@v4
+        with:
+          upload: never
+          upload-database: false
+          output: ${{ runner.temp }}/endue-codeql-results
+          category: /language:${{ matrix.language }}
+      - name: Count analyzed rules and results
+        shell: python
+        env:
+          RESULTS: ${{ runner.temp }}/endue-codeql-results
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          reports = sorted(Path(os.environ["RESULTS"]).glob("*.sarif"))
+          assert reports, "CodeQL produced no SARIF report"
+          rules = results = 0
+          for report in reports:
+              for run in json.loads(report.read_text())["runs"]:
+                  tool = run["tool"]
+                  for component in [tool["driver"], *tool.get("extensions", [])]:
+                      rules += len(component.get("rules", []))
+                  results += len(run.get("results", []))
+          assert rules > 0, "CodeQL analyzed no rules"
+          print(f"Analyzed {rules} rules with {results} results.")
