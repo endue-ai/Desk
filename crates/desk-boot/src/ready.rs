@@ -35,8 +35,10 @@ mod tests {
     use super::is_ready_line;
 
     #[test]
-    fn only_the_desk_ready_line_is_the_ready_line() {
+    fn recognizes_the_current_and_previous_ready_lines() {
+        assert!(is_ready_line("endue ready · bridge: cef"));
         assert!(is_ready_line("desk ready · bridge: tauri"));
+        assert!(!is_ready_line("endue cannot reach the core · bridge: cef"));
         assert!(!is_ready_line("desk cannot reach the core · bridge: tauri"));
         assert!(!is_ready_line("QA {\"id\":0}"));
     }
