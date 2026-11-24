@@ -24,17 +24,32 @@ function setup() {
     reject = fail;
   });
   const edit = vi.fn();
-  const editor = createNoteEditor(field, edit, () => module);
+  const request = vi.fn(() => module);
+  const editor = createNoteEditor(field, edit, request);
   return {
     editor,
     field,
     view,
     edit,
     mountLargeEditor,
+    request,
     load: () => complete({ mountLargeEditor }),
     reject,
   };
 }
+
+it("loads the optional viewport once when the first large note is shown", async () => {
+  const { editor, request, load, mountLargeEditor } = setup();
+  editor.show(undefined, "");
+  editor.show("endue-short", "note");
+  expect(request).not.toHaveBeenCalled();
+  editor.show("endue-large", large);
+  editor.show("endue-next", large + "text");
+  expect(request).toHaveBeenCalledOnce();
+  load();
+  await Promise.resolve();
+  expect(mountLargeEditor).toHaveBeenCalledOnce();
+});
 
 it("keeps text, focus and selection typed before the viewport loads", async () => {
   const { editor, field, view, edit, mountLargeEditor, load } = setup();
