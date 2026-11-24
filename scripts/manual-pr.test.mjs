@@ -57,6 +57,17 @@ test("review excludes forks, dependency changes and drafts but their scope can s
   }
 });
 
+test("manual checks use the current base branch when the PR summary has an older commit", async () => {
+  const { selectPull } = await import("./manual-pr.mjs");
+  const current = { ref: "refs/heads/main", object: { type: "commit", sha: "c".repeat(40) } };
+  assert.equal(selectPull(pull, 1, repository, current).base, current.object.sha);
+  assert.throws(() => selectPull(pull, 1, repository, { ...current, ref: "refs/heads/other" }));
+  assert.throws(() => selectPull(pull, 1, repository, { ...current, object: { type: "tag" } }));
+  const resolver = workflow("scope-check").jobs["scope-check"].steps[0].run;
+  assert.match(resolver, /git\/ref\/heads\//u);
+  assert.match(resolver, /\.object\.type == "commit"/u);
+});
+
 test("scope checks use the PR base and accept only the default branch or the selected PR head", () => {
   const steps = workflow("scope-check").jobs["scope-check"].steps;
   assert.equal(steps[0].id, "pr");
