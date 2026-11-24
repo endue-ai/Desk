@@ -200,10 +200,9 @@ test("the Linux shell builds install the native headers before checking or launc
   }
 });
 
-test("app e2e configures APT and changes to the helper exercise the existing packaged-app gates", async () => {
+test("manually dispatched app e2e configures APT before the packaged-app gates", async () => {
   const config = await workflow("e2e");
-  assert.ok(config.on.pull_request.paths.includes("scripts/ci-apt.mjs"));
-  assert.ok(config.on.pull_request.paths.includes("scripts/ci-apt.test.mjs"));
+  assert.deepEqual(Object.keys(config.on), ["workflow_dispatch"]);
   const xvfb = (recipe) => `xvfb-run -a --server-args="-screen 0 1280x800x24" just ${recipe}`;
 
   // The CEF desk on three OSes (ADR 0144): APT on Linux only, before its packages.

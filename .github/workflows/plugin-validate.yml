@@ -1,22 +1,14 @@
 name: plugin-validate
 
 on:
-  pull_request:
-    paths:
-      - "plugins/**"
-      - "examples/**"
-  push:
-    branches: [main]
-    paths:
-      - "plugins/**"
-      - "examples/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: plugin-validate-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   plugin-validate:
