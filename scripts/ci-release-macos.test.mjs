@@ -137,9 +137,11 @@ test("a manual Intel install checks the draft hash and isolates the app from the
     download.run,
     /node |pnpm |git (push|commit)|gh (api|release (edit|upload|create))/u,
   );
-  const boot = smoke.steps.at(-1);
+  const boot = smoke.steps.find((step) => step.name === "Install and launch endue");
   assert.equal(boot.env?.GH_TOKEN, undefined);
-  assert.match(boot.run, /env -i HOME=/u);
+  assert.match(boot.run, /env -i MallocNanoZone=0 HOME=/u);
   assert.match(boot.run, /e2e\/smoke\/install-and-launch\.sh/u);
+  assert.equal(smoke.steps.at(-1).if, "failure()");
+  assert.match(smoke.steps.at(-1).run, /macos-startup-report/u);
   assert.doesNotMatch(JSON.stringify(smoke), /secrets\.|signer sign|--clobber/u);
 });

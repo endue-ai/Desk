@@ -65,8 +65,14 @@ jobs:
       - name: Install and launch endue
         run: |
           mkdir -p "$RUNNER_TEMP/endue-smoke-home"
-          env -i HOME="$RUNNER_TEMP/endue-smoke-home" PATH="$PATH" TMPDIR="$TMPDIR" LANG=en_US.UTF-8 \
+          # The smoke drives the executable directly. Finder supplies this allocator setting from Info.plist.
+          env -i MallocNanoZone=0 HOME="$RUNNER_TEMP/endue-smoke-home" PATH="$PATH" TMPDIR="${TMPDIR:-/tmp}" LANG=en_US.UTF-8 \
+            USER="${USER:-endue}" LOGNAME="${LOGNAME:-endue}" SHELL=/bin/bash \
+            __CF_USER_TEXT_ENCODING="${__CF_USER_TEXT_ENCODING:-}" XPC_SERVICE_NAME="${XPC_SERVICE_NAME:-}" \
             bash e2e/smoke/install-and-launch.sh "$INSTALLER"
+      - name: Report startup diagnostics
+        if: failure()
+        run: python3 -B e2e/smoke/macos-startup-report.py
 
   key:
     if: inputs.verify-intel-tag == '' && inputs.intel-sha256 == ''
