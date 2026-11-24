@@ -8,6 +8,7 @@ name: ci
 # job is the required check. The merge queue runs it again on each PR combined with main and the PRs
 # ahead of it (ADR 0015).
 on:
+  workflow_dispatch:
   pull_request:
   merge_group:
   push:
