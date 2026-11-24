@@ -3,12 +3,13 @@
 // feature's panel module is drawn, updated in place and destroyed when another panel shows or its
 // buffer closes.
 import { readFileSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Console } from "../ui/consoles.js";
 import { graphFromRows } from "../ui/features/diagram/model.js";
 import { stateOf } from "../ui/features/diagram/read.js";
 import * as builtins from "../ui/features/index.js";
 import { diagramOf } from "../ui/schema/diagram.js";
+import { EditorView } from "../ui/vendor/editor/editor-component.mjs";
 import { createView } from "../ui/view.js";
 import { fakeFeature } from "./fake-feature";
 import { SAVED } from "./harness";
@@ -54,12 +55,20 @@ function buffer(id: string, kind: string, name: string, state: unknown): Console
   } as Console;
 }
 
+beforeAll(() => {
+  // jsdom has no layout. The database editor may measure its text while a panel is open.
+  Range.prototype.getClientRects ??= () => Object.assign([], { item: () => null });
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+});
+
 beforeEach(() => {
   document.head.innerHTML = "";
   document.body.innerHTML = new DOMParser().parseFromString(html, "text/html").body.innerHTML;
 });
 
 afterEach(() => {
+  const root = document.querySelector<HTMLElement>("#editor-box .cm-editor");
+  if (root) EditorView.findFromDOM(root)?.destroy();
   expect(document.querySelector("#editor-box .cm-editor")).toBeNull();
 });
 
