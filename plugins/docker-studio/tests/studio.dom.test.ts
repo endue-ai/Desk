@@ -2,7 +2,7 @@
 // The whole window on the preview's seeded engine: the studio mounted with a bridge whose
 // proc.spawn runs dev/fake's docker, so the dashboard, the containers, an action, a container's
 // logs and the agents' commands are checked end to end, streams and all.
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { docker } from "../dev/fake/cli.mjs";
 import { createWorld, seedEvents } from "../dev/fake/world.mjs";
 import { PAGES } from "../ui/pages.js";
@@ -91,6 +91,35 @@ beforeEach(() => {
     setTimeout(() => cb(0), 0) as unknown as number;
 });
 afterEach(() => stop());
+
+it("stops queued and running fixture streams without late output", async () => {
+  vi.useFakeTimers();
+  try {
+    const { ctx } = fakeBridge();
+    const { bridge } = ctx;
+    let output = 0;
+    bridge.onEvent((event) => {
+      if (event.event === "proc.output") output++;
+    });
+    const pending = await bridge.call("proc.spawn", { args: ["stats"] });
+    await bridge.call("proc.kill", pending);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(output).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+
+    const running = await bridge.call("proc.spawn", { args: ["stats"] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(output).toBeGreaterThan(0);
+    await bridge.call("proc.kill", running);
+    const stopped = output;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(output).toBe(stopped);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  }
+});
 
 describe("Docker Studio on the seeded engine", () => {
   it("draws the dashboard, the containers by stack, an action and a container's logs", async () => {

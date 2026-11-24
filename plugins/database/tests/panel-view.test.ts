@@ -3,7 +3,7 @@
 // feature's panel module is drawn, updated in place and destroyed when another panel shows or its
 // buffer closes.
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Console } from "../ui/consoles.js";
 import { graphFromRows } from "../ui/features/diagram/model.js";
 import { stateOf } from "../ui/features/diagram/read.js";
@@ -57,6 +57,10 @@ function buffer(id: string, kind: string, name: string, state: unknown): Console
 beforeEach(() => {
   document.head.innerHTML = "";
   document.body.innerHTML = new DOMParser().parseFromString(html, "text/html").body.innerHTML;
+});
+
+afterEach(() => {
+  expect(document.querySelector("#editor-box .cm-editor")).toBeNull();
 });
 
 describe("the panel box", () => {
