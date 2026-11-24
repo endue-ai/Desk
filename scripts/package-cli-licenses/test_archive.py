@@ -14,6 +14,26 @@ class BinaryPrivacy(unittest.TestCase):
         self.elf[:6] = b"\x7fELF\x02\x01"
         self.elf[18:20] = b"\x3e\x00"
 
+    def test_patched_ssh_source_carries_its_redistribution_notice(self):
+        import json
+        from notices import notices
+
+        root = Path(__file__).resolve().parents[2]
+        relative = Path("crates/compat/russh-util")
+        package = {
+            "name": "russh-util", "version": "0.52.0", "source": None,
+            "manifest_path": str(root / relative / "Cargo.toml"),
+            "license": "Apache-2.0", "license_file": None,
+        }
+        metadata = {"workspace_root": str(root), "packages": [package]}
+        with patch("notices.cargo", side_effect=[json.dumps(metadata), "russh-util v0.52.0"]):
+            files = notices()
+        index = files["THIRD-PARTY-NOTICES.txt"].decode()
+        self.assertIn("russh-util 0.52.0  Apache-2.0", index)
+        self.assertIn(relative.as_posix(), index)
+        self.assertNotIn(str(root), index)
+        self.assertIn((root / relative / "LICENSE").read_bytes(), files.values())
+
     def test_only_the_requested_linux_architecture_is_accepted(self):
         validate(self.elf)
         self.elf[18:20] = b"\xb7\x00"

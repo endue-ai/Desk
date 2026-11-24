@@ -1,0 +1,19 @@
+[package]
+name = "fontdb"
+version = "0.23.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+description = "Forward cosmic-text's font discovery API to the current fontdb implementation"
+
+[dependencies]
+current-fontdb = { package = "fontdb", version = "=0.24.0", default-features = false }
+
+[features]
+default = ["std", "fs", "memmap", "fontconfig"]
+std = ["current-fontdb/std"]
+fs = ["std", "current-fontdb/fs"]
+memmap = ["fs", "memmap2", "current-fontdb/memmap"]
+fontconfig = ["fs", "fontconfig-parser", "current-fontdb/fontconfig"]
+memmap2 = ["current-fontdb/memmap2"]
+fontconfig-parser = ["current-fontdb/fontconfig-parser"]
