@@ -3,7 +3,7 @@ use cef::{KeyEvent, KeyEventType};
 use desk_compositor::input::keymap::{KeyEntry, Platform};
 
 use super::{Keys, like_of, report};
-use crate::web_host::key_codes::{native_key, virtual_key};
+use crate::web_host::key_codes::{modifier_bits, native_key, virtual_key};
 
 const SURFACE: &str = "main.endue-terminal";
 
@@ -29,7 +29,7 @@ fn event(kind: KeyEventType, code: &str, typed: char, chord: bool) -> KeyEvent {
     KeyEvent {
         size: std::mem::size_of::<cef::sys::cef_key_event_t>(),
         type_: kind,
-        modifiers: if chord { flag.0 } else { 0 },
+        modifiers: if chord { modifier_bits(flag) } else { 0 },
         windows_key_code: virtual_key(code),
         native_key_code: native_key(code, kind == KeyEventType::KEYUP),
         is_system_key: 0,
@@ -140,8 +140,6 @@ fn a_key_that_types_nothing_is_named_by_its_code() {
 
 #[test]
 fn cef_modifier_masks_keep_each_bit() {
-    use crate::web_host::key_codes::modifier_bits;
-
     let combined = F(F::EVENTFLAG_SHIFT_DOWN.0 | F::EVENTFLAG_CONTROL_DOWN.0);
     assert_eq!(
         modifier_bits(combined),
