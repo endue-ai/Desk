@@ -47,8 +47,8 @@ test("every workflow starts manually or is called inside a manual run", () => {
 test("the manual CI run tests the selected merge commit on every platform and in its release rehearsal", () => {
   const { jobs } = workflows.get("ci.yml");
   for (const name of [
-    "linux-verification",
-    "runtime-e2e-shard",
+    "check-linux",
+    "runtime-e2e",
     "check-macos",
     "check-windows",
     "shell-build",

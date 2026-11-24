@@ -1,12 +1,6 @@
 name: release-dry-run
 
-# The release pipeline without its secrets (ADR 0054): every target built as canary would build it,
-# signed with a throwaway updater key made in the run, and the R2 tree written as canary would upload
-# it, release.json and the canary index each signed and verified. Nothing leaves the run: the
-# artifacts are labelled unsigned and the tree is the artifact release-dry-run. It never enters the
-# signing environment, so it runs on any branch (workflow_dispatch) and on pull requests that change
-# the release files, which GitHub cannot dispatch before they are on main.
-# It builds the desk .github/release-shell names, as a line would (#46): the CEF desk since #97.
+# Rehearse release packaging with a throwaway key on the selected ref or a CI-selected PR merge.
 on:
   workflow_dispatch:
     inputs:
@@ -15,25 +9,12 @@ on:
         type: choice
         options: ["release-shell", "cef"]
         default: release-shell
-  # ci.yml runs it for a pull request into a release line that changes these files (ADR 0092).
   workflow_call:
-  pull_request:
-    paths:
-      - ".github/workflows/release-dry-run.yml"
-      - ".github/workflows/release-build.yml"
-      - ".github/workflows/canary.yml"
-      - ".github/workflows/release.yml"
-      - ".github/workflows/release-final.yml"
-      - ".github/release-shell"
-      - "scripts/release-*.mjs"
-      - "scripts/cef-**"
-      - "scripts/package-cli*"
-      - "scripts/package-cli-licenses/**"
-      - "crates/desk-cli/**"
-      - "e2e/smoke/cli-*"
-      - "e2e/smoke/verify-signature.sh"
-      - "e2e/smoke/install-and-launch.sh"
-      - "apps/desk/shell/packager/**"
+    inputs:
+      ref:
+        description: The immutable commit selected by CI
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -46,8 +27,6 @@ concurrency:
 jobs:
   key:
     name: key
-    # A pull request into release/** runs it through ci; its own run would build everything twice.
-    if: github.workflow != 'release-dry-run' || !startsWith(github.base_ref, 'release/')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -57,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.sha }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
@@ -69,7 +49,7 @@ jobs:
       - id: shell
         env:
           WANTED: ${{ inputs.shell }}
-        # Called from ci or on a pull request there is no input: the file decides.
+        # When CI calls this workflow, the selected commit supplies the shell.
         run: |
           if [ -z "$WANTED" ] || [ "$WANTED" = release-shell ]; then WANTED="$(tr -d '[:space:]' < .github/release-shell)"; fi
           echo "shell=$WANTED" >> "$GITHUB_OUTPUT"
@@ -93,6 +73,7 @@ jobs:
       version: ${{ needs.key.outputs.version }}
       shell: ${{ needs.key.outputs.shell }}
       dry-run: true
+      ref: ${{ inputs.ref || github.sha }}
 
   tree:
     name: tree
@@ -105,6 +86,8 @@ jobs:
       BASE: https://releases.endue.ai/desk
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -127,12 +110,13 @@ jobs:
           echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Write and sign release.json and the canary index, as canary does
         env:
+          BUILD_COMMIT: ${{ inputs.ref || github.sha }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: dry-run
         run: |
           TAURI_SIGNING_PRIVATE_KEY="$(cat key/updater.key)"
           export TAURI_SIGNING_PRIVATE_KEY
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
-            --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
+            --commit "$BUILD_COMMIT" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$BUILD_COMMIT" > release.json
           mv release.json dist/release.json
           (cd dist && shopt -s nullglob && sha256sum "$DESKTOP_PREFIX"* "endue-cli_${VERSION}_"* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"

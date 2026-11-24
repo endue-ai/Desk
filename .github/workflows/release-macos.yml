@@ -1,17 +1,7 @@
 name: release-macos
 
-# A GitHub Release a person publishes builds the macOS app and attaches it (ADR 0229): the CEF desk
-# (release-build.yml) at the tag's commit, with the tag's version, for darwin-aarch64 and darwin-x86_64,
-# and each target's .dmg on the release under its canonical name, with SHA256SUMS-macos and a macOS
-# section in the notes. With the Apple secrets in the signing environment the app and the disk image
-# are signed with the Developer ID, notarised and stapled; without them the build is ad-hoc signed,
-# and the run and the notes say so. With an updater key it also publishes signed upgrade packages
-# and UPGRADE_PATH.json. R2 credentials are unnecessary. A final's release is made by the release
-# app: its build is on R2 already, so this builds nothing for it. By hand, with a tag, it builds an
-# existing release again and replaces what it attached.
+# Dispatch with an existing release tag to attach macOS installers and available signed updates.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -27,13 +17,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-macos-${{ github.event.release.tag_name || inputs.tag }}
+  group: release-macos-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   gate:
     name: gate
-    if: github.event_name != 'release' || github.event.release.author.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: signing
@@ -44,7 +33,7 @@ jobs:
       updates: ${{ steps.version.outputs.updates }}
       cli: ${{ steps.version.outputs.cli }}
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
@@ -159,7 +148,7 @@ jobs:
     permissions:
       contents: write
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.gate.outputs.version }}
       SIGNED: ${{ needs.gate.outputs.signed }}
       CLI: ${{ needs.gate.outputs.cli }}

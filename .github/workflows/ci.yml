@@ -1,62 +1,105 @@
 name: ci
 
-# Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
-# red-on-base, and the CEF shell's build on three OSes when the shell or the primitives change. A pull
-# request into a release line release/vX.Y (ADR 0081, ADR 0092), a cherry-pick of main commits, also
-# runs check and unit tests on macOS and Windows, the shell's build, and the release dry run when it
-# changes the release files; merging it builds the line's next candidate (release.yml). The final `ci`
-# job is the required check. The merge queue runs it again on each PR combined with main and the PRs
-# ahead of it (ADR 0015).
+# Dispatch on a selected ref or give an open PR number to test its exact merge with the base.
 on:
-  pull_request:
-  merge_group:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open PR number (leave empty to test the selected ref)
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ inputs.pr || github.ref }}
+  cancel-in-progress: false
 
 env:
   ACTIONLINT_VERSION: 1.7.12
 
 jobs:
   changes:
+    permissions:
+      contents: read
+      pull-requests: read
     name: changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
+      commit: ${{ steps.target.outputs.commit }}
+      release-line: ${{ steps.pr.outputs.release == 'true' || (!inputs.pr && startsWith(github.ref, 'refs/heads/release/')) }}
+      base: ${{ steps.pr.outputs.base }}
+      head: ${{ steps.pr.outputs.head }}
+      refactor: ${{ steps.pr.outputs.refactor }}
       app: ${{ steps.filter.outputs.app }}
       release: ${{ steps.filter.outputs.release }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Read the selected pull request
+        id: pr
+        if: inputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+        run: node scripts/manual-pr.mjs
+      - name: Pin the selected branch or PR merge commit
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.pr.outputs.number }}
+          BASE: ${{ steps.pr.outputs.base }}
+          HEAD: ${{ steps.pr.outputs.head }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          commit="$GITHUB_SHA"
+          if [ -n "$PR" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ] && [ "$GITHUB_SHA" != "$HEAD" ]; then
+              echo "::error::Select the default branch or the current head of this PR."
+              exit 1
+            fi
+            base_ref="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .base.ref)"
+            git fetch --no-tags origin "refs/heads/$base_ref:refs/endue/ci-base" "refs/pull/$PR/merge:refs/endue/ci-merge"
+            commit="$(git rev-parse 'refs/endue/ci-merge^{commit}')"
+            if [ "$(git rev-parse refs/endue/ci-base)" != "$BASE" ] || [ "$(git rev-parse "$commit^1")" != "$BASE" ] || [ "$(git rev-parse "$commit^2")" != "$HEAD" ]; then
+              echo "::error::The PR merge must match the current base and head. Refresh the merge before dispatching again."
+              exit 1
+            fi
+          fi
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
       - id: filter
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          BASE: ${{ steps.pr.outputs.base }}
+          COMMIT: ${{ steps.target.outputs.commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          # Diff against the PR base, the queue base or the previous main; an unknown base builds the app.
-          if git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
-            files="$(git diff --name-only "$BASE" HEAD)"
-          else
-            files="apps/desk/shell/"
+          if [ -z "$BASE" ]; then
+            BASE="$(git merge-base "origin/$DEFAULT_BRANCH" "$COMMIT" || true)"
+            if [ "$BASE" = "$COMMIT" ]; then BASE="$(git rev-parse --verify "$COMMIT^" 2>/dev/null || true)"; fi
           fi
-          if grep -qE '^(apps/desk/shell/|crates/desk-web/|crates/desk-sys/)' <<<"$files"; then app=true; else app=false; fi
-          # The files the release dry run proves (its own pull_request paths).
-          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/cef-.*|e2e/smoke/(verify-signature|install-and-launch)\.sh|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
+          if [ -n "$BASE" ]; then
+            files="$(git diff --name-only "$BASE" "$COMMIT")"
+          else
+            files="$(git ls-tree --name-only -r "$COMMIT")"
+          fi
+          if grep -qE '^(apps/desk/shell/|crates/desk-web/|crates/desk-sys/|\.github/workflows/ci\.yml$)' <<<"$files"; then app=true; else app=false; fi
+          # The files the release dry run proves (including the CLI and installer smokes).
+          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|\.github/release-shell|scripts/release-[^/]*\.mjs|scripts/(cef-|package-cli).*|crates/desk-cli/|e2e/smoke/(cli-|verify-signature\.sh|install-and-launch\.sh)|apps/desk/shell/packager/.*)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
           echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
   check-linux:
+    needs: changes
     name: check (linux)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -87,11 +130,14 @@ jobs:
       - run: just test-unit
 
   runtime-e2e:
+    needs: changes
     name: runtime-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -114,12 +160,15 @@ jobs:
           retention-days: 7
 
   check-macos:
+    needs: changes
     name: check (macos)
-    if: startsWith(github.base_ref, 'release/')
+    if: needs.changes.outputs.release-line == 'true'
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -136,12 +185,15 @@ jobs:
       - run: just test-unit
 
   check-windows:
+    needs: changes
     name: check (windows)
-    if: startsWith(github.base_ref, 'release/')
+    if: needs.changes.outputs.release-line == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -163,7 +215,7 @@ jobs:
   shell-build:
     name: shell-build (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.app == 'true' || startsWith(github.base_ref, 'release/')
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.release-line == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -172,6 +224,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -191,14 +245,15 @@ jobs:
       - run: just build-shell
 
   codegen-check:
+    needs: changes
     name: codegen-check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-
+        with:
+          ref: ${{ needs.changes.outputs.commit }}
       - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -214,7 +269,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: just codegen
-
       - name: Generated files match the specs
         run: |
           if ! git diff --exit-code; then
@@ -224,18 +278,19 @@ jobs:
 
   red-on-base:
     name: red-on-base
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: inputs.pr != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ needs.changes.outputs.base }}
           fetch-depth: 0
 
       - name: Fetch the PR head
         env:
-          PR: ${{ github.event.pull_request.number }}
+          PR: ${{ inputs.pr }}
         run: git fetch --no-tags origin "+refs/pull/${PR}/head:refs/remotes/pr/head"
 
       - uses: pnpm/action-setup@v6
@@ -254,9 +309,9 @@ jobs:
 
       - name: Run the PR's tests on the base commit
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE: ${{ needs.changes.outputs.base }}
+          HEAD: ${{ needs.changes.outputs.head }}
+          LABELS: ${{ needs.changes.outputs.refactor == 'true' && 'kind:refactor' || '' }}
         run: |
           # The base version of the script gates the PR; a PR that adds the script uses its own.
           script="$RUNNER_TEMP/red-on-base.sh"
@@ -266,9 +321,10 @@ jobs:
   release-dry-run:
     name: release-dry-run
     needs: changes
-    # The merge builds every target anyway; the dry run is for a change to how they are built.
-    if: startsWith(github.base_ref, 'release/') && needs.changes.outputs.release == 'true'
+    if: needs.changes.outputs.release-line == 'true' && needs.changes.outputs.release == 'true'
     uses: ./.github/workflows/release-dry-run.yml
+    with:
+      ref: ${{ needs.changes.outputs.commit }}
 
   ci:
     name: ci
