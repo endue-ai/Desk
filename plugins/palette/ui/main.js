@@ -350,7 +350,7 @@ defineUiPlugin({
       const hidden = new Set([...OWN, ...asked.map((p) => p.command)]);
       show({
         kind: "commands",
-        title: "Search Desk",
+        title: "Search endue",
         placeholder: "Search plugins, data, files and applications",
         query: args?.query ?? "",
         providers: asked,

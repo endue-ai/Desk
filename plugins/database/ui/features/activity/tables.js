@@ -34,7 +34,7 @@ const COLUMNS = /** @type {const} */ ([
 /** At most this many locks are drawn; the rest are counted. */
 const LOCKS_DRAWN = 200;
 /** What marks the view's own session and the plugin's others on this desk. */
-const MARKS = { view: "this view", desk: "this desk", "": "" };
+const MARKS = { view: "this view", desk: "this app", "": "" };
 
 const who = (/** @type {Session | undefined} */ s) =>
   s ? `${s.user ?? "another role"}${s.application ? ` · ${s.application}` : ""}` : "";

@@ -62,7 +62,7 @@ describe("what a pooler in transaction mode does not keep", () => {
   });
 
   it("signs in with the application name alone", () => {
-    expect(settingsOf(30_000, POOLED)).toEqual({ application_name: "endue Desk" });
+    expect(settingsOf(30_000, POOLED)).toEqual({ application_name: "endue" });
     expect(settingsOf(30_000, { ...POOLED, applicationName: "shop" })).toEqual({
       application_name: "shop",
     });
@@ -90,7 +90,7 @@ describe("a pooled connection's sessions", () => {
     const opens = made(m, "db.open");
     expect(opens.length).toBeGreaterThan(0);
     for (const open of opens) {
-      expect(open.settings).toEqual({ application_name: "endue Desk" });
+      expect(open.settings).toEqual({ application_name: "endue" });
       expect("readOnly" in open).toBe(false);
     }
     // A changed statement timeout: no SET reaches the kept session.

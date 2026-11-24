@@ -44,7 +44,7 @@ import { createTls } from "./pg-tls.js";
  */
 
 /** What the server shows as the session's application (pg_stat_activity.application_name). */
-export const APPLICATION = "endue Desk";
+export const APPLICATION = "endue";
 /** Short runs holding a session at once (session/slots.js); the core allows a plugin 16. */
 export const MAX_SESSIONS = RUNS_AT_ONCE;
 export { BACKSTOP_MS, GRACE_MS } from "./pg-script.js";
