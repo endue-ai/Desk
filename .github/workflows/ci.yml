@@ -231,12 +231,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev
+          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev xvfb xauth
       - name: Install the macOS shell build tools
         if: runner.os == 'macOS'
         run: brew install cmake ninja
       - run: pnpm install --frozen-lockfile
-      - run: just check-shell
+      - name: Check the Linux shell and launch its CEF probes
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" just check-shell
+      - name: Check the macOS and Windows shell
+        if: runner.os != 'Linux'
+        run: just check-shell
       - run: just build-shell
 
   codegen-check:

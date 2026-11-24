@@ -161,6 +161,20 @@ test("the Linux compositor can draw Hangul, Han and kana window titles", async (
   assert.ok(installAt >= 0 && installAt < testsAt);
 });
 
+test("the hosted Linux shell tests launch CEF under Xvfb", async () => {
+  const { jobs } = await workflow("ci");
+  const { steps } = jobs["shell-build"];
+  const linux = steps.find((step) => step.run?.startsWith("xvfb-run "));
+  assert.equal(linux?.if, "runner.os == 'Linux'");
+  assert.equal(linux.run, 'xvfb-run -a --server-args="-screen 0 1280x800x24" just check-shell');
+  const install = steps.find((step) => step.run?.includes("libgtk-3-dev"));
+  for (const packageName of ["xvfb", "xauth"]) {
+    assert.ok(install.run.split(/\s+/u).includes(packageName));
+  }
+  assert.ok(steps.indexOf(install) < steps.indexOf(linux));
+  assert.equal(steps.find((step) => step.run === "just check-shell")?.if, "runner.os != 'Linux'");
+});
+
 test("the Linux shell builds install the native headers before checking or launching the app", async () => {
   const ci = await workflow("ci");
   const e2e = await workflow("e2e");
