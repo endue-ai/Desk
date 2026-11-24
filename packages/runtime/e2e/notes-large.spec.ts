@@ -129,12 +129,28 @@ test("a wrapped note retains keyboard composition and fits a narrow themed windo
   }
   await expect(notes.locator("html")).toHaveAttribute("data-motion", "reduce");
   await expect(editor).toBeVisible();
-  await field.evaluate((node: HTMLTextAreaElement) => {
-    node.focus();
-    node.setSelectionRange(0, 0);
-  });
+  const surfaceWindow = page.locator('[data-surface^="endue.notes"].is-focused');
+  const id = await surfaceWindow.getAttribute("data-surface");
+  if (!id) throw new Error("The Notes surface is unavailable");
+  await page.evaluate((surface) => window.__shell.wm.fill(surface, "full"), id);
+  const firstLine = editor.locator(".cm-line").first();
+  await firstLine.click({ position: { x: 9, y: 7 } });
+  await editor.press("Home");
+  const original = await field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 12));
   const session = await page.context().newCDPSession(page);
   try {
+    await session.send("Input.imeSetComposition", {
+      text: "초안",
+      selectionStart: 2,
+      selectionEnd: 2,
+    });
+    await expect(firstLine).toHaveText(/^초안/u);
+    // A candidate is visible while the buffer kept for saves still holds the accepted text.
+    expect(await field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 12))).toBe(
+      original,
+    );
+    await session.send("Input.imeSetComposition", { text: "", selectionStart: 0, selectionEnd: 0 });
+    await expect.poll(async () => (await firstLine.textContent())?.startsWith(original)).toBe(true);
     await session.send("Input.imeSetComposition", {
       text: "메모",
       selectionStart: 2,
@@ -145,7 +161,7 @@ test("a wrapped note retains keyboard composition and fits a narrow themed windo
     await session.detach();
   }
   await expect
-    .poll(() => field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 2)))
-    .toBe("메모");
+    .poll(() => field.evaluate((node: HTMLTextAreaElement) => node.value.slice(0, 14)))
+    .toBe("메모" + original);
   await expect(notes.locator("#note-count")).toContainText("4194306 characters");
 });
