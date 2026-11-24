@@ -137,3 +137,15 @@ fn a_key_that_types_nothing_is_named_by_its_code() {
     let space = like_of(&event(KeyEventType::RAWKEYDOWN, "Space", ' ', true));
     assert_eq!(space.key, " ");
 }
+
+#[test]
+fn cef_modifier_masks_keep_each_bit() {
+    use crate::web_host::key_codes::modifier_bits;
+
+    let combined = F(F::EVENTFLAG_SHIFT_DOWN.0 | F::EVENTFLAG_CONTROL_DOWN.0);
+    assert_eq!(
+        modifier_bits(combined),
+        modifier_bits(F::EVENTFLAG_SHIFT_DOWN) | modifier_bits(F::EVENTFLAG_CONTROL_DOWN)
+    );
+    assert_eq!(modifier_bits(F(!0)), u32::MAX);
+}

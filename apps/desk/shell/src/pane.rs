@@ -195,3 +195,10 @@ fn resize_child(child: sys::cef_window_handle_t, width: u32, height: u32) {
         );
     }
 }
+
+#[cfg(all(test, target_os = "windows"))]
+#[test]
+fn the_cef_child_window_handle_preserves_the_native_address() {
+    let native = std::num::NonZeroIsize::new(0x1004).unwrap();
+    assert_eq!(win32_hwnd(cef_hwnd(native)) as isize, native.get());
+}
