@@ -31,6 +31,7 @@ test.describe("talking to Eris", () => {
     await page.goto(`/onboarding.html?plugins=eris&brain=${brain}`);
     await page.waitForFunction(() => window.__desk !== undefined);
     const frame = page.frameLocator('[data-surface="endue.eris"] iframe');
+    await expect(frame.locator("#say")).toHaveJSProperty("inert", false);
     await expect(frame.getByLabel("Talk to Eris")).toBeVisible();
     return frame;
   }
@@ -57,6 +58,8 @@ test.describe("talking to Eris", () => {
   }
 
   test("the first message can be entered once the composer is listening", async ({ page }) => {
+    await page.clock.install({ time: 0 });
+    await page.clock.pauseAt(1000);
     const module = "**/plugins/endue.eris/ui/main.js*";
     let resume!: () => void;
     const paused = new Promise<void>((resolve) => {
@@ -82,9 +85,9 @@ test.describe("talking to Eris", () => {
     } finally {
       resume();
     }
-    const field = frame.getByRole("textbox", { name: "Talk to Eris" });
-    await field.fill("endue ready");
-    await field.press("Enter");
+    await expect(frame.locator("#say")).toHaveJSProperty("inert", false);
+    await send(page, frame, "endue ready");
+    await page.clock.runFor(500);
     await expect(frame.locator("#live p").last()).toHaveText("endue ready");
     expect(await said(page)).toBe(1);
   });
