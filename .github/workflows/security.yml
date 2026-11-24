@@ -7,6 +7,10 @@ on:
         description: Verify CodeQL analysis before switching the default branch to advanced setup
         type: boolean
         default: false
+      report-default:
+        description: Analyze the current default branch and publish results after the setup switch
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,7 +24,7 @@ env:
 
 jobs:
   cargo-deny:
-    if: inputs.qualify-codeql != true
+    if: inputs.qualify-codeql != true && inputs.report-default != true
     name: cargo-deny
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -31,7 +35,7 @@ jobs:
           command: check
 
   cargo-audit:
-    if: inputs.qualify-codeql != true
+    if: inputs.qualify-codeql != true && inputs.report-default != true
     name: cargo-audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -45,7 +49,7 @@ jobs:
       - run: cargo audit
 
   pnpm-audit:
-    if: inputs.qualify-codeql != true
+    if: inputs.qualify-codeql != true && inputs.report-default != true
     name: pnpm-audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -58,7 +62,7 @@ jobs:
       - run: pnpm audit --audit-level high
 
   gitleaks:
-    if: inputs.qualify-codeql != true
+    if: inputs.qualify-codeql != true && inputs.report-default != true
     name: gitleaks
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -78,7 +82,7 @@ jobs:
         run: gitleaks git --redact --no-banner .
 
   preflight-codeql:
-    if: inputs.qualify-codeql == true
+    if: inputs.qualify-codeql == true && inputs.report-default != true
     name: CodeQL (${{ matrix.language }})
     strategy:
       fail-fast: false
@@ -126,3 +130,34 @@ jobs:
                   results += len(run.get("results", []))
           assert rules > 0, "CodeQL analyzed no rules"
           print(f"Analyzed {rules} rules with {results} results.")
+
+  resolve-default:
+    if: inputs.report-default == true && inputs.qualify-codeql != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.target.outputs.commit }}
+      ref: ${{ steps.target.outputs.ref }}
+    steps:
+      - name: Resolve the current primary branch
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git check-ref-format "refs/heads/$BRANCH"
+          commit="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$BRANCH" --jq '.object.sha')"
+          [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "ref=refs/heads/$BRANCH" >> "$GITHUB_OUTPUT"
+
+  report-codeql:
+    needs: resolve-default
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/codeql.yml
+    with:
+      commit: ${{ needs.resolve-default.outputs.commit }}
+      ref: ${{ needs.resolve-default.outputs.ref }}

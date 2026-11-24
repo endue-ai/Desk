@@ -2,6 +2,16 @@ name: codeql
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      commit:
+        description: Exact commit to analyze and report
+        type: string
+        required: true
+      ref:
+        description: Fully qualified branch containing the selected commit
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -21,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.commit || github.sha }}
           persist-credentials: false
       - uses: github/codeql-action/init@v4
         with:
@@ -31,4 +42,7 @@ jobs:
         run: xcrun swiftc scripts/app-icons.swift -o "$RUNNER_TEMP/endue-app-icons"
       - uses: github/codeql-action/analyze@v4
         with:
+          ref: ${{ inputs.ref || github.ref }}
+          sha: ${{ inputs.commit || github.sha }}
+          upload-database: false
           category: /language:${{ matrix.language }}
