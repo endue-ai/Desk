@@ -1,54 +1,53 @@
 name: scope-check
 
-# Scope is judged on the pull request. In the merge queue (ADR 0015) the same required check only
-# reports success: the queue re-tests integration, not the PR's Scope.
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
-  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open pull request number
+        required: true
+        type: string
 
 permissions:
   contents: read
   pull-requests: read
 
 concurrency:
-  group: scope-check-${{ github.event.pull_request.number || github.ref }}
+  group: scope-check-${{ inputs.pr }}
   cancel-in-progress: true
 
 jobs:
   scope-check:
-    name: scope-check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Queued PRs passed scope-check as pull requests
-        if: github.event_name == 'merge_group'
-        run: echo "scope-check passed on every pull request in this merge group."
-
-      # Check out the base commit so a PR cannot change the gate that judges it.
-      - uses: actions/checkout@v7
-        if: github.event_name == 'pull_request'
+      - name: Resolve the selected PR and its trusted base
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::Enter a positive PR number."; exit 1; }
+          event="$RUNNER_TEMP/scope-pr.json"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
+            --jq '{pull_request: {number, body, user: {login: .user.login}, state, base: .base.sha, head: .head.sha}}' > "$event"
+          base="$(jq -er --arg ref "$GITHUB_REF" --arg default "refs/heads/$DEFAULT_BRANCH" --arg sha "$GITHUB_SHA" '
+            .pull_request | select(.state == "open" and ($ref == $default or .head == $sha))
+            | .base | select(test("^[0-9a-f]{40}$"))' "$event")" || {
+            echo "::error::Select the default branch or the current head of the open PR."
+            exit 1
+          }
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Check out the trusted base version of the scope checker
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          fetch-depth: 0
-
+          ref: ${{ steps.pr.outputs.base }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
-        if: github.event_name == 'pull_request'
         with:
           node-version: 22
-
-      - name: Check changed files against the issue Scope and the As-is/To-be table
-        if: github.event_name == 'pull_request'
+      - name: Check the changed files against the issue scope and the PR table
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          script=scripts/scope-check.mjs
-          if [ ! -f "$script" ]; then
-            # Bootstrapping: the PR that introduces the gate brings the first version of it.
-            git fetch --no-tags origin "+refs/pull/${PR}/head:refs/remotes/pr/head"
-            script="$RUNNER_TEMP/scope-check.mjs"
-            git show "$HEAD:scripts/scope-check.mjs" > "$script"
-          fi
-          node "$script"
+        run: GITHUB_EVENT_PATH="$RUNNER_TEMP/scope-pr.json" node scripts/scope-check.mjs
