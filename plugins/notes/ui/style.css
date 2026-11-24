@@ -112,6 +112,7 @@ p {
 }
 
 textarea,
+.note-viewport,
 #note-rendered {
   flex: 1;
   min-height: 0;
@@ -127,6 +128,44 @@ textarea {
   font-size: var(--desk-text-xs);
   line-height: 1.6;
   resize: none;
+}
+
+.note-viewport {
+  min-width: 0;
+  padding: 0;
+}
+
+.note-viewport .cm-scroller {
+  overflow: auto;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  line-height: 1.6;
+}
+
+.note-viewport .cm-content {
+  caret-color: var(--desk-text);
+  padding: var(--desk-space-2);
+}
+
+.note-viewport .cm-line {
+  padding: 0;
+}
+
+.note-viewport .cm-cursor {
+  border-left-color: var(--desk-text);
+}
+
+.note-viewport.cm-focused {
+  outline-color: var(--desk-ring);
+}
+
+#note-text[data-viewport],
+#note-text[hidden] ~ .note-viewport {
+  display: none;
+}
+
+.note-viewport[data-desk-drop] {
+  box-shadow: inset 0 0 0 var(--desk-border-width) var(--desk-primary);
 }
 
 #note-rendered {
