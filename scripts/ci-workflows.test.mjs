@@ -65,6 +65,12 @@ test("the CEF shell is built on every OS for an app change and for a release", a
   assert.match(build.if, /needs\.changes\.outputs\.app == 'true'/u);
   assert.ok(build.if.includes(RELEASE_PR), build.if);
   assert.deepEqual(build.strategy.matrix.os, ["ubuntu-latest", "macos-latest", "windows-latest"]);
+  for (const profile of ["DEV", "TEST"]) {
+    assert.equal(build.env?.[`CARGO_PROFILE_${profile}_DEBUG`], "0");
+    assert.equal(build.env?.[`CARGO_PROFILE_${profile}_DEBUG_ASSERTIONS`], undefined);
+  }
+  assert.equal(build.env.CARGO_INCREMENTAL, "0");
+  assert.equal(build["timeout-minutes"], expr("matrix.os == 'macos-latest' && 60 || 40"));
   for (const recipe of ["just check-shell", "just build-shell"]) {
     assert.ok(
       build.steps.some((step) => step.run === recipe),
