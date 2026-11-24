@@ -54,7 +54,11 @@ fn a_scene_handed_to_the_render_thread_is_presented_while_the_main_thread_is_bus
     let late = Instant::now();
     render.hand(handed(4, late));
     render.hand(handed(5, late + every));
-    std::thread::sleep(every * 4);
+    // This checks that both queued frames eventually draw. The GPU can finish after four ticks.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while render.state().last.map(|(n, _)| n) != Some(5) && Instant::now() < deadline {
+        std::thread::sleep(every);
+    }
     let state = render.state();
     assert_eq!(state.drawn, 4, "both drawn");
     assert_eq!(state.last.map(|(n, _)| n), Some(5));
