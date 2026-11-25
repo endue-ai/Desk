@@ -1,8 +1,8 @@
-//! Search Desk over every app (the Tauri shell's `palette.rs`): a window of its own holding the
+//! Search endue over every app (the Tauri shell's `palette.rs`): a window of its own holding the
 //! shipped palette (`index.html?view=palette`, which frames `/_desk/palette/` from the binary,
 //! `palette_assets.rs`), with the fixed caller `palette` and its grants. Its shortcut
 //! (`DESK_PALETTE_SHORTCUT`, else the setting `desk.palette.shortcut`, else ⌘⇧Space; `shortcut.rs`,
-//! followed while the desk runs) and the tray's Search Desk show and hide it; it hides when
+//! followed while the desk runs) and the tray's Search endue show and hide it; it hides when
 //! it loses the focus. Its commands (`palette_hide`, `palette_present`, `palette_reveal_main`,
 //! `palette_prepare_main`) are answered here, on the event loop's thread.
 
@@ -73,13 +73,13 @@ pub fn view_url(url: &str, view: &str) -> String {
 pub fn setup(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     grant(&shell.desk.core);
     let url = view_url(&shell.url, "palette");
-    let attributes = float::attributes("Search Desk", SIZE);
+    let attributes = float::attributes("Search endue", SIZE);
     if let Some(pane) = shell.open_pane(event_loop, Role::Palette, attributes, &url) {
         float::join(&pane.window, Spaces::All);
     }
     register(shell);
     if let Err(why) = watch(&shell.desk) {
-        eprintln!("Search Desk: its key's setting is not followed ({why})");
+        eprintln!("Search endue: its key's setting is not followed ({why})");
     }
 }
 
@@ -99,7 +99,7 @@ static PENDING: Mutex<Option<(String, String)>> = Mutex::new(None);
 
 /// Hold the key in force. When it cannot be had (another app holds it, or it does not read as a
 /// key) the one held before stays; at start, with none held yet, ⌘⇧Space is taken instead, so
-/// Search Desk always has a key. A notice says so, held until the runtime can show it, and Settings
+/// Search endue always has a key. A notice says so, held until the runtime can show it, and Settings
 /// › Keyboard learns what is held from `palette.shortcut.held` (`shortcut::held_report`).
 fn register(shell: &mut Shell) {
     let env = std::env::var("DESK_PALETTE_SHORTCUT").ok();
@@ -111,7 +111,7 @@ fn register(shell: &mut Shell) {
             None
         }
         Err(why) => {
-            eprintln!("Search Desk shortcut unavailable ({wanted}): {why}. Use the tray menu.");
+            eprintln!("Search endue shortcut unavailable ({wanted}): {why}. Use the tray menu.");
             if before.is_none()
                 && wanted != PALETTE_DEFAULT
                 && shell
@@ -130,7 +130,7 @@ fn register(shell: &mut Shell) {
         let request = json!({ "id": 0, "method": "settings.set",
                               "params": { "key": shortcut::KEY, "value": before } });
         if let Err(why) = call(&shell.desk.core, shortcut::OWNER, request) {
-            eprintln!("Search Desk: the refused key stays saved ({why})");
+            eprintln!("Search endue: the refused key stays saved ({why})");
         }
     }
     let held = lock(&HELD).clone();
@@ -142,7 +142,7 @@ fn register(shell: &mut Shell) {
     let request = json!({ "id": 0, "method": "settings.set",
                           "params": { "key": shortcut::HELD_KEY, "value": report } });
     if let Err(why) = call(&shell.desk.core, shortcut::OWNER, request) {
-        eprintln!("Search Desk: what its key is was not said to Settings ({why})");
+        eprintln!("Search endue: what its key is was not said to Settings ({why})");
     }
     if let Some(why) = refused {
         let language = crate::language::in_force();
@@ -165,7 +165,7 @@ fn notice(core: &Core) {
                     "scope": { "permission": "ui:notify" } },
     });
     if let Err(why) = call(core, PALETTE, request) {
-        eprintln!("Search Desk: the notice was not shown ({why})");
+        eprintln!("Search endue: the notice was not shown ({why})");
     }
 }
 

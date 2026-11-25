@@ -17,7 +17,7 @@ plugins and the session across a relaunch. They drive the desk (`apps/desk/shell
 ## Run
 
 ```bash
-just build-shell                # the desk's debug build (on macOS target/bundle/endue-desk.app)
+just build-shell                # the desk's debug build (on macOS target/bundle/endue.app)
 just test-app-e2e               # all specs; add `--spec e2e/specs/launch.spec.ts` for one
 just perf-app                   # e2e/perf, results in e2e/test-results/perf; `record` sets baselines
 just smoke                      # build, launch, ready line, quit

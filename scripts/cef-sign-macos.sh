@@ -3,8 +3,8 @@
 # with one entitlements file and never seals the helper apps as bundles, so this signs inside out
 # itself: the CEF framework's libraries, the framework, each helper app with its own entitlements
 # (apps/desk/shell/packager/macos/entitlements), then the app; all under the hardened runtime.
-#   scripts/cef-sign-macos.sh app <endue Desk.app>    sign, verify (--deep --strict), notarise, staple
-#   scripts/cef-sign-macos.sh hook <endue Desk.app>   cargo-packager's beforeEachPackageCommand: `app`
+#   scripts/cef-sign-macos.sh app <endue.app>    sign, verify (--deep --strict), notarise, staple
+#   scripts/cef-sign-macos.sh hook <endue.app>   cargo-packager's beforeEachPackageCommand: `app`
 #                                                     before the dmg format, nothing before the others
 #   scripts/cef-sign-macos.sh dmg <file.dmg>          sign, notarise and staple the disk image
 # Identity: APPLE_SIGNING_IDENTITY, else "-" (ad-hoc: no timestamp, nothing notarised). With
@@ -101,6 +101,7 @@ sign_app() {
     count=$((count + 1))
   done
   [ "$count" -eq 5 ] || fail "$app holds $count helper apps, CEF needs 5"
+  sign "$app/Contents/Resources/install-endue"
   for cli in "$app/Contents/Resources/cli/endue" "$app/Contents/Resources/cli/desk"; do
     if [ -f "$cli" ]; then sign "$cli"; fi
   done

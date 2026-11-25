@@ -99,7 +99,7 @@ impl Shell {
                 self.panes.get(&role)
             }
             Err(why) => {
-                eprintln!("endue Desk: the {role:?} window did not open ({why})");
+                eprintln!("endue: the {role:?} window did not open ({why})");
                 None
             }
         }
@@ -127,7 +127,7 @@ impl Shell {
         let mut compositor = match opened {
             Ok(compositor) => compositor,
             Err(why) => {
-                eprintln!("endue Desk: the compositor window did not open ({why})");
+                eprintln!("endue: the compositor window did not open ({why})");
                 return None;
             }
         };
@@ -149,7 +149,7 @@ impl Shell {
     fn start(&mut self, event_loop: &ActiveEventLoop) {
         self.started = true;
         let attributes = Window::default_attributes()
-            .with_title("endue Desk")
+            .with_title("endue")
             .with_inner_size(LogicalSize::new(1280.0, 800.0))
             .with_min_inner_size(LogicalSize::new(1024.0, 500.0));
         // Where the person left it, and as large (#163).
@@ -204,7 +204,7 @@ impl Shell {
             // The person's own click: it applies without asking (ADR 0054).
             Choice::Update => {
                 if let Some(Err(why)) = self.desk.updater.as_ref().map(|u| u.apply()) {
-                    eprintln!("endue Desk: no update to restart into ({why})");
+                    eprintln!("endue: no update to restart into ({why})");
                 }
             }
             Choice::Quit => crate::quit::requested(self, event_loop),

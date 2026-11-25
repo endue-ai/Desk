@@ -1,12 +1,12 @@
 {
   "$comment": "What every OS's cargo-packager config shares (#46). scripts/cef-package.mjs adds the version, the binaries, the CEF files, the helper apps and the formats per target, turns the relative paths (from this folder) into absolute ones, and drops this comment, which cargo-packager would refuse. No licenseFile: cargo-packager would show it as a licence to accept when the .dmg opens and in the installers; the licences ship as files under licenses/ instead. Signing is not configured here: macOS signs in scripts/cef-sign-macos.sh (one entitlements file per helper), Windows through DESK_WINDOWS_SIGN_COMMAND.",
-  "productName": "endue Desk",
+  "productName": "endue",
   "identifier": "ai.endue.desk",
   "description": "A desktop where plugins, agents and your files share one screen.",
   "homepage": "https://endue.ai",
   "publisher": "endue",
   "authors": ["endue-team"],
-  "copyright": "Copyright the endue Desk contributors. Apache-2.0.",
+  "copyright": "Copyright the endue contributors. Apache-2.0.",
   "category": "Productivity",
   "icons": [
     "../icons/32x32.png",
@@ -18,11 +18,6 @@
   "macos": {
     "minimumSystemVersion": "13.0",
     "infoPlistPath": "macos/Info.plist"
-  },
-  "dmg": {
-    "windowSize": { "width": 660, "height": 400 },
-    "appPosition": { "x": 180, "y": 170 },
-    "appFolderPosition": { "x": 480, "y": 170 }
   },
   "nsis": {
     "installMode": "currentUser"

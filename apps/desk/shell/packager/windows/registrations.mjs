@@ -41,10 +41,10 @@ export const COMMAND = '"$INSTDIR\\endue-desk.exe" --single-argument %1';
 export function nsisSection() {
   const lines = [
     "Section DeskRegistrations",
-    `  WriteRegStr HKCU "${classes}\\${SCHEME}" "" "URL:endue Desk link"`,
+    `  WriteRegStr HKCU "${classes}\\${SCHEME}" "" "URL:endue link"`,
     `  WriteRegStr HKCU "${classes}\\${SCHEME}" "URL Protocol" ""`,
     `  WriteRegStr HKCU "${classes}\\${SCHEME}\\shell\\open\\command" "" '${COMMAND}'`,
-    `  WriteRegStr HKCU "${classes}\\${PROGID}" "" "endue Desk document"`,
+    `  WriteRegStr HKCU "${classes}\\${PROGID}" "" "endue document"`,
     `  WriteRegStr HKCU "${classes}\\${PROGID}\\shell\\open\\command" "" '${COMMAND}'`,
     ...EXTENSIONS.map(
       (ext) => `  WriteRegStr HKCU "${classes}\\.${ext}\\OpenWithProgids" "${PROGID}" ""`,

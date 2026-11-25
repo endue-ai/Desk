@@ -87,18 +87,18 @@ describe("updates", () => {
     );
     installUpdates(h);
     await settle();
-    expect(h.rows.at(-1)).toEqual({ id: ROW, text: "Downloading Desk 0.2.0 · 25%" });
+    expect(h.rows.at(-1)).toEqual({ id: ROW, text: "Downloading endue 0.2.0 · 25%" });
     emit(staged);
     expect(h.rows.at(-1)).toEqual({
       id: ROW,
-      text: "Desk 0.2.0 is ready",
+      text: "endue 0.2.0 is ready",
       action: { label: "Restart to update", command: "desk.update.apply" },
     });
     emit(status("checking", { release: staged.release, staged: true }));
     emit(staged);
     expect(h.notify).toHaveBeenCalledTimes(1);
     expect(h.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Desk 0.2.0 is ready" }),
+      expect.objectContaining({ title: "endue 0.2.0 is ready" }),
     );
     expect([...h.defined.keys()].sort()).toEqual([
       "desk.update.about",
@@ -116,7 +116,7 @@ describe("updates", () => {
     h.memory.set("0.2.0");
     installUpdates(h);
     await settle();
-    expect(h.rows.at(-1)?.text).toBe("Desk 0.2.0 is ready");
+    expect(h.rows.at(-1)?.text).toBe("endue 0.2.0 is ready");
     expect(h.notify).not.toHaveBeenCalled();
   });
 
@@ -135,7 +135,7 @@ describe("updates", () => {
     await expect(asked).rejects.toThrow("did not agree");
     expect(declined.h.commands.run).toHaveBeenCalledWith(
       "desk.palette.pick",
-      expect.objectContaining({ title: "example.agent asks to restart Desk into 0.2.0" }),
+      expect.objectContaining({ title: "example.agent asks to restart endue into 0.2.0" }),
     );
     expect(declined.h.calls.map((c) => c.method)).not.toContain("update.apply");
 
@@ -175,7 +175,7 @@ describe("updates", () => {
     });
     expect(rowFor(failed, "en")).toEqual({
       id: ROW,
-      text: "Desk 0.2.0 did not install: no room",
+      text: "endue 0.2.0 did not install: no room",
       action: { label: "Try again", command: "desk.update.apply" },
     });
     expect(rowFor(status("failed", { reason: "offline" }), "en")).toBeNull();
@@ -183,7 +183,7 @@ describe("updates", () => {
       rowFor(status("available", { release: { version: "0.2.0" } }), "en")?.action?.command,
     ).toBe("desk.update.download");
     expect(rowFor(status("up-to-date"), "en")).toBeNull();
-    expect(rowFor(staged, "ko")?.text).toBe("Desk 0.2.0 준비됨");
+    expect(rowFor(staged, "ko")?.text).toBe("endue 0.2.0 준비됨");
   });
 
   it("later_hides_the_notice_and_keeps_the_rail_row", async () => {
@@ -192,7 +192,7 @@ describe("updates", () => {
     await settle();
     expect(h.notify).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Desk 0.2.0 is ready",
+        title: "endue 0.2.0 is ready",
         actions: [
           { label: "Restart to update", command: "desk.update.apply" },
           {
@@ -226,7 +226,7 @@ describe("updates", () => {
     expect(h.notify).toHaveBeenCalledTimes(1);
     expect(h.notify).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Desk 0.2.0 was not installed",
+        title: "endue 0.2.0 was not installed",
         body: "the signature does not match the updater key",
         level: "warning",
       }),
@@ -258,8 +258,8 @@ describe("updates", () => {
     await h.defined.get("desk.update.about")?.(undefined, {});
     expect(h.notify).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "endue Desk 0.1.0 (fa7a4af)",
-        body: "Channel: beta. Desk 0.2.0 is ready: restart to update.",
+        title: "endue 0.1.0 (fa7a4af)",
+        body: "Channel: beta. endue 0.2.0 is ready: restart to update.",
         level: "info",
       }),
     );

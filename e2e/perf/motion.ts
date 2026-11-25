@@ -81,7 +81,7 @@ const open = argv.includes("--open");
 const variant = `${debug ? "debug" : "optimized"}-${screen ? "screen" : "offscreen"}${open ? "-open" : ""}`;
 const OUT = join(root, "e2e/test-results/perf-motion", variant);
 const BUNDLE = join(root, debug ? "target/bundle-motion-debug" : "target/bundle-motion");
-const APP = join(BUNDLE, "endue-desk.app");
+const APP = join(BUNDLE, "endue.app");
 const BINARY = join(APP, "Contents/MacOS/endue-desk");
 
 interface Config {

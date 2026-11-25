@@ -15,7 +15,7 @@ function usage(key: string): string | undefined {
 
 it("says the desk and the plugins you allow can hear the microphone, and promises nothing of where the sound goes", () => {
   const said = usage("NSMicrophoneUsageDescription");
-  expect(said).toMatch(/^endue Desk /);
+  expect(said).toMatch(/^endue /);
   expect(said).toMatch(/\bplugins you allow\b/);
   expect(said).toMatch(/\bhear\b/);
   expect(said).not.toMatch(/stays|leaves|never|only|on this Mac/i);

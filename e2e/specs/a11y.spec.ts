@@ -96,7 +96,7 @@ describe("a11y: the desk is one accessibility tree a screen reader walks and act
     const root = tree.tree;
     expect(tree.active).toBe(true);
     expect(root?.role).toBe("window");
-    expect(root?.label).toBe("endue Desk");
+    expect(root?.label).toBe("endue");
     const windows = root?.children.find((c) => c.role === "list" && c.label === "Windows");
     expect(windows).toBeDefined();
     const window = windows?.children.find((w) => w.label === "E2E A11y");
@@ -108,7 +108,7 @@ describe("a11y: the desk is one accessibility tree a screen reader walks and act
     expect(find(content, "text-input", "New item")).toBeDefined();
     expect(find(content, "check-box", "Milk")).toBeDefined();
     // The desk's own page (its bars and menus) is in the tree too.
-    expect(root?.children.find((c) => c.role === "group" && c.label === "Desk")).toBeDefined();
+    expect(root?.children.find((c) => c.role === "group" && c.label === "endue")).toBeDefined();
   });
 
   it("puts each box of the plugin's in the window's pixels, inside its window", async () => {

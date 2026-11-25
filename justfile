@@ -20,7 +20,7 @@ dev: build-shell
     set -euo pipefail
     export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
     export DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}}
-    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue.app/Contents/MacOS/endue-desk; fi
     exec target/debug/endue-desk
 
 # `just dev`, by the name it had while the Tauri shell was the default (Stage 1 of #32)
@@ -35,7 +35,7 @@ example name: build-shell
     export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
     export DESK_DEV_PLUGINS={{quote(justfile_directory() / "examples" / name)}}
     export DESK_COMPOSITOR=1
-    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue.app/Contents/MacOS/endue-desk; fi
     exec target/debug/endue-desk
 
 # Run examples/brain-echo, the smallest brain, where the app's echo brain looks (http://127.0.0.1:8787/v0)
@@ -81,13 +81,13 @@ check:
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Build the CEF shell (ADR 0143) with the web runtime it serves; on macOS also assemble
-# target/bundle/endue-desk.app, which opens with its built-in plugins outside `just dev` too
+# target/bundle/endue.app, which opens with its built-in plugins outside `just dev` too
 # (the CEF framework, its helper apps and a link to plugins/)
 build-shell: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-shell --bins
     @# A fresh bundle each time: macOS kills a signed binary that was rewritten in place (SIGKILL at launch).
-    @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
+    @if [ "$(uname -s)" = Darwin ]; then cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
 
 # Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out);
 # it embeds the plugin SDK and the UI bundle, so those build first

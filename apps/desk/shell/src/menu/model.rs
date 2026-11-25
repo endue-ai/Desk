@@ -8,7 +8,7 @@ use super::Choice;
 use crate::words::{Language, text};
 
 /// The app menu's title: the app's name, which AppKit shows in bold whatever it is.
-pub const APP: &str = "endue Desk";
+pub const APP: &str = "endue";
 
 /// One of the items AppKit runs (muda's `PredefinedMenuItem`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
