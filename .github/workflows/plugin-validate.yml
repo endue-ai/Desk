@@ -1,26 +1,14 @@
 name: plugin-validate
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/plugin-validate.yml"
-      - "scripts/example.mjs"
-      - "plugins/**"
-      - "examples/**"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/plugin-validate.yml"
-      - "scripts/example.mjs"
-      - "plugins/**"
-      - "examples/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: plugin-validate-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   plugin-validate:
