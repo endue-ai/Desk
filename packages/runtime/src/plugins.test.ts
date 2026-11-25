@@ -3,9 +3,10 @@ import {
   type BridgeEvent,
   browserStub,
   type PluginInfo,
+  stubCommands,
   type StubHandlers,
 } from "@endue-ai/bridge";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PluginHost } from "./plugins";
 
 /** A ready, enabled UI plugin with one centre surface and the permissions given. */
@@ -31,8 +32,19 @@ function plugin(id: string, permissions: Array<{ permission: string }> = []): Pl
  * A host over fake frames that record what the runtime posted to them once they said hello, as
  * the SDK does when its page has loaded.
  */
-async function mount(plugins: PluginInfo[], handlers: StubHandlers = {}) {
-  const stub = browserStub({ "plugin.list": () => ({ plugins }), ...handlers });
+async function mount(
+  plugins: PluginInfo[],
+  handlers: StubHandlers = {},
+  mayMount?: (info: PluginInfo) => boolean,
+) {
+  const commands = stubCommands((event) => stub.emit(event));
+  const stub = browserStub({
+    ...commands.handlers,
+    "plugin.list": () => ({ plugins }),
+    ...handlers,
+  });
+  const bridge = new BridgeClient(stub);
+  const opened = new Map<string, boolean>();
   const frames = new Map<string, { posted: unknown[]; window: Window }>();
   let receive = (_event: MessageEvent) => {};
   const win = {
@@ -43,9 +55,11 @@ async function mount(plugins: PluginInfo[], handlers: StubHandlers = {}) {
   } as unknown as Window;
   const host = new PluginHost(
     {
-      bridge: new BridgeClient(stub),
+      bridge,
       win,
+      mayMount,
       open: (spec) => {
+        opened.set(spec.id, spec.hidden === true);
         const posted: unknown[] = [];
         const window = { postMessage: (m: unknown) => posted.push(m) } as unknown as Window;
         frames.set(spec.id, { posted, window });
@@ -64,7 +78,7 @@ async function mount(plugins: PluginInfo[], handlers: StubHandlers = {}) {
     say(id, { type: "desk:hello" });
     frame.posted.length = 0;
   }
-  return { stub, host, say, posted: (id: string) => frames.get(id)?.posted ?? [] };
+  return { stub, bridge, host, say, opened, posted: (id: string) => frames.get(id)?.posted ?? [] };
 }
 
 const prompt = {
@@ -119,6 +133,76 @@ describe("PluginHost events", () => {
     posted("endue.terminal").length = 0;
     stub.emit(output("echo two"));
     expect(posted("endue.terminal")).toEqual([{ type: "desk:event", event: output("echo two") }]);
+  });
+});
+
+function dormant(id: string, autoStart = true): PluginInfo {
+  const base = plugin(id);
+  return {
+    ...base,
+    enabled: false,
+    ...(autoStart ? { autoStart } : {}),
+    manifest: {
+      ...base.manifest!,
+      autoload: true,
+      contributes: {
+        commands: [
+          {
+            id: `${id}.read`,
+            title: "Read",
+            description: "Read the document.",
+            agent: true,
+            readOnly: true,
+          },
+          { id: `${id}.edit`, title: "Edit" },
+        ],
+      },
+    },
+  };
+}
+
+describe("agent autoload", () => {
+  it("registers eligible manifest tools and wakes a dormant reader in the background", async () => {
+    const id = "endue.docs";
+    const docs = dormant(id);
+    const plugins = [docs, dormant("example.manually-off", false), dormant("example.excluded")];
+    const toggles: unknown[] = [];
+    const { bridge, host, say, opened, posted } = await mount(
+      plugins,
+      {
+        "plugin.setEnabled": (params) => {
+          toggles.push(params);
+          plugins[0] = { ...docs, enabled: true };
+          return { plugin: plugins[0] };
+        },
+      },
+      (info) => info.id !== "example.excluded",
+    );
+    const scope = { permission: "cmd:invoke", ids: ["*"] } as const;
+    expect(host.mounted()).toEqual([]);
+    const list = await bridge.call("cmd.list", { scope: { ...scope, ids: ["*"] } });
+    expect(list.commands.map((command) => command.id)).toEqual(["endue.docs.read"]);
+    await bridge.call(
+      "cmd.invoke",
+      { id: "endue.docs.read", scope: { ...scope, ids: ["endue.docs.read"] } },
+      { caller: "agent:eris" },
+    );
+    await vi.waitFor(() => expect(opened.get(id)).toBe(true));
+    expect(toggles).toEqual([
+      { plugin: id, enabled: true, automatic: true, scope: { permission: "plugin:manage" } },
+    ]);
+    say(id, { type: "desk:hello" });
+    await vi.waitFor(() =>
+      expect(posted(id)).toContainEqual(
+        expect.objectContaining({
+          type: "desk:event",
+          event: {
+            event: "cmd.invoked",
+            data: expect.objectContaining({ id: "endue.docs.read", caller: "agent:eris" }),
+          },
+        }),
+      ),
+    );
   });
 });
 
