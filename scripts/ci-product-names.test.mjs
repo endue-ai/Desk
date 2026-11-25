@@ -38,10 +38,7 @@ test("plugin validation runs the official endue command on the manifests", () =>
 
 test("plugin validation builds native examples before checking the program paths", () => {
   const config = workflow("plugin-validate.yml");
-  for (const event of [config.on.pull_request, config.on.push]) {
-    assert.ok(event.paths.includes(".github/workflows/plugin-validate.yml"));
-    assert.ok(event.paths.includes("scripts/example.mjs"));
-  }
+  assert.deepEqual(Object.keys(config.on), ["workflow_dispatch"]);
   const job = config.jobs["plugin-validate"];
   assert.equal(job["timeout-minutes"], 10);
   assert.equal(job.env.CARGO_PROFILE_DEV_DEBUG, "0");
