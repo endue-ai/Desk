@@ -512,8 +512,10 @@ plugin when it mounts (ADR 0017). `undo` names the command that undoes this one 
 too); without it, the `undo` the caller's manifest gives the id, if any. `cmd.list` shows it. So do
 `description`, `argsSchema`, `resultSchema`, `agent` and `readOnly` (ADR 0088): each the call's, else what
 the caller's manifest declares for the id (`description`, `args`, `result`, `agent`, `readOnly`), and
-`irreversible`, which only the manifest says. A command marked `agent` without a description, or
-`readOnly` while the manifest marks it irreversible, is `invalid_params`.
+`irreversible`. The desk provider may set `irreversible` for its built-ins. Plugins use their manifest
+declaration, and MCP servers use their existing read-only policy. Agent invocations of irreversible
+commands require approval each time. An agent command without a description, or an irreversible
+command marked `readOnly`, is `invalid_params`.
 
 **cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
 
