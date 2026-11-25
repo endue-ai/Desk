@@ -175,7 +175,7 @@ const core = browserCore({
   },
 });
 if (params.has("files")) await grantFilePlugins(core, params.has("heavy") ? ["endue.notes"] : []);
-// A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
+// Snapshots use a fixed wall clock and macOS shortcuts. Input tests can request the other platform.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const endue = params.has("endue") ? studioHandlers({ epoch }) : undefined;
 const bridge = browserBridge({
@@ -196,7 +196,7 @@ const desk = mountDesk({
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
   clock,
   epoch,
-  platform: "mac",
+  platform: params.get("platform") === "other" ? "other" : "mac",
   lang,
   seed: sampleState(lang, epoch),
 });

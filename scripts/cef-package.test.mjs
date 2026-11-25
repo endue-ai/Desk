@@ -90,6 +90,19 @@ with tarfile.open(sys.argv[1]) as archive:
     ]);
   });
 
+  it("requires macOS 13 for the app and its CEF helpers on both Mac architectures", () => {
+    const template = readFileSync(join(PACKAGER, "macos/helper.plist"), "utf8");
+    for (const target of ["aarch64-apple-darwin", "x86_64-apple-darwin"]) {
+      const config = render(target);
+      const minimum = config.macos.minimumSystemVersion;
+      assert.equal(minimum, "13.0", target);
+      for (const helper of helperApps(config.identifier)) {
+        const plist = helperPlist(template, { ...helper, version: config.version, minimum });
+        assert.match(plist, /<key>LSMinimumSystemVersion<\/key>\s*<string>13\.0<\/string>/u);
+      }
+    }
+  });
+
   it("never lets cargo-packager sign or show a licence, and passes only fields it knows", () => {
     for (const target of [
       "aarch64-apple-darwin",

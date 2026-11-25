@@ -18,6 +18,19 @@ describe("vendor-codemirror", () => {
     }
   });
 
+  it("the Notes viewport contains its own reproducible module and dependency notices", () => {
+    const folder = join(ROOT, "plugins/notes/ui/vendor/editor");
+    const output = expected("notes");
+    assert.deepEqual(readdirSync(folder).sort(), Object.keys(output).sort());
+    for (const [name, content] of Object.entries(output)) {
+      assert.equal(readFileSync(join(folder, name), "utf8"), content, name);
+    }
+    assert.match(output.VERSIONS, /@codemirror\/view /u);
+    assert.doesNotMatch(output.VERSIONS, /@codemirror\/(?:autocomplete|lint) /u);
+    assert.match(output.LICENSE, /Permission is hereby granted/u);
+    assert.doesNotMatch(output[BUNDLE], /\bimport\(|sourceMappingURL|\bfetch\(/u);
+  });
+
   it("every bundled package is pinned to one exact version", () => {
     const manifest = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
     const pinned = versions();

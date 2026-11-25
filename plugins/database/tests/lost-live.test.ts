@@ -11,7 +11,7 @@ import { createEdits } from "../ui/edits.js";
 import type { Connection } from "../ui/engines/common.js";
 import { editHarness } from "./edit-joins-harness";
 import { type Mounted, mount } from "./harness";
-import { liveSessions } from "./live-sessions";
+import { appSessions, liveSessions } from "./live-sessions";
 import { realProcs } from "./scripted";
 import { messages, run, start, state } from "./session-helpers";
 
@@ -89,7 +89,7 @@ describe.skipIf(!uri)("a lost connection on a real server", () => {
     );
   });
   afterAll(async () => {
-    await server.end("application_name = 'endue Desk'");
+    await server.end(appSessions);
     await drop();
   });
 

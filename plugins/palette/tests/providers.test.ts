@@ -94,11 +94,11 @@ describe("palette providers", () => {
     expect(asked).toHaveLength(4);
   });
 
-  it("turns an item into a result: Open in Desk first, Open the original second when it has a deepLink", async () => {
+  it("turns an item into a result: Open in endue first, Open the original second when it has a deepLink", async () => {
     const groceries = item("task-groceries");
     const open = {
       command: "desk.views.open",
-      title: "Open in Desk",
+      title: "Open in endue",
       args: {
         id: "desk.item",
         params: { connector: "desk.fixtures", instance: "default", id: "task-groceries" },

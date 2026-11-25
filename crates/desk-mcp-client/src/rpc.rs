@@ -176,7 +176,7 @@ fn take(message: Map<String, Value>, writer: &Writer, waiting: &Waiting, sink: &
             let line = match method {
                 "ping" => json!({ "jsonrpc": "2.0", "id": id, "result": {} }),
                 _ => json!({ "jsonrpc": "2.0", "id": id, "error": {
-                    "code": METHOD_NOT_FOUND, "message": format!("Desk does not serve {method}") } }),
+                    "code": METHOD_NOT_FOUND, "message": format!("endue does not serve {method}") } }),
             };
             let _ = write_line(writer, &line);
         }

@@ -11,7 +11,7 @@ const DEFAULTS: Record<string, string> = {
   timezone: "UTC",
   lock_timeout: "0",
   idle_in_transaction_session_timeout: "0",
-  application_name: "endue Desk",
+  application_name: "endue",
 };
 
 /** `script` with the session's settings read back. */

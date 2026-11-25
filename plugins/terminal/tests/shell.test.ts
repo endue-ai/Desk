@@ -73,8 +73,11 @@ describe("the default shell", () => {
     expect(environment(DEFAULTS)).toEqual({
       TERM: "xterm-256color",
       COLORTERM: "truecolor",
-      TERM_PROGRAM: "endue-desk",
+      TERM_PROGRAM: "endue",
     });
+    expect(environment({ ...DEFAULTS, env: { TERM_PROGRAM: "endue-test" } }).TERM_PROGRAM).toBe(
+      "endue-test",
+    );
     expect(environment({ ...DEFAULTS, env: { TERM: "xterm", EDITOR: "vim" } })).toMatchObject({
       TERM: "xterm",
       EDITOR: "vim",

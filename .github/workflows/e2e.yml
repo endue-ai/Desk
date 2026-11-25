@@ -55,12 +55,11 @@ jobs:
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install cmake, ninja and Xvfb
+      - name: Install the Linux shell build dependencies and Xvfb
         if: runner.os == 'Linux'
-        # The image's Google Chrome brings the libraries CEF loads (NSS, ATK, GBM, ...).
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build xvfb
+          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev xvfb
       - name: Install cmake and ninja
         if: runner.os == 'macOS'
         run: brew install cmake ninja
@@ -103,10 +102,10 @@ jobs:
           tool: just
       - name: Configure Ubuntu package downloads
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install cmake, ninja and Xvfb
+      - name: Install the Linux shell build dependencies and Xvfb
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build xvfb
+          sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev xvfb
       - run: pnpm install --frozen-lockfile
       - run: just build-shell
       - name: Start-up, idle memory and input latency

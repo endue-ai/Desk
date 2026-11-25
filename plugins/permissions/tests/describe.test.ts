@@ -187,14 +187,14 @@ describe("callers", () => {
     });
     expect(describeCaller("example.indexer", plugins).kind).toBe("Logic plugin");
     expect(describeCaller("example.git", plugins).kind).toBe("Tool plugin");
-    expect(describeCaller("desk", plugins)).toEqual({ id: "desk", name: "Desk", kind: "Runtime" });
-    expect(describeCaller("core", plugins)).toEqual({ id: "core", name: "Desk", kind: "Core" });
+    expect(describeCaller("desk", plugins)).toEqual({ id: "desk", name: "endue", kind: "Runtime" });
+    expect(describeCaller("core", plugins)).toEqual({ id: "core", name: "endue", kind: "Core" });
     expect(describeCaller("example.gone", plugins)).toEqual({
       id: "example.gone",
       name: "example.gone",
       kind: "Plugin",
     });
-    expect(describeCaller("cli", [])).toEqual({ id: "cli", name: "cli", kind: "Desk" });
+    expect(describeCaller("cli", [])).toEqual({ id: "cli", name: "cli", kind: "endue" });
   });
 
   it("names an MCP server caller", () => {

@@ -140,6 +140,40 @@ describe("a window lexed from a checkpoint has the whole text's tokens", () => {
 });
 
 describe("checkpoints follow random edits", () => {
+  it("makes progress when each background slice ends before the next checkpoint", () => {
+    const text = "select 'two;\nlines';\n".repeat(12);
+    const lexed = new Lexed("postgresql", source(text));
+    for (let slice = 0; slice <= 12 && !lexed.done; slice++) {
+      const before = lexed.checked;
+      let checks = 0;
+      lexed.work(() => ++checks >= 2);
+      expect(lexed.checked).toBeGreaterThan(before);
+    }
+    expect(lexed.done).toBe(true);
+    expect(lexed.tokens(0, text.length).tokens).toEqual(tokenize(text, "postgresql"));
+  });
+
+  it("reads at most a checkpoint of ordinary SQL before a short background slice yields", () => {
+    const input = source("select 1;\n".repeat(CHUNK));
+    const lexed = new Lexed("postgresql", input);
+    let checks = 0;
+    lexed.work(() => ++checks >= 2);
+    expect(lexed.checked).toBeGreaterThan(0);
+    expect(input.counted.read).toBeLessThanOrEqual(CHUNK);
+  });
+
+  it("keeps a paused line across a later edit and invalidates it after an earlier edit", () => {
+    const text = "select 1;\n".repeat(12);
+    const lexed = new Lexed("postgresql", source(text));
+    let checks = 0;
+    lexed.work(() => ++checks >= 2);
+    const appended = lexed.map(change(text.length, text.length, " "), source(`${text} `));
+    expect(appended.checked).toBe(lexed.checked);
+    const quoted = lexed.map(change(0, 0, "'"), source(`'${text}`));
+    quoted.work(() => false);
+    expect(quoted.tokens(0, text.length).tokens).toEqual(tokenize(`'${text}`, "postgresql"));
+  });
+
   for (const dialect of DIALECTS)
     it(`in ${dialect}`, () => {
       const rand = random(DIALECTS.indexOf(dialect) + 31);

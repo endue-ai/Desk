@@ -17,7 +17,7 @@ pub const MAX_OPEN_TIMEOUT: Duration = Duration::from_secs(120);
 /// PostgreSQL's port when none is named.
 pub const DEFAULT_PORT: u16 = 5432;
 /// Who the server sees connecting, unless the settings name another `application_name`.
-pub const APPLICATION_NAME: &str = "endue Desk";
+pub const APPLICATION_NAME: &str = "endue";
 
 /// libpq's TLS modes, less `allow` (plain first, TLS only when the server insists).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -218,7 +218,7 @@ mod tests {
                 "user=ada",
                 "database=app",
                 "client_encoding=UTF8",
-                "application_name=endue Desk",
+                "application_name=endue",
                 "TimeZone=UTC",
                 "default_transaction_read_only=on",
             ]

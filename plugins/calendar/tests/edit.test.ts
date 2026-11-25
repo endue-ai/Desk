@@ -57,7 +57,7 @@ describe("new events", () => {
     );
     const out = written(doc);
     expect(out).toContain("VERSION:2.0\r\n");
-    expect(out).toContain("PRODID:-//endue//Desk Calendar 0.1//EN\r\n");
+    expect(out).toContain("PRODID:-//endue//Calendar 0.1//EN\r\n");
     expect(out).toContain(`UID:${uid}\r\n`);
     expect(out).toContain("DTSTAMP:20261030T000000Z\r\n");
     expect(out).toContain("DTSTART;TZID=America/New_York:20261103T090000\r\n");

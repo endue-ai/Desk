@@ -192,14 +192,14 @@ describe("the command line shown", () => {
       PGUSER: "app",
       PGPASSWORD: "s3cret pass",
       PGSSLMODE: "require",
-      PGAPPNAME: "endue Desk",
+      PGAPPNAME: "endue",
     });
     expect(connectionEnv(SHOP, undefined)).not.toHaveProperty("PGPASSWORD");
     const line = commandLine("pg_dump", dump({ scope: "tables", tables: "public.my table" }), env);
     expect(line).not.toContain("s3cret");
     expect(line).not.toContain("PGPASSWORD");
     expect(line).toBe(
-      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGSSLMODE=require PGCONNECT_TIMEOUT=10 PGAPPNAME='endue Desk' LC_ALL=C " +
+      "PGHOST=db.example PGPORT=5432 PGDATABASE=shop PGUSER=app PGSSLMODE=require PGCONNECT_TIMEOUT=10 PGAPPNAME=endue LC_ALL=C " +
         "pg_dump --format=custom --verbose --no-password '--table=public.my table' --strict-names --file=./Backups/shop.dump",
     );
     expect(commandLine("/opt/pg bin/pg_dump", ["--file=./it's"], {})).toBe(

@@ -64,7 +64,7 @@ describe("desk.item", () => {
         limit: 1,
       },
     });
-    expect(view.empty).toBe("This item is not in Desk any more.");
+    expect(view.empty).toBe("This item is not in endue any more.");
   });
 
   it("with its params filled, the source answers exactly that fixture item, as one entry", async () => {

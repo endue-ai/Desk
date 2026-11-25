@@ -38,6 +38,7 @@ fn the_account_is_read_bare_with_the_token() {
     let seen = fake.seen_at("GET", "/api/v1/users/me");
     assert_eq!(seen[0].headers["authorization"], "Bearer token-1");
     assert!(!seen[0].headers.contains_key("origin"));
+    assert_eq!(seen[0].headers["user-agent"], "endue");
 }
 
 #[test]

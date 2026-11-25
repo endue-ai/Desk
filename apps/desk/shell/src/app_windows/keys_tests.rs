@@ -3,7 +3,7 @@ use cef::{KeyEvent, KeyEventType};
 use desk_compositor::input::keymap::{KeyEntry, Platform};
 
 use super::{Keys, like_of, report};
-use crate::web_host::key_codes::{native_key, virtual_key};
+use crate::web_host::key_codes::{modifier_bits, native_key, virtual_key};
 
 const SURFACE: &str = "main.endue-terminal";
 
@@ -29,7 +29,7 @@ fn event(kind: KeyEventType, code: &str, typed: char, chord: bool) -> KeyEvent {
     KeyEvent {
         size: std::mem::size_of::<cef::sys::cef_key_event_t>(),
         type_: kind,
-        modifiers: if chord { flag.0 } else { 0 },
+        modifiers: if chord { modifier_bits(flag) } else { 0 },
         windows_key_code: virtual_key(code),
         native_key_code: native_key(code, kind == KeyEventType::KEYUP),
         is_system_key: 0,
@@ -40,6 +40,19 @@ fn event(kind: KeyEventType, code: &str, typed: char, chord: bool) -> KeyEvent {
 }
 
 // One test: the reported keymap is the process's, which other tests would change under it.
+#[test]
+fn windows_matches_the_same_physical_key_across_repeat_and_release() {
+    let enter = (0x1c << 16) | 1;
+    let repeated = (0x1c << 16) | (1 << 30) | 2;
+    let released = enter | (1 << 30) | i32::MIN;
+    assert_eq!(super::windows_scan(enter), super::windows_scan(repeated));
+    assert_eq!(super::windows_scan(enter), super::windows_scan(released));
+    assert_ne!(
+        super::windows_scan(enter),
+        super::windows_scan(enter | (1 << 24))
+    );
+}
+
 #[test]
 fn a_chord_the_desk_binds_is_the_desks_in_an_app_window_with_its_character_and_release() {
     report(
@@ -136,4 +149,14 @@ fn a_key_that_types_nothing_is_named_by_its_code() {
     assert_eq!(up.key, "ArrowUp");
     let space = like_of(&event(KeyEventType::RAWKEYDOWN, "Space", ' ', true));
     assert_eq!(space.key, " ");
+}
+
+#[test]
+fn cef_modifier_masks_keep_each_bit() {
+    let combined = F(F::EVENTFLAG_SHIFT_DOWN.0 | F::EVENTFLAG_CONTROL_DOWN.0);
+    assert_eq!(
+        modifier_bits(combined),
+        modifier_bits(F::EVENTFLAG_SHIFT_DOWN) | modifier_bits(F::EVENTFLAG_CONTROL_DOWN)
+    );
+    assert_eq!(modifier_bits(F(!0)), u32::MAX);
 }

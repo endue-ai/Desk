@@ -10,7 +10,7 @@ use serde_json::Value;
 use ureq::http;
 use ureq::tls::{RootCerts, TlsConfig};
 
-use crate::http::{Endpoint, Response};
+use crate::http::{Endpoint, Response, USER_AGENT};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long the brain may take to start answering; a turn's stream then runs as long as it lasts.
@@ -24,7 +24,7 @@ fn agent() -> &'static ureq::Agent {
             .max_redirects(0)
             .timeout_connect(Some(CONNECT_TIMEOUT))
             .timeout_recv_response(Some(ANSWER_TIMEOUT))
-            .user_agent("endue-desk")
+            .user_agent(USER_AGENT)
             .tls_config(
                 TlsConfig::builder()
                     .root_certs(RootCerts::PlatformVerifier)

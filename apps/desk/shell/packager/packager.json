@@ -16,7 +16,7 @@
     "../icons/icon.ico"
   ],
   "macos": {
-    "minimumSystemVersion": "12.0",
+    "minimumSystemVersion": "13.0",
     "infoPlistPath": "macos/Info.plist"
   },
   "nsis": {

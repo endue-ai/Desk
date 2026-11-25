@@ -332,7 +332,7 @@ fn refused(id: &str) -> String {
         "Reminders"
     };
     format!(
-        "macOS does not let Desk read {}: allow it in System Settings, Privacy & Security, {what}, \
+        "macOS does not let endue read {}: allow it in System Settings, Privacy & Security, {what}, \
          then sync again",
         what.to_lowercase()
     )

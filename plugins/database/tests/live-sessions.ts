@@ -4,7 +4,11 @@
 // of its own: only this database's sessions are ended, and the test's own statements wait 30 s at
 // most behind a lock another run left.
 import type { DbPage } from "../../../packages/bridge/src/index";
+import { APPLICATION } from "../ui/engines/pg-session.js";
 import { serverSession } from "./core-bridge";
+
+/** Match the same default client name that this version opens on the test database. */
+export const appSessions = `application_name = '${APPLICATION.replaceAll("'", "''")}'`;
 
 type Own = Awaited<ReturnType<typeof serverSession>>;
 

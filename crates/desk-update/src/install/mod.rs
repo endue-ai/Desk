@@ -32,7 +32,7 @@ pub use relaunch::Relaunch;
 /// How the running desk is installed: what an update replaces and starts again.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Layout {
-    /// A macOS app bundle (`…/endue Desk.app`).
+    /// A macOS app bundle (`…/endue.app`).
     App { app: PathBuf },
     /// An AppImage (`$APPIMAGE`).
     AppImage { file: PathBuf },
@@ -211,15 +211,15 @@ impl Installer for PackageInstaller {
 fn io_error(what: &str, path: &Path, error: &std::io::Error) -> String {
     match error.kind() {
         std::io::ErrorKind::PermissionDenied => {
-            format!("Desk has no permission to {what} {}", path.display())
+            format!("endue has no permission to {what} {}", path.display())
         }
         std::io::ErrorKind::ReadOnlyFilesystem => {
             format!(
-                "Desk cannot {what} {}: it is on a read-only volume",
+                "endue cannot {what} {}: it is on a read-only volume",
                 path.display()
             )
         }
-        _ => format!("Desk could not {what} {}: {error}", path.display()),
+        _ => format!("endue could not {what} {}: {error}", path.display()),
     }
 }
 

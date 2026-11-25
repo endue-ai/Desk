@@ -265,7 +265,7 @@ impl WebHost {
     fn open(&self, surface: &str, view: &SharedView, hidden: bool, pace: u32) {
         let url = self.inner().sources.get(surface).cloned();
         let Some(url) = url else {
-            eprintln!("endue Desk: surface {surface} has no document to show");
+            eprintln!("endue: surface {surface} has no document to show");
             return;
         };
         view.lock().restart();
