@@ -9531,7 +9531,7 @@ pub enum ApprovalAnswer {
 #[serde(deny_unknown_fields)]
 pub struct PermApproveResult {}
 
-/// Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice.
+/// Undo the exact reversible change named by a completion receipt. The desk calls this from its Undo notice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermUndoApprovalRequest {
@@ -9540,7 +9540,7 @@ pub struct PermUndoApprovalRequest {
     pub params: PermUndoApprovalParams,
 }
 
-/// The completed write to undo, as named by its approval receipt.
+/// The completed change to undo, as named by its receipt.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermUndoApprovalParams {
@@ -9549,10 +9549,10 @@ pub struct PermUndoApprovalParams {
     pub scope: PermManagePermission,
 }
 
-/// An empty result once the retained version was restored.
+/// An empty result once the change was undone.
 pub type PermUndoApprovalResult = serde_json::Map<String, serde_json::Value>;
 
-/// An approved call ran: what came of it. Sent to callers that hold perm:manage.
+/// An approved call ran or a granted reversible change completed. Sent to callers that hold perm:manage.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermApprovalDoneEvent {
@@ -9560,7 +9560,7 @@ pub struct PermApprovalDoneEvent {
     pub data: PermApprovalDoneData,
 }
 
-/// Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo.
+/// Payload of perm.approval.done. Each reversible change has a unique completion id for Undo.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermApprovalDoneData {
@@ -9576,9 +9576,27 @@ pub struct PermApprovalDoneData {
     pub bytes_written: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<BridgeError>,
-    /// True when perm.undoApproval can restore the file version kept by this write.
+    /// True when perm.undoApproval can undo this change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undoable: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change: Option<ApprovalChange>,
+    /// The affected path for a file change. Memory notices carry no fact text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+}
+
+/// The single change that Undo can reverse.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalChange {
+    #[serde(rename = "file-saved")]
+    FileSaved,
+    #[serde(rename = "file-created")]
+    FileCreated,
+    #[serde(rename = "fact-remembered")]
+    FactRemembered,
+    #[serde(rename = "fact-edited")]
+    FactEdited,
 }
 
 /// What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait.
