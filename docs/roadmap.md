@@ -1,8 +1,8 @@
-# endue Desk roadmap
+# endue roadmap
 
 2026-11-05 · updated 2026-11-14 · Team endue
 
-This is the English edition of `docs/ko/desk-roadmap.md`, the source of truth for *why* Desk exists and
+This is the English edition of `docs/ko/desk-roadmap.md`, the source of truth for *why* endue exists and
 *where* it goes. The structure is in `docs/architecture.md`, decisions that are hard to reverse in
 `docs/adr/` (this direction is ADR 0093, its order since 2026-11-14 ADR 0205). When a milestone ends or the
 direction changes, both files change.
@@ -16,7 +16,7 @@ needs a compositor. What changes:
 
 - **Any window pops out** into an OS window of its own, beside the OS's apps, and docks back; endue
   manages it in or out with one identity (#235).
-- **The hub** keeps running with no window (#237). Eris opens in Desk (ADR 0280).
+- **The hub** keeps running with no window (#237). Eris opens in endue (ADR 0280).
 - **The compositor reaches an OS's quality by structure**, under a motion gate that judges rendered
   pixels while windows move (#247 to #252).
 - **The end state**: on Linux endue is the session's Wayland compositor and places every app's
@@ -34,9 +34,9 @@ Then the app that makes apps (M3), workspaces (M4), every OS (M5), and endue as 
 
 ## Why: the builder's garage
 
-Desk takes its inspiration from the garage workshop in the film *Iron Man*. Five things are in that garage.
+endue takes its inspiration from the garage workshop in the film *Iron Man*. Five things are in that garage.
 
-| In the garage | What it means | In Desk |
+| In the garage | What it means | In endue |
 | --- | --- | --- |
 | A keyboard shaped like an arc: FILE MANAGEMENT and PROGRAMMING groups, NEW · OPEN · SAVE · REVERT, SIN · COS · TAN, all where one hand reaches | A tool is cut to one person's hands and work. Not a standard keyboard, *my* keyboard | No fixed screens. The person decides views, layout, keys and the design system (G4 · G7) |
 | A hologram over the table: the suit, an engine, a car in the air, turned and taken apart by hand | What is being built is in front of you and can be touched. Data has a shape | Organise data once and draw it in any shape. Views are the product (G4 · G6) |
@@ -47,11 +47,11 @@ Desk takes its inspiration from the garage workshop in the film *Iron Man*. Five
 Iron Man is a trademark of Marvel. It is named here only as the source of the inspiration; this project has no
 affiliation with or endorsement from Marvel, and no image from the film is in this repository.
 
-In one sentence: **Desk is the garage a builder opens every day. Eris runs the garage, agents are the
+In one sentence: **endue is the garage a builder opens every day. Eris runs the garage, agents are the
 hands, and everything shows in the view the builder wants.**
 
-Desk's role is the helper's. It sets up a stable environment, leaves the builder free to shape it, and
-keeps the quality of what they make at its best, without wavering. Desk does not decide how work is done.
+endue's role is the helper's. It sets up a stable environment, leaves the builder free to shape it, and
+keeps the quality of what they make at its best, without wavering. endue does not decide how work is done.
 The builder does.
 
 ### Five principles
@@ -74,7 +74,7 @@ The builder does.
 | # | Goal | Today (2026-11-05, `main` 49a1d008) | Largest gap | Milestone |
 | --- | --- | --- | --- | --- |
 | G1 | An app builders use daily | Nine file viewers, git, terminal, docker, database and explorer are solid. Zero releases; sign-in, folder picking and connectors in the first run are stubs | No data carries a day (zero connectors). No installable build | M1 |
-| G2 | Agent-native; Eris orchestrates | The agentic loop is arriving in the core (PR #457, ADR 0089). Commands become tools (ADR 0088). Eight local CLIs as a plugin (ADR 0084); other apps come in over MCP (ADR 0086) | Eris has no way to *delegate* to a local agent (local-agents flags 0 `agent` commands). Desk is an MCP server, not a client | M2 · M4 |
+| G2 | Agent-native; Eris orchestrates | The agentic loop is arriving in the core (PR #457, ADR 0089). Commands become tools (ADR 0088). Eight local CLIs as a plugin (ADR 0084); other apps come in over MCP (ADR 0086) | Eris has no way to *delegate* to a local agent (local-agents flags 0 `agent` commands). endue is an MCP server, not a client | M2 · M4 |
 | G3 | Eris's own local memory | None. A 200-line transcript in `brain.json`, 50 messages in a frame, 30 searchable exchanges | No memory model, storage, recall or consent anywhere in specs, ADRs or requirements | M2 |
 | G4 | Views people make and install | Three view languages (shell panes, ADR 0032 item views, ADR 0087 universal views). Make from a sentence (`desk.propose`, ADR 0073). A theme market (ADR 0060) | No builder UI. No view or plugin market (no `plugin.install`). Propose targets item views only | M3 |
 | G5 | The garage's meaning | This document and ADR 0093 | — | — |
@@ -146,7 +146,7 @@ order.
 
 | Milestone | Name | What becomes true | Window |
 | --- | --- | --- | --- |
-| M1 | Daily | The team opens Desk every day, the first stable build arrives through the updater, and Eris answers offline with a local brain | 2026-11 |
+| M1 | Daily | The team opens endue every day, the first stable build arrives through the updater, and Eris answers offline with a local brain | 2026-11 |
 | M2 | Eris remembers | Eris has her own memory, carries on across restarts, hands work to local agents and brings the result back | 2026-12 |
 | M3 | Views you own | Any source becomes the view you want from one sentence; views, packs and design systems come from the market; every edge of the shell is a plugin | 2027-01 |
 | M4 | Control center | Every agent (local CLI, endue, MCP, Eris) is in one registry, and one screen shows state, approvals and results | 2027-02 |
@@ -177,7 +177,7 @@ Work
 
 What becomes true, and how it is measured
 
-- Every team member opens Desk on every working day (dogfooding days, time open).
+- Every team member opens endue on every working day (dogfooding days, time open).
 - Stable 0.1.x installs on three OSes and updates arrive. Startup time and idle memory budgets gate PRs.
 - With the network off, Eris still answers.
 
@@ -214,7 +214,7 @@ What becomes true, and how it is measured
 
 ### M3 Views you own
 
-G4 · G7. Desk's core value. Once data is organised, the shape is the person's to make, or an LLM makes it
+G4 · G7. endue's core value. Once data is organised, the shape is the person's to make, or an LLM makes it
 for them.
 
 Work
@@ -261,7 +261,7 @@ Work
 3. **The control center view.** A fleet board on the universal `agent` shape: who is running, who waits
    for approval, what finished, what the result is. Cost and time. One approval inbox. This screen is a
    view file too, so it can be changed.
-4. **Desk as an MCP client.** External MCP servers attach as tools: in-process under grants first, VM
+4. **endue as an MCP client.** External MCP servers attach as tools: in-process under grants first, VM
    isolation (ADR 0002) in M5.
 5. **Spaces (AG-06).** Two or more agents, a shared surface and a shared store. The first run's "a space
    to work together" scene becomes real.
@@ -287,7 +287,7 @@ G3's sync and G8's depth. Out of scope now, but M2's file layout assumes this st
 - **Docs.** `desk-structure.md`'s decision table reaches the latest ADR; `desk-requirements.md`'s
   *today* column moves at every milestone. ADR numbers are reserved in this document's open-work table
   when a PR opens.
-- **Dogfooding.** The team builds Desk with Desk. Every week, one line of "what Desk got in the way of
+- **Dogfooding.** The team builds endue with endue. Every week, one line of "what endue got in the way of
   today" becomes an issue.
 
 ### What we do not do
@@ -328,7 +328,7 @@ Twelve features ranked by the moment a person feels them. Four lanes run at once
 
 ```mermaid
 mindmap
-  root((endue Desk — the builder's garage))
+  root((endue — the builder's garage))
     Why
       The builder in the middle
       Secretary rule — remember · propose · ask
@@ -363,7 +363,7 @@ mindmap
       M4 Control center
         specs agent v0 · a run is an item
         Fleet board — state · approvals · results
-        Desk as an MCP client
+        endue as an MCP client
         Spaces
     G7 Yours
       Today — 6-layer themes · studio · design systems PR 465

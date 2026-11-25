@@ -73,7 +73,7 @@ export function isResults(/** @type {any} */ value) {
 const capital = (/** @type {string} */ word) => word.charAt(0).toUpperCase() + word.slice(1);
 
 /**
- * An item as a result: Open in Desk (desk.item through desk.views.open), then Open the original
+ * An item as a result: Open in endue (desk.item through desk.views.open), then Open the original
  * when it has a deepLink.
  * @param {import("@endue-ai/bridge").Item} item
  * @returns {PaletteResult}
@@ -84,7 +84,7 @@ export function itemResult(item) {
   const actions = [
     {
       command: "desk.views.open",
-      title: "Open in Desk",
+      title: "Open in endue",
       args: { id: "desk.item", params: { connector, instance, id: item.id } },
     },
   ];

@@ -1,8 +1,8 @@
-# endue Desk 데이터베이스 플러그인 요구사항
+# endue 데이터베이스 플러그인 요구사항
 
 2026-10-31 · Team endue · 2026-11-23 갱신(PostgreSQL 클라이언트 계획 #438 의 D 단계)
 
-> Desk 의 기본 플러그인 `endue.database`(`plugins/database`) 가 PostgreSQL · MySQL / MariaDB · SQLite 의
+> endue의 기본 플러그인 `endue.database`(`plugins/database`) 가 PostgreSQL · MySQL / MariaDB · SQLite 의
 > 클라이언트를 맡으려면 무엇이 있어야 하는지를 번호를 붙여 적은 문서입니다. `desk-requirements.md` 의 BASE 표에서 한
 > 줄(`database`)을 차지하고, 이 문서가 그 줄을 펼칩니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 코드와
 > 어긋나면 이 문서를 고치고, 되돌리기 어려운 갈림길은 ADR 로 남깁니다(ADR 0038). *현재* 열은 2026-11-23 의 `main`
@@ -10,7 +10,7 @@
 
 좋은 DB 클라이언트의 값어치는 네 가지입니다. 연결이 한 곳에 모여 있고, 스키마를 펼쳐 보며 SQL 을 쓰고, 결과가
 **정확**하고(NULL 과 빈 문자열과 문자열 'NULL' 이 다르게 보이고, 숫자가 반올림되지 않고), 운영 DB 에서 실수하기 어렵습니다.
-Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔레트 · Eris · 에이전트가 같은 길로 일하고, 플러그인은 매니페스트가
+endue에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔레트 · Eris · 에이전트가 같은 길로 일하고, 플러그인은 매니페스트가
 선언한 권한(ADR 0260) 밖으로 한 발도 나가지 못합니다. PostgreSQL 은 데스크 코어의 세션(`db.*`, ADR 0281)으로 돌아 설치할
 프로그램이 없고, MySQL / MariaDB 와 SQLite 는 각자의 공식 클라이언트를 셸 없이 돌립니다(ADR 0038). 설치 때 받는 것은
 프로그램 다섯(`mysql` · `mariadb` · `sqlite3` · `pg_dump` · `pg_restore`) · `~/Downloads` 쓰기 · 플러그인 폴더 읽기 · 쓰기 ·
@@ -28,10 +28,10 @@ Desk 에서는 둘이 더 붙습니다. 모든 동작이 커맨드라 키 · 팔
 
 ## 빌린 개념
 
-데스크톱 DB 클라이언트들과 psql 이 굳혀 온 관용을 빌립니다. 연결 트리 · 콘솔 · 결과 탭은 그대로, 버퍼와 커맨드는 Desk 의
+데스크톱 DB 클라이언트들과 psql 이 굳혀 온 관용을 빌립니다. 연결 트리 · 콘솔 · 결과 탭은 그대로, 버퍼와 커맨드는 endue의
 것으로 바꿔 답니다.
 
-| 관용 | Desk `endue.database` | 요구사항 |
+| 관용 | endue `endue.database` | 요구사항 |
 | --- | --- | --- |
 | 연결 목록 · 그룹 · 색 | 탐색기의 연결 줄, 환경 태그(development · staging · production)와 색, production 은 표면 위 띠 | DB-01 · NF-05 |
 | 연결 문자열 붙여 넣기 · 연결 옮기기 | URI 로 새 연결(`postgresql://` `mysql://` `mariadb://` `sqlite:`), 비밀번호 없는 연결 파일과 `pg_service.conf` 가져오기 | DB-02 · PG-15 |
@@ -219,7 +219,7 @@ ID 는 에픽의 것이고 `#` 은 그 Task 이슈다. 영역별 설명은 `plug
 | PG-108 · #503 | 문자열을 카탈로그 하나에, 로캘 준비 | 있음 (`ui/strings/`, 복수형 · 수 · 날짜는 `Intl`, 서버의 말은 그대로 표시해 구분; ADR 0366, NF-06) | D |
 | PG-109 · #504 | 팔레트에서 부른 Copy as 도 클립보드에 닿는다 | 있음 (ADR 0318, D1) | D |
 
-## 의존: Desk 쪽에서 해야 하는 것
+## 의존: endue 쪽에서 해야 하는 것
 
 A~C 단계의 플러그인은 공개 API 만 썼다. D 단계는 코어 · 스펙 · 런타임도 바꿨다(PG-01b, PG-03, PG-10, PG-23 …).
 

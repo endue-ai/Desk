@@ -89,7 +89,7 @@ impl PlatformError {
     pub(crate) fn unexpected(what: &str, why: impl fmt::Display) -> Self {
         Self::new(
             ErrorKind::Failed,
-            format!("endue AI's {what} is not what Desk expects: {why}"),
+            format!("Unexpected {what} from endue AI: {why}"),
         )
     }
 }

@@ -9,16 +9,22 @@ HERE = Path(__file__).resolve().parent
 TARGET = "x86_64-unknown-linux-gnu"
 LICENSE_NAME = re.compile(r"^(?:licen[cs]e|copyright|copying|unlicense|notice)s?(?:$|[-_.])", re.I)
 
-# These monorepos publish some members without their common root license. The revision comes
-# from each released crate's .cargo_vcs_info.json. Boa offers the Unlicense as one of two choices.
+# Some crates omit their repository license. The revision comes from .cargo_vcs_info.json.
+# Use the Unlicense option for Boa and the Apache-2.0 option for delegate.
 SIBLING = {
     "805a0f15320e8836cf2b9f001b53d884bf866c89": "wasmtime",
     "0b657fa991c9333908e8c51e8a582d602aac5391": "jsonschema",
 }
+# The locked russh revisions use the same Apache-2.0 text as the project LICENSE.
+RUSSH_APACHE = HERE.parents[1] / "LICENSE"
 UPSTREAM = {
-    "337a3668a0dc86dd401ea20906e782249a64a228": ("boa-Unlicense.txt", "boa-dev/boa", "LICENSE-UNLICENSE"),
-    "ad8739f5e0b51d20faf7a2cce98afa5c40121438": ("boa-Unlicense.txt", "boa-dev/boa", "LICENSE-UNLICENSE"),
-    "d74c030d9dc4f3cae02146d1f497ff62726ef09a": ("simd-MIT.txt", "Nugine/simd", "LICENSE"),
+    "337a3668a0dc86dd401ea20906e782249a64a228": (HERE / "boa-Unlicense.txt", "boa-dev/boa", "LICENSE-UNLICENSE"),
+    "ad8739f5e0b51d20faf7a2cce98afa5c40121438": (HERE / "boa-Unlicense.txt", "boa-dev/boa", "LICENSE-UNLICENSE"),
+    "d74c030d9dc4f3cae02146d1f497ff62726ef09a": (HERE / "simd-MIT.txt", "Nugine/simd", "LICENSE"),
+    "b129d4cbf4cc499eff7743365dcb0fe5d8d2e820": (HERE / "delegate-Apache-2.0.txt", "kobzol/rust-delegate", "LICENSE-APACHE"),
+    "4977b1afba8802137ac93f3e2c8bf916c35f437c": (RUSSH_APACHE, "warp-tech/russh", "LICENSE.txt"),
+    "907c732562c5732aad6c140dba958eafddc41ba0": (RUSSH_APACHE, "warp-tech/russh", "LICENSE.txt"),
+    "3d09c20c52a542ffa327723d3a44cb1edd9b0ca4": (RUSSH_APACHE, "warp-tech/russh", "LICENSE-2.0.txt"),
 }
 
 
@@ -52,8 +58,8 @@ def crate_licenses(package, roots):
         if revision(donor) == rev:
             result["upstream LICENSE"] = (donor / "LICENSE").read_bytes()
     elif rev in UPSTREAM:
-        filename, repo, original = UPSTREAM[rev]
-        result[f"https://github.com/{repo}/blob/{rev}/{original}"] = (HERE / filename).read_bytes()
+        local, repo, original = UPSTREAM[rev]
+        result[f"https://github.com/{repo}/blob/{rev}/{original}"] = local.read_bytes()
     if result:
         return result
     raise ValueError(f"missing redistribution notice for {package['name']} {package['version']}")

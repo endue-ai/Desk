@@ -159,7 +159,7 @@ export function settle(entry, connectors, env, ago) {
   if (entry.refused) {
     model.state = "denied";
     model.scope = entry.refused;
-    model.message = "Desk may not read these items yet.";
+    model.message = "endue may not read these items yet.";
   } else if (entry.failed) {
     model.state = "error";
     model.message = entry.failed;

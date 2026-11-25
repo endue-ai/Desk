@@ -60,7 +60,10 @@ pub struct InputRouter {
     pub keymap: Keymap,
     pub(super) settings: PointerSettings,
     pub(super) pointer: Pointer,
+    /// Live physical modifiers for pointer input and drag operations.
     pub(super) mods: Modifiers,
+    /// Modifiers delivered with the keyboard events, in order across a focus handoff.
+    pub(super) key_mods: Modifiers,
     pub(super) focus: Option<String>,
     /// Where the page's own focus rests, and the window manager's surface in use (`follow.rs`).
     pub(super) page: PageFocus,
@@ -90,6 +93,7 @@ impl InputRouter {
             settings,
             pointer: Pointer::default(),
             mods: Modifiers::default(),
+            key_mods: Modifiers::default(),
             focus: None,
             page: PageFocus::default(),
             in_use: None,
@@ -121,6 +125,9 @@ impl InputRouter {
         let before = (self.focus.clone(), self.broker.overlay());
         if self.broker.active() {
             out.extend(self.let_go(now));
+        }
+        if let Input::Modifiers(mods) = input {
+            self.mods = *mods;
         }
         if self.keep(input) {
             return out;
@@ -186,7 +193,7 @@ impl InputRouter {
     pub(super) fn keyboard(&mut self, input: &Input, now: Instant) -> Vec<Out> {
         match input {
             Input::Modifiers(mods) => {
-                self.mods = *mods;
+                self.key_mods = *mods;
                 Vec::new()
             }
             Input::Key(key) => self.key(key, now),

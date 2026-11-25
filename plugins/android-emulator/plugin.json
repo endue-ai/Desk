@@ -1,0 +1,44 @@
+{
+  "id": "endue.android-emulator",
+  "name": "Android Emulator",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Use a local Android virtual device on the desk. Test repeatable device conditions, install APKs, read logcat and restore snapshots.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": [
+        "adb",
+        "emulator",
+        "Library/Android/sdk/platform-tools/adb",
+        "Library/Android/sdk/emulator/emulator",
+        "Android/Sdk/platform-tools/adb",
+        "Android/Sdk/emulator/emulator",
+        "AppData/Local/Android/Sdk/platform-tools/adb",
+        "AppData/Local/Android/Sdk/emulator/emulator"
+      ]
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Android Emulator", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.android-emulator.open",
+        "title": "Android Emulator: Open a virtual device",
+        "keywords": ["android", "emulator", "avd", "adb", "logcat", "안드로이드", "에뮬레이터"],
+        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.android-emulator" } }
+      }
+    ],
+    "settings": {
+      "endue.android-emulator.sdk": {
+        "kind": "string",
+        "default": "",
+        "description": "Absolute Android SDK directory. When empty, use PATH and the standard Android Studio SDK locations."
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { explain, type Facts } from "../describe/describe";
 const world = (keys: Facts["keys"]): Facts => ({
   platform: "mac",
   commands: [
-    { id: "desk.palette.open", title: "Search Desk", provider: "desk.palette" },
+    { id: "desk.palette.open", title: "Search endue", provider: "desk.palette" },
     { id: "desk.files.save", title: "Save the file", provider: "desk" },
     { id: "example.notes.save-all", title: "Save every note", provider: "example.notes" },
   ],

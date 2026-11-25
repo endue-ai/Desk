@@ -161,5 +161,5 @@ test("the restore form lists the archive's entries, restores the chosen ones and
         "~/.endue/database/restore/c-warehouse.list"
       ],
   );
-  expect(written?.split("\n")[0]).toBe("; Chosen in endue Desk: 5 of 9 entries");
+  expect(written?.split("\n")[0]).toBe("; Chosen in endue: 5 of 9 entries");
 });

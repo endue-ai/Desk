@@ -1,4 +1,4 @@
-# endue Desk 디자인 시스템 요구사항
+# endue 디자인 시스템 요구사항
 
 2026-11-05 · Team endue
 

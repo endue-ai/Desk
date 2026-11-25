@@ -53,7 +53,7 @@ function version(value: unknown): Problem[] {
     return [
       {
         path: ["version"],
-        message: `version ${value} is newer than this Desk reads (${FILE_VERSION}); update Desk`,
+        message: `version ${value} is newer than endue supports (${FILE_VERSION}); update endue`,
       },
     ];
   return [];

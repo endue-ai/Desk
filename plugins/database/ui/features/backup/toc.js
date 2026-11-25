@@ -71,7 +71,7 @@ export function parseToc(/** @type {string} */ text) {
 export function listFile(/** @type {Entry[]} */ entries, /** @type {Iterable<number>} */ chosen) {
   const wanted = new Set(chosen);
   const lines = entries.filter((e) => wanted.has(e.id)).map((e) => e.line);
-  return `; Chosen in endue Desk: ${lines.length} of ${entries.length} entries\n${lines.join("\n")}\n`;
+  return `; Chosen in endue: ${lines.length} of ${entries.length} entries\n${lines.join("\n")}\n`;
 }
 
 /** Whether pg_restore said the file is a plain SQL dump, which it does not read. */

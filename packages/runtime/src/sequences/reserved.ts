@@ -4,7 +4,7 @@
  * anywhere is reported; it stays bound, for whoever turned the system's shortcut off. A cancel key
  * after a prefix can never be pressed, so that sequence is not bound. Chords are named as they are
  * canonical on the platform: Mod+Tab is reserved on macOS (⌘Tab switches apps) and free elsewhere
- * (Ctrl+Tab reaches Desk).
+ * (Ctrl+Tab reaches endue).
  */
 import type { Platform } from "./chord";
 import { CANCEL_CHORDS } from "./parse";
@@ -14,15 +14,15 @@ export interface Reserved {
   chord: string;
   /** Who holds it. */
   by: "macOS" | "Windows and Linux" | "the desk";
-  /** What it does there, as a clause: "quits Desk". */
+  /** What it does there, as a clause: "quits endue". */
   does: string;
   /** The binding can never run (a cancel key after a prefix), so it is not bound. */
   never?: true;
 }
 
 const MAC: Array<[string, string]> = [
-  ["Meta+Q", "quits Desk"],
-  ["Meta+H", "hides Desk"],
+  ["Meta+Q", "quits endue"],
+  ["Meta+H", "hides endue"],
   ["Meta+Alt+H", "hides the other apps"],
   ["Meta+M", "minimizes the window"],
   ["Meta+Tab", "switches apps"],

@@ -12,6 +12,8 @@ use serde_json::Value;
 use crate::Platform;
 use crate::error::{ErrorKind, PlatformError, Result};
 
+pub(crate) const USER_AGENT: &str = "endue";
+
 /// A path segment or query value, percent-encoded but for RFC 3986's unreserved characters.
 pub(crate) fn encode(text: &str) -> String {
     text.bytes()
@@ -139,7 +141,7 @@ impl Platform {
         let mut headers = BTreeMap::from([
             ("accept".to_owned(), "application/json".to_owned()),
             ("authorization".to_owned(), format!("Bearer {token}")),
-            ("user-agent".to_owned(), "endue-desk".to_owned()),
+            ("user-agent".to_owned(), USER_AGENT.to_owned()),
         ]);
         if body.is_some() {
             headers.insert("content-type".to_owned(), "application/json".to_owned());

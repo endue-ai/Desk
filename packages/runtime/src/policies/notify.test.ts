@@ -23,15 +23,15 @@ describe("desk.notify's status line", () => {
   it("keeps the base line as the status while a notice shows", () => {
     const line = statusLine();
     const policy = installNotify(context(), line);
-    policy.setBase("desk ready · bridge: browser");
-    expect(policy.text()).toBe("desk ready · bridge: browser");
+    policy.setBase("endue ready · bridge: browser");
+    expect(policy.text()).toBe("endue ready · bridge: browser");
     policy.notify({
       caller: "desk",
       title: "No profile nope — init.yaml names it.",
       level: "warning",
     });
     expect(line.textContent).toBe("No profile nope — init.yaml names it.");
-    expect(policy.text()).toBe("desk ready · bridge: browser");
+    expect(policy.text()).toBe("endue ready · bridge: browser");
   });
 
   it("marks the line only while a notice has actions", () => {
