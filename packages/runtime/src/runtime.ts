@@ -318,7 +318,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     defineOpenPlugin({
       commands,
       bridge,
-      launch: (id, waitForReady) => host.launch(id, waitForReady),
+      launch: (id, waitForReady, beforeEnable) => host.launch(id, waitForReady, beforeEnable),
       focus: focusSurface,
       another: anotherWindow(host),
     });

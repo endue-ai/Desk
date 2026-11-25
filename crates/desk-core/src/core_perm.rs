@@ -92,7 +92,7 @@ impl Core {
         target: &Target<'_>,
     ) -> Result<(), BridgeError> {
         if agent_of(caller).is_some() {
-            return self.check_agent(caller, scope, target);
+            return self.check_agent(caller, scope, target, None, None);
         }
         if self.undeclared(caller, scope) {
             return Err(denied(Denied {

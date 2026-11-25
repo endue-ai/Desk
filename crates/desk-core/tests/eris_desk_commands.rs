@@ -148,6 +148,36 @@ fn eris_still_asks_before_opening_a_disabled_plugin() {
 }
 
 #[test]
+fn eris_opens_a_built_in_view_freely_and_a_custom_view_with_scope() {
+    let (core, deliveries) = setup("");
+    register(&core, "desk.views", "desk.views.open", false, false);
+    for (id, built_in) in [("example.built-in", true), ("example.custom", false)] {
+        let dir = home(id);
+        let manifest = json!({ "id": id, "version": "0.1.0", "kind": "policy",
+            "contributes": { "commands": [{ "id": format!("{id}.open"), "title": "Open",
+                "runs": { "command": "desk.views.open" } }] } });
+        fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
+        core.install_plugin(&dir, built_in);
+        set_enabled(&core, id, true);
+        let args = json!({ "plugin": id });
+        if built_in {
+            invoke(&core, ERIS, OPEN, args).unwrap();
+            assert_eq!(wait_for(&deliveries, "cmd.invoked").data()["id"], OPEN);
+        } else {
+            refuse_prompt(&core, &deliveries, ERIS, OPEN, args);
+        }
+    }
+}
+
+#[test]
+fn eris_still_asks_before_reading_from_an_mcp_server() {
+    let (core, deliveries) = setup("");
+    let id = "mcp.fixture.state";
+    register(&core, "mcp:fixture", id, true, false);
+    refuse_prompt(&core, &deliveries, ERIS, id, json!({}));
+}
+
+#[test]
 fn the_allowlist_still_caps_reads_and_opening_an_enabled_plugin() {
     let (core, deliveries) = setup(
         "agents:\n  eris:\n    allow:\n      - { permission: cmd:invoke, ids: [\"desk.allowed\"] }\n",

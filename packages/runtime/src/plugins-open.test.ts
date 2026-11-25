@@ -9,7 +9,6 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import fleet from "../../../plugins/fleet/plugin.json";
 import today from "../../../plugins/today/plugin.json";
-import type { CommandSpec } from "./commands";
 import { PolicyHub } from "./hub";
 import { defineOpenPlugin } from "./plugins-open";
 
@@ -86,8 +85,9 @@ async function setup(plugins: PluginInfo[], disabledAtLaunch = false, granted = 
   await hub.commands.settled();
   const open = (args: unknown) => hub.commands.run("desk.plugins.open", args);
   const definition = define.mock.calls.find(([id]) => id === "desk.plugins.open");
-  const openAsEris = (args: unknown) =>
-    (definition?.[1] as CommandSpec).run(args, { caller: "agent:eris" });
+  if (!definition) throw new Error("No definition for desk.plugins.open");
+  const [, command] = definition;
+  const openAsEris = (args: unknown) => command.run(args, { caller: "agent:eris" });
   return { open, openAsEris, opened, launched, focused, enabled, requests };
 }
 

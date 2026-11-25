@@ -105,12 +105,12 @@ export class PluginHost {
     phase("plugin list", start);
   }
 
-  /** Launch an installed UI plugin, including one put away or disabled by the person. */
-  async launch(id: string, waitForReady = false): Promise<void> {
+  async launch(id: string, waitForReady = false, mayEnable?: () => Promise<void>): Promise<void> {
     let info = (await this.#list()).find((p) => p.id === id);
     if (info?.status !== "ready" || !this.#mounts(info.manifest))
       throw new Error(`No launchable plugin ${id}`);
     if (!info.enabled) {
+      await mayEnable?.();
       ({ plugin: info } = await this.#deps.bridge.call("plugin.setEnabled", {
         plugin: id,
         enabled: true,
