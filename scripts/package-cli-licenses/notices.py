@@ -13,6 +13,7 @@ LICENSE_NAME = re.compile(r"^(?:licen[cs]e|copyright|copying|unlicense|notice)s?
 # Use the Unlicense option for Boa and the Apache-2.0 option for delegate.
 SIBLING = {
     "805a0f15320e8836cf2b9f001b53d884bf866c89": "wasmtime",
+    "886e27a66092807b6dfa3b1159e49c3aea37eb87": "wasmtime",
     "0b657fa991c9333908e8c51e8a582d602aac5391": "jsonschema",
 }
 # The locked russh revisions use the same Apache-2.0 text as the project LICENSE.
@@ -77,13 +78,19 @@ def notices():
     index = ["Third-party notices for the endue CLI", "", "Original license texts are in licenses/.", ""]
     files = {}
     for package in sorted(selected, key=lambda p: (p["name"], p["version"])):
-        if package["source"] is None:
-            continue  # Workspace code is covered by the packaged project LICENSE.
-        if package["source"] != "registry+https://github.com/rust-lang/crates.io-index":
-            raise ValueError(f"review the distribution terms for {package['name']}")
         name, version = package["name"], package["version"]
+        if package["source"] is None:
+            root = Path(metadata["workspace_root"]).resolve()
+            crate = Path(package["manifest_path"]).resolve().parent
+            if not crate.is_relative_to(root / "crates" / "compat"):
+                continue  # First-party workspace code is covered by the packaged project LICENSE.
+            source = f"{crate.relative_to(root).as_posix()} in the endue source distribution"
+        elif package["source"] == "registry+https://github.com/rust-lang/crates.io-index":
+            source = f"https://crates.io/crates/{name}/{version}"
+        else:
+            raise ValueError(f"review the distribution terms for {name}")
         index.extend([f"{name} {version}  {package['license'] or 'see license file'}",
-                      f"Source: https://crates.io/crates/{name}/{version}"])
+                      f"Source: {source}"])
         for source, data in crate_licenses(package, roots).items():
             dest = "licenses/" + hashlib.sha256(data).hexdigest() + ".txt"
             files[dest] = data
