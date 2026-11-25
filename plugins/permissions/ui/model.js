@@ -14,7 +14,7 @@ import { broadWarning, describeCaller, describePermission, durationLabel } from 
  * @typedef {{ scope: string, folder: string, label: string }} ParentOffer
  * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, scope: string,
  *   reason: string, duration: string, warning: string | null, parent: ParentOffer | null,
- *   waiting: number }} PromptModel
+ *   preferPersistent: boolean, waiting: number }} PromptModel
  */
 
 const count = (/** @type {number} */ n, /** @type {string} */ noun) =>
@@ -90,6 +90,7 @@ export function promptModel(prompt, plugins, waiting) {
     duration: durationLabel(prompt.duration),
     warning: broadWarning(prompt.permission),
     parent: parentOffer(prompt),
+    preferPersistent: plugins.some((plugin) => plugin.id === prompt.caller && plugin.builtIn),
     waiting,
   };
 }

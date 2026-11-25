@@ -46,8 +46,13 @@ export function createView(doc, actions, options = {}) {
   const refusedList = byId("refused-list");
   const dialog = byId("prompt");
   const status = byId("status");
-  const refuse = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=refuse]"));
-  const parent = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=parent]"));
+  const choice = (/** @type {string} */ answer) =>
+    /** @type {HTMLButtonElement} */ (dialog.querySelector(`[data-answer=${answer}]`));
+  const refuse = choice("refuse");
+  const parent = choice("parent");
+  const always = choice("always");
+  const session = choice("session");
+  const once = choice("once");
   const card = byId("approval");
   const pick = (/** @type {string} */ selector) =>
     /** @type {HTMLElement} */ (card.querySelector(selector));
@@ -263,6 +268,14 @@ export function createView(doc, actions, options = {}) {
         model.reason ? el("q", {}, model.reason) : "none given",
       );
       byId("prompt-asked").textContent = `Asked for: ${model.duration}`;
+      byId("prompt-revoke").hidden = !model.preferPersistent;
+      if (always.classList.contains("desk-btn-primary") !== model.preferPersistent) {
+        const focused = doc.activeElement;
+        always.classList.toggle("desk-btn-primary", model.preferPersistent);
+        if (model.preferPersistent) once.before(always, session);
+        else always.before(once, session);
+        if (shown === model.promptId && focused instanceof HTMLButtonElement) focused.focus();
+      }
       // The parent folder, when the core offers it, is a second way to allow.
       parent.hidden = !model.parent;
       parent.textContent = model.parent?.label ?? "";

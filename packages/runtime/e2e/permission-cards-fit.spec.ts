@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 
 // The permission prompter's page (plugins/permissions) covers the desk as an overlay (#161, #162):
-// its question, its approval card and its list are whole at every size the app window takes, from
-// 1024x500 up: each panel inside the viewport, its buttons too, however long its text. The page's own
-// HTML and stylesheets, as the desk serves them, without its script.
+// its question, its approval card and its list fit even at 360px wide. Every panel and button
+// stays inside the viewport with long content. This uses the page's own HTML and stylesheets.
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const css = [
   "../../ui/src/tokens.css",
@@ -19,6 +18,7 @@ const body = read("../../../plugins/permissions/ui/index.html")
   .replace(/<\/body>[\s\S]*$/, "");
 
 const SIZES = [
+  { width: 360, height: 640 },
   { width: 1024, height: 500 },
   { width: 1280, height: 800 },
   { width: 1500, height: 950 },

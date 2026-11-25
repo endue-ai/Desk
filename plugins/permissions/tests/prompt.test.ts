@@ -42,8 +42,26 @@ describe("the prompt", () => {
       duration: "This session",
       warning: null,
       parent: null,
+      preferPersistent: false,
       waiting: 0,
     });
+  });
+
+  it("presents a lasting grant as the main choice for built-ins", async () => {
+    const { app, view, params, settle } = await prompted(
+      core({
+        "plugin.list": () => ({
+          plugins: [{ ...plugin("example.notes", "Notes", "ui"), builtIn: true }],
+        }),
+      }),
+      ask("p1"),
+    );
+    expect(view.prompts.at(-1)).toMatchObject({ preferPersistent: true });
+    await app.answer("always");
+    await settle();
+    expect(params("perm.answer")).toEqual([
+      { promptId: "p1", granted: true, duration: "always", scope: MANAGE },
+    ]);
   });
 
   it("shows the reason, and says when none was given", async () => {
