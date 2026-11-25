@@ -45,6 +45,15 @@ describe("docs-i18n", () => {
     }
   });
 
+  it("documents the published standalone Linux CLI in all six READMEs", () => {
+    for (const path of ["README.md", ...LANGS.map((lang) => translationPath("README.md", lang))]) {
+      const guide = readFileSync(new URL("../" + path, import.meta.url), "utf8");
+      assert.ok(guide.includes("https://github.com/endue-ai/endue/releases/tag/v0.4.0"), path);
+      assert.ok(guide.includes("endue-cli_0.4.0_linux-x86_64.tar.gz"), path);
+      assert.ok(guide.includes("sha256sum -c SHA256SUMS-cli"), path);
+    }
+  });
+
   it("places translations under docs/i18n/<lang>/, without the docs/ prefix", () => {
     assert.equal(translationPath("README.md", "ja"), "docs/i18n/ja/README.md");
     assert.equal(
