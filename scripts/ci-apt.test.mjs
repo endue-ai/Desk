@@ -105,10 +105,27 @@ function configuredBefore(job, install) {
 
 test("the runtime e2e installs with configured APT while retaining commands, deadlines and gates", async () => {
   const { jobs } = await workflow("ci");
-  const runtime = jobs["runtime-e2e"];
+  const runtime = jobs["runtime-e2e-shard"];
+  assert.ok(runtime, "Chromium runs on independent Linux shards");
   configuredBefore(runtime, "playwright install --with-deps chromium");
   assert.equal(runtime["timeout-minutes"], 15);
-  assert.ok(runtime.steps.some((step) => step.run === "just test-e2e"));
+  assert.deepEqual(runtime.strategy.matrix.shard, [1, 2, 3, 4]);
+  assert.equal(runtime.strategy["fail-fast"], false);
+  const expression = (body) => `\${{ ${body} }}`;
+  const shard = expression("matrix.shard");
+  assert.ok(
+    runtime.steps.some((step) => step.run === `just test-e2e --shard=${shard}/4 --workers=1`),
+  );
+  const report = runtime.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+  assert.equal(report.if, "failure()");
+  assert.equal(report.with.name, `playwright-report-${shard}`);
+  const gate = jobs["runtime-e2e"];
+  assert.equal(gate.name, "runtime-e2e");
+  assert.equal(gate.if, "always()");
+  assert.equal(gate.needs, "runtime-e2e-shard");
+  const result = gate.steps.find((step) => step.env?.SHARD_RESULT);
+  assert.equal(result.env.SHARD_RESULT, expression("needs.runtime-e2e-shard.result"));
+  assert.equal(result.run, 'test "$SHARD_RESULT" = success');
   assert.deepEqual(jobs.ci.needs, [
     "changes",
     "check-linux",
@@ -119,6 +136,54 @@ test("the runtime e2e installs with configured APT while retaining commands, dea
     "red-on-base",
     "release-dry-run",
   ]);
+});
+
+test("the Linux unit tests have the Vulkan loader and software driver for offscreen rendering", async () => {
+  const { jobs } = await workflow("ci");
+  const job = jobs["linux-verification"];
+  configuredBefore(job, "mesa-vulkan-drivers");
+  const install = job.steps.find((step) => step.run?.includes("mesa-vulkan-drivers"));
+  for (const pkg of ["libasound2-dev", "libvulkan1", "mesa-vulkan-drivers"]) {
+    assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+  }
+  assert.ok(
+    job.steps.indexOf(install) < job.steps.findIndex((step) => step.run === "just test-unit"),
+  );
+});
+
+test("the Linux compositor can draw Hangul, Han and kana window titles", async () => {
+  const job = (await workflow("ci")).jobs["linux-verification"];
+  configuredBefore(job, "fonts-noto-cjk");
+  const installAt = job.steps.findIndex((step) =>
+    /\bapt-get install [^\n]*\bfonts-noto-cjk\b/u.test(step.run ?? ""),
+  );
+  const testsAt = job.steps.findIndex((step) => step.run === "just test-unit");
+  assert.ok(installAt >= 0 && installAt < testsAt);
+});
+
+test("the Linux shell builds install the native headers before checking or launching the app", async () => {
+  const ci = await workflow("ci");
+  const e2e = await workflow("e2e");
+  const headers = [
+    "cmake",
+    "ninja-build",
+    "libgtk-3-dev",
+    "libxdo-dev",
+    "libayatana-appindicator3-dev",
+    "libasound2-dev",
+  ];
+  for (const [job, recipe, condition, packages] of [
+    [ci.jobs["shell-build"], "just check-shell", "runner.os == 'Linux'", headers],
+    [e2e.jobs["app-e2e"], "just build-shell", "runner.os == 'Linux'", [...headers, "xvfb"]],
+    [e2e.jobs.perf, "just build-shell", undefined, [...headers, "xvfb"]],
+  ]) {
+    const apt = configuredBefore(job, "libgtk-3-dev");
+    assert.equal(apt.if, condition);
+    const install = job.steps.find((step) => step.run?.includes("libgtk-3-dev"));
+    assert.equal(install.if, condition);
+    for (const pkg of packages) assert.ok(install.run.split(/\s+/u).includes(pkg), pkg);
+    assert.ok(job.steps.indexOf(install) < job.steps.findIndex((step) => step.run === recipe));
+  }
 });
 
 test("app e2e configures APT and changes to the helper exercise the existing packaged-app gates", async () => {
