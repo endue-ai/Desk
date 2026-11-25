@@ -74,7 +74,7 @@ const PALETTE_COMMANDS: &[&str] = &[
 pub enum Role {
     /// The desk itself: the runtime and its plugin frames.
     Main,
-    /// Search Desk over every app (`?view=palette`).
+    /// Search endue over every app (`?view=palette`).
     Palette,
     /// The computer-use banner (ADR 0120): a plugin page without the bridge.
     Banner,

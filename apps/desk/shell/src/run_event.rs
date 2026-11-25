@@ -79,9 +79,7 @@ mod mac {
         let _ = PUMP.set(pump.clone());
         let app = NSApplication::sharedApplication(mtm);
         let Some(delegate) = app.delegate() else {
-            eprintln!(
-                "endue Desk: no application delegate; Finder's and the Dock's events are lost"
-            );
+            eprintln!("endue: no application delegate; Finder's and the Dock's events are lost");
             return;
         };
         let class: &AnyClass = AnyObject::class(delegate.as_ref());

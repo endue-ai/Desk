@@ -40,7 +40,7 @@ impl CompositorWindow {
         if rate == self.rate {
             return;
         }
-        eprintln!("endue Desk: the compositor draws {rate} frames a second, its display's");
+        eprintln!("endue: the compositor draws {rate} frames a second, its display's");
         self.rate = rate;
         self.host.set_display(rate);
         self.render_rate();

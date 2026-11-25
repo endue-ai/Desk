@@ -36,7 +36,7 @@ pub fn start(sink: Arc<dyn SurfaceSink>) {
         .spawn(move || run(&*sink, &wakes));
     match spawned {
         Ok(_) => *wake() = Some((Copies::default(), send)),
-        Err(why) => eprintln!("endue Desk: no wake-ups for the GPU's copies ({why})"),
+        Err(why) => eprintln!("endue: no wake-ups for the GPU's copies ({why})"),
     }
 }
 

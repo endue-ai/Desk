@@ -1,6 +1,6 @@
 # desk-shell
 
-The endue Desk app, `endue-desk`, on winit and CEF (ADR 0143, the Tauri shell's successor, #97): CEF
+The endue app, `endue-desk`, on winit and CEF (ADR 0143, the Tauri shell's successor, #97): CEF
 browsers, the desk's URL schemes and CEF's message pump, driven from winit's event loop when CEF asks
 (`OnScheduleMessagePumpWork`). The desk starts through `desk-boot`; pages reach it through
 `window.__deskNative`, the caller taken from the browser's window and the frame's URL (#43, #45).

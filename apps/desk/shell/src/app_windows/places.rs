@@ -130,7 +130,7 @@ pub fn keep(window: &str, os: &Window) {
         });
     if let Err(why) = saved {
         eprintln!(
-            "endue Desk: the app windows' places were not kept in {} ({why})",
+            "endue: the app windows' places were not kept in {} ({why})",
             path.display()
         );
     }

@@ -92,7 +92,7 @@ pub fn hand_off(
     #[cfg(target_os = "macos")]
     if let Err(ended) = macos::hand_off(window, paths, operation_mask(allowed), Box::new(ended)) {
         eprintln!(
-            "endue Desk: the OS drag of {} file(s) did not start",
+            "endue: the OS drag of {} file(s) did not start",
             paths.len()
         );
         ended(None);
@@ -101,7 +101,7 @@ pub fn hand_off(
     {
         let _ = (window, allowed);
         eprintln!(
-            "endue Desk: dragging {} file(s) out of the desk is not supported on this OS yet",
+            "endue: dragging {} file(s) out of the desk is not supported on this OS yet",
             paths.len()
         );
         ended(None);

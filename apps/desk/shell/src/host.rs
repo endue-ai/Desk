@@ -261,7 +261,7 @@ pub fn forward_events(events: std::sync::mpsc::Receiver<Delivery>, pages: Pages)
             }
         });
     if let Err(why) = spawned {
-        eprintln!("endue Desk: no thread for core events ({why})");
+        eprintln!("endue: no thread for core events ({why})");
     }
 }
 

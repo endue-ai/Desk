@@ -25,7 +25,7 @@ wrap_resource_request_handler! {
                 ReturnValue::CONTINUE
             } else {
                 if cfg!(debug_assertions) {
-                    eprintln!("endue Desk: refused a load of {url}");
+                    eprintln!("endue: refused a load of {url}");
                 }
                 ReturnValue::CANCEL
             }

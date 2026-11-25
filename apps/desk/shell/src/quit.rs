@@ -170,7 +170,7 @@ pub fn stalled(shell: &mut Shell, event_loop: &ActiveEventLoop) {
     let last = std::env::var(crate::stall_restart::ENV).ok();
     if !crate::stall_restart::may(last.as_deref(), std::time::SystemTime::now()) {
         eprintln!(
-            "endue Desk: this desk started for a stall less than {} min ago, so it does not start again: \
+            "endue: this desk started for a stall less than {} min ago, so it does not start again: \
              quit and start it by hand",
             crate::stall_restart::BETWEEN.as_secs() / 60
         );

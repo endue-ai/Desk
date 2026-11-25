@@ -25,13 +25,13 @@ pub enum Choice {
     Search,
     /// Talk to Eris: as her shortcut does.
     Eris,
-    /// Open Desk: the main window in front.
+    /// Open endue: the main window in front.
     Desk,
     /// Restart to update (ADR 0054): into the staged build.
     Update,
     /// Quit Desk.
     Quit,
-    /// Window > Move to Desk: the window out of the canvas in front docks back (#235).
+    /// Window > Move to endue: the window out of the canvas in front docks back (#235).
     Dock,
 }
 

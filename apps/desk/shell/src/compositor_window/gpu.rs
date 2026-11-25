@@ -100,7 +100,7 @@ impl Gpu {
         // software one (WARP, lavapipe) rather than open no desk at all.
         let adapter = request(false)
             .or_else(|first| {
-                eprintln!("endue Desk: no GPU adapter ({first}); trying a software one");
+                eprintln!("endue: no GPU adapter ({first}); trying a software one");
                 request(true)
             })
             .map_err(|e| e.to_string())?;

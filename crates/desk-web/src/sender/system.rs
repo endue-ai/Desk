@@ -13,7 +13,7 @@ pub enum System {
     /// The system layer: the runtime's page in the main window, off screen, drawn above every
     /// window (its parts in [`PARTS`]), and the plugin host of every plugin surface.
     Desk,
-    /// Search Desk over every app, a window of its own.
+    /// Search endue over every app, a window of its own.
     Palette,
 }
 

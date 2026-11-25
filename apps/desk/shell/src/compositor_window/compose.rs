@@ -101,7 +101,7 @@ impl CompositorWindow {
             }
         };
         let drawn = drawn.unwrap_or_else(|why| {
-            eprintln!("endue Desk: the compositor's scene did not build ({why:?})");
+            eprintln!("endue: the compositor's scene did not build ({why:?})");
             draw::Drawn::default()
         });
         // What changed until now is in this scene; what changes from here on, the next one's.
