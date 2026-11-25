@@ -61,6 +61,29 @@ fn a_scene_handed_to_the_render_thread_is_presented_while_the_main_thread_is_bus
 }
 
 #[test]
+fn a_restarted_beat_draws_an_overdue_frame_before_rebuilding_its_margin() {
+    for rate in [60, 120] {
+        let every = interval(rate);
+        let start = Instant::now();
+        let mut behind = Behind::default();
+        let mut last = start;
+        for n in 0..12 {
+            let slot = start + every * n;
+            last = behind.draw_at(slot, slot, every);
+        }
+        // The main thread missed a beat and handed a fresh slot after the next draw was due.
+        let handed = last + every + every / 3;
+        assert_eq!(behind.draw_at(handed, handed, every), handed, "{rate} Hz");
+        let next = handed + every;
+        assert_eq!(
+            behind.draw_at(next, next, every),
+            next + every / 8,
+            "{rate} Hz: build the margin back one step at a time"
+        );
+    }
+}
+
+#[test]
 fn frames_in_a_row_are_drawn_up_to_most_of_a_display_interval_behind_their_slot() {
     for rate in [60, 120] {
         let every = interval(rate);
