@@ -174,6 +174,7 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     title: string,
     run: (args: unknown) => unknown,
     keywords: string[] = [],
+    options: { irreversible?: boolean } = {},
   ) =>
     offs.add(
       commands.define(id, {
@@ -181,6 +182,7 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
         keywords: ["notifications", ...keywords],
         owner: "desk.notify",
         run,
+        ...options,
       }),
     );
   define("desk.notify.dismiss", "Dismiss the notification", () => notifications.dismiss());
@@ -199,7 +201,13 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     },
     ["messages", "history", "notification centre"],
   );
-  define("desk.notify.clear", "Clear past notifications", () => notifications.clear(), ["history"]);
+  define(
+    "desk.notify.clear",
+    "Clear past notifications",
+    () => notifications.clear(),
+    ["history"],
+    { irreversible: true },
+  );
 
   const activate = async (id: string, action: boolean) => {
     const notice = notifications.history().find((n) => n.id === id);

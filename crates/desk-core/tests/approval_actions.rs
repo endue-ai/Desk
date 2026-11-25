@@ -185,6 +185,79 @@ fn an_irreversible_command_waits_and_other_commands_do_not() {
 }
 
 #[test]
+fn the_desk_can_mark_a_command_for_every_agent_invocation_to_wait() {
+    let (core, deliveries) = core_with(&home("approve-desk"));
+    let id = "desk.example.clear";
+    let scope = json!({ "permission": "cmd:invoke", "ids": [id] });
+    grant(&core, "desk", scope.clone());
+    grant(&core, MIRA, scope.clone());
+    call(
+        &core,
+        "desk",
+        "cmd.register",
+        json!({
+            "id": id, "title": "Clear examples", "description": "Clear example history.",
+            "agent": true, "irreversible": true
+        }),
+    )
+    .unwrap();
+    let list = call(&core, "desk", "cmd.list", json!({ "scope": scope })).unwrap();
+    assert_eq!(list["commands"][0]["irreversible"], true);
+    let tools = call(&core, MIRA, "cmd.tools", json!({})).unwrap();
+    assert_eq!(tools["tools"][0]["irreversible"], true);
+
+    let args = json!({ "group": "fixture" });
+    for _ in 0..2 {
+        let (approval, invoked) = held(&core, &deliveries, "once", || {
+            call(
+                &core,
+                MIRA,
+                "cmd.invoke",
+                json!({ "id": id, "args": args, "scope": scope }),
+            )
+        });
+        assert!(invoked.unwrap()["invocationId"].is_string());
+        assert_eq!(approval.data()["target"], id);
+        let preview = approval.data()["preview"]["text"].as_str().unwrap();
+        assert_eq!(serde_json::from_str::<Value>(preview).unwrap(), args);
+        assert_eq!(wait_for(&deliveries, "cmd.invoked").data()["id"], id);
+    }
+    let error = call(
+        &core,
+        "desk",
+        "cmd.register",
+        json!({
+            "id": id, "title": "Clear examples", "readOnly": true, "irreversible": true
+        }),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidParams);
+}
+
+#[test]
+fn a_plugin_registration_keeps_the_manifest_in_charge_of_irreversibility() {
+    let home = home("approve-plugin-marker");
+    let (core, _) = core_with(&home);
+    mail_plugin(&core, &home);
+    let scope = json!({ "permission": "cmd:invoke", "ids": ["example.mail.*"] });
+    grant(&core, "desk", scope.clone());
+    for (id, requested) in [("example.mail.send", false), ("example.mail.open", true)] {
+        call(
+            &core,
+            MAIL,
+            "cmd.register",
+            json!({
+                "id": id, "title": id, "irreversible": requested
+            }),
+        )
+        .unwrap();
+    }
+    let list = call(&core, "desk", "cmd.list", json!({ "scope": scope })).unwrap();
+    assert_eq!(list["commands"][0]["irreversible"], true);
+    assert!(list["commands"][1].get("irreversible").is_none());
+}
+
+#[test]
 fn a_persons_own_calls_are_never_held() {
     let home = home("approve-person");
     notes(&home);

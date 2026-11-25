@@ -201,18 +201,34 @@ export function installSession(
     if (timer !== undefined) win.clearTimeout(timer);
   });
 
-  const define = (id: string, title: string, run: () => unknown) =>
+  const define = (
+    id: string,
+    title: string,
+    run: () => unknown,
+    options: { irreversible?: boolean } = {},
+  ) =>
     offs.add(
-      commands.define(id, { title, keywords: ["session", "desktop"], owner: "desk.session", run }),
+      commands.define(id, {
+        title,
+        keywords: ["session", "desktop"],
+        owner: "desk.session",
+        run,
+        ...options,
+      }),
     );
   define("desk.session.save", "Save the session now", async () => {
     await save();
     return snapshot();
   });
   define("desk.session.restore", "Put the saved session back", () => restore());
-  define("desk.session.forget", "Forget the saved session", async () => {
-    await bridge.call("store.set", { key: SESSION_KEY, value: null });
-  });
+  define(
+    "desk.session.forget",
+    "Forget the saved session",
+    async () => {
+      await bridge.call("store.set", { key: SESSION_KEY, value: null });
+    },
+    { irreversible: true },
+  );
 
   const keep = (name: string, part: SessionPart) => {
     parts.set(name, part);

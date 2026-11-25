@@ -5597,9 +5597,12 @@ pub struct CmdRegisterParams {
     /// Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<bool>,
-    /// The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only.
+    /// The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. An irreversible command is never read-only.
     #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
     pub read_only: Option<bool>,
+    /// The desk provider may mark its own command for approval on each agent invocation. Plugin commands use the manifest declaration. MCP commands use the server's read-only policy.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
 }
 
 /// Result of cmd.register.

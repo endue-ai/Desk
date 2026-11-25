@@ -112,13 +112,20 @@ export function installProfiles(
     return typeof answer === "string" ? answer : undefined;
   };
 
-  const define = (id: string, title: string, run: (args: unknown) => unknown, keywords: string[]) =>
+  const define = (
+    id: string,
+    title: string,
+    run: (args: unknown) => unknown,
+    keywords: string[],
+    options: { irreversible?: boolean } = {},
+  ) =>
     offs.add(
       commands.define(id, {
         title,
         keywords: ["profiles", ...keywords],
         owner: "desk.profiles",
         run,
+        ...options,
       }),
     );
   const idOf = (args: unknown) => (args as { id?: string } | undefined)?.id;
@@ -193,6 +200,7 @@ export function installProfiles(
       return { id };
     },
     ["delete", "forget"],
+    { irreversible: true },
   );
 
   return {

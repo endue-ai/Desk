@@ -22,6 +22,8 @@ export interface CommandSpec {
   run: CommandHandler;
   /** What agents read of the command when it is one of their tools (ADR 0088). */
   agent?: AgentSpec;
+  /** Marks an irreversible command independently of whether it is offered to agents. */
+  irreversible?: boolean;
   /**
    * The built-in that undoes this one (ADR 0077): an ok answer lands on the desk's undo stack, and
    * cmd.undo runs it with `{ args, result }`.
@@ -35,6 +37,7 @@ export interface AgentSpec {
   args?: Record<string, unknown>;
   result?: Record<string, unknown>;
   readOnly?: boolean;
+  irreversible?: boolean;
 }
 
 export interface CommandInfo {
@@ -43,8 +46,10 @@ export interface CommandInfo {
   keywords: string[];
   /** The caller that provides it: `desk` for built-ins, else a plugin id. */
   provider: string;
-  /** It answers data and changes nothing the person keeps (the provider's manifest says so). */
+  /** It answers data and changes nothing the person keeps. */
   readOnly?: boolean;
+  /** An agent's call waits for approval. */
+  irreversible?: boolean;
 }
 
 export type CommandErrorCode = "unknown_command" | "failed" | "cancelled";
@@ -315,6 +320,7 @@ export class Commands {
           ...(agent?.args ? { argsSchema: agent.args } : {}),
           ...(agent?.result ? { resultSchema: agent.result } : {}),
           ...(agent?.readOnly ? { readOnly: true } : {}),
+          ...(spec.irreversible || agent?.irreversible ? { irreversible: true } : {}),
           ...(spec.undo ? { undo: spec.undo } : {}),
         };
         // A core without cmd.* (an older one, a bare stub) leaves the command unregistered.
@@ -336,6 +342,7 @@ export class Commands {
           keywords: c.keywords ?? [],
           provider: c.provider,
           ...(c.readOnly ? { readOnly: true } : {}),
+          ...(c.irreversible ? { irreversible: true } : {}),
         },
       ]),
     );
