@@ -27,7 +27,7 @@ import { LANGUAGE_SETTING } from "./language";
 export interface NotifyPolicy extends Installed, RuntimeNotices {
   notifications: Notifications;
   notify(input: NoticeInput): Notice;
-  /** The line the status shows when no notice does ("desk ready ..."). */
+  /** The line the status shows when no notice does ("endue ready ..."). */
   setBase(text: string): void;
   text(): string;
 }
@@ -222,7 +222,7 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
       base = text;
       if (!notifications.current()) render(null);
     },
-    // The base line, not the notice over it: desk_ready and the smoke test read "desk ready".
+    // The base line, not the notice over it: desk_ready and the smoke test read the base startup status.
     text: () => base,
     dispose: offs.dispose,
   };

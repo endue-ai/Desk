@@ -237,7 +237,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     async () => {
       await Promise.all([hub.readInit(bridge), files.load(), preferences.load()]);
       await Promise.all([commands.settled(), speech.loaded()]);
-      showStatus(`desk ready · bridge: ${bridge.adapterName}`);
+      showStatus(`endue ready · bridge: ${bridge.adapterName}`);
       if (hub.initProblem) {
         notify.notify({
           caller: "desk",
@@ -247,7 +247,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         });
       }
     },
-    () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
+    () => showStatus(`endue cannot reach the core · bridge: ${bridge.adapterName}`),
   );
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);

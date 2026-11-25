@@ -50,5 +50,6 @@ defineUiPlugin({
       talk.showExchange(prompt, answer),
     );
     talk.start();
+    document.getElementById("say").inert = false;
   },
 });

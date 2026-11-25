@@ -70,7 +70,7 @@ describe("PostgreSQL on a session through the bridge", () => {
         port: 6543,
         database: "shop",
         user: "app",
-        settings: { application_name: "endue Desk", DateStyle: "ISO" },
+        settings: { application_name: "endue", DateStyle: "ISO" },
         timeoutMs: 10_000,
         scope: { permission: "db:connect", hosts: ["db.example:6543"] },
       },
@@ -202,7 +202,7 @@ describe("PostgreSQL on a session through the bridge", () => {
     await t.execute({ ...PG, readOnly: true }, "select 1");
     expect(t.made("db.open")[0]).toMatchObject({
       readOnly: true,
-      settings: { application_name: "endue Desk", DateStyle: "ISO", statement_timeout: "30000" },
+      settings: { application_name: "endue", DateStyle: "ISO", statement_timeout: "30000" },
     });
     await expect(t.execute({ ...PG, readOnly: true }, "delete from t")).rejects.toBeInstanceOf(
       Refusal,

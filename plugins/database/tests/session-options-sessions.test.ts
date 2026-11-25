@@ -81,7 +81,7 @@ describe("a connection's session options on every session", () => {
     const m = await shop();
     await run(m, "select 1");
     expect(ranOn(m, sessionOf(m, "select 1"))).toEqual(["select 1"]);
-    expect(opens(m)[0]).toEqual({ application_name: "endue Desk", DateStyle: "ISO" });
+    expect(opens(m)[0]).toEqual({ application_name: "endue", DateStyle: "ISO" });
   });
 
   it("a startup statement that fails ends the run in words and closes the session", async () => {

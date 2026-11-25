@@ -36,7 +36,7 @@ jobs:
         name: The candidate's version
         run: echo "version=$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
       - id: shell
-        name: The desk the line builds (.github/release-shell, #46)
+        name: Select the endue shell for this release line
         run: |
           shell="$(tr -d '[:space:]' < .github/release-shell)"
           case "$shell" in tauri | cef) ;; *) echo "::error::.github/release-shell names $shell, not tauri or cef"; exit 1 ;; esac
@@ -85,7 +85,7 @@ jobs:
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the ALSA headers (cpal, for desk-sys audio)
+      - name: Install ALSA headers for endue audio
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update

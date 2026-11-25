@@ -1,0 +1,169 @@
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  margin: 0;
+}
+[hidden] {
+  display: none !important;
+}
+h1,
+h2,
+p,
+pre {
+  margin: 0;
+}
+h2 {
+  font-size: var(--desk-text-base);
+}
+main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem);
+}
+.device-view {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.device-picker,
+aside {
+  padding: var(--desk-space-4);
+}
+.device-picker,
+aside section,
+form {
+  display: grid;
+  gap: var(--desk-space-3);
+}
+.device-picker {
+  gap: var(--desk-space-1);
+}
+.device-picker label,
+aside label {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.line,
+.actions,
+.pair,
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+.actions,
+.navigation {
+  flex-wrap: wrap;
+}
+.line select,
+.pair label {
+  flex: 1;
+  min-width: 0;
+}
+#connection,
+.feedback {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+  overflow-wrap: anywhere;
+}
+.stage {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-muted);
+}
+#display {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  object-fit: contain;
+  touch-action: none;
+}
+#display:focus-visible {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: calc(-1 * var(--desk-focus-width));
+}
+.navigation {
+  justify-content: center;
+  margin: 0;
+  border: 0;
+  padding: var(--desk-space-2);
+}
+aside {
+  min-width: 0;
+  overflow: auto;
+  border-inline-start: 1px solid var(--desk-border);
+}
+.desk-tabs {
+  margin-bottom: var(--desk-space-4);
+}
+aside label {
+  display: grid;
+  gap: var(--desk-space-1);
+}
+aside .desk-field {
+  width: 100%;
+}
+aside form > button,
+aside section > button {
+  justify-self: start;
+}
+#save-preset,
+details,
+#tools h2:not(:first-child) {
+  border-top: 1px solid var(--desk-border);
+  padding-top: var(--desk-space-4);
+}
+#save-preset,
+details,
+.feedback:not(:empty) {
+  margin-top: var(--desk-space-4);
+}
+summary {
+  cursor: pointer;
+  font-size: var(--desk-text-sm);
+}
+details form,
+.desk-dialog .actions {
+  margin-top: var(--desk-space-3);
+}
+#log-output,
+#app-output {
+  max-height: 50vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--desk-text-xs) var(--desk-font-mono);
+}
+.desk-dialog {
+  max-width: min(26rem, 90vw);
+}
+.desk-dialog p {
+  margin-top: var(--desk-space-2);
+}
+@media (max-width: 42rem) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+  }
+  main {
+    display: flex;
+    flex-direction: column;
+  }
+  .stage {
+    flex: auto;
+    height: 52vh;
+  }
+  aside {
+    overflow: visible;
+    border-inline-start: 0;
+    border-top: 1px solid var(--desk-border);
+  }
+}

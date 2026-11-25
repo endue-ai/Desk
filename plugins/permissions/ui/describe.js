@@ -174,9 +174,9 @@ export function describeCaller(id, plugins) {
   const manifest = plugins.find((p) => p.id === id)?.manifest;
   if (manifest)
     return { id, name: manifest.name || id, kind: PLUGIN_KINDS[manifest.kind] ?? "Plugin" };
-  if (id === "desk") return { id, name: "Desk", kind: "Runtime" };
-  if (id === "core") return { id, name: "Desk", kind: "Core" };
+  if (id === "desk") return { id, name: "endue", kind: "Runtime" };
+  if (id === "core") return { id, name: "endue", kind: "Core" };
   if (id.startsWith("agent:")) return { id, name: `Agent ${id.slice(6)}`, kind: "Agent" };
   if (id.startsWith("mcp:")) return { id, name: `MCP server ${id.slice(4)}`, kind: "MCP server" };
-  return { id, name: id, kind: id.includes(".") ? "Plugin" : "Desk" };
+  return { id, name: id, kind: id.includes(".") ? "Plugin" : "endue" };
 }

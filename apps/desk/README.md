@@ -29,7 +29,7 @@ file access (ADR 0052). Closing the main window hides it; the Dock icon and the 
 
 ```bash
 just brain-echo  # optional: the brain on :8787, whose agents fill the agent bar
-just dev         # build and run the CEF desk with plugins/ and the dev plugins; prints "desk ready · bridge: cef"
+just dev         # build and run the CEF desk with plugins/ and the dev plugins; prints "endue ready · bridge: cef"
 pnpm exec vitest run apps/desk   # the page's modules, over a fake shell
 just build-shell # the shell, the web frontend it serves and on macOS target/bundle/endue.app
 just check-shell # the shell crate's lints and tests (downloads and builds CEF, so `just check` skips it)

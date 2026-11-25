@@ -150,7 +150,7 @@ describe("the prompt", () => {
     await settle();
     expect(view.prompts.at(-1)).toMatchObject({
       promptId: "p3",
-      title: "Desk asks for permission",
+      title: "endue asks for permission",
       waiting: 0,
     });
     expect(host.visible).toBe(true);

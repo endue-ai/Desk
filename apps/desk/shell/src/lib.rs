@@ -1,4 +1,4 @@
-//! The endue Desk shell on winit and CEF (ADR 0143, Stage 1 of #32): windows holding CEF browsers,
+//! The endue shell on winit and CEF (ADR 0143, Stage 1 of #32): windows holding CEF browsers,
 //! the desk's URL schemes, CEF's message pump, the desk booted through desk-boot, the bridge over
 //! CEF's process messages (#43), the plugin scheme (#42) and the shell's services (#45): the tray,
 //! the menus, global shortcuts, the file dialog, one desk per data folder, files opened with the
@@ -7,6 +7,7 @@
 
 pub mod app;
 pub mod app_windows;
+mod cef_input;
 pub mod client;
 pub mod commands;
 pub mod compositor_window;

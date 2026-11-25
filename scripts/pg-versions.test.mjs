@@ -17,6 +17,7 @@ import {
   plan,
   readReport,
   runEnv,
+  runLiveFiles,
   SUPPORTED,
   table,
   VARIANTS,
@@ -30,6 +31,40 @@ test("the supported majors are 15 to 19, as the plugin's README states them", ()
   const readme = readFileSync(join(root, "plugins/database/README.md"), "utf8");
   assert.match(readme, new RegExp(`PostgreSQL ${SUPPORTED[0]} to ${SUPPORTED.at(-1)}`, "u"));
   assert.match(readme, /just test-pg-versions/u);
+});
+
+test("live files that share a database finish in order, with a separate result for each file", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "endue-pg-matrix-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const files = ["listen-live.test.ts", "lost-live.test.ts", "rows-live.test.ts"];
+  const calls = [];
+  const reports = new Set();
+  const environment = { LANG: "C" };
+  let active = false;
+  const runFile = async (file, env, report) => {
+    assert.equal(active, false);
+    assert.equal(env, environment);
+    active = true;
+    calls.push(file);
+    reports.add(report);
+    await new Promise((resolve) => setImmediate(resolve));
+    active = false;
+    if (file === files[1]) return 1;
+    const status = file === files[0] ? "passed" : "skipped";
+    writeFileSync(
+      report,
+      JSON.stringify({ testResults: [{ name: file, assertionResults: [{ status }] }] }),
+    );
+    return 0;
+  };
+  const states = await runLiveFiles(files, environment, join(dir, "main"), runFile);
+  assert.deepEqual(calls, files);
+  assert.equal(reports.size, files.length);
+  assert.deepEqual(states, {
+    [files[0]]: "passed",
+    [files[1]]: "failed",
+    [files[2]]: "skipped",
+  });
 });
 
 test("the justfile's recipe runs this script and TESTING.md says when", () => {

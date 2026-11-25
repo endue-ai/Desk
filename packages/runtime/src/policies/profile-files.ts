@@ -18,8 +18,8 @@ export const PROFILE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 const HEADER = [
   "A desk profile (specs/init/v0/profile.schema.json): the plugins it turns on and off, and the",
-  "settings in force while it is. The file name is the profile id. Desk wrote it when you saved the",
-  "profile; edit it freely, Desk applies a change at once.",
+  "settings in force while it is. The file name is the profile id. endue wrote it when you saved the",
+  "profile; edit it freely, endue applies a change at once.",
 ].join("\n");
 
 export interface ProfileFiles {
