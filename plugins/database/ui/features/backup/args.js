@@ -250,7 +250,7 @@ export function connectionEnv(conn, password) {
   set("PGSSLCERT", conn.sslCert && argPath(conn.sslCert));
   set("PGSSLKEY", conn.sslKey && argPath(conn.sslKey));
   set("PGCONNECT_TIMEOUT", "10");
-  set("PGAPPNAME", "endue Desk");
+  set("PGAPPNAME", "endue");
   set("LC_ALL", "C");
   return env;
 }

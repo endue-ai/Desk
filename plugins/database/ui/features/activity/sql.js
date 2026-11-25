@@ -9,7 +9,7 @@ export const FLOOR = 130000;
 /** From this one on, a lock says when its wait began and an end can be waited for. */
 const FOURTEEN = 140000;
 /** The plugin's own sessions' application_name (engines/pg-session.js's APPLICATION). */
-export const OWN_APPLICATION = "endue Desk";
+export const OWN_APPLICATION = "endue";
 /** At most this many rows of each read; the waiting locks come first. */
 export const LOCK_ROWS = 5000;
 /** How long an end waits for the session to be gone (14 and later). */
