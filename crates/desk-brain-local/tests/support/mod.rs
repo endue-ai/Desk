@@ -73,17 +73,21 @@ fn read_request(stream: &TcpStream) -> (String, Value) {
         .unwrap_or_default()
         .to_owned();
     let mut length = 0;
+    let mut user_agent = None;
     loop {
         line.clear();
         if reader.read_line(&mut line).unwrap() == 0 || line.trim().is_empty() {
             break;
         }
-        if let Some((name, value)) = line.split_once(':')
-            && name.trim().eq_ignore_ascii_case("content-length")
-        {
-            length = value.trim().parse().unwrap();
+        if let Some((name, value)) = line.split_once(':') {
+            if name.eq_ignore_ascii_case("content-length") {
+                length = value.trim().parse().unwrap();
+            } else if name.eq_ignore_ascii_case("user-agent") {
+                user_agent = Some(value.trim().to_owned());
+            }
         }
     }
+    assert_eq!(user_agent.as_deref(), Some("endue"));
     let mut body = vec![0; length];
     reader.read_exact(&mut body).unwrap();
     (path, serde_json::from_slice(&body).unwrap_or(Value::Null))

@@ -319,7 +319,7 @@ export function createBuilder(host, ctx, hooks) {
         const refused = /** @type {{ code?: string }} */ (error)?.code === "permission_denied";
         return say(
           refused
-            ? "Not saved: Desk needs your permission to keep views."
+            ? "Not saved: endue needs your permission to keep views."
             : `Not saved: ~/.desk/views/${id}.yaml could not be written.`,
           true,
         );

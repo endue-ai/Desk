@@ -543,7 +543,7 @@
       "endue.terminal.event-commands": {
         "kind": "object",
         "default": {},
-        "description": "Desk commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
+        "description": "endue commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
       }
     }
   }

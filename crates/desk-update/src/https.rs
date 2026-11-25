@@ -1,6 +1,6 @@
 //! The release origin over HTTPS (feature `https`): ureq with rustls and the platform's roots, the
 //! client desk-sys's `net` uses. A request names nothing about the desk: no cookies, and one
-//! user agent for every desk. Connecting and each read are bounded, so a check always ends; a
+//! user agent for every installation. Connecting and each read are bounded, so a check always ends; a
 //! download has no overall limit, since builds are large and links are slow.
 
 use std::io::Read;
@@ -14,8 +14,8 @@ use crate::ports::Transport;
 pub const MAX_DOCUMENT: u64 = 4 * 1024 * 1024;
 /// The most an artifact may take.
 pub const MAX_ARTIFACT: u64 = 1024 * 1024 * 1024;
-/// The user agent of every desk.
-pub const USER_AGENT: &str = "endue-desk-updater";
+/// The same user agent for every endue update request.
+pub const USER_AGENT: &str = "endue";
 
 pub struct Https {
     agent: Agent,

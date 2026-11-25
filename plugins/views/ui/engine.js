@@ -34,7 +34,7 @@ import { fill, fillValue } from "./template.js";
 const CONNECTORS = /** @type {const} */ ({ permission: "connector:manage" });
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 const LINKS = { permission: "shell:open", schemes: ["http", "https", "mailto"] };
-const ORIGINAL = "Desk could not open the link.";
+const ORIGINAL = "endue could not open the link.";
 const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} */ (error)?.code;
 const said = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);

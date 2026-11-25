@@ -102,7 +102,7 @@ export function createScreen(host, ctx, options = {}) {
       return;
     }
     needed = refused.permission ?? scopeOf(view?.source);
-    text.textContent = "Desk needs your permission to read this view's source.";
+    text.textContent = "endue needs your permission to read this view's source.";
     notice.hidden = false;
   };
   const settled = () => {

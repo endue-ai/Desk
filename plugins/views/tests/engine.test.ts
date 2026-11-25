@@ -323,7 +323,7 @@ describe("desk.views", () => {
     // A link the desk never opens is said in a toast.
     await m.engine.link("javascript:alert(1)");
     await m.settle();
-    expect(m.view.toasts).toEqual(["Desk could not open the link."]);
+    expect(m.view.toasts).toEqual(["endue could not open the link."]);
   });
 
   it("open hands a universal view to desk.universal.open, with its notice and params, and draws nothing itself", async () => {

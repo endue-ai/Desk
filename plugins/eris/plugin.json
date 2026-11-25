@@ -18,7 +18,7 @@
       "endue.eris.shortcut": {
         "kind": "string",
         "default": "Alt+Enter",
-        "description": "The shortcut that brings Desk forward and opens the talk line (Option+Enter on macOS). With Desk in front, it toggles the talk line. DESK_ERIS_SHORTCUT overrides it. Talk to Eris in the tray works with any shortcut."
+        "description": "The shortcut that brings endue forward and opens the talk line (Option+Enter on macOS). With endue in front, it toggles the talk line. DESK_ERIS_SHORTCUT overrides it. Talk to Eris in the tray works with any shortcut."
       }
     }
   }

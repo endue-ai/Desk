@@ -40,7 +40,7 @@ import { ianaZone, UTC } from "../ical/zones.js";
  * @property {boolean} [free]
  */
 
-export const PRODID = "-//endue//Desk Calendar 0.1//EN";
+export const PRODID = "-//endue//Calendar 0.1//EN";
 
 /** The kinds of value timeAt makes: a DATE, and a floating DATE-TIME. */
 const DATE = /** @type {const} */ ({ date: true, y: 0, m: 0, d: 0 });

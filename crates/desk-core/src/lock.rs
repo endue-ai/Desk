@@ -1,6 +1,6 @@
 //! plugins.lock without the core (specs/init/v0/lock.schema.json, ADR 0079): the folder digest a
 //! line pins, the YAML the core writes (one flow mapping per plugin, sorted by id, so each plugin is
-//! one line in a diff), reading it back, and the plan `desk plugin sync` follows.
+//! one line in a diff), reading it back, and the plan `endue plugin sync` follows.
 
 use std::fs;
 use std::io;
@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 /// The format version this desk writes and reads.
 pub const LOCK_VERSION: u64 = 0;
 
-const HEADER: &str = "# plugins.lock: the plugins of this desk, one line each, written by Desk on every install,\n# removal, version change and turn on or off. `desk plugin sync` turns plugins on and off as it\n# says (specs/init/v0/lock.schema.json).\n";
+const HEADER: &str = "# plugins.lock: the plugins of this desk, one line each, written by endue on every install,\n# removal, version change and turn on or off. `endue plugin sync` turns plugins on and off as it\n# says (specs/init/v0/lock.schema.json).\n";
 
 /// The folder digest: every regular file under `dir` whose path has no part starting with `.`, in
 /// byte order of its path relative to `dir` (forward slashes), each fed as path, NUL, decimal length,
@@ -104,13 +104,13 @@ pub fn parse(text: &str) -> Result<PluginsLock, String> {
         && version > LOCK_VERSION
     {
         return Err(format!(
-            "plugins.lock is version {version}, newer than this Desk reads ({LOCK_VERSION})"
+            "plugins.lock is version {version}, newer than endue supports ({LOCK_VERSION})"
         ));
     }
     serde_json::from_value(value).map_err(|e| format!("plugins.lock does not read as v0: {e}"))
 }
 
-/// What `desk plugin sync` does with a lock against the installed plugins.
+/// What `endue plugin sync` does with a lock against the installed plugins.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Plan {
     /// Installed and off, on in the lock.

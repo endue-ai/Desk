@@ -71,11 +71,11 @@ describe("refusals of this session", () => {
       },
       {
         key: expect.any(String),
-        caller: { id: "desk", name: "Desk", kind: "Runtime" },
+        caller: { id: "desk", name: "endue", kind: "Runtime" },
         permission: "Use the microphone",
         scope: "",
         duration: "This session",
-        allowLabel: "Allow Use the microphone for Desk (This session)",
+        allowLabel: "Allow Use the microphone for endue (This session)",
       },
     ]);
   });

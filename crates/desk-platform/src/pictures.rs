@@ -10,7 +10,7 @@ use std::time::Duration;
 use desk_sys::net::{Method, Request, fetch_at_most};
 
 use crate::Platform;
-use crate::http::encode;
+use crate::http::{USER_AGENT, encode};
 use crate::wire::Agent;
 
 /// Where endue.ai draws the face of an agent that has no picture: DiceBear's robots.
@@ -129,7 +129,7 @@ impl Platform {
             method: Method::Get,
             headers: BTreeMap::from([
                 ("accept".to_owned(), "image/*".to_owned()),
-                ("user-agent".to_owned(), "endue-desk".to_owned()),
+                ("user-agent".to_owned(), USER_AGENT.to_owned()),
             ]),
             body: None,
             timeout: Some(PICTURE_TIMEOUT.min(self.timeout)),

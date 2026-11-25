@@ -118,7 +118,7 @@ impl Core {
             return match (command, args) {
                 (Some(id), Value::Object(args)) if only => match self.command_named(id) {
                     Some(id) => invoke(&id, args),
-                    None => Err(format!("Desk has no command {id}")),
+                    None => Err(format!("endue has no command {id}")),
                 },
                 _ => Err("desk-run takes { command, args? }, args an object".to_owned()),
             };
@@ -130,7 +130,7 @@ impl Core {
         match self.command_named(&call.name) {
             Some(id) => invoke(&id, call.arguments.clone()),
             None => Err(format!(
-                "Desk has no tool named {} that takes these arguments",
+                "endue has no tool named {} that takes these arguments",
                 call.name
             )),
         }
@@ -142,7 +142,7 @@ fn invoke(id: &str, args: Map<String, Value>) -> Result<BridgeRequest, String> {
     let scope = json!({ "permission": "cmd:invoke", "ids": [id] });
     let request = json!({ "id": 0, "method": "cmd.invoke",
         "params": { "id": id, "args": args, "scope": scope } });
-    serde_json::from_value(request).map_err(|e| format!("Desk cannot run {id}: {e}"))
+    serde_json::from_value(request).map_err(|e| format!("endue cannot run {id}: {e}"))
 }
 
 impl Tools for Core {
@@ -178,7 +178,7 @@ impl Tools for Core {
             .or_else(|| self.for_eris(call).then_some(ERIS));
         let Some(caller) = agent.and_then(agent_caller) else {
             let anonymous = format!(
-                "{} runs only for a tool call that names its agent; this one names none Desk can use",
+                "{} runs only for a tool call that names its agent; this one names none endue can use",
                 call.name
             );
             let failed = error(ErrorCode::PermissionDenied, anonymous);
@@ -244,11 +244,11 @@ fn is_invoke(request: &BridgeRequest) -> bool {
     matches!(request, BridgeRequest::CmdInvoke(_))
 }
 
-/// The tool Desk runs for anyone: echo answers with its arguments. Any other is unknown here.
+/// The tool endue runs for anyone: echo answers with its arguments. Any other is unknown here.
 pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
     if call.name == "echo" {
         return (Value::Object(call.arguments.clone()), false);
     }
-    let unknown = format!("Desk has no tool named {}", call.name);
+    let unknown = format!("endue has no tool named {}", call.name);
     (json!({ "error": unknown }), true)
 }

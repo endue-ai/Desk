@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+const USER_AGENT: &str = "endue";
+
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 /// How long an answer may stay silent. The first request loads the model, which can take minutes.
 const READ_TIMEOUT: Duration = Duration::from_secs(300);
@@ -81,7 +83,7 @@ impl Response {
 pub fn get(endpoint: &Endpoint, path: &str) -> io::Result<Response> {
     let mut stream = connect(endpoint, CONNECT_TIMEOUT)?;
     let head = format!(
-        "GET {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: endue-desk\r\n\
+        "GET {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: {USER_AGENT}\r\n\
          Accept: application/json\r\nConnection: close\r\n\r\n",
         endpoint.prefix, endpoint.host, endpoint.port
     );
@@ -106,7 +108,7 @@ pub fn post(endpoint: &Endpoint, path: &str, body: &Value) -> io::Result<Respons
     let mut stream = connect(endpoint, READ_TIMEOUT)?;
     let payload = body.to_string();
     let head = format!(
-        "POST {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: endue-desk\r\n\
+        "POST {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: {USER_AGENT}\r\n\
          Accept: application/x-ndjson, application/json\r\nConnection: close\r\n\
          Content-Type: application/json\r\nContent-Length: {}\r\n\r\n",
         endpoint.prefix,
