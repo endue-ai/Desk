@@ -186,9 +186,12 @@ impl Core {
             Some(allow) => allow.is_empty() || allow.iter().any(|a| covers(a, &scope)),
             None => held,
         };
-        // An agent runs an installed plugin's command without a grant (ADR 0268).
+        // Installed tools and Eris's unconditional desk commands need no scope prompt.
         let target = Target::CommandId(&info.id);
-        let held = held || (allow.is_some() && self.installed_command(&scope, &target));
+        let held = held
+            || (allow.is_some()
+                && (self.installed_command(&scope, &target)
+                    || self.eris_desk_command(caller, &info, None)));
         inside.then(|| CommandTool {
             name: tool_name(&info.id),
             granted: held,

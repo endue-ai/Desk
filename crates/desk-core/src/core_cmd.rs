@@ -131,13 +131,12 @@ impl Core {
 
     pub(crate) fn cmd_invoke(&self, caller: &str, params: CmdInvokeParams) -> Answer {
         let scope = Permission::CmdInvoke(params.scope);
-        self.check(caller, &scope, &Target::CommandId(&params.id))?;
         let invocation_id =
             self.start_invocation(caller, &scope, &params.id, params.args, Kind::Command)?;
         json(CmdInvokeResult { invocation_id })
     }
 
-    /// Invoke `id` as `caller`, whose `scope` was checked: its args against the command's schema,
+    /// Invoke `id` as `caller`: check scope for direct calls and args against the command's schema,
     /// an agent's call held for the person (ADR 0078), then `cmd.invoked` to the provider. Answers
     /// the invocation id.
     pub(crate) fn start_invocation(
@@ -148,12 +147,11 @@ impl Core {
         args: Option<Map<String, Value>>,
         kind: Kind,
     ) -> Result<String, desk_bridge::BridgeError> {
-        let info = self
-            .commands()
-            .by_id
-            .get(id)
-            .cloned()
-            .ok_or_else(|| error(ErrorCode::NotFound, format!("no command {id}")))?;
+        let info = match kind {
+            Kind::Command => self.checked_command(caller, scope, id, args.as_ref())?,
+            Kind::Undo | Kind::Redo => self.command(id),
+        }
+        .ok_or_else(|| error(ErrorCode::NotFound, format!("no command {id}")))?;
         if let Some(schema) = &info.args_schema {
             check_args(schema, args.as_ref())?;
         }

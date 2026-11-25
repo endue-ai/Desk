@@ -12,6 +12,21 @@ import { OPEN_PLUGIN } from "./agent-specs";
 import { CommandError, type Commands } from "./commands";
 
 const MANAGE = { permission: "plugin:manage" } as const;
+const ERIS = "agent:eris";
+const OPEN = "desk.plugins.open";
+
+async function requestOpenScope(bridge: BridgeClient, plugin: string): Promise<void> {
+  const { granted } = await bridge.call(
+    "perm.request",
+    {
+      permission: { permission: "cmd:invoke", ids: [OPEN] },
+      duration: "session",
+      reason: `Opening ${plugin} needs permission to enable it or run its opener`,
+    },
+    { caller: ERIS },
+  );
+  if (!granted) throw new CommandError("cancelled", "Eris was refused the plugin opening scope");
+}
 
 /** What opens a data-only plugin: its own `<id>.open` command's target. */
 export function openerOf(info: PluginInfo): CommandCall | undefined {
@@ -22,7 +37,7 @@ export interface OpenPluginDeps {
   commands: Commands;
   bridge: BridgeClient;
   /** Launch a UI plugin (PluginHost.launch); it says when there is no such plugin. */
-  launch(id: string, waitForReady: boolean): Promise<void>;
+  launch(id: string, waitForReady: boolean, beforeEnable?: () => Promise<void>): Promise<void>;
   focus(id: string): void;
   /** Another window of a running plugin (PluginHost.another): its key; undefined: none runs. */
   another?(id: string, waitForReady: boolean): Promise<string | undefined>;
@@ -44,11 +59,11 @@ export function anotherWindow(host: {
 
 export function defineOpenPlugin(deps: OpenPluginDeps): () => void {
   const { commands, bridge, launch, focus } = deps;
-  return commands.define("desk.plugins.open", {
+  return commands.define(OPEN, {
     title: "Open a plugin",
     owner: "desk",
     keywords: ["launch", "application"],
-    run: async (args) => {
+    run: async (args, { caller }) => {
       const {
         plugin: id,
         waitForReady,
@@ -59,6 +74,7 @@ export function defineOpenPlugin(deps: OpenPluginDeps): () => void {
         another?: unknown;
       };
       if (typeof id !== "string") throw new Error("Choose a plugin to open");
+      const askScope = caller === ERIS ? () => requestOpenScope(bridge, id) : undefined;
       const { plugins } = await bridge.call("plugin.list", { scope: MANAGE });
       const info = plugins.find((p) => p.id === id);
       if (another === true) {
@@ -67,6 +83,7 @@ export function defineOpenPlugin(deps: OpenPluginDeps): () => void {
             "failed",
             `${id} opens in one window: its manifest's first surface does not say instances: "many"`,
           );
+        if (!info.enabled) await askScope?.();
         const window = await deps.another?.(id, waitForReady === true);
         if (window !== undefined) {
           focus(window);
@@ -74,12 +91,20 @@ export function defineOpenPlugin(deps: OpenPluginDeps): () => void {
         }
       }
       if (info?.status !== "ready" || !info.manifest || info.manifest.kind === "ui") {
-        await launch(id, waitForReady === true);
+        await launch(id, waitForReady === true, askScope);
         focus(id);
         return;
       }
       const opens = openerOf(info);
       if (!opens) throw new Error(`${id} has no window to open`);
+      // Match the built-in data openers the core treats as safe (ADR 0369).
+      const target = commands.list().find((command) => command.id === opens.command);
+      const trusted =
+        info.builtIn &&
+        target?.irreversible !== true &&
+        ((opens.command === "desk.views.open" && target?.provider === "desk.views") ||
+          (opens.command === "desk.universal.open" && target?.provider === "desk.universal"));
+      if (!info.enabled || !trusted) await askScope?.();
       if (!info.enabled)
         await bridge.call("plugin.setEnabled", { plugin: id, enabled: true, scope: MANAGE });
       await commands.run(opens.command, opens.args ?? {});
