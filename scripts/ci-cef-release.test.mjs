@@ -114,19 +114,13 @@ test("a line's candidate and its final build the desk the line's commit names; c
   );
 });
 
-test("the release dry run rehearses the CEF desk, and runs when packaging changes", () => {
+test("the manual release dry run rehearses the packaged CEF app at the selected commit", () => {
   const dry = workflow("release-dry-run");
   const input = dry.on.workflow_dispatch.inputs.shell;
   assert.deepEqual(input.options, ["release-shell", "cef"]);
   assert.equal(dry.jobs.build.with.shell, expr("needs.key.outputs.shell"));
-  for (const path of [
-    ".github/release-shell",
-    "apps/desk/shell/packager/**",
-    "scripts/cef-**",
-    "e2e/smoke/install-and-launch.sh",
-  ]) {
-    assert.ok(dry.on.pull_request.paths.includes(path), path);
-  }
+  assert.equal(dry.jobs.build.with.ref, expr("inputs.ref || github.sha"));
+  assert.ok("workflow_dispatch" in dry.on);
   const ci = scripts(workflow("ci").jobs.changes);
   assert.ok(ci.includes("apps/desk/shell/packager/"), "ci runs it for a release pull request too");
 });

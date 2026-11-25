@@ -14,17 +14,17 @@ A release that includes the standalone client lists **endue app** and **endue CL
 2. To verify the version-bound signature, obtain the trusted updater public key from your existing installation or release administrator. Set `DESK_UPDATER_PUBKEY` to its Tauri-encoded public value. From a public source checkout, run `node scripts/release-verify.mjs /path/to/archive.tar.gz --pubkey "$DESK_UPDATER_PUBKEY" --version "$VERSION"` with the downloaded archive’s path.
 3. Extract the verified archive and open its directory. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `bin/endue run "hello"`. To activate both terminal names, run `bin/activate` with your chosen bin directory.
 
-The Linux desktop build ships the same executable in its installer and the standalone archive. A manually published tag builds the Linux CLI at the same commit as both macOS images. Each publishing path checks the version-bound signature and downloads the archive into a read-only Debian x86_64 container with a separate echo service. The archive includes the project license and dependency notices. The in-app updater selects the signed desktop packages.
+The Linux desktop build ships the same executable in its installer and the standalone archive. A manual release-macos run for a published tag builds the Linux CLI at the same commit as both macOS images. Each publishing path checks the version-bound signature and downloads the archive into a read-only Debian x86_64 container with a separate echo service. The archive includes the project license and dependency notices. The in-app updater selects the signed desktop packages.
 
 ## Publish a GitHub Release with the macOS app
 
-Publishing a version tag builds both macOS disk images. Configuring the updater key also makes
+Dispatching release-macos for a published version tag builds both macOS disk images. Configuring the updater key also makes
 the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
    `gh release create v0.4.0 --target <commit> --title "endue 0.4.0" --notes-file <reviewed-notes>`, or
    Releases → Draft a new release → Publish.
-2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
+2. Run `gh workflow run release-macos --ref main -f tag=v0.4.0` with the published tag. It builds the app at the tag's commit for Apple silicon
    and Intel (`release-build.yml`), runs the install smoke on each package, and
    attaches `endue_<version>_darwin-aarch64.dmg`, `endue_<version>_darwin-x86_64.dmg` and
    `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
@@ -91,8 +91,8 @@ already on `main`.
 
 | Channel | Fed by | Version | When |
 | --- | --- | --- | --- |
-| canary | `main` | the next line's .0, `-pre.<run>` (`0.5.0-pre.212`) | nightly when `main` moved (`canary.yml`), or by hand |
-| beta | `release/vX.Y` | `X.Y.Z-rc.<run>` (`0.4.0-rc.31`), then `X.Y.Z` | every push to the line (`release.yml`) |
+| canary | `main` | the next line's .0, `-pre.<run>` (`0.5.0-pre.212`) | dispatch `canary.yml` on `main` |
+| beta | `release/vX.Y` | `X.Y.Z-rc.<run>` (`0.4.0-rc.31`), then `X.Y.Z` | dispatch `release.yml` on the line |
 | stable | the candidate three days on beta | `X.Y.Z` (`0.4.0`) | `release-final.yml`, then `rollout.yml` |
 
 Versions live in no file: the workflows write them into the build (`scripts/release-version.mjs`).
@@ -110,7 +110,7 @@ stable from then on; a beta tester who wants the next line's candidates keeps
    the next line at the commit of the newest canary build that has been on canary three days; give a
    line (`release/v1.0`) or a `main` commit to choose.
 2. Approve it in `stable`. The release app creates the branch and the milestone `vX.Y`.
-3. The push starts **release**: check and unit tests on every OS, then the line's first candidate on
+3. Run `gh workflow run release --ref release/vX.Y`. It checks every OS and publishes the line's first candidate on
    beta. Its notes are the commit page.
 
 ## Fix a line
@@ -119,8 +119,8 @@ stable from then on; a beta tester who wants the next line's candidates keeps
 2. On a branch from the line, `git cherry-pick -x <commit>` and open a pull request into
    `release/vX.Y` titled `[vX.Y] <the original title>`. Its body keeps the original `Closes #N`, so
    `scope-check` reads that issue's Scope.
-3. `ci` runs every OS; the `release` ruleset asks for a review and a branch up to date with the line.
-   Merging it builds the next candidate (`X.Y.Z-rc.<run>`, Z one past the line's newest tag).
+3. Run `gh workflow run ci --ref main -f pr=<PR-number>` to check every OS. The `release` ruleset asks for a review and a branch up to date with the line.
+   After merging, dispatch `release` on the line to build the next candidate (`X.Y.Z-rc.<run>`, Z one past the line's newest tag).
 4. A problem that must hold the final back gets an issue with the label `release-blocker` on the
    milestone `vX.Y`.
 
@@ -152,8 +152,7 @@ tracker is the signal.
 Since Stage 1 of #32 ended (#97) the desk is the CEF desk (`apps/desk/shell`, ADR 0143), and its
 executable is `endue-desk`, as the Tauri desk's was. `release-build.yml` builds it and refuses any
 other desk; a line builds what `.github/release-shell` names at its commit, its final what the
-candidate's commit names. The file says `cef`, so canary builds the CEF desk every night `main`
-moved, and the next line cut from `main` carries it to beta, then stable (ADR 0145). Lines cut before
+candidate's commit names. The file says `cef`, so dispatching canary builds the CEF app from the selected default-branch commit, and the next line cut from `main` carries it to beta, then stable (ADR 0145). Lines cut before
 then build the Tauri desk from their own commits. Rehearse a line with **release-dry-run** and the
 update smoke below on every OS.
 
@@ -268,7 +267,7 @@ Signing, which accepts organisations in South Korea; wiring it is a task of its 
 | --- | --- | --- |
 | `is not a release tag` | **release-macos** met a release whose tag is not `vX.Y.Z` or `vX.Y.Z-<pre>` | publish the release under such a tag |
 | `has no GitHub Release` | **release-macos** was run by hand for a tag without a release | publish the release first |
-| `builds no candidate: … not set` | a secret or variable is missing in `signing` | set it, push again or re-run |
+| `builds no candidate: … not set` | a secret or variable is missing in `signing` | set it and dispatch the workflow again |
 | `is not a release line` | the branch is `release/vX.Y.Z` or another name | lines are `release/vX.Y` only |
 | `No candidate of … has been on beta N days` | the newest candidate is younger | wait, or lower `soak-days` |
 | `Open release-blocker issues` | the milestone holds the final | close or move the issues |

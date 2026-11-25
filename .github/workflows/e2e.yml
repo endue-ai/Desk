@@ -1,26 +1,7 @@
 name: e2e
 
-# App e2e and the install smoke. `app-e2e` drives the CEF desk's debug build through chromedriver on
-# its remote debugging port on three OSes (ADR 0144; Linux under Xvfb). The perf job measures its
-# start-up, idle memory and input latency, nightly and on demand only. Not a required check: `ci`
-# stays the required aggregate, and a path-filtered workflow cannot be required (ADR 0015). No
-# Playwright here (ADR 0018).
+# Manually run the three-OS CEF suite, installer smoke and Linux performance measurements.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - "e2e/**"
-      - "apps/desk/**"
-      - "crates/desk-sys/**"
-      - "crates/desk-boot/**"
-      - "crates/desk-web/**"
-      - "plugins/**"
-      - ".github/workflows/e2e.yml"
-      - "scripts/ci-apt.mjs"
-      - "scripts/ci-apt.test.mjs"
-  schedule:
-    - cron: "41 17 * * *" # 02:41 KST
   workflow_dispatch:
 
 permissions:
@@ -28,7 +9,7 @@ permissions:
 
 concurrency:
   group: e2e-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   app-e2e:
@@ -79,12 +60,7 @@ jobs:
           retention-days: 7
 
   perf:
-    # Start-up, idle memory and input latency on the CEF desk (`just perf-app`, e2e/perf): nightly
-    # and on demand, never on pull requests. It fails past a baseline's allowance in
-    # e2e/perf/budgets.json; until this runner's baseline is committed it reports without failing and
-    # leaves a budgets.json holding this run's values in its artifact.
     name: perf
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
