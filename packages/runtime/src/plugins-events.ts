@@ -19,7 +19,9 @@ import { type PluginInstances, pluginOf } from "./instances";
 import { eventKey, type Owners } from "./owners";
 import type { PluginCommands } from "./plugin-commands";
 import { recipientsOf } from "./plugin-messages";
+import { named } from "./plugin-origins";
 import { closeLate } from "./plugins-db";
+import type { WindowSearch } from "./plugins-search";
 
 export interface EventRoutes {
   owners: Owners;
@@ -113,6 +115,25 @@ export function claim(
   // The window closed while its call ran: a database session it opened has nobody to use it.
   if (!routes.instances.has(owner))
     closeLate(request, response, owner, routes.owners, routes.bridge);
+}
+
+/** Forward the calls of one plugin window and route the events after it has their answers. */
+export async function forwardCalls(
+  id: string,
+  calls: BridgeRequest[],
+  routes: EventRoutes,
+  search: WindowSearch,
+): Promise<void> {
+  routes.instances.touch(id);
+  const answers = await Promise.all(
+    calls.map(async (request) => ({
+      request,
+      response: await routes.bridge.forward(...search.call(id, named(id, request, routes.mounted))),
+    })),
+  );
+  const results = answers.map(({ request, response }) => ({ id: request.id, response }));
+  routes.post(id, { type: "desk:results", results });
+  for (const { request, response } of answers) claim(request, response, id, routes);
 }
 
 /** What a plugin's change (plugin.changed) asks of the host. */

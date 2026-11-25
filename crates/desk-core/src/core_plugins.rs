@@ -107,7 +107,15 @@ impl Core {
     ) -> Answer {
         self.authorize_manage(caller, params.scope)?;
         let missing = || error(ErrorCode::NotFound, format!("no plugin {}", params.plugin));
-        let before = self.registry().get(&params.plugin).ok_or_else(missing)?;
+        let mut registry = self.registry();
+        let before = registry.get(&params.plugin).ok_or_else(missing)?;
+        let automatic = params.automatic == Some(true);
+        if automatic && (caller != "desk" || before.auto_start != Some(true)) {
+            return Err(error(
+                ErrorCode::PermissionDenied,
+                "automatic activation is unavailable".to_owned(),
+            ));
+        }
         if is_library(&before) {
             // Plugins import a library's files at any time: it stays on, and nothing changes.
             if !params.enabled {
@@ -132,10 +140,13 @@ impl Core {
             }
             return json(PluginSetEnabledResult { plugin: before });
         }
-        let info = self
-            .registry()
-            .set_enabled(&params.plugin, params.enabled)
-            .ok_or_else(missing)?;
+        let info = if automatic {
+            registry.set_automatic(&params.plugin, params.enabled)
+        } else {
+            registry.set_enabled(&params.plugin, params.enabled)
+        }
+        .ok_or_else(missing)?;
+        drop(registry);
         let change = if params.enabled {
             PluginChange::Enabled
         } else {

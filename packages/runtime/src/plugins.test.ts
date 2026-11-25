@@ -3,14 +3,18 @@ import {
   type BridgeEvent,
   browserStub,
   type PluginInfo,
-  stubCommands,
+  type PluginManifest,
   type StubHandlers,
+  stubCommands,
 } from "@endue-ai/bridge";
 import { describe, expect, it, vi } from "vitest";
 import { PluginHost } from "./plugins";
 
 /** A ready, enabled UI plugin with one centre surface and the permissions given. */
-function plugin(id: string, permissions: Array<{ permission: string }> = []): PluginInfo {
+function plugin(
+  id: string,
+  permissions: Array<{ permission: string }> = [],
+): PluginInfo & { manifest: PluginManifest } {
   return {
     id,
     status: "ready",
@@ -25,7 +29,7 @@ function plugin(id: string, permissions: Array<{ permission: string }> = []): Pl
       permissions,
       surfaces: [{ id: "main", title: id, placement: "center" }],
     },
-  } as PluginInfo;
+  } as PluginInfo & { manifest: PluginManifest };
 }
 
 /**
@@ -143,7 +147,7 @@ function dormant(id: string, autoStart = true): PluginInfo {
     enabled: false,
     ...(autoStart ? { autoStart } : {}),
     manifest: {
-      ...base.manifest!,
+      ...base.manifest,
       autoload: true,
       contributes: {
         commands: [
@@ -204,16 +208,50 @@ describe("agent autoload", () => {
       ),
     );
   });
+  it("leaves a plugin off when the person turns it off after discovery", async () => {
+    const id = "endue.docs";
+    const plugins = [dormant(id)];
+    const enabled = vi.fn();
+    const { bridge, opened } = await mount(plugins, {
+      "plugin.setEnabled": () => {
+        enabled();
+        throw new Error("Disabled plugin should never be enabled");
+      },
+    });
+    const answered = vi.fn();
+    bridge.onEvent((event) => {
+      if (event.event === "cmd.answered") answered(event.data);
+    });
+    plugins[0] = dormant(id, false);
+    const command = `${id}.read`;
+    await bridge.call(
+      "cmd.invoke",
+      { id: command, scope: { permission: "cmd:invoke", ids: [command] } },
+      { caller: "agent:eris" },
+    );
+    await vi.waitFor(() =>
+      expect(answered).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: command,
+          ok: false,
+        }),
+      ),
+    );
+    expect(enabled).not.toHaveBeenCalled();
+    expect(opened.has(id)).toBe(false);
+  });
 });
 
 describe("PluginHost hot reload", () => {
   it("mounts a plugin that turns ready on an update, as a dev folder filled while the desk runs", async () => {
     // The folder was empty when the desk started: the core lists it as failed under its folder's id.
-    const plugins = [{ ...plugin("local.my-plugin"), status: "failed", manifest: undefined }];
-    const { stub, host } = await mount(plugins as PluginInfo[]);
+    const plugins: PluginInfo[] = [
+      { ...plugin("local.my-plugin"), status: "failed", manifest: undefined },
+    ];
+    const { stub, host } = await mount(plugins);
     expect(host.mounted()).toEqual([]);
 
-    plugins[0] = { ...plugin("local.my-plugin"), revision: 2 } as (typeof plugins)[0];
+    plugins[0] = { ...plugin("local.my-plugin"), revision: 2 };
     const data = { plugin: "local.my-plugin", change: "updated", revision: 2 };
     stub.emit({ event: "plugin.changed", data } as BridgeEvent);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -221,8 +259,10 @@ describe("PluginHost hot reload", () => {
   });
 
   it("leaves a plugin that is still failed after an update unmounted", async () => {
-    const plugins = [{ ...plugin("local.my-plugin"), status: "failed", manifest: undefined }];
-    const { stub, host } = await mount(plugins as PluginInfo[]);
+    const plugins: PluginInfo[] = [
+      { ...plugin("local.my-plugin"), status: "failed", manifest: undefined },
+    ];
+    const { stub, host } = await mount(plugins);
     const data = { plugin: "local.my-plugin", change: "updated", revision: 2 };
     stub.emit({ event: "plugin.changed", data } as BridgeEvent);
     await new Promise((resolve) => setTimeout(resolve, 0));

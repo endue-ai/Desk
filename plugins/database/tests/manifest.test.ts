@@ -118,7 +118,7 @@ describe("plugin.json", () => {
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(221);
+    expect(ids).toHaveLength(224);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);

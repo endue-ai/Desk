@@ -23,7 +23,7 @@ export interface DeskContext {
   /** Whether a plugin's surface is mounted now. */
   mounted(plugin: string): boolean;
   /** Mount and reveal an installed UI plugin; its frame may still be connecting. */
-  launch(plugin: string): Promise<void>;
+  launch(plugin: string, automatic?: boolean): Promise<void>;
   /** Resolves once a mounted plugin has connected; rejects if it stops first or none is mounted. */
   whenReady(plugin: string): Promise<void>;
   /**

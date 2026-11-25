@@ -41,8 +41,11 @@ impl Core {
         caller: &str,
         params: CmdRegisterParams,
     ) -> Result<CommandInfo, BridgeError> {
-        let declared = self.declared(caller, &params.id);
+        let (built_in, declared) = self.manifest_command(caller, &params.id);
         let declared = declared.as_ref();
+        if built_in {
+            check_agent_contract(&params, declared)?;
+        }
         let field = |pick: fn(&CommandContribution) -> Option<bool>| declared.and_then(pick);
         let irreversible = match mcp_server_of(caller) {
             // An MCP server has no manifest: what it says changes nothing is read-only, and the
@@ -206,22 +209,53 @@ impl Core {
         })
     }
 
-    /// What `provider`'s manifest declares for its command `id` (`contributes.commands`).
-    fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
-        let plugins = self
-            .plugins
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let declared = plugins
-            .get(provider)
-            .and_then(|plugin| plugin.manifest)
+    /// The installed provider and what its manifest declares for `id`.
+    fn manifest_command(&self, provider: &str, id: &str) -> (bool, Option<CommandContribution>) {
+        let Some(plugin) = self.registry().get(provider) else {
+            return (false, None);
+        };
+        let declared = plugin
+            .manifest
             .and_then(|manifest| manifest.contributes)
-            .and_then(|contributes| contributes.commands);
-        declared
+            .and_then(|contributes| contributes.commands)
             .unwrap_or_default()
             .into_iter()
-            .find(|c| c.id == id)
+            .find(|c| c.id == id);
+        (plugin.built_in, declared)
     }
+}
+
+/// A built-in's agent metadata is available before its page runs, so it must match its manifest.
+fn check_agent_contract(
+    params: &CmdRegisterParams,
+    declared: Option<&CommandContribution>,
+) -> Result<(), BridgeError> {
+    let same = match declared.filter(|c| c.agent == Some(true)) {
+        Some(command) => {
+            params.agent != Some(false)
+                && params
+                    .read_only
+                    .is_none_or(|read_only| read_only == (command.read_only == Some(true)))
+                && params
+                    .description
+                    .as_ref()
+                    .is_none_or(|text| command.description.as_ref() == Some(text))
+                && params
+                    .args_schema
+                    .as_ref()
+                    .is_none_or(|args| command.args.as_ref() == Some(args))
+                && params
+                    .result_schema
+                    .as_ref()
+                    .is_none_or(|result| command.result.as_ref() == Some(result))
+        }
+        None => params.agent != Some(true),
+    };
+    if same {
+        return Ok(());
+    }
+    let why = format!("{} must use the agent metadata in its manifest", params.id);
+    Err(error(ErrorCode::InvalidParams, why))
 }
 
 /// What an MCP server's caller id starts with (ADR 0098).

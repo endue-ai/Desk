@@ -3,9 +3,10 @@
 // records what it was asked to show. sqlite3 answers in its real protocol (markers read from the
 // arguments, quote mode) and the server as the core's sessions do, so the controller, the engines,
 // the runner and the sessions all run as in the desk. The SDK is imported by its workspace path.
-import { StubError } from "../../../packages/bridge/src/index";
+import { type PluginManifest, StubError } from "../../../packages/bridge/src/index";
 import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import manifest from "../plugin.json";
 import type { Console } from "../ui/consoles.js";
 import { createDatabase, type View } from "../ui/database.js";
 import { createDatabaseDrops } from "../ui/dnd.js";
@@ -192,6 +193,7 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.database",
+    manifestCommands: (manifest as PluginManifest).contributes?.commands,
     db: scriptedDb(options.script ?? (() => ({})), options.password),
     ...(options.settings ? { settings: options.settings } : {}),
     handlers: {
