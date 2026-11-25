@@ -321,7 +321,14 @@ export function stubCommands(
         if (existing && existing.provider !== provider)
           throw new StubError("already_exists", `${params.id} is provided by ${existing.provider}`);
         checkDescribed(params);
-        commands.set(params.id, { ...params, provider });
+        const { irreversible, ...fields } = params;
+        const marked = provider === "desk" && irreversible;
+        if (marked && fields.readOnly)
+          throw new StubError(
+            "invalid_params",
+            `${fields.id} is irreversible, so it cannot be read-only`,
+          );
+        commands.set(fields.id, { ...fields, provider, ...(marked ? { irreversible: true } : {}) });
         const change = existing ? "updated" : "registered";
         later({ event: "cmd.changed", data: { id: params.id, change, provider } });
         return {};

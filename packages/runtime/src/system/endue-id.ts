@@ -101,6 +101,7 @@ export function mountEndueId(ctx: ShellCtx, redraw: () => void): EndueId {
           title: () => tr("signOut"),
           keywords: ["sign out", "logout", "endue", "로그아웃"],
           owner: "desk",
+          irreversible: true,
           run: signOut,
         }),
       ]

@@ -34,8 +34,8 @@ const LIMIT: u64 = 50;
 
 impl Core {
     /// The command a cmd.register of `caller` makes: the call's fields, else what the caller's
-    /// manifest declares for the id. `irreversible` is only ever the manifest's (ADR 0078). An
-    /// agent command needs a description, and an irreversible one is never read-only.
+    /// manifest declares for the id. The desk supplies its own `irreversible` marker.
+    /// An agent command needs a description, and an irreversible one is never read-only.
     pub(crate) fn described(
         &self,
         caller: &str,
@@ -54,6 +54,7 @@ impl Core {
                 }
                 params.read_only != Some(true)
             }
+            None if caller == DESK => params.irreversible == Some(true),
             None => field(|c| c.irreversible) == Some(true),
         };
         let info = CommandInfo {

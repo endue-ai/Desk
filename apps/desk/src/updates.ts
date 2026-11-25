@@ -186,6 +186,7 @@ export function installUpdates(host: UpdatesHost): () => void {
     id: string,
     title: string,
     run: (from: From, args: unknown) => Promise<unknown>,
+    options: { irreversible?: boolean } = {},
   ) =>
     offs.push(
       host.commands.define(id, {
@@ -193,6 +194,7 @@ export function installUpdates(host: UpdatesHost): () => void {
         keywords: ["update", "upgrade", "release", "restart"],
         owner: "desk",
         run: (args, from) => run(from, args),
+        ...options,
       }),
     );
 
@@ -207,10 +209,15 @@ export function installUpdates(host: UpdatesHost): () => void {
     );
     define("desk.update.check", "Check for endue updates", () => call("update.check"));
     define("desk.update.download", "Download the endue update", () => call("update.download"));
-    define("desk.update.apply", "Restart to update endue", async (from) => {
-      if (!(await confirmed(from))) throw new Error("The person did not agree to restart endue");
-      return call("update.apply");
-    });
+    define(
+      "desk.update.apply",
+      "Restart to update endue",
+      async (from) => {
+        if (!(await confirmed(from))) throw new Error("The person did not agree to restart endue");
+        return call("update.apply");
+      },
+      { irreversible: true },
+    );
     define("desk.update.on-restart", copy.onRestart, async (from, args) => {
       const version = latest?.release?.version;
       const offered =
