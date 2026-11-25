@@ -10,6 +10,7 @@ import type { IconName } from "./icons";
 
 const PLUGIN_ICONS: Record<string, IconName> = {
   "endue.agents": "brain",
+  "endue.android-emulator": "monitor",
   "endue.api-studio": "braces",
   "endue.archives": "archive",
   "endue.browser": "globe",
