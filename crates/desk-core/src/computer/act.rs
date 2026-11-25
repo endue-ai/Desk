@@ -62,10 +62,17 @@ impl Core {
         let (app, end) = reach(computer.as_ref(), &act.reach)?;
         let bundle = app.as_ref().and_then(|a| a.bundle_id.clone());
         let scope = Permission::ComputerControl(act.scope.clone());
-        self.check(caller, &scope, &Target::App(bundle.as_deref()))?;
+        let check = |app| {
+            let target = Target::App(app);
+            if agent_of(caller).is_some() {
+                self.check_approval_scope(caller, &scope, &target)
+            } else {
+                self.check(caller, &scope, &target)
+            }
+        };
+        check(bundle.as_deref())?;
         if let Some(end) = &end {
-            let ends = end.as_ref().and_then(|a| a.bundle_id.as_deref());
-            self.check(caller, &scope, &Target::App(ends))?;
+            check(end.as_ref().and_then(|app| app.bundle_id.as_deref()))?;
         }
         let acting = self.acting(caller, act.invocation.as_deref(), &act, bundle.as_deref())?;
         // The desk's own windows hold the person's cards and settings: no agent operates them.

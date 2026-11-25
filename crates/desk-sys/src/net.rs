@@ -18,7 +18,7 @@ pub mod proxy;
 pub mod sse;
 mod tunnel;
 pub mod ws;
-pub use hosts::host_allowed;
+pub use hosts::{exact_host, host_allowed};
 
 /// Redirects followed before the call fails.
 pub const MAX_REDIRECTS: usize = 10;

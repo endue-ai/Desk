@@ -138,14 +138,12 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     return settings.newTabFolder === "current" && current?.cwd ? current.cwd : settings.cwd;
   };
 
-  /**
-   * A new terminal: the settings' shell, or `program`; in a tab of its own, or beside the pane
-   * `beside` in its tab (issue 315). Resolves once it has started, or failed.
-   */
+  /** Open `program` or the configured shell in a new tab or beside a pane, then await the spawn. */
   const open = async (
     /** @type {Program | undefined} */ program = undefined,
     /** @type {string | undefined} */ cwd = undefined,
     /** @type {{ beside: string, direction: Split } | undefined} */ place = undefined,
+    /** @type {string | undefined} */ invocationId = undefined,
   ) => {
     next += 1;
     const id = `t-${next}`;
@@ -162,7 +160,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     view.layout(tab.id, tab.layout);
     show(id);
     await buffer(session);
-    await launch(session);
+    await launch(session, invocationId);
     return session;
   };
 

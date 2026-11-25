@@ -99,7 +99,7 @@ export function wireCommands(commands, app) {
 
   // A program of its own, without a shell. A shell with arguments would run anything under the
   // shell's grant without the person hearing of it, so it is refused: run the program itself.
-  commands.on("endue.terminal.run", async (args) => {
+  commands.on("endue.terminal.run", async (args, invocation) => {
     const {
       command,
       args: rest,
@@ -117,12 +117,14 @@ export function wireCommands(commands, app) {
         `${basename(command)} is a shell: run the program itself, so the person is asked about it.`,
       );
     }
-    const session = await app.open({
+    const program = {
       command,
       args: argv,
       cwd: typeof cwd === "string" && cwd !== "" ? cwd : app.settings().cwd,
       ...(typeof title === "string" && title !== "" ? { title } : {}),
-    });
+    };
+    const invocationId = invocation?.approved ? invocation.invocationId : undefined;
+    const session = await app.open(program, undefined, undefined, invocationId);
     if (!session.procId) throw new Error(session.exit ?? `Could not start ${command}.`);
     return { session: session.id, procId: session.procId };
   });

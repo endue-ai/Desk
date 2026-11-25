@@ -32,6 +32,7 @@ export interface NotifyPolicy extends Installed, RuntimeNotices {
   text(): string;
 }
 
+const UNDO_APPROVAL = "desk.approvals.undo";
 const LEVELS: NotifyLevel[] = ["info", "success", "warning", "error"];
 
 export function installNotify(ctx: DeskContext, statusLine: HTMLElement): NotifyPolicy {
@@ -163,9 +164,35 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
 
   offs.add(
     bridge.onEvent((event) => {
+      if (event.event === "perm.approval.done" && event.data.ok && event.data.undoable) {
+        const { approvalId } = event.data;
+        notifications.push({
+          caller: "desk",
+          title: "File saved",
+          level: "success",
+          actions: [{ label: "Undo", command: UNDO_APPROVAL, args: { approvalId } }],
+        });
+        return;
+      }
       if (event.event !== "ui.notified") return;
       const { notificationId, caller, title, body, level } = event.data;
       notifications.push({ id: notificationId, caller, title, level, ...(body ? { body } : {}) });
+    }),
+  );
+
+  offs.add(
+    commands.define(UNDO_APPROVAL, {
+      title: "Undo an approved file write",
+      owner: "desk",
+      run: (args, { caller }) => {
+        const approvalId = (args as { approvalId?: unknown } | undefined)?.approvalId;
+        if ((caller && caller !== "desk") || typeof approvalId !== "string")
+          throw new Error("Use Undo on the file write's notice");
+        return bridge.call("perm.undoApproval", {
+          approvalId,
+          scope: { permission: "perm:manage" },
+        });
+      },
     }),
   );
 

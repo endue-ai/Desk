@@ -32,6 +32,11 @@
           "additionalProperties": { "type": "string" }
         },
         "pty": { "$ref": "#/$defs/PtySize" },
+        "invocationId": {
+          "description": "The pending approved command invocation that named this program and its arguments. Valid for one matching spawn by its provider.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
       },
       "required": ["command", "scope"],

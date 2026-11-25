@@ -93,10 +93,9 @@ impl Core {
     }
 
     pub(crate) fn memory_remember(&self, caller: &str, params: MemoryRememberParams) -> Answer {
-        let scope = Permission::MemoryWrite(params.scope.clone());
-        let memory = self.writing(caller, params.scope)?;
-        // An agent's fact waits for the person, unless an always grant lets it remember (ADR 0096).
-        self.hold(caller, &scope, Action::Remember { text: &params.text })?;
+        let scope = Permission::MemoryWrite(params.scope);
+        let memory = self.memory_or_unsupported()?;
+        self.authorize_action(caller, &scope, Action::Remember { text: &params.text })?;
         let (fact, change) = match &params.id {
             Some(id) => (
                 memory.edit(id, &params.text, params.tags),

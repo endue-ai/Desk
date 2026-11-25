@@ -20,9 +20,10 @@ use desk_bridge::{
 };
 use serde_json::{Map, Value};
 
+use crate::approval_provider::ProviderApproval;
 use crate::approvals::Action;
+use crate::core_cmd_args::check_args;
 use crate::handler::{Answer, Core, error, json};
-use crate::manifest::schema_registry;
 use crate::paths::star_match;
 use crate::perm::Target;
 
@@ -42,6 +43,7 @@ struct Invocation {
     /// The command's inverse when it has one: an ok answer lands on the undo stack.
     undo: Option<String>,
     kind: Kind,
+    approval: Option<ProviderApproval>,
 }
 
 /// Registered commands in registration order, and the invocations still waiting for an answer.
@@ -136,9 +138,7 @@ impl Core {
         json(CmdInvokeResult { invocation_id })
     }
 
-    /// Invoke `id` as `caller`: check scope for direct calls and args against the command's schema,
-    /// an agent's call held for the person (ADR 0078), then `cmd.invoked` to the provider. Answers
-    /// the invocation id.
+    /// Check scope and args, hold an agent when needed, then deliver `cmd.invoked` (ADR 0078).
     pub(crate) fn start_invocation(
         &self,
         caller: &str,
@@ -147,11 +147,11 @@ impl Core {
         args: Option<Map<String, Value>>,
         kind: Kind,
     ) -> Result<String, desk_bridge::BridgeError> {
-        let info = match kind {
+        let (info, review) = match kind {
             Kind::Command => self.checked_command(caller, scope, id, args.as_ref())?,
-            Kind::Undo | Kind::Redo => self.command(id),
-        }
-        .ok_or_else(|| error(ErrorCode::NotFound, format!("no command {id}")))?;
+            Kind::Undo | Kind::Redo => (self.command(id), false),
+        };
+        let info = info.ok_or_else(|| error(ErrorCode::NotFound, format!("no command {id}")))?;
         if let Some(schema) = &info.args_schema {
             check_args(schema, args.as_ref())?;
         }
@@ -161,11 +161,25 @@ impl Core {
         };
         // An agent's call is a run from here on (ADR 0100), waiting while it is held.
         let run = self.run_started(caller, id, args.as_ref());
-        let held = self.held_as(run.as_deref(), || self.hold(caller, scope, invoke));
+        let held = self.held_as(run.as_deref(), || match kind {
+            Kind::Command => self.hold_checked(caller, scope, invoke, review),
+            Kind::Undo | Kind::Redo => self.hold(caller, scope, invoke),
+        });
+        let held = held.and_then(|()| {
+            if review && self.command(id).as_ref() != Some(&info) {
+                return Err(error(
+                    ErrorCode::Cancelled,
+                    format!("{id} changed before it ran"),
+                ));
+            }
+            Ok(())
+        });
         if let (Some(run), Err(refused)) = (&run, &held) {
             self.run_went_on(run, Err(&refused.message));
         }
         held?;
+        let approval = self.provider_approval(review, &info, args.as_ref());
+        let approved = approval.is_some().then_some(true);
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
@@ -179,6 +193,7 @@ impl Core {
                     args: args.clone(),
                     undo: info.undo.clone(),
                     kind,
+                    approval,
                 },
             );
             invocation_id
@@ -197,10 +212,25 @@ impl Core {
                     id: id.to_owned(),
                     args,
                     caller: caller.to_owned(),
+                    approved,
                 },
             }),
         );
         Ok(invocation_id)
+    }
+
+    pub(crate) fn with_provider_approval(
+        &self,
+        caller: &str,
+        id: &str,
+        check: impl FnOnce(&mut ProviderApproval) -> bool,
+    ) -> bool {
+        self.commands()
+            .pending
+            .get_mut(id)
+            .filter(|invocation| invocation.provider == caller)
+            .and_then(|invocation| invocation.approval.as_mut())
+            .is_some_and(check)
     }
 
     pub(crate) fn cmd_answer(&self, caller: &str, params: CmdAnswerParams) -> Answer {
@@ -328,11 +358,6 @@ impl Core {
         true
     }
 
-    /// Whether the registered command `id` is irreversible.
-    pub(crate) fn irreversible_command(&self, id: &str) -> bool {
-        self.command(id).and_then(|c| c.irreversible) == Some(true)
-    }
-
     /// The registered command `id`.
     pub(crate) fn command(&self, id: &str) -> Option<CommandInfo> {
         self.commands().by_id.get(id).cloned()
@@ -368,27 +393,5 @@ impl Core {
         self.commands
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-}
-
-/// Validate cmd.invoke's args against the command's argsSchema (absent args are `{}`).
-fn check_args(
-    schema: &serde_json::Map<String, Value>,
-    args: Option<&serde_json::Map<String, Value>>,
-) -> Result<(), desk_bridge::BridgeError> {
-    let validator = jsonschema::options()
-        .with_registry(schema_registry())
-        .should_validate_formats(false)
-        .build(&Value::Object(schema.clone()))
-        .map_err(|e| error(ErrorCode::InvalidParams, format!("argsSchema: {e}")))?;
-    let args = Value::Object(args.cloned().unwrap_or_default());
-    let problems: Vec<String> = validator
-        .iter_errors(&args)
-        .map(|e| format!("args{}: {e}", e.instance_path()))
-        .collect();
-    if problems.is_empty() {
-        Ok(())
-    } else {
-        Err(error(ErrorCode::InvalidParams, problems.join("; ")))
     }
 }

@@ -79,6 +79,7 @@
         { "$ref": "perm.schema.json#/$defs/PermListRequest" },
         { "$ref": "perm.schema.json#/$defs/PermAnswerRequest" },
         { "$ref": "perm.schema.json#/$defs/PermApproveRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermUndoApprovalRequest" },
         { "$ref": "perm.schema.json#/$defs/PermPendingRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },

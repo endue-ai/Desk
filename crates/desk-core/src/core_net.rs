@@ -12,13 +12,11 @@ use desk_sys::net::{self as sysnet, Method, Request};
 
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json, sys_error};
-use crate::perm::Target;
 
 impl Core {
     pub(crate) fn net_fetch(&self, caller: &str, params: NetFetchParams) -> Answer {
         let allowed_hosts = params.scope.hosts.clone();
         let scope = Permission::NetFetch(params.scope);
-        self.check(caller, &scope, &Target::Url(&params.url))?;
         let body = match (params.body, params.body_encoding.unwrap_or(Encoding::Utf8)) {
             (None, _) => None,
             (Some(text), Encoding::Utf8) => Some(text.into_bytes()),
@@ -33,7 +31,13 @@ impl Core {
             method: method_name(method),
             url: &params.url,
         };
-        self.hold(caller, &scope, fetch)?;
+        let approved = self.authorize_action(caller, &scope, fetch)?;
+        // An approval authorizes the reviewed host. A redirect must stay there.
+        let allowed_hosts = if approved {
+            sysnet::exact_host(&params.url).into_iter().collect()
+        } else {
+            allowed_hosts
+        };
         let request = Request {
             url: params.url,
             method: method_of(method),

@@ -30,6 +30,8 @@ export class CommandFailed extends Error {
 /** Who invoked a command, as cmd.invoked says: absent for a request the desk sends by name. */
 export interface Invocation {
   invocationId: string;
+  /** The pending invocation can authorize a matching provider operation. */
+  approved?: boolean;
   /** `desk` (the person), a plugin's id, `agent:<id>` or `mcp:<name>`. */
   caller: string;
 }
@@ -150,8 +152,12 @@ export function commandsFor(
     /** cmd.invoked for this plugin's commands, cmd.answered for its runs. */
     event: (event: BridgeEvent) => {
       if (event.event === "cmd.invoked") {
-        const { invocationId, id, args, caller } = event.data;
-        void handle(id, args ?? {}, { invocationId, caller }).then((outcome) => {
+        const { invocationId, id, args, caller, approved } = event.data;
+        void handle(id, args ?? {}, {
+          invocationId,
+          caller,
+          ...(approved ? { approved } : {}),
+        }).then((outcome) => {
           const params = outcome.ok
             ? { invocationId, ...(outcome.result === undefined ? {} : { result: outcome.result }) }
             : {

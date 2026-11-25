@@ -26,6 +26,11 @@
           "minLength": 1
         },
         "duration": { "$ref": "#/$defs/GrantDuration" },
+        "invocationId": {
+          "description": "Check whether a pending approved invocation covers this provider's scope. This answer grants no lasting permission. A matching effect also supplies the invocationId.",
+          "type": "string",
+          "minLength": 1
+        },
         "again": {
           "description": "The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.",
           "type": "boolean"
@@ -394,6 +399,32 @@
       "properties": {},
       "additionalProperties": false
     },
+    "PermUndoApprovalRequest": {
+      "description": "Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.undoApproval" },
+        "params": { "$ref": "#/$defs/PermUndoApprovalParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermUndoApprovalParams": {
+      "description": "The completed write to undo, as named by its approval receipt.",
+      "type": "object",
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission" }
+      },
+      "required": ["approvalId", "scope"],
+      "additionalProperties": false
+    },
+    "PermUndoApprovalResult": {
+      "description": "An empty result once the retained version was restored.",
+      "type": "object",
+      "additionalProperties": false
+    },
     "PermApprovalDoneEvent": {
       "description": "An approved call ran: what came of it. Sent to callers that hold perm:manage.",
       "type": "object",
@@ -405,7 +436,7 @@
       "additionalProperties": false
     },
     "PermApprovalDoneData": {
-      "description": "Payload of perm.approval.done.",
+      "description": "Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo.",
       "type": "object",
       "properties": {
         "approvalId": { "type": "string", "minLength": 1 },
@@ -417,7 +448,7 @@
         },
         "error": { "$ref": "bridge.schema.json#/$defs/BridgeError" },
         "undoable": {
-          "description": "true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.",
+          "description": "True when perm.undoApproval can restore the file version kept by this write.",
           "type": "boolean"
         }
       },

@@ -113,7 +113,7 @@ fn perm_log(core: &Core) -> Vec<Value> {
 }
 
 #[test]
-fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
+fn a_tool_call_runs_as_its_agent_and_the_approval_names_it() {
     let echo = Echo::start();
     let home = home("tools-prompt");
     let (core, deliveries) = core(&echo, &home);
@@ -122,18 +122,12 @@ fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
         &write_call(Some("mira"), "~/Notes/today.md", "~/Notes/**"),
     );
 
-    let prompt = wait_for(&deliveries, "perm.prompt");
-    assert_eq!(prompt.data()["caller"], "agent:mira");
-    assert_eq!(
-        prompt.data()["permission"],
-        json!({ "permission": "fs:write", "paths": ["~/Notes/**"] })
-    );
-    let params = json!({ "promptId": prompt.data()["promptId"], "granted": true,
-        "duration": "session", "scope": manage() });
-    call(&core, "desk", "perm.answer", params).unwrap();
-    // The write is irreversible: it waits for the person's approval too (ADR 0078).
     let approval = wait_for(&deliveries, "perm.approval");
     assert_eq!(approval.data()["caller"], "agent:mira");
+    assert_eq!(
+        approval.data()["permission"],
+        json!({ "permission": "fs:write", "paths": ["~/Notes/**"] })
+    );
     approve_as_desk(&core, &approval, "once");
 
     let said = answer(&deliveries, &turn, &mut Vec::new());
@@ -144,12 +138,12 @@ fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
         "Buy milk"
     );
     let log = perm_log(&core);
-    let allowed = log
+    let approved = log
         .iter()
-        .find(|e| e["fields"]["decision"] == "allowed")
+        .find(|e| e["fields"]["decision"] == "approved")
         .expect("the agent's call is logged");
-    assert_eq!(allowed["fields"]["caller"], "agent:mira");
-    assert_eq!(allowed["fields"]["target"], "~/Notes/today.md");
+    assert_eq!(approved["fields"]["caller"], "agent:mira");
+    assert_eq!(approved["fields"]["target"], "~/Notes/today.md");
 }
 
 #[test]

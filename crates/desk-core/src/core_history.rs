@@ -104,7 +104,13 @@ impl Core {
 
     pub(crate) fn fs_restore(&self, caller: &str, params: FsRestoreParams) -> Answer {
         let scope = Permission::FsWrite(params.scope);
-        let path = self.authorize(caller, &scope, &params.path)?;
+        let path = self.resolve(&params.path)?;
+        let target = Action::Write {
+            path: &params.path,
+            file: &path,
+            bytes: &[],
+        };
+        let held = self.check_action_scope(caller, &scope, &target)?;
         let bytes = self.version_bytes(&path, &params.version)?;
         // A restore writes over the file: an agent's waits for the person as its writes do.
         let write = Action::Write {
@@ -112,10 +118,11 @@ impl Core {
             file: &path,
             bytes: &bytes,
         };
-        self.hold(caller, &scope, write)?;
+        self.hold_checked(caller, &scope, write, held)?;
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, false)?;
         if let Some(version) = &version {
             self.push_write(caller, "fs.restore", &params.path, version.clone());
+            self.approval_write(&params.path, version);
         }
         json(FsRestoreResult {
             bytes_written,
