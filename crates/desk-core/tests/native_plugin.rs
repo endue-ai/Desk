@@ -79,6 +79,12 @@ fn a_native_plugin_loads_with_its_program_for_this_os_and_says_what_starting_it_
         .expect("a ready native plugin starts");
     assert_eq!(launch.plugin, ID);
     assert_eq!(launch.program, dir.join("bin/plugin"));
+    assert!(
+        fs::read_to_string(&launch.program)
+            .unwrap()
+            .starts_with("#!/bin/sh\n"),
+        "fixture scripts run with the platform's POSIX shell"
+    );
     assert_eq!(launch.dir, dir);
     assert_eq!(launch.args, vec!["--hello".to_owned()]);
     assert_eq!(launch.grace, Duration::from_millis(300));
