@@ -13,6 +13,7 @@ use serde_json::{Map, Value};
 use crate::approval_preview::{
     args_preview, command_preview, fact_preview, url_preview, write_preview,
 };
+use crate::approval_provider::TERMINAL_RUN;
 use crate::perm::Target;
 
 /// An agent's call that may need the person's approval, with what its preview is made of.
@@ -53,7 +54,14 @@ impl<'a> Action<'a> {
     /// act that reaches no known app cannot, so it is offered and approved once at a time, and a
     /// task answer never covers every app (ADR 0367).
     pub(crate) fn narrows(&self) -> bool {
-        !matches!(self, Self::Computer { app: None, .. })
+        !matches!(
+            self,
+            Self::Computer { app: None, .. }
+                | Self::Invoke {
+                    id: TERMINAL_RUN,
+                    ..
+                }
+        )
     }
 
     pub(crate) fn kind(&self) -> ApprovalAction {

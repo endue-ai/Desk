@@ -75,17 +75,13 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
         "the host's own start-up grants are not"
     );
 
-    let allowed = with_decision(&entries, "allowed");
-    assert_eq!(allowed.len(), 1, "{allowed:?}");
-    assert_eq!(allowed[0]["fields"]["caller"], MIRA);
-    assert_eq!(allowed[0]["fields"]["permission"], "fs:write");
-    assert_eq!(allowed[0]["fields"]["scope"], notes);
-    assert_eq!(allowed[0]["fields"]["target"], "~/Notes/a.md");
+    assert!(with_decision(&entries, "allowed").is_empty());
 
     // The write waited for an approval; with nobody to ask, the Prompter gave it once (ADR 0078).
     let approved = with_decision(&entries, "approved");
     assert_eq!(approved.len(), 1, "{approved:?}");
     assert_eq!(approved[0]["fields"]["caller"], MIRA);
+    assert_eq!(approved[0]["fields"]["scope"], notes);
     assert_eq!(approved[0]["fields"]["approval"], "once");
     assert_eq!(approved[0]["fields"]["target"], "~/Notes/a.md");
 

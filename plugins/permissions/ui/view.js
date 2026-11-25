@@ -301,33 +301,26 @@ export function createView(doc, actions, options = {}) {
         return;
       }
       cover();
-      const result = model.kind === "result";
       pick("#approval-title").textContent = model.title;
       pick("#approval-who").textContent = `${model.caller.kind} · ${model.caller.id}`;
       const what = pick("#approval-what");
-      if (model.kind === "result") what.replaceChildren(model.text);
-      else what.replaceChildren(`${model.action}: `, el("code", {}, model.target));
-      const preview = model.kind === "approval" ? model.preview : null;
+      what.replaceChildren(`${model.action}: `, el("code", {}, model.target));
+      const { preview, size, task } = model;
       const pre = pick("#approval-preview");
       pre.hidden = !preview;
       pre.replaceChildren(...(preview ? previewLines(preview) : []));
       pick("#approval-more").hidden = !preview?.truncated;
-      const size = model.kind === "approval" ? model.size : "";
       pick("#approval-size").textContent = size ? `Size: ${size}` : "";
-      const task = model.kind === "approval" ? model.task : null;
       pick("#approval-task").textContent = task ?? "";
-      pick("[data-for=approval]").hidden = result;
       pick("[data-answer=task]").hidden = !task;
-      pick("[data-for=result]").hidden = !result;
-      pick("[data-answer=undo]").hidden = !(model.kind === "result" && model.undo);
       const more =
         model.waiting === 1 ? "1 more request waiting" : `${model.waiting} more requests waiting`;
       pick("#approval-waiting").textContent = model.waiting > 0 ? more : "";
       card.hidden = false;
-      // Deny takes focus on a new card, so a stray Enter never allows anything; Done on a result.
+      // Deny takes focus on a new card, so a stray Enter never allows anything.
       const key = `${model.kind}:${model.approvalId}`;
       if (key !== shownCard) {
-        pick(result ? "[data-answer=done]" : "[data-answer=deny]").focus();
+        pick("[data-answer=deny]").focus();
         arm(card);
       }
       shownCard = key;

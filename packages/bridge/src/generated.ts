@@ -3251,6 +3251,7 @@ export type BridgeRequest =
   | PermListRequest
   | PermAnswerRequest
   | PermApproveRequest
+  | PermUndoApprovalRequest
   | PermPendingRequest
   | PluginListRequest
   | PluginSetEnabledRequest
@@ -3734,6 +3735,8 @@ export interface CmdInvokedData {
   id: CommandId;
   args?: Record<string, unknown>;
   caller: CallerId;
+  /** True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request. */
+  approved?: boolean;
 }
 
 /** A command's provider answered an invocation. Sent to the caller that invoked it. */
@@ -5896,6 +5899,8 @@ export interface PermRequestParams {
   /** Why the caller asks, shown to the person in the prompt. Optional; a prompt without one says that none was given. */
   reason?: string;
   duration?: GrantDuration;
+  /** Check whether a pending approved invocation covers this provider's scope. This answer grants no lasting permission. A matching effect also supplies the invocationId. */
+  invocationId?: string;
   /** The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry. */
   again?: boolean;
 }
@@ -6112,20 +6117,36 @@ export type ApprovalAnswer = "once" | "task" | "deny";
 /** Result of perm.approve. */
 export type PermApproveResult = Record<string, never>;
 
+/** Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice. */
+export interface PermUndoApprovalRequest {
+  id: RequestId;
+  method: "perm.undoApproval";
+  params: PermUndoApprovalParams;
+}
+
+/** The completed write to undo, as named by its approval receipt. */
+export interface PermUndoApprovalParams {
+  approvalId: string;
+  scope: PermManagePermission;
+}
+
+/** An empty result once the retained version was restored. */
+export type PermUndoApprovalResult = Record<string, unknown>;
+
 /** An approved call ran: what came of it. Sent to callers that hold perm:manage. */
 export interface PermApprovalDoneEvent {
   event: "perm.approval.done";
   data: PermApprovalDoneData;
 }
 
-/** Payload of perm.approval.done. */
+/** Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo. */
 export interface PermApprovalDoneData {
   approvalId: string;
   ok: boolean;
   /** fs.write: the bytes it wrote. */
   bytesWritten?: number;
   error?: BridgeError;
-  /** true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo. */
+  /** True when perm.undoApproval can restore the file version kept by this write. */
   undoable?: boolean;
 }
 
@@ -6300,6 +6321,8 @@ export interface ProcSpawnParams {
   /** Extra environment variables. */
   env?: Record<string, string>;
   pty?: PtySize;
+  /** The pending approved command invocation that named this program and its arguments. Valid for one matching spawn by its provider. */
+  invocationId?: string;
   scope: ProcSpawnPermission;
 }
 
@@ -8309,6 +8332,7 @@ export interface BridgeMethodMap {
   "perm.list": { params: PermListParams; result: PermListResult };
   "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
   "perm.approve": { params: PermApproveParams; result: PermApproveResult };
+  "perm.undoApproval": { params: PermUndoApprovalParams; result: PermUndoApprovalResult };
   "perm.pending": { params: PermPendingParams; result: PermPendingResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
@@ -8513,6 +8537,7 @@ export const BRIDGE_METHODS = [
   "perm.list",
   "perm.answer",
   "perm.approve",
+  "perm.undoApproval",
   "perm.pending",
   "plugin.list",
   "plugin.setEnabled",

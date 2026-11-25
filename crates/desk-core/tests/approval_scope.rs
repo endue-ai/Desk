@@ -76,6 +76,38 @@ fn a_versioned_write_needs_only_its_approval_and_offers_undo_without_giving_a_gr
     assert_eq!(done.data()["approvalId"], approval.data()["approvalId"]);
     assert_eq!(done.data()["undoable"], true);
     assert!(named(&deliveries, "perm.prompt").is_empty());
+    let other = "~/Calendar/today.ics";
+    let scope = json!({ "permission": "fs:write", "paths": [other] });
+    grant(&core, "desk", scope.clone());
+    call(
+        &core,
+        "desk",
+        "fs.write",
+        json!({ "path": other, "content": "Later write", "scope": scope }),
+    )
+    .unwrap();
+    let params = json!({ "approvalId": approval.data()["approvalId"], "scope": manage() });
+    assert_eq!(
+        call(&core, ERIS, "perm.undoApproval", params.clone())
+            .unwrap_err()
+            .code,
+        ErrorCode::PermissionDenied
+    );
+    call(&core, "desk", "perm.undoApproval", params.clone()).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(home.join("Documents/hello.md")).unwrap(),
+        "# Hello"
+    );
+    assert_eq!(
+        std::fs::read_to_string(home.join("Calendar/today.ics")).unwrap(),
+        "Later write"
+    );
+    assert_eq!(
+        call(&core, "desk", "perm.undoApproval", params)
+            .unwrap_err()
+            .code,
+        ErrorCode::NotFound
+    );
 }
 
 #[test]
@@ -131,4 +163,105 @@ fn an_approval_cannot_grant_access_outside_the_callers_allowlist() {
     assert_eq!(error.code, ErrorCode::PermissionDenied);
     assert!(query(&core, ERIS).is_empty());
     assert!(named(&deliveries, "perm.approval").is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_terminal_approval_authorizes_only_one_matching_spawn_by_its_provider() {
+    let home = home("terminal-approval-scope");
+    let terminal = "endue.terminal";
+    let id = "endue.terminal.run";
+    let dir = home.join("terminal");
+    std::fs::create_dir_all(dir.join("ui")).unwrap();
+    std::fs::write(dir.join("ui/index.html"), "<p>Terminal</p>").unwrap();
+    std::fs::write(dir.join("plugin.json"), json!({
+        "id": terminal, "version": "0.1.0", "kind": "ui", "entry": "ui/index.html",
+        "permissions": [{ "permission": "proc:spawn", "commands": ["*"], "pty": true }],
+        "contributes": { "commands": [{ "id": id, "title": "Run", "description": "Run a program.",
+            "agent": true, "irreversible": true }] }
+    }).to_string()).unwrap();
+    let core = Core::new(roots(&home)).with_prompter(NeverAsk);
+    core.install_plugin(&dir, true);
+    call(
+        &core,
+        terminal,
+        "cmd.register",
+        json!({"id": id, "title": "Run"}),
+    )
+    .unwrap();
+    grant(&core, "desk", manage());
+    let deliveries = core.events().subscribe_addressed();
+    let (_, pending) = approve_first(&core, &deliveries, || {
+        call(
+            &core,
+            ERIS,
+            "cmd.invoke",
+            json!({ "id": id, "args": { "command": "/bin/cat",
+            "args": [], "cwd": "~/Documents" }, "scope": { "permission": "cmd:invoke", "ids": [id] } }),
+        )
+    });
+    let issued = wait_for(&deliveries, "cmd.invoked");
+    let invocation_id = &pending["invocationId"];
+    assert_eq!(issued.data()["approved"], true);
+    let scope = json!({ "permission": "proc:spawn", "commands": ["/bin/cat"], "pty": true });
+    let ask = |caller, permission: Value| {
+        call(
+            &core,
+            caller,
+            "perm.request",
+            json!({ "invocationId": invocation_id,
+            "permission": permission }),
+        )
+        .unwrap()["granted"]
+            .clone()
+    };
+    assert_eq!(ask(terminal, scope.clone()), true);
+    assert_eq!(ask("example.other", scope.clone()), false);
+    assert_eq!(
+        ask(
+            terminal,
+            json!({ "permission": "proc:spawn", "commands": ["*"], "pty": true })
+        ),
+        false
+    );
+    let spawn = |caller, command, args: Value, cwd| {
+        call(
+            &core,
+            caller,
+            "proc.spawn",
+            json!({ "invocationId": invocation_id, "command": command,
+            "args": args, "cwd": cwd, "pty": { "cols": 80, "rows": 24 }, "scope": scope }),
+        )
+    };
+    for rejected in [
+        spawn("example.other", "/bin/cat", json!([]), "~/Documents"),
+        spawn(terminal, "/bin/cat", json!(["-n"]), "~/Documents"),
+        spawn(terminal, "/bin/cat", json!([]), "~"),
+    ] {
+        assert_eq!(rejected.unwrap_err().code, ErrorCode::PermissionDenied);
+    }
+    let started = spawn(terminal, "/bin/cat", json!([]), "~/Documents").unwrap();
+    assert_eq!(
+        spawn(terminal, "/bin/cat", json!([]), "~/Documents")
+            .unwrap_err()
+            .code,
+        ErrorCode::PermissionDenied
+    );
+    assert_eq!(ask(terminal, scope.clone()), false);
+    call(
+        &core,
+        terminal,
+        "cmd.answer",
+        json!({ "invocationId": invocation_id, "result": {} }),
+    )
+    .unwrap();
+    call(
+        &core,
+        terminal,
+        "proc.kill",
+        json!({ "procId": started["procId"], "scope": scope }),
+    )
+    .unwrap();
+    assert!(query(&core, terminal).is_empty());
+    assert!(named(&deliveries, "perm.prompt").is_empty());
 }

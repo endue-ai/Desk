@@ -581,6 +581,10 @@
         },
         "caller": {
           "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "approved": {
+          "description": "True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request.",
+          "type": "boolean"
         }
       },
       "required": ["invocationId", "id", "caller"],

@@ -28,13 +28,17 @@ export function createLaunch(deps) {
   };
 
   /** Start the first of the session's programs that is there; a failure is written in the terminal. */
-  const launch = async (/** @type {Session} */ session) => {
+  const launch = async (
+    /** @type {Session} */ session,
+    /** @type {string | undefined} */ invocationId = undefined,
+  ) => {
     for (const [index, program] of session.programs.entries()) {
       try {
         const size = { cols: session.cols, rows: session.rows };
         const { procId } = await spawnProgram(bridge, program, {
           env: environment(settings()),
           ...size,
+          invocationId,
         });
         session.program = program;
         session.procId = procId;

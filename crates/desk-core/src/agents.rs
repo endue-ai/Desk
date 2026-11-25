@@ -187,24 +187,66 @@ impl Core {
         scope: &Permission,
         id: &str,
         args: Option<&Map<String, Value>>,
-    ) -> Result<Option<CommandInfo>, BridgeError> {
+    ) -> Result<(Option<CommandInfo>, bool), BridgeError> {
         let target = Target::CommandId(id);
         let checked = self.command(id);
-        if agent_of(caller).is_some() {
+        let held = agent_of(caller).is_some()
+            && checked
+                .as_ref()
+                .is_some_and(|info| info.irreversible == Some(true));
+        if held {
+            self.check_approval_scope(caller, scope, &target)?;
+        } else if agent_of(caller).is_some() {
             self.check_agent(caller, scope, &target, checked.as_ref(), args)?;
         } else {
             self.check(caller, scope, &target)?;
         }
         let current = self.command(id);
-        if let (Some(checked), Some(current)) = (&checked, &current)
-            && checked != current
-        {
+        if checked != current {
             return Err(error(
                 ErrorCode::Cancelled,
                 format!("{id} changed before it ran"),
             ));
         }
-        Ok(current)
+        Ok((current, held))
+    }
+
+    /// Fixed limits a person's approval cannot lift.
+    fn agent_limits(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        if let Some(reason) = self.capped(caller, scope) {
+            self.refused(caller, scope, Some(target), Some(reason));
+            return Err(denied(Denied {
+                permission: scope.clone(),
+                reason: refusal(caller, Some(reason)),
+            }));
+        }
+        if self.answers_for_the_person(scope, target) {
+            self.refused(caller, scope, Some(target), None);
+            let reason =
+                format!("{caller} may not run a command that answers the person's questions");
+            return Err(denied(Denied {
+                permission: scope.clone(),
+                reason,
+            }));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn check_approval_scope(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        if !scope_allows(scope, target) {
+            return self.allow_call(caller, scope, target);
+        }
+        self.agent_limits(caller, scope, target)
     }
 
     /// The check of an agent's call: refused outside its allowlist whatever it holds and for a
@@ -220,22 +262,7 @@ impl Core {
         args: Option<&Map<String, Value>>,
     ) -> Result<(), BridgeError> {
         if scope_allows(scope, target) {
-            if let Some(reason) = self.capped(caller, scope) {
-                self.refused(caller, scope, Some(target), Some(reason));
-                return Err(denied(Denied {
-                    permission: scope.clone(),
-                    reason: refusal(caller, Some(reason)),
-                }));
-            }
-            if self.answers_for_the_person(scope, target) {
-                self.refused(caller, scope, Some(target), None);
-                let reason =
-                    format!("{caller} may not run a command that answers the person's questions");
-                return Err(denied(Denied {
-                    permission: scope.clone(),
-                    reason,
-                }));
-            }
+            self.agent_limits(caller, scope, target)?;
             let free = match (scope, target, info) {
                 (Permission::CmdInvoke(_), Target::CommandId(_), Some(info)) => {
                     self.eris_desk_command(caller, info, args)

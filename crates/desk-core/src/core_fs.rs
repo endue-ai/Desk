@@ -50,7 +50,7 @@ pub(crate) struct Watches {
 impl Core {
     pub(crate) fn fs_write(&self, caller: &str, params: FsWriteParams) -> Answer {
         let scope = Permission::FsWrite(params.scope);
-        let path = self.authorize(caller, &scope, &params.path)?;
+        let path = self.resolve(&params.path)?;
         let create_dirs = params.create_dirs.unwrap_or(false);
         if create_dirs && let Some((parent, _)) = params.path.rsplit_once('/') {
             // Folders it creates must be inside the scope too. The grant was checked above, once:
@@ -78,7 +78,7 @@ impl Core {
             file: &path,
             bytes: &bytes,
         };
-        self.hold(caller, &scope, write)?;
+        self.authorize_action(caller, &scope, write)?;
         if params.append == Some(true) {
             // A chunk at the end, in place: it replaces nothing, so nothing is kept (ADR 0356).
             let bytes_written = append(&path, &bytes).map_err(io_error)?;
@@ -92,6 +92,7 @@ impl Core {
         if let Some(version) = &version {
             // Undoable by restoring the version (ADR 0077).
             self.push_write(caller, "fs.write", &params.path, version.clone());
+            self.approval_write(&params.path, version);
         }
         json(FsWriteResult {
             bytes_written,

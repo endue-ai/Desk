@@ -143,6 +143,17 @@ impl Core {
     /// person pressed the caller's Allow, ADR 0335) a refusal earlier in the session is forgotten
     /// first, so the person is asked once more.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
+        if let Some(invocation) = &params.invocation_id {
+            let granted = !self.undeclared(caller, &params.permission)
+                && self.with_provider_approval(caller, invocation, |approval| {
+                    approval.covers(&params.permission)
+                });
+            return json(PermRequestResult {
+                granted,
+                grant: None,
+                reason: None,
+            });
+        }
         if params.again == Some(true) {
             self.forget_refusals(caller, &params.permission);
         }

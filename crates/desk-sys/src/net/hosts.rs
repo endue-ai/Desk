@@ -11,6 +11,16 @@ pub fn host_allowed(allowed_hosts: &[String], url: &str) -> bool {
     Url::parse(url).is_ok_and(|url| allows(allowed_hosts, &url))
 }
 
+/// The normalized host and port for a request approved to one origin.
+pub fn exact_host(url: &str) -> Option<String> {
+    let url = Url::parse(url).ok()?;
+    Some(format!(
+        "{}:{}",
+        url.host_str()?,
+        url.port_or_known_default()?
+    ))
+}
+
 /// `permission_denied`, naming the host, unless `url` matches `allowed_hosts`. `requested` is the URL
 /// the caller asked for, which a redirect may have led away from.
 pub(super) fn check(allowed_hosts: &[String], url: &Url, requested: &str) -> Result<(), Error> {

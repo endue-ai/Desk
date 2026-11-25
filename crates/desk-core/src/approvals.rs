@@ -15,18 +15,18 @@ use std::sync::MutexGuard;
 use std::sync::mpsc::{self, Sender};
 
 use desk_bridge::{
-    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, GrantDuration, LogLevel, PendingKind,
+    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, GrantDuration, PendingKind,
     PermApprovalData, PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent,
     PermApproveParams, PermApproveResult, Permission,
 };
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 
 use crate::agents::agent_of;
 pub(crate) use crate::approval_action::Action;
+use crate::approval_versions::{UndoVersions, WrittenVersion};
 use crate::core_perm::perm_manage;
 use crate::handler::{Answer, Core, denied, error, json as answer};
 use crate::perm::{Denied, Target, scope_allows};
-use crate::perm_log::PERM_CHANNEL;
 
 /// How the person answered, or that nobody could.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -61,6 +61,7 @@ pub(crate) struct Approvals {
     tasks: Vec<ForTask>,
     /// Each agent's turn its latest call came in, while it lasts (ADR 0123).
     turns: BTreeMap<String, String>,
+    pub(crate) undo: UndoVersions,
 }
 
 /// The thread's call: the task it belongs to, the approval it ran under, and whether one was denied.
@@ -68,6 +69,7 @@ pub(crate) struct Approvals {
 struct Call {
     task: Option<String>,
     approved: Option<String>,
+    written_version: Option<WrittenVersion>,
     denied: bool,
 }
 
@@ -97,12 +99,23 @@ impl Core {
         scope: &Permission,
         action: Action<'_>,
     ) -> Result<(), BridgeError> {
+        let held = self.requires_approval(caller, &action);
+        self.hold_checked(caller, scope, action, held)
+    }
+
+    pub(crate) fn hold_checked(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        action: Action<'_>,
+        held: bool,
+    ) -> Result<(), BridgeError> {
         let task = CALL.with(|c| c.borrow().task.clone());
         if let (Some(task), Some(_)) = (&task, agent_of(caller)) {
             let mut approvals = self.approvals();
             approvals.turns.insert(caller.to_owned(), task.clone());
         }
-        if agent_of(caller).is_none() || !self.irreversible(caller, &action) {
+        if !held {
             return Ok(());
         }
         if let Some(earlier) = task
@@ -111,6 +124,11 @@ impl Core {
         {
             let given = Some(ApprovalAnswer::Task);
             self.log_approval(caller, scope, &action, &earlier, task.as_deref(), given);
+            if matches!(action, Action::Write { .. }) {
+                // Each write under a task approval can keep a different filesystem version.
+                let id = format!("a-{}", self.next_approval());
+                CALL.with(|c| c.borrow_mut().approved = Some(id));
+            }
             return Ok(());
         }
         // A task answer is offered only for an act it can be narrowed to, and perm.approve takes
@@ -193,9 +211,18 @@ impl Core {
     /// The call on this thread ended with `result`: when it ran under an approval the person gave
     /// on a card, the perm:manage holders hear `perm.approval.done`.
     pub(crate) fn report_approved(&self, result: &Answer) {
-        let Some(approval_id) = CALL.with(|c| c.borrow_mut().approved.take()) else {
+        let (approval, version) = CALL.with(|c| {
+            let mut call = c.borrow_mut();
+            (call.approved.take(), call.written_version.take())
+        });
+        let Some(approval_id) = approval else {
             return;
         };
+        let version = version.filter(|_| result.is_ok());
+        let undoable = version.is_some().then_some(true);
+        if let Some(version) = version {
+            self.approvals().undo.insert(approval_id.clone(), version);
+        }
         let data = PermApprovalDoneData {
             approval_id,
             ok: result.is_ok(),
@@ -205,7 +232,7 @@ impl Core {
                 .and_then(|r| r.get("bytesWritten"))
                 .and_then(Value::as_u64),
             error: result.as_ref().err().cloned(),
-            undoable: None,
+            undoable,
         };
         let holders = self.holders(&perm_manage());
         let event = BridgeEvent::PermApprovalDone(PermApprovalDoneEvent {
@@ -213,6 +240,18 @@ impl Core {
             data,
         });
         self.events().route(holders, event);
+    }
+
+    pub(crate) fn approval_write(&self, path: &str, version: &str) {
+        CALL.with(|c| {
+            let mut call = c.borrow_mut();
+            if call.approved.is_some() {
+                call.written_version = Some(WrittenVersion {
+                    path: path.to_owned(),
+                    version: version.to_owned(),
+                });
+            }
+        });
     }
 
     /// The desk's turn `task` ended: what was approved for it ends too.
@@ -246,6 +285,10 @@ impl Core {
         }
     }
 
+    pub(crate) fn requires_approval(&self, caller: &str, action: &Action<'_>) -> bool {
+        agent_of(caller).is_some() && self.irreversible(caller, action)
+    }
+
     /// Whether `action` waits for the person: a write or a fetch no `always` grant of the caller
     /// allows, any spawn, a command marked irreversible.
     fn irreversible(&self, caller: &str, action: &Action<'_>) -> bool {
@@ -259,7 +302,9 @@ impl Core {
                 })
             }
             Action::Spawn { .. } | Action::Computer { .. } => true,
-            Action::Invoke { id, .. } => self.irreversible_command(id),
+            Action::Invoke { id, .. } => self
+                .command(id)
+                .is_some_and(|info| info.irreversible == Some(true)),
         }
     }
 
@@ -282,11 +327,7 @@ impl Core {
         task: Option<&str>,
     ) -> (String, Verdict) {
         let holders = self.holders(&perm_manage());
-        let seq = {
-            let mut approvals = self.approvals();
-            approvals.next += 1;
-            approvals.next
-        };
+        let seq = self.next_approval();
         let id = format!("a-{seq}");
         if holders.is_empty() || !self.events().has_router() {
             return (id, Verdict::Unheard);
@@ -314,52 +355,13 @@ impl Core {
         (id, verdict)
     }
 
-    /// One `perm` log entry with the approval and the task: `approved` with how (`once`, `task`),
-    /// or `refused` with `reason: not-approved`.
-    fn log_approval(
-        &self,
-        caller: &str,
-        scope: &Permission,
-        action: &Action<'_>,
-        approval_id: &str,
-        task: Option<&str>,
-        given: Option<ApprovalAnswer>,
-    ) {
-        let name = json!(scope)["permission"]
-            .as_str()
-            .unwrap_or_default()
-            .to_owned();
-        let target = action.target_text();
-        let mut fields = Map::new();
-        fields.insert("caller".to_owned(), json!(caller));
-        fields.insert("permission".to_owned(), json!(name));
-        fields.insert("scope".to_owned(), json!(scope));
-        fields.insert("target".to_owned(), json!(target));
-        fields.insert("approvalId".to_owned(), json!(approval_id));
-        if let Some(task) = task {
-            fields.insert("task".to_owned(), json!(task));
-        }
-        let (level, message) = match given {
-            Some(how) => {
-                fields.insert("decision".to_owned(), json!("approved"));
-                fields.insert("approval".to_owned(), json!(how));
-                let how = json!(how).as_str().unwrap_or_default().to_owned();
-                (
-                    LogLevel::Info,
-                    format!("{caller} approved {name} {target} ({how})"),
-                )
-            }
-            None => {
-                fields.insert("decision".to_owned(), json!("refused"));
-                fields.insert("reason".to_owned(), json!("not-approved"));
-                let message = format!("{caller} refused {name} {target} (not-approved)");
-                (LogLevel::Warn, message)
-            }
-        };
-        self.append(PERM_CHANNEL, level, message, Some(fields));
+    fn next_approval(&self) -> u64 {
+        let mut approvals = self.approvals();
+        approvals.next += 1;
+        approvals.next
     }
 
-    fn approvals(&self) -> MutexGuard<'_, Approvals> {
+    pub(crate) fn approvals(&self) -> MutexGuard<'_, Approvals> {
         self.approvals
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())

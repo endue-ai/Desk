@@ -1,10 +1,8 @@
-// The approval card (ADR 0078): an agent's irreversible call waiting for the person, and, once an
-// allowed write ran, what it wrote. Plain data in, plain data out, like model.js.
+// The approval card (ADR 0078): an agent's irreversible call waiting for the person.
 import { describeCaller, describePermission } from "./describe.js";
 
 /**
  * @typedef {import("@endue-ai/bridge").PermApprovalData} PermApprovalData
- * @typedef {import("@endue-ai/bridge").PermApprovalDoneData} PermApprovalDoneData
  * @typedef {import("@endue-ai/bridge").PluginInfo} PluginInfo
  * @typedef {import("./describe.js").Caller} Caller
  * @typedef {"file" | "hunk" | "added" | "removed" | "same"} Change
@@ -13,9 +11,7 @@ import { describeCaller, describePermission } from "./describe.js";
  * @typedef {{ kind: "approval", approvalId: string, title: string, caller: Caller, action: string,
  *   target: string, preview: Preview | null, size: string, task: string | null, waiting: number }}
  *   ApprovalModel
- * @typedef {{ kind: "result", approvalId: string, title: string, caller: Caller, text: string,
- *   undo: boolean, waiting: number }} ResultModel
- * @typedef {ApprovalModel | ResultModel} CardModel
+ * @typedef {ApprovalModel} CardModel
  */
 
 /** @type {Record<string, { verb: string, label: string }>} */
@@ -117,44 +113,6 @@ export function approvalModel(data, plugins, waiting) {
     preview: previewOf(data.preview),
     size: data.size === undefined ? "" : sizeLabel(data.size),
     task: taskLabel(data),
-    waiting,
-  };
-}
-
-/**
- * The card an allowed write leaves: writing, what it wrote, or why it failed. Undo only when the
- * core says it can take the write back (cmd.undo, #276).
- * @param {PermApprovalData} data
- * @param {PermApprovalDoneData | undefined} done
- * @param {PluginInfo[]} plugins
- * @param {number} waiting
- * @returns {ResultModel}
- */
-export function resultModel(data, done, plugins, waiting) {
-  const caller = describeCaller(data.caller, plugins);
-  const card = { kind: /** @type {const} */ ("result"), approvalId: data.approvalId, caller };
-  if (!done) {
-    const title = `${caller.name} is writing a file`;
-    return { ...card, title, text: `Writing ${data.target}…`, undo: false, waiting };
-  }
-  if (!done.ok) {
-    const why = done.error?.message ?? "it failed";
-    const title = `${caller.name} could not write a file`;
-    return {
-      ...card,
-      title,
-      text: `Could not write ${data.target}: ${why}.`,
-      undo: false,
-      waiting,
-    };
-  }
-  const size = sizeLabel(done.bytesWritten ?? data.size ?? 0);
-  const text = `Wrote ${size} to ${data.target}.`;
-  return {
-    ...card,
-    title: `${caller.name} wrote a file`,
-    text,
-    undo: done.undoable === true,
     waiting,
   };
 }

@@ -5222,6 +5222,7 @@ pub enum BridgeRequest {
     PermList(PermListRequest),
     PermAnswer(PermAnswerRequest),
     PermApprove(PermApproveRequest),
+    PermUndoApproval(PermUndoApprovalRequest),
     PermPending(PermPendingRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
@@ -5882,6 +5883,9 @@ pub struct CmdInvokedData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<serde_json::Map<String, serde_json::Value>>,
     pub caller: CallerId,
+    /// True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approved: Option<bool>,
 }
 
 /// A command's provider answered an invocation. Sent to the caller that invoked it.
@@ -9173,6 +9177,13 @@ pub struct PermRequestParams {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
+    /// Check whether a pending approved invocation covers this provider's scope. This answer grants no lasting permission. A matching effect also supplies the invocationId.
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
     /// The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub again: Option<bool>,
@@ -9520,6 +9531,27 @@ pub enum ApprovalAnswer {
 #[serde(deny_unknown_fields)]
 pub struct PermApproveResult {}
 
+/// Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermUndoApprovalRequest {
+    pub id: RequestId,
+    pub method: PermUndoApprovalRequestMethod,
+    pub params: PermUndoApprovalParams,
+}
+
+/// The completed write to undo, as named by its approval receipt.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermUndoApprovalParams {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub scope: PermManagePermission,
+}
+
+/// An empty result once the retained version was restored.
+pub type PermUndoApprovalResult = serde_json::Map<String, serde_json::Value>;
+
 /// An approved call ran: what came of it. Sent to callers that hold perm:manage.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -9528,7 +9560,7 @@ pub struct PermApprovalDoneEvent {
     pub data: PermApprovalDoneData,
 }
 
-/// Payload of perm.approval.done.
+/// Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermApprovalDoneData {
@@ -9544,7 +9576,7 @@ pub struct PermApprovalDoneData {
     pub bytes_written: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<BridgeError>,
-    /// true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.
+    /// True when perm.undoApproval can restore the file version kept by this write.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undoable: Option<bool>,
 }
@@ -9817,6 +9849,13 @@ pub struct ProcSpawnParams {
     pub env: Option<BTreeMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pty: Option<PtySize>,
+    /// The pending approved command invocation that named this program and its arguments. Valid for one matching spawn by its provider.
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
     pub scope: ProcSpawnPermission,
 }
 
@@ -14530,6 +14569,14 @@ pub enum PermApproveRequestMethod {
     #[default]
     #[serde(rename = "perm.approve")]
     PermApprove,
+}
+
+/// The `method` of [`PermUndoApprovalRequest`]: always `"perm.undoApproval"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermUndoApprovalRequestMethod {
+    #[default]
+    #[serde(rename = "perm.undoApproval")]
+    PermUndoApproval,
 }
 
 /// The `event` of [`PermApprovalDoneEvent`]: always `"perm.approval.done"`.
