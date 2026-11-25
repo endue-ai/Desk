@@ -16,9 +16,9 @@ else is code you can change without restarting.
 
 ## Install or upgrade the endue app
 
-endue is the graphical app formerly called Desk. The [v0.3.0 download](https://github.com/endue-ai/endue/releases/tag/v0.3.0) provides macOS disk images for Apple silicon (`aarch64`) and Intel (`x86_64`). Compare the SHA-256 of your Mac’s disk image with `SHA256SUMS-macos` on the release page, then open the image and copy endue Desk into Applications. Apple did not notarize v0.3.0. If macOS blocks the verified app’s first launch, select **Open Anyway** for endue Desk under System Settings → Privacy & Security.
+The current [endue 0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) has macOS disk images for Apple silicon and Intel. For a new installation, verify the image against `SHA256SUMS-macos` and copy `endue.app` into Applications. Follow the steps below to upgrade an existing Desk installation.
 
-When the first desktop release labeled **endue app** appears, choose your operating system and processor on [GitHub Releases](https://github.com/endue-ai/endue/releases) and follow these steps.
+endue is the graphical app formerly called Desk. The [v0.3.0 download](https://github.com/endue-ai/endue/releases/tag/v0.3.0) provides macOS disk images for Apple silicon (`aarch64`) and Intel (`x86_64`). Compare the SHA-256 of your Mac’s disk image with `SHA256SUMS-macos` on the release page, then open the image and copy endue Desk into Applications. Apple did not notarize v0.3.0. If macOS blocks the verified app’s first launch, select **Open Anyway** for endue Desk under System Settings → Privacy & Security.
 
 - On macOS, quit Desk, mount the new `.dmg` and open `Install endue.command`. The installer updates an existing copy in Applications by its bundle ID, even if you renamed it. If you have several copies or another app named endue, open Terminal in the mounted image and run `"./Install endue.command" --to "/Applications/Studio.app"` with your chosen path. Select your existing Desk copy or an available filename.
 - On Windows or Linux, use the same package type as your installed copy when that package is listed. Windows keeps the existing installation directory. Debian continues to track the package as `endue-desk`.
@@ -28,7 +28,7 @@ The official command is `endue`. Try it from a source checkout with `cargo run -
 
 ### Linux x86_64 servers
 
-On a release that lists **endue CLI for Linux x86_64**, download the archive, its signature and `SHA256SUMS-cli` into an empty directory. Run `sha256sum -c SHA256SUMS-cli`, then `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `./endue-cli_*/bin/endue run "hello"`. The first CLI download will appear on its release page. v0.3.0 contains the macOS app only. [Verify the publisher signature](docs/releasing.md#verify-a-linux-cli-download)
+Download `endue-cli_0.4.0_linux-x86_64.tar.gz` and `SHA256SUMS-cli` from the [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) into an empty directory. Run `sha256sum -c SHA256SUMS-cli`, then `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz`. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`. [Verification for signed CLI releases](docs/releasing.md#verify-a-linux-cli-download)
 
 ## Why endue
 

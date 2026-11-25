@@ -15,9 +15,9 @@ Netzwerk, Audio, Fenster), und alles andere ist Code, der sich ohne Neustart än
 
 ## Die endue-App installieren oder aktualisieren
 
-Die grafische Anwendung Desk heißt jetzt endue. Unter [v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) finden Sie macOS-Disk-Images für Apple-Chips (`aarch64`) und Intel (`x86_64`). Vergleichen Sie die SHA-256-Prüfsumme des passenden Images mit `SHA256SUMS-macos` auf der Release-Seite. Öffnen Sie dann das Image und kopieren Sie endue Desk in den Ordner „Programme“. Version v0.3.0 wurde von Apple nicht notarisiert. Blockiert macOS den ersten Start der geprüften App, wählen Sie in den Systemeinstellungen unter „Datenschutz & Sicherheit“ für endue Desk „Dennoch öffnen“.
+Die aktuelle [Version endue 0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) bietet macOS-Disk-Images für Apple-Chips und Intel. Prüfen Sie bei einer Neuinstallation das Image anhand von `SHA256SUMS-macos` und kopieren Sie `endue.app` in den Ordner „Programme“. Befolgen Sie die folgenden Schritte, um eine bestehende Desk-Installation zu aktualisieren.
 
-Sobald die erste Desktop-Version unter dem Namen **endue app** erscheint, wählen Sie unter [GitHub Releases](https://github.com/endue-ai/endue/releases) das Installationspaket für Ihr Betriebssystem und Ihren Prozessor und gehen wie folgt vor.
+Die grafische Anwendung Desk heißt jetzt endue. Unter [v0.3.0](https://github.com/endue-ai/endue/releases/tag/v0.3.0) finden Sie macOS-Disk-Images für Apple-Chips (`aarch64`) und Intel (`x86_64`). Vergleichen Sie die SHA-256-Prüfsumme des passenden Images mit `SHA256SUMS-macos` auf der Release-Seite. Öffnen Sie dann das Image und kopieren Sie endue Desk in den Ordner „Programme“. Version v0.3.0 wurde von Apple nicht notarisiert. Blockiert macOS den ersten Start der geprüften App, wählen Sie in den Systemeinstellungen unter „Datenschutz & Sicherheit“ für endue Desk „Dennoch öffnen“.
 
 - Beenden Sie Desk unter macOS, öffnen Sie das neue `.dmg` und starten Sie `Install endue.command`. Das Installationsprogramm erkennt eine vorhandene Kopie im Programme-Ordner an der Bundle-ID, auch wenn Sie sie umbenannt haben. Bei mehreren Kopien oder einer anderen App namens endue öffnen Sie ein Terminal im eingebundenen Disk-Image und führen `"./Install endue.command" --to "/Applications/Studio.app"` aus. Ersetzen Sie den Beispielpfad durch den Pfad zur bestehenden Desk-App oder einen freien Namen.
 - Verwenden Sie unter Windows und Linux das bisherige Paketformat, sofern die Version es anbietet. Windows behält das Installationsverzeichnis bei. Das Debian-Paket heißt weiterhin `endue-desk`.
@@ -27,7 +27,7 @@ Der offizielle Befehl heißt `endue`. Im Quellverzeichnis können Sie ihn mit `c
 
 ### Linux-Server mit x86_64
 
-Wenn eine Version **endue CLI for Linux x86_64** anbietet, laden Sie das Archiv, die Signatur und `SHA256SUMS-cli` in ein leeres Verzeichnis. Prüfen Sie das Archiv mit `sha256sum -c SHA256SUMS-cli` und entpacken Sie es mit `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Setzen Sie `ENDUE_BRAIN_URL` auf die Adresse Ihres brain-v0-Dienstes und führen Sie `./endue-cli_*/bin/endue run "hello"` aus. Die Version v0.3.0 enthält nur die macOS-App. [Signatur des Herausgebers prüfen](../../releasing.md#verify-a-linux-cli-download)
+Laden Sie `endue-cli_0.4.0_linux-x86_64.tar.gz` und `SHA256SUMS-cli` von der [Release-Seite für v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) in ein leeres Verzeichnis. Führen Sie `sha256sum -c SHA256SUMS-cli` und danach `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz` aus. Setzen Sie `ENDUE_BRAIN_URL` auf die Adresse Ihres brain-v0-Dienstes und führen Sie `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"` aus. [Signierte CLI-Veröffentlichungen prüfen](../../releasing.md#verify-a-linux-cli-download)
 
 ## Warum endue
 

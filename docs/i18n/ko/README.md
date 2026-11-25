@@ -14,9 +14,9 @@
 
 ## endue 앱 설치 및 업그레이드
 
-endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://github.com/endue-ai/endue/releases/tag/v0.3.0)에는 Apple silicon용(`aarch64`)과 Intel용(`x86_64`) macOS 디스크 이미지가 있습니다. Mac에 맞는 이미지의 SHA-256을 릴리즈에 있는 `SHA256SUMS-macos`와 비교한 뒤 이미지를 열고 endue Desk를 응용 프로그램 폴더에 복사하세요. v0.3.0은 Apple 공증을 받지 않았습니다. 확인한 앱의 첫 실행을 macOS가 차단하면 시스템 설정 → 개인정보 보호 및 보안에서 endue Desk의 **그래도 열기**를 선택하세요.
+현재 [endue 0.4.0 릴리스](https://github.com/endue-ai/endue/releases/tag/v0.4.0)에는 Apple silicon과 Intel용 macOS 디스크 이미지가 있습니다. 새로 설치하려면 `SHA256SUMS-macos`로 이미지를 확인하고 `endue.app`을 응용 프로그램 폴더에 복사하세요. 기존 Desk를 업데이트하려면 아래 절차를 따르세요.
 
-**endue app**이라는 이름으로 첫 버전이 배포되면 [GitHub 릴리즈](https://github.com/endue-ai/endue/releases)에서 운영체제와 프로세서에 맞는 데스크톱 설치 파일을 선택한 뒤 다음 절차를 따르세요.
+endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://github.com/endue-ai/endue/releases/tag/v0.3.0)에는 Apple silicon용(`aarch64`)과 Intel용(`x86_64`) macOS 디스크 이미지가 있습니다. Mac에 맞는 이미지의 SHA-256을 릴리즈에 있는 `SHA256SUMS-macos`와 비교한 뒤 이미지를 열고 endue Desk를 응용 프로그램 폴더에 복사하세요. v0.3.0은 Apple 공증을 받지 않았습니다. 확인한 앱의 첫 실행을 macOS가 차단하면 시스템 설정 → 개인정보 보호 및 보안에서 endue Desk의 **그래도 열기**를 선택하세요.
 
 - macOS에서는 Desk를 종료하고 새 `.dmg`를 연 뒤 `Install endue.command`를 실행하세요. 설치기는 응용 프로그램 폴더에서 번들 ID로 기존 앱을 찾아 업데이트합니다. 앱 이름을 바꾼 경우에도 같은 위치를 사용합니다. 복사본이 여러 개이거나 다른 앱이 endue라는 이름을 사용 중이면 디스크 이미지 안에서 터미널을 열고 `"./Install endue.command" --to "/Applications/Studio.app"`를 실행하세요. 예시 경로 대신 기존 Desk 앱의 경로나 비어 있는 새 경로를 지정하세요.
 - Windows와 Linux에서는 해당 릴리즈에 기존 설치본과 같은 형식의 패키지가 있으면 그 파일을 사용하세요. Windows는 기존 설치 폴더를 사용하고 Debian의 패키지 이름은 `endue-desk`입니다.
@@ -26,7 +26,7 @@ endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://githu
 
 ### Linux x86_64 서버
 
-릴리즈 페이지에 **endue CLI for Linux x86_64**가 표시되면 빈 디렉터리에 압축 파일, 서명 파일, `SHA256SUMS-cli`를 받으세요. `sha256sum -c SHA256SUMS-cli`로 확인한 뒤 `tar -xzf endue-cli_*_linux-x86_64.tar.gz`로 압축을 풉니다. `ENDUE_BRAIN_URL`에 사용할 brain v0 서비스 주소를 설정하고 `./endue-cli_*/bin/endue run "hello"`를 실행하세요. v0.3.0에서 받을 수 있는 설치 파일은 macOS 앱입니다. [배포자 서명 검증 방법](../../releasing.md#verify-a-linux-cli-download)
+[v0.4.0 릴리스](https://github.com/endue-ai/endue/releases/tag/v0.4.0)에서 `endue-cli_0.4.0_linux-x86_64.tar.gz`와 `SHA256SUMS-cli`를 빈 디렉터리에 받으세요. `sha256sum -c SHA256SUMS-cli`로 확인한 뒤 `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz`로 압축을 풉니다. `ENDUE_BRAIN_URL`에 사용할 brain v0 서비스 주소를 설정하고 `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`를 실행하세요. [서명된 CLI 릴리스 검증](../../releasing.md#verify-a-linux-cli-download)
 
 ## 왜 endue인가
 

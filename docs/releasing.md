@@ -8,13 +8,16 @@ a person in the `stable` environment.
 
 ## Verify a Linux CLI download
 
-A release that includes the standalone client lists **endue app** and **endue CLI for Linux x86_64** separately. Download `endue-cli_<version>_linux-x86_64.tar.gz`, its `.sig` and `SHA256SUMS-cli` from that tag into an empty directory. The public v0.3.0 release predates the server CLI.
+Download `endue-cli_<version>_linux-x86_64.tar.gz` and `SHA256SUMS-cli` from the release into an empty directory. Run `sha256sum -c SHA256SUMS-cli` before extracting the archive. The manual [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) uses SHA-256 verification for its Linux CLI.
 
-1. Run `sha256sum -c SHA256SUMS-cli`. Set `VERSION` to the version printed on the release, without the leading `v`. Verify the build provenance with `gh attestation verify "endue-cli_${VERSION}_linux-x86_64.tar.gz" --repo endue-ai/endue`.
-2. To verify the version-bound signature, obtain the trusted updater public key from your existing installation or release administrator. Set `DESK_UPDATER_PUBKEY` to its Tauri-encoded public value. From a public source checkout, run `node scripts/release-verify.mjs /path/to/archive.tar.gz --pubkey "$DESK_UPDATER_PUBKEY" --version "$VERSION"` with the downloaded archive’s path.
-3. Extract the verified archive and open its directory. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `bin/endue run "hello"`. To activate both terminal names, run `bin/activate` with your chosen bin directory.
+For a signed channel release, also download the archive's `.sig`. Set `VERSION` to the version on the release without the leading `v`.
 
-The Linux desktop build ships the same executable in its installer and the standalone archive. A manual release-macos run for a published tag builds the Linux CLI at the same commit as both macOS images. Each publishing path checks the version-bound signature and downloads the archive into a read-only Debian x86_64 container with a separate echo service. The archive includes the project license and dependency notices. The in-app updater selects the signed desktop packages.
+1. Verify the build provenance with `gh attestation verify "endue-cli_${VERSION}_linux-x86_64.tar.gz" --repo endue-ai/endue`.
+2. Obtain the trusted updater public key from your existing installation or release administrator. Set `DESK_UPDATER_PUBKEY` to its Tauri-encoded public value. From a public source checkout, verify the version-bound signature with `node scripts/release-verify.mjs /path/to/archive.tar.gz --pubkey "$DESK_UPDATER_PUBKEY" --version "$VERSION"`.
+
+Extract the verified archive and open its directory. Run `bin/endue --version` to check the installation. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `bin/endue run "hello"`. To activate both terminal names, run `bin/activate` with your chosen bin directory.
+
+The Linux desktop build ships the same executable in its installer and the standalone archive. A manual release-macos run for a published tag builds the Linux CLI at the same commit as both macOS images. The archive includes the project license and dependency notices. The in-app updater selects signed desktop packages.
 
 ## Publish a GitHub Release with the macOS app
 

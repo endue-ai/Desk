@@ -13,9 +13,9 @@
 
 ## 安装或升级 endue 应用
 
-endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/endue-ai/endue/releases/tag/v0.3.0)提供两种 macOS 磁盘映像，分别适用于 Apple 芯片（`aarch64`）和 Intel 处理器（`x86_64`）。将与 Mac 匹配的映像的 SHA-256 与发布页上的 `SHA256SUMS-macos` 核对后，打开映像，将 endue Desk 复制到“应用程序”文件夹。v0.3.0 未经 Apple 公证。如果 macOS 阻止首次打开已核对的应用，请前往“系统设置”→“隐私与安全性”，为 endue Desk 选择“仍要打开”。
+当前的 [endue 0.4.0 发布版](https://github.com/endue-ai/endue/releases/tag/v0.4.0)提供适用于 Apple 芯片和 Intel 处理器的 macOS 磁盘映像。首次安装时，请用 `SHA256SUMS-macos` 校验映像，再将 `endue.app` 复制到“应用程序”文件夹。升级现有的 Desk 时，请按下列步骤操作。
 
-首个标为 **endue app** 的桌面版本发布后，请在 [GitHub 发布页](https://github.com/endue-ai/endue/releases)选择与操作系统和处理器匹配的安装包，然后按照以下步骤操作。
+endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/endue-ai/endue/releases/tag/v0.3.0)提供两种 macOS 磁盘映像，分别适用于 Apple 芯片（`aarch64`）和 Intel 处理器（`x86_64`）。将与 Mac 匹配的映像的 SHA-256 与发布页上的 `SHA256SUMS-macos` 核对后，打开映像，将 endue Desk 复制到“应用程序”文件夹。v0.3.0 未经 Apple 公证。如果 macOS 阻止首次打开已核对的应用，请前往“系统设置”→“隐私与安全性”，为 endue Desk 选择“仍要打开”。
 
 - 在 macOS 上退出 Desk，打开新的 `.dmg`，运行 `Install endue.command`。安装程序通过应用包标识符在“应用程序”中找到原来的副本，即使改过名也会原地更新。如果有多个副本或其他同名应用，请在已挂载的磁盘映像中打开终端，运行 `"./Install endue.command" --to "/Applications/Studio.app"`，将示例路径替换为现有 Desk 应用或尚未使用的路径。
 - 在 Windows 或 Linux 上，如果发布页提供与原安装包相同的格式，请选择该格式。Windows 会沿用安装目录，Debian 的软件包名仍为 `endue-desk`。
@@ -25,7 +25,7 @@ endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/end
 
 ### Linux x86_64 服务器
 
-当发布页面列出 **endue CLI for Linux x86_64** 时，将压缩包、签名和 `SHA256SUMS-cli` 下载到一个空目录。运行 `sha256sum -c SHA256SUMS-cli` 校验，再用 `tar -xzf endue-cli_*_linux-x86_64.tar.gz` 解压。将 `ENDUE_BRAIN_URL` 设为你的 brain v0 服务地址，然后运行 `./endue-cli_*/bin/endue run "hello"`。v0.3.0 仅提供 macOS 应用。 [验证发布者签名](../../releasing.md#verify-a-linux-cli-download)
+从 [v0.4.0 发布页面](https://github.com/endue-ai/endue/releases/tag/v0.4.0)将 `endue-cli_0.4.0_linux-x86_64.tar.gz` 和 `SHA256SUMS-cli` 下载到空目录。运行 `sha256sum -c SHA256SUMS-cli` 校验，再用 `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz` 解压。将 `ENDUE_BRAIN_URL` 设为你的 brain v0 服务地址，然后运行 `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`。[验证已签名的 CLI 版本](../../releasing.md#verify-a-linux-cli-download)
 
 ## 为什么是 endue
 
