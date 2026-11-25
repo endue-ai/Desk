@@ -1,7 +1,7 @@
 # plugins/item
 
-`desk.item`, one item in Desk: a `view` plugin, data only, whose one view is a universal `detail`
-view inline in `plugin.json` (`specs/view/v0`, ADR 0103). The palette's Open in Desk shows it
+`desk.item`, one item in endue: a `view` plugin, data only, whose one view is a universal `detail`
+view inline in `plugin.json` (`specs/view/v0`, ADR 0103). The palette's Open in endue shows it
 (`desk.views.open { id: "desk.item", params }`); `desk.universal` draws it, and nothing here runs.
 
 | Param | What it names |
@@ -13,7 +13,7 @@ view inline in `plugin.json` (`specs/view/v0`, ADR 0103). The palette's Open in 
 Its source is an items query with no `kinds` and no `sources`: `where` matches `source.connector`,
 `source.instance` and `id` to the three params (`{params.<name>}`, filled when it loads), `limit: 1`.
 The detail shows the item's fields as label and value rows, its roles first (title, text, when);
-when the item is gone, "This item is not in Desk any more."
+when the item is gone, "This item is not in endue any more."
 
 ```bash
 pnpm exec vitest run plugins/item

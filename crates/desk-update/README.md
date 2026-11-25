@@ -1,8 +1,8 @@
 # desk-update
 
-Desk reads signed upgrade paths on GitHub Releases and stages the highest compatible package for
+endue reads signed upgrade paths on GitHub Releases and stages the highest compatible package for
 this installation. It verifies the package again when the person installs it immediately or at
-their next Desk start (ADR 0054, ADR 0147, ADR 0291).
+their next endue start (ADR 0054, ADR 0147, ADR 0291).
 
 ## Public API
 

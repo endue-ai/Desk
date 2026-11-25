@@ -1,7 +1,7 @@
 # @endue-ai/bridge
 
-TypeScript client for the Desk bridge, typed from `specs/` (bridge, plugin, item, view, connector, init,
-brain and the surface protocol). Layer: Desk bridge (`docs/architecture.md`).
+TypeScript client for the endue bridge, typed from `specs/` (bridge, plugin, item, view, connector, init,
+brain and the surface protocol). Layer: endue bridge (`docs/architecture.md`).
 
 ## Public API
 

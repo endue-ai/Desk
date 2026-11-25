@@ -13,7 +13,7 @@ starts `endue mcp` and reaches every plugin through the desk socket (`crates/des
   its id with dots as underscores (`endue_git_status`), its args schema as input.
 - Resources `desk://plugins` and `desk://plugins/<id>`; `list_changed` when commands or plugins change.
 
-Every call runs as `agent:<id>` (`--agent`, default `mcp`): the first use asks the person in Desk, an
+Every call runs as `agent:<id>` (`--agent`, default `mcp`): the first use asks the person in endue, an
 irreversible one waits for approval, `agents.<id>.allow` in init.yaml caps it, and
 `desk perm log --agent <id>` shows it.
 

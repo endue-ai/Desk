@@ -1,6 +1,6 @@
 # desk-platform
 
-The client of endue AI's platform API subset that Desk calls (`specs/platform/v0`, ADR 0122): the
+The client of endue AI's platform API subset that endue calls (`specs/platform/v0`, ADR 0122): the
 person's endue AI agents, what Studio shows of one, the agent catalog, the Home board's
 conversations, the spaces the person can open (ADR 0129) and the person's own account settings (ADR
 0130). desk-core serves it on the bridge as `studio.*` and `account.settings.*`.

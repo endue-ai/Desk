@@ -1,6 +1,6 @@
 # desk-mcp-client
 
-Desk as an MCP client (ADR 0098): the MCP servers a person lists in init.yaml (`mcp.servers`) start
+endue as an MCP client (ADR 0098): the MCP servers a person lists in init.yaml (`mcp.servers`) start
 over stdio, each as the caller `mcp:<name>`, and every tool becomes the agent command
 `mcp.<name>.<tool>` (ADR 0088). Layer: Rust core. In process for now; the VM (ADR 0002) comes later.
 
