@@ -21,12 +21,13 @@ const model = {
   reason: "To run SQL on Shop",
   duration: "session",
   waiting: 0,
+  preferPersistent: false,
 };
 
 /** The view of the case before: its listeners stay on the document, so its card is put away. */
 let last: { prompt(model: null): void } | undefined;
 
-function opened() {
+function opened(preferPersistent = false) {
   let clock = 1000;
   const answers: string[] = [];
   const keys: string[] = [];
@@ -51,7 +52,7 @@ function opened() {
     },
   );
   const timers: Array<{ at: number; fn: () => void }> = [];
-  view.prompt(model as never);
+  view.prompt({ ...model, preferPersistent } as never);
   last = view;
   const later = (ms: number) => {
     clock += ms;
@@ -112,6 +113,35 @@ describe("the question's arming delay (PG-01g)", () => {
     const allow = document.querySelector<HTMLButtonElement>("#prompt [data-answer=once]");
     allow?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
     expect(t.answers).toEqual(["once"]);
+  });
+
+  it("offers Always allow first for built-ins and leaves refusal focused", () => {
+    const t = opened(true);
+    const choices = [
+      ...document.querySelectorAll<HTMLButtonElement>("#prompt button:not([hidden])"),
+    ];
+    expect(choices.map((choice) => choice.dataset.answer)).toEqual([
+      "always",
+      "session",
+      "once",
+      "refuse",
+    ]);
+    expect(choices[0]?.classList.contains("desk-btn-primary")).toBe(true);
+    const note = document.getElementById("prompt-revoke");
+    expect(note?.hidden).toBe(false);
+    expect(note?.textContent).toMatch(/revoke this permission in Permissions/);
+    expect(focused()).toBe("Don't allow");
+    choices[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+    expect(t.answers).toEqual(["always"]);
+
+    t.view.prompt({ ...model, promptId: "p-2" } as never);
+    expect(
+      [...document.querySelectorAll<HTMLButtonElement>("#prompt button:not([hidden])")].map(
+        (choice) => choice.dataset.answer,
+      ),
+    ).toEqual(["once", "session", "always", "refuse"]);
+    expect(choices[0]?.classList.contains("desk-btn-primary")).toBe(false);
+    expect(note?.hidden).toBe(true);
   });
 
   it("a click a key makes in the delay answers nothing", () => {
