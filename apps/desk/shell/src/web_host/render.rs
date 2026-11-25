@@ -243,7 +243,7 @@ impl SurfaceRender {
         view.counts.import_errors += 1;
         if view.counts.import_errors <= 3 {
             eprintln!(
-                "endue Desk: surface {} did not import a frame ({why})",
+                "endue: surface {} did not import a frame ({why})",
                 view.surface
             );
         }

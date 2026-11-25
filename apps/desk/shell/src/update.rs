@@ -29,7 +29,7 @@ static RESTART: Mutex<Option<Relaunch>> = Mutex::new(None);
 pub fn updater(data: &Path, pump: &Pump) -> Option<Updater> {
     let (pubkey, base) = release::origin()?;
     let Some(layout) = layout() else {
-        eprintln!("endue Desk: not installed from a package, so it does not update itself");
+        eprintln!("endue: not installed from a package, so it does not update itself");
         return None;
     };
     let targets = layout.targets(&install::base_target()?);
@@ -54,7 +54,7 @@ pub fn updater(data: &Path, pump: &Pump) -> Option<Updater> {
     match Updater::new(config, transport, Arc::new(installer), Prefs::default()) {
         Ok(updater) => Some(updater),
         Err(why) => {
-            eprintln!("endue Desk: this desk will not update itself ({why})");
+            eprintln!("endue: this desk will not update itself ({why})");
             None
         }
     }
@@ -90,11 +90,11 @@ pub fn relaunch_if_asked(data: &Path, let_go: impl FnOnce()) -> bool {
     let log = data.join("updates").join("restart.log");
     match relaunch.spawn(Some(&log)) {
         Ok(_) => eprintln!(
-            "endue Desk: starting the updated desk ({}; its output in {})",
+            "endue: starting the updated desk ({}; its output in {})",
             relaunch.program.display(),
             log.display()
         ),
-        Err(why) => eprintln!("endue Desk: the updated desk did not start ({why}): start it again"),
+        Err(why) => eprintln!("endue: the updated desk did not start ({why}): start it again"),
     }
     true
 }

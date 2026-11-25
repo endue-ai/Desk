@@ -30,7 +30,7 @@ export function reportCrashes(win: Window, invoke: Invoke, ready?: Promise<unkno
   });
   const send = (message: string, stack: string) => {
     if (!started) {
-      console.warn(`endue Desk: before the desk was ready, not a crash: ${message}`);
+      console.warn(`endue startup warning — ${message}`);
       return;
     }
     if (!message || sent.has(message) || sent.size >= MAX_REPORTS) return;

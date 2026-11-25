@@ -235,7 +235,7 @@ wrap_request_handler! {
             let mut revived = self.revived.lock().unwrap_or_else(|e| e.into_inner());
             let again = revived.is_none_or(|at| now.duration_since(at) >= CRASH_AGAIN);
             eprintln!(
-                "endue Desk: the renderer of app window {} ended ({status:?}, {error_code}){}",
+                "endue: the renderer of app window {} ended ({status:?}, {error_code}){}",
                 self.surface,
                 if again { "; its page loads again" } else { "" }
             );

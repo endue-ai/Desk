@@ -6,9 +6,9 @@ README) that serves `dist/` over `desk-app://` and forwards every bridge call to
 
 | Path | What it does |
 | --- | --- |
-| `src/main.ts` | Mounts the shell of `@endue-ai/runtime` on the CEF bridge adapter (`src/desk.ts`, with `src/start.ts` for what the start found), then reports `desk_ready`; `?view=palette` hosts Search Desk |
+| `src/main.ts` | Mounts the shell of `@endue-ai/runtime` on the CEF bridge adapter (`src/desk.ts`, with `src/start.ts` for what the start found), then reports `desk_ready`; `?view=palette` hosts Search endue |
 | `src/host.ts` | The page's shell: `invoke`, `listen` and the bridge adapter over `window.__deskNative` (#43); without it every command is refused with the reason |
-| `shell/src/eris_window.rs` | `Alt+Enter` (⌥↩) and the tray's Talk to Eris open the talk line in Desk. `DESK_ERIS_SHORTCUT` overrides the configured shortcut. |
+| `shell/src/eris_window.rs` | `Alt+Enter` (⌥↩) and the tray's Talk to Eris open the talk line in endue. `DESK_ERIS_SHORTCUT` overrides the configured shortcut. |
 | `src/native-files.ts`, `src/page-drags.ts`, `shell/src/{dialog,drops}.rs` | Native single-file picker (`plugin:dialog\|open`) and drops from the OS (`desk://drag-enter`, then the page's own drag), routed through `desk.files.open` or to the plugin under the pointer |
 | `src/open-files.ts`, `shell/src/{open_files,run_event}.rs` | Startup and running OS file-open queue (command line, Finder and the Dock, a second start), consumed after runtime readiness |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |

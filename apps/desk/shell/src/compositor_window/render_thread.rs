@@ -121,7 +121,7 @@ impl RenderThread {
                 Drawer::new(target, shared).run(&theirs)
             });
         let thread = spawned
-            .map_err(|why| eprintln!("endue Desk: no render thread ({why}): nothing is drawn"))
+            .map_err(|why| eprintln!("endue: no render thread ({why}): nothing is drawn"))
             .ok();
         RenderThread { mail, thread }
     }
@@ -280,7 +280,7 @@ impl Drawer {
                     // A locked screen, a display going off: the images come late, each holding this
                     // thread. The frame in hand went out first; its surface stays (`gpu.rs`).
                     eprintln!(
-                        "endue Desk: the window cannot present; composing off screen only for {PAUSED:?}"
+                        "endue: the window cannot present; composing off screen only for {PAUSED:?}"
                     );
                     chain.stop_presenting(Instant::now());
                 }

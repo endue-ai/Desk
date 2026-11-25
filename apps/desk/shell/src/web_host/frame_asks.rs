@@ -43,6 +43,6 @@ pub fn install(context: &V8Context) {
         let why = exception
             .map(|e| CefString::from(&e.message()).to_string())
             .unwrap_or_default();
-        eprintln!("endue Desk: a page cannot ask for frames ({why})");
+        eprintln!("endue: a page cannot ask for frames ({why})");
     }
 }

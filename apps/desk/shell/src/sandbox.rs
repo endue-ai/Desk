@@ -65,7 +65,7 @@ pub fn drop_weakening(command_line: &mut cef::CommandLine) {
     let given: Vec<String> = map.into_iter().map(|(name, _)| name).collect();
     for name in ignored(&given, RELEASE, no_sandbox() == 0) {
         command_line.remove_switch(Some(&name.into()));
-        eprintln!("endue Desk: a release build ignores --{name} (ADR 0148)");
+        eprintln!("endue: a release build ignores --{name} (ADR 0148)");
     }
 }
 

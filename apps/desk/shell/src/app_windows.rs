@@ -122,7 +122,7 @@ pub fn open(shell: &mut Shell, event_loop: &ActiveEventLoop, host: &WebHost, ask
     let pane = match Pane::open(event_loop, attributes, &ask.url, client) {
         Ok(pane) => pane,
         Err(why) => {
-            eprintln!("endue Desk: {}'s window did not open ({why})", ask.plugin);
+            eprintln!("endue: {}'s window did not open ({why})", ask.plugin);
             return;
         }
     };
@@ -285,7 +285,7 @@ pub fn raise(shell: &mut Shell, window: &str) {
     }
 }
 
-/// Window > Move to Desk: the app window in front docks back to its place on the canvas.
+/// Window > Move to endue: the app window in front docks back to its place on the canvas.
 pub fn dock_front(shell: &mut Shell) {
     let front = (shell.apps.surfaces().into_iter())
         .filter_map(|s| {
