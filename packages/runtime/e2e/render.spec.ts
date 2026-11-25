@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 
 test("an empty desk with its status line", async ({ page }) => {
   await page.evaluate(() => window.__desk.clock.advance(1000));
-  await expect(page.getByRole("status")).toHaveText("desk ready · bridge: browser");
+  await expect(page.getByRole("status")).toHaveText("endue ready · bridge: browser");
   expect(await renderTree(page)).toMatchSnapshot("empty-desk.json");
 });
 
