@@ -2,12 +2,13 @@
  * What the person can do on the desk (ADR 0124): every command the desk knows, its own and the
  * plugins', with its title, owner, keys and whether it can run now, and the plugins that are on
  * with their commands, their window and the views they open. A command is known when the core's
- * registry has it (it can run now), when a plugin that is on contributes it (it runs once that
- * plugin's window is up), or when a key is bound to it. desk.capabilities answers the catalogue;
+ * registry has it, when a plugin contributes it or when a key is bound to it. Installed plugins
+ * carry their activation state and declared agent commands. desk.capabilities answers the catalogue;
  * Eris's words carry its summary every turn.
  */
-import type { BrainDeskCapabilities, BrainDeskPlugin } from "@endue-ai/bridge";
+import type { BrainDeskCapabilities, BrainDeskPlugin, PluginInfo } from "@endue-ai/bridge";
 import type { CommandInfo } from "../commands";
+import { chosenOf, mayMount, ROLES_SETTING } from "../roles";
 import type { ShellCtx } from "../shell/context";
 import { LIMITS, PLUGIN_ID } from "./brain";
 
@@ -21,6 +22,8 @@ export interface CapabilitySource {
   keysOf(command: string): string[];
   /** The plugins that are on, in layer order. */
   plugins(): string[];
+  installed?(): readonly PluginInfo[];
+  mayMount?(plugin: PluginInfo): boolean;
   /** The plugin surfaces on the desk now, with their titles. */
   windows(): Array<{ id: string; title: string }>;
 }
@@ -42,6 +45,8 @@ export interface PluginCapability {
   /** Its window is on the desk. */
   open: boolean;
   views: string[];
+  state?: "on" | "autoload" | "off";
+  agentCommands?: Array<{ id: string; title: string }>;
 }
 
 export interface Catalogue {
@@ -57,6 +62,8 @@ export function sourceOf(ctx: ShellCtx): CapabilitySource {
     bindings: () => runtime.keymap.bindings(),
     keysOf: (command) => runtime.keymap.keysFor(command),
     plugins: () => runtime.policy().plugins,
+    installed: () => runtime.plugins?.listed?.() ?? [],
+    mayMount: (plugin) => mayMount(plugin, chosenOf(runtime.settings.get(ROLES_SETTING))),
     windows: () => ctx.store.get().adopted,
   };
 }
@@ -68,24 +75,51 @@ export function catalogue(source: CapabilitySource): Catalogue {
   const add = (id: string, title: string, owner: string, available: boolean) => {
     if (!known.has(id)) known.set(id, { id, title, owner, keys: source.keysOf(id), available });
   };
-  for (const c of source.commands()) add(c.id, c.title, c.provider, true);
+  const installed = new Map((source.installed?.() ?? []).map((plugin) => [plugin.id, plugin]));
+  const pluginState = new Map(
+    [...installed.values()].map((plugin) => [
+      plugin.id,
+      stateOf(plugin, source.mayMount?.(plugin) !== false),
+    ]),
+  );
+  const agents = new Map(
+    [...installed.values()].map((plugin) => [
+      plugin.id,
+      (plugin.manifest?.contributes?.commands ?? [])
+        .filter((c) => c.agent === true)
+        .map(({ id, title }) => ({ id, title })),
+    ]),
+  );
+  for (const c of source.commands())
+    add(c.id, c.title, c.provider, pluginState.get(c.provider) !== "off");
   for (const c of source.contributed()) add(c.id, c.title, c.owner, false);
+  for (const [owner, commands] of agents)
+    for (const c of commands) add(c.id, c.title, owner, false);
   for (const b of source.bindings()) add(b.command, b.command, b.owner, false);
   const commands = [...known.values()].sort(byId);
   const windows = source.windows();
-  const plugins = source.plugins().map((id): PluginCapability => {
+  const ids = new Set([...source.plugins(), ...installed.keys()]);
+  const plugins = [...ids].map((id): PluginCapability => {
     const theirs = commands.filter((c) => c.owner === id);
     const window = windows.find((w) => w.id === id);
+    const state = pluginState.get(id);
     return {
       id,
-      title: window?.title || id,
+      title: window?.title || installed.get(id)?.manifest?.name || id,
       commands: theirs.length,
       available: theirs.filter((c) => c.available).length,
       open: window !== undefined,
       views: window ? [`plugin:${id}`] : [],
+      ...(state ? { state, agentCommands: agents.get(id) } : {}),
     };
   });
   return { commands, plugins };
+}
+
+function stateOf(plugin: PluginInfo, mayMount: boolean): NonNullable<PluginCapability["state"]> {
+  if (!mayMount || plugin.status !== "ready") return "off";
+  if (plugin.enabled) return "on";
+  return plugin.autoStart ? "autoload" : "off";
 }
 
 /** The catalogue in short, for Eris's words: the counts, then the plugins with something to offer. */

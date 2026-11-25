@@ -9671,6 +9671,9 @@ pub struct PluginInfo {
     pub folder: Option<Path>,
     #[serde(rename = "heldOff", default, skip_serializing_if = "Option::is_none")]
     pub held_off: Option<PluginHold>,
+    /// True for a ready autoload plugin without a saved manual choice or current hold. The desk can activate or release it automatically.
+    #[serde(rename = "autoStart", default, skip_serializing_if = "Option::is_none")]
+    pub auto_start: Option<bool>,
 }
 
 /// Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is.
@@ -9693,7 +9696,7 @@ pub enum PluginStatus {
     Failed,
 }
 
-/// Turn a plugin on or off. The choice is remembered.
+/// Turn a plugin on or off. By default the choice is remembered as a manual choice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginSetEnabledRequest {
@@ -9708,6 +9711,9 @@ pub struct PluginSetEnabledRequest {
 pub struct PluginSetEnabledParams {
     pub plugin: PluginId,
     pub enabled: bool,
+    /// Use the desk's automatic activation state for an eligible autoload plugin, without changing a manual choice. Available only to the desk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub automatic: Option<bool>,
     pub scope: PluginManagePermission,
 }
 

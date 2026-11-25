@@ -54,7 +54,11 @@
           "description": "The folder the plugin was installed from, as an absolute path, so people can be shown its files.",
           "$ref": "bridge.schema.json#/$defs/Path"
         },
-        "heldOff": { "$ref": "#/$defs/PluginHold" }
+        "heldOff": { "$ref": "#/$defs/PluginHold" },
+        "autoStart": {
+          "description": "True for a ready autoload plugin without a saved manual choice or current hold. The desk can activate or release it automatically.",
+          "type": "boolean"
+        }
       },
       "required": ["id", "status", "enabled", "builtIn", "revision"],
       "additionalProperties": false
@@ -70,7 +74,7 @@
       "enum": ["ready", "failed"]
     },
     "PluginSetEnabledRequest": {
-      "description": "Turn a plugin on or off. The choice is remembered.",
+      "description": "Turn a plugin on or off. By default the choice is remembered as a manual choice.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -86,6 +90,10 @@
       "properties": {
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
         "enabled": { "type": "boolean" },
+        "automatic": {
+          "description": "Use the desk's automatic activation state for an eligible autoload plugin, without changing a manual choice. Available only to the desk.",
+          "type": "boolean"
+        },
         "scope": {
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission"
         }

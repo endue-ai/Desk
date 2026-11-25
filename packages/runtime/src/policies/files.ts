@@ -96,7 +96,7 @@ export function installFiles(
     if (!ctx.mounted(plugin)) {
       const info = hub.plugins.find((p) => p.id === plugin);
       const off = goingOff.delete(plugin) || info?.enabled === false;
-      await ctx.launch(plugin);
+      await ctx.launch(plugin, info?.autoStart === true);
       // Off and autoload: the desk turned it on, so the desk turns it off after its last file.
       if (autoloads(info) && off && !autoloaded.has(plugin)) {
         autoloaded.add(plugin);
@@ -114,8 +114,14 @@ export function installFiles(
     if (ctx.mounted(plugin))
       for (const key of (ctx.instances?.(plugin) ?? [plugin]).reverse()) ctx.unmount(key);
     goingOff.add(plugin);
+    const automatic = hub.plugins.find((p) => p.id === plugin)?.autoStart;
     void bridge
-      .call("plugin.setEnabled", { plugin, enabled: false, scope: MANAGE })
+      .call("plugin.setEnabled", {
+        plugin,
+        enabled: false,
+        ...(automatic ? { automatic } : {}),
+        scope: MANAGE,
+      })
       .catch(() => {});
   };
   /** Files whose buffer has not shown yet (opened with `show: false`), by path. */

@@ -6209,6 +6209,8 @@ export interface PluginInfo {
   /** The folder the plugin was installed from, as an absolute path, so people can be shown its files. */
   folder?: Path;
   heldOff?: PluginHold;
+  /** True for a ready autoload plugin without a saved manual choice or current hold. The desk can activate or release it automatically. */
+  autoStart?: boolean;
 }
 
 /** Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is. */
@@ -6217,7 +6219,7 @@ export type PluginHold = "init" | "safe-mode" | "quarantine";
 /** ready: the manifest is valid and the entry exists; failed: it cannot run. */
 export type PluginStatus = "ready" | "failed";
 
-/** Turn a plugin on or off. The choice is remembered. */
+/** Turn a plugin on or off. By default the choice is remembered as a manual choice. */
 export interface PluginSetEnabledRequest {
   id: RequestId;
   method: "plugin.setEnabled";
@@ -6228,6 +6230,8 @@ export interface PluginSetEnabledRequest {
 export interface PluginSetEnabledParams {
   plugin: PluginId;
   enabled: boolean;
+  /** Use the desk's automatic activation state for an eligible autoload plugin, without changing a manual choice. Available only to the desk. */
+  automatic?: boolean;
   scope: PluginManagePermission;
 }
 

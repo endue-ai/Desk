@@ -7,7 +7,6 @@ import { hints, LISTS } from "./keys.js";
 import { statsFor } from "./parse-engine.js";
 import { containerTarget, projectName } from "./refs.js";
 import { globalFlags } from "./run.js";
-import { registerSchemas } from "./tools.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginCommands} PluginCommands
@@ -190,7 +189,6 @@ export function wireCommands({ commands, bridge }, app, _view) {
   answer("endue.docker.context", switchContext);
   answer("endue.docker.cancel", () => actions.cancel());
   const more = wireMore({ bridge }, app, answer);
-  registerSchemas(bridge);
 
   // The desk shows one of this plugin's buffers, or tells it one was closed (already decided).
   commands.on("desk.buffers.show", (args) => {

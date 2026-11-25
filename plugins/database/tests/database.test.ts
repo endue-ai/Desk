@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PluginManifest } from "../../../packages/bridge/src/index";
+import manifest from "../plugin.json";
 import { mount, SAVED } from "./harness";
 
 const sqliteRuns = (spawned: Array<{ command: string; args: string[] }>) =>
@@ -236,19 +238,22 @@ describe("consoles", () => {
 });
 
 describe("agents", () => {
-  it("registers its commands with argument schemas and answers a read", async () => {
+  it("declares its agent queries in the manifest and answers a read", async () => {
     const m = await mount({
       store: { connections: SAVED },
       script: () => ({ rows: [["n"], ["42"]] }),
     });
-    const registered = m.host.calls
-      .filter((c) => c.method === "cmd.register")
-      .map((c) => c.params as { id: string; agent?: boolean; readOnly?: boolean });
-    expect(registered.map((r) => [r.id, r.agent, r.readOnly ?? false])).toEqual([
-      ["endue.database.connections", true, true],
-      ["endue.database.schema", true, true],
-      ["endue.database.query", true, false],
-    ]);
+    const tools = new Map(
+      (manifest as PluginManifest).contributes?.commands?.map((c) => [c.id, c]),
+    );
+    expect(tools.get("endue.database.connections")).toMatchObject({ agent: true, readOnly: true });
+    expect(tools.get("endue.database.schema")).toMatchObject({ agent: true, readOnly: true });
+    expect(tools.get("endue.database.query")).toMatchObject({
+      agent: true,
+      args: { required: ["connection", "sql"] },
+    });
+    expect(tools.get("endue.database.query")?.readOnly).toBeUndefined();
+    expect(m.host.calls.filter((c) => c.method === "cmd.register")).toEqual([]);
     const listed = (await m.host.invoke("endue.database.connections")) as Array<
       Record<string, unknown>
     >;

@@ -7,6 +7,7 @@ import {
   type BridgeRequest,
   browserStub,
   type CmdAnsweredData,
+  type CommandContribution,
   type ErrorCode,
   type Grant,
   type Item,
@@ -55,6 +56,8 @@ export interface TestHostOptions {
    * ctx.commands.run; ids nobody registered are unknown_command, as in the core.
    */
   commands?: Record<string, (args: unknown) => unknown>;
+  /** This plugin's manifest commands, prepared by the host before the plugin mounts. */
+  manifestCommands?: CommandContribution[];
   /** Settings at start: a bare key is the plugin's own, `owner/key` another caller's. */
   settings?: Record<string, unknown>;
   /** The plugin's grants at start. */
@@ -178,6 +181,32 @@ export function createTestHost(options: TestHostOptions): TestHost {
   const bridge = new BridgeClient(stub);
   for (const id of Object.keys(options.commands ?? {})) {
     void registry.handlers["cmd.register"]({ id, title: id }, undefined);
+  }
+  for (const {
+    id,
+    title,
+    args,
+    agent,
+    readOnly,
+    description,
+    result,
+    runs,
+    keywords,
+  } of options.manifestCommands ?? []) {
+    if (!id.startsWith(`${me}.`) || runs) continue;
+    void registry.handlers["cmd.register"](
+      {
+        id,
+        title,
+        argsSchema: args,
+        resultSchema: result,
+        agent,
+        readOnly,
+        description,
+        keywords,
+      },
+      me,
+    );
   }
   const answerForDesk = async (data: { invocationId: string; id: string; args?: unknown }) => {
     const { invocationId } = data;

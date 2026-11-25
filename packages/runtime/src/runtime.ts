@@ -78,12 +78,8 @@ export interface RuntimeOptions {
 export type { WindowHost } from "./window-host";
 
 const FADE_MS = 240;
-/**
- * Mount the desk's system surface (ADR 0160): its policies, the plugin host, settings and the status
- * line, and the sections of the surfaces it shows, for the window host and its edge bars. It moves no
- * window and lays none out: the compositor draws every surface where desk-wm places it, and a desk
- * without a window host shows its surfaces side by side in the order they opened.
- */
+/** Mount the desk's system surface (ADR 0160). The compositor places surfaces when present,
+ * and the desk without a window host displays them in opening order. */
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
   const clock = options.clock ?? realClock();
@@ -140,8 +136,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         ? pluginHost.request(plugin, command, args)
         : Promise.reject(new Error(`${plugin} is not running`)),
     mounted: (plugin) => pluginHost?.mounted().includes(plugin) ?? false,
-    launch: (plugin) =>
-      pluginHost ? pluginHost.launch(plugin) : Promise.reject(new Error("no plugin host")),
+    launch: (plugin, automatic) =>
+      pluginHost?.launch(plugin, { automatic }) ?? Promise.reject(new Error("no plugin host")),
     whenReady: (plugin) =>
       pluginHost ? pluginHost.whenReady(plugin) : Promise.reject(new Error("no plugin host")),
     unmount: (plugin) => {
@@ -318,7 +314,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     defineOpenPlugin({
       commands,
       bridge,
-      launch: (id, waitForReady, beforeEnable) => host.launch(id, waitForReady, beforeEnable),
+      launch: (id, waitForReady, mayEnable) => host.launch(id, { waitForReady, mayEnable }),
       focus: focusSurface,
       another: anotherWindow(host),
     });

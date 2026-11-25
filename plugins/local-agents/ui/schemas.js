@@ -56,6 +56,7 @@ export const COMMANDS = [
     keywords: ["installed", "versions"],
     description:
       "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+    args: object({}),
     agent: true,
     readOnly: true,
   },

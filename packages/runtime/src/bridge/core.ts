@@ -114,6 +114,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     id: manifest.id,
     status: "ready",
     enabled: !off.has(manifest.id) && manifest.autoload !== true,
+    ...(manifest.autoload === true && !off.has(manifest.id) ? { autoStart: true } : {}),
     builtIn: manifest.id.startsWith("desk."),
     revision: 1,
     manifest,
@@ -137,9 +138,12 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     ...(options.download ? marketHandlers(options, plugins, themes, options.download) : {}),
     "perm.query": () => ({ grants: [] }),
     "plugin.list": () => ({ plugins: structuredClone(plugins) }),
-    "plugin.setEnabled": ({ plugin, enabled }) => {
+    "plugin.setEnabled": ({ plugin, enabled, automatic }, caller) => {
       const info = plugins.find((p) => p.id === plugin);
       if (!info) throw new Error(`no plugin ${plugin}`);
+      if (automatic && (!info.autoStart || (caller !== undefined && caller !== "desk")))
+        throw new StubError("permission_denied", "automatic activation is unavailable");
+      if (!automatic) delete info.autoStart;
       info.enabled = enabled;
       // The core drops a plugin's commands when it is turned off.
       if (!enabled) registry.drop(plugin);

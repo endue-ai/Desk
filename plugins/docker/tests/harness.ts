@@ -1,9 +1,10 @@
 // Mounts the Docker plugin on the SDK's test host with a scripted docker behind `proc.spawn` and a
 // view that records what it was asked to show. The SDK is imported by its workspace path: plugin
 // folders are not workspace packages yet.
-import type { Signal } from "../../../packages/bridge/src/index";
+import type { PluginManifest, Signal } from "../../../packages/bridge/src/index";
 import { CommandFailed, defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import manifest from "../plugin.json";
 import type { Item } from "../ui/actions.js";
 import { wireCommands } from "../ui/commands.js";
 import { createDockerDrops } from "../ui/dnd.js";
@@ -329,6 +330,7 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.docker",
+    manifestCommands: (manifest as PluginManifest).contributes?.commands,
     state: options.state,
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),

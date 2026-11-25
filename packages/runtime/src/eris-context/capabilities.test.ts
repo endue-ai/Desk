@@ -1,3 +1,4 @@
+import type { PluginInfo } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { type CapabilitySource, catalogue, summarise } from "./capabilities";
 import { fakeDesk } from "./fixtures";
@@ -98,6 +99,47 @@ describe("what the person can do (ADR 0124)", () => {
         views: [],
       },
     ]);
+  });
+
+  it("describes unmounted and excluded plugins with their declared tools", () => {
+    const plugin = (id: string, enabled: boolean, autoStart?: boolean): PluginInfo => ({
+      id,
+      status: "ready",
+      enabled,
+      autoStart,
+      builtIn: true,
+      revision: 1,
+      manifest: {
+        id,
+        version: "0.1.0",
+        kind: "ui",
+        entry: "ui/index.html",
+        contributes: {
+          commands: [{ id: `${id}.read`, title: "Read", agent: true, description: "Read." }],
+        },
+      },
+    });
+    const catalogueWithOff = catalogue({
+      ...source,
+      installed: () => [
+        plugin("endue.docs", false, true),
+        plugin("endue.browser", false),
+        plugin("endue.reader", true),
+      ],
+      mayMount: ({ id }) => id !== "endue.reader",
+    });
+    expect(catalogueWithOff.plugins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "endue.docs", state: "autoload" }),
+        expect.objectContaining({
+          id: "endue.browser",
+          state: "off",
+          agentCommands: [{ id: "endue.browser.read", title: "Read" }],
+          available: 0,
+        }),
+        expect.objectContaining({ id: "endue.reader", state: "off", available: 0 }),
+      ]),
+    );
   });
 
   it("sums it up for Eris's words: counts, then the plugins with something to offer, open ones first", () => {

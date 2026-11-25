@@ -51,6 +51,7 @@
         "title": "Local agents: list the agents",
         "keywords": ["installed", "versions"],
         "description": "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
         "agent": true,
         "readOnly": true
       },
