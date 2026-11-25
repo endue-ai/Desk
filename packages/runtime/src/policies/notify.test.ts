@@ -66,6 +66,31 @@ describe("desk.notify's status line", () => {
     expect(undone).toEqual(["a-2"]);
   });
 
+  it.each([
+    ["file-created", "~/Documents/new.txt", "File created"],
+    ["file-saved", "~/Documents/new.txt", "File saved"],
+    ["fact-remembered", undefined, "Fact remembered"],
+    ["fact-edited", undefined, "Fact updated"],
+  ] as const)("announces %s with the bound Undo", (change, path, title) => {
+    const stub = browserStub({});
+    const bridge = new BridgeClient(stub);
+    const hub = new PolicyHub(bridge);
+    hub.settings.set("desk.notify.dnd", true);
+    const ctx = { hub, bridge, clock: new ManualClock() } as unknown as DeskContext;
+    const policy = installNotify(ctx, statusLine());
+    stub.emit({
+      event: "perm.approval.done",
+      data: { approvalId: "a-change", ok: true, undoable: true, change, ...(path ? { path } : {}) },
+    });
+    expect(policy.notifications.history()).toMatchObject([
+      {
+        title,
+        ...(path ? { body: path } : {}),
+        actions: [{ label: "Undo", args: { approvalId: "a-change" } }],
+      },
+    ]);
+  });
+
   it("marks the line only while a notice has actions", () => {
     const toggled: [string, boolean][] = [];
     const policy = installNotify(context(), statusLine(toggled));

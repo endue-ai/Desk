@@ -233,6 +233,8 @@ impl Core {
                 .and_then(Value::as_u64),
             error: result.as_ref().err().cloned(),
             undoable,
+            change: None,
+            path: None,
         };
         let holders = self.holders(&perm_manage());
         let event = BridgeEvent::PermApprovalDone(PermApprovalDoneEvent {
