@@ -198,7 +198,7 @@ sont les mêmes dans les deux cas. Le bloc `window` de la surface dit comment la
 Ce sont des indications. Une place enregistrée par un profil ou une session, et le rangement que fait
 la personne elle-même (un remplissage, un ancrage, la mosaïque), fixent la taille d'une fenêtre sur le
 canevas quoi qu'elles disent, et une fenêtre divisée en volets suit ses volets. La personne sort
-n'importe quelle fenêtre et la ramène (« Pop out window » dans la palette, la commande de retour du menu Window (Move to Desk dans la version v0.3.0)).
+n'importe quelle fenêtre et la ramène (« Pop out window » dans la palette, Window > Move to endue (Move to Desk dans la version v0.3.0)).
 `DESK_APP_WINDOWS` l'emporte sur les manifestes pour un lancement : `off` garde toutes les fenêtres sur
 le canevas, `on` ouvre toutes les applications dehors, et une liste d'ids de plugins ouvre ceux-là
 dehors. `examples/plugin-hello-window` s'exécute des deux façons, avec une commande pour chacune.

@@ -192,7 +192,7 @@ surface's `window` block says how the window opens (ADR 0226):
 
 These are hints. A place that a profile or a session saved, and the person's own arranging (a fill, a
 snap, tile), size a window on the canvas whatever they say, and a window split into panes follows its
-panes. The person moves any window out and back (the palette's "Pop out window", the return action in the Window menu (Move to Desk in v0.3.0)). `DESK_APP_WINDOWS` overrides the manifests for one run: `off` keeps every window on the canvas,
+panes. The person moves any window out and back (the palette's "Pop out window", Window > Move to endue (Move to Desk in v0.3.0)). `DESK_APP_WINDOWS` overrides the manifests for one run: `off` keeps every window on the canvas,
 `on` opens every app out, and a list of plugin ids opens those out. `examples/plugin-hello-window`
 runs both ways with one command each.
 

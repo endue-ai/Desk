@@ -200,7 +200,7 @@ ihre Aufrufe sind in beiden gleich. Der Block `window` der Oberfläche sagt, wie
 Das sind Hinweise. Ein Platz, den ein Profil oder eine Sitzung gespeichert hat, und das eigene Anordnen
 der Person (Füllen, Einrasten, Kacheln) bestimmen die Größe eines Fensters auf dem Canvas, was immer
 die Hinweise sagen, und ein in Bereiche geteiltes Fenster folgt seinen Bereichen. Die Person holt jedes
-Fenster heraus und wieder zurück („Pop out window“ in der Palette, die Rückkehraktion im Menü Window (Move to Desk in v0.3.0)).
+Fenster heraus und wieder zurück („Pop out window“ in der Palette, Window > Move to endue (Move to Desk in v0.3.0)).
 `DESK_APP_WINDOWS` geht für einen Start über die Manifeste: `off` lässt jedes Fenster auf dem Canvas,
 `on` öffnet jede App außerhalb, und eine Liste von Plugin-IDs öffnet diese außerhalb.
 `examples/plugin-hello-window` läuft auf beide Arten, mit je einem Befehl.

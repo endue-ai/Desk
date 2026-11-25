@@ -24,7 +24,7 @@ endue は、これまで Desk と呼ばれていた GUI アプリです。[v0.3.
 
 ### Linux x86_64 サーバー
 
-リリースに **endue CLI for Linux x86_64** が掲載されたら、アーカイブ、署名、`SHA256SUMS-cli` を空のディレクトリにダウンロードします。`sha256sum -c SHA256SUMS-cli` で確認し、`tar -xzf endue-cli_*_linux-x86_64.tar.gz` で展開します。`ENDUE_BRAIN_URL` に利用する brain v0 サービスの URL を設定して、`./endue-cli_*/bin/endue run "hello"` を実行します。v0.3.0 で公開されているのは macOS アプリのみです。 [配布元の署名を確認する](../../releasing.md#verify-a-linux-cli-download)
+[v0.4.0 のリリースページ](https://github.com/endue-ai/endue/releases/tag/v0.4.0)から `endue-cli_0.4.0_linux-x86_64.tar.gz` と `SHA256SUMS-cli` を空のディレクトリにダウンロードします。`sha256sum -c SHA256SUMS-cli` で確認してから、`tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz` で展開します。`ENDUE_BRAIN_URL` に利用する brain v0 サービスの URL を設定し、`./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"` を実行します。[署名付き CLI リリースの検証](../../releasing.md#verify-a-linux-cli-download)
 
 ## なぜ endue か
 

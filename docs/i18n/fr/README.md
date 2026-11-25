@@ -27,7 +27,7 @@ La commande officielle est `endue`. Depuis les sources, essayez `cargo run -p de
 
 ### Serveurs Linux x86_64
 
-Si une version propose **endue CLI for Linux x86_64**, téléchargez l’archive, sa signature et `SHA256SUMS-cli` dans un répertoire vide. Exécutez `sha256sum -c SHA256SUMS-cli`, puis `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Donnez à `ENDUE_BRAIN_URL` l’adresse du service brain v0 et lancez `./endue-cli_*/bin/endue run "hello"`. La version v0.3.0 fournit uniquement l’application macOS. [Vérifier la signature de l’éditeur](../../releasing.md#verify-a-linux-cli-download)
+Téléchargez `endue-cli_0.4.0_linux-x86_64.tar.gz` et `SHA256SUMS-cli` depuis la [page de la version v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) dans un répertoire vide. Exécutez `sha256sum -c SHA256SUMS-cli`, puis `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz`. Définissez `ENDUE_BRAIN_URL` sur l’adresse de votre service brain v0 et lancez `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`. [Vérifier les versions signées de la CLI](../../releasing.md#verify-a-linux-cli-download)
 
 ## Pourquoi endue
 

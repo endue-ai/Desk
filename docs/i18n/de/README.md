@@ -27,7 +27,7 @@ Der offizielle Befehl heißt `endue`. Im Quellverzeichnis können Sie ihn mit `c
 
 ### Linux-Server mit x86_64
 
-Wenn eine Version **endue CLI for Linux x86_64** anbietet, laden Sie das Archiv, die Signatur und `SHA256SUMS-cli` in ein leeres Verzeichnis. Prüfen Sie das Archiv mit `sha256sum -c SHA256SUMS-cli` und entpacken Sie es mit `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Setzen Sie `ENDUE_BRAIN_URL` auf die Adresse Ihres brain-v0-Dienstes und führen Sie `./endue-cli_*/bin/endue run "hello"` aus. Die Version v0.3.0 enthält nur die macOS-App. [Signatur des Herausgebers prüfen](../../releasing.md#verify-a-linux-cli-download)
+Laden Sie `endue-cli_0.4.0_linux-x86_64.tar.gz` und `SHA256SUMS-cli` von der [Release-Seite für v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) in ein leeres Verzeichnis. Führen Sie `sha256sum -c SHA256SUMS-cli` und danach `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz` aus. Setzen Sie `ENDUE_BRAIN_URL` auf die Adresse Ihres brain-v0-Dienstes und führen Sie `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"` aus. [Signierte CLI-Veröffentlichungen prüfen](../../releasing.md#verify-a-linux-cli-download)
 
 ## Warum endue
 

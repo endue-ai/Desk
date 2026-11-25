@@ -150,7 +150,7 @@ SDK 从加载那一刻起就自行回应 endue 的 ping（`desk:ping`），所�
 
 这些只是提示。配置文件或会话保存的位置，以及用户自己的排布（填充、吸附、平铺），无论提示怎么说都会决定
 画布上窗口的大小；分成多个窗格的窗口则跟随它的窗格。用户可以把任何窗口移出去再移回来（面板里的
-“Pop out window”，Window 菜单中的移回操作（v0.3.0 中为 Move to Desk））。`DESK_APP_WINDOWS` 在一次运行中覆盖清单：`off` 让所有窗口留在
+“Pop out window”，Window > Move to endue（v0.3.0 中为 Move to Desk））。`DESK_APP_WINDOWS` 在一次运行中覆盖清单：`off` 让所有窗口留在
 画布上，`on` 让所有应用打开在外面，插件 ID 列表则让这些插件打开在外面。`examples/plugin-hello-window`
 用各一条命令演示两种方式。
 

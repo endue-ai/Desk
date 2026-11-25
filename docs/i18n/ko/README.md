@@ -26,7 +26,7 @@ endue는 기존 Desk의 새 이름입니다. [v0.3.0 다운로드](https://githu
 
 ### Linux x86_64 서버
 
-릴리즈 페이지에 **endue CLI for Linux x86_64**가 표시되면 빈 디렉터리에 압축 파일, 서명 파일, `SHA256SUMS-cli`를 받으세요. `sha256sum -c SHA256SUMS-cli`로 확인한 뒤 `tar -xzf endue-cli_*_linux-x86_64.tar.gz`로 압축을 풉니다. `ENDUE_BRAIN_URL`에 사용할 brain v0 서비스 주소를 설정하고 `./endue-cli_*/bin/endue run "hello"`를 실행하세요. v0.3.0에서 받을 수 있는 설치 파일은 macOS 앱입니다. [배포자 서명 검증 방법](../../releasing.md#verify-a-linux-cli-download)
+[v0.4.0 릴리스](https://github.com/endue-ai/endue/releases/tag/v0.4.0)에서 `endue-cli_0.4.0_linux-x86_64.tar.gz`와 `SHA256SUMS-cli`를 빈 디렉터리에 받으세요. `sha256sum -c SHA256SUMS-cli`로 확인한 뒤 `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz`로 압축을 풉니다. `ENDUE_BRAIN_URL`에 사용할 brain v0 서비스 주소를 설정하고 `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`를 실행하세요. [서명된 CLI 릴리스 검증](../../releasing.md#verify-a-linux-cli-download)
 
 ## 왜 endue인가
 

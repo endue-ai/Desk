@@ -25,7 +25,7 @@ endue 是原名 Desk 的桌面应用。[v0.3.0 下载页](https://github.com/end
 
 ### Linux x86_64 服务器
 
-当发布页面列出 **endue CLI for Linux x86_64** 时，将压缩包、签名和 `SHA256SUMS-cli` 下载到一个空目录。运行 `sha256sum -c SHA256SUMS-cli` 校验，再用 `tar -xzf endue-cli_*_linux-x86_64.tar.gz` 解压。将 `ENDUE_BRAIN_URL` 设为你的 brain v0 服务地址，然后运行 `./endue-cli_*/bin/endue run "hello"`。v0.3.0 仅提供 macOS 应用。 [验证发布者签名](../../releasing.md#verify-a-linux-cli-download)
+从 [v0.4.0 发布页面](https://github.com/endue-ai/endue/releases/tag/v0.4.0)将 `endue-cli_0.4.0_linux-x86_64.tar.gz` 和 `SHA256SUMS-cli` 下载到空目录。运行 `sha256sum -c SHA256SUMS-cli` 校验，再用 `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz` 解压。将 `ENDUE_BRAIN_URL` 设为你的 brain v0 服务地址，然后运行 `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`。[验证已签名的 CLI 版本](../../releasing.md#verify-a-linux-cli-download)
 
 ## 为什么是 endue
 

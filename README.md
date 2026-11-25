@@ -28,7 +28,7 @@ The official command is `endue`. Try it from a source checkout with `cargo run -
 
 ### Linux x86_64 servers
 
-On a release that lists **endue CLI for Linux x86_64**, download the archive, its signature and `SHA256SUMS-cli` into an empty directory. Run `sha256sum -c SHA256SUMS-cli`, then `tar -xzf endue-cli_*_linux-x86_64.tar.gz`. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `./endue-cli_*/bin/endue run "hello"`. The first CLI download will appear on its release page. v0.3.0 contains the macOS app only. [Verify the publisher signature](docs/releasing.md#verify-a-linux-cli-download)
+Download `endue-cli_0.4.0_linux-x86_64.tar.gz` and `SHA256SUMS-cli` from the [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) into an empty directory. Run `sha256sum -c SHA256SUMS-cli`, then `tar -xzf endue-cli_0.4.0_linux-x86_64.tar.gz`. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `./endue-cli_0.4.0_linux-x86_64/bin/endue run "hello"`. [Verification for signed CLI releases](docs/releasing.md#verify-a-linux-cli-download)
 
 ## Why endue
 
