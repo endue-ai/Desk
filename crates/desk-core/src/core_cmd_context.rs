@@ -4,6 +4,7 @@ use desk_bridge::{BridgeError, CommandInfo, ErrorCode, WebAction};
 use serde_json::{Map, Value};
 
 use super::{Core, ProviderApproval, error};
+use crate::approval_provider::{DOCKER, DOCKER_STUDIO};
 
 const BROWSER: &str = "endue.browser";
 const DATABASE: &str = "endue.database";
@@ -32,16 +33,31 @@ impl Core {
 }
 
 impl Core {
-    /// Reuse an irreversible command's review for its exact Database operation.
-    pub(crate) fn database_reviewed(
+    pub(crate) fn operation_reviewed(
         &self,
         reviewed: bool,
         info: &CommandInfo,
         args: Option<&Map<String, Value>>,
     ) -> Result<bool, BridgeError> {
-        if !reviewed || !self.trusted_builtin(&info.provider, DATABASE) {
+        if !reviewed {
             return Ok(false);
         }
+        if self.trusted_builtin(&info.provider, DATABASE) {
+            return Self::database_reviewed(info, args);
+        }
+        if self.trusted_builtin(&info.provider, DOCKER)
+            || self.trusted_builtin(&info.provider, DOCKER_STUDIO)
+        {
+            return docker_reviewed(info, args);
+        }
+        Ok(false)
+    }
+
+    /// Reuse an irreversible command's review for its exact Database operation.
+    fn database_reviewed(
+        info: &CommandInfo,
+        args: Option<&Map<String, Value>>,
+    ) -> Result<bool, BridgeError> {
         let required: &[&str] = match info.id.as_str() {
             "endue.database.drop-object" => &["schema", "name", "kind"],
             "endue.database.truncate-table" => &["schema", "name"],
@@ -121,6 +137,53 @@ impl Core {
         pending.browser_act = false;
         Ok(agent)
     }
+}
+
+fn docker_reviewed(
+    info: &CommandInfo,
+    args: Option<&Map<String, Value>>,
+) -> Result<bool, BridgeError> {
+    let argument = |name: &str| args.and_then(|values| values.get(name));
+    let named = |name: &str| argument(name).is_some_and(named_value);
+    let list = |name: &str| {
+        argument(name)
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty() && items.iter().all(named_value))
+    };
+    let valid = match info.id.as_str() {
+        "endue.docker.kill" | "endue.docker.remove" => {
+            if argument("containers").is_some() {
+                list("containers")
+            } else {
+                named("container")
+            }
+        }
+        "endue.docker.remove-image"
+        | "endue.docker-studio.remove-image"
+        | "endue.docker-studio.push" => named("image"),
+        "endue.docker.remove-volume" | "endue.docker-studio.volume-remove" => named("volume"),
+        "endue.docker.remove-network" | "endue.docker-studio.network-remove" => named("network"),
+        "endue.docker.down" => named("project") || named("file"),
+        "endue.docker.prune"
+        | "endue.docker.prune-images"
+        | "endue.docker.prune-volumes"
+        | "endue.docker.prune-networks" => true,
+        "endue.docker-studio.kill" | "endue.docker-studio.remove" => list("containers"),
+        "endue.docker-studio.compose-down" => named("stack"),
+        "endue.docker-studio.prune" => list("kinds"),
+        _ => return Ok(false),
+    };
+    if valid {
+        return Ok(true);
+    }
+    Err(error(
+        ErrorCode::InvalidParams,
+        format!("{} needs an exact operation target before review", info.id),
+    ))
+}
+
+fn named_value(value: &Value) -> bool {
+    value.as_str().is_some_and(|name| !name.trim().is_empty())
 }
 
 fn invalid() -> BridgeError {

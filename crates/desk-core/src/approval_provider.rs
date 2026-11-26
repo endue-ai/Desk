@@ -7,6 +7,8 @@ use crate::handler::Core;
 
 pub(crate) const TERMINAL_RUN: &str = "endue.terminal.run";
 pub(crate) const TERMINAL: &str = "endue.terminal";
+pub(crate) const DOCKER: &str = "endue.docker";
+pub(crate) const DOCKER_STUDIO: &str = "endue.docker-studio";
 
 pub(crate) struct ProviderApproval {
     program: String,
@@ -61,17 +63,57 @@ impl ProviderApproval {
 impl Core {
     pub(crate) fn provider_approval(
         &self,
+        caller: &str,
         reviewed: bool,
         info: &CommandInfo,
         args: Option<&Map<String, Value>>,
     ) -> Option<ProviderApproval> {
-        if !reviewed || info.id != TERMINAL_RUN || info.provider != TERMINAL {
+        if info.id != TERMINAL_RUN || !self.trusted_builtin(&info.provider, TERMINAL) {
             return None;
         }
-        let plugin = self.registry().get(TERMINAL)?;
-        if !plugin.built_in || !plugin.enabled {
-            return None;
-        }
-        ProviderApproval::terminal(args?)
+        let args = args?;
+        let approval = ProviderApproval::terminal(args)?;
+        let docker_shell = args.get("dockerShell").and_then(Value::as_bool) == Some(true)
+            && (self.trusted_builtin(caller, DOCKER)
+                || self.trusted_builtin(caller, DOCKER_STUDIO))
+            && approval.is_docker_shell();
+        (reviewed || docker_shell).then_some(approval)
     }
+}
+
+impl ProviderApproval {
+    fn is_docker_shell(&self) -> bool {
+        if self.program != "docker" || self.cwd.is_some() {
+            return false;
+        }
+        let argv: Vec<&str> = self.args.iter().map(String::as_str).collect();
+        let argv = match argv.as_slice() {
+            ["--context", context, rest @ ..] if docker_name(context, b"_.+-") => rest,
+            plain => plain,
+        };
+        match argv {
+            ["exec", "-it", "--", container, shell]
+            | ["exec", "--interactive", "--tty", "--", container, shell] => {
+                docker_name(container, b"_.-")
+                    && !shell.is_empty()
+                    && !shell.starts_with('-')
+                    && shell.len() <= 4096
+                    && shell
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b"_./-:\\".contains(&b))
+            }
+            _ => false,
+        }
+    }
+}
+
+fn docker_name(name: &str, extra: &[u8]) -> bool {
+    name.len() <= 255
+        && name
+            .as_bytes()
+            .first()
+            .is_some_and(u8::is_ascii_alphanumeric)
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || extra.contains(&b))
 }

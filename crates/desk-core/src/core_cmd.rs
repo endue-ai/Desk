@@ -161,7 +161,7 @@ impl Core {
         if let Some(schema) = &info.args_schema {
             check_args(schema, args.as_ref())?;
         }
-        let database_review = self.database_reviewed(review, &info, args.as_ref())?;
+        let operation_review = self.operation_reviewed(review, &info, args.as_ref())?;
         let browser_act = kind == Kind::Command && self.delegates_web_act(&info);
         let review = review && !browser_act;
         let invoke = Action::Invoke {
@@ -188,8 +188,8 @@ impl Core {
         }
         held?;
         let file_open_granted = self.file_open_granted(caller, id, &info.provider, args.as_ref());
-        let approval = self.provider_approval(review, &info, args.as_ref());
-        let approved = (approval.is_some() || database_review).then_some(true);
+        let approval = self.provider_approval(caller, review, &info, args.as_ref());
+        let approved = (approval.is_some() || operation_review).then_some(true);
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
