@@ -275,6 +275,11 @@ export function createApp(ctx, view, deps) {
     },
     /** Read the endue side again: after signing in, say. */
     refreshEndue: () => readEndue(),
+    /** Read the Studio inventory without fetching conversations or starting any agent. */
+    async listAgents() {
+      const agents = await studio.agents();
+      return { agents: agents.map(({ id, name, slug, status }) => ({ id, name, slug, status })) };
+    },
     get sides() {
       return sides;
     },

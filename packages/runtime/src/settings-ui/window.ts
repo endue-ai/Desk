@@ -3,6 +3,7 @@ import type { Preferences } from "../core/preferences";
 import { canonical, comboOf } from "../input";
 import type { DeskContext } from "../policies/context";
 import type { KeysPolicy } from "../policies/keys";
+import { installMarketTools } from "../policies/plugin-tools";
 import { h, render } from "../shell/dom";
 import { mountAccount } from "./account";
 import { mountAccountIdentity } from "./account-identity";
@@ -358,6 +359,11 @@ export function installSettingsWindow(
     }),
     // Every kind the markets offer (ADR 0107).
     define("desk.market.open", tr("market"), () => open("market")),
+    installMarketTools(ctx.bridge, commands, (choice) => {
+      if (!dialog.open || selected !== "market" || !market) open("market");
+      if (!market) throw new Error("The market is unavailable");
+      return market.requestInstall(choice);
+    }),
     define("desk.shell.open-keys", tr("openKeysCommand"), () => open("keyboard")),
   ];
   return {

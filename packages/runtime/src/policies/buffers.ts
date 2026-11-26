@@ -60,7 +60,7 @@ const CHOICES: Record<Leaving, Array<{ id: string; label: string }>> = {
 export function installBuffers(
   ctx: DeskContext,
   actions: BuffersActions,
-): BuffersPolicy & BufferEvents {
+): BuffersPolicy & BufferEvents & { confirmPluginClose(plugin: string): Promise<boolean> } {
   const { hub, surfaces } = ctx;
   const { commands, settings } = hub;
   const buffers = new Buffers();
@@ -292,6 +292,8 @@ export function installBuffers(
       if (mine) buffers.touch(mine.id);
     },
     show,
+    confirmPluginClose: (plugin) =>
+      ask({ buffers: buffers.ofPlugin(plugin), leaving: "close", asking: () => {} }, true),
     onClosed: (listener) => {
       closedListeners.add(listener);
       return () => closedListeners.delete(listener);

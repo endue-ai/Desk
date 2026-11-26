@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { CallerGrant, PluginManifest } from "@endue-ai/bridge";
+import type { CallerGrant, MarketKind, MarketListing, PluginManifest } from "@endue-ai/bridge";
 import { afterEach, expect, it, vi } from "vitest";
 import { browserCore } from "../bridge/core";
 import { ManualClock } from "../clock";
@@ -37,22 +37,27 @@ async function desk() {
     grants.splice(at, 1);
     return {};
   });
-  const themes = [
-    {
-      entry: { id: "example.lagoon", name: "Lagoon blue", kind: "theme", version: "1.0.0" },
-      state: "available",
-      market: "https://example.test/index.json",
-      verified: false,
-      added: [],
+  const item = (id: string, name: string, kind: MarketKind): MarketListing => ({
+    entry: {
+      id,
+      name,
+      kind,
+      version: "1.0.0",
+      publisher: "Example",
+      license: "CC0-1.0",
+      url: `${id}.desk-plugin`,
+      sha256: "0".repeat(64),
+      size: 100,
     },
-    {
-      entry: { id: "example.blue-board", name: "Blue board", kind: "view", version: "1.0.0" },
-      state: "available",
-      market: "https://example.test/index.json",
-      verified: false,
-      added: [],
-    },
-  ] as const;
+    state: "available",
+    market: "https://example.test/index.json",
+    verified: false,
+    added: [],
+  });
+  const entries = [
+    item("example.lagoon", "Lagoon blue", "theme"),
+    item("example.blue-board", "Blue board", "view"),
+  ];
   const core = browserCore({
     manifests: [
       policy(network, { name: "The Network" }),
@@ -62,7 +67,7 @@ async function desk() {
     handlers: {
       "perm.list": list,
       "perm.revoke": revoke,
-      "market.list": () => ({ entries: [...themes], problems: [] }),
+      "market.list": () => ({ entries, problems: [] }),
     },
   });
   const root = document.createElement("div");
@@ -109,7 +114,13 @@ it("leaves a plugin on when the person keeps a dirty buffer and protects the per
   let answer = "cancel";
   const pick = vi.fn(() => answer);
   runtime.commands.define("desk.palette.pick", { owner: "desk", title: "Choose", run: pick });
-  runtime.buffers.add({ id: "draft", name: "Draft", plugin: network, modified: true });
+  runtime.buffers.add({
+    id: "draft",
+    name: "Draft",
+    plugin: network,
+    modified: true,
+    surface: false,
+  });
   await runtime.commands.settled();
   try {
     const turnOff = (plugin: string) =>
