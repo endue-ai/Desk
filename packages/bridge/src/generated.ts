@@ -29,6 +29,8 @@ export interface CommandContribution {
   id: CommandId;
   /** Shown in the palette. */
   title: string;
+  /** A key in this plugin's messages catalog for the command title. The title is the fallback if the message is unavailable. */
+  titleMessage?: MessageId;
   /** More words the palette matches. */
   keywords?: string[];
   /** Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way. */
@@ -894,6 +896,8 @@ export interface Surface {
   id: string;
   /** Shown where the surface needs a label. */
   title?: string;
+  /** A key in this plugin's messages catalog for the surface label. The title is the fallback if the message is unavailable. */
+  titleMessage?: MessageId;
   placement: SurfacePlacement;
   /** Mounted but not shown until the plugin shows it, like a palette. Default false. */
   hidden?: boolean;

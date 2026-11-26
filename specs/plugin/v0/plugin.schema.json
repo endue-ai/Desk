@@ -302,6 +302,10 @@
           "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
         },
         "title": { "description": "Shown where the surface needs a label.", "type": "string" },
+        "titleMessage": {
+          "description": "A key in this plugin's messages catalog for the surface label. The title is the fallback if the message is unavailable.",
+          "$ref": "https://endue.ai/specs/plugin/v0/messages.schema.json#/$defs/MessageId"
+        },
         "placement": { "$ref": "#/$defs/SurfacePlacement" },
         "hidden": {
           "description": "Mounted but not shown until the plugin shows it, like a palette. Default false.",
