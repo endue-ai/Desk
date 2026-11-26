@@ -50,8 +50,9 @@ describe("plugin.json", () => {
         id: "endue.agents.open",
         runs: { command: "desk.plugins.open", args: { plugin: "endue.agents" } },
       }),
-      expect.objectContaining({ id: "endue.agents.new", title: "Agents: New agent" }),
-      expect.objectContaining({ id: "endue.agents.studio", title: "Agents: Studio" }),
+      expect.objectContaining({ id: "endue.agents.new", title: "Agents: New agent", agent: true }),
+      expect.objectContaining({ id: "endue.agents.studio", title: "Agents: Studio", agent: true }),
+      expect.objectContaining({ id: "endue.agents.list", agent: true, readOnly: true }),
     ]);
     // An agent window's Studio board opens an agent's Studio here, not on endue.ai.
     expect(manifest.contributes?.commands?.[2]?.runs).toBeUndefined();
