@@ -128,6 +128,7 @@ fn an_approval_waits_in_the_list_until_it_is_answered() {
     let home = home("pending-approval");
     let (core, deliveries) = prompted(&home);
     fs::create_dir_all(home.join("Notes")).unwrap();
+    fs::write(home.join("Notes/a.md"), "Buy milk\n").unwrap();
     grant(
         &core,
         MIRA,
@@ -156,6 +157,10 @@ fn an_approval_waits_in_the_list_until_it_is_answered() {
         );
     });
     assert_eq!(pending(&core, "desk").unwrap()["approvals"], json!([]));
+    assert_eq!(
+        fs::read_to_string(home.join("Notes/a.md")).unwrap(),
+        "Buy milk\n"
+    );
 }
 
 #[test]

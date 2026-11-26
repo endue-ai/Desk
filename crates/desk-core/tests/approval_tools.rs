@@ -1,6 +1,7 @@
 //! Approvals for the brain's tool calls (ADR 0078), against examples/brain-echo: a message of several
 //! `tool <name> as <agent>: <arguments>` lines makes one turn with one call per line, so "Allow for
-//! this task" can be seen letting the rest of the turn through.
+//! this task" can be seen letting the rest of the turn through. The writes replace existing files
+//! on a core without history, so they still wait under a grant (ADR 0373).
 
 mod common;
 mod support;
@@ -21,8 +22,12 @@ const NOTES_ONLY: &str =
     "agents:\n  mira:\n    allow:\n      - { permission: fs:write, paths: [\"~/Notes/**\"] }\n";
 
 /// A shared core on brain-echo that routes its tool calls, with `desk` talking to the brain and
-/// answering prompts and approvals, and `agent:mira` holding a session grant for `~/Notes/**`.
+/// answering approvals, and `agent:mira` holding a session grant for `~/Notes/**`.
 fn core(echo: &Echo, home: &Path) -> (Arc<Core>, Receiver<Delivery>) {
+    fs::create_dir_all(home.join("Notes")).unwrap();
+    for name in ["a.md", "b.md", "c.md"] {
+        fs::write(home.join("Notes").join(name), "original").unwrap();
+    }
     let file = home.join("init.yaml");
     fs::write(&file, NOTES_ONLY).unwrap();
     let options = BrainOptions {
@@ -149,7 +154,10 @@ fn a_denied_tool_call_tells_the_brain_why() {
     let said = answer(&deliveries, &turn, &mut Vec::new());
     assert!(said.contains("The fs.write tool failed:"), "{said}");
     assert!(said.contains("not-approved"), "{said}");
-    assert!(!home.join("Notes/a.md").exists());
+    assert_eq!(
+        fs::read_to_string(home.join("Notes/a.md")).unwrap(),
+        "original"
+    );
 }
 
 #[test]
