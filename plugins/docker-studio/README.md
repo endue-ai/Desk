@@ -11,8 +11,8 @@ explains and suggests through `brain.ask`. Keys: `/` search, `1`–`9` sections,
 
 Every call is the docker program through `proc.spawn` without a shell (`ui/run.js`), `--` before every
 positional value, each value checked (`ui/refs.js`). Lists are one `ls` and one `inspect` each; `docker
-events` keeps them current and one `docker stats` stream feeds every chart. AI's commands run only from
-`ui/ai-commands.js`'s list, after the person agrees; prompts never carry a variable's value.
+events` keeps them current and one `docker stats` stream feeds every chart. Eris uses the manifest
+commands and a single review for destructive operations (ADR 0380). Prompts omit variable values.
 
 | Permission | Why |
 | --- | --- |
