@@ -29,16 +29,58 @@
   "contributes": {
     "commands": [
       {
+        "id": "endue.images.pan",
+        "title": "Images: Pan the current image",
+        "description": "Move the image view by CSS pixel offsets within the active pane. Read the matching pane view from desk.windows.list to name a window.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "dx": { "type": "number" },
+            "dy": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.images.show-details",
+        "title": "Images: Show or hide image details",
+        "description": "Set whether the image details panel is shown in this pane.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "shown": { "type": "boolean" }
+          },
+          "required": ["shown"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.images.slice",
+        "title": "Images: Show a volume slice",
+        "description": "Show the one-based slice of the current imaging volume. Details reports the number of slices.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "at": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["at"],
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "endue.images.details",
         "title": "Images: Read the current image",
         "description": "Read the visible image's dimensions, parsed EXIF, folder position and view transforms.",
         "args": {
           "type": "object",
           "properties": {
-            "window": {
-              "type": "string",
-              "description": "The Images pane's view from desk.windows.list, such as plugin:endue.images@2."
-            }
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
           },
           "additionalProperties": false
         },
@@ -55,10 +97,7 @@
             "level": {
               "anyOf": [{ "type": "number", "minimum": 0.01, "maximum": 64 }, { "const": "fit" }]
             },
-            "window": {
-              "type": "string",
-              "description": "The Images pane's view from desk.windows.list, such as plugin:endue.images@2."
-            }
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
           },
           "required": ["level"],
           "additionalProperties": false
@@ -74,10 +113,7 @@
           "properties": {
             "rotate": { "type": "integer", "multipleOf": 90 },
             "flip": { "type": "boolean" },
-            "window": {
-              "type": "string",
-              "description": "The Images pane's view from desk.windows.list, such as plugin:endue.images@2."
-            }
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
           },
           "additionalProperties": false
         },
@@ -91,10 +127,7 @@
           "type": "object",
           "properties": {
             "to": { "enum": ["next", "previous", "first", "last"] },
-            "window": {
-              "type": "string",
-              "description": "The Images pane's view from desk.windows.list, such as plugin:endue.images@2."
-            }
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
           },
           "required": ["to"],
           "additionalProperties": false
@@ -109,10 +142,7 @@
           "type": "object",
           "properties": {
             "path": { "type": ["string", "null"] },
-            "window": {
-              "type": "string",
-              "description": "The Images pane's view from desk.windows.list, such as plugin:endue.images@2."
-            }
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
           },
           "required": ["path"],
           "additionalProperties": false

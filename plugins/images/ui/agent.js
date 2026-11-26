@@ -1,7 +1,5 @@
 // Agent words for the image already held by this pane. The controller and view own the operations.
 
-/** @typedef {import("./keep.js").ViewPlace} ViewPlace */
-
 /**
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext["commands"], "on">} commands
  * @param {{
@@ -10,11 +8,11 @@
  *   exif(): { label: string, value: string }[],
  *   go: ReturnType<typeof import("./folder.js").createWalk>,
  *   compare(path: string | null, ask: boolean): Promise<unknown>,
- *   view: { place?(): ViewPlace | null, setZoom?(level: number | "fit"): void,
- *     turn?(degrees?: number, flip?: boolean): void },
+ *   view: import("./images.js").View,
+ *   slice(at: number): Promise<unknown>,
  * }} parts
  */
-export function installAgentCommands(commands, { ready, state, exif, go, compare, view }) {
+export function installAgentCommands(commands, { ready, state, exif, go, compare, view, slice }) {
   /**
    * @param {string} name
    * @param {(args: Record<string, unknown>, active: ReturnType<typeof state>) => unknown} run
@@ -36,6 +34,8 @@ export function installAgentCommands(commands, { ready, state, exif, go, compare
     height: image?.height ?? null,
     exif: exif(),
     position,
+    slice: image?.slice ? { at: image.slice.index + 1, count: image.slice.count } : null,
+    detailsShown: view.detailsShown?.(),
     comparedWith: partner?.path ?? null,
     reason: image?.reason,
     ...view.place?.(),
@@ -46,6 +46,28 @@ export function installAgentCommands(commands, { ready, state, exif, go, compare
       throw new Error('Give a positive zoom level or "fit".');
     view.setZoom(level);
     return view.place?.();
+  });
+  answer("pan", ({ dx, dy }, { image }) => {
+    if (image?.kind === "details" || !view.pan) throw new Error("This image cannot be panned.");
+    if (
+      (dx === undefined && dy === undefined) ||
+      (dx !== undefined && (typeof dx !== "number" || !Number.isFinite(dx))) ||
+      (dy !== undefined && (typeof dy !== "number" || !Number.isFinite(dy)))
+    )
+      throw new Error("Give a finite horizontal or vertical pan in pixels.");
+    view.pan(dx ?? 0, dy ?? 0);
+    return view.place?.();
+  });
+  answer("show-details", ({ shown }) => {
+    if (typeof shown !== "boolean" || !view.showDetails)
+      throw new Error("Choose whether to show the details panel.");
+    view.showDetails(shown);
+    return { shown: view.detailsShown?.() };
+  });
+  answer("slice", ({ at }) => {
+    if (typeof at !== "number" || !Number.isSafeInteger(at) || at < 1)
+      throw new Error("Choose a one-based image slice.");
+    return slice(at);
   });
   answer("turn", ({ rotate, flip }, { image }) => {
     if (image?.kind === "details" || !view.turn) throw new Error("This image cannot be turned.");

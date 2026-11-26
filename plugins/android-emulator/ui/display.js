@@ -8,7 +8,14 @@ export function screenPoint(box, width, height, clientX, clientY) {
   return x >= 0 && x < width && y >= 0 && y < height ? { x, y } : null;
 }
 
-export function createDisplay(canvas, android, report, availability, disconnected) {
+export function createDisplay(
+  canvas,
+  android,
+  report,
+  availability,
+  disconnected,
+  withoutPrompt = (signal) => signal,
+) {
   const doc = canvas.ownerDocument;
   let session, loop, timer, gesture;
   let paused = false;
@@ -27,10 +34,11 @@ export function createDisplay(canvas, android, report, availability, disconnecte
     if (!session || paused || doc.hidden) return;
     const { serial } = session;
     const controller = new AbortController();
+    const signal = withoutPrompt(android.bindTransport(controller.signal, session.transportId));
     loop = controller;
     async function frame() {
       try {
-        const blob = await android.capture(serial, controller.signal);
+        const blob = await android.capture(serial, signal);
         if (controller.signal.aborted) return;
         const bitmap = await createImageBitmap(blob);
         try {
@@ -72,8 +80,9 @@ export function createDisplay(canvas, android, report, availability, disconnecte
     availability({ drawn, paused });
     refresh();
   }
-  function toggle() {
-    paused = !paused;
+  function setPaused(value) {
+    if (paused === value) return;
+    paused = value;
     availability({ drawn, paused });
     refresh();
   }
@@ -157,7 +166,9 @@ export function createDisplay(canvas, android, report, availability, disconnecte
   doc.addEventListener("visibilitychange", refresh);
   return {
     select,
-    toggle,
+    toggle: () => setPaused(!paused),
+    setPaused,
+    state: () => ({ drawn, paused, ...(drawn && { width: canvas.width, height: canvas.height }) }),
     dispose() {
       suspend();
       doc.removeEventListener("visibilitychange", refresh);

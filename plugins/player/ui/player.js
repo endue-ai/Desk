@@ -311,11 +311,21 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
     if (name) say(words(name));
   };
   const controls = createPlayerControls({ playEntry, choose, refresh, say });
+  const retry = async (/** @type {Entry} */ entry, ask = !entry.playlist) => {
+    if (!entry.item) return;
+    await play(entry, entry.item.path, { ask });
+    say("");
+  };
   installAgentCommands(commands, {
     current,
     controls,
     transport: view.transport,
     ready: () => waking?.done,
+    retry: async (entry) => {
+      if (!entry.item) throw new Error("No media can be retried.");
+      await retry(entry, false);
+      refresh(entry);
+    },
   });
   const move = (/** @type {"next" | "previous"} */ to) => act((entry) => controls.entry(entry, to));
 
@@ -334,12 +344,7 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
     dropping: about(SAYINGS.dropping),
     cancelled: () => act((entry) => say(cancel(entry))),
     /** Ask for the file again (a new URL, a new question when the grant is gone) where it was. */
-    retry: () =>
-      act(async (entry) => {
-        if (!entry.item) return;
-        await play(entry, entry.item.path, { ask: !entry.playlist });
-        say("");
-      }),
+    retry: () => act(retry),
     /** Where the element is: kept per buffer, and for long files in the store. */
     progress: (/** @type {{ time: number, duration: number, paused: boolean }} */ at) => {
       const entry = current();

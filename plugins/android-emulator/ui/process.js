@@ -14,6 +14,7 @@ function bytes({ data, encoding }) {
 
 export function createProcesses(bridge, sdk = () => "") {
   const found = new Map();
+  const quiet = new WeakSet();
   const jobs = new Map();
   let waiting = 0;
   const early = new Map();
@@ -54,7 +55,7 @@ export function createProcesses(bridge, sdk = () => "") {
         try {
           result = await bridge.call("proc.spawn", params);
         } catch (error) {
-          if (error.code !== "permission_denied") throw error;
+          if (error.code !== "permission_denied" || quiet.has(signal)) throw error;
           const grant = await bridge.call("perm.request", {
             permission: scope,
             reason: `Use the local Android SDK's ${tool} tool.`,
@@ -154,6 +155,10 @@ export function createProcesses(bridge, sdk = () => "") {
 
   return {
     start,
+    withoutPrompt(signal) {
+      quiet.add(signal);
+      return signal;
+    },
     run: async (tool, args, options) => (await start(tool, args, options)).done,
     dispose() {
       disposed = true;

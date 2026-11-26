@@ -27,6 +27,106 @@
   "contributes": {
     "commands": [
       {
+        "id": "endue.android-emulator.state",
+        "title": "Android Emulator: Read the selected device",
+        "description": "Read the last discovered devices, exact connected session, preview geometry, installed app and snapshot lists, saved presets and condition fields. The command only reads values already held by the emulator window.",
+        "agent": true,
+        "readOnly": true,
+        "args": { "type": "object", "properties": {}, "additionalProperties": false }
+      },
+      {
+        "id": "endue.android-emulator.operate",
+        "title": "Android Emulator: Operate the connected device",
+        "description": "Run one operation on the exact connected session after review. A tap takes from; a swipe takes from, to and durationMs; key takes key; conditions takes values; app and snapshot operations take name. Read app and snapshot lists before naming them.",
+        "agent": true,
+        "irreversible": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": { "type": "string" },
+            "action": {
+              "enum": [
+                "key",
+                "tap",
+                "swipe",
+                "rotate",
+                "conditions",
+                "resume-preview",
+                "list-apps",
+                "list-snapshots",
+                "snapshot-save",
+                "snapshot-load",
+                "app-launch",
+                "app-memory",
+                "app-frames",
+                "power-off"
+              ]
+            },
+            "key": { "type": "string" },
+            "from": {
+              "type": "object",
+              "properties": {
+                "x": { "type": "integer", "minimum": 0 },
+                "y": { "type": "integer", "minimum": 0 }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "to": {
+              "type": "object",
+              "properties": {
+                "x": { "type": "integer", "minimum": 0 },
+                "y": { "type": "integer", "minimum": 0 }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "durationMs": { "type": "number" },
+            "values": {
+              "type": "object",
+              "properties": {
+                "battery": { "type": ["number", "string"] },
+                "charging": { "enum": ["on", "off"] },
+                "network": { "enum": ["full", "lte", "umts", "edge", "gprs"] },
+                "latitude": { "type": ["number", "string"] },
+                "longitude": { "type": ["number", "string"] },
+                "appearance": { "enum": ["auto", "yes", "no"] },
+                "font": { "enum": ["1.0", "1.3", "1.5", "2.0"] }
+              },
+              "minProperties": 1,
+              "additionalProperties": false
+            },
+            "name": { "type": "string" }
+          },
+          "required": ["session", "action"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.android-emulator.pause-preview",
+        "title": "Android Emulator: Pause the preview",
+        "description": "Pause capture in the exact connected emulator session.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "session": { "type": "string" } },
+          "required": ["session"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.android-emulator.disconnect",
+        "title": "Android Emulator: Leave the connected device",
+        "description": "Disconnect the exact active Desk emulator session. The emulator stays running.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "session": { "type": "string" } },
+          "required": ["session"],
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "endue.android-emulator.open",
         "title": "Android Emulator: Open a virtual device",
         "keywords": ["android", "emulator", "avd", "adb", "logcat", "안드로이드", "에뮬레이터"],

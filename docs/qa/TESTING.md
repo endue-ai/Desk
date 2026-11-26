@@ -12,6 +12,12 @@ Images is off, reopening after close, and opening the same or another image from
 runtime's `plugin-reconnect.test.ts` checks requests wait for the recreated frame; Images'
 `files.test.ts` checks surviving buffers reload without reopening buffers already closed.
 
+Built-in agent tools and approvals follow [ADR 0394](../adr/0394-built-in-agent-tools-and-person-owned-actions.md).
+The Android e2e covers an idle read with zero SDK calls, the selected session, stale target
+refusal and shared preview controls. Android unit tests cover review, preview bounds and SDK
+grant refusal. Images checks shared view changes and competing slice requests, and Player
+checks loop, theatre and chapter navigation through the real transport with fake media.
+
 | Layer | What it checks | Tool and location | When | Status |
 | --- | --- | --- | --- | --- |
 | Static | fmt, clippy `-D warnings`, biome, tsc strict, actionlint, spec lint (Ajv strict compile of every schema, spectral for the OpenAPI), theme conformance (`scripts/ui-lint.mjs` ratchet), design system conformance (`scripts/ds-lint.mjs` ratchet) | `just check` | every PR (`ci`) | active |

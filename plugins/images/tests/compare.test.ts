@@ -112,3 +112,16 @@ it("reads the visible image and shares the view transforms, comparison and folde
   await host.command("endue.images.step", { to: "first" });
   expect(ran("desk.files.open").at(-1)).toMatchObject({ path: A.path });
 });
+
+it("uses the existing pan and details controls for an agent", async () => {
+  const { host } = await open();
+  await host.command("endue.images.zoom", { level: 2 });
+  await expect(host.command("endue.images.pan", { dx: 24, dy: -12 })).resolves.toMatchObject({
+    x: 24,
+    y: -12,
+  });
+  await host.command("endue.images.show-details", { shown: true });
+  expect(byId("details-toggle").getAttribute("aria-expanded")).toBe("true");
+  await host.command("endue.images.show-details", { shown: false });
+  expect(byId("details-toggle").getAttribute("aria-expanded")).toBe("false");
+});

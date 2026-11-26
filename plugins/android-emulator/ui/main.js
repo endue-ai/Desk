@@ -1,5 +1,6 @@
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 import "@endue-ai/ui";
+import { installAgentTools } from "./agent.js";
 import { createAndroid } from "./android.js";
 import { createConnection } from "./connection.js";
 import { createDisplay } from "./display.js";
@@ -16,7 +17,9 @@ defineUiPlugin({
     const procs = createProcesses(ctx.bridge, () => root);
     const android = createAndroid(procs);
     let session = { phase: "idle" };
+    let sessionId = null;
     let busy = false;
+    let inventory = [];
     let tools, discovery;
     const targets = new Map();
     const report = (text) => {
@@ -37,6 +40,7 @@ defineUiPlugin({
         el("pause").textContent = paused ? "Resume preview" : "Pause preview";
       },
       (message) => connection.disconnect(message),
+      procs.withoutPrompt,
     );
     function controls() {
       const idle = session.phase === "idle";
@@ -59,6 +63,7 @@ defineUiPlugin({
     }
     const connection = createConnection(android, (next) => {
       session = next;
+      sessionId = next.phase === "connected" ? `${next.serial}/${crypto.randomUUID()}` : null;
       busy = false;
       el("connection").textContent = next.message;
       tools?.reset();
@@ -66,17 +71,29 @@ defineUiPlugin({
       controls();
       if (next.phase === "connected") tools?.opened(next);
     });
-    async function operate(work) {
+    async function operate(work, expected) {
+      if (expected && (session.phase !== "connected" || sessionId !== expected))
+        throw new Error("That emulator session changed.");
+      if (busy && expected) throw new Error("The emulator is already taking another action.");
       if (session.phase !== "connected" || busy) return;
       const selected = session;
+      const operationSignal = android.bindTransport(
+        AbortSignal.any([selected.signal]),
+        selected.transportId,
+      );
+      const signal = expected ? procs.withoutPrompt(operationSignal) : operationSignal;
       busy = true;
       controls();
       report("Working…");
       try {
-        const message = await work(selected);
+        if (expected) await android.verifyTransport(selected.serial, signal);
+        const message = await work({ ...selected, signal });
+        if (expected && session !== selected) throw new Error("That emulator session changed.");
         if (session === selected) report(message ?? "");
+        return message;
       } catch (error) {
         if (session === selected) report(error.message);
+        if (expected) throw error;
       } finally {
         if (session === selected) {
           busy = false;
@@ -96,7 +113,9 @@ defineUiPlugin({
       if (controller.signal.aborted) return;
       const running = document.createElement("optgroup");
       running.label = "Running emulators";
+      const listed = [];
       for (const d of devices) {
+        listed.push({ id: d.serial, ...d });
         const option = new Option(`${d.avd || d.serial} · ${d.avd ? d.serial : d.state}`, d.serial);
         option.disabled = d.state !== "device";
         running.append(option);
@@ -106,10 +125,12 @@ defineUiPlugin({
       installed.label = "Available virtual devices";
       for (const avd of avds.filter((a) => !devices.some((d) => d.avd === a))) {
         const id = `avd:${avd}`;
+        listed.push({ id, avd });
         installed.append(new Option(avd, id));
         targets.set(id, { avd });
       }
       picker.replaceChildren();
+      inventory = listed;
       if (running.children.length) picker.append(running);
       if (installed.children.length) picker.append(installed);
       if (targets.size)
@@ -128,11 +149,27 @@ defineUiPlugin({
       report,
       disconnect: connection.disconnect,
     });
+    installAgentTools(ctx.commands, {
+      state: () => ({
+        phase: session.phase,
+        discovering: Boolean(discovery),
+        devices: inventory,
+        picked: picker.value || null,
+        session: sessionId ? { id: sessionId, serial: session.serial, label: session.label } : null,
+        preview: display.state(),
+        ...tools.state(),
+      }),
+      operate,
+      android,
+      display,
+      tools,
+      disconnect: connection.disconnect,
+    });
     picker.addEventListener("change", controls);
     connect.addEventListener("click", () => {
       if (session.phase !== "idle") {
         connection.disconnect();
-        void refresh();
+        controls();
       } else {
         const target = targets.get(picker.value);
         if (target) void connection.open(target);
@@ -177,6 +214,6 @@ defineUiPlugin({
       },
       { once: true },
     );
-    await refresh();
+    controls();
   },
 });

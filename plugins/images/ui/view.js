@@ -204,6 +204,15 @@ export function createView(doc, act, options = {}) {
   };
   const actual = () => setZoom(1);
   const fitAll = () => setZoom("fit");
+  const pan = (/** @type {number} */ dx, /** @type {number} */ dy) => {
+    viewer.pan(dx, dy);
+    layout();
+  };
+  const showDetails = (/** @type {boolean} */ shown) => {
+    details.hidden = !shown;
+    byId("details-toggle").setAttribute("aria-expanded", String(shown));
+    layout();
+  };
   const turn = (/** @type {number | undefined} */ degrees, flip = viewer.flipped) => {
     if (degrees !== undefined) {
       viewer.rotate(degrees);
@@ -230,11 +239,7 @@ export function createView(doc, act, options = {}) {
     "rotate-left": () => turn(-90),
     "rotate-right": () => turn(90),
     flip: () => turn(undefined, !viewer.flipped),
-    "details-toggle": () => {
-      details.hidden = !details.hidden;
-      byId("details-toggle").setAttribute("aria-expanded", String(!details.hidden));
-      layout();
-    },
+    "details-toggle": () => showDetails(details.hidden),
   });
   for (const [id, run] of Object.entries(buttons)) byId(id).addEventListener("click", () => run());
 
@@ -254,16 +259,12 @@ export function createView(doc, act, options = {}) {
     } else if (event.altKey || !state.image) handled = false;
     else if (key === "ArrowLeft" || key === "ArrowRight") {
       const sign = key === "ArrowLeft" ? 1 : -1;
-      if (zoomedIn()) {
-        viewer.pan(sign * PAN, 0);
-        layout();
-      } else act(sign > 0 ? "previous" : "next");
+      if (zoomedIn()) pan(sign * PAN, 0);
+      else act(sign > 0 ? "previous" : "next");
     } else if (key === "ArrowUp" || key === "ArrowDown") {
       const sign = key === "ArrowUp" ? 1 : -1;
-      if (zoomedIn()) {
-        viewer.pan(0, sign * PAN);
-        layout();
-      } else if (state.image.slice) act("slice", sign);
+      if (zoomedIn()) pan(0, sign * PAN);
+      else if (state.image.slice) act("slice", sign);
       else handled = false;
     } else if (key === "PageUp") act("previous");
     else if (key === "PageDown") act("next");
@@ -293,8 +294,7 @@ export function createView(doc, act, options = {}) {
         changed();
       } else if (zoomedIn()) {
         event.preventDefault();
-        viewer.pan(-event.deltaX * lines, -event.deltaY * lines);
-        layout();
+        pan(-event.deltaX * lines, -event.deltaY * lines);
       }
     },
     { passive: false },
@@ -357,6 +357,9 @@ export function createView(doc, act, options = {}) {
     status: say,
     setZoom,
     turn,
+    pan,
+    showDetails,
+    detailsShown: () => !details.hidden,
     /** @param {import("./opening.js").Progress | null} value */
     progress(value) {
       if (!progress) return;

@@ -30,8 +30,10 @@ export function parseDevices(text) {
     .trim()
     .split(/\r?\n/)
     .flatMap((line) => {
-      const [serial, state] = line.trim().split(/\s+/);
-      return localSerial(serial) && state ? [{ serial, state }] : [];
+      const [serial, state, ...fields] = line.trim().split(/\s+/);
+      if (!localSerial(serial) || !state) return [];
+      const transport = fields.find((field) => /^transport_id:[1-9]\d*$/.test(field));
+      return [{ serial, state, ...(transport && { transportId: transport.slice(13) }) }];
     });
 }
 
@@ -55,14 +57,35 @@ function name(value, label) {
 }
 
 export function createAndroid(procs) {
+  const transports = new WeakMap();
+  const rowsOf = async (signal) =>
+    parseDevices(await procs.run("adb", [...server, "devices", "-l"], { signal }));
+  function bindTransport(signal, transportId) {
+    if (transportId) transports.set(signal, transportId);
+    return signal;
+  }
+  async function verifyTransport(serial, signal) {
+    const id = transports.get(signal);
+    if (!id) throw new Error("Reconnect with current Android Platform-Tools to verify the device.");
+    const rows = await rowsOf(signal);
+    if (
+      !rows.some((row) => row.serial === serial && row.state === "device" && row.transportId === id)
+    )
+      throw new Error("The emulator transport disappeared. Refresh the devices to reconnect.");
+  }
   async function device(serial, args, options) {
     if (!localSerial(serial)) throw new Error("Select a running local Android emulator.");
-    const result = await procs.run("adb", [...server, "-s", serial, ...args], options);
-    return args[0] === "emu" ? consoleReply(result) : result;
+    const transport = transports.get(options?.signal);
+    const console = args[0] === "emu";
+    // The SDK console addresses an emulator by its port, so verify the pinned transport first.
+    if (transport && console) await verifyTransport(serial, options.signal);
+    const target = transport && !console ? ["-t", transport] : ["-s", serial];
+    const result = await procs.run("adb", [...server, ...target, ...args], options);
+    return console ? consoleReply(result) : result;
   }
 
   async function devices(signal) {
-    const rows = parseDevices(await procs.run("adb", [...server, "devices"], { signal }));
+    const rows = await rowsOf(signal);
     return Promise.all(
       rows.map(async (row) => {
         const avd =
@@ -166,6 +189,8 @@ export function createAndroid(procs) {
 
   return {
     ...appTools(device),
+    bindTransport,
+    verifyTransport,
     inventory,
     devices,
     capture,

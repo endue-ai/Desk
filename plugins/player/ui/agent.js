@@ -1,5 +1,5 @@
 // Agent words for the file on screen. Playback uses the same transport as the page's keyboard.
-import { titleOf } from "./model.js";
+import { chaptersOf, titleOf } from "./model.js";
 
 /**
  * @typedef {import("./player.js").Entry} Entry
@@ -20,6 +20,7 @@ function snapshot(entry, transport) {
     position: entry.position,
     duration: info?.duration ?? null,
     playing: false,
+    chapters: (chaptersOf(entry) ?? []).map((chapter, index) => ({ at: index + 1, ...chapter })),
     entry:
       playlist && row?.path && row.path === item?.path
         ? {
@@ -49,9 +50,10 @@ function finite(value, message) {
  *   current(): Entry | undefined,
  *   transport?: Transport,
  *   controls: ReturnType<typeof import("./controls.js").createPlayerControls>,
+ *   retry(entry: Entry): Promise<void>,
  * }} parts
  */
-export function installAgentCommands(commands, { ready, current, transport, controls }) {
+export function installAgentCommands(commands, { ready, current, transport, controls, retry }) {
   commands.on("endue.player.state", async () => {
     await ready();
     return snapshot(current(), transport);
@@ -100,4 +102,24 @@ export function installAgentCommands(commands, { ready, current, transport, cont
   });
   answer("subtitles", ({ track, offset }, entry) => controls.subtitle(entry, track, offset));
   answer("entry", ({ to }, entry) => controls.entry(entry, to));
+  answer("view", ({ loop, theatre }, entry) => {
+    const { transport } = active();
+    if (
+      (loop === undefined && theatre === undefined) ||
+      (loop !== undefined && typeof loop !== "boolean") ||
+      (theatre !== undefined && typeof theatre !== "boolean")
+    )
+      throw new Error("Set loop or theatre mode to true or false.");
+    if (theatre && entry.item?.element !== "video") throw new Error("Theatre mode needs video.");
+    if (loop !== undefined) transport.setLoop(loop);
+    if (theatre !== undefined) transport.setTheatre(theatre);
+  });
+  answer("chapter", ({ at }, entry) => {
+    const { transport } = active();
+    const chapters = chaptersOf(entry);
+    if (typeof at !== "number" || !Number.isSafeInteger(at) || at < 1 || !chapters?.[at - 1])
+      throw new Error("Choose a one-based chapter of the current item.");
+    transport.seekTo(chapters[at - 1].start);
+  });
+  answer("retry", (_args, entry) => retry(entry));
 }

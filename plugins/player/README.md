@@ -1,7 +1,8 @@
 # plugins/player
 
 `endue.player` plays video and audio with subtitles, playlists, chapters, cover art and tags.
-Eris reads `state` and uses `play`, `pause`, `seek`, `volume`, `speed`, `subtitles` and `entry`.
+Eris reads `state` and uses `play`, `pause`, `seek`, `volume`, `speed`, `subtitles`, `entry`,
+`view`, `chapter` and `retry` (ADR 0392, ADR 0394).
 The readers (`ui/probe/`) read the container, codecs, tags and cover from `fs.read` ranges, and
 `ui/route.js` picks the engines, in order (ADR 0050): the engine's `<video>`/`<audio>` on the `fs.url`
 URL; the remuxer (`ui/remux/`), which rewrites MKV, WebM, AVI, FLV, Ogg, MXF and MPEG-TS into

@@ -1,9 +1,5 @@
-// The media and the transport: one <video> and one <audio> (only one has a source at a time), or the
-// software player's element drawing on a canvas (engines.js picks), play and pause, the seek bar and
-// time, volume and mute, speed, loop, theatre mode, the subtitle overlay with its menu and offset, the
-// resume offer, the progress while an engine starts or buffers, and the keys. A stalled element (the
-// position stands still or no frame is drawn while playing, as when a URL's grant was revoked:
-// stall.js) is reported with a Try again button, never left frozen.
+// The transport shares playback, subtitles, resume, loop and theatre mode across the native and
+// software engines. A stalled element shows Try again (stall.js).
 import { bindTransportKeys } from "./keys.js";
 import { createStallWatch } from "./stall.js";
 import { activeAt } from "./subtitles.js";
@@ -168,6 +164,10 @@ export function createMedia(doc, act, engines) {
     doc.body.classList.toggle("theatre", on);
     pressed(theatre, on);
   };
+  const setLoop = (/** @type {boolean} */ on) => {
+    for (const element of new Set([video, audio, media])) if (element) element.loop = on;
+    pressed(loop, on);
+  };
 
   /** The transport's handlers on a media's events. */
   const listen = (/** @type {EventTarget} */ element) => {
@@ -224,11 +224,7 @@ export function createMedia(doc, act, engines) {
   play.addEventListener("click", toggle);
   seek.addEventListener("input", () => seekTo(Number(seek.value)));
   speed.addEventListener("change", () => setSpeed(Number(speed.value)));
-  loop.addEventListener("click", () => {
-    const on = !video.loop;
-    for (const element of new Set([video, audio, media])) if (element) element.loop = on;
-    pressed(loop, on);
-  });
+  loop.addEventListener("click", () => setLoop(!video.loop));
   theatre.addEventListener("click", () => setTheatre(!doc.body.classList.contains("theatre")));
   subs.addEventListener("change", () => act("subtitle", subs.value));
   byId("earlier").addEventListener("click", () => act("offset", -0.1));
@@ -373,6 +369,8 @@ export function createMedia(doc, act, engines) {
               volume: media.volume,
               muted: media.muted,
               rate: media.playbackRate,
+              loop: media.loop,
+              theatre: doc.body.classList.contains("theatre"),
             }
           : null,
       setPlaying,
@@ -381,6 +379,8 @@ export function createMedia(doc, act, engines) {
       speeds,
       setVolume: volume.setVolume,
       setMuted: volume.setMuted,
+      setLoop,
+      setTheatre,
     },
     loadVolume: volume.load,
     /** Hear the position, for the chapter list. */
