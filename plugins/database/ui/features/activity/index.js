@@ -29,7 +29,8 @@ export const feature = {
       "endue.database.activity": (args) => activity.open(args),
       "endue.database.activity-refresh": (args) => activity.refreshCommand(args),
       "endue.database.cancel-session": (args) => activity.stopSession("cancel", args),
-      "endue.database.end-session": (args) => activity.stopSession("end", args),
+      "endue.database.end-session": (args, invocation) =>
+        activity.stopSession("end", args, undefined, invocation?.approved === true),
     };
   },
   actions: (deps) => {

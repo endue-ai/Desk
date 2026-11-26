@@ -250,10 +250,14 @@ export function createCatalog(execute, systemSchemas, options = {}) {
       });
     },
     /** A schema's tables, columns and foreign keys, for its ER diagram: cached, or read afresh. */
-    diagram: async (/** @type {Connection} */ conn, /** @type {string} */ schema) => {
-      const view = await held(conn);
+    diagram: async (
+      /** @type {Connection} */ conn,
+      /** @type {string} */ schema,
+      quiet = false,
+    ) => {
+      const view = await held(conn, quiet);
       if (view?.held(schema)) return diagramOf(...diagramRows(view, schema));
-      const read = await many(conn, diagramQueries(conn.engine, schema));
+      const read = await many(conn, diagramQueries(conn.engine, schema), quiet);
       return diagramOf(read.rows[0] ?? [], read.rows[1] ?? []);
     },
     /** What has been read of a connection, without waiting: for autocomplete. */

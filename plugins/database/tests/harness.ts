@@ -178,6 +178,7 @@ export async function mount(
     settings?: Record<string, unknown>;
     /** Bridge methods served instead of the scripted clients' (the real processes, for one). */
     handlers?: Handlers;
+    grants?: Options["grants"];
     pick?: (args: { title: string; items: Array<{ id: string; label: string }> }) => string;
     /** The features instead of ui/features/index.js's (a fake one, for one). */
     features?: Feature[];
@@ -195,6 +196,7 @@ export async function mount(
     pluginId: "endue.database",
     manifestCommands: (manifest as PluginManifest).contributes?.commands,
     db: scriptedDb(options.script ?? (() => ({})), options.password),
+    ...(options.grants ? { grants: options.grants } : {}),
     ...(options.settings ? { settings: options.settings } : {}),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),

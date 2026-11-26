@@ -269,7 +269,11 @@ describe("agents", () => {
   });
 
   it("never shows an agent's request a password prompt", async () => {
-    const m = await mount({ store: { connections: SAVED }, password: "s3cret" });
+    const m = await mount({
+      store: { connections: SAVED },
+      password: "s3cret",
+      grants: [{ permission: "db:connect", hosts: ["db.example:5432"] }],
+    });
     await expect(m.host.invoke("endue.database.schema", { connection: "Shop" })).rejects.toThrow(
       /asks for a password/u,
     );

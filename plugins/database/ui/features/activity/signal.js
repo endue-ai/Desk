@@ -72,11 +72,11 @@ export function questionOf(how, conn, s) {
  * @param {Session} s
  * @param {number} version server_version_num
  */
-export async function stop(deps, how, conn, s, version) {
+export async function stop(deps, how, conn, s, version, approved = false) {
   const refused = refusal(conn) || (how === "cancel" ? nothingToCancel(s) : "");
   if (refused) throw new Error(refused);
   const { title, reasons } = questionOf(how, conn, s);
-  if (!(await deps.confirm(title, reasons)))
+  if (!(approved || (await deps.confirm(title, reasons))))
     throw deps.cancelled(how === "cancel" ? "Not cancelled." : "Not ended.");
   const { result } = await deps.execute(conn, signalSql(how, s.pid, version), { asked: true });
   const outcome = result.statements[0];

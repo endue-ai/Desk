@@ -90,7 +90,7 @@ export function createRunner(bridge, options = {}) {
    * program.
    * @param {Invocation} invocation
    */
-  const spawn = async (invocation) => {
+  const spawn = async (invocation, quiet = false) => {
     const { command } = invocation;
     const scope = { permission: /** @type {const} */ ("proc:spawn"), commands: [command] };
     const withPath = (/** @type {boolean} */ use) => {
@@ -128,7 +128,7 @@ export function createRunner(bridge, options = {}) {
             `${command} was not found. Install it, or set its path in the settings.`,
             "missing",
           );
-        if (code !== "permission_denied" || asked)
+        if (code !== "permission_denied" || asked || quiet)
           throw new RunError(`Could not run ${command}: ${code}.`, "refused");
       }
       asked = true;
@@ -158,14 +158,14 @@ export function createRunner(bridge, options = {}) {
   /**
    * Run the client and resolve with what it wrote and how it ended.
    * @param {Invocation} invocation
-   * @param {{ timeoutMs?: number, signal?: AbortSignal, onOutput?(stream: "stdout" | "stderr", text: string): void }} [runOptions]
+   * @param {{ timeoutMs?: number, quiet?: boolean, signal?: AbortSignal, onOutput?(stream: "stdout" | "stderr", text: string): void }} [runOptions]
    *   `timeoutMs` 0 or absent waits as long as it takes; `signal` cancels this run alone;
    *   `onOutput` hears each stream's text as it comes (a long program's progress).
    * @returns {Promise<Outcome>}
    */
   const run = async (invocation, runOptions = {}) => {
     const started = now();
-    const { procId } = await spawn(invocation);
+    const { procId } = await spawn(invocation, runOptions.quiet);
     const timeoutMs = runOptions.timeoutMs ?? 0;
     const { signal, onOutput } = runOptions;
     return new Promise((resolve) => {

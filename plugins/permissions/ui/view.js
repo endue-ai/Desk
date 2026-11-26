@@ -262,6 +262,10 @@ export function createView(doc, actions, options = {}) {
       const what = byId("prompt-what");
       what.replaceChildren("Wants to: ", el("strong", {}, model.permission));
       if (model.scope) what.append(" ", el("code", { className: "scope" }, model.scope));
+      for (const { permission, scope } of model.related ?? []) {
+        what.append(el("br", {}), el("strong", {}, permission));
+        if (scope) what.append(" ", el("code", { className: "scope" }, scope));
+      }
       byId("prompt-warning").replaceChildren(...(model.warning ? [warning(model.warning)] : []));
       byId("prompt-why").replaceChildren(
         "Reason: ",

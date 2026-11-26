@@ -14,7 +14,7 @@ import { broadWarning, describeCaller, describePermission, durationLabel } from 
  * @typedef {{ scope: string, folder: string, label: string }} ParentOffer
  * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, permissionKind: string, scope: string,
  *   reason: string, duration: string, warning: string | null, parent: ParentOffer | null,
- *   preferPersistent: boolean, waiting: number }} PromptModel
+ *   preferPersistent: boolean, waiting: number, related?: { permission: string, scope: string }[] }} PromptModel
  */
 
 const count = (/** @type {number} */ n, /** @type {string} */ noun) =>
@@ -75,9 +75,10 @@ export function parentOffer(prompt) {
  * @param {PermPromptData} prompt
  * @param {PluginInfo[]} plugins
  * @param {number} waiting
+ * @param {{ reason: string, other: PermPromptData[] }} [review]
  * @returns {PromptModel}
  */
-export function promptModel(prompt, plugins, waiting) {
+export function promptModel(prompt, plugins, waiting, review) {
   const caller = describeCaller(prompt.caller, plugins);
   const { label, scope } = describePermission(prompt.permission);
   return {
@@ -87,11 +88,19 @@ export function promptModel(prompt, plugins, waiting) {
     permission: label,
     permissionKind: prompt.permission.permission,
     scope,
-    reason: prompt.reason ?? "",
+    reason: review?.reason ?? prompt.reason ?? "",
     duration: durationLabel(prompt.duration),
     warning: broadWarning(prompt.permission),
     parent: parentOffer(prompt),
     preferPersistent: plugins.some((plugin) => plugin.id === prompt.caller && plugin.builtIn),
     waiting,
+    ...(review?.other.length
+      ? {
+          related: review.other.map(({ permission }) => {
+            const { label, scope } = describePermission(permission);
+            return { permission: label, scope };
+          }),
+        }
+      : {}),
   };
 }

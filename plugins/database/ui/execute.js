@@ -26,17 +26,18 @@ import { split } from "./sql/split.js";
  * @typedef {"run" | "transaction" | "dry-run" | "describe"} Mode
  *   `describe` runs nothing: PostgreSQL answers what each statement takes and returns (ADR 0353).
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean, copy?: import("./copy/stream.js").Copy }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean, permissionsReviewed?: boolean, copy?: import("./copy/stream.js").Copy }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
  *   plugin's own reading and asks nothing; `asked` says the caller put its own question to the person
  *   (the guards still refuse); `session` runs PostgreSQL on the session that console or table view
  *   keeps (PG-02, ADR 0320), else on a short one of the run's own; `signal` cancels this run alone,
  *   as Cancel does every run; `shown` is what a question shows of the statements instead of their
  *   text (a role's password masked); `background` is a read the plugin starts on its own (a
- *   panel's period), refused on a connection the person disconnected (ADR 0339); `copy` is where a
+ *   panel's period), refused on a connection the person disconnected (ADR 0339);
+ *   `permissionsReviewed` keeps a form's Test from asking again after its review; `copy` is where a
  *   COPY ... TO STDOUT writes or a COPY ... FROM STDIN reads (copy/index.js), else `copies` asks.
  * @typedef {{
- *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal }): Promise<import("./engines/common.js").Outcome> },
+ *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal, quiet?: boolean }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
  *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "run">,
@@ -122,6 +123,7 @@ export function createExecutor(deps) {
           ...(options.agent ? { agent: true } : {}),
           ...signal,
           ...(options.interactive === false ? { quiet: true } : {}),
+          ...(options.permissionsReviewed ? { permissionsReviewed: true } : {}),
           ...(options.background ? { background: true } : {}),
           ...(copy ? { copy } : {}),
         });
@@ -139,7 +141,11 @@ export function createExecutor(deps) {
           single,
         });
         invocation.command = client.command;
-        const outcome = await deps.runner.run(invocation, { timeoutMs, ...signal });
+        const outcome = await deps.runner.run(invocation, {
+          timeoutMs,
+          ...signal,
+          quiet: options.agent === true || options.permissionsReviewed === true,
+        });
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))

@@ -32,9 +32,13 @@ import {
  */
 
 /** The schema cache's view of a connection, opened, or undefined for an engine it does not hold. */
-async function cacheView(/** @type {Catalog} */ catalog, /** @type {Connection} */ conn) {
+async function cacheView(
+  /** @type {Catalog} */ catalog,
+  /** @type {Connection} */ conn,
+  quiet = false,
+) {
   if (!catalog.cache.cached(conn)) return undefined;
-  await catalog.cache.open(conn);
+  await catalog.cache.open(conn, quiet);
   return catalog.cache.view(conn);
 }
 
@@ -43,11 +47,12 @@ export async function schemasFor(
   /** @type {Catalog} */ catalog,
   /** @type {Connection} */ conn,
   /** @type {Choice} */ choice,
+  quiet = false,
 ) {
   const own = new Set(choice.schemas);
   if (choice.around) {
     own.add(choice.around[0]);
-    for (const s of (await cacheView(catalog, conn))?.schemas() ?? []) own.add(s);
+    for (const s of (await cacheView(catalog, conn, quiet))?.schemas() ?? []) own.add(s);
   }
   return [...own];
 }
@@ -57,13 +62,14 @@ export async function readGraph(
   /** @type {Catalog} */ catalog,
   /** @type {Connection} */ conn,
   /** @type {string[]} */ schemas,
+  quiet = false,
 ) {
-  const view = await cacheView(catalog, conn);
+  const view = await cacheView(catalog, conn, quiet);
   const held = schemas.filter((s) => view?.held(s));
   const graphs = view && held.length ? [graphFromCache(view, held)] : [];
   for (const schema of schemas)
     if (!held.includes(schema))
-      graphs.push(graphFromRows(schema, await catalog.diagram(conn, schema)));
+      graphs.push(graphFromRows(schema, await catalog.diagram(conn, schema, quiet)));
   return merge(graphs);
 }
 

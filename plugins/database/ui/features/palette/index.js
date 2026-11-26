@@ -6,6 +6,7 @@
 
 import { homeOf } from "../../databases.js";
 import { bridgeStore } from "../../schema-cache/store.js";
+import { agentsOf } from "../audit/agents.js";
 import { best } from "./match.js";
 import { resultOf } from "./results.js";
 import { createSources } from "./sources.js";
@@ -63,7 +64,17 @@ export const feature = {
   commands: (deps) => {
     const sources = sourcesOf(deps);
     return {
-      "endue.database.find-objects": (args) => findObjects(args, sources),
+      "endue.database.find-objects": (args, invocation) => {
+        if (!/^(agent|mcp):/u.test(invocation?.caller ?? "")) return findObjects(args, sources);
+        return findObjects(args, {
+          async all() {
+            const loaded = await sources.all();
+            const visible = await agentsOf(deps.bridge)?.visible(loaded.map(({ conn }) => conn));
+            const ids = visible ? new Set(visible.map(({ id }) => id)) : undefined;
+            return ids ? loaded.filter(({ conn }) => ids.has(conn.id)) : loaded;
+          },
+        });
+      },
       "endue.database.copy-name": async ({ text }) => {
         if (typeof text !== "string" || text === "")
           throw new Error("Say the name to copy as text.");

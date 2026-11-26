@@ -10,6 +10,7 @@
 
 import { argvOf } from "./command.js";
 import { commandFor } from "./fields.js";
+import { reviewConnection } from "./review.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -17,7 +18,7 @@ import { commandFor } from "./fields.js";
  * @typedef {import("../engines/common.js").Invocation} Invocation
  * @typedef {import("../engines/common.js").Outcome} Outcome
  * @typedef {{ password: string } | { error: DbError }} Fetched
- * @typedef {(conn: Connection) => Promise<Fetched>} Helper
+ * @typedef {(conn: Connection, quiet?: boolean) => Promise<Fetched>} Helper
  */
 
 export const APPROVALS_KEY = "password-commands";
@@ -36,10 +37,10 @@ const failed = (/** @type {string} */ message) => ({ error: { kind: "connect", m
 /**
  * @param {{
  *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">,
- *   runner: { run(invocation: Invocation, options?: { timeoutMs?: number }): Promise<Outcome> },
+ *   runner: { run(invocation: Invocation, options?: { timeoutMs?: number, quiet?: boolean }): Promise<Outcome> },
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  * }} deps
- * @returns {Helper}
+ * @returns {Helper & { review(conn: Connection): Promise<boolean> }}
  */
 export function createHelper(deps) {
   /** Yeses being asked for, by connection id, so sessions opening at once ask once. */
@@ -53,6 +54,12 @@ export function createHelper(deps) {
     );
   };
 
+  const keep = async (/** @type {Connection} */ conn, /** @type {string} */ command) => {
+    const next = Object.entries({ ...(await approvals()), [conn.id]: command });
+    const value = Object.fromEntries(next.slice(-KEPT_APPROVALS));
+    await deps.bridge.call("store.set", { key: APPROVALS_KEY, value }).catch(() => {});
+  };
+
   const approve = async (/** @type {Connection} */ conn, /** @type {string} */ command) => {
     const given = await approvals();
     if (given[conn.id] === command) return true;
@@ -63,9 +70,7 @@ export function createHelper(deps) {
       ])
       .catch(() => false);
     if (!yes) return false;
-    const next = Object.entries({ ...(await approvals()), [conn.id]: command });
-    const value = Object.fromEntries(next.slice(-KEPT_APPROVALS));
-    await deps.bridge.call("store.set", { key: APPROVALS_KEY, value }).catch(() => {});
+    await keep(conn, command);
     return true;
   };
   const approved = (/** @type {Connection} */ conn, /** @type {string} */ command) => {
@@ -75,12 +80,19 @@ export function createHelper(deps) {
     return pending.finally(() => asking.delete(key));
   };
 
-  return async (conn) => {
+  /** @type {Helper} */
+  const fetch = async (conn, quiet = false) => {
     const command = commandFor(conn);
     const { program, args } = argvOf(command);
     const said = `${conn.name}'s password command`;
     if (!program) return failed(`${said} is empty.`);
-    if (!(await approved(conn, command))) return failed(`${said} was not run: it is not allowed.`);
+    const mayRun = quiet ? (await approvals())[conn.id] === command : await approved(conn, command);
+    if (!mayRun)
+      return failed(
+        quiet
+          ? `${said} was not run: allow it from the connection form.`
+          : `${said} was not run: it is not allowed.`,
+      );
     /** @type {Outcome} */
     let outcome;
     try {
@@ -95,7 +107,7 @@ export function createHelper(deps) {
           stopAfter: 0,
           reason: `To get ${conn.name}'s password, its password command`,
         },
-        { timeoutMs: HELPER_MS },
+        { timeoutMs: HELPER_MS, quiet },
       );
     } catch (error) {
       return failed(`${said}: ${error instanceof Error ? error.message : String(error)}`);
@@ -114,4 +126,13 @@ export function createHelper(deps) {
     if (!password) return failed(`${said} printed no password on its first line.`);
     return { password };
   };
+  return Object.assign(fetch, {
+    async review(/** @type {Connection} */ conn) {
+      const command = commandFor(conn);
+      const before = command !== "" && (await approvals())[conn.id] === command;
+      const allowed = await reviewConnection(deps.bridge, conn, before, deps.confirm);
+      if (allowed && command && !before) await keep(conn, command);
+      return allowed;
+    },
+  });
 }

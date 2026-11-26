@@ -79,6 +79,10 @@ export function createPluginSessions(deps) {
       render();
     }, 100);
   };
+  const helper =
+    deps.runner && deps.confirm
+      ? createHelper({ bridge: deps.bridge, runner: deps.runner, confirm: deps.confirm })
+      : undefined;
   const sessions = createSessions(deps.bridge, {
     onBusy: deps.onBusy,
     onState: render,
@@ -102,11 +106,7 @@ export function createPluginSessions(deps) {
     ...(deps.kept ? { kept: deps.kept } : {}),
     passphrases,
     tunnel,
-    ...(deps.runner && deps.confirm
-      ? {
-          helper: createHelper({ bridge: deps.bridge, runner: deps.runner, confirm: deps.confirm }),
-        }
-      : {}),
+    ...(helper ? { helper } : {}),
   });
   const worded = wordRefusals(sessions);
   const mine = (/** @type {string} */ connection) => (/** @type {{ connection: string }} */ e) =>
@@ -212,6 +212,8 @@ export function createPluginSessions(deps) {
 
   return {
     pg,
+    reviewConnection: (/** @type {Connection} */ conn) =>
+      helper?.review(conn) ?? Promise.resolve(true),
     /** The connection's sessions, for Disconnect, a sign-in change and remove (manage.js), and
      * `forget` for its key files' passphrases, gone with the password (ADR 0331). */
     connections: {

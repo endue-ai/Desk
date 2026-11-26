@@ -176,6 +176,7 @@ export async function auditMount(
   const seen: Seen = [];
   const m = await mount({
     store: { connections: [SHOP, NOTES], ...options.store },
+    grants: [{ permission: "db:connect", hosts: ["db.test:5432"] }],
     script: auditScript(seen),
     pick: options.pick ?? (() => "yes"),
     ...(options.settings ? { settings: options.settings } : {}),

@@ -347,6 +347,35 @@ describe("the objects feature", () => {
     expect(m.view.inserted.at(-1)).toBe('CALL "public"."refund"(:order_id, :done);\n');
   });
 
+  it("uses one review for a direct truncate and reuses a matching core approval", async () => {
+    const args = { connection: "Shop", schema: "public", name: "orders" };
+    const person = await mounted();
+    await person.m.host.command("endue.database.truncate-table", args);
+    expect(dialogs(person.m).map(({ op }) => op)).toEqual(["truncate"]);
+    expect(person.m.picks.filter(({ title }) => title.startsWith("Run "))).toEqual([]);
+    expect(person.server.ran).toEqual(['TRUNCATE TABLE "public"."orders"']);
+
+    const agent = await mounted(() => undefined);
+    await agent.m.host.call(
+      "perm.request",
+      { permission: { permission: "db:connect", hosts: ["db.example:5432"] } },
+      "endue.database",
+    );
+    agent.m.host.emit({
+      event: "cmd.invoked",
+      data: {
+        invocationId: "reviewed-truncate",
+        id: "endue.database.truncate-table",
+        caller: "agent:eris",
+        args,
+        approved: true,
+      },
+    });
+    await expect.poll(() => agent.server.ran).toEqual(['TRUNCATE TABLE "public"."orders"']);
+    expect(agent.m.view.dialogs).toEqual([]);
+    expect(agent.m.picks).toEqual([]);
+  });
+
   it("edits a source in a console and applies it in one transaction, an error selecting its line", async () => {
     const { m, server, selected } = await mounted();
     const view = await open(m, "Dev", "public", "Views", "big_orders");

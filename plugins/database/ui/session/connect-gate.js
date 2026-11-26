@@ -6,6 +6,7 @@
 // the core honours only from the person's press. No DOM.
 
 import { targetOf } from "../engines/pg-session.js";
+import { scopeOf } from "../tunnel/open.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -69,7 +70,7 @@ export function wordRefusals(pg) {
 export async function connectHeld(bridge, conn) {
   const where = whereOf(conn);
   if (where === undefined) return conn.engine !== "postgresql";
-  const permission = { permission: "db:connect", hosts: [where] };
+  const permission = scopeOf(where, conn);
   const held = /** @type {{ grants?: unknown[] }} */ (
     await bridge
       .call(/** @type {never} */ ("perm.query"), /** @type {never} */ ({ permission }))
