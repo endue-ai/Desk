@@ -8,6 +8,7 @@ import {
 } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { PolicyHub } from "../hub";
+import { invokeAsEris } from "./agent-tool-test";
 import { installPalette } from "./palette";
 
 /** An installed plugin, on unless said otherwise, contributing `contributes`. */
@@ -101,7 +102,8 @@ describe("desk.palette's policy", () => {
 it("desk.search asks the selected palette providers and returns limited matches", async () => {
   const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
   const stub = browserStub({ ...registry.handlers });
-  const hub = new PolicyHub(new BridgeClient(stub));
+  const client = new BridgeClient(stub);
+  const hub = new PolicyHub(client);
   const asked: unknown[] = [];
   let activated = false;
   hub.apply([
@@ -114,8 +116,9 @@ it("desk.search asks the selected palette providers and returns limited matches"
   hub.commands.define("example.files.find", {
     owner: "example.files",
     title: "Find files",
-    run: (args) => {
-      asked.push(args);
+    agent: { description: "Read file search results", readOnly: true },
+    run: (args, { caller }) => {
+      asked.push({ args, caller });
       return {
         results: ["a", "b"].map((id) => ({
           id,
@@ -139,6 +142,10 @@ it("desk.search asks the selected palette providers and returns limited matches"
   ).toMatchObject({
     groups: [{ provider: "example.files.find", title: "Files", results: [{ id: "a" }] }],
   });
-  expect(asked).toEqual([{ query: "notes", limit: 1 }]);
+  await invokeAsEris(client, "desk.search", { query: "notes", groups: ["Files"], limit: 1 });
+  expect(asked).toEqual([
+    { args: { query: "notes", limit: 1 }, caller: undefined },
+    { args: { query: "notes", limit: 1 }, caller: "agent:eris" },
+  ]);
   expect(activated).toBe(false);
 });
