@@ -26,7 +26,9 @@ function validator() {
 type Manifest = {
   id: string;
   permissions: { permission: string; commands?: string[]; paths?: string[] }[];
-  contributes: { commands: { id: string }[] };
+  contributes: {
+    commands: { id: string; agent?: boolean; readOnly?: boolean; irreversible?: boolean }[];
+  };
 };
 const manifest = readJson(join(folder, "plugin.json")) as Manifest;
 
@@ -63,5 +65,52 @@ describe("plugin.json", () => {
       const answered = sources.includes(`"${id}"`) || sources.includes(`on("${name}",`);
       expect(answered, id).toBe(true);
     }
+  });
+
+  it("separates read tools, ordinary controls and irreversible operations", () => {
+    const groups = [
+      [
+        ["volumes", "networks", "image", "builds", "contexts", "search", "files", "stats"],
+        true,
+        false,
+      ],
+      [
+        [
+          "start",
+          "stop",
+          "restart",
+          "pause",
+          "unpause",
+          "volume-create",
+          "network-create",
+          "network-connect",
+          "tag",
+          "use-context",
+          "build",
+          "compose-up",
+        ],
+        false,
+        false,
+      ],
+      [
+        ["remove", "kill", "volume-remove", "network-remove", "remove-image", "push", "prune"],
+        false,
+        true,
+      ],
+    ] as const;
+    for (const [names, readOnly, irreversible] of groups) {
+      for (const name of names) {
+        const command = manifest.contributes.commands.find(
+          (c) => c.id === `endue.docker-studio.${name}`,
+        );
+        expect(
+          [command?.agent, command?.readOnly ?? false, command?.irreversible ?? false],
+          name,
+        ).toEqual([true, readOnly, irreversible]);
+      }
+    }
+    expect(
+      manifest.contributes.commands.find((c) => c.id === "endue.docker-studio.act")?.agent ?? false,
+    ).toBe(false);
   });
 });

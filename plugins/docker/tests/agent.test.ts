@@ -15,7 +15,12 @@ describe("agents' tools", () => {
     expect(flags("endue.docker.stop")).toEqual([true, false]);
     expect(flags("endue.docker.prune")).toEqual([true, false]);
     expect(flags("endue.docker.open")).toEqual([false, false]);
-    expect(flags("endue.docker.shell")).toEqual([false, false]);
+    for (const name of ["view", "files"]) {
+      expect(flags(`endue.docker.${name}`), name).toEqual([true, true]);
+    }
+    for (const name of ["filter", "sort", "context", "cancel", "shell", "open-port", "open-file"]) {
+      expect(flags(`endue.docker.${name}`), name).toEqual([true, false]);
+    }
     const asks = commands.filter((c) => c.description?.endsWith("Asks first."));
     expect(asks.length).toBeGreaterThan(0);
     expect(asks.every((c) => c.irreversible && c.agent && !c.readOnly)).toBe(true);
