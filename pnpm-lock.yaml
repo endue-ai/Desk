@@ -69,6 +69,9 @@ importers:
       '@wdio/spec-reporter':
         specifier: 10.1.0
         version: 10.1.0
+      acorn:
+        specifier: 8.19.0
+        version: 8.19.0
       ajv:
         specifier: 8.20.0
         version: 8.20.0

@@ -10,6 +10,7 @@ import { boolOf } from "../../cell-editors/boolean.js";
 import { checkValue } from "../../cell-editors/values.js";
 import { RESERVED } from "../../editor/words.js";
 import { quoteText, readableName } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { POLYMORPHIC } from "./read.js";
 
 /**
@@ -52,9 +53,16 @@ function castOf(/** @type {Arg} */ a, /** @type {Entry} */ e, /** @type {string}
   if (!polymorphic(a)) return { type: a.type };
   const type = (e.cast ?? "").trim() || (a.mode === "v" ? "text[]" : "text");
   if (!TYPE_NAME.test(type))
-    return { error: `${label}: ${type} is not a type name, as text, integer or public.mood.` };
+    return {
+      error: t("features.routines.call.isNotATypeNameAs", {
+        label: String(label),
+        type: String(type),
+      }),
+    };
   if (a.mode === "v" && !type.endsWith("[]"))
-    return { error: `${label} is VARIADIC: name an array type, as text[] or integer[].` };
+    return {
+      error: t("features.routines.call.isVariadicNameAnArrayType", { label: String(label) }),
+    };
   return { type };
 }
 
@@ -107,7 +115,8 @@ export function callOf(r, entries) {
     let value;
     if (r.kind === "procedure" && a.mode === "o") value = `NULL::${a.type}`;
     else if (e.choice === "default") {
-      if (a.default === null) problems.push(`${label} has no default: give it a value or NULL.`);
+      if (a.default === null)
+        problems.push(t("features.routines.call.hasNoDefaultGiveItA", { label: String(label) }));
       else if (!byName) leftOut ||= label;
       return;
     } else {
@@ -120,7 +129,10 @@ export function callOf(r, entries) {
     }
     if (!byName && leftOut) {
       problems.push(
-        `${leftOut} is left to its default, so ${label} after it must be too: an argument without a name is given by its place.`,
+        t("features.routines.call.isLeftToItsDefaultSo", {
+          leftOut: String(leftOut),
+          label: String(label),
+        }),
       );
       return;
     }

@@ -5,6 +5,7 @@
 // the person's corrections. Dates read in the order the person chose (DateStyle). Pure.
 
 import { quoteName } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./csv.js").Row} Row
@@ -146,12 +147,18 @@ export const tableFromFile = (/** @type {string} */ file) =>
  */
 export function createTable(table, columns) {
   const kept = columns.filter((c) => c.name.trim() !== "");
-  if (kept.length === 0) return { problem: "Give at least one column a name." };
+  if (kept.length === 0) return { problem: t("importCopy.infer.giveAtLeastOneColumnA") };
   const names = kept.map((c) => c.name.trim());
   const twice = names.find((n, i) => names.indexOf(n) !== i);
-  if (twice) return { problem: `Two columns are named ${twice}.` };
+  if (twice) return { problem: t("importCopy.infer.twoColumnsAreNamed", { twice: String(twice) }) };
   const bad = kept.find((c) => !/^[\p{L}\p{N} _[\](),]+$/u.test(c.type.trim()));
-  if (bad) return { problem: `${bad.name}: name a type, as ${TYPES.slice(0, 3).join(", ")}.` };
+  if (bad)
+    return {
+      problem: t("importCopy.infer.nameATypeAs", {
+        name: String(bad.name),
+        value: String(TYPES.slice(0, 3).join(", ")),
+      }),
+    };
   const body = kept.map((c) => `  ${quoteName("postgresql", c.name.trim())} ${c.type.trim()}`);
   return { sql: `CREATE TABLE ${table} (\n${body.join(",\n")}\n)` };
 }

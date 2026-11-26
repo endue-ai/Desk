@@ -5,6 +5,7 @@
 // alias gets one; an output name without AS gets one. Pure.
 
 import { aimOf, definitionOf, nameAt } from "../navigate/target.js";
+import { t as messageText } from "../strings/index.js";
 import {
   aliasAfter,
   applyEdits,
@@ -59,7 +60,7 @@ function fromUse(/** @type {Name} */ n) {
   if (t?.kind === "column" && t.of.kind === "function")
     return { local: { kind: "parameter", name: t.name } };
   if (t?.kind === "column" && n.kind === "column" && t.of.kind !== "relation")
-    return { reason: `${t.name} is a column of a CTE or a subquery: rename it in its query.` };
+    return { reason: messageText("refactor.local.isAColumnOfACte", { name: String(t.name) }) };
   const aim = aimOf(n);
   if (!aim) return null;
   if (aim.kind === "cte" || aim.kind === "alias") return { local: aim };
@@ -243,10 +244,23 @@ function editsOf(text, names, local, to) {
  * @returns {{ text: string, places: number } | string}
  */
 export function renameLocal(text, names, local, to) {
-  if (!to) return "Give the new name.";
-  if (to === local.name) return `${local.name} is its name already.`;
+  if (!to) return messageText("refactor.local.giveTheNewName");
+  if (to === local.name)
+    return messageText("refactor.local.isItsNameAlready", { name: String(local.name) });
   if (taken(text, names, local).has(to))
-    return `${to} is already ${local.kind === "alias" ? "an" : "a"} ${local.kind === "cte" ? "CTE" : local.kind === "output" ? "output name" : local.kind} of this statement.`;
+    return messageText("refactor.local.isAlreadyOfThisStatement", {
+      to: String(to),
+      value: String(
+        local.kind === "alias" ? messageText("refactor.local.an") : messageText("refactor.local.a"),
+      ),
+      value2: String(
+        local.kind === "cte"
+          ? messageText("refactor.local.cte")
+          : local.kind === "output"
+            ? messageText("refactor.local.outputName")
+            : local.kind,
+      ),
+    });
   const edits = editsOf(text, names, local, to);
   return { text: applyEdits(text, edits), places: edits.length };
 }

@@ -5,6 +5,7 @@
 // engine answers in the frame. Answers in the frame come back as they are, the worker's as a promise.
 
 import { valueAt } from "../grid-model.js";
+import { t } from "../strings/index.js";
 import { groupChart, totalsOf } from "./aggregate.js";
 
 /**
@@ -47,7 +48,8 @@ export function createChartClient(startWorker, threshold = LARGE) {
       else entry.resolve(data);
     };
     worker.onerror = () => {
-      for (const entry of pending.values()) entry.reject(new Error("The chart's worker stopped."));
+      for (const entry of pending.values())
+        entry.reject(new Error(t("chart.client.theChartSWorkerStopped")));
       pending.clear();
       worker = undefined;
       held = { result: "", sent: new Set() };

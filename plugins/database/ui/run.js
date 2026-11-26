@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // Runs a client through the bridge: `proc.spawn` without a shell, output gathered from `proc.output`
 // by process id until `proc.exit`, one ask with `perm.request` when the grant is missing, and a
 // second try with the usual install folders on PATH when the program is not found. Stopping (a
@@ -115,21 +116,21 @@ export function createRunner(bridge, options = {}) {
       } catch (error) {
         const code = codeOf(error);
         if (code === "unsupported")
-          throw new RunError(
-            "This desk cannot run programs yet: proc.spawn is unsupported.",
-            "client",
-          );
+          throw new RunError(t("run.thisDeskCannotRunProgramsYet"), "client");
         if (code === "not_found" && !usePath && options.searchPath?.()) {
           usePath = true;
           continue;
         }
         if (code === "not_found")
           throw new RunError(
-            `${command} was not found. Install it, or set its path in the settings.`,
+            t("run.wasNotFoundInstallItOr", { command: String(command) }),
             "missing",
           );
         if (code !== "permission_denied" || asked || quiet)
-          throw new RunError(`Could not run ${command}: ${code}.`, "refused");
+          throw new RunError(
+            t("run.couldNotRun", { command: String(command), code: String(code) }),
+            "refused",
+          );
       }
       asked = true;
       const decision = await bridge
@@ -138,7 +139,8 @@ export function createRunner(bridge, options = {}) {
           reason: invocation.reason ?? `To run ${command}, the database client`,
         })
         .catch(() => ({ granted: false }));
-      if (!decision.granted) throw new RunError(`Not allowed to run ${command}.`, "refused");
+      if (!decision.granted)
+        throw new RunError(t("run.notAllowedToRun", { command: String(command) }), "refused");
     }
   };
 

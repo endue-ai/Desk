@@ -3,6 +3,7 @@
 // its controls), panel.js is the popover they open in, values.js their values and literals without
 // the DOM. view-cell.js opens one here for every kind but text, which keeps its field over the cell.
 
+import { t } from "../strings/index.js";
 import { openPanel } from "./panel.js";
 import { KINDS } from "./values.js";
 
@@ -26,6 +27,7 @@ export const typed = (/** @type {Editor | undefined} */ editor) =>
  */
 export function openTyped(doc, host, anchor, opened, hooks) {
   const view = KINDS[opened.editor.kind]?.view;
-  if (!view) throw new Error(`No editor for ${opened.editor.kind}.`);
+  if (!view)
+    throw new Error(t("cellEditors.index.noEditorFor", { kind: String(opened.editor.kind) }));
   return openPanel(doc, host, anchor, opened, view, hooks);
 }

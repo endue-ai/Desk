@@ -4,6 +4,7 @@
 // save dialog (one file) or the folder dialog (several) asks where next.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { optionsDialog } from "../export/dialog.js";
 
 /**
@@ -28,12 +29,23 @@ export function exportAllDialog(doc, model, done) {
     ),
   );
   const title = form.querySelector("h2");
-  if (title) title.textContent = `Export every row as ${model.label}`;
+  if (title)
+    title.textContent = t("features.exportAll.dialog.exportEveryRowAs", {
+      label: String(model.label),
+    });
   const hint = form.querySelector(".hint");
   if (hint) hint.textContent = model.note;
   if (model.compressible)
     form
       .querySelector(".buttons")
-      ?.before(el(doc, "label", { class: "check" }, box, " Compress with gzip (.gz)"));
+      ?.before(
+        el(
+          doc,
+          "label",
+          { class: "check" },
+          box,
+          t("features.exportAll.dialog.compressWithGzipGz"),
+        ),
+      );
   return form;
 }

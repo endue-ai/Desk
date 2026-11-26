@@ -4,6 +4,7 @@
 // matrix of its own.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { changesOf, matrixOf } from "./acl.js";
 import { objectMatrix } from "./changes.js";
 import { DEFAULT_KINDS, defaultPrivilegesOf } from "./kinds.js";
@@ -30,8 +31,8 @@ function addRow(
     el(doc, "input", {
       class: "desk-field",
       list: "privileges-grantees",
-      placeholder: "reports",
-      "aria-label": "Grantee",
+      placeholder: t("features.privileges.objectTab.reports"),
+      "aria-label": t("features.privileges.objectTab.grantee"),
       "data-focus": "grantee",
     })
   );
@@ -39,8 +40,8 @@ function addRow(
     el(
       doc,
       "select",
-      { class: "desk-field", "aria-label": "Column" },
-      el(doc, "option", { value: "" }, "The whole object"),
+      { class: "desk-field", "aria-label": t("features.privileges.objectTab.column") },
+      el(doc, "option", { value: "" }, t("features.privileges.objectTab.theWholeObject")),
       ...columns.map((c) => el(doc, "option", { value: c }, c)),
     )
   );
@@ -76,7 +77,14 @@ function securityOf(/** @type {Document} */ doc, /** @type {PrivState} */ s, /**
       { "data-policy": p.name },
       el(doc, "th", { scope: "row" }, p.name),
       el(doc, "td", {}, p.command),
-      el(doc, "td", {}, p.permissive ? "permissive" : "restrictive"),
+      el(
+        doc,
+        "td",
+        {},
+        p.permissive
+          ? t("features.privileges.objectTab.permissive")
+          : t("features.privileges.objectTab.restrictive"),
+      ),
       el(doc, "td", {}, p.roles.join(", ")),
       el(doc, "td", { class: "privileges-expr" }, p.using),
       el(doc, "td", { class: "privileges-expr" }, p.check),
@@ -100,7 +108,7 @@ function securityOf(/** @type {Document} */ doc, /** @type {PrivState} */ s, /**
     doc,
     "div",
     { class: "privileges-security" },
-    el(doc, "h3", {}, "Row security"),
+    el(doc, "h3", {}, t("features.privileges.objectTab.rowSecurity")),
     el(
       doc,
       "div",
@@ -111,15 +119,15 @@ function securityOf(/** @type {Document} */ doc, /** @type {PrivState} */ s, /**
         {},
         sec.on
           ? sec.forced
-            ? "On, forced on its owner too."
-            : "On; its owner passes it."
-          : "Off: every role with a privilege reaches every row.",
+            ? t("features.privileges.objectTab.onForcedOnItsOwnerToo")
+            : t("features.privileges.objectTab.onItsOwnerPassesIt")
+          : t("features.privileges.objectTab.offEveryRoleWithAPrivilege"),
       ),
       button(doc, "Change…", () => go("privilegesRowSecurity"), {
         disabled: ro,
         "data-focus": "rls",
       }),
-      button(doc, "New policy…", () => go("privilegesPolicy"), {
+      button(doc, t("features.privileges.objectTab.newPolicy"), () => go("privilegesPolicy"), {
         disabled: ro,
         "data-focus": "new-policy",
       }),
@@ -128,7 +136,10 @@ function securityOf(/** @type {Document} */ doc, /** @type {PrivState} */ s, /**
       ? el(
           doc,
           "table",
-          { class: "desk-table privileges-policies", "aria-label": "Policies" },
+          {
+            class: "desk-table privileges-policies",
+            "aria-label": t("features.privileges.objectTab.policies"),
+          },
           el(
             doc,
             "thead",
@@ -144,7 +155,12 @@ function securityOf(/** @type {Document} */ doc, /** @type {PrivState} */ s, /**
           ),
           el(doc, "tbody", {}, ...rows),
         )
-      : said(doc, sec.on ? "No policies: no role but its owner reaches a row." : "No policies."),
+      : said(
+          doc,
+          sec.on
+            ? t("features.privileges.objectTab.noPoliciesNoRoleButIts")
+            : t("features.privileges.objectTab.noPolicies"),
+        ),
   );
 }
 
@@ -158,7 +174,9 @@ export function objectTab(
     doc,
     "div",
     { class: "privileges-tools" },
-    button(doc, "Pick an object…", () => go("privilegesPick"), { "data-focus": "pick" }),
+    button(doc, t("features.privileges.objectTab.pickAnObject"), () => go("privilegesPick"), {
+      "data-focus": "pick",
+    }),
     button(doc, "This database", () => go("privilegesDatabase"), {
       class: "desk-btn desk-btn-quiet",
       "data-focus": "database",
@@ -166,7 +184,13 @@ export function objectTab(
   );
   const o = s.object;
   if (!s.target)
-    return el(doc, "div", {}, top, said(doc, "Pick an object to see who may do what with it."));
+    return el(
+      doc,
+      "div",
+      {},
+      top,
+      said(doc, t("features.privileges.objectTab.pickAnObjectToSeeWho")),
+    );
   if (!o) return el(doc, "div", {}, top);
   if (o.error) return el(doc, "div", {}, top, said(doc, o.error, true));
   const matrix = /** @type {import("./acl.js").Matrix} */ (objectMatrix(s));
@@ -174,7 +198,9 @@ export function objectTab(
   const columns = s.target.kind === "function" || s.target.kind === "procedure" ? [] : o.acl.extra;
   const review = button(
     doc,
-    changes ? `Review ${count(changes)}…` : "Review changes…",
+    changes
+      ? t("features.privileges.objectTab.review", { value: String(count(changes)) })
+      : t("features.privileges.objectTab.reviewChanges"),
     () => go("privilegesReview"),
     {
       class: "desk-btn desk-btn-primary",
@@ -197,11 +223,16 @@ export function objectTab(
       doc,
       "p",
       { class: "hint" },
-      `Owned by ${o.acl.owner}, who may always grant, alter and drop it.${o.acl.defaults ? " Nothing was granted on it yet: these are PostgreSQL's defaults." : ""}`,
+      t("features.privileges.objectTab.ownedByWhoMayAlwaysGrant", {
+        owner: String(o.acl.owner),
+        value: String(
+          o.acl.defaults ? t("features.privileges.objectTab.nothingWasGrantedOnItYet") : "",
+        ),
+      }),
     ),
     o.note ? said(doc, o.note, true) : undefined,
     matrixTable(doc, matrix, s.edits, {
-      label: `Privileges of ${s.target.name}`,
+      label: t("features.privileges.objectTab.privilegesOf", { name: String(s.target.name) }),
       press: (cell) => go("privilegesPress", cell),
       readOnly: s.conn.readOnly,
     }),
@@ -242,9 +273,22 @@ export function defaultsTab(
       doc,
       "div",
       { class: "privileges-default", "data-entry": key },
-      el(doc, "h3", {}, `New ${kind} made by ${entry.owner} ${where}`),
+      el(
+        doc,
+        "h3",
+        {},
+        t("features.privileges.objectTab.newMadeBy", {
+          kind: String(kind),
+          owner: String(entry.owner),
+          where: String(where),
+        }),
+      ),
       matrixTable(doc, matrix, edits, {
-        label: `Default privileges on ${kind} by ${entry.owner} ${where}`,
+        label: t("features.privileges.objectTab.defaultPrivilegesOnBy", {
+          kind: String(kind),
+          owner: String(entry.owner),
+          where: String(where),
+        }),
         press: (cell) => go("privilegesPress", { ...cell, entry: key }),
         readOnly: s.conn.readOnly,
       }),
@@ -258,13 +302,20 @@ export function defaultsTab(
       doc,
       "div",
       { class: "privileges-tools" },
-      button(doc, "New default privileges…", () => go("privilegesNewDefault"), {
-        disabled: s.conn.readOnly,
-        "data-focus": "new-default",
-      }),
       button(
         doc,
-        changes ? `Review ${count(changes)}…` : "Review changes…",
+        t("features.privileges.objectTab.newDefaultPrivileges"),
+        () => go("privilegesNewDefault"),
+        {
+          disabled: s.conn.readOnly,
+          "data-focus": "new-default",
+        },
+      ),
+      button(
+        doc,
+        changes
+          ? t("features.privileges.objectTab.review", { value: String(count(changes)) })
+          : t("features.privileges.objectTab.reviewChanges"),
         () => go("privilegesReviewDefaults"),
         {
           class: "desk-btn desk-btn-primary",
@@ -279,10 +330,7 @@ export function defaultsTab(
     ),
     d?.error ? said(doc, d.error, true) : undefined,
     d && !d.error && entries.length === 0
-      ? said(
-          doc,
-          "No default privileges: new objects get PostgreSQL's (the owner has every privilege; PUBLIC may run functions and use types).",
-        )
+      ? said(doc, t("features.privileges.objectTab.noDefaultPrivilegesNewObjectsGet"))
       : undefined,
     ...entries,
   );

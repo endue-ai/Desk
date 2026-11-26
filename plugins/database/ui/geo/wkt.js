@@ -3,6 +3,7 @@
 // brackets, and collections nested. A curve comes back unread by its type. Pure; the map's worker
 // runs it (geo/engine.js).
 
+import { t } from "../strings/index.js";
 import { absorb, geometry } from "./geometry.js";
 
 /** @typedef {import("./geometry.js").Geometry} Geometry @typedef {import("./geometry.js").Unread} Unread */
@@ -55,7 +56,7 @@ export function readWkt(text) {
     const found = TOKEN.exec(source);
     if (!found) {
       if (/^\s*$/u.test(source.slice(start))) break;
-      throw new Error(`Not a geometry: unexpected text at ${start + 1}.`);
+      throw new Error(t("geo.wkt.notAGeometryUnexpectedTextAt", { value: String(start + 1) }));
     }
     if (found[1]) tokens.push({ word: found[1].toUpperCase() });
     else if (found[2]) tokens.push({ number: Number(found[2]) });
@@ -64,7 +65,8 @@ export function readWkt(text) {
   let at = 0;
   const peek = () => tokens[at];
   const mark = (/** @type {string} */ m) => {
-    if (tokens[at]?.mark !== m) throw new Error(`Not a geometry: "${m}" expected.`);
+    if (tokens[at]?.mark !== m)
+      throw new Error(t("geo.wkt.notAGeometryExpected", { m: String(m) }));
     at++;
   };
   const isMark = (/** @type {string} */ m) => tokens[at]?.mark === m;
@@ -83,7 +85,7 @@ export function readWkt(text) {
   /** One geometry's tagged text. @returns {Geometry} */
   const tagged = () => {
     const word = peek()?.word;
-    if (!word) throw new Error("Not a geometry: a type name expected.");
+    if (!word) throw new Error(t("geo.wkt.notAGeometryATypeName"));
     at++;
     let name = NAMES[word];
     let m = false;
@@ -92,7 +94,7 @@ export function readWkt(text) {
       name = NAMES[word.slice(0, -1)];
       m = true;
     }
-    if (!name) throw new Error(`Not a geometry: ${word} is not a type.`);
+    if (!name) throw new Error(t("geo.wkt.notAGeometryIsNotA", { word: String(word) }));
     const dims = peek()?.word;
     if (dims === "Z" || dims === "M" || dims === "ZM") {
       z = dims !== "M";
@@ -113,7 +115,7 @@ export function readWkt(text) {
       values.push(n);
       at++;
     }
-    if (values.length < 2) throw new Error("Not a geometry: a position needs x and y.");
+    if (values.length < 2) throw new Error(t("geo.wkt.notAGeometryAPositionNeeds"));
     if (values.length === 4) g.z = g.m = true;
     else if (values.length === 3 && !g.m) g.z = true;
     into.push(/** @type {number} */ (values[0]), /** @type {number} */ (values[1]));
@@ -167,7 +169,7 @@ export function readWkt(text) {
 
   try {
     const g = tagged();
-    if (at !== tokens.length) throw new Error("Not a geometry: text is left after it.");
+    if (at !== tokens.length) throw new Error(t("geo.wkt.notAGeometryTextIsLeft"));
     g.srid = srid;
     return g;
   } catch (error) {

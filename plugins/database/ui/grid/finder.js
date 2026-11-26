@@ -5,6 +5,7 @@
 // are marked. Where the text is comes from the grid (rows-client.js), in the frame or its worker.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { nextMatch } from "./rows.js";
 
 /**
@@ -30,9 +31,9 @@ export function createFinder(doc, acts) {
     el(doc, "input", {
       type: "search",
       class: "desk-field",
-      placeholder: "Find in the result",
+      placeholder: t("grid.finder.findInTheResult"),
       spellcheck: "false",
-      "aria-label": "Find in the result",
+      "aria-label": t("grid.finder.findInTheResult"),
     })
   );
   const count = el(doc, "span", { class: "find-count", role: "status" });
@@ -65,7 +66,12 @@ export function createFinder(doc, acts) {
   const bar = el(
     doc,
     "div",
-    { class: "grid-find", role: "search", "aria-label": "Find in the result", hidden: "" },
+    {
+      class: "grid-find",
+      role: "search",
+      "aria-label": t("grid.finder.findInTheResult"),
+      hidden: "",
+    },
     input,
     count,
     button("previous", "Previous match (Shift+Enter)", "Previous"),
@@ -93,10 +99,13 @@ export function createFinder(doc, acts) {
     count.textContent = !input.value
       ? ""
       : found.count === 0
-        ? "No match"
+        ? t("grid.finder.noMatch")
         : index >= 0
-          ? `${index + 1} of ${found.count}`
-          : `${found.count} match${found.count === 1 ? "" : "es"}`;
+          ? t("grid.finder.of", { value: String(index + 1), count: String(found.count) })
+          : t("grid.finder.match", {
+              count: String(found.count),
+              value: String(found.count === 1 ? "" : t("grid.finder.es")),
+            });
   };
 
   /** Go to a match: the first at or after the cursor (0), the next (1) or the previous (-1). */
@@ -180,7 +189,7 @@ export function createFinder(doc, acts) {
     marks(/** @type {string | null} */ value) {
       const { needle, matchCase: exact, whole: all } = query();
       if (bar.hidden || !needle || found.count === 0) return false;
-      const text = value === null ? "NULL" : value;
+      const text = value === null ? t("grid.finder.null") : value;
       const [a, b] = exact ? [text, needle] : [text.toLowerCase(), needle.toLowerCase()];
       return all ? a === b : a.includes(b);
     },

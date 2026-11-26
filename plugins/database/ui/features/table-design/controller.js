@@ -4,6 +4,7 @@
 // (from the schema cache through catalog.js), the run (runs.js), the script opened in a console,
 // and what the palette and agents are answered. A new table once created opens its own form. No DOM.
 
+import { t as messageText } from "../../strings/index.js";
 import { addColumn, setTable, toggleKey, typeFrom } from "./edits.js";
 import { blank } from "./model.js";
 import { readForm } from "./read.js";
@@ -56,7 +57,7 @@ export function answerOf(/** @type {DesignState} */ s) {
     script: script.text,
     ...(script.problems.length ? { problems: script.problems } : {}),
     ...(refused ? { refused } : {}),
-    run: "The person reads the script in the form and runs it there.",
+    run: messageText("features.tableDesign.controller.thePersonReadsTheScriptIn"),
   };
 }
 
@@ -110,7 +111,8 @@ export function createTableDesign(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!found || !conn) throw new Error("This form's connection was removed.");
+    if (!found || !conn)
+      throw new Error(messageText("features.tableDesign.controller.thisFormSConnectionWasRemoved"));
     return { conn, state: /** @type {DesignState} */ (found[TYPE]) };
   };
   const runs = createRuns({ execute: deps.execute, stateOf, update, connOf });
@@ -119,7 +121,7 @@ export function createTableDesign(deps) {
   const refresh = async (/** @type {string} */ id) => {
     const { conn, state } = connOf(id);
     if (state.run?.status === "running")
-      throw new Error("The script is running: read again after it.");
+      throw new Error(messageText("features.tableDesign.controller.theScriptIsRunningReadAgain"));
     update(id, { reading: true, error: "", conn: about(conn) });
     try {
       const table = state.mode === "change" ? state.target : null;
@@ -163,9 +165,7 @@ export function createTableDesign(deps) {
     /** @type {Record<string, any>} */ args = {},
   ) => {
     if (conn.engine !== "postgresql")
-      throw new Error(
-        "The table form is PostgreSQL's: on MySQL and SQLite, write the CREATE or ALTER in a console.",
-      );
+      throw new Error(messageText("features.tableDesign.controller.theTableFormIsPostgresqlS"));
     const name = nameOf(conn, target, mode === "create");
     const kept = panels().find((b) => b.connection === conn.id && b.name === name)?.[TYPE];
     /** @type {DesignState} */
@@ -185,15 +185,23 @@ export function createTableDesign(deps) {
     const panel = await deps.consoles.openPanel(conn, TYPE, name, { ...base, conn: about(conn) });
     const read = kept?.read ?? (await refresh(panel.id));
     const now = /** @type {DesignState} */ (stateOf(panel.id));
-    if (!read || !now.design) throw new Error(now.error || "Not read.");
+    if (!read || !now.design)
+      throw new Error(now.error || messageText("features.tableDesign.controller.notRead"));
     const given =
       Object.keys(args).some((k) => ["columns", "primaryKey", "comment", "owner"].includes(k)) ||
       (mode === "create" && typeof args.name === "string");
     if (given) update(panel.id, { design: filled(now.design, args, read), run: null });
     deps.say(
       mode === "create"
-        ? `A new table in ${target.schema} on ${conn.name}: its script shows as the form fills.`
-        : `${target.schema}.${target.name} on ${conn.name}: change its design, the script shows what runs.`,
+        ? messageText("features.tableDesign.controller.aNewTableInOnIts", {
+            schema: String(target.schema),
+            name: String(conn.name),
+          })
+        : messageText("features.tableDesign.controller.onChangeItsDesignTheScript", {
+            schema: String(target.schema),
+            name: String(target.name),
+            name2: String(conn.name),
+          }),
     );
     return answerOf(/** @type {DesignState} */ (stateOf(panel.id)));
   };
@@ -205,16 +213,32 @@ export function createTableDesign(deps) {
     if (done.ok && !dry) {
       const design = /** @type {Design} */ (state.design);
       if (state.mode === "create") {
-        deps.say(`Created ${design.schema}.${design.name}.`);
+        deps.say(
+          messageText("features.tableDesign.controller.created", {
+            schema: String(design.schema),
+            name: String(design.name),
+          }),
+        );
         // Its own form, to change it next; a read that fails says why and leaves this one.
         await openFor(conn, "change", { schema: design.schema, name: design.name }).catch((e) =>
-          deps.say(`Created ${design.schema}.${design.name}; its form did not open: ${words(e)}`),
+          deps.say(
+            messageText("features.tableDesign.controller.createdItsFormDidNotOpen", {
+              schema: String(design.schema),
+              name: String(design.name),
+              value: String(words(e)),
+            }),
+          ),
         );
       } else {
         const target = { schema: design.schema, name: design.name };
         update(id, { target });
         await refresh(id);
-        deps.say(`Changed ${target.schema}.${target.name}.`);
+        deps.say(
+          messageText("features.tableDesign.controller.changed", {
+            schema: String(target.schema),
+            name: String(target.name),
+          }),
+        );
       }
     } else deps.say(done.message);
     return done;
@@ -223,20 +247,28 @@ export function createTableDesign(deps) {
   /** Open the form's script in a console of its own. */
   const toConsole = async (/** @type {string} */ id) => {
     const { conn, state } = connOf(id);
-    if (!state.read || !state.design) throw new Error(state.error || "The table is not read yet.");
+    if (!state.read || !state.design)
+      throw new Error(
+        state.error || messageText("features.tableDesign.controller.theTableIsNotReadYet"),
+      );
     const { text } = scriptOf(state.read.original, state.design, state.read.facts);
-    if (!text) throw new Error("The script is empty: nothing changes yet.");
+    if (!text)
+      throw new Error(
+        messageText("features.tableDesign.controller.theScriptIsEmptyNothingChanges"),
+      );
     await deps.consoles.openNew(conn);
     const label =
       state.mode === "create"
-        ? `new table in ${state.target.schema}`
+        ? messageText("features.tableDesign.controller.newTableIn", {
+            schema: String(state.target.schema),
+          })
         : `${state.target.schema}.${state.target.name}`;
     await deps.consoles.rename(`table · ${label}`);
     const now = deps.view.editor().text;
     deps.view.replace(0, now.length, text);
     deps.consoles.edited(text);
     deps.view.select(0, 0);
-    deps.say("The script is in a console: Database: run all runs it there.");
+    deps.say(messageText("features.tableDesign.controller.theScriptIsInAConsole"));
     return text;
   };
 
@@ -244,9 +276,7 @@ export function createTableDesign(deps) {
   const shown = () => {
     const here = deps.consoles.current();
     if (here?.kind !== TYPE)
-      throw new Error(
-        "No table form on screen: open one with Database: create a table or change a table.",
-      );
+      throw new Error(messageText("features.tableDesign.controller.noTableFormOnScreenOpen"));
     return here.id;
   };
 
@@ -264,7 +294,8 @@ export function createTableDesign(deps) {
       /** @type {Partial<Pick<DesignState, "design" | "tab" | "selected">>} */ patch,
     ) {
       const { state } = connOf(id);
-      if (state.run?.status === "running") throw new Error("The script is running: wait for it.");
+      if (state.run?.status === "running")
+        throw new Error(messageText("features.tableDesign.controller.theScriptIsRunningWaitFor"));
       update(id, { ...patch, ...(patch.design ? { run: null } : {}) });
     },
   };

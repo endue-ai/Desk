@@ -5,6 +5,7 @@
 
 import { el } from "../dom.js";
 import { formatBytes, formatCount } from "../format.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./state.js").TransferState} TransferState
@@ -52,7 +53,7 @@ export function transferPanel(doc, first, act, buffer) {
       doc,
       "button",
       { type: "button", class: "desk-btn desk-btn-primary", "data-ctl": "start" },
-      "Start the copy",
+      t("transfer.panel.startTheCopy"),
     )
   );
   startButton.addEventListener("click", () => act("transferStart", buffer.id));
@@ -60,7 +61,7 @@ export function transferPanel(doc, first, act, buffer) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-quiet", "data-ctl": "cancel" },
-    "Cancel",
+    t("transfer.panel.cancel"),
   );
   cancel.addEventListener("click", () => act("transferCancel", buffer.id));
   const route = el(doc, "p", { class: "hint" });
@@ -77,7 +78,7 @@ export function transferPanel(doc, first, act, buffer) {
     class: "transfer-script",
     "data-part": "script",
     tabindex: "0",
-    "aria-label": "The target's script",
+    "aria-label": t("transfer.panel.theTargetSScript"),
   });
   const root = el(
     doc,
@@ -109,8 +110,11 @@ export function transferPanel(doc, first, act, buffer) {
         el(
           doc,
           "select",
-          { class: "desk-field", "aria-label": `Target column for ${row.source}` },
-          el(doc, "option", { value: "" }, "Leave out"),
+          {
+            class: "desk-field",
+            "aria-label": t("transfer.panel.targetColumnFor", { source: String(row.source) }),
+          },
+          el(doc, "option", { value: "" }, t("transfer.panel.leaveOut")),
           ...row.choices.map((c) => el(doc, "option", { value: c }, c)),
         )
       );
@@ -128,7 +132,7 @@ export function transferPanel(doc, first, act, buffer) {
       );
     });
     mapping.replaceChildren(
-      el(doc, "p", { class: "hint" }, "Each result column goes into"),
+      el(doc, "p", { class: "hint" }, t("transfer.panel.eachResultColumnGoesInto")),
       ...rows,
     );
   };
@@ -139,7 +143,7 @@ export function transferPanel(doc, first, act, buffer) {
     status.textContent = STATUS[s.status];
     startButton.hidden = s.status !== "ready";
     cancel.hidden = s.status !== "running";
-    route.textContent = `From ${s.from} into ${s.to}`;
+    route.textContent = t("transfer.panel.fromInto", { from: String(s.from), to: String(s.to) });
     items(problems, s.problems);
     items(notes, s.notes);
     drawMapping(s);

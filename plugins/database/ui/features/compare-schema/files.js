@@ -5,6 +5,7 @@
 // for once (perm.request, under the plugin's `/**` scopes).
 
 import { withGrant } from "../../console-files.js";
+import { t } from "../../strings/index.js";
 import { FOLDERS } from "./dump.js";
 
 /**
@@ -24,7 +25,7 @@ const base = (/** @type {string} */ p) => p.replace(/\/+$/u, "").split("/").at(-
 export async function pickFolder(/** @type {Deps} */ deps, /** @type {string} */ title) {
   const picked = await deps.bridge.call("dialog.open", { title, kind: "folders" });
   const path = picked.cancelled ? undefined : picked.paths[0];
-  if (!path) throw deps.cancelled("No folder picked.");
+  if (!path) throw deps.cancelled(t("features.compareSchema.files.noFolderPicked"));
   return path;
 }
 
@@ -112,11 +113,12 @@ export async function saveSnapshot(
   /** @type {string} */ text,
 ) {
   const picked = await deps.bridge.call("dialog.save", {
-    title: "Save the schema's snapshot",
+    title: t("features.compareSchema.files.saveTheSchemaSSnapshot"),
     suggestedName: `${name}.schema.json`,
     filters: [{ name: "Schema snapshot", extensions: ["json"] }],
   });
-  if (picked.cancelled || !picked.path) throw deps.cancelled("Not saved.");
+  if (picked.cancelled || !picked.path)
+    throw deps.cancelled(t("features.compareSchema.files.notSaved"));
   const path = picked.path;
   const scope = /** @type {const} */ ({ permission: "fs:write", paths: [path] });
   await withGrant(
@@ -142,12 +144,12 @@ export async function openSnapshot(
   let path = named;
   if (!path) {
     const picked = await deps.bridge.call("dialog.open", {
-      title: "Compare with which snapshot?",
+      title: t("features.compareSchema.files.compareWithWhichSnapshot"),
       filters: [{ name: "Schema snapshot", extensions: ["json"] }],
     });
     path = picked.cancelled ? undefined : picked.paths[0];
   }
-  if (!path) throw deps.cancelled("No snapshot picked.");
+  if (!path) throw deps.cancelled(t("features.compareSchema.files.noSnapshotPicked"));
   const file = path;
   const scope = /** @type {const} */ ({ permission: "fs:read", paths: [file] });
   const got = await withGrant(

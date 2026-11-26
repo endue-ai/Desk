@@ -10,6 +10,7 @@
 // (editor/snippets.js, ADR 0327).
 import { ownSnippets } from "./editor/snippets.js";
 import { CHOICES, RANGES, STYLE } from "./sql/layout/style.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{
@@ -100,7 +101,7 @@ const KEYS =
 /** The setting keys as the manifest declares them, in order. */
 export const SETTING_KEYS = Object.values(KEYS).map((entry) => entry.key);
 
-const PREFIX = "endue.database.";
+const PREFIX = t("settings.endueDatabase");
 
 /** A key as the manifest names it: settings.get and settings.changed name it without the prefix. */
 export const fullKey = (/** @type {string} */ key) =>
@@ -193,7 +194,12 @@ const shown = (/** @type {unknown} */ value) => {
 
 /** The sentence that says a value fell back. */
 export const fallbackText = (/** @type {Fallback} */ f) =>
-  `The setting ${f.key} is ${shown(f.value)}, not ${f.expected}, so its default ${shown(f.fallback)} is in force.`;
+  t("settings.theSettingIsNotSoIts", {
+    key: String(f.key),
+    value: String(shown(f.value)),
+    expected: String(f.expected),
+    value2: String(shown(f.fallback)),
+  });
 
 /**
  * The sentence for a value the core says fell back (settings.invalid): where it is written, why,
@@ -208,7 +214,12 @@ export function invalidText(invalid, settings) {
   const where = file ? ` (${file}${invalid.line ? ` line ${invalid.line}` : ""})` : "";
   const now = name ? /** @type {Record<string, unknown>} */ (settings)[name] : undefined;
   const tail = now === undefined ? "" : `, so ${shown(now)} is in force`;
-  return `The setting ${key}${where}: ${invalid.reason}${tail}.`;
+  return t("settings.theSetting", {
+    key: String(key),
+    where: String(where),
+    reason: String(invalid.reason),
+    tail: String(tail),
+  });
 }
 
 /** The settings whose value differs between two, by name. */

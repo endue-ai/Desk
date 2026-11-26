@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // The words of a kept PostgreSQL session (PG-02, ADR 0320): its state in the header (not connected,
 // idle, running, in a transaction, in a failed transaction, lost) with the sentence under it, why a
 // session ended (db.closed's reason, the idle timer, a failure in the run), what the first run on a
@@ -16,12 +17,12 @@
 
 /** @type {Record<State, string>} */
 export const LABELS = {
-  none: "Not connected",
-  idle: "Idle",
-  running: "Running",
-  open: "In a transaction",
-  failed: "In a failed transaction",
-  lost: "Session lost",
+  none: t("session.words.notConnected"),
+  idle: t("session.words.idle"),
+  running: t("session.words.running"),
+  open: t("session.words.inATransaction"),
+  failed: t("session.words.inAFailedTransaction"),
+  lost: t("session.words.sessionLost"),
 };
 
 /** @type {Record<State, string>} */
@@ -36,14 +37,12 @@ const TONES = {
 
 const KEPT = "SET, temporary tables and prepared statements";
 /** What a failed transaction refuses, and what a run inside one is told. */
-export const FAILED =
-  "A statement failed in the transaction: the server ignores every statement until ROLLBACK.";
-export const ROLLBACK_FIRST =
-  "The transaction failed: run ROLLBACK first (or ROLLBACK TO a savepoint), then run this again.";
+export const FAILED = t("session.words.aStatementFailedInTheTransaction");
+export const ROLLBACK_FIRST = t("session.words.theTransactionFailedRunRollbackFirst");
 
 /** The rolled-back sentence for a transaction that was open when its session ended. */
 const rolledBack = (/** @type {Transaction} */ transaction) =>
-  transaction === "idle" ? "" : " Its open transaction was rolled back.";
+  transaction === "idle" ? "" : t("session.words.itsOpenTransactionWasRolledBack");
 
 /**
  * What the header shows for an owner: its session's state, else how the last one ended.
@@ -67,13 +66,17 @@ export function modelOf(entry, gone) {
   const at = entry ? `Session ${entry.pid}` : "";
   const detail = {
     none: gone
-      ? `${gone.why}: the next run opens a new session.`
-      : "No session yet: the first run opens one, kept until the console closes.",
-    idle: `${at} is idle; its ${KEPT} last until the console closes.`,
-    running: `${at} runs a statement.`,
-    open: `${at} is in a transaction: COMMIT or ROLLBACK ends it, and closing the console rolls it back.`,
+      ? t("session.words.theNextRunOpensANew", { why: String(gone.why) })
+      : t("session.words.noSessionYetTheFirstRun"),
+    idle: t("session.words.isIdleItsLastUntilThe", { at: String(at), KEPT: String(KEPT) }),
+    running: t("session.words.runsAStatement", { at: String(at) }),
+    open: t("session.words.isInATransactionCommitOr", { at: String(at) }),
     failed: `${at}: ${FAILED}`,
-    lost: `${gone?.why ?? "The session ended"}.${rolledBack(gone?.transaction ?? "idle")} The next run opens a new session; its ${KEPT} are gone.`,
+    lost: t("session.words.theNextRunOpensANew2", {
+      value: String(gone?.why ?? t("session.words.theSessionEnded")),
+      value2: String(rolledBack(gone?.transaction ?? "idle")),
+      KEPT: String(KEPT),
+    }),
   }[state];
   return {
     state,
@@ -93,17 +96,20 @@ export function closedWhy(data) {
   const with_ = (/** @type {string} */ text) => (said ? `${text}: ${said}` : text);
   if (data.reason === "server") return with_("The server ended the session");
   if (data.reason === "io") return with_("The network to the server failed");
-  if (data.reason === "encoding") return "The server's client_encoding stopped being UTF8";
-  if (data.reason === "revoked") return "The grant to connect to this server was taken back";
-  if (data.reason === "desk") return "The desk let the session go";
-  if (data.reason === "unloaded") return "The plugin stopped";
-  return "The session was closed: a statement ran past the timeout and did not stop";
+  if (data.reason === "encoding") return t("session.words.theServerSClientEncodingStopped");
+  if (data.reason === "revoked") return t("session.words.theGrantToConnectToThis");
+  if (data.reason === "desk") return t("session.words.theDeskLetTheSessionGo");
+  if (data.reason === "unloaded") return t("session.words.thePluginStopped");
+  return t("session.words.theSessionWasClosedAStatement");
 }
 
 /** Why the idle timer closed a session. */
 export const idleWhy = (/** @type {number} */ ms) => {
   const minutes = Math.round(ms / 60_000);
-  return `Closed after ${minutes} minute${minutes === 1 ? "" : "s"} idle`;
+  return t("session.words.closedAfterMinuteIdle", {
+    minutes: String(minutes),
+    value: String(minutes === 1 ? "" : t("session.words.s")),
+  });
 };
 
 const lower = (/** @type {string} */ text) => text.charAt(0).toLowerCase() + text.slice(1);
@@ -111,7 +117,11 @@ const lower = (/** @type {string} */ text) => text.charAt(0).toLowerCase() + tex
 /** The notice the first run on a new session carries, when the last one ended without the person. */
 export function newSession(/** @type {Gone} */ gone) {
   const how = gone.lost ? `was lost (${lower(gone.why)})` : lower(gone.why);
-  return `A new session: the last one ${how}; its ${KEPT} are gone.${rolledBack(gone.transaction)} Nothing of it was run again.`;
+  return t("session.words.aNewSessionTheLastOne", {
+    how: String(how),
+    KEPT: String(KEPT),
+    value: String(rolledBack(gone.transaction)),
+  });
 }
 
 /**
@@ -121,10 +131,10 @@ export function newSession(/** @type {Gone} */ gone) {
 export const reasonsOf = (open) =>
   open.map(({ label, transaction }) =>
     transaction === "failed"
-      ? `${label}'s transaction failed: closing its session rolls it back.`
-      : `${label} is in a transaction: closing its session rolls it back.`,
+      ? t("session.words.sTransactionFailedClosingItsSession", { label: String(label) })
+      : t("session.words.isInATransactionClosingIts", { label: String(label) }),
   );
 
 /** The status line's words when the desk closed a buffer whose session was in a transaction. */
 export const rolledBackOnClose = (/** @type {string} */ label) =>
-  `${label} closed: its session closed with it, and its open transaction was rolled back.`;
+  t("session.words.closedItsSessionClosedWithIt", { label: String(label) });

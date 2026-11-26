@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // The page's side of the SQL parser (ADR 0283): every parse and every resolve goes to one worker
 // (worker.js), started with the SDK's startWorker on the first request, so PostgreSQL's grammar never
 // runs on the frame's thread. `parse` answers the trees; `outline` and `resolve` leave them in the
@@ -32,7 +34,8 @@
 /** Models the worker keeps; an older one is forgotten there and sent again when used. */
 const KEPT_MODELS = 4;
 
-export const cancelledParse = () => new DOMException("The parse was cancelled.", "AbortError");
+export const cancelledParse = () =>
+  new DOMException(t("sql.parse.client.theParseWasCancelled"), "AbortError");
 
 /** @param {StartWorker} startWorker @returns {SqlParser} */
 export function createSqlParser(startWorker) {
@@ -64,7 +67,8 @@ export function createSqlParser(startWorker) {
       if ("error" in data) entry.reject(new Error(data.error));
       else entry.resolve(data.result);
     };
-    fresh.onerror = (event) => stop(new Error(event.message || "The SQL parser stopped."));
+    fresh.onerror = (event) =>
+      stop(new Error(event.message || t("sql.parse.client.theSqlParserStopped")));
     worker = fresh;
     return fresh;
   };

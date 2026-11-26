@@ -1,3 +1,4 @@
+import { t } from "../../strings/index.js";
 // The page's imager (imager.js): the theme's colour tokens resolved to sRGB values by drawing each
 // on a 1x1 canvas (any colour syntax the theme writes comes out as #rrggbb), the mono font and its
 // size as computed; a PNG drawn from the export's SVG on a canvas, scaled down when the asked size
@@ -97,7 +98,7 @@ export function createImager(doc) {
       canvas.width = Math.max(1, Math.round(width * fitted));
       canvas.height = Math.max(1, Math.round(height * fitted));
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("This page cannot draw a PNG.");
+      if (!context) throw new Error(t("features.diagram.image.thisPageCannotDrawAPng"));
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const url = canvas.toDataURL("image/png");
       return { base64: url.slice(url.indexOf(",") + 1), scale: fitted };

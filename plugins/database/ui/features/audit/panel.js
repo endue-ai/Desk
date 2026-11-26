@@ -5,6 +5,7 @@
 // it ended. A new state is drawn in place and the field keeps what was typed. Layout: audit.css.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("./controller.js").AuditState} AuditState
@@ -67,7 +68,7 @@ export function auditPanel(doc, first, act, buffer) {
     return { input, label: el(doc, "label", { class: "audit-check" }, input, ` ${text}`) };
   };
 
-  const title = el(doc, "h2", { class: "desk-header-title" }, "Agent audit");
+  const title = el(doc, "h2", { class: "desk-header-title" }, t("features.audit.panel.agentAudit"));
   const desc = el(doc, "p", { class: "desk-header-desc" });
   const header = el(
     doc,
@@ -89,8 +90,8 @@ export function auditPanel(doc, first, act, buffer) {
       type: "text",
       class: "desk-field",
       "data-ctl": "sensitive",
-      "aria-label": "Sensitive column",
-      placeholder: "public.people.email",
+      "aria-label": t("features.audit.panel.sensitiveColumn"),
+      placeholder: t("features.audit.panel.publicPeopleEmail"),
     })
   );
   const add = () => {
@@ -103,18 +104,21 @@ export function auditPanel(doc, first, act, buffer) {
   field.addEventListener("keydown", (event) => {
     if (event.key === "Enter") add();
   });
-  const chips = el(doc, "ul", { class: "audit-chips", "aria-label": "Sensitive columns" });
+  const chips = el(doc, "ul", {
+    class: "audit-chips",
+    "aria-label": t("features.audit.panel.sensitiveColumns"),
+  });
   const access = el(
     doc,
     "section",
-    { class: "audit-access", "aria-label": "What agents may reach" },
+    { class: "audit-access", "aria-label": t("features.audit.panel.whatAgentsMayReach") },
     closed.label,
     analyze.label,
     el(
       doc,
       "p",
       { class: "audit-muted" },
-      "Sensitive columns are masked in everything an agent reads.",
+      t("features.audit.panel.sensitiveColumnsAreMaskedInEverything"),
     ),
     el(doc, "div", { class: "audit-add" }, field, button("add", "Mask column", "", add)),
     chips,
@@ -145,7 +149,14 @@ export function auditPanel(doc, first, act, buffer) {
 
   const draw = (/** @type {AuditState} */ s) => {
     const count = s.entries.length;
-    desc.textContent = `${s.name}${s.tag !== "none" ? ` · ${s.tag}` : ""} · ${count} ${count === 1 ? "entry" : "entries"}, kept apart from your history`;
+    desc.textContent = t("features.audit.panel.keptApartFromYourHistory", {
+      name: String(s.name),
+      value: String(s.tag !== "none" ? ` · ${s.tag}` : ""),
+      count: String(count),
+      value2: String(
+        count === 1 ? t("features.audit.panel.entry") : t("features.audit.panel.entries"),
+      ),
+    });
     closed.input.checked = s.access.closed;
     analyze.input.checked = s.access.analyze;
     chips.replaceChildren(
@@ -164,7 +175,7 @@ export function auditPanel(doc, first, act, buffer) {
     note.textContent = s.note;
     if (count === 0) {
       list.replaceChildren(
-        el(doc, "p", { class: "audit-muted" }, "No agent has run anything on this connection yet."),
+        el(doc, "p", { class: "audit-muted" }, t("features.audit.panel.noAgentHasRunAnythingOn")),
       );
       return;
     }
@@ -180,7 +191,7 @@ export function auditPanel(doc, first, act, buffer) {
       el(
         doc,
         "table",
-        { class: "desk-table audit-table", "aria-label": "What agents ran" },
+        { class: "desk-table audit-table", "aria-label": t("features.audit.panel.whatAgentsRan") },
         el(doc, "thead", {}, head),
         el(doc, "tbody", {}, ...s.entries.map(row)),
       ),

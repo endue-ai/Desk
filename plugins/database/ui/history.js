@@ -6,6 +6,7 @@
 // on (PG-13): a reference to another database is kept under its connection's id.
 
 import { baseOf } from "./databases.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{ at: string, sql: string, ms: number, ok: boolean, summary: string, console?: string, database?: string }} Entry
@@ -75,11 +76,9 @@ export async function readSaved(/** @type {Bridge} */ bridge, /** @type {string}
  */
 export async function saveQuery(bridge, connection, query) {
   const name = query.name.trim().slice(0, 80);
-  if (!name) throw new Error("A starred query needs a name.");
-  if (!keepable(query.sql))
-    throw new Error("This query looks like it holds a password: it is not kept.");
-  if (query.sql.length > SQL_MAX * 4)
-    throw new Error("This query is too long to keep (16 KB at most).");
+  if (!name) throw new Error(t("history.aStarredQueryNeedsAName"));
+  if (!keepable(query.sql)) throw new Error(t("history.thisQueryLooksLikeItHolds"));
+  if (query.sql.length > SQL_MAX * 4) throw new Error(t("history.thisQueryIsTooLongTo"));
   const others = (await readSaved(bridge, connection)).filter((s) => s.name !== name);
   const at = query.at ?? new Date().toISOString();
   const kept = {
@@ -90,7 +89,7 @@ export async function saveQuery(bridge, connection, query) {
   };
   const list = [kept, ...others].sort((a, b) => a.name.localeCompare(b.name));
   if (JSON.stringify(list).length > LIMIT)
-    throw new Error("Too many starred queries: unstar some first.");
+    throw new Error(t("history.tooManyStarredQueriesUnstarSome"));
   await bridge.call("store.set", { key: savedKey(connection), value: list });
   return name;
 }

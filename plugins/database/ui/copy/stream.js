@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // A COPY's rows through the session, in bounded chunks both ways (PG-23): COPY ... TO STDOUT's
 // pages (db.fetch, 1 MiB each) go to a sink one at a time, and COPY ... FROM STDIN takes a source's
 // chunks (db.copy, 1 MiB at most) until it ends. Nothing holds more than one chunk. A cancel closes
@@ -57,7 +58,7 @@ async function out({ call, sessionId, first, copy, stopped, heard }) {
   const sink = copy.sink;
   if (!sink) {
     heard(await call("db.fetch", { sessionId, close: true }));
-    throw new Error("The COPY has nowhere to write its rows.");
+    throw new Error(t("copy.stream.theCopyHasNowhereToWrite"));
   }
   let page = first;
   let bytes = 0;
@@ -111,7 +112,7 @@ async function into({ call, sessionId, copy, stopped, heard }) {
 /** A page the plugin ended by its cancel, as the server's cancel would read. */
 function cancelled(/** @type {Page} */ page) {
   if (page.error) return page;
-  const error = { severity: "ERROR", code: CANCELED, message: "COPY cancelled" };
+  const error = { severity: "ERROR", code: CANCELED, message: t("copy.stream.copyCancelled") };
   return /** @type {Page} */ ({ ...page, error });
 }
 

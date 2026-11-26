@@ -4,6 +4,7 @@
 // Mod+Enter shows the DDL, and the qualified name is copied from the next action. Pure.
 
 import { qualified, quoteName } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { RELATIONS } from "./names.js";
 
 /**
@@ -44,24 +45,28 @@ function actionsOf(/** @type {Name} */ n, /** @type {Connection} */ conn) {
   const connection = conn.id;
   const copy = {
     command: "endue.database.copy-name",
-    title: "Copy the qualified name",
+    title: t("features.palette.results.copyTheQualifiedName"),
     args: { text: sqlName(n) },
   };
   const ddl = {
     command: "endue.database.ddl",
-    title: "Show the DDL",
+    title: t("features.palette.results.showTheDdl"),
     args: { connection, schema: n.schema, name: n.title, kind: n.kind },
   };
   if (n.kind === "schema")
     return [
-      { command: "endue.database.console", title: "Open a console", args: { connection } },
+      {
+        command: "endue.database.console",
+        title: t("features.palette.results.openAConsole"),
+        args: { connection },
+      },
       copy,
     ];
   if (n.kind === "column")
     return [
       {
         command: "endue.database.open-table",
-        title: "Open the table's rows",
+        title: t("features.palette.results.openTheTableSRows"),
         args: { connection, schema: n.schema, table: n.table },
       },
       copy,
@@ -70,7 +75,7 @@ function actionsOf(/** @type {Name} */ n, /** @type {Connection} */ conn) {
     return [
       {
         command: "endue.database.open-table",
-        title: "Open the rows",
+        title: t("features.palette.results.openTheRows"),
         args: { connection, schema: n.schema, table: n.title },
       },
       ddl,
@@ -80,7 +85,7 @@ function actionsOf(/** @type {Name} */ n, /** @type {Connection} */ conn) {
     return [
       {
         command: "endue.database.edit-source",
-        title: "Edit the source",
+        title: t("features.palette.results.editTheSource"),
         args: { connection, schema: n.schema, name: n.title, kind: n.kind },
       },
       ddl,

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { findings, scan, VIEW, views } from "./strings-lint.mjs";
+import { findings, modules, scan, VIEW, views } from "./strings-lint.mjs";
 
 const texts = (src) => findings(src).map((f) => f.text);
 
@@ -68,12 +68,13 @@ test("each finding names its line", () => {
   ]);
 });
 
-test("scan reads only the view modules of a target, not vendored code", () => {
+test("scan reads model modules and static markup as well as view modules, except vendor", () => {
   const root = mkdtempSync(join(tmpdir(), "strings-lint-"));
   const files = {
     "p/ui/view.js": `el(doc, "p", {}, "No rows.");`,
     "p/ui/grid/keys-view.js": `const ok = "fine";`,
-    "p/ui/model.js": `const words = "Not a view";`,
+    "p/ui/model.js": `const label = "empty"; const query = "SELECT name FROM users";`,
+    "p/ui/index.html": `<!doctype html><p>Empty view</p><button aria-label="refresh"></button>`,
     "p/ui/vendor/view.js": `const words = "Vendored";`,
   };
   for (const [path, text] of Object.entries(files)) {
@@ -81,10 +82,15 @@ test("scan reads only the view modules of a target, not vendored code", () => {
     writeFileSync(join(root, path), text);
   }
   assert.deepEqual(views(root, ["p/ui"]), ["p/ui/grid/keys-view.js", "p/ui/view.js"]);
-  assert.deepEqual(scan(root, ["p/ui"]), ['p/ui/view.js:1: "No rows."']);
+  assert.deepEqual(scan(root, ["p/ui"]), [
+    'p/ui/index.html:1: "Empty view"',
+    'p/ui/index.html:1: "refresh"',
+    'p/ui/model.js:1: "empty"',
+    'p/ui/view.js:1: "No rows."',
+  ]);
 });
 
-test("the database plugin's view modules hold no literal a person reads", () => {
-  assert.ok(views().length >= 29);
+test("the database plugin's modules and markup hold no literal a person reads", () => {
+  assert.ok(modules().length >= 648);
   assert.deepEqual(scan(), []);
 });

@@ -13,6 +13,7 @@ import {
   optionsOf,
 } from "../../export/options.js";
 import { exportName, FOLDER_KEY } from "../../export.js";
+import { t } from "../../strings/index.js";
 import { OPTIONS_KEY } from "../export/run.js";
 import { exportItem } from "./file.js";
 import { openSnapshot } from "./snapshot.js";
@@ -28,7 +29,7 @@ import { postgresOnly, sourceOf, tableItem } from "./source.js";
  * @typedef {{ format?: unknown, options?: unknown, compress?: unknown }} FormatArgs
  */
 
-const NOTE = "Every row the server has, read in one snapshot. You choose where the files go next.";
+const NOTE = t("features.exportAll.run.everyRowTheServerHasRead");
 
 /** The format, its options and whether to compress: from the arguments, else asked. */
 async function chooseFormat(
@@ -37,7 +38,12 @@ async function chooseFormat(
   /** @type {string} */ title,
 ) {
   if (args.format !== undefined && !isExportFormat(args.format))
-    throw new Error(`${title}: pick ${EXPORT_FORMATS.join(", ")}.`);
+    throw new Error(
+      t("features.exportAll.run.pick", {
+        title: String(title),
+        value: String(EXPORT_FORMATS.join(", ")),
+      }),
+    );
   const format = /** @type {ExportFormat | undefined} */ (
     args.format ??
       (await deps.pick(
@@ -45,7 +51,7 @@ async function chooseFormat(
         EXPORT_FORMATS.map((id) => ({ id, label: LABELS[id] })),
       ))
   );
-  if (!format) throw deps.cancelled("Not exported.");
+  if (!format) throw deps.cancelled(t("features.exportAll.run.notExported"));
   const kept = await deps.bridge.call("store.get", { key: OPTIONS_KEY }).catch(() => ({}));
   const store = /** @type {Record<string, unknown>} */ (
     kept?.value && typeof kept.value === "object" ? kept.value : {}
@@ -59,7 +65,7 @@ async function chooseFormat(
   let compress = args.compress === true;
   if (args.options !== undefined) {
     if (!args.options || typeof args.options !== "object")
-      throw new Error('Export: options is an object, such as { "delimiter": ";" }.');
+      throw new Error(t("features.exportAll.run.exportOptionsIsAnObjectSuch"));
     options = optionsOf(format, { ...options, .../** @type {object} */ (args.options) });
   } else if (args.format === undefined) {
     const answer =
@@ -75,7 +81,7 @@ async function chooseFormat(
           compressible: format !== "xlsx",
         })
       );
-    if (!answer) throw deps.cancelled("Not exported.");
+    if (!answer) throw deps.cancelled(t("features.exportAll.run.notExported"));
     options = optionsOf(format, answer.options);
     compress = answer.compress === true;
   }
@@ -154,12 +160,16 @@ async function runJob(deps, jobs, conn, plan) {
       }
     }
     if (control.signal.aborted) {
-      job.end("cancelled", "Cancelled: the file under way was discarded, nothing of it stays.");
-      throw deps.cancelled("Not exported.");
+      job.end("cancelled", t("features.exportAll.run.cancelledTheFileUnderWayWas"));
+      throw deps.cancelled(t("features.exportAll.run.notExported"));
     }
     const rows = written.reduce((n, w) => n + w.rows, 0);
     const where = written.length === 1 ? (written[0]?.path ?? "") : `${written.length} files`;
-    const sentence = `Exported ${rows.toLocaleString("en-US")} rows as ${LABELS[plan.format]} to ${where}.`;
+    const sentence = t("features.exportAll.run.exportedRowsAsTo", {
+      value: String(rows.toLocaleString("en-US")),
+      value2: String(LABELS[plan.format]),
+      where: String(where),
+    });
     job.end("done", sentence);
     deps.say(sentence);
     return { files: written, rows };
@@ -180,7 +190,7 @@ export async function exportAll(deps, jobs, /** @type {Record<string, any>} */ a
   const folder = typeof kept?.value === "string" ? kept.value : "";
   const name = exportName(item.name, format, new Date());
   const chosen = await deps.bridge.call("dialog.save", {
-    title: "Export every row",
+    title: t("features.exportAll.run.exportEveryRow"),
     temporarySibling: true,
     suggestedName: gzip ? `${name}.gz` : name,
     ...(folder ? { startIn: folder } : {}),
@@ -191,7 +201,8 @@ export async function exportAll(deps, jobs, /** @type {Record<string, any>} */ a
       },
     ],
   });
-  if (chosen.cancelled || !chosen.path) throw deps.cancelled("Not exported.");
+  if (chosen.cancelled || !chosen.path)
+    throw deps.cancelled(t("features.exportAll.run.notExported"));
   const path = chosen.path;
   const done = await runJob(deps, jobs, conn, {
     title: item.name,
@@ -223,10 +234,10 @@ async function schemaOf(
   );
   const names = (listed.result.statements[0]?.sets[0]?.rows ?? []).map((r) => r[0] ?? "");
   const picked = await deps.pick(
-    "Database: export the tables of which schema?",
+    t("features.exportAll.run.databaseExportTheTablesOfWhich"),
     names.map((id) => ({ id, label: id })),
   );
-  if (!picked) throw deps.cancelled("Not exported.");
+  if (!picked) throw deps.cancelled(t("features.exportAll.run.notExported"));
   return picked;
 }
 
@@ -234,9 +245,9 @@ async function schemaOf(
 export async function exportTables(deps, jobs, /** @type {Record<string, any>} */ args) {
   const conn = await deps.manager.choose(
     args.connection,
-    "Database: export the tables of which connection?",
+    t("features.exportAll.run.databaseExportTheTablesOfWhich2"),
   );
-  if (!conn) throw deps.cancelled("Not exported.");
+  if (!conn) throw deps.cancelled(t("features.exportAll.run.notExported"));
   postgresOnly(conn);
   const schema = await schemaOf(deps, conn, args.schema);
   const { format, options, gzip } = await chooseFormat(
@@ -245,24 +256,27 @@ export async function exportTables(deps, jobs, /** @type {Record<string, any>} *
     "Database: export the tables as",
   );
   const picked = await deps.bridge.call("dialog.open", {
-    title: `The folder the tables of ${schema} go to`,
+    title: t("features.exportAll.run.theFolderTheTablesOfGo", { schema: String(schema) }),
     kind: "folders",
     intent: "destination",
   });
   const folder = picked.cancelled ? undefined : picked.paths?.[0];
-  if (!folder) throw deps.cancelled("Not exported.");
+  if (!folder) throw deps.cancelled(t("features.exportAll.run.notExported"));
   const base = folder.replace(/[\\/]+$/u, "");
   const scope = { permission: /** @type {const} */ ("fs:write"), paths: [base, `${base}/**`] };
   const wanted = Array.isArray(args.tables) ? args.tables.map(String) : undefined;
   return runJob(deps, jobs, conn, {
-    title: `${schema} to ${base}`,
+    title: t("features.exportAll.run.to", { schema: String(schema), base: String(base) }),
     format,
     options,
     gzip,
     scope,
     async files(snapshot) {
       const names = wanted ?? (await snapshot.tables(schema));
-      if (names.length === 0) throw new Error(`${schema} has no tables to export.`);
+      if (names.length === 0)
+        throw new Error(
+          t("features.exportAll.run.hasNoTablesToExport", { schema: String(schema) }),
+        );
       return names.map((name) => {
         const item = tableItem(schema, name);
         return { item, path: `${base}/${fileName(item.name, format, gzip)}` };

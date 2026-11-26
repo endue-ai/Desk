@@ -10,6 +10,7 @@
 import { field } from "../../cell-editors/panel.js";
 import { checkValue, KINDS } from "../../cell-editors/values.js";
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 import { inputOf, labelOf, polymorphic } from "./call.js";
 import { modeOf } from "./entries.js";
 
@@ -37,7 +38,12 @@ function headOf(/** @type {Document} */ doc, /** @type {Routine} */ r, /** @type
     el(doc, "span", { class: "desk-badge" }, modeOf(a)),
     el(doc, "span", { class: "routine-arg-type desk-muted" }, a.type),
     a.default !== null
-      ? el(doc, "span", { class: "routine-arg-default desk-muted" }, `DEFAULT ${a.default}`)
+      ? el(
+          doc,
+          "span",
+          { class: "routine-arg-default desk-muted" },
+          messageText("features.routines.fields.default", { default: String(a.default) }),
+        )
       : undefined,
   );
 }
@@ -46,8 +52,8 @@ function headOf(/** @type {Document} */ doc, /** @type {Routine} */ r, /** @type
 function outRow(/** @type {Document} */ doc, /** @type {Routine} */ r, /** @type {Arg} */ a) {
   const said =
     r.kind === "procedure"
-      ? "Passed as NULL; its value comes back as a column of the result."
-      : "Comes back as a column of the result.";
+      ? messageText("features.routines.fields.passedAsNullItsValueComes")
+      : messageText("features.routines.fields.comesBackAsAColumnOf");
   return {
     el: el(
       doc,
@@ -126,9 +132,14 @@ export function argumentRow(doc, r, a, entry, hooks) {
         el(doc, "input", {
           class: "desk-field routine-arg-cast",
           "data-cast": String(a.position),
-          "aria-label": `${label}: the type it is given as`,
+          "aria-label": messageText("features.routines.fields.theTypeItIsGivenAs", {
+            label: String(label),
+          }),
           spellcheck: "false",
-          placeholder: a.mode === "v" ? "text[]" : "text",
+          placeholder:
+            a.mode === "v"
+              ? messageText("features.routines.fields.text")
+              : messageText("features.routines.fields.text2"),
         })
       )
     : undefined;
@@ -142,7 +153,7 @@ export function argumentRow(doc, r, a, entry, hooks) {
         type: "button",
         class: "desk-tab",
         "data-choice": value,
-        title: `Alt+${key.slice(3)}`,
+        title: messageText("features.routines.fields.alt", { value: String(key.slice(3)) }),
       },
       text,
     ),
@@ -157,7 +168,7 @@ export function argumentRow(doc, r, a, entry, hooks) {
   };
   buttons.forEach((b) => {
     b.addEventListener("click", () => {
-      pick(b.dataset.choice ?? "value");
+      pick(b.dataset.choice ?? messageText("features.routines.fields.value"));
       hooks.changed();
     });
   });
@@ -191,11 +202,21 @@ export function argumentRow(doc, r, a, entry, hooks) {
         {
           class: "desk-tabs routine-arg-choice",
           role: "group",
-          "aria-label": `${label}: a value, NULL or DEFAULT`,
+          "aria-label": messageText("features.routines.fields.aValueNullOrDefault", {
+            label: String(label),
+          }),
         },
         ...buttons,
       ),
-      cast ? el(doc, "label", { class: "routine-arg-as desk-muted" }, "as ", cast) : undefined,
+      cast
+        ? el(
+            doc,
+            "label",
+            { class: "routine-arg-as desk-muted" },
+            messageText("features.routines.fields.as"),
+            cast,
+          )
+        : undefined,
     ),
     editor,
     error,

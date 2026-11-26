@@ -4,6 +4,7 @@
 // gives a polymorphic one its type, and an argument left out is DEFAULT where it has one. Pure.
 
 import { formatArray } from "../../cell-editors/pg-array.js";
+import { t as messageText } from "../../strings/index.js";
 import { blankEntry, callOf, inputOf, labelOf } from "./call.js";
 import { canRollBack, natureOf, refusalOf, titleOf } from "./guard.js";
 
@@ -41,15 +42,28 @@ export function entriesFrom(r, base, given) {
   const inputs = r.args.filter((a) => inputOf(r, a) && a.mode !== "o");
   const list = Array.isArray(given) ? given : undefined;
   const named = /** @type {Record<string, unknown>} */ (list ? {} : given);
-  if (!list && typeof given !== "object") throw new Error("arguments is an object or a list.");
+  if (!list && typeof given !== "object")
+    throw new Error(messageText("features.routines.entries.argumentsIsAnObjectOrA"));
   const known = new Set(inputs.map((a) => labelOf(r, a)));
   for (const key of Object.keys(named))
     if (!known.has(key))
       throw new Error(
-        `${r.schema}.${r.name} has no argument ${key}: it takes ${[...known].join(", ") || "none"}.`,
+        messageText("features.routines.entries.hasNoArgumentItTakes", {
+          schema: String(r.schema),
+          name: String(r.name),
+          key: String(key),
+          value: String([...known].join(", ") || messageText("features.routines.entries.none")),
+        }),
       );
   if (list && list.length > inputs.length)
-    throw new Error(`${r.schema}.${r.name} takes ${inputs.length} arguments, not ${list.length}.`);
+    throw new Error(
+      messageText("features.routines.entries.takesArgumentsNot", {
+        schema: String(r.schema),
+        name: String(r.name),
+        length: String(inputs.length),
+        length2: String(list.length),
+      }),
+    );
   const out = [...base];
   inputs.forEach((a, i) => {
     const label = labelOf(r, a);
@@ -78,7 +92,7 @@ export function entriesFrom(r, base, given) {
 /** What the form shows, as the palette and agents read it. */
 export function answerOf(/** @type {RoutineState} */ s) {
   const r = s.routine;
-  if (!r) return { error: s.error || "Not read." };
+  if (!r) return { error: s.error || messageText("features.routines.entries.notRead") };
   const { sql, problem } = callOf(r, s.entries);
   const refused = refusalOf(s.conn, r);
   return {

@@ -8,6 +8,7 @@
 
 import { readTypes } from "../cell-editors/pg-types.js";
 import { attachEditors } from "../cell-editors/resolve.js";
+import { t as messageText } from "../strings/index.js";
 import { originTarget } from "./origin-target.js";
 import { readsOnly, repeatedNames } from "./source.js";
 
@@ -108,7 +109,7 @@ export function relationsOf(rows) {
  */
 export async function readOrigins({ execute, conn, set, statement }) {
   if (statement && !readsOnly(statement))
-    return { reason: "Only a query that reads can have its rows changed: this one writes." };
+    return { reason: messageText("edit.origins.onlyAQueryThatReadsCan") };
   const run = await execute(conn, originsSql(originOids(set)), { catalog: true, maxRows: 1000 });
   const read = run.result.statements[0];
   const error = run.result.error ?? read?.error;

@@ -4,6 +4,7 @@
 
 import { labelOf } from "../../console-list.js";
 import { ownerOf } from "../../session/owners.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../consoles.js").Console} Console
@@ -40,21 +41,20 @@ export function heldOf(/** @type {Host} */ host, /** @type {Console} */ target) 
 /** The PostgreSQL console a command names (its name or id), else the one on screen. */
 export function consoleOf(/** @type {Host} */ host, /** @type {unknown} */ ref) {
   const named = typeof ref === "string" && ref ? host.consoles.find(ref) : undefined;
-  if (typeof ref === "string" && ref && !named) throw new Error(`No console is called ${ref}.`);
+  if (typeof ref === "string" && ref && !named)
+    throw new Error(t("features.transactions.control.noConsoleIsCalled", { ref: String(ref) }));
   const target = named ?? host.consoles.current();
-  if (target?.kind !== "console") throw new Error("No console is on screen.");
+  if (target?.kind !== "console")
+    throw new Error(t("features.transactions.control.noConsoleIsOnScreen"));
   const held = heldOf(host, target);
-  if (!held)
-    throw new Error(
-      "Transactions are kept by a PostgreSQL console: this console's connection is not PostgreSQL.",
-    );
+  if (!held) throw new Error(t("features.transactions.control.transactionsAreKeptByAPostgresql"));
   return held;
 }
 
 /** Refuse while a run goes on in the console: its statement holds the session. */
 export function idleNow(/** @type {Held} */ held) {
   if (held.target.running || held.target.filing || held.model?.state === "running")
-    throw new Error("A run is going on in this console: cancel it first.");
+    throw new Error(t("features.transactions.control.aRunIsGoingOnIn"));
 }
 
 /** Run one statement of transaction control on the console's session; its error is thrown. */
@@ -70,5 +70,12 @@ export async function control(
   });
   host.consoles.render();
   const error = done.result.error ?? done.result.statements[0]?.error;
-  if (error) throw new Error(`${held.label}: ${sql} failed: ${error.message}`);
+  if (error)
+    throw new Error(
+      t("features.transactions.control.failed", {
+        label: String(held.label),
+        sql: String(sql),
+        message: String(error.message),
+      }),
+    );
 }

@@ -7,6 +7,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { FAMILIES, MATCHES } from "./columns.js";
 import { LIMITS } from "./model.js";
 import { createResults } from "./results.js";
@@ -17,7 +18,7 @@ import { createResults } from "./results.js";
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const HINTS = "Enter search · Escape cancel · a column or a row opens the table filtered";
+const HINTS = messageText("features.search.panel.enterSearchEscapeCancelAColumn");
 
 /**
  * @param {Document} doc
@@ -59,7 +60,7 @@ export function searchPanel(doc, first, act, buffer) {
     placeholder: "4242",
     autocomplete: "off",
     spellcheck: "false",
-    "aria-label": "Value to find",
+    "aria-label": messageText("features.search.panel.valueToFind"),
   });
   const match = /** @type {HTMLSelectElement} */ (
     el(
@@ -75,7 +76,7 @@ export function searchPanel(doc, first, act, buffer) {
   let schemaChecks = [];
   const tables = field("tables", {
     type: "text",
-    placeholder: "orders, sales.audit_*",
+    placeholder: messageText("features.search.panel.ordersSalesAudit"),
     autocomplete: "off",
     spellcheck: "false",
   });
@@ -91,17 +92,26 @@ export function searchPanel(doc, first, act, buffer) {
       doc,
       "button",
       { type: "submit", class: "desk-btn desk-btn-primary", "data-ctl": "search" },
-      "Search",
+      messageText("features.search.panel.search"),
     )
   );
   const cancel = /** @type {HTMLButtonElement} */ (
-    el(doc, "button", { type: "button", class: "desk-btn", "data-ctl": "cancel" }, "Cancel")
+    el(
+      doc,
+      "button",
+      { type: "button", class: "desk-btn", "data-ctl": "cancel" },
+      messageText("features.search.panel.cancel"),
+    )
   );
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
       "form",
-      { class: "search-form", role: "search", "aria-label": "Search for a value" },
+      {
+        class: "search-form",
+        role: "search",
+        "aria-label": messageText("features.search.panel.searchForAValue"),
+      },
       el(
         doc,
         "div",
@@ -110,13 +120,19 @@ export function searchPanel(doc, first, act, buffer) {
         labelled("Match", match),
         ignore.label,
       ),
-      el(doc, "fieldset", { class: "search-set" }, el(doc, "legend", {}, "Schemas"), schemaBox),
+      el(
+        doc,
+        "fieldset",
+        { class: "search-set" },
+        el(doc, "legend", {}, messageText("features.search.panel.schemas")),
+        schemaBox,
+      ),
       labelled("Tables (every one when empty)", tables, "search-names"),
       el(
         doc,
         "fieldset",
         { class: "search-set" },
-        el(doc, "legend", {}, "Look in"),
+        el(doc, "legend", {}, messageText("features.search.panel.lookIn")),
         el(doc, "div", { class: "search-checks" }, ...families.map((f) => f.label)),
       ),
       el(
@@ -150,7 +166,12 @@ export function searchPanel(doc, first, act, buffer) {
         doc,
         "div",
         { class: "desk-header-text" },
-        el(doc, "h2", { class: "desk-header-title" }, "Search for a value"),
+        el(
+          doc,
+          "h2",
+          { class: "desk-header-title" },
+          messageText("features.search.panel.searchForAValue"),
+        ),
         el(doc, "p", { class: "desk-header-desc", "data-part": "about" }),
       ),
     ),
@@ -239,7 +260,9 @@ export function searchPanel(doc, first, act, buffer) {
       s.conn.readOnly ? "read-only" : "",
     ];
     /** @type {HTMLElement} */ (root.querySelector('[data-part="about"]')).textContent =
-      `In the tables of ${where.filter(Boolean).join(" · ")}, one table at a time in a read-only transaction.`;
+      messageText("features.search.panel.inTheTablesOfOneTable", {
+        value: String(where.filter(Boolean).join(" · ")),
+      });
     estimate.textContent = s.estimate;
     search.disabled = running();
     cancel.disabled = !running();
@@ -254,7 +277,7 @@ export function searchPanel(doc, first, act, buffer) {
         class: "desk-progress",
         max: String(Math.max(1, run.total)),
         value: String(run.done),
-        "aria-label": "Tables searched",
+        "aria-label": messageText("features.search.panel.tablesSearched"),
       });
       const found = run.tables.reduce((n, t) => n + t.rows, 0);
       const line = [

@@ -5,6 +5,7 @@
 
 import { clock, statementsLine } from "../../session/transaction-words.js";
 import { reasonsOf } from "../../session/words.js";
+import { t } from "../../strings/index.js";
 import { control, heldOf } from "./control.js";
 
 /**
@@ -48,20 +49,47 @@ export async function settle(deps, targets, title, stay) {
   const reasons = reasonsOf(open.map(({ label, transaction }) => ({ label, transaction })));
   const items = [
     ...(committable
-      ? [{ id: "commit", label: "Commit", detail: open.map((h) => holds(h, now)).join("; ") }]
+      ? [
+          {
+            id: "commit",
+            label: t("features.transactions.settle.commit"),
+            detail: open.map((h) => holds(h, now)).join("; "),
+          },
+        ]
       : []),
-    { id: "rollback", label: "Roll back", detail: reasons.join(" ") },
-    { id: "stay", label: "Stay", detail: "Nothing closes: the transaction stays open." },
+    {
+      id: "rollback",
+      label: t("features.transactions.settle.rollBack"),
+      detail: reasons.join(" "),
+    },
+    {
+      id: "stay",
+      label: t("features.transactions.settle.stay"),
+      detail: t("features.transactions.settle.nothingClosesTheTransactionStaysOpen"),
+    },
   ];
   const answer = await deps.pick(title, items);
   if (answer === "commit" && committable) {
     for (const held of open) await control(deps, held, "COMMIT");
-    deps.say(`Committed ${open.map((h) => holds(h, now)).join("; ")}.`);
+    deps.say(
+      t("features.transactions.settle.committed", {
+        value: String(open.map((h) => holds(h, now)).join("; ")),
+      }),
+    );
     return;
   }
   if (answer !== "rollback") throw deps.cancelled(stay);
   for (const held of open) deps.consoles.sessions?.forget(held.owner);
   deps.consoles.render();
   const names = open.map((h) => h.label).join(", ");
-  deps.say(`${names}: the open transaction${open.length === 1 ? " was" : "s were"} rolled back.`);
+  deps.say(
+    t("features.transactions.settle.theOpenTransactionRolledBack", {
+      names: String(names),
+      value: String(
+        open.length === 1
+          ? t("features.transactions.settle.was")
+          : t("features.transactions.settle.sWere"),
+      ),
+    }),
+  );
 }

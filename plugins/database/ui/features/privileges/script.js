@@ -2,6 +2,7 @@
 // (a password masked) and the controller calls before the run (with its verifier), so what is shown
 // is what runs but for the mask. An Error says what is wrong with the answers. Pure.
 
+import { t } from "../../strings/index.js";
 import { defaultScript, grantScript } from "./grants.js";
 import { DEFAULT_KINDS, defaultPrivilegesOf } from "./kinds.js";
 import { dropPolicy, policyScript, rowSecurityScript } from "./policies.js";
@@ -18,23 +19,33 @@ function formDefaults(/** @type {ChangeModel} */ model, /** @type {Answers} */ a
   const letter = Object.entries(DEFAULT_KINDS).find(([, k]) => k.on === on)?.[0];
   if (!letter)
     throw new Error(
-      `Default privileges are on ${Object.values(DEFAULT_KINDS)
-        .map((k) => k.on.toLowerCase())
-        .join(", ")}.`,
+      t("features.privileges.script.defaultPrivilegesAreOn", {
+        value: String(
+          Object.values(DEFAULT_KINDS)
+            .map((k) => k.on.toLowerCase())
+            .join(", "),
+        ),
+      }),
     );
   const grantee = (a.values.grantee ?? "").trim();
-  if (!grantee) throw new Error("Name the grantee: a role or PUBLIC.");
+  if (!grantee) throw new Error(t("features.privileges.script.nameTheGranteeARoleOr"));
   const offered = defaultPrivilegesOf(letter, model.data.version ?? 170000);
   const pick = (/** @type {string} */ field) =>
     listOf(a.values[field]).map((p) => {
       const word = p.toUpperCase() === "ALL" ? "ALL" : p.toUpperCase();
       if (word !== "ALL" && !offered.includes(word))
-        throw new Error(`${p} is not a privilege on ${on.toLowerCase()}: ${offered.join(", ")}.`);
+        throw new Error(
+          t("features.privileges.script.isNotAPrivilegeOn", {
+            p: String(p),
+            value: String(on.toLowerCase()),
+            value2: String(offered.join(", ")),
+          }),
+        );
       return word;
     });
   const expand = (/** @type {string[]} */ list) => (list.includes("ALL") ? offered : list);
-  const grant = expand(pick("grant"));
-  const revoke = expand(pick("revoke"));
+  const grant = expand(pick(t("features.privileges.script.grant")));
+  const revoke = expand(pick(t("features.privileges.script.revoke")));
   const to = a.choices.includes("option") ? "option" : "granted";
   const changes = [
     ...revoke.map((privilege) => ({
@@ -83,7 +94,7 @@ export function scriptOf(model, given = {}, secret = {}) {
     case "row-security":
       return rowSecurityScript(d.table, d.before, a);
     default:
-      throw new Error(`${model.op} writes no statement.`);
+      throw new Error(t("features.privileges.script.writesNoStatement", { op: String(model.op) }));
   }
 }
 

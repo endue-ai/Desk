@@ -7,6 +7,7 @@
 
 import { withGrant, writeScope } from "../console-files.js";
 import { baseName } from "../console-list.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
@@ -75,7 +76,7 @@ export function partialFile(bridge, path, options = {}) {
     temp,
     /** Append a piece of the file. */
     async write(/** @type {Piece} */ piece) {
-      if (discarded) throw new Error(`${name} was discarded.`);
+      if (discarded) throw new Error(t("copy.partial.wasDiscarded", { name: String(name) }));
       pending = write(piece);
       await pending;
       started = true;
@@ -91,18 +92,27 @@ export function partialFile(bridge, path, options = {}) {
           return to;
         } catch (error) {
           if (codeOf(error) !== "already_exists")
-            throw new Error(`Could not name ${baseName(to)}: ${codeOf(error)}.`);
+            throw new Error(
+              t("copy.partial.couldNotName", {
+                value: String(baseName(to)),
+                value2: String(codeOf(error)),
+              }),
+            );
           if (options.replace === false) continue;
         }
         await bridge.call("fs.trash", { path, scope: pathScope }).catch((again) => {
-          throw new Error(`Could not replace ${name}: ${codeOf(again)}.`);
+          throw new Error(
+            t("copy.partial.couldNotReplace", { name: String(name), value: String(codeOf(again)) }),
+          );
         });
         await rename().catch((again) => {
-          throw new Error(`Could not name ${name}: ${codeOf(again)}.`);
+          throw new Error(
+            t("copy.partial.couldNotName2", { name: String(name), value: String(codeOf(again)) }),
+          );
         });
         return path;
       }
-      throw new Error(`Could not name ${name}: a hundred files of that name are there already.`);
+      throw new Error(t("copy.partial.couldNotNameAHundredFiles", { name: String(name) }));
     },
     /** Nothing of it stays at either name: the temporary file goes to the trash. */
     async discard() {

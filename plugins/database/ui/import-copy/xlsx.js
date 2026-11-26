@@ -1,3 +1,5 @@
+import { t as messageText } from "../strings/index.js";
+
 // An `.xlsx` file's first sheet as rows of text (PG-60), read with the vendored spreadsheet reader
 // (ui/vendor/sheetjs, the copy of ADR 0043's, which the caller passes: the worker loads it, so the
 // frame's main thread never does). A number is its digits, a date or time cell (a number with a
@@ -45,7 +47,7 @@ function cellText(/** @type {Sheetjs} */ X, /** @type {Cell | undefined} */ cell
 export function xlsxRows(X, bytes) {
   // A workbook is a ZIP; the reader would take any other bytes as text.
   if (bytes[0] !== 0x50 || bytes[1] !== 0x4b)
-    throw new Error("The file is not a workbook the import reads: it is not an .xlsx (ZIP) file.");
+    throw new Error(messageText("importCopy.xlsx.theFileIsNotAWorkbook"));
   let book;
   try {
     book = X.read(bytes, {
@@ -57,7 +59,9 @@ export function xlsxRows(X, bytes) {
     });
   } catch (error) {
     throw new Error(
-      `The file is not a workbook the import reads: ${error instanceof Error ? error.message : error}.`,
+      messageText("importCopy.xlsx.theFileIsNotAWorkbook2", {
+        value: String(error instanceof Error ? error.message : error),
+      }),
     );
   }
   const name = book.SheetNames[0];

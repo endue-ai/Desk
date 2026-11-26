@@ -5,6 +5,7 @@
 // (`navigateOpen`). The work is navigate/controller.js's.
 import { createNavigator, PANEL } from "../../navigate/controller.js";
 import { usagesPanel } from "../../navigate/usages-panel.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -32,7 +33,7 @@ async function atCaret(/** @type {Deps} */ deps, /** @type {What} */ what) {
     /** @type {unknown} */ (deps.view)
   );
   if (view.navigate) {
-    if (!(await view.navigate(what))) deps.say("Open a console to go from a name in it.");
+    if (!(await view.navigate(what))) deps.say(t("features.navigate.index.openAConsoleToGoFrom"));
     return undefined;
   }
   const { text, end } = deps.view.editor();
@@ -56,6 +57,6 @@ export const feature = {
       /** @type {import("../../navigate/usages.js").Usage} */ usage,
     ) => of(deps).open(connection, usage),
   }),
-  panels: { [PANEL]: { label: "Usages", render: usagesPanel } },
+  panels: { [PANEL]: { label: t("features.navigate.index.usages"), render: usagesPanel } },
   styles: [new URL("../../navigate/navigate.css", import.meta.url).href],
 };

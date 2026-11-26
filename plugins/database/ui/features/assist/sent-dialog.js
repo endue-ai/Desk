@@ -5,6 +5,7 @@
 // Answers `{ sample, production }`; Cancel and Escape answer nothing (view-dialog.js).
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /** @typedef {import("./flow.js").SentModel} SentModel */
 
@@ -26,7 +27,7 @@ export function sentDialog(doc, model, done) {
   const text = el(doc, "pre", {
     class: "assist-sent-text",
     tabindex: "0",
-    "aria-label": "What is sent",
+    "aria-label": t("features.assist.sentDialog.whatIsSent"),
   });
   const why = el(doc, "p", { class: "hint", role: "note" });
   const follow = () => {
@@ -37,10 +38,10 @@ export function sentDialog(doc, model, done) {
     why.textContent = !model.withSample
       ? model.sampleWhy
       : !allowed
-        ? "Tagged production: turn samples on for this connection to send one."
+        ? t("features.assist.sentDialog.taggedProductionTurnSamplesOnFor")
         : shown
-          ? "The sample is in what is sent."
-          : "No rows or values are sent.";
+          ? t("features.assist.sentDialog.theSampleIsInWhatIs")
+          : t("features.assist.sentDialog.noRowsOrValuesAreSent");
   };
   sample.addEventListener("change", follow);
   production.addEventListener("change", follow);
@@ -50,7 +51,7 @@ export function sentDialog(doc, model, done) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-quiet" },
-    first ? "Cancel" : "Close",
+    first ? t("features.assist.sentDialog.cancel") : t("features.assist.sentDialog.close"),
   );
   cancel.addEventListener("click", () => done());
   const form = /** @type {HTMLFormElement} */ (
@@ -62,13 +63,17 @@ export function sentDialog(doc, model, done) {
         doc,
         "h2",
         { id: "assist-sent-title" },
-        first ? "What is sent to Eris" : "What this console sends to Eris",
+        first
+          ? t("features.assist.sentDialog.whatIsSentToEris")
+          : t("features.assist.sentDialog.whatThisConsoleSendsToEris"),
       ),
       el(
         doc,
         "p",
         { class: "hint" },
-        `${model.connection} · the statement, the error and the names, types and comments of the tables in scope. Nothing runs.`,
+        t("features.assist.sentDialog.theStatementTheErrorAndThe", {
+          connection: String(model.connection),
+        }),
       ),
       text,
       el(
@@ -76,7 +81,7 @@ export function sentDialog(doc, model, done) {
         "label",
         { class: "check" },
         sample,
-        "Send a sample: the first rows of the last result",
+        t("features.assist.sentDialog.sendASampleTheFirstRows"),
       ),
       model.production
         ? el(
@@ -84,7 +89,7 @@ export function sentDialog(doc, model, done) {
             "label",
             { class: "check" },
             production,
-            "Turn samples on for this production connection",
+            t("features.assist.sentDialog.turnSamplesOnForThisProduction"),
           )
         : undefined,
       why,
@@ -97,7 +102,7 @@ export function sentDialog(doc, model, done) {
           doc,
           "button",
           { type: "submit", class: "desk-btn desk-btn-primary" },
-          first ? "Send" : "Keep",
+          first ? t("features.assist.sentDialog.send") : t("features.assist.sentDialog.keep"),
         ),
       ),
     )

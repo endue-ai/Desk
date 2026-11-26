@@ -6,6 +6,7 @@
 
 import { createComparer } from "../../compare/client.js";
 import { PIN_LIMIT } from "../../compare/pins.js";
+import { t } from "../../strings/index.js";
 import { compareResults, copyDifference, exportDifference, runAgain } from "./compare.js";
 import { comparePanel } from "./panel.js";
 import { pin, togglePin, unpin } from "./pin.js";
@@ -49,7 +50,7 @@ export function compareFeature(options = {}) {
     }),
     panels: {
       compare: {
-        label: "Two results compared",
+        label: t("features.compare.index.twoResultsCompared"),
         render: (doc, state, act) => comparePanel(doc, state, act),
       },
     },

@@ -4,6 +4,7 @@
 
 import { engineOf } from "../../engines/index.js";
 import { fileName, passwordFile } from "../../platform.js";
+import { t } from "../../strings/index.js";
 import { errorText } from "../../tabs.js";
 import { majorOf } from "./args.js";
 
@@ -28,12 +29,16 @@ export async function choosePostgres(deps, ref, title) {
   const only = (/** @type {Connection} */ conn) => {
     if (conn.engine === "postgresql") return conn;
     throw new Error(
-      `${conn.name} is ${engineOf(conn.engine).title}: pg_dump and pg_restore work on PostgreSQL.`,
+      t("features.backup.common.isPgDumpAndPgRestore", {
+        name: String(conn.name),
+        title: String(engineOf(conn.engine).title),
+      }),
     );
   };
   if (typeof ref === "string" && ref !== "") {
     const conn = deps.manager.get(ref);
-    if (!conn) throw new Error(`No connection is named ${ref}.`);
+    if (!conn)
+      throw new Error(t("features.backup.common.noConnectionIsNamed", { ref: String(ref) }));
     return only(conn);
   }
   const shown = deps.consoles.current();
@@ -41,7 +46,7 @@ export async function choosePostgres(deps, ref, title) {
   if (here?.engine === "postgresql") return here;
   const list = postgresOf(deps);
   if (list.length === 0)
-    throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+    throw new Error(t("features.backup.common.noPostgresqlConnectionYetAddOne"));
   if (list.length === 1) return list[0];
   const items = list.map((c) => ({
     id: c.id,
@@ -56,10 +61,16 @@ export async function choosePostgres(deps, ref, title) {
 export async function serverVersion(/** @type {Deps} */ deps, /** @type {Connection} */ conn) {
   const done = await deps.execute(conn, "SHOW server_version_num", { catalog: true });
   const error = done.result.error ?? done.result.statements[0]?.error;
-  if (error) throw new Error(`Could not reach ${conn.name}: ${errorText(error)}`);
+  if (error)
+    throw new Error(
+      t("features.backup.common.couldNotReach", {
+        name: String(conn.name),
+        value: String(errorText(error)),
+      }),
+    );
   const value = Number(done.result.statements[0]?.sets[0]?.rows[0]?.[0]);
   if (!Number.isInteger(value) || value <= 0)
-    throw new Error(`${conn.name} did not say its version.`);
+    throw new Error(t("features.backup.common.didNotSayItsVersion", { name: String(conn.name) }));
   return value;
 }
 
@@ -82,7 +93,15 @@ export async function programFor(deps, name, conn, server) {
   if (majorOf(program.version) >= need) return program;
   const setting = name === "pg_dump" ? "endue.database.pg-dump" : "endue.database.pg-restore";
   throw new Error(
-    `${program.command} ${program.version} is older than ${conn.name}'s server (${release(server)}): ${name} ${need} or newer is needed. Install it, or name it in the setting ${setting}.`,
+    t("features.backup.common.isOlderThanSServerOr", {
+      command: String(program.command),
+      version: String(program.version),
+      name: String(conn.name),
+      value: String(release(server)),
+      name2: String(name),
+      need: String(need),
+      setting: String(setting),
+    }),
   );
 }
 
@@ -99,7 +118,16 @@ export async function askPath(deps, permission, path, reason) {
     .call("perm.request", { permission: { permission, paths: [path] }, reason })
     .catch(() => ({ granted: false }));
   if (!decision.granted)
-    throw new Error(`Not allowed to ${permission === "fs:read" ? "read" : "write"} ${path}.`);
+    throw new Error(
+      t("features.backup.common.notAllowedTo", {
+        value: String(
+          permission === "fs:read"
+            ? t("features.backup.common.read")
+            : t("features.backup.common.write"),
+        ),
+        path: String(path),
+      }),
+    );
 }
 
 /** A size as the person reads it: `812 B`, `48 KiB`, `3.2 MiB`, `1.4 GiB`. */
@@ -131,8 +159,10 @@ export const passwordNote = (
   /** @type {import("../../clients.js").Platform} */ platform = "mac",
 ) =>
   password
-    ? "The password typed this session goes in PGPASSWORD of the program's environment only."
-    : `No password given: libpq reads ${passwordFile(platform)}, else the server must not ask for one.`;
+    ? t("features.backup.common.thePasswordTypedThisSessionGoes")
+    : t("features.backup.common.noPasswordGivenLibpqReadsElse", {
+        value: String(passwordFile(platform)),
+      });
 
 /** The last part of a path, with either separator. */
 export { fileName };

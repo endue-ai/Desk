@@ -1,5 +1,5 @@
 /** What the plugin host (`plugins.ts`) is given: where plugin files load from, and the runtime. */
-import type { BridgeClient, PluginInfo } from "@endue-ai/bridge";
+import type { BridgeClient, Language, PluginInfo } from "@endue-ai/bridge";
 import type { KeyLike } from "./input";
 import type { SurfaceSpec } from "./surfaces";
 
@@ -21,6 +21,7 @@ export interface PluginHostOptions {
 export interface PluginHostDeps {
   bridge: BridgeClient;
   win: Window;
+  language?(): Language;
   open(spec: SurfaceSpec): void;
   close(id: string): void;
   reload(id: string, src: string): void;

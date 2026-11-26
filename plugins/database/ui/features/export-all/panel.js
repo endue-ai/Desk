@@ -5,6 +5,7 @@
 import { sizeText } from "../../console-files.js";
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("./jobs.js").JobState} JobState
@@ -47,7 +48,7 @@ export function exportAllPanel(doc, first, act, buffer) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-quiet", "data-ctl": "cancel" },
-    "Cancel",
+    t("features.exportAll.panel.cancel"),
   );
   cancel.addEventListener("click", () => act("exportAllCancel", buffer.id));
   const result = el(doc, "p", { class: "desk-callout export-all-result", "data-part": "result" });

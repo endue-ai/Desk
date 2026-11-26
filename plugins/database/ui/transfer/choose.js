@@ -5,6 +5,7 @@
 
 import { engineOf } from "../engines/index.js";
 import { split, statementAt } from "../sql/split.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("../feature-host.js").Deps} Deps
@@ -18,7 +19,10 @@ const WHOLE = "\u0000";
 export function postgres(/** @type {Connection} */ conn) {
   if (conn.engine !== "postgresql")
     throw new Error(
-      `${conn.name} is ${engineOf(conn.engine).title}: tables are copied between PostgreSQL connections.`,
+      messageText("transfer.choose.isTablesAreCopiedBetweenPostgresql", {
+        name: String(conn.name),
+        title: String(engineOf(conn.engine).title),
+      }),
     );
   return conn;
 }
@@ -30,9 +34,12 @@ export function postgres(/** @type {Connection} */ conn) {
  */
 export function targetOf(deps, answer) {
   const conn = deps.manager.get(String(answer.target ?? ""));
-  if (!conn) throw new Error("Choose the connection to copy into.");
+  if (!conn) throw new Error(messageText("transfer.choose.chooseTheConnectionToCopyInto"));
   postgres(conn);
-  if (conn.readOnly) throw new Error(`${conn.name} is read-only: nothing is copied into it.`);
+  if (conn.readOnly)
+    throw new Error(
+      messageText("transfer.choose.isReadOnlyNothingIsCopied", { name: String(conn.name) }),
+    );
   const database = String(answer.database ?? "").trim();
   return database && database !== conn.database ? { ...conn, database } : conn;
 }
@@ -43,7 +50,8 @@ export function createChooser(deps) {
   const source = async (/** @type {unknown} */ ref) => {
     if (typeof ref === "string" && ref !== "") {
       const conn = deps.manager.get(ref);
-      if (!conn) throw new Error(`No connection is named ${ref}.`);
+      if (!conn)
+        throw new Error(messageText("transfer.choose.noConnectionIsNamed", { ref: String(ref) }));
       return postgres(conn);
     }
     const shown = deps.consoles.current();
@@ -51,10 +59,13 @@ export function createChooser(deps) {
     if (here?.engine === "postgresql") return here;
     const list = deps.manager.list().filter((c) => c.engine === "postgresql");
     if (list.length === 0)
-      throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+      throw new Error(messageText("transfer.choose.noPostgresqlConnectionYetAddOne"));
     if (list.length === 1) return list[0];
     const items = list.map((c) => ({ id: c.id, label: c.name }));
-    const picked = await deps.pick("Database: copy tables from which connection?", items);
+    const picked = await deps.pick(
+      messageText("transfer.choose.databaseCopyTablesFromWhichConnection"),
+      items,
+    );
     return picked ? deps.manager.get(picked) : undefined;
   };
 
@@ -84,16 +95,24 @@ export function createChooser(deps) {
     const first =
       schema ||
       (await deps.pick(
-        "Database: copy tables of which schema?",
+        messageText("transfer.choose.databaseCopyTablesOfWhichSchema"),
         schemas.map((s) => ({ id: s, label: s })),
       ));
     if (!first) return undefined;
     const all = (await deps.catalog.objects(conn, first)).filter((o) => o.kind === "table");
-    if (all.length === 0) throw new Error(`Schema ${first} has no tables.`);
-    const second = await deps.pick(`Database: copy which table of ${first}?`, [
-      { id: WHOLE, label: `Every table of ${first}`, detail: `${all.length}` },
-      ...all.map((t) => ({ id: t.name, label: t.name })),
-    ]);
+    if (all.length === 0)
+      throw new Error(messageText("transfer.choose.schemaHasNoTables", { first: String(first) }));
+    const second = await deps.pick(
+      messageText("transfer.choose.databaseCopyWhichTableOf", { first: String(first) }),
+      [
+        {
+          id: WHOLE,
+          label: messageText("transfer.choose.everyTableOf", { first: String(first) }),
+          detail: `${all.length}`,
+        },
+        ...all.map((t) => ({ id: t.name, label: t.name })),
+      ],
+    );
     if (!second) return undefined;
     return second === WHOLE
       ? all.map((t) => ({ schema: first, name: t.name }))
@@ -103,16 +122,17 @@ export function createChooser(deps) {
   /** The console's statement: the selection, else the one at the caret. */
   const statement = () => {
     const target = deps.consoles.current();
-    if (target?.kind !== "console") throw new Error("Copy a query's result from a console.");
+    if (target?.kind !== "console")
+      throw new Error(messageText("transfer.choose.copyAQuerySResultFrom"));
     const conn = deps.manager.get(target.connection);
-    if (!conn) throw new Error("This console's connection was removed.");
+    if (!conn) throw new Error(messageText("transfer.choose.thisConsoleSConnectionWasRemoved"));
     postgres(conn);
     const { text, start, end } = deps.view.editor();
     const picked = start !== end ? split(text.slice(start, end), "postgresql") : [];
     const at = start === end ? statementAt(split(text, "postgresql"), start, text) : undefined;
     const statements = at ? [at] : picked;
     if (statements.length !== 1)
-      throw new Error("Put the caret in one query, or select it, to copy its result.");
+      throw new Error(messageText("transfer.choose.putTheCaretInOneQuery"));
     return { conn, sql: /** @type {{ text: string }} */ (statements[0]).text };
   };
 

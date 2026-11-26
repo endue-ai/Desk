@@ -6,6 +6,7 @@
 
 import { EXPORT_FORMATS, FIELDS, isExportFormat, LABELS, optionsOf } from "../../export/options.js";
 import { exportResult } from "../../export.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -15,7 +16,7 @@ import { exportResult } from "../../export.js";
 
 /** The store key of each format's last options. */
 export const OPTIONS_KEY = "export-options";
-const TITLE = "Database: export the result as";
+const TITLE = messageText("features.export.run.databaseExportTheResultAs");
 const DETAILS = /** @type {Partial<Record<ExportFormat, string>>} */ ({
   xlsx: "Typed cells, a sheet per result",
   template: "A row written through {{column}} placeholders",
@@ -43,7 +44,12 @@ const ownOf = (/** @type {ExportOptions} */ o, /** @type {ExportFormat} */ forma
  */
 export async function exportShown(deps, args) {
   if (args.format !== undefined && !isExportFormat(args.format))
-    throw new Error(`${TITLE}: pick ${EXPORT_FORMATS.join(", ")}.`);
+    throw new Error(
+      messageText("features.export.run.pick", {
+        TITLE: String(TITLE),
+        value: String(EXPORT_FORMATS.join(", ")),
+      }),
+    );
   const format = /** @type {ExportFormat | undefined} */ (
     args.format ??
       (await deps.pick(
@@ -55,7 +61,7 @@ export async function exportShown(deps, args) {
         })),
       ))
   );
-  if (!format) throw deps.cancelled("Not exported.");
+  if (!format) throw deps.cancelled(messageText("features.export.run.notExported"));
   const { shown, set, name, options } = deps.tools.exportable();
   const results = (shown.shown?.tabs ?? []).filter(
     (t) => t.set && (t.kind === "rows" || t.kind === "pinned"),
@@ -68,7 +74,7 @@ export async function exportShown(deps, args) {
   let all = args.sheets === "all";
   if (args.options !== undefined) {
     if (!args.options || typeof args.options !== "object")
-      throw new Error('Export: options is an object, such as { "delimiter": ";" }.');
+      throw new Error(messageText("features.export.run.exportOptionsIsAnObjectSuch"));
     settings = optionsOf(format, { ...settings, .../** @type {object} */ (args.options) });
   } else if (args.format === undefined) {
     const answer =
@@ -84,7 +90,7 @@ export async function exportShown(deps, args) {
           results: format === "xlsx" ? results.length : 0,
         })
       );
-    if (!answer) throw deps.cancelled("Not exported.");
+    if (!answer) throw deps.cancelled(messageText("features.export.run.notExported"));
     settings = optionsOf(format, answer.options);
     all = answer.sheets === "all";
   }
@@ -105,7 +111,7 @@ export async function exportShown(deps, args) {
     ...(parts ? { parts } : {}),
     ...(deps.startWorker ? { startWorker: deps.startWorker } : {}),
   });
-  if (!done) throw deps.cancelled("Not exported.");
+  if (!done) throw deps.cancelled(messageText("features.export.run.notExported"));
   await deps.bridge
     .call("store.set", { key: OPTIONS_KEY, value: { ...store, [format]: ownOf(settings, format) } })
     .catch(() => {});
@@ -113,7 +119,15 @@ export async function exportShown(deps, args) {
   const more = done.partial
     ? " (the rows loaded: the server has more; load more rows first for the rest)"
     : "";
-  deps.say(`Exported ${done.rows} rows as ${LABELS[format]}${sheets} to ${done.path}${more}.`);
+  deps.say(
+    messageText("features.export.run.exportedRowsAsTo", {
+      rows: String(done.rows),
+      value: String(LABELS[format]),
+      sheets: String(sheets),
+      path: String(done.path),
+      more: String(more),
+    }),
+  );
   void deps.commands.run("desk.files.reveal", { path: done.path }).catch(() => {});
   return done;
 }

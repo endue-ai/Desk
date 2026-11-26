@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // A password command as the person writes it (PG-14, ADR 0354): a program and its arguments on one
 // line, split on spaces, a word holding spaces or quotes in double quotes ("a b", "say \"hi\""), and
 // nothing a shell would do: no variables, no globs, no pipes. The connection keeps the line in one
@@ -36,7 +37,7 @@ export function wordsOf(line) {
         if (line[at] === "\\" && (line[at + 1] === '"' || line[at + 1] === "\\")) at++;
         word += line[at++];
       }
-      if (at >= line.length) return 'a double quote is not closed: end the word with ".';
+      if (at >= line.length) return t("auth.command.aDoubleQuoteIsNotClosed");
       at++;
     }
     if (word || quoted) words.push(word);
@@ -58,19 +59,29 @@ export function quoted(/** @type {string} */ word) {
 export function commandOf(value) {
   const field = "Password command";
   if (value === undefined || value === null) return "";
-  if (typeof value !== "string") throw new Error(`${field}: text expected.`);
-  if (/[\n\r\0]/u.test(value)) throw new Error(`${field}: one line, please.`);
-  if (value.length > MAX_LENGTH) throw new Error(`${field}: at most ${MAX_LENGTH} characters.`);
+  if (typeof value !== "string")
+    throw new Error(t("auth.command.textExpected", { field: String(field) }));
+  if (/[\n\r\0]/u.test(value))
+    throw new Error(t("auth.command.oneLinePlease", { field: String(field) }));
+  if (value.length > MAX_LENGTH)
+    throw new Error(
+      t("auth.command.atMostCharacters", { field: String(field), MAX_LENGTH: String(MAX_LENGTH) }),
+    );
   const words = wordsOf(value.trim());
   if (typeof words === "string") throw new Error(`${field}: ${words}`);
   if (words.length === 0) return "";
-  if (words.length > MAX_WORDS) throw new Error(`${field}: at most ${MAX_WORDS} words.`);
+  if (words.length > MAX_WORDS)
+    throw new Error(
+      t("auth.command.atMostWords", { field: String(field), MAX_WORDS: String(MAX_WORDS) }),
+    );
   const program = /** @type {string} */ (words[0]);
   if (program.includes("/") && !program.startsWith("/"))
-    throw new Error(`${field}: the program by its name, or its full path starting with /.`);
+    throw new Error(t("auth.command.theProgramByItsNameOr", { field: String(field) }));
   const name = program.slice(program.lastIndexOf("/") + 1);
   if (GRANTED.includes(name))
-    throw new Error(`${field}: ${name} is one of the database clients, not a password program.`);
+    throw new Error(
+      t("auth.command.isOneOfTheDatabaseClients", { field: String(field), name: String(name) }),
+    );
   return words.map(quoted).join(" ");
 }
 

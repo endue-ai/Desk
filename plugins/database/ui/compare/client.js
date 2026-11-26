@@ -4,6 +4,7 @@
 // without a worker (the unit tests, a frame that cannot start one), in place, where starting a
 // worker would cost more. A comparison past MAX_CELLS a side is refused before anything is sent.
 
+import { t } from "../strings/index.js";
 import { compareSets, KEEP, MAX_CELLS, tooLarge } from "./diff.js";
 
 /**
@@ -45,7 +46,7 @@ export function createComparer(startWorker, options = {}) {
       };
       worker.onerror = (event) => {
         worker.terminate();
-        reject(new Error(event.message || "The comparison's worker stopped."));
+        reject(new Error(event.message || t("compare.client.theComparisonSWorkerStopped")));
       };
       worker.postMessage({ id, before: plain(before), after: plain(after), key, keep });
     });

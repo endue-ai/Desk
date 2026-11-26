@@ -2,6 +2,7 @@
 // .xlsx, as the bytes fs.write takes, and the answer a worker posts for it (worker.js). The rows
 // written are the selection's when there is one. No DOM.
 
+import { t } from "../strings/index.js";
 import { contentOf, encodeText } from "./bytes.js";
 import { exportText, picked } from "./text.js";
 import { xlsxOf } from "./xlsx.js";
@@ -43,7 +44,7 @@ export async function exportFile(job) {
     return { ...contentOf(bytes), rows };
   }
   const part = parts[0];
-  if (!part) throw new Error("Export: no result to write.");
+  if (!part) throw new Error(t("export.file.exportNoResultToWrite"));
   return { ...encodeText(exportText(part.set, format, options, part.base), options), rows };
 }
 

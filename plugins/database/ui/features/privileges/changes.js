@@ -6,6 +6,7 @@
 // only. Commands' arguments fill the dialogs; the person still presses Run. No DOM.
 
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { changesOf, matrixOf } from "./acl.js";
 import { objectRef } from "./grants.js";
 import { defaultPrivilegesOf } from "./kinds.js";
@@ -43,7 +44,9 @@ export function objectMatrix(/** @type {import("./controller.js").PrivState} */ 
 export function createChanges(deps, ctl) {
   const refuse = (/** @type {Connection} */ conn) => {
     if (conn.readOnly)
-      throw new Error(`${conn.name} is read-only: roles and privileges are not changed from here.`);
+      throw new Error(
+        t("features.privileges.changes.isReadOnlyRolesAndPrivileges", { name: String(conn.name) }),
+      );
   };
 
   /** Ask with the model's dialog, run its script, answer the script as shown. */
@@ -55,7 +58,7 @@ export function createChanges(deps, ctl) {
     refuse(conn);
     const dropping = model.op === "drop-policy";
     const answer = approved && dropping ? {} : await deps.dialog(DIALOG, model);
-    if (answer === undefined) throw deps.cancelled("Not run.");
+    if (answer === undefined) throw deps.cancelled(t("features.privileges.changes.notRun2"));
     const a = answersOf(answer);
     const shown = scriptOf(model, a);
     const secret = a.values.password ? { verifier: await scramVerifier(a.values.password) } : {};
@@ -67,9 +70,19 @@ export function createChanges(deps, ctl) {
       ...(dropping ? { asked: true } : {}),
     });
     const failed = done.result.error ?? done.result.statements.find((s) => s.error)?.error;
-    if (failed) throw new Error(`Not run: ${failed.message}`);
+    if (failed)
+      throw new Error(t("features.privileges.changes.notRun", { message: String(failed.message) }));
     const count = done.statements.length;
-    deps.say(`Ran ${count === 1 ? "1 statement" : `${count} statements`} on ${conn.name}.`);
+    deps.say(
+      t("features.privileges.changes.ranOn", {
+        value: String(
+          count === 1
+            ? t("features.privileges.changes.statement")
+            : t("features.privileges.changes.statements", { count: String(count) }),
+        ),
+        name: String(conn.name),
+      }),
+    );
     return { script: shown };
   };
 
@@ -96,9 +109,10 @@ export function createChanges(deps, ctl) {
     const s = ctl.stateOf(id);
     const matrix = s ? objectMatrix(s) : null;
     if (!s?.target || !matrix)
-      throw new Error("Pick an object first: its privileges are not read.");
+      throw new Error(t("features.privileges.changes.pickAnObjectFirstItsPrivileges"));
     const changes = changesOf(matrix, s.edits);
-    if (changes.length === 0) throw new Error("Nothing changed: press a cell of the matrix first.");
+    if (changes.length === 0)
+      throw new Error(t("features.privileges.changes.nothingChangedPressACellOf"));
     const as = s.probe?.superuser ? [s.probe.user, s.object.acl.owner] : [s.probe?.user ?? ""];
     const data = {
       said: ctl.said(s.target),
@@ -129,7 +143,8 @@ export function createChanges(deps, ctl) {
       const changes = changesOf(matrix, edits);
       return changes.length ? [{ entry, changes }] : [];
     });
-    if (groups.length === 0) throw new Error("Nothing changed: press a cell of a default first.");
+    if (groups.length === 0)
+      throw new Error(t("features.privileges.changes.nothingChangedPressACellOf2"));
     const done = await run(conn, defaultsModel(conn, { groups }));
     ctl.update(id, { defaultEdits: {} });
     await reread(conn);
@@ -168,7 +183,10 @@ export function createChanges(deps, ctl) {
     refuse(conn);
     const s = await opened(conn);
     const before = name ? (s.roles?.roles ?? []).find((r) => r.name === name) : null;
-    if (name && !before) throw new Error(`No role ${name} on ${conn.name}.`);
+    if (name && !before)
+      throw new Error(
+        t("features.privileges.changes.noRoleOn", { name: String(name), name2: String(conn.name) }),
+      );
     return after(
       conn,
       run(conn, roleModel(conn, { before: before ?? null, roles: roleNames(conn) }, given)),
@@ -220,7 +238,9 @@ export function createChanges(deps, ctl) {
     const security = state?.object?.security;
     if (!security)
       throw new Error(
-        state?.object?.securityError || state?.object?.error || "Its row security was not read.",
+        state?.object?.securityError ||
+          state?.object?.error ||
+          t("features.privileges.changes.itsRowSecurityWasNotRead"),
       );
     return { table: { schema: target.schema, table: target.name }, security };
   };
@@ -254,7 +274,13 @@ export function createChanges(deps, ctl) {
     const { table, security } = await tableOf(conn, { ...given, name: undefined });
     const name = typeof given.name === "string" ? given.name : "";
     if (!security.policies.some((/** @type {{ name: string }} */ p) => p.name === name))
-      throw new Error(`No policy ${name} on ${table.schema}.${table.table}.`);
+      throw new Error(
+        t("features.privileges.changes.noPolicyOn", {
+          name: String(name),
+          schema: String(table.schema),
+          table: String(table.table),
+        }),
+      );
     return after(conn, run(conn, dropPolicyModel(conn, { table, name }), approved));
   };
 

@@ -4,6 +4,7 @@
 // never 0 or "", and the fixture server's empty text reads as NULL too. No DOM.
 
 import { formatCount } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { FLOOR, HEAD, locksSql, sessionsSql } from "./sql.js";
 import { blockingTree, lockText } from "./tree.js";
 
@@ -187,7 +188,12 @@ export function saidOf(/** @type {string} */ name, /** @type {Read} */ read) {
   const waiting = read.sessions.filter((s) => s.blockedBy.length).length;
   const hidden = read.sessions.filter((s) => s.hidden && !isBackground(s)).length;
   const hides = hidden === 1 ? "1 hides its statement" : `${hidden} hide their statements`;
-  return `${formatCount(read.sessions.length)} sessions on ${name}, ${waiting || "none"} waiting${hidden ? `; ${hides}` : ""}.`;
+  return messageText("features.activity.model.sessionsOnWaiting", {
+    value: String(formatCount(read.sessions.length)),
+    name: String(name),
+    value2: String(waiting || messageText("features.activity.model.none")),
+    value3: String(hidden ? `; ${hides}` : ""),
+  });
 }
 
 /** The sentence about the sessions whose statement the role may not see, or "". */
@@ -198,7 +204,7 @@ export function hiddenOf(/** @type {Session[]} */ sessions) {
     n === 1
       ? "1 session of another role hides its statement, state and waits"
       : `${formatCount(n)} sessions of other roles hide their statements, states and waits`;
-  return `${what}: the pg_read_all_stats role (or a superuser) shows them.`;
+  return messageText("features.activity.model.thePgReadAllStatsRole", { what: String(what) });
 }
 
 /** An age in words: 850 ms, 12 s, 1 min 35 s, 2 h 5 min, 1 d 1 h; "" for none. */
@@ -256,7 +262,9 @@ export function summaryOf(/** @type {Read} */ read) {
     })),
     waits,
     hidden: read.sessions.filter((s) => s.hidden && !isBackground(s)).length,
-    ...(read.more ? { note: "The server holds more locks than were read." } : {}),
+    ...(read.more
+      ? { note: messageText("features.activity.model.theServerHoldsMoreLocksThan") }
+      : {}),
   };
 }
 

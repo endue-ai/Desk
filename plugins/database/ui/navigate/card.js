@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // What a name's card says (PG-32), from the connection's schema cache alone (nothing is asked of
 // the server): a relation's kind, columns with their types, keys, comment and row estimate; a
 // routine's overloads with their results and comments; a column's type, default and comment; a
@@ -114,7 +115,11 @@ export function cardOf(view, aim) {
   if (aim.kind === "schema") {
     const objects = view.objects(aim.name);
     if (!objects) return null;
-    return { kind: "schema", title: aim.name, detail: `${objects.length} objects` };
+    return {
+      kind: "schema",
+      title: aim.name,
+      detail: t("navigate.card.objects", { length: String(objects.length) }),
+    };
   }
   if (aim.kind === "alias") {
     const of = aim.of;

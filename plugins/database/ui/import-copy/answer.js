@@ -2,6 +2,7 @@
 // sample's records, a transform opened on a job, and one turn of it (feed the next piece, take what
 // is ready). A failure answers its sentence. Pure.
 
+import { t } from "../strings/index.js";
 import { sampleOf } from "./sample.js";
 import { base64Bytes, createTransform, exchange } from "./transform.js";
 
@@ -29,7 +30,7 @@ export function answer(held, request, readers) {
       return { id, ok: true };
     }
     if (request.turn && held.transform) return { id, ...exchange(held.transform, request.turn) };
-    return { id, error: "No file is open to read." };
+    return { id, error: t("importCopy.answer.noFileIsOpenToRead") };
   } catch (error) {
     return { id, error: error instanceof Error ? error.message : String(error) };
   }

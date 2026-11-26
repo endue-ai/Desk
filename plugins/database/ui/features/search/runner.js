@@ -6,6 +6,7 @@
 // every run's is; here only a table's few rows are folded. No DOM.
 
 import { tableName } from "../../catalog.js";
+import { t as messageText } from "../../strings/index.js";
 import { searchedColumns } from "./columns.js";
 import { fold } from "./model.js";
 import { aboutRows } from "./plan.js";
@@ -49,7 +50,10 @@ export function newRun(
       schema: c.schema,
       name: c.name,
       why: /** @type {const} */ ("size"),
-      detail: c.rows === null ? "" : `about ${aboutRows(c.rows)} rows`,
+      detail:
+        c.rows === null
+          ? ""
+          : messageText("features.search.runner.aboutRows", { value: String(aboutRows(c.rows)) }),
     })),
     empty: 0,
     kept: 0,
@@ -187,7 +191,9 @@ export function createRunner(deps) {
         )
           return end("failed", words(error));
         else {
-          const why = whyOf(error ?? { kind: "sql", message: "No answer." });
+          const why = whyOf(
+            error ?? { kind: "sql", message: messageText("features.search.runner.noAnswer") },
+          );
           skip(why.why, why.why === "failed" ? words(error ?? why) : "");
         }
       }

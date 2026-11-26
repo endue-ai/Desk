@@ -3,6 +3,7 @@
 // circle's radius). A curve is read as lines by the viewer's own statement (`geoRead`).
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { geoClient } from "./client.js";
 import { kindOf } from "./detect.js";
 import { typeName } from "./geometry.js";
@@ -46,7 +47,11 @@ export function shapeWords(/** @type {Summary} */ summary) {
 export function createShapeView(doc, act, startWorker) {
   const client = geoClient(startWorker);
   const canvas = /** @type {HTMLCanvasElement} */ (
-    el(doc, "canvas", { class: "geo-canvas", role: "img", "aria-label": "The value's shape" })
+    el(doc, "canvas", {
+      class: "geo-canvas",
+      role: "img",
+      "aria-label": t("geo.valueShape.theValueSShape"),
+    })
   );
   const box = el(doc, "div", { class: "value-shape", hidden: true }, canvas);
   const surface = createSurface(canvas, client, { drawn() {}, failed() {} });

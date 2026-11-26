@@ -1,3 +1,5 @@
+import { t as messageText } from "../../strings/index.js";
+
 // The maintenance form's model: a target from an explorer row or a command's arguments, what the
 // server's rows say of it (the version, the sizes, the statistics, the indexes), what the progress
 // views say of a run, sizes in words, and the statistics before and after a run side by side. Pure.
@@ -42,17 +44,24 @@ export function targetOf(/** @type {import("../../explorer.js").Node} */ node) {
   const indexed = ["index", "primary key", "unique", "exclusion"];
   if (node.kind === "connection") return blank;
   if (node.kind === "group" || node.kind === "info")
-    throw new Error("Pick a connection, a schema, a table or an index in the explorer.");
+    throw new Error(messageText("features.maintenance.model.pickAConnectionASchemaA"));
   const schema = node.schema ?? "";
   if (node.kind === "part" && node.part && indexed.includes(node.part.kind))
     return { ...blank, kind: "index", schema, table: node.table ?? "", index: node.part.name };
   if (node.kind === "object")
-    throw new Error(`${node.label} is not a table: maintenance runs on tables and their indexes.`);
+    throw new Error(
+      messageText("features.maintenance.model.isNotATableMaintenanceRuns", {
+        label: String(node.label),
+      }),
+    );
   if (node.kind === "table") {
     const kind = node.object?.kind ?? "table";
     if (kind !== "table" && kind !== "materialized view")
       throw new Error(
-        `${node.label} is a ${kind}: maintenance runs on tables and materialized views.`,
+        messageText("features.maintenance.model.isAMaintenanceRunsOnTables", {
+          label: String(node.label),
+          kind: String(kind),
+        }),
       );
   }
   if (node.table) return { ...blank, kind: "table", schema, table: node.table };
@@ -64,7 +73,8 @@ export function targetOf(/** @type {import("../../explorer.js").Node} */ node) {
 export function targetFrom(/** @type {Record<string, unknown>} */ args) {
   const s = (/** @type {unknown} */ v) => (typeof v === "string" ? v : "");
   const [schema, table, index] = [s(args.schema), s(args.table), s(args.index)];
-  if ((table || index) && !schema) throw new Error("Name the schema of the table or the index.");
+  if ((table || index) && !schema)
+    throw new Error(messageText("features.maintenance.model.nameTheSchemaOfTheTable"));
   if (index) return { kind: /** @type {const} */ ("index"), schema, table: "", index };
   if (table) return { kind: /** @type {const} */ ("table"), schema, table, index: "" };
   if (schema) return { kind: /** @type {const} */ ("schema"), schema, table: "", index: "" };

@@ -5,6 +5,7 @@
 
 import { tableName } from "../catalog.js";
 import { formatCount } from "../format.js";
+import { t } from "../strings/index.js";
 import { tableOf } from "./sample.js";
 import { copyModel, copyState, copyStatements, inferInto, targetColumns } from "./wizard.js";
 
@@ -67,8 +68,12 @@ export function createCopyBranch(starts) {
       const { columns, table, name } = target(s, conn);
       let problem = s.unreadable || s.problem;
       if (!problem && !name)
-        problem = state.target === "new" ? "Name the new table." : "Pick the table to import into.";
-      else if (!problem && s.data.rows.length === 0) problem = "The file holds no rows.";
+        problem =
+          state.target === "new"
+            ? t("importCopy.branch.nameTheNewTable")
+            : t("importCopy.branch.pickTheTableToImportInto");
+      else if (!problem && s.data.rows.length === 0)
+        problem = t("importCopy.branch.theFileHoldsNoRows");
       const planned = problem ? { problem } : copyStatements(state, table, columns);
       const sql =
         "problem" in planned ? "" : [planned.create, planned.copy].filter(Boolean).join(";\n");
@@ -125,7 +130,12 @@ export function createCopyBranch(starts) {
             state.batch > 0 ? `in ${formatCount(done.batches)} batches` : "in one transaction";
           return {
             ok: true,
-            message: `Imported ${rowsText(done.rows)} into ${name} by COPY ${how}${refused}.`,
+            message: t("importCopy.branch.importedIntoByCopy", {
+              value: String(rowsText(done.rows)),
+              name: String(name),
+              how: String(how),
+              refused: String(refused),
+            }),
           };
         }
         const said = abort.signal.aborted ? "Cancelled" : done.message;
@@ -133,7 +143,10 @@ export function createCopyBranch(starts) {
           done.rows > 0
             ? `the first ${rowsText(done.rows)} stay, committed in ${formatCount(done.batches)} batches`
             : "nothing was imported";
-        return { ok: false, message: `Rolled back, ${kept}: ${said}` };
+        return {
+          ok: false,
+          message: t("importCopy.branch.rolledBack", { kept: String(kept), said: String(said) }),
+        };
       } catch (error) {
         return { ok: false, message: messageOf(error) };
       } finally {

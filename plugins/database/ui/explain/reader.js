@@ -1,6 +1,8 @@
 // The plan reader: a plan of 64 KiB of text or more is read in the plan worker (worker.js), a
 // smaller one in place, where starting a worker would cost more than the reading. One worker serves
 // every plan; when it fails, what was in flight fails with it and the next big plan starts another.
+
+import { t } from "../strings/index.js";
 import { planOf } from "./plan.js";
 
 /**
@@ -41,7 +43,8 @@ export function createPlanReader(startWorker) {
       if ("error" in data) entry.reject(new Error(data.error));
       else entry.resolve(data.plan ?? undefined);
     };
-    fresh.onerror = (event) => stop(new Error(event.message || "The plan reader stopped."));
+    fresh.onerror = (event) =>
+      stop(new Error(event.message || t("explain.reader.thePlanReaderStopped")));
     worker = fresh;
     return fresh;
   };

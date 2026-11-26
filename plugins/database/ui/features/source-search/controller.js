@@ -6,6 +6,7 @@
 // routine's or a view's console, PG-52) or its DDL, at the line. Nothing here writes. No DOM.
 
 import { bridgeStore } from "../../schema-cache/store.js";
+import { t } from "../../strings/index.js";
 import { openSource } from "../objects/source.js";
 import { createSources } from "../palette/sources.js";
 import { itemsOf, needOf } from "./items.js";
@@ -68,7 +69,8 @@ export function createSourcePanels(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!conn) throw new Error("This search's connection was removed.");
+    if (!conn)
+      throw new Error(t("features.sourceSearch.controller.thisSearchSConnectionWasRemoved"));
     return conn;
   };
   /** The cache of a connection, opened (it asks nothing: quiet). */
@@ -95,13 +97,18 @@ export function createSourcePanels(deps) {
     const view = await viewOf(conn);
     if (!view)
       throw new Error(
-        `${conn.name} has no schema cache: Database: read the schema again reads it.`,
+        t("features.sourceSearch.controller.hasNoSchemaCacheDatabaseRead", {
+          name: String(conn.name),
+        }),
       );
     if (options.scope === "database")
       return { steps: sorted(view).map((schema) => ({ conn, view, schema })), notes };
     if (!view.held(options.schema))
       throw new Error(
-        `${options.schema || "No schema"} is not in ${conn.name}'s schema cache: pick a cached one, or read it with Database: read the schema again.`,
+        t("features.sourceSearch.controller.isNotInSSchemaCache", {
+          value: String(options.schema || t("features.sourceSearch.controller.noSchema")),
+          name: String(conn.name),
+        }),
       );
     return { steps: [{ conn, view, schema: options.schema }], notes };
   };
@@ -114,12 +121,14 @@ export function createSourcePanels(deps) {
       (!ref && shown ? deps.manager.get(shown.connection) : undefined) ??
       (await deps.manager.choose(
         ref || undefined,
-        "Database: search the source on which connection?",
+        t("features.sourceSearch.controller.databaseSearchTheSourceOnWhich"),
       ));
     if (!conn) return undefined;
     if (conn.engine !== "postgresql")
       throw new Error(
-        `${conn.name} is not PostgreSQL: the source search reads PostgreSQL's schema cache.`,
+        t("features.sourceSearch.controller.isNotPostgresqlTheSourceSearch", {
+          name: String(conn.name),
+        }),
       );
     const view = await viewOf(conn);
     const schemas = view ? sorted(view) : [];
@@ -142,7 +151,7 @@ export function createSourcePanels(deps) {
     };
     const panel = await deps.consoles.openPanel(conn, TYPE, name, state);
     if (!direct) {
-      deps.say("Type what to find in the source of routines, views and table parts, then Search.");
+      deps.say(t("features.sourceSearch.controller.typeWhatToFindInThe"));
       return { opened: panel.id };
     }
     return answerOf(await start(panel.id, {}));
@@ -162,8 +171,9 @@ export function createSourcePanels(deps) {
    */
   const start = async (id, fields) => {
     const state = stateOf(id);
-    if (!state) throw new Error("No source search panel is open.");
-    if (running.has(id)) throw new Error("A source search is going on: cancel it first.");
+    if (!state) throw new Error(t("features.sourceSearch.controller.noSourceSearchPanelIsOpen"));
+    if (running.has(id))
+      throw new Error(t("features.sourceSearch.controller.aSourceSearchIsGoingOn"));
     const conn = connOf(id);
     const options = optionsOf(fields, state.options);
     const control = new AbortController();
@@ -171,8 +181,10 @@ export function createSourcePanels(deps) {
     const matcher = createMatcher(deps.startWorker);
     try {
       update(id, { options, error: "" });
-      if (options.text === "") throw new Error("Type the text to find first.");
-      if (options.kinds.length === 0) throw new Error("Pick at least one kind of object.");
+      if (options.text === "")
+        throw new Error(t("features.sourceSearch.controller.typeTheTextToFindFirst"));
+      if (options.kinds.length === 0)
+        throw new Error(t("features.sourceSearch.controller.pickAtLeastOneKindOf"));
       const { steps, notes } = await stepsOf(conn, options);
       let run = { ...newRun(options, steps.length, now()), notes };
       const tell = (/** @type {Partial<Run>} */ patch = {}) => {
@@ -225,7 +237,11 @@ export function createSourcePanels(deps) {
         } catch (error) {
           if (isCancel(error) || signal.aborted) throw error;
           note(
-            `${on.name} · ${schema}: the bodies of its routines and views were not read: ${words(error)}`,
+            t("features.sourceSearch.controller.theBodiesOfItsRoutinesAnd", {
+              name: String(on.name),
+              schema: String(schema),
+              value: String(words(error)),
+            }),
           );
         }
       const items = itemsOf(view, schema, o, held);
@@ -261,7 +277,7 @@ export function createSourcePanels(deps) {
     const shown = deps.consoles.current();
     const target = id ?? (shown?.kind === TYPE ? shown.id : [...running.keys()].at(-1));
     const control = target ? running.get(target) : undefined;
-    if (!control) throw new Error("No source search is going on.");
+    if (!control) throw new Error(t("features.sourceSearch.controller.noSourceSearchIsGoingOn"));
     control.abort();
     return { cancelled: true };
   };
@@ -274,9 +290,12 @@ export function createSourcePanels(deps) {
    */
   const openHit = async (id, o, l = 0) => {
     const hit = stateOf(id)?.run?.objects[o];
-    if (!hit) throw new Error("That result is gone: search again.");
+    if (!hit) throw new Error(t("features.sourceSearch.controller.thatResultIsGoneSearchAgain"));
     const conn = deps.manager.get(hit.connection);
-    if (!conn) throw new Error(`${hit.where} was removed.`);
+    if (!conn)
+      throw new Error(
+        t("features.sourceSearch.controller.wasRemoved", { where: String(hit.where) }),
+      );
     const line = hit.lines[l]?.line ?? hit.lines[0]?.line ?? 1;
     let text = hit.text ?? "";
     let what = "its DDL";
@@ -292,7 +311,13 @@ export function createSourcePanels(deps) {
     const at = lineRange(text, line);
     deps.view.select(at.from, at.to);
     deps.view.focus("editor");
-    deps.say(`${hit.name}: line ${line} of ${what}.`);
+    deps.say(
+      t("features.sourceSearch.controller.lineOf", {
+        name: String(hit.name),
+        line: String(line),
+        what: String(what),
+      }),
+    );
     return { line };
   };
 

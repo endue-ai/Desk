@@ -4,6 +4,7 @@
 // `unsupported`; that, a refused grant, an answer in words and a brain that does not answer in
 // time each come back as a sentence, and the console works as before.
 
+import { t } from "../../strings/index.js";
 import { TOOL_NAMES } from "./payload.js";
 
 /**
@@ -15,25 +16,24 @@ import { TOOL_NAMES } from "./payload.js";
 
 export const SCOPE = Object.freeze({ permission: "brain:ask" });
 const WAIT_MS = 120_000;
-export const NO_BRAIN =
-  "No brain is set up on this desk, so Eris cannot help with SQL here; the console works as before.";
+export const NO_BRAIN = t("features.assist.brain.noBrainIsSetUpOn");
 
 const STATEMENT = {
   type: "string",
   maxLength: 20_000,
-  description: "The SQL, as it goes in the console: a statement, or a short script.",
+  description: t("features.assist.brain.theSqlAsItGoesIn"),
 };
 const EXPLANATION = {
   type: "string",
   maxLength: 4000,
-  description: "Plain sentences for the person; no SQL in them.",
+  description: t("features.assist.brain.plainSentencesForThePersonNo"),
 };
 
 /** The tool of each task: the brain must call it, and its arguments are the answer. */
 export const TOOLS = Object.freeze({
   write: {
     name: TOOL_NAMES.write,
-    description: "Propose SQL for the person's request; they review it before anything runs.",
+    description: t("features.assist.brain.proposeSqlForThePersonS"),
     schema: {
       type: "object",
       properties: { statement: STATEMENT, explanation: EXPLANATION },
@@ -43,7 +43,7 @@ export const TOOLS = Object.freeze({
   },
   fix: {
     name: TOOL_NAMES.fix,
-    description: "Propose the failed statement fixed; the person reviews it before it runs.",
+    description: t("features.assist.brain.proposeTheFailedStatementFixedThe"),
     schema: {
       type: "object",
       properties: { statement: STATEMENT, explanation: EXPLANATION },
@@ -53,7 +53,7 @@ export const TOOLS = Object.freeze({
   },
   explain: {
     name: TOOL_NAMES.explain,
-    description: "Explain a SQL statement to the person about to run it.",
+    description: t("features.assist.brain.explainASqlStatementToThe"),
     schema: {
       type: "object",
       properties: { explanation: EXPLANATION },
@@ -63,7 +63,7 @@ export const TOOLS = Object.freeze({
   },
   plan: {
     name: TOOL_NAMES.plan,
-    description: "Explain a query plan, with an index or a rewrite as a suggestion when one helps.",
+    description: t("features.assist.brain.explainAQueryPlanWithAn"),
     schema: {
       type: "object",
       properties: { explanation: EXPLANATION, suggestion: STATEMENT },
@@ -99,7 +99,7 @@ export function createBrain(bridge) {
       asked = true;
       const answer = await bridge.call("perm.request", {
         permission: { ...SCOPE },
-        reason: "Eris helps with the SQL in a console: what is sent is shown first.",
+        reason: t("features.assist.brain.erisHelpsWithTheSqlIn"),
       });
       if (!answer?.granted) throw error;
       return bridge.call("brain.ask", params);
@@ -119,7 +119,7 @@ export function createBrain(bridge) {
     } catch (error) {
       const code = /** @type {{ code?: string }} */ (error)?.code;
       if (code === "permission_denied")
-        return { ok: false, text: "The desk does not let the Database plugin ask Eris." };
+        return { ok: false, text: t("features.assist.brain.theDeskDoesNotLetThe") };
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, text: code === "unsupported" ? NO_BRAIN : `${NO_BRAIN} (${message})` };
     }
@@ -138,11 +138,16 @@ export function createBrain(bridge) {
       }
     });
     const d = /** @type {any} */ (data);
-    if (!d) return { ok: false, text: "Eris did not answer in time: nothing changed." };
+    if (!d) return { ok: false, text: t("features.assist.brain.erisDidNotAnswerInTime") };
     if (d.kind !== "completed")
-      return { ok: false, text: `Eris could not answer: ${d.text || "the brain is offline"}.` };
+      return {
+        ok: false,
+        text: t("features.assist.brain.erisCouldNotAnswer", {
+          value: String(d.text || t("features.assist.brain.theBrainIsOffline")),
+        }),
+      };
     if (!d.structured || typeof d.structured !== "object")
-      return { ok: false, text: "Eris answered in words only, so there is nothing to propose." };
+      return { ok: false, text: t("features.assist.brain.erisAnsweredInWordsOnlySo") };
     return { ok: true, value: d.structured };
   }
   return { ask };

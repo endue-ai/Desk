@@ -8,6 +8,7 @@
 import { literal } from "../edit/values.js";
 import { formatRows } from "../results.js";
 import { quoteName } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { xmlSafe } from "./chars.js";
 
 /**
@@ -206,7 +207,7 @@ export function template(
     if (named >= 0) return named;
     const n = /^[1-9][0-9]*$/u.test(name) ? Number(name) - 1 : -2;
     if (n >= 0 && n < columns.length) return n;
-    throw new Error(`Export: the template's {{${name}}} names no column of the result.`);
+    throw new Error(t("export.text.exportTheTemplateSNamesNo", { name: String(name) }));
   };
   const parts = o.row.split(PLACEHOLDER);
   const slots = parts.map((part, i) => (i % 2 ? at(part) : -3));

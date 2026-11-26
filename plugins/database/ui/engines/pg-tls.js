@@ -9,6 +9,7 @@
 
 import { readScope, withGrant } from "../console-files.js";
 import { bridgePath } from "../platform.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
@@ -94,10 +95,12 @@ export function createTls(bridge, passphrases = NONE) {
     const reason = `To present ${conn.name}'s client certificate`;
     const certPem = await read("Certificate file", cert, scope(cert), reason);
     if (!certPem.includes("-----BEGIN CERTIFICATE-----"))
-      throw new Error(`Certificate file: ${cert} holds no PEM certificate.`);
+      throw new Error(
+        t("engines.pgTls.certificateFileHoldsNoPemCertificate", { cert: String(cert) }),
+      );
     const keyPem = await read("Key file", key, scope(key), reason);
     if (!/-----BEGIN [A-Z ]*PRIVATE KEY-----/u.test(keyPem))
-      throw new Error(`Key file: ${key} holds no PEM private key.`);
+      throw new Error(t("engines.pgTls.keyFileHoldsNoPemPrivate", { key: String(key) }));
     return { cert: certPem, key: keyPem };
   };
 
@@ -154,8 +157,8 @@ export function createTls(bridge, passphrases = NONE) {
     kind: "connect",
     message:
       why === "wrong"
-        ? `Key file: the passphrase does not decrypt ${conn.sslKey}.`
-        : `Key file: ${conn.sslKey} is encrypted, and its passphrase was not typed.`,
+        ? t("engines.pgTls.keyFileThePassphraseDoesNot", { sslKey: String(conn.sslKey) })
+        : t("engines.pgTls.keyFileIsEncryptedAndIts", { sslKey: String(conn.sslKey) }),
   });
 
   return { of, open, refused };

@@ -1,3 +1,4 @@
+import { t as messageText } from "../../strings/index.js";
 // A pg_dump or pg_restore run in its log panel (features/README.md): the panel opens with the exact
 // command line, its verbose lines are drawn as they come (a fresh state at most every 150 ms, the
 // last 1,000 lines kept), what it got through is counted from them, and the end says what came of
@@ -81,7 +82,10 @@ export function createJobs(deps, clock = {}) {
   /** Run a program in its panel; resolves with the last state once it ended. */
   const run = async (/** @type {Spec} */ spec) => {
     const open = panels().find((b) => b.name === spec.name && controllers.has(b.id));
-    if (open) throw new Error(`${spec.name} is still running: cancel it first.`);
+    if (open)
+      throw new Error(
+        messageText("features.backup.job.isStillRunningCancelItFirst", { name: String(spec.name) }),
+      );
     const panel = await deps.consoles.openPanel(spec.conn, TYPE, spec.name, spec.state);
     const id = panel.id;
     const control = new AbortController();

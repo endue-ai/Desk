@@ -28,6 +28,7 @@ import {
 import { sourceOf } from "./edit/source.js";
 import { previewSql, submitChanges } from "./edit/submit.js";
 import { engineOf } from "./engines/index.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -102,9 +103,9 @@ export function createEdits(deps) {
     });
     /** @type {EditState} */
     let state;
-    if (!set) state = refused("Pick a result with rows first.");
+    if (!set) state = refused(t("edits.pickAResultWithRowsFirst"));
     else if (target.shown?.tabs[target.tab]?.kind === "pinned")
-      state = refused("A pinned result is kept as it was: run its query again to change its rows.");
+      state = refused(t("edits.aPinnedResultIsKeptAs"));
     else if (conn.readOnly) state = refused(refusalOf(conn, undefined));
     else {
       const { dialect } = engineOf(conn.engine);
@@ -133,7 +134,8 @@ export function createEdits(deps) {
       else {
         const schema = source.schema ?? defaultSchema(conn);
         const columns = await deps.catalog.columns(conn, schema, source.name);
-        if (columns.length === 0) state = refused(`No table ${source.name} was found to change.`);
+        if (columns.length === 0)
+          state = refused(t("edits.noTableWasFoundToChange", { name: String(source.name) }));
         else {
           const found = targetOf(dialect, { schema, name: source.name }, set.columns, columns);
           const reason = refusalOf(conn, found.target, found.reason);
@@ -211,7 +213,7 @@ export function createEdits(deps) {
     step(target, state, step) {
       const set = shownSet(target);
       if (target.edit !== state || !state.target || !set)
-        throw new Error("The result on screen changed meanwhile: nothing was changed. Try again.");
+        throw new Error(t("edits.theResultOnScreenChangedMeanwhile"));
       return record(/** @type {EditState & { target: Target }} */ (state), set, step);
     },
     /** Take back the last step of the result on screen; false when there is none. */
@@ -260,7 +262,7 @@ export function createEdits(deps) {
     preview(/** @type {Console} */ target) {
       const set = shownSet(target);
       if (!target.edit?.target || !set || target.edit.count === 0)
-        throw new Error("No pending changes.");
+        throw new Error(t("edits.noPendingChanges"));
       return previewSql(target.edit.target, set, target.edit.changes);
     },
     /** Run the changes in one transaction; on success read the rows again. */
@@ -268,7 +270,7 @@ export function createEdits(deps) {
       const state = target.edit;
       const set = shownSet(target);
       if (!state?.target || !set || state.count === 0)
-        throw new Error("No pending changes to submit.");
+        throw new Error(t("edits.noPendingChangesToSubmit"));
       const done = await submitChanges({
         execute: deps.execute,
         conn,

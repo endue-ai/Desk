@@ -8,6 +8,7 @@
 // logged, kept or shown. It runs again for every new session: nothing is cached. A failure says the
 // program's exit and its standard error's first line. No DOM.
 
+import { t } from "../strings/index.js";
 import { argvOf } from "./command.js";
 import { commandFor } from "./fields.js";
 import { reviewConnection } from "./review.js";
@@ -64,7 +65,7 @@ export function createHelper(deps) {
     const given = await approvals();
     if (given[conn.id] === command) return true;
     const yes = await deps
-      .confirm(`Database: run a program to get ${conn.name}'s password?`, [
+      .confirm(t("auth.helper.databaseRunAProgramToGet", { name: String(conn.name) }), [
         command,
         "It runs without a shell each time a session of this connection signs in; what it prints is the password, never kept",
       ])
@@ -85,13 +86,13 @@ export function createHelper(deps) {
     const command = commandFor(conn);
     const { program, args } = argvOf(command);
     const said = `${conn.name}'s password command`;
-    if (!program) return failed(`${said} is empty.`);
+    if (!program) return failed(t("auth.helper.isEmpty", { said: String(said) }));
     const mayRun = quiet ? (await approvals())[conn.id] === command : await approved(conn, command);
     if (!mayRun)
       return failed(
         quiet
-          ? `${said} was not run: allow it from the connection form.`
-          : `${said} was not run: it is not allowed.`,
+          ? t("auth.helper.wasNotRunAllowItFrom", { said: String(said) })
+          : t("auth.helper.wasNotRunItIsNot", { said: String(said) }),
       );
     /** @type {Outcome} */
     let outcome;
@@ -112,10 +113,13 @@ export function createHelper(deps) {
     } catch (error) {
       return failed(`${said}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    if (outcome.timedOut) return failed(`${said} did not finish in ${HELPER_MS / 1000} s.`);
-    if (outcome.cancelled) return failed(`${said} was stopped.`);
+    if (outcome.timedOut)
+      return failed(
+        t("auth.helper.didNotFinishInS", { said: String(said), value: String(HELPER_MS / 1000) }),
+      );
+    if (outcome.cancelled) return failed(t("auth.helper.wasStopped", { said: String(said) }));
     if (outcome.code !== 0) {
-      const why = firstLine(outcome.stderr) || "it wrote nothing to its standard error";
+      const why = firstLine(outcome.stderr) || t("auth.helper.itWroteNothingToItsStandard");
       const how =
         outcome.code === null
           ? `ended by ${outcome.signal ?? "a signal"}`
@@ -123,7 +127,8 @@ export function createHelper(deps) {
       return failed(`${said} ${how}: ${why}`);
     }
     const password = outcome.stdout.split(/\r?\n/u)[0] ?? "";
-    if (!password) return failed(`${said} printed no password on its first line.`);
+    if (!password)
+      return failed(t("auth.helper.printedNoPasswordOnItsFirst", { said: String(said) }));
     return { password };
   };
   return Object.assign(fetch, {

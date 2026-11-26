@@ -7,8 +7,10 @@
 // colours: maintenance.css.
 
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 import { locksOf } from "./locks.js";
 import { labelOf, summaryOf } from "./model.js";
+import { optionOf } from "./option-view.js";
 import { offered, operationsFor, TITLES } from "./options.js";
 import { runSection } from "./result.js";
 import { refusalOf } from "./runs.js";
@@ -16,73 +18,13 @@ import { statementOf } from "./sql.js";
 
 /**
  * @typedef {import("./controller.js").MaintenanceState} MaintenanceState
- * @typedef {import("./options.js").Offer} Offer
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
 /** How long after a progress read the next one starts, while a run goes on. */
 export const POLL_MS = 1500;
-const HINTS = "Mod+Enter run · Escape cancel · g read again";
+const HINTS = messageText("features.maintenance.panel.modEnterRunEscapeCancelG");
 const FIELDS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
-const SWITCH = { "": "The table's setting", auto: "AUTO", on: "ON", off: "OFF" };
-
-/** One option's control, its label, and why it does not apply when it does not. */
-function optionOf(
-  /** @type {Document} */ doc,
-  /** @type {Offer} */ offer,
-  /** @type {MaintenanceState} */ s,
-  /** @type {(key: string, value: unknown) => void} */ set,
-) {
-  const value = s.options[offer.key];
-  const off = offer.why !== "" || s.run?.status === "running";
-  const attrs = { "data-key": offer.key, ...(off ? { disabled: true } : {}) };
-  const why = offer.why ? el(doc, "span", { class: "maint-why" }, offer.why) : undefined;
-  if (offer.type === "check") {
-    const input = /** @type {HTMLInputElement} */ (
-      el(doc, "input", { type: "checkbox", class: "desk-check", ...attrs })
-    );
-    input.checked = value === true;
-    input.addEventListener("change", () => set(offer.key, input.checked));
-    return el(doc, "label", { class: "maint-option" }, input, ` ${offer.label}`, why);
-  }
-  /** @type {HTMLInputElement | HTMLSelectElement} */
-  let field;
-  if (offer.type === "switch" || offer.type === "pick") {
-    const none =
-      offer.key === "tablespace" ? "Where they are" : offer.key === "using" ? "Pick one" : "";
-    field = /** @type {HTMLSelectElement} */ (
-      el(
-        doc,
-        "select",
-        { class: "desk-field", ...attrs },
-        ...offer.values.map((v) =>
-          el(
-            doc,
-            "option",
-            { value: v },
-            offer.type === "switch" ? SWITCH[/** @type {keyof typeof SWITCH} */ (v)] : v || none,
-          ),
-        ),
-      )
-    );
-    field.value = String(value ?? "");
-  } else {
-    const number = offer.type === "number";
-    field = /** @type {HTMLInputElement} */ (
-      el(doc, "input", {
-        class: "desk-field",
-        ...(number
-          ? { type: "number", min: "0", max: "1024", placeholder: "server decides" }
-          : { placeholder: "256kB" }),
-        ...attrs,
-      })
-    );
-    field.value = value === null ? "" : String(value);
-  }
-  field.addEventListener("change", () => set(offer.key, field.value));
-  return el(doc, "label", { class: "maint-option maint-field" }, `${offer.label} `, field, why);
-}
-
 /**
  * @param {Document} doc
  * @param {MaintenanceState} first
@@ -173,7 +115,10 @@ export function maintenancePanel(doc, first, act, buffer) {
         "p",
         { class: "maint-title" },
         el(doc, "strong", {}, titleOf(s.target, read?.database ?? "")),
-        ` on ${s.conn.name}${where ? ` · ${where}` : ""}`,
+        messageText("features.maintenance.panel.on", {
+          name: String(s.conn.name),
+          value: String(where ? ` · ${where}` : ""),
+        }),
       ),
       el(
         doc,
@@ -182,10 +127,10 @@ export function maintenancePanel(doc, first, act, buffer) {
           type: "button",
           class: "desk-btn desk-btn-quiet",
           "data-ctl": "refresh",
-          title: "Read the target again (g)",
+          title: messageText("features.maintenance.panel.readTheTargetAgainG"),
           ...(running || s.reading ? { disabled: true } : {}),
         },
-        "Read again",
+        messageText("features.maintenance.panel.readAgain"),
       ),
     );
     const facts = el(
@@ -193,7 +138,21 @@ export function maintenancePanel(doc, first, act, buffer) {
       "p",
       { class: "maint-facts", "data-part": "facts" },
       read
-        ? `${summaryOf(s.target, read.stats)} · last vacuum ${read.stats.lastVacuum ?? "never"} (auto ${read.stats.lastAutovacuum ?? "never"}) · last analyze ${read.stats.lastAnalyze ?? "never"} (auto ${read.stats.lastAutoanalyze ?? "never"})`
+        ? messageText("features.maintenance.panel.lastVacuumAutoLastAnalyzeAuto", {
+            value: String(summaryOf(s.target, read.stats)),
+            value2: String(
+              read.stats.lastVacuum ?? messageText("features.maintenance.panel.never"),
+            ),
+            value3: String(
+              read.stats.lastAutovacuum ?? messageText("features.maintenance.panel.never"),
+            ),
+            value4: String(
+              read.stats.lastAnalyze ?? messageText("features.maintenance.panel.never"),
+            ),
+            value5: String(
+              read.stats.lastAutoanalyze ?? messageText("features.maintenance.panel.never"),
+            ),
+          })
         : "",
     );
     const parts = [head, facts];
@@ -209,7 +168,7 @@ export function maintenancePanel(doc, first, act, buffer) {
             doc,
             "button",
             { type: "button", class: "desk-btn", "data-ctl": "refresh" },
-            "Try again",
+            messageText("features.maintenance.panel.tryAgain"),
           ),
         ),
       );
@@ -222,7 +181,7 @@ export function maintenancePanel(doc, first, act, buffer) {
           {
             class: "desk-tabs maint-ops",
             role: "tablist",
-            "aria-label": "Operation",
+            "aria-label": messageText("features.maintenance.panel.operation"),
             "data-part": "operations",
           },
           ...ops.map((op) =>
@@ -248,7 +207,12 @@ export function maintenancePanel(doc, first, act, buffer) {
           doc,
           "fieldset",
           { class: "maint-options", "data-part": "options" },
-          el(doc, "legend", { class: "sr-only" }, "Options"),
+          el(
+            doc,
+            "legend",
+            { class: "sr-only" },
+            messageText("features.maintenance.panel.options"),
+          ),
           ...offers.map((o) => optionOf(doc, o, s, set)),
         ),
       );
@@ -257,7 +221,11 @@ export function maintenancePanel(doc, first, act, buffer) {
         el(
           doc,
           "pre",
-          { class: "maint-sql", "data-part": "statement", "aria-label": "Statement" },
+          {
+            class: "maint-sql",
+            "data-part": "statement",
+            "aria-label": messageText("features.maintenance.panel.statement"),
+          },
           sql,
         ),
       );
@@ -279,7 +247,9 @@ export function maintenancePanel(doc, first, act, buffer) {
               doc,
               "p",
               { class: "desk-callout-title" },
-              locks.heavy ? "What it blocks" : "What it locks",
+              locks.heavy
+                ? messageText("features.maintenance.panel.whatItBlocks")
+                : messageText("features.maintenance.panel.whatItLocks"),
             ),
             el(
               doc,
@@ -308,7 +278,7 @@ export function maintenancePanel(doc, first, act, buffer) {
             "data-ctl": "run",
             ...(can ? {} : { disabled: true }),
           },
-          `Run ${TITLES[s.operation]}`,
+          messageText("features.maintenance.panel.run", { value: String(TITLES[s.operation]) }),
         ),
         running
           ? el(
@@ -320,16 +290,18 @@ export function maintenancePanel(doc, first, act, buffer) {
                 "data-ctl": "cancel",
                 ...(s.run?.cancelling ? { disabled: true } : {}),
               },
-              s.run?.cancelling ? "Cancelling…" : "Cancel",
+              s.run?.cancelling
+                ? messageText("features.maintenance.panel.cancelling")
+                : messageText("features.maintenance.panel.cancel"),
             )
           : undefined,
         el(
           doc,
           "span",
           { class: "maint-keys" },
-          el(doc, "kbd", { class: "desk-kbd" }, "Mod"),
-          el(doc, "kbd", { class: "desk-kbd" }, "Enter"),
-          " run",
+          el(doc, "kbd", { class: "desk-kbd" }, messageText("features.maintenance.panel.mod")),
+          el(doc, "kbd", { class: "desk-kbd" }, messageText("features.maintenance.panel.enter")),
+          messageText("features.maintenance.panel.run2"),
         ),
       ),
     );

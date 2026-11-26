@@ -5,6 +5,7 @@
 // No DOM.
 
 import { FORMATS } from "../results.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../results.js").Format | "xlsx" | "html" | "xml" | "template"} ExportFormat
@@ -38,16 +39,16 @@ export const EXTENSIONS = /** @type {Record<ExportFormat, string>} */ ({
 });
 
 export const LABELS = /** @type {Record<ExportFormat, string>} */ ({
-  tsv: "TSV",
-  csv: "CSV",
-  json: "JSON",
-  markdown: "Markdown",
-  insert: "SQL INSERT",
-  update: "SQL UPDATE",
-  xlsx: "Spreadsheet (.xlsx)",
-  html: "HTML table",
-  xml: "XML",
-  template: "Your own template",
+  tsv: t("export.options.tsv"),
+  csv: t("export.options.csv"),
+  json: t("export.options.json"),
+  markdown: t("export.options.markdown"),
+  insert: t("export.options.sqlInsert"),
+  update: t("export.options.sqlUpdate"),
+  xlsx: t("export.options.spreadsheetXlsx"),
+  html: t("export.options.htmlTable"),
+  xml: t("export.options.xml"),
+  template: t("export.options.yourOwnTemplate"),
 });
 
 /** The options each format reads, in the dialog's order. */
@@ -99,11 +100,15 @@ const choice = (
   /** @type {readonly string[]} */ allowed,
 ) => {
   if (typeof value === "string" && allowed.includes(value)) return value;
-  throw new Error(`Export: ${name} is one of ${allowed.join(", ")}.`);
+  throw new Error(
+    t("export.options.exportIsOneOf", { name: String(name), value: String(allowed.join(", ")) }),
+  );
 };
 const text = (/** @type {string} */ name, /** @type {unknown} */ value, max = 4096) => {
   if (typeof value === "string" && value.length <= max) return value;
-  throw new Error(`Export: ${name} is text of ${max} characters at most.`);
+  throw new Error(
+    t("export.options.exportIsTextOfCharactersAt", { name: String(name), max: String(max) }),
+  );
 };
 
 /**
@@ -121,9 +126,7 @@ export function optionsOf(format, given = {}) {
     if (key === "delimiter") {
       const d = text("the delimiter", value === "\\t" ? "\t" : value, 2);
       if (d.length !== 1 || /["\r\n\\]/u.test(d))
-        throw new Error(
-          "Export: the delimiter is one character, not a quote, a backslash or a line break.",
-        );
+        throw new Error(t("export.options.exportTheDelimiterIsOneCharacter"));
       out.delimiter = d;
     } else if (key === "quote")
       out.quote = /** @type {Quote} */ (choice("quoting", value, ["needed", "always", "never"]));
@@ -134,11 +137,12 @@ export function optionsOf(format, given = {}) {
         choice("the encoding", value, ["utf-8", "utf-16le", "utf-16be"])
       );
     else if (key === "header" || key === "bom") {
-      if (typeof value !== "boolean") throw new Error(`Export: ${key} is true or false.`);
+      if (typeof value !== "boolean")
+        throw new Error(t("export.options.exportIsTrueOrFalse", { key: String(key) }));
       out[key] = value;
     } else if (key === "batch") {
       if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 10_000)
-        throw new Error("Export: the batch size is a whole number from 1 to 10000.");
+        throw new Error(t("export.options.exportTheBatchSizeIsA"));
       out.batch = Number(value);
     } else if (key === "null") out.null = text("the text for NULL", value, 100);
     else if (key === "table") out.table = text("the table", value, 300).trim();
@@ -146,6 +150,6 @@ export function optionsOf(format, given = {}) {
       out[key] = text(`the template's ${key}`, value);
   }
   if (format === "template" && !out.row)
-    throw new Error("Export: a template needs a row, such as {{id}}: {{name}}.");
+    throw new Error(t("export.options.exportATemplateNeedsARow", { id: "{id}", name: "{name}" }));
   return out;
 }

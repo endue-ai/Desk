@@ -11,6 +11,7 @@
 import { textOf } from "../editor/facade.js";
 import { dialectFacet } from "../editor/lexing.js";
 import { sqlParser } from "../sql/parse/client.js";
+import { t } from "../strings/index.js";
 import {
   EditorState,
   forEachDiagnostic,
@@ -136,14 +137,11 @@ export function sqlProblems(act, parser = sqlParser) {
     /** @type {{ title: string, text: string }} */ fix,
   ) => {
     if (view.state.sliceDoc(from, to) !== old) {
-      act(
-        "say",
-        "Not fixed: the statement changed since it was checked. Try again after the pause.",
-      );
+      act("say", t("diagnose.editor.notFixedTheStatementChangedSince"));
       return false;
     }
     view.dispatch({ changes: { from, to, insert: fix.text }, userEvent: "input.fix" });
-    act("say", `Fixed: ${fix.title}.`);
+    act("say", t("diagnose.editor.fixed", { title: String(fix.title) }));
     return true;
   };
 
@@ -156,7 +154,7 @@ export function sqlProblems(act, parser = sqlParser) {
       if (!found && d.actions?.length && from <= head && head <= to) found = { d, from, to };
     });
     const action = found?.d.actions?.[0];
-    if (!found || !action) act("say", "No fix for a SQL warning at the caret.");
+    if (!found || !action) act("say", t("diagnose.editor.noFixForASqlWarning"));
     else action.apply(view, found.from, found.to);
     return true;
   };
@@ -172,7 +170,7 @@ export function sqlProblems(act, parser = sqlParser) {
       found.push({ message: d.message, source: d.source, from, to }),
     );
     if (found.length === 0) {
-      act("say", "No problems in this script.");
+      act("say", t("diagnose.editor.noProblemsInThisScript"));
       return true;
     }
     (what === "next" ? nextDiagnostic : previousDiagnostic)(view);

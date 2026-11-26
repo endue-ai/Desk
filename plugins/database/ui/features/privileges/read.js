@@ -3,6 +3,7 @@
 // role may not read is not asked for and says so; a statement that fails says the server's words in
 // its section, and the statements after it run again in a run of their own. No DOM.
 
+import { t } from "../../strings/index.js";
 import { wordsOf } from "../activity/read.js";
 import { roleViewOf } from "./effective.js";
 import { kindOf, privilegesOf } from "./kinds.js";
@@ -33,7 +34,11 @@ export function cannotRead(
 ) {
   const missing = needs.filter((c) => probe.cannot.includes(c));
   if (missing.length === 0) return "";
-  return `${probe.user} may not read ${missing.join(" or ")}: ${what} cannot be shown.`;
+  return t("features.privileges.read.mayNotReadCannotBeShown", {
+    user: String(probe.user),
+    value: String(missing.join(" or ")),
+    what: String(what),
+  });
 }
 
 /** @param {{ execute: import("../../catalog.js").Execute }} deps */
@@ -54,7 +59,7 @@ export function createReader(deps) {
       for (const s of done) got.push({ rows: s.sets[0]?.rows ?? [], error: "" });
       if (at < 0) break;
       const error = result.statements[at]?.error;
-      got.push({ rows: [], error: error ? wordsOf(error) : "Not read." });
+      got.push({ rows: [], error: error ? wordsOf(error) : t("features.privileges.read.notRead") });
       rest = rest.slice(at + 1);
     }
     return got;
@@ -62,7 +67,7 @@ export function createReader(deps) {
 
   const probe = async (/** @type {Connection} */ conn) => {
     const [got] = await many(conn, [PROBE]);
-    if (!got || got.error) throw new Error(got?.error || "Not read.");
+    if (!got || got.error) throw new Error(got?.error || t("features.privileges.read.notRead"));
     return probeOf(got.rows[0] ?? []);
   };
 
@@ -87,7 +92,10 @@ export function createReader(deps) {
     /** @type {Target} */ target,
   ) => {
     const row = kindOf(target.kind);
-    if (!row) throw new Error(`A ${target.kind} has no privileges of its own.`);
+    if (!row)
+      throw new Error(
+        t("features.privileges.read.aHasNoPrivilegesOfIts", { kind: String(target.kind) }),
+      );
     const blocked = cannotRead(p, [row.catalog], "its privileges");
     if (blocked) return { acl: null, error: blocked, security: null, securityError: "", note: "" };
     const columns = !p.cannot.includes("pg_attribute");
@@ -99,7 +107,14 @@ export function createReader(deps) {
     ];
     const [a, s] = await many(conn, sqls);
     const acl = a && !a.error ? objectAclOf(a.rows) : null;
-    const error = a?.error || (acl ? "" : `No ${target.kind} ${target.name} was found.`);
+    const error =
+      a?.error ||
+      (acl
+        ? ""
+        : t("features.privileges.read.noWasFound", {
+            kind: String(target.kind),
+            name: String(target.name),
+          }));
     return {
       acl,
       error,
@@ -123,7 +138,8 @@ export function createReader(deps) {
       (c) => !can.has(c),
     );
     const [got] = await many(conn, [roleSql(name, can)]);
-    if (!got || got.error) return { view: null, error: got?.error || "Not read.", note: "" };
+    if (!got || got.error)
+      return { view: null, error: got?.error || t("features.privileges.read.notRead"), note: "" };
     return {
       view: roleViewOf(name, got.rows),
       error: "",

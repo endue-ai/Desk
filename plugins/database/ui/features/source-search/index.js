@@ -7,6 +7,7 @@
 // source search. Nothing is replaced here: a rename goes through its own command. The panel keeps
 // its options across a restart, never its results. controller.js runs it, panel.js draws.
 
+import { t } from "../../strings/index.js";
 import { createSourcePanels, TYPE } from "./controller.js";
 import { sourcePanel } from "./panel.js";
 
@@ -52,7 +53,7 @@ export const feature = {
   },
   panels: {
     [TYPE]: {
-      label: "Search the source",
+      label: t("features.sourceSearch.index.searchTheSource"),
       render: sourcePanel,
       keep: (/** @type {import("./controller.js").SourceState} */ state) => ({
         ...state,

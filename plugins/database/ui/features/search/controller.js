@@ -6,6 +6,7 @@
 // call it. No DOM.
 
 import { formatCount } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { answerOf, defaults, optionsOf, summaryText } from "./model.js";
 import { candidatesOf, estimateOf, estimateText } from "./plan.js";
 import { createRunner } from "./runner.js";
@@ -49,7 +50,8 @@ export function createSearchPanels(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!conn) throw new Error("This search's connection was removed.");
+    if (!conn)
+      throw new Error(messageText("features.search.controller.thisSearchSConnectionWasRemoved"));
     return conn;
   };
 
@@ -68,7 +70,7 @@ export function createSearchPanels(deps) {
       (!ref && shown ? deps.manager.get(shown.connection) : undefined) ??
       (await deps.manager.choose(
         ref || undefined,
-        "Database: search for a value on which connection?",
+        messageText("features.search.controller.databaseSearchForAValueOn"),
       ));
     if (!conn) return undefined;
     const listed = await deps.catalog.schemas(conn, true);
@@ -124,12 +126,15 @@ export function createSearchPanels(deps) {
    */
   const start = async (id, fields) => {
     const now = stateOf(id);
-    if (!now) throw new Error("No search panel is open.");
-    if (running.has(id)) throw new Error("A search is going on: cancel it first.");
+    if (!now) throw new Error(messageText("features.search.controller.noSearchPanelIsOpen"));
+    if (running.has(id))
+      throw new Error(messageText("features.search.controller.aSearchIsGoingOnCancel"));
     const conn = connOf(id);
     const options = optionsOf(fields, now.options);
-    if (options.value === "") throw new Error("Type the value to find first.");
-    if (options.families.length === 0) throw new Error("Pick at least one kind of column.");
+    if (options.value === "")
+      throw new Error(messageText("features.search.controller.typeTheValueToFindFirst"));
+    if (options.families.length === 0)
+      throw new Error(messageText("features.search.controller.pickAtLeastOneKindOf"));
     const control = new AbortController();
     running.set(id, control);
     try {
@@ -139,16 +144,33 @@ export function createSearchPanels(deps) {
       if (conn.tag === "production") {
         const tables = estimate.search.length;
         const ok = await deps.confirm(
-          `Search ${formatCount(tables)} ${tables === 1 ? "table" : "tables"} on ${conn.name}?`,
-          [`${conn.name} is tagged production.`, text],
+          messageText("features.search.controller.searchOn", {
+            value: String(formatCount(tables)),
+            value2: String(
+              tables === 1
+                ? messageText("features.search.controller.table")
+                : messageText("features.search.controller.tables"),
+            ),
+            name: String(conn.name),
+          }),
+          [
+            messageText("features.search.controller.isTaggedProduction", {
+              name: String(conn.name),
+            }),
+            text,
+          ],
         );
-        if (!ok) throw deps.cancelled("Not searched.");
+        if (!ok) throw deps.cancelled(messageText("features.search.controller.notSearched2"));
       }
       const run = await runner.run(conn, estimate, options, {
         signal: control.signal,
         progress: (next) => update(id, { run: next }),
       });
-      deps.say(run.phase === "failed" ? `Not searched: ${run.error}` : summaryText(run));
+      deps.say(
+        run.phase === "failed"
+          ? messageText("features.search.controller.notSearched", { error: String(run.error) })
+          : summaryText(run),
+      );
       return run;
     } catch (error) {
       if (/** @type {{ code?: string }} */ (error)?.code !== "cancelled")
@@ -164,7 +186,7 @@ export function createSearchPanels(deps) {
     const shown = deps.consoles.current();
     const target = id ?? (shown?.kind === TYPE ? shown.id : [...running.keys()].at(-1));
     const control = target ? running.get(target) : undefined;
-    if (!control) throw new Error("No search is going on.");
+    if (!control) throw new Error(messageText("features.search.controller.noSearchIsGoingOn"));
     control.abort();
     return { cancelled: true };
   };
@@ -179,7 +201,8 @@ export function createSearchPanels(deps) {
   const openHit = async (id, t, c, h) => {
     const table = stateOf(id)?.run?.tables[t];
     const column = table?.columns[c];
-    if (!table || !column) throw new Error("That result is gone: search again.");
+    if (!table || !column)
+      throw new Error(messageText("features.search.controller.thatResultIsGoneSearchAgain"));
     const conn = connOf(id);
     const hit = h === undefined ? undefined : column.hits[h];
     const where = hit ? rowFilter(conn.engine, table.key, hit.key, column.where) : column.where;
@@ -187,14 +210,28 @@ export function createSearchPanels(deps) {
     await deps.consoles.page({ where });
     deps.view.focus("grid");
     const said = !hit
-      ? `${table.name}: the rows whose ${column.name} matches.`
+      ? messageText("features.search.controller.theRowsWhoseMatches", {
+          name: String(table.name),
+          name2: String(column.name),
+        })
       : table.key.by === "ctid"
-        ? `${table.name} has no primary key: its row is found by its ctid, which an update or VACUUM FULL moves.`
+        ? messageText("features.search.controller.hasNoPrimaryKeyItsRow", {
+            name: String(table.name),
+          })
         : table.key.by === "rowid"
-          ? `${table.name} has no primary key: its row is found by its rowid.`
+          ? messageText("features.search.controller.hasNoPrimaryKeyItsRow2", {
+              name: String(table.name),
+            })
           : table.key.by === "match"
-            ? `${table.name} has no primary key: these are the rows whose ${column.name} matches.`
-            : `${table.name}: the row of ${table.key.columns.join(", ")} ${hit.key.join(", ")}.`;
+            ? messageText("features.search.controller.hasNoPrimaryKeyTheseAre", {
+                name: String(table.name),
+                name2: String(column.name),
+              })
+            : messageText("features.search.controller.theRowOf", {
+                name: String(table.name),
+                value: String(table.key.columns.join(", ")),
+                value2: String(hit.key.join(", ")),
+              });
     deps.say(said);
     return { where };
   };

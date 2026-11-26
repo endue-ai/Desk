@@ -8,8 +8,7 @@
 // kept under its own id (console-text.js), a run's statements in the history. On PostgreSQL a
 // console and a table view each run on a session of their own (PG-02, ADR 0320), whose state the
 // model carries (`session`) and which closes with the buffer, asked first while a transaction is
-// open. No DOM: the view gets a model and hands back the editor's text and selection.
-
+// open. The view exchanges only models, text and selection.
 import { createBuffers } from "./buffers.js";
 import { createMany } from "./console-many.js";
 import { createRebind } from "./console-rebind.js";
@@ -22,6 +21,7 @@ import { createPanels } from "./panels.js";
 import { lapse } from "./rows/control.js";
 import { keyOf, ownerOf, sessionLabel } from "./session/owners.js";
 import { reasonsOf, rolledBackOnClose } from "./session/words.js";
+import { t as messageText } from "./strings/index.js";
 import { show, summaryOf } from "./tabs.js";
 
 /**
@@ -177,14 +177,10 @@ export function createConsoles(deps) {
   /** The console on screen, or an Error naming what to do. */
   const active = () => {
     const shown = buffers.current();
-    if (!shown)
-      throw new Error("No console is open: pick a connection first (Database: open a console).");
+    if (!shown) throw new Error(messageText("consoles.noConsoleIsOpenPickA"));
     const conn = deps.connection(shown.connection);
-    if (!conn && shown.file)
-      throw new Error(
-        "Pick the connection it runs on: Database: run this .sql file on another connection.",
-      );
-    if (!conn) throw new Error("This console's connection was removed.");
+    if (!conn && shown.file) throw new Error(messageText("consoles.pickTheConnectionItRunsOn"));
+    if (!conn) throw new Error(messageText("consoles.thisConsoleSConnectionWasRemoved"));
     return { shown, conn };
   };
 
@@ -192,10 +188,14 @@ export function createConsoles(deps) {
   const discard = async (/** @type {Console} */ target) => {
     if (!edits.pending(target)) return;
     const count = target.edit?.count ?? 0;
-    const ok = await deps.confirm(`Drop ${count} pending change${count === 1 ? "" : "s"}?`, [
-      "The new run replaces the rows they were made on. Submit them first to keep them.",
-    ]);
-    if (!ok) throw deps.cancelled("Not run: the pending changes are kept.");
+    const ok = await deps.confirm(
+      messageText("consoles.dropPendingChange", {
+        count: String(count),
+        value: String(count === 1 ? "" : messageText("consoles.s")),
+      }),
+      [messageText("consoles.theNewRunReplacesTheRows")],
+    );
+    if (!ok) throw deps.cancelled(messageText("consoles.notRunThePendingChangesAre"));
   };
 
   /**
@@ -209,7 +209,7 @@ export function createConsoles(deps) {
    */
   const execute = async (target, conn, sql, options) => {
     if (target.running || (target.filing && !options.file))
-      throw new Error("A run is going on in this console: cancel it first.");
+      throw new Error(messageText("consoles.aRunIsGoingOnIn"));
     await discard(target);
     // The last run's error does not stay on screen while this one runs; rows that came back do.
     const last = target.execution?.result;

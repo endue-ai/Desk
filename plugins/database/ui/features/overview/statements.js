@@ -5,6 +5,7 @@
 // loaded by the server, the section runs nothing and says how it is enabled; the overview never
 // installs it. No DOM.
 
+import { t } from "../../strings/index.js";
 import { atLeast, ident, lines } from "./sql.js";
 
 /**
@@ -12,7 +13,7 @@ import { atLeast, ident, lines } from "./sql.js";
  * @typedef {import("./probe.js").Server} Server
  */
 
-const NEVER = "The overview only reads: it never installs it.";
+const NEVER = t("features.overview.statements.theOverviewOnlyReadsItNever");
 const CREATE =
   "run CREATE EXTENSION pg_stat_statements in this database (as its owner or a superuser)";
 const PRELOAD =
@@ -43,19 +44,19 @@ export function statementsSection(server) {
   /** @type {Section} */
   const section = {
     id: "statements",
-    title: "Heaviest statements",
+    title: t("features.overview.statements.heaviestStatements"),
     source: `pg_stat_statements${version ? ` ${version}` : ""}`,
     counters: "statements",
     columns: [
-      { key: "total_ms", label: "Total", format: "ms" },
-      { key: "calls", label: "Calls", format: "count" },
-      { key: "mean_ms", label: "Mean", format: "ms" },
-      { key: "rows", label: "Rows", format: "count" },
-      { key: "hit_percent", label: "Cache hit %", format: "percent" },
-      { key: "role", label: "Role" },
-      { key: "query", label: "Statement", format: "query" },
+      { key: "total_ms", label: t("features.overview.statements.total"), format: "ms" },
+      { key: "calls", label: t("features.overview.statements.calls"), format: "count" },
+      { key: "mean_ms", label: t("features.overview.statements.mean"), format: "ms" },
+      { key: "rows", label: t("features.overview.statements.rows"), format: "count" },
+      { key: "hit_percent", label: t("features.overview.statements.cacheHit"), format: "percent" },
+      { key: "role", label: t("features.overview.statements.role") },
+      { key: "query", label: t("features.overview.statements.statement"), format: "query" },
     ],
-    empty: "pg_stat_statements holds no statement of this database yet.",
+    empty: t("features.overview.statements.pgStatStatementsHoldsNoStatement"),
   };
   if (!version) return { ...section, missing: enableSteps(server) };
   const from = ident(schema ?? "public");

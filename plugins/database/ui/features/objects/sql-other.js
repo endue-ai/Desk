@@ -4,6 +4,7 @@
 // TRUNCATE) and replaces a view by dropping and creating it in one transaction. Pure.
 
 import { qualified, quoteName, quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { newName } from "./checks.js";
 import { kindSql } from "./kinds.js";
 import { sourceText } from "./sql-postgres.js";
@@ -27,7 +28,10 @@ const my = (/** @type {string} */ name) => quoteName(MY, name);
  */
 export function mysqlScript(op, target, facts, answers) {
   const spec = kindSql(MY, target.kind);
-  if (!spec) throw new Error(`A ${target.kind} is not changed from here on MySQL.`);
+  if (!spec)
+    throw new Error(
+      t("features.objects.sqlOther.aIsNotChangedFromHere", { kind: String(target.kind) }),
+    );
   const ref = qualified(MY, target.schema, target.name);
   const table = qualified(MY, target.schema, target.table ?? "");
   const { values } = answers;
@@ -54,7 +58,7 @@ export function mysqlScript(op, target, facts, answers) {
     case "apply":
       return sourceText(facts);
     default:
-      throw new Error(`${op} is not on MySQL.`);
+      throw new Error(t("features.objects.sqlOther.isNotOnMysql", { op: String(op) }));
   }
 }
 
@@ -90,7 +94,10 @@ export const sqliteRef = (/** @type {Target} */ target) =>
  */
 export function sqliteScript(op, target, facts, answers) {
   const spec = kindSql(LITE, target.kind);
-  if (!spec) throw new Error(`A ${target.kind} is not changed from here on SQLite.`);
+  if (!spec)
+    throw new Error(
+      t("features.objects.sqlOther.aIsNotChangedFromHere2", { kind: String(target.kind) }),
+    );
   const ref = sqliteRef(target);
   switch (op) {
     case "rename":
@@ -98,7 +105,10 @@ export function sqliteScript(op, target, facts, answers) {
     case "drop":
       if (target.owned)
         throw new Error(
-          `${target.name} is the index SQLite made for a key of ${target.table}: it goes only with its table.`,
+          t("features.objects.sqlOther.isTheIndexSqliteMadeFor", {
+            name: String(target.name),
+            table: String(target.table),
+          }),
         );
       return `DROP ${spec.word} ${ref};`;
     case "truncate":
@@ -106,7 +116,7 @@ export function sqliteScript(op, target, facts, answers) {
     case "apply":
       return `${sqlitePrefix(target)}${sourceText(facts)}`;
     default:
-      throw new Error(`${op} is not on SQLite.`);
+      throw new Error(t("features.objects.sqlOther.isNotOnSqlite", { op: String(op) }));
   }
 }
 

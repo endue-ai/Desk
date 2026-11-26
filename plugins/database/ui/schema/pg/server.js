@@ -5,6 +5,7 @@
 // CONNECT on it, a template marked so. The fingerprint is an md5 of pg_roles' columns, since
 // pg_authid's row versions cannot be read by most roles, and of pg_database's. Pure.
 
+import { t } from "../../strings/index.js";
 import { assemble, commentOn, ident, literal } from "./ddl.js";
 import { countOf, described, digestOf, json } from "./sql.js";
 
@@ -47,7 +48,7 @@ const DATABASES =
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "server",
-  label: "roles, tablespaces and databases",
+  label: t("schema.pg.server.rolesTablespacesAndDatabases"),
   level: "database",
   marks: [
     digestOf("pg_catalog.pg_roles r", `pg_catalog.concat_ws(':', ${ROLE_COLUMNS})`),

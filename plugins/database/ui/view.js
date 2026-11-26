@@ -15,6 +15,7 @@ import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
 import { rowsLine, whole } from "./rows/window.js";
 import { t } from "./strings/index.js";
+import { renderStaticMessages } from "./strings/markup.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
 import { createDialogs } from "./view-dialog.js";
@@ -42,6 +43,7 @@ import { createValueViewer } from "./view-value.js";
  * @returns {View}
  */
 export function createView(doc, act, features = Object.values(all), options = {}) {
+  renderStaticMessages(doc);
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const input = (/** @type {string} */ id) => /** @type {HTMLInputElement} */ (byId(id));
   const editorEl = /** @type {HTMLTextAreaElement} */ (byId("editor"));

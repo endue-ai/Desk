@@ -1,5 +1,6 @@
 // The exact server and configured password helper are reviewed from a person's Save or Test.
 import { targetOf } from "../engines/pg-session.js";
+import { t } from "../strings/index.js";
 import { scopeOf } from "../tunnel/open.js";
 import { argvOf } from "./command.js";
 import { commandFor } from "./fields.js";
@@ -20,7 +21,7 @@ export async function reviewConnection(bridge, conn, remembered, confirm) {
   const scopes = [scopeOf(where, conn)];
   if (command) {
     const { program } = argvOf(command);
-    if (!program) throw new Error("The password command names no program.");
+    if (!program) throw new Error(t("auth.review.thePasswordCommandNamesNoProgram"));
     scopes.push({ permission: "proc:spawn", commands: [program] });
   }
   const held = await Promise.all(
@@ -35,7 +36,9 @@ export async function reviewConnection(bridge, conn, remembered, confirm) {
     return (
       !command ||
       remembered ||
-      confirm(`Database: allow the password command for ${conn.name}?`, [purpose])
+      confirm(t("auth.review.databaseAllowThePasswordCommandFor", { name: String(conn.name) }), [
+        purpose,
+      ])
     );
   }
   const reason =

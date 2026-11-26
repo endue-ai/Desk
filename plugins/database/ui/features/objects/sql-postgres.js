@@ -5,6 +5,7 @@
 // DROP for a materialized view, which has no CREATE OR REPLACE. Pure.
 
 import { qualified, quoteName, quoteText } from "../../sql/quote.js";
+import { t as messageText } from "../../strings/index.js";
 import { newName } from "./checks.js";
 import { kindSql } from "./kinds.js";
 
@@ -38,7 +39,12 @@ export function postgresRef(/** @type {Target} */ target, /** @type {Facts} */ f
   if (target.kind === "schema") return q(target.name);
   if (spec?.routine) {
     const routine = facts.routine;
-    if (!routine) throw new Error(`The arguments of ${target.name} were not read.`);
+    if (!routine)
+      throw new Error(
+        messageText("features.objects.sqlPostgres.theArgumentsOfWereNotRead", {
+          name: String(target.name),
+        }),
+      );
     return `${qualified(PG, target.schema, routine.name)}(${routine.args})`;
   }
   if (spec?.on) return `${q(target.name)} ON ${tableOf(target)}`;
@@ -47,7 +53,10 @@ export function postgresRef(/** @type {Target} */ target, /** @type {Facts} */ f
 
 /** Why an index cannot be dropped alone: a constraint owns it. */
 export const ownedWords = (/** @type {Target} */ target) =>
-  `${target.name} is the index of a constraint of ${target.table}: drop the constraint (under Keys) instead.`;
+  messageText("features.objects.sqlPostgres.isTheIndexOfAConstraint", {
+    name: String(target.name),
+    table: String(target.table),
+  });
 
 /**
  * The statement of an operation.
@@ -58,7 +67,12 @@ export const ownedWords = (/** @type {Target} */ target) =>
  */
 export function postgresScript(op, target, facts, answers) {
   const spec = kindSql(PG, target.kind);
-  if (!spec) throw new Error(`A ${target.kind} is not changed from here.`);
+  if (!spec)
+    throw new Error(
+      messageText("features.objects.sqlPostgres.aIsNotChangedFromHere", {
+        kind: String(target.kind),
+      }),
+    );
   const { values } = answers;
   const chosen = new Set(answers.choices);
   const ref = postgresRef(target, facts);
@@ -94,7 +108,9 @@ export function postgresScript(op, target, facts, answers) {
     case "apply":
       return `${postgresPrefix(target, facts)}${sourceText(facts)}`;
     default:
-      throw new Error(`${op} writes no statement.`);
+      throw new Error(
+        messageText("features.objects.sqlPostgres.writesNoStatement", { op: String(op) }),
+      );
   }
 }
 
@@ -107,15 +123,15 @@ function refreshSql(
   const concurrently = chosen.has("concurrently");
   const empty = chosen.has("nodata");
   if (concurrently && empty)
-    throw new Error("CONCURRENTLY refreshes with data: it cannot go with WITH NO DATA.");
+    throw new Error(
+      messageText("features.objects.sqlPostgres.concurrentlyRefreshesWithDataItCannot"),
+    );
   if (concurrently && facts.populated === false)
     throw new Error(
-      "CONCURRENTLY needs a materialized view that has data: refresh it once without.",
+      messageText("features.objects.sqlPostgres.concurrentlyNeedsAMaterializedViewThat"),
     );
   if (concurrently && !facts.unique)
-    throw new Error(
-      "CONCURRENTLY needs a unique index on plain columns that covers every row: there is none.",
-    );
+    throw new Error(messageText("features.objects.sqlPostgres.concurrentlyNeedsAUniqueIndexOn"));
   return `REFRESH MATERIALIZED VIEW ${concurrently ? "CONCURRENTLY " : ""}${ref}${empty ? " WITH NO DATA" : ""};`;
 }
 
@@ -128,6 +144,7 @@ export function postgresPrefix(/** @type {Target} */ target, /** @type {Facts} *
 /** The console's text, refused when it holds nothing. */
 export function sourceText(/** @type {Facts} */ facts) {
   const text = facts.text ?? "";
-  if (text.trim() === "") throw new Error("The console is empty: there is no source to apply.");
+  if (text.trim() === "")
+    throw new Error(messageText("features.objects.sqlPostgres.theConsoleIsEmptyThereIs"));
   return text;
 }

@@ -5,6 +5,7 @@
 // view (a CTE, a function, a subquery, LATERAL). A condition with a column the cache cannot place
 // links everything, so a doubt is silence. Pure.
 import { fieldsOf, kindOf, listOf, walk } from "../sql/parse/tree.js";
+import { t } from "../strings/index.js";
 import { startOf } from "./insert.js";
 import { opOf, partsOf } from "./warn-context.js";
 
@@ -122,7 +123,10 @@ function unlinked(
     ctx.put(
       RULE,
       ctx.relationSpan(rv),
-      `Nothing links ${label(rv)} to ${to}: every row of one pairs with every row of the other.`,
+      t("diagnose.warnJoins.nothingLinksToEveryRowOf", {
+        value: String(label(rv)),
+        to: String(to),
+      }),
     );
   }
 }
@@ -158,7 +162,10 @@ function joined(
     ctx.put(
       RULE,
       { from, to: ctx.tokenEnd(last) },
-      `This ON is always true: every row of ${label(a)} pairs with every row of ${label(b)}.`,
+      t("diagnose.warnJoins.thisOnIsAlwaysTrueEvery", {
+        value: String(label(a)),
+        value2: String(label(b)),
+      }),
     );
   } else if (
     f.isNatural &&
@@ -169,7 +176,10 @@ function joined(
     ctx.put(
       RULE,
       ctx.relationSpan(b),
-      `${label(a)} and ${label(b)} have no column in common, so NATURAL JOIN pairs every row of one with every row of the other.`,
+      t("diagnose.warnJoins.andHaveNoColumnInCommon", {
+        value: String(label(a)),
+        value2: String(label(b)),
+      }),
     );
 }
 

@@ -6,6 +6,7 @@
 // SCRAM-SHA-256 verifier and is never kept, logged or written to the history (ADR 0330). Agents get
 // the reads and every change as commands that fill the dialog. No DOM here.
 
+import { t as messageText } from "../../strings/index.js";
 import { createChanges } from "./changes.js";
 import { createPrivileges, TYPE } from "./controller.js";
 import { privilegesDialog } from "./dialog.js";
@@ -60,13 +61,13 @@ export const feature = {
           typeof args.role === "string"
             ? args.role
             : await deps.pick(
-                "Database: what may which role do?",
+                messageText("features.privileges.index.databaseWhatMayWhichRoleDo"),
                 ((await ctl.show(c, {})).state.roles?.roles ?? []).map((r) => ({
                   id: r.name,
                   label: r.name,
                 })),
               );
-        if (!role) throw deps.cancelled("Nothing picked.");
+        if (!role) throw deps.cancelled(messageText("features.privileges.index.nothingPicked"));
         const { state } = await ctl.showRole(c, role);
         if (state.view?.error) throw new Error(state.view.error);
         return state.view?.view;
@@ -82,7 +83,8 @@ export const feature = {
         const c = await conn(args);
         const { id } = await ctl.showObject(c, await ctl.targetOf(c, args));
         const grantee = typeof args.grantee === "string" ? args.grantee : "";
-        if (!grantee) throw new Error("Name the grantee: a role or PUBLIC.");
+        if (!grantee)
+          throw new Error(messageText("features.privileges.index.nameTheGranteeARoleOr"));
         const column = typeof args.column === "string" ? args.column : "";
         ctl.addGrantee(id, grantee, column);
         ctl.plan(id, grantee, column, args);
@@ -92,7 +94,8 @@ export const feature = {
         changes.newDefault(await conn(args), args),
       "endue.database.create-role": async (args) => changes.role(await conn(args), undefined, args),
       "endue.database.alter-role": async (args) => {
-        if (typeof args.role !== "string") throw new Error("Name the role to change.");
+        if (typeof args.role !== "string")
+          throw new Error(messageText("features.privileges.index.nameTheRoleToChange"));
         return changes.role(await conn(args), args.role, args);
       },
       "endue.database.change-membership": async (args) =>
@@ -148,7 +151,17 @@ export const feature = {
       privilegesNewDefault: (/** @type {string} */ id) => changes.newDefault(ctl.connOf(id), {}),
     };
   },
-  panels: { [TYPE]: { label: "Roles and privileges", render: privilegesPanel } },
-  dialogs: { [DIALOG]: { label: "Change privileges", render: privilegesDialog } },
+  panels: {
+    [TYPE]: {
+      label: messageText("features.privileges.index.rolesAndPrivileges"),
+      render: privilegesPanel,
+    },
+  },
+  dialogs: {
+    [DIALOG]: {
+      label: messageText("features.privileges.index.changePrivileges"),
+      render: privilegesDialog,
+    },
+  },
   styles: [new URL("./privileges.css", import.meta.url).href],
 };

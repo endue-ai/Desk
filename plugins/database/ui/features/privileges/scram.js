@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // A role's new password as the SCRAM-SHA-256 verifier PostgreSQL stores (PG-54, ADR 0330), made in
 // the page as psql's \password makes it: SASLprep (an ASCII password as it is; otherwise spaces
 // mapped, what maps to nothing dropped and NFKC, or the password as typed when that holds a
@@ -33,7 +35,7 @@ const b64 = (/** @type {Uint8Array} */ bytes) => btoa(String.fromCharCode(...byt
  */
 export async function scramVerifier(password, options = {}) {
   const subtle = options.subtle ?? globalThis.crypto?.subtle;
-  if (!subtle) throw new Error("This page cannot make a password verifier: WebCrypto is missing.");
+  if (!subtle) throw new Error(t("features.privileges.scram.thisPageCannotMakeAPassword"));
   const salt = options.salt ?? globalThis.crypto.getRandomValues(new Uint8Array(16));
   const key = await subtle.importKey("raw", enc.encode(saslPrep(password)), "PBKDF2", false, [
     "deriveBits",

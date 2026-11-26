@@ -6,6 +6,7 @@
 // fail), or none, which needs USING, which the form never writes. Pure.
 
 import { qualified } from "../../sql/quote.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {{
@@ -41,20 +42,31 @@ export const typeOf = (/** @type {PgType[]} */ types, /** @type {string} */ labe
 
 /** Why a column's type cannot be written, or "". */
 export function typeProblem(/** @type {PgType[]} */ types, /** @type {Typed} */ typed) {
-  if (typed.type.trim() === "") return "has no type: pick one of the server's.";
+  if (typed.type.trim() === "") return messageText("features.tableDesign.types.hasNoTypePickOneOf");
   const type = typeOf(types, typed.type);
-  if (!type) return `has the type ${typed.type}, which this server does not have: pick one of its.`;
+  if (!type)
+    return messageText("features.tableDesign.types.hasTheTypeWhichThisServer", {
+      type: String(typed.type),
+    });
   const length = typed.length.trim();
-  if (length && !type.modifiable) return `has a length, which ${type.label} does not take.`;
+  if (length && !type.modifiable)
+    return messageText("features.tableDesign.types.hasALengthWhichDoesNot", {
+      label: String(type.label),
+    });
   if (length && !LENGTH.test(length))
-    return `has the length ${length}: write a number, or two with a comma (10,2).`;
+    return messageText("features.tableDesign.types.hasTheLengthWriteANumber", {
+      length: String(length),
+    });
   return "";
 }
 
 /** A column's type as DDL writes it: `character varying(120)`, `"app"."mood"[]`. */
 export function typeSql(/** @type {PgType[]} */ types, /** @type {Typed} */ typed) {
   const type = typeOf(types, typed.type);
-  if (!type) throw new Error(`No type ${typed.type} on this server.`);
+  if (!type)
+    throw new Error(
+      messageText("features.tableDesign.types.noTypeOnThisServer", { type: String(typed.type) }),
+    );
   const length = typed.length.trim().replace(/\s+/gu, "");
   const mod = length ? `(${length})` : "";
   const array = typed.array ? "[]" : "";

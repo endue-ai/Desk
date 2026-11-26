@@ -12,6 +12,7 @@ import { tokenize } from "../sql/lexer.js";
 import { createPositions } from "../sql/parse/positions.js";
 import { flat } from "../sql/parse/query.js";
 import { resolve } from "../sql/parse/resolve.js";
+import { t as messageText } from "../strings/index.js";
 import { argsOf, builtinsOf } from "./builtins.js";
 import { complete } from "./complete.js";
 import { modelView } from "./model-view.js";
@@ -34,7 +35,7 @@ import { bodyCompletion } from "./plpgsql-complete.js";
  *   `sql` is the statement around the caret, `caret` in it, `offset` where it starts in the script.
  */
 
-export const PLACEHOLDER = "desk__caret";
+export const PLACEHOLDER = messageText("editor.statement.deskCaret");
 /** Parses one completion may try before it falls back to the tokens. */
 const ATTEMPTS = 16;
 const WORD = /[A-Za-z0-9_$\u0080-￿]/u;

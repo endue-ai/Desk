@@ -4,6 +4,7 @@
 // console-many.js; this folder holds their commands. No DOM.
 
 import { labelOf } from "../../console-list.js";
+import { t } from "../../strings/index.js";
 import { settle } from "../transactions/settle.js";
 import { runFile } from "./run-file.js";
 
@@ -20,7 +21,7 @@ const label = (/** @type {Deps} */ deps, /** @type {Console} */ c) =>
 function named(/** @type {Deps} */ deps, /** @type {unknown} */ ref) {
   if (typeof ref !== "string" || !ref) return undefined;
   const found = deps.consoles.find(ref);
-  if (!found) throw new Error(`No console is called ${ref}.`);
+  if (!found) throw new Error(t("features.consoles.index.noConsoleIsCalled", { ref: String(ref) }));
   return found;
 }
 
@@ -30,8 +31,11 @@ async function newConsole(/** @type {Deps} */ deps, /** @type {Record<string, un
   const shown = deps.consoles.current();
   const conn =
     (!ref && shown?.kind === "console" ? deps.manager.get(shown.connection) : undefined) ??
-    (await deps.manager.choose(ref, "Database: new console on which connection?"));
-  if (!conn) throw deps.cancelled("No console opened.");
+    (await deps.manager.choose(
+      ref,
+      t("features.consoles.index.databaseNewConsoleOnWhichConnection"),
+    ));
+  if (!conn) throw deps.cancelled(t("features.consoles.index.noConsoleOpened"));
   const target = await deps.consoles.openNew(conn);
   deps.view.focus("editor");
   return label(deps, target);
@@ -40,19 +44,23 @@ async function newConsole(/** @type {Deps} */ deps, /** @type {Record<string, un
 /** Show a console: the one named, else the one picked from the list. */
 async function show(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
   const list = deps.consoles.consoles();
-  if (list.length === 0) throw new Error("No console is open: Database: open a console opens one.");
+  if (list.length === 0) throw new Error(t("features.consoles.index.noConsoleIsOpenDatabaseOpen"));
   let target = named(deps, args.console);
   if (!target) {
     const items = list.map((c) => ({
       id: c.id,
       label: label(deps, c),
-      ...(c.file ? { detail: c.file.path } : c.running || c.filing ? { detail: "running" } : {}),
+      ...(c.file
+        ? { detail: c.file.path }
+        : c.running || c.filing
+          ? { detail: t("features.consoles.index.running") }
+          : {}),
     }));
-    const picked = await deps.pick("Database: show which console?", items);
-    if (!picked) throw deps.cancelled("No console picked.");
+    const picked = await deps.pick(t("features.consoles.index.databaseShowWhichConsole"), items);
+    if (!picked) throw deps.cancelled(t("features.consoles.index.noConsolePicked"));
     target = deps.consoles.find(picked);
   }
-  if (!target) throw new Error("That console was closed.");
+  if (!target) throw new Error(t("features.consoles.index.thatConsoleWasClosed"));
   deps.consoles.show(target.id);
   deps.view.focus("editor");
   return label(deps, target);
@@ -61,14 +69,19 @@ async function show(/** @type {Deps} */ deps, /** @type {Record<string, unknown>
 /** Name the console on screen; an empty name gives it back its connection's. */
 async function rename(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
   const shown = deps.consoles.current();
-  if (shown?.kind !== "console") throw new Error("No console is on screen.");
+  if (shown?.kind !== "console") throw new Error(t("features.consoles.index.noConsoleIsOnScreen"));
   const name =
     typeof args.name === "string"
       ? args.name
-      : await deps.pick("Database: name this console", [], true, shown.title ?? "Reports");
-  if (name === undefined) throw deps.cancelled("Not renamed.");
+      : await deps.pick(
+          t("features.consoles.index.databaseNameThisConsole"),
+          [],
+          true,
+          shown.title ?? "Reports",
+        );
+  if (name === undefined) throw deps.cancelled(t("features.consoles.index.notRenamed"));
   const done = await deps.consoles.rename(name);
-  deps.say(`Renamed: ${done}.`);
+  deps.say(t("features.consoles.index.renamed", { done: String(done) }));
   return done;
 }
 
@@ -78,10 +91,15 @@ async function close(/** @type {Deps} */ deps, /** @type {Record<string, unknown
   const shown = target ?? deps.consoles.current();
   if (shown?.kind === "console" && !shown.running) {
     const connection = (/** @type {string} */ id) => deps.manager.get(id);
-    await settle({ ...deps, connection }, [shown], `Close ${label(deps, shown)}?`, "Not closed.");
+    await settle(
+      { ...deps, connection },
+      [shown],
+      t("features.consoles.index.close", { value: String(label(deps, shown)) }),
+      t("features.consoles.index.notClosed"),
+    );
   }
   const done = await deps.consoles.close(target?.id);
-  deps.say(`Closed ${done}.`);
+  deps.say(t("features.consoles.index.closed", { done: String(done) }));
   return done;
 }
 
@@ -91,11 +109,14 @@ async function fileConnection(
   /** @type {Record<string, unknown>} */ args,
 ) {
   const shown = deps.consoles.current();
-  if (!shown?.file) throw new Error("No .sql file's console is on screen.");
+  if (!shown?.file) throw new Error(t("features.consoles.index.noSqlFileSConsoleIs"));
   const ref = typeof args.connection === "string" ? args.connection : undefined;
   const name = shown.file.path.slice(shown.file.path.lastIndexOf("/") + 1);
-  const conn = await deps.manager.choose(ref, `Database: run ${name} on which connection?`);
-  if (!conn) throw deps.cancelled("The connection stays.");
+  const conn = await deps.manager.choose(
+    ref,
+    t("features.consoles.index.databaseRunOnWhichConnection", { name: String(name) }),
+  );
+  if (!conn) throw deps.cancelled(t("features.consoles.index.theConnectionStays"));
   await deps.consoles.bind(shown, conn);
   return label(deps, shown);
 }

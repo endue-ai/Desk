@@ -6,6 +6,7 @@
 // whole, naming the row and the column, before anything changes. Pure.
 
 import { checkValue } from "../cell-editors/values.js";
+import { t } from "../strings/index.js";
 import { addRow, cellAt, editCell } from "./pending.js";
 import { isDefault } from "./values.js";
 
@@ -46,18 +47,23 @@ function valueFor(target, col, value, inserting) {
   const column = target.columns[col];
   const name = column?.name ?? "This column";
   if (!column?.known)
-    return { error: column?.why || `${name} is not a column of ${target.name}: it cannot change.` };
+    return {
+      error:
+        column?.why ||
+        t("edit.cells.isNotAColumnOfIt", { name: String(name), name2: String(target.name) }),
+    };
   const editor = column.editor;
-  if (editor?.fixed) return { error: `${editor.fixed} Hide the column (h) to leave it out.` };
+  if (editor?.fixed)
+    return { error: t("edit.cells.hideTheColumnHToLeave", { fixed: String(editor.fixed) }) };
   if (isDefault(value)) {
     if (!inserting && target.dialect === "sqlite")
-      return { error: "SQLite cannot set a column to DEFAULT in an UPDATE." };
+      return { error: t("edit.cells.sqliteCannotSetAColumnTo") };
     return { value };
   }
   const typed = value === "" && editor && editor.kind !== "text" ? null : value;
   if (typed === null)
     return editor?.nullable === false
-      ? { error: `${name} is NOT NULL: give it a value.` }
+      ? { error: t("edit.cells.isNotNullGiveItA", { name: String(name) }) }
       : { value: null };
   return editor ? checkValue(editor, typed) : { value: typed };
 }
@@ -70,11 +76,13 @@ function rowWhy(
   /** @type {number} */ row,
 ) {
   if (row >= set.rows.length) return "";
-  if (changes.deletes.has(row)) return "the row is deleted: restore it first (u).";
+  if (changes.deletes.has(row)) return t("edit.cells.theRowIsDeletedRestoreIt");
   const original = set.rows[row];
   const blank = target.key.find((c) => (original?.[c] ?? null) === null);
   if (blank === undefined) return "";
-  return `its ${target.columns[blank]?.name ?? "key"} is NULL, so the row cannot be told apart.`;
+  return t("edit.cells.itsIsNullSoTheRow", {
+    value: String(target.columns[blank]?.name ?? t("edit.cells.key")),
+  });
 }
 
 /**
@@ -117,7 +125,12 @@ export function planCells({ target, set, changes, at, values, header = true }) {
   plan.width = grid.reduce((most, line) => Math.max(most, line.length), 0);
   const room = at.columns.length - at.left;
   if (plan.width > room) {
-    plan.wide = `the paste is ${plan.width} columns wide, and from ${nameAt(at.left) ?? "here"} ${room} column${room === 1 ? " is" : "s are"} on screen.`;
+    plan.wide = t("edit.cells.thePasteIsColumnsWideAnd", {
+      width: String(plan.width),
+      value: String(nameAt(at.left) ?? t("edit.cells.here")),
+      room: String(room),
+      value2: String(room === 1 ? t("edit.cells.is") : t("edit.cells.sAre")),
+    });
     return plan;
   }
   const shown = at.order.length;
@@ -126,7 +139,9 @@ export function planCells({ target, set, changes, at, values, header = true }) {
     const fresh = r >= shown;
     const row = fresh ? set.rows.length + changes.inserts.length + (r - shown) : (at.order[r] ?? 0);
     if (fresh) plan.added = Math.max(plan.added, r - shown + 1);
-    const label = fresh ? `new row ${r - shown + 1}` : `row ${r + 1}`;
+    const label = fresh
+      ? t("edit.cells.newRow", { value: String(r - shown + 1) })
+      : t("edit.cells.row", { value: String(r + 1) });
     const why = fresh ? "" : rowWhy(target, set, changes, row);
     line.forEach((value, j) => {
       const col = at.columns[at.left + j] ?? 0;
@@ -149,7 +164,12 @@ export function refusalOf(/** @type {Plan} */ plan, /** @type {string} */ verb) 
   const first = plan.bad[0];
   if (!first) return "";
   const more = plan.refused - 1;
-  const rest = more ? ` ${more} more cell${more === 1 ? " is" : "s are"} refused too.` : "";
+  const rest = more
+    ? t("edit.cells.moreCellRefusedToo", {
+        more: String(more),
+        value: String(more === 1 ? t("edit.cells.is") : t("edit.cells.sAre")),
+      })
+    : "";
   return `Nothing ${verb}: ${first.row}, ${first.column}: ${first.reason}${rest}`;
 }
 
@@ -164,7 +184,7 @@ export function applyCells(changes, target, set, plan) {
   const refused = refusalOf(plan, "changed");
   if (refused) throw new Error(refused);
   if (changes.inserts.length !== plan.inserts)
-    throw new Error("The pending rows changed meanwhile: nothing was changed. Try again.");
+    throw new Error(t("edit.cells.thePendingRowsChangedMeanwhileNothing"));
   for (let i = 0; i < plan.added; i++) addRow(changes, target, set);
   for (const { row, col, value } of plan.cells) editCell(changes, target, set, row, col, value);
 }
@@ -176,10 +196,7 @@ export function applyCells(changes, target, set, plan) {
  * @param {At} at
  */
 export function fillDownValues(set, changes, at) {
-  if (at.bottom <= at.top)
-    throw new Error(
-      "Select two rows or more to fill down: the top row's cells go into the rows below.",
-    );
+  if (at.bottom <= at.top) throw new Error(t("edit.cells.selectTwoRowsOrMoreTo"));
   const row = at.order[at.top] ?? 0;
   const top = [];
   for (let c = at.left; c <= at.right; c++)

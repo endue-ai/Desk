@@ -4,6 +4,7 @@
 // MySQL and SQLite 0x.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { field } from "./panel.js";
 
 /** @typedef {import("./resolve.js").Editor} Editor */
@@ -23,7 +24,10 @@ export const bytes = {
     const hex = HEX.exec(text.trim());
     if (!hex)
       return {
-        error: `Bytes are ${editor.prefix} and two hex digits a byte, as ${editor.prefix}0102ff.`,
+        error: t("cellEditors.bytes.bytesAreAndTwoHexDigits", {
+          prefix: String(editor.prefix),
+          prefix2: String(editor.prefix),
+        }),
       };
     const digits = (hex[1] ?? "").replace(/\s/gu, "");
     return {
@@ -43,7 +47,9 @@ export const bytes = {
     const draw = () => {
       const n = sizeOf(f.input.value);
       size.textContent =
-        n === undefined ? "Not hex yet" : `${bytesWord(n)}${file ? ` · ${file}` : ""}`;
+        n === undefined
+          ? t("cellEditors.bytes.notHexYet")
+          : `${bytesWord(n)}${file ? ` · ${file}` : ""}`;
     };
     f.input.addEventListener("input", () => {
       file = "";
@@ -73,8 +79,8 @@ export const bytes = {
       read: f.read,
       focus: f.focus,
       tools: [
-        { label: "Load from file…", name: "load", key: "KeyO", run: load },
-        { label: "Save to file…", name: "save", key: "KeyS", run: save },
+        { label: t("cellEditors.bytes.loadFromFile"), name: "load", key: "KeyO", run: load },
+        { label: t("cellEditors.bytes.saveToFile"), name: "save", key: "KeyS", run: save },
       ],
     };
   },

@@ -4,6 +4,7 @@
 // COMMENT ON TABLE and COLUMN. A part the table form cannot write (DEFERRABLE, INCLUDE, an index key
 // with an order or an operator class) is kept as written. What it cannot read is said. Pure.
 
+import { t as messageText } from "../../strings/index.js";
 import { ACTIONS, blank } from "../table-design/model.js";
 import { cursor, items, literal } from "./cursor.js";
 import { typed } from "./types.js";
@@ -97,7 +98,12 @@ export function addConstraint(
     const columns = idsOf(d, c.group() ?? "");
     c.take("references");
     d.foreignKeys.push({ id, name, columns, ...references(c, d, ctx) });
-  } else throw new Error(`a constraint it cannot read: ${text.trim()}`);
+  } else
+    throw new Error(
+      messageText("features.compareSchema.parseTable.aConstraintItCannotRead", {
+        value: String(text.trim()),
+      }),
+    );
 }
 
 /** One column definition. */
@@ -157,7 +163,13 @@ function column(
     else if (c.take("generated", "always", "as")) {
       col.generated = (c.group() ?? "").trim();
       c.take("stored");
-    } else throw new Error(`column ${name}: it cannot read ${c.rest()}`);
+    } else
+      throw new Error(
+        messageText("features.compareSchema.parseTable.columnItCannotRead", {
+          name: String(name),
+          value: String(c.rest()),
+        }),
+      );
     named = "";
   }
 }
@@ -193,13 +205,20 @@ export function parseTable(/** @type {string} */ text, /** @type {Ctx} */ ctx) {
     const rest = item.slice(p.at);
     if (/^(primary|unique|check|foreign|exclude)$/u.test(p.peek()))
       addConstraint(d, named, rest, ctx);
-    else if (p.peek() === "like") throw new Error("LIKE in a table it cannot read");
+    else if (p.peek() === "like")
+      throw new Error(messageText("features.compareSchema.parseTable.likeInATableItCannot"));
     else column(d, item, ctx, serials);
   }
   let partition = "";
   if (c.take("partition", "by"))
     partition = c.rest().replace(/^(range|list|hash)/iu, (m) => m.toUpperCase());
-  else if (!c.done) throw new Error(`table ${d.name}: it cannot read ${c.rest()}`);
+  else if (!c.done)
+    throw new Error(
+      messageText("features.compareSchema.parseTable.tableItCannotRead", {
+        name: String(d.name),
+        value: String(c.rest()),
+      }),
+    );
   return { design: d, partition, serials };
 }
 

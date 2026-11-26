@@ -2,6 +2,7 @@
 // model as read (its objects in a stable order), the schema's name, where it was read from (a
 // connection's name, never its address or password) and when. Pure.
 
+import { t } from "../../strings/index.js";
 import { sorted } from "./model.js";
 
 /** @typedef {import("./model.js").Model} Model */
@@ -40,16 +41,22 @@ export function snapshotModel(/** @type {string} */ text) {
   try {
     body = JSON.parse(text);
   } catch {
-    throw new Error("it is not JSON");
+    throw new Error(t("features.compareSchema.snapshot.itIsNotJson"));
   }
-  if (body?.format !== SNAPSHOT) throw new Error("it is not a saved schema");
+  if (body?.format !== SNAPSHOT)
+    throw new Error(t("features.compareSchema.snapshot.itIsNotASavedSchema"));
   if (body.version !== VERSION)
-    throw new Error(`it is of version ${body.version}, and this reads ${VERSION}`);
+    throw new Error(
+      t("features.compareSchema.snapshot.itIsOfVersionAndThis", {
+        version: String(body.version),
+        VERSION: String(VERSION),
+      }),
+    );
   if (typeof body.schema !== "string" || !Array.isArray(body.objects))
-    throw new Error("it has no schema");
+    throw new Error(t("features.compareSchema.snapshot.itHasNoSchema"));
   for (const o of body.objects)
     if (!o || !KINDS.has(o.kind) || typeof o.name !== "string" || typeof o.ddl !== "string")
-      throw new Error("an object in it is not one");
+      throw new Error(t("features.compareSchema.snapshot.anObjectInItIsNot"));
   /** @type {Model} */
   const model = { format: 1, schema: body.schema, objects: body.objects };
   return { model, from: String(body.from ?? ""), saved: String(body.saved ?? "") };

@@ -2,6 +2,7 @@
 // file, its messages answered in order, or in the frame where no worker starts (the unit tests).
 // Either way the caller holds one page and its bytes at a time.
 
+import { t } from "../strings/index.js";
 import { createPipe } from "./pipe.js";
 
 /**
@@ -24,7 +25,7 @@ export async function answerPipe(
       return { id: message.id, outs: [], rows: 0 };
     }
     const pipe = held.pipe;
-    if (!pipe) throw new Error("Export: the file was not started.");
+    if (!pipe) throw new Error(t("export.pipeClient.exportTheFileWasNotStarted"));
     const outs = message.op === "push" ? await pipe.push(message.page) : await pipe.end();
     return { id: message.id, outs, rows: pipe.rows() };
   } catch (error) {
@@ -68,7 +69,7 @@ export async function startPipe(job, startWorker) {
   };
   w.onerror = () => {
     for (const waiter of waiting.values())
-      waiter.reject(new Error("The worker of the export stopped."));
+      waiter.reject(new Error(t("export.pipeClient.theWorkerOfTheExportStopped")));
     waiting.clear();
   };
   const ask = (/** @type {Record<string, unknown>} */ message) =>

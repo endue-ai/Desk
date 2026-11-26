@@ -9,6 +9,7 @@
 import { EDITOR_MAX, readScope, withGrant } from "./console-files.js";
 import { dropAction } from "./drops.js";
 import { headOf } from "./import-copy/start.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -52,7 +53,12 @@ export function createDropped(deps) {
       });
     const file = await withGrant(deps.bridge, scope, call, `To open ${name} in Database`);
     if (length === undefined && file.content.length > MAX_BYTES)
-      throw new Error(`${name} is larger than ${MAX_BYTES / 1024 / 1024} MiB.`);
+      throw new Error(
+        t("dropped.isLargerThanMib", {
+          name: String(name),
+          value: String(MAX_BYTES / 1024 / 1024),
+        }),
+      );
     return file;
   };
   /** The connection of the console on screen. */
@@ -65,7 +71,7 @@ export function createDropped(deps) {
   const consoleFor = async () => {
     const on = here();
     if (on) return on;
-    const conn = await deps.manager.choose(undefined, "Database: open the SQL in which console?");
+    const conn = await deps.manager.choose(undefined, t("dropped.databaseOpenTheSqlInWhich"));
     if (!conn) return undefined;
     await deps.consoles.open(conn);
     deps.view.focus("editor");

@@ -1,3 +1,5 @@
+import { t as messageText } from "../../strings/index.js";
+
 // Shapes on a map (PG-46): Database: show the result on a map opens the Map tab of the result on
 // screen (tabs.js adds one after each set with a column of shapes; geo/map-view.js draws it), and
 // the viewer's own statement, the `geoRead` action: the curves the map's reader does not draw
@@ -27,14 +29,17 @@ async function geoRead(/** @type {Deps} */ deps, /** @type {unknown} */ values) 
   const conn = shown ? deps.manager.get(shown.connection) : undefined;
   if (conn?.engine !== "postgresql" || list.length === 0) return undefined;
   if (!list.every((v) => typeof v === "string" && HEX.test(v)))
-    throw new Error("Map: only EWKB values are read on the server.");
+    throw new Error(messageText("features.geo.index.mapOnlyEwkbValuesAreRead"));
   const run = await deps.execute(conn, readSql(/** @type {string[]} */ (list)), {
     catalog: true,
     maxRows: list.length,
   });
   const statement = run.result.statements[0];
   const error = run.result.error ?? statement?.error;
-  if (error) throw new Error(`Map: the server did not read the curves: ${error.message}`);
+  if (error)
+    throw new Error(
+      messageText("features.geo.index.mapTheServerDidNotRead", { message: String(error.message) }),
+    );
   const rows = statement?.sets[0]?.rows ?? [];
   return list.map((_, i) => rows[i]?.[0] ?? null);
 }
@@ -48,7 +53,8 @@ export const feature = {
       const tabs = shown?.shown?.tabs ?? [];
       const after = tabs.findIndex((t, i) => t.kind === "map" && i >= (shown?.tab ?? 0));
       const index = after >= 0 ? after : tabs.findIndex((t) => t.kind === "map");
-      if (index < 0) throw new Error("No result on screen holds geometry or geography values.");
+      if (index < 0)
+        throw new Error(messageText("features.geo.index.noResultOnScreenHoldsGeometry"));
       deps.consoles.tab(index);
       return tabs[index]?.label;
     },

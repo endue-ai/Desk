@@ -6,6 +6,7 @@
 // the cancel of that session. No DOM.
 
 import { quoteText, readableName } from "../../sql/quote.js";
+import { t as messageText } from "../../strings/index.js";
 import { clusterable, LABELS, on, partitionedTooOld, TITLES } from "./options.js";
 
 /**
@@ -53,7 +54,10 @@ export function tooOld(
 ) {
   return version >= FLOOR
     ? ""
-    : `${conn} runs PostgreSQL ${server}: maintenance from this form needs PostgreSQL 13 or later.`;
+    : messageText("features.maintenance.sql.runsPostgresqlMaintenanceFromThisForm", {
+        conn: String(conn),
+        server: String(server),
+      });
 }
 
 /**
@@ -81,9 +85,14 @@ export function statementOf(plan, facts) {
     const sql = [TITLES[op], opts.length ? `(${opts.join(", ")})` : "", what.join(", ")];
     const problem =
       target.kind === "schema" && what.length === 0
-        ? `Schema ${target.schema} holds no table to ${op}.`
+        ? messageText("features.maintenance.sql.schemaHoldsNoTableTo", {
+            schema: String(target.schema),
+            op: String(op),
+          })
         : target.kind === "index"
-          ? `${TITLES[op]} runs on a table, a schema or the database.`
+          ? messageText("features.maintenance.sql.runsOnATableASchema", {
+              value: String(TITLES[op]),
+            })
           : "";
     return { sql: sql.filter(Boolean).join(" "), problem };
   }
@@ -106,16 +115,21 @@ export function statementOf(plan, facts) {
   if (target.kind === "database")
     return { sql: ["CLUSTER", options].join(" ").trim(), problem: "" };
   if (target.kind === "schema")
-    return { sql: "CLUSTER", problem: "CLUSTER runs on a table or on the whole database." };
+    return {
+      sql: "CLUSTER",
+      problem: messageText("features.maintenance.sql.clusterRunsOnATableOr"),
+    };
   const using = target.kind === "index" ? target.index : o.using;
   const table = name(target.schema, target.table);
   const sql = ["CLUSTER", options, table, using ? `USING ${name("", using)}` : ""];
   const problem = !using
-    ? "Pick the index CLUSTER orders the table by."
+    ? messageText("features.maintenance.sql.pickTheIndexClusterOrdersThe")
     : partitionedTooOld(facts)
-      ? "CLUSTER of a partitioned table needs PostgreSQL 15 or later."
+      ? messageText("features.maintenance.sql.clusterOfAPartitionedTableNeeds")
       : target.kind === "index" && !facts.indexes.some((i) => i.name === using && clusterable(i))
-        ? `CLUSTER cannot order a table by ${using}: it needs a valid, whole btree or GiST index.`
+        ? messageText("features.maintenance.sql.clusterCannotOrderATableBy", {
+            using: String(using),
+          })
         : "";
   return { sql: sql.filter(Boolean).join(" "), problem };
 }

@@ -11,6 +11,7 @@
 // explicit transactions, SET LOCAL and the catalog. No DOM.
 
 import { wordsOf } from "../sql/lexer.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -39,7 +40,11 @@ const RULES = [
   ],
   [(w) => w[0] === "RESET", "RESET", ""],
   [(w) => w[0] === "LISTEN" || w[0] === "UNLISTEN", "LISTEN", ""],
-  [(w) => w[0] === "PREPARE" && w[1] !== "TRANSACTION", "PREPARE", "Run the statement itself."],
+  [
+    (w) => w[0] === "PREPARE" && w[1] !== "TRANSACTION",
+    "PREPARE",
+    messageText("auth.pooler.runTheStatementItself"),
+  ],
   [(w) => w[0] === "EXECUTE" || w[0] === "DEALLOCATE", "a prepared statement", ""],
   [(w, t) => w[0] === "DECLARE" && /\bwith\s+hold\b/iu.test(t), "DECLARE WITH HOLD", ""],
   [
@@ -48,13 +53,13 @@ const RULES = [
       (w[1] === "TEMP" || w[1] === "TEMPORARY" || w[2] === "TEMP" || w[2] === "TEMPORARY") &&
       !/\bon\s+commit\s+drop\b/iu.test(t),
     "CREATE TEMPORARY",
-    "Add ON COMMIT DROP and run it in a transaction with what uses it.",
+    messageText("auth.pooler.addOnCommitDropAndRun"),
   ],
   [(w) => w[0] === "DISCARD" || w[0] === "LOAD", "DISCARD or LOAD", ""],
   [
     (_, t) => /\bpg_(?:try_)?advisory_lock(?:_shared)?\s*\(/iu.test(t),
     "a session advisory lock",
-    "pg_advisory_xact_lock lasts as long as the transaction.",
+    messageText("auth.pooler.pgAdvisoryXactLockLastsAs"),
   ],
 ];
 
@@ -93,6 +98,6 @@ export function checkPooled(/** @type {Connection} */ conn) {
   const kept = DROPPED.find(([key]) => fields[key]);
   if (kept)
     throw new Error(
-      `${kept[1]}: a connection through a pooler keeps no session state, so leave it empty (or set it on the pooler or the role).`,
+      messageText("auth.pooler.aConnectionThroughAPoolerKeeps", { value: String(kept[1]) }),
     );
 }

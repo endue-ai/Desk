@@ -12,6 +12,7 @@ import { engineOf } from "../../engines/index.js";
 import { exportResult } from "../../export.js";
 import { columnKeys } from "../../grid/columns.js";
 import { FORMATS, formatRows } from "../../results.js";
+import { t as messageText } from "../../strings/index.js";
 import { chooseKey, primaryKey, sameKey } from "./keys.js";
 import { stateOf } from "./panel.js";
 
@@ -25,12 +26,12 @@ import { stateOf } from "./panel.js";
  */
 
 const LABELS = {
-  tsv: "TSV",
-  csv: "CSV",
-  json: "JSON",
-  markdown: "Markdown",
-  insert: "INSERT statements",
-  update: "UPDATE statements",
+  tsv: messageText("features.compare.compare.tsv"),
+  csv: messageText("features.compare.compare.csv"),
+  json: messageText("features.compare.compare.json"),
+  markdown: messageText("features.compare.compare.markdown"),
+  insert: messageText("features.compare.compare.insertStatements"),
+  update: messageText("features.compare.compare.updateStatements"),
 };
 
 /** The last comparison of a mount of the plugin, for copy and export from elsewhere. */
@@ -94,7 +95,14 @@ async function finish(
     state,
   );
   const repeats = d.repeated
-    ? ` ${d.repeated.toLocaleString("en-US")} row${d.repeated === 1 ? " repeats" : "s repeat"} a key: paired in order.`
+    ? messageText("features.compare.compare.rowAKeyPairedInOrder", {
+        value: String(d.repeated.toLocaleString("en-US")),
+        value2: String(
+          d.repeated === 1
+            ? messageText("features.compare.compare.repeats")
+            : messageText("features.compare.compare.sRepeat"),
+        ),
+      })
     : "";
   const said = `${state.summary}${repeats}`;
   deps.say(said);
@@ -111,24 +119,22 @@ export async function compareResults(
   const shown = deps.consoles.current();
   const onScreen = all.find((r) => r.owner === shown && r.tab === shown?.shown?.tabs[shown.tab]);
   const after = typeof args.after === "string" ? all.find((r) => r.id === args.after) : onScreen;
-  if (!after) throw new Error("No result on screen: show a console's result to compare it.");
+  if (!after) throw new Error(messageText("features.compare.compare.noResultOnScreenShowA"));
   const others = all.filter((r) => r !== after).reverse();
   if (others.length === 0)
-    throw new Error(
-      "One result so far: pin it (Database: pin the result tab), run again, then compare the two.",
-    );
+    throw new Error(messageText("features.compare.compare.oneResultSoFarPinIt"));
   const beforeId =
     typeof args.before === "string"
       ? args.before
       : others.length === 1
         ? others[0]?.id
         : await deps.pick(
-            "Database: compare this result with which?",
+            messageText("features.compare.compare.databaseCompareThisResultWithWhich"),
             others.map((r) => ({ id: r.id, label: r.tab.label, detail: nameOf(deps, r.owner) })),
           );
-  if (!beforeId) throw deps.cancelled("Not compared.");
+  if (!beforeId) throw deps.cancelled(messageText("features.compare.compare.notCompared"));
   const before = others.find((r) => r.id === beforeId);
-  if (!before) throw new Error("That result is no longer here: run or pin it again.");
+  if (!before) throw new Error(messageText("features.compare.compare.thatResultIsNoLongerHere"));
   const keys = await Promise.all([before, after].map((r) => primaryKey(deps, r.owner, r.tab)));
   const primary = sameKey(keys[0] ?? [], keys[1] ?? []) ? (keys[1] ?? []) : [];
   const was = columnKeys(before.tab.set?.columns ?? []);
@@ -141,16 +147,16 @@ export async function compareResults(
 export async function runAgain(/** @type {Deps} */ deps, /** @type {Comparer} */ comparer) {
   const target = deps.consoles.current();
   if (target?.kind !== "console" && target?.kind !== "table")
-    throw new Error("Run again and compare works on a console's or a table view's result.");
+    throw new Error(messageText("features.compare.compare.runAgainAndCompareWorksOn"));
   const conn = deps.manager.get(target.connection);
   const execution = target.execution;
-  if (!conn) throw new Error("This result's connection was removed.");
-  if (!execution) throw new Error("Nothing ran here yet: run a query first.");
+  if (!conn)
+    throw new Error(messageText("features.compare.compare.thisResultSConnectionWasRemoved"));
+  if (!execution) throw new Error(messageText("features.compare.compare.nothingRanHereYetRunA"));
   const rowsOf = () => (target.shown?.tabs ?? []).filter((t) => t.kind === "rows" && t.set);
   const on = target.shown?.tabs[target.tab];
   const first = on?.kind === "rows" && on.set ? on : rowsOf()[0];
-  if (!first)
-    throw new Error("This run brought no rows to compare: run a query that returns rows.");
+  if (!first) throw new Error(messageText("features.compare.compare.thisRunBroughtNoRowsTo"));
   const nth = rowsOf().indexOf(first);
   const sql = execution.statements[first.statement]?.text ?? execution.sql;
   const before = { id: "before", owner: target, tab: first };
@@ -164,7 +170,7 @@ export async function runAgain(/** @type {Deps} */ deps, /** @type {Comparer} */
       maxRows: target.maxRows,
     });
   const next = rowsOf()[nth];
-  if (!next) throw new Error("The run again brought no rows to compare: see its Messages.");
+  if (!next) throw new Error(messageText("features.compare.compare.theRunAgainBroughtNoRows"));
   const after = { id: "after", owner: target, tab: next };
   const afterKey = await primaryKey(deps, target, next);
   const both = sameKey(beforeKey, afterKey);
@@ -181,7 +187,8 @@ export async function runAgain(/** @type {Deps} */ deps, /** @type {Comparer} */
 function comparisonOf(/** @type {Deps} */ deps) {
   const shown = deps.consoles.current();
   const state = shown?.kind === "compare" ? shown.compare : lasts.get(deps);
-  if (!state) throw new Error("Nothing is compared yet: Database: compare two results first.");
+  if (!state)
+    throw new Error(messageText("features.compare.compare.nothingIsComparedYetDatabaseCompare"));
   return /** @type {CompareState} */ (state);
 }
 
@@ -198,9 +205,14 @@ async function formatOf(
           title,
           FORMATS.map((id) => ({ id, label: LABELS[id] })),
         );
-  if (!chosen) throw deps.cancelled("Nothing written.");
+  if (!chosen) throw deps.cancelled(messageText("features.compare.compare.nothingWritten"));
   if (!FORMATS.includes(/** @type {never} */ (chosen)))
-    throw new Error(`${title}: pick ${FORMATS.join(", ")}.`);
+    throw new Error(
+      messageText("features.compare.compare.pick", {
+        title: String(title),
+        value: String(FORMATS.join(", ")),
+      }),
+    );
   return /** @type {import("../../results.js").Format} */ (chosen);
 }
 
@@ -216,8 +228,10 @@ export async function copyDifference(/** @type {Deps} */ deps, /** @type {unknow
   const text = formatRows(differenceSet(state), chosen, optionsOf(state));
   deps.say(
     (await deps.view.copy(text))
-      ? `Copied the difference as ${LABELS[chosen]}.`
-      : "The clipboard refused: try again from the panel's Copy.",
+      ? messageText("features.compare.compare.copiedTheDifferenceAs", {
+          value: String(LABELS[chosen]),
+        })
+      : messageText("features.compare.compare.theClipboardRefusedTryAgainFrom"),
   );
   return text;
 }
@@ -233,11 +247,17 @@ export async function exportDifference(/** @type {Deps} */ deps, /** @type {unkn
     name: "difference",
     options: optionsOf(state),
   });
-  if (!done) throw deps.cancelled("Not exported.");
+  if (!done) throw deps.cancelled(messageText("features.compare.compare.notExported"));
   const kept = set.truncated
     ? ` (the first ${state.rows.length.toLocaleString("en-US")} of ${state.total.toLocaleString("en-US")} differences)`
     : "";
-  deps.say(`Exported ${done.rows} rows of the difference to ${done.path}${kept}.`);
+  deps.say(
+    messageText("features.compare.compare.exportedRowsOfTheDifferenceTo", {
+      rows: String(done.rows),
+      path: String(done.path),
+      kept: String(kept),
+    }),
+  );
   void deps.commands.run("desk.files.reveal", { path: done.path }).catch(() => {});
   return done.path;
 }

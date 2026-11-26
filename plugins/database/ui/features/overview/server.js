@@ -4,6 +4,7 @@
 // open for more than a minute; replication as a primary sees it, or a standby's own lag; slots;
 // and the settings changed from their defaults by the server's configuration. No DOM.
 
+import { t } from "../../strings/index.js";
 import { LIMIT, lines, since } from "./sql.js";
 
 /**
@@ -82,16 +83,16 @@ function figures(server) {
   const parts = list.map((args, i) => figure(i + 1, ...args));
   return {
     id: "server",
-    title: "Server",
+    title: t("features.overview.server.server"),
     source: `pg_stat_activity, pg_stat_database, ${checkpoints}, pg_settings`,
     counters: "rows",
     columns: [
-      { key: "figure", label: "Figure" },
-      { key: "value", label: "Value" },
-      { key: "statistic", label: "From" },
-      { key: "since", label: "Counted since", format: "time" },
+      { key: "figure", label: t("features.overview.server.figure") },
+      { key: "value", label: t("features.overview.server.value") },
+      { key: "statistic", label: t("features.overview.server.from") },
+      { key: "since", label: t("features.overview.server.countedSince"), format: "time" },
     ],
-    empty: "No figure was read.",
+    empty: t("features.overview.server.noFigureWasRead"),
     sql: lines(
       "SELECT figure, value, unit, statistic, since FROM (",
       parts.join("\n  UNION ALL "),
@@ -107,19 +108,19 @@ export function serverSections(server) {
     figures(server),
     {
       id: "long",
-      title: "Long transactions",
+      title: t("features.overview.server.longTransactions"),
       source: "pg_stat_activity (xact_start, backend_xmin)",
       counters: "none",
       columns: [
-        { key: "pid", label: "PID" },
-        { key: "role", label: "Role" },
-        { key: "application", label: "Application" },
-        { key: "state", label: "State" },
-        { key: "open_seconds", label: "Open for", format: "seconds" },
-        { key: "xmin_age", label: "Holds back (xmin age)", format: "count" },
-        { key: "query", label: "Last statement", format: "query" },
+        { key: "pid", label: t("features.overview.server.pid") },
+        { key: "role", label: t("features.overview.server.role") },
+        { key: "application", label: t("features.overview.server.application") },
+        { key: "state", label: t("features.overview.server.state") },
+        { key: "open_seconds", label: t("features.overview.server.openFor"), format: "seconds" },
+        { key: "xmin_age", label: t("features.overview.server.holdsBackXminAge"), format: "count" },
+        { key: "query", label: t("features.overview.server.lastStatement"), format: "query" },
       ],
-      empty: "No transaction has been open for more than a minute.",
+      empty: t("features.overview.server.noTransactionHasBeenOpenFor"),
       sql: lines(
         "SELECT a.pid, a.usename AS role, a.application_name AS application, a.state,",
         "  extract(epoch FROM now() - a.xact_start)::bigint AS open_seconds,",
@@ -132,19 +133,19 @@ export function serverSections(server) {
     server.standby ? standby() : primary(),
     {
       id: "slots",
-      title: "Replication slots",
+      title: t("features.overview.server.replicationSlots"),
       source: "pg_replication_slots",
       counters: "none",
       columns: [
-        { key: "slot", label: "Slot" },
-        { key: "type", label: "Type" },
-        { key: "database", label: "Database" },
-        { key: "active", label: "Active", format: "bool" },
-        { key: "wal_status", label: "WAL" },
-        { key: "retained_bytes", label: "Retains", format: "bytes" },
-        { key: "safe_wal_bytes", label: "Until lost", format: "bytes" },
+        { key: "slot", label: t("features.overview.server.slot") },
+        { key: "type", label: t("features.overview.server.type") },
+        { key: "database", label: t("features.overview.server.database") },
+        { key: "active", label: t("features.overview.server.active"), format: "bool" },
+        { key: "wal_status", label: t("features.overview.server.wal") },
+        { key: "retained_bytes", label: t("features.overview.server.retains"), format: "bytes" },
+        { key: "safe_wal_bytes", label: t("features.overview.server.untilLost"), format: "bytes" },
       ],
-      empty: "This server has no replication slots.",
+      empty: t("features.overview.server.thisServerHasNoReplicationSlots"),
       sql: lines(
         "SELECT s.slot_name AS slot, s.slot_type AS type, s.database, s.active, s.wal_status,",
         `  pg_wal_lsn_diff(${lsn}, s.restart_lsn)::bigint AS retained_bytes, s.safe_wal_size AS safe_wal_bytes`,
@@ -154,19 +155,23 @@ export function serverSections(server) {
     },
     {
       id: "settings",
-      title: "Settings changed from their defaults",
+      title: t("features.overview.server.settingsChangedFromTheirDefaults"),
       source: "pg_settings (setting, boot_val, source)",
       counters: "none",
       search: true,
       columns: [
-        { key: "name", label: "Setting" },
-        { key: "setting", label: "Value" },
-        { key: "unit", label: "Unit" },
-        { key: "default_value", label: "Default" },
-        { key: "source", label: "Set by" },
-        { key: "pending_restart", label: "Restart pending", format: "bool" },
+        { key: "name", label: t("features.overview.server.setting") },
+        { key: "setting", label: t("features.overview.server.value") },
+        { key: "unit", label: t("features.overview.server.unit") },
+        { key: "default_value", label: t("features.overview.server.default") },
+        { key: "source", label: t("features.overview.server.setBy") },
+        {
+          key: "pending_restart",
+          label: t("features.overview.server.restartPending"),
+          format: "bool",
+        },
       ],
-      empty: "Every setting has its default value.",
+      empty: t("features.overview.server.everySettingHasItsDefaultValue"),
       sql: lines(
         "SELECT s.name, s.setting, s.unit, s.boot_val AS default_value, s.source, s.pending_restart",
         "FROM pg_settings s",
@@ -183,20 +188,32 @@ export function serverSections(server) {
 function primary() {
   return /** @type {Section} */ ({
     id: "replication",
-    title: "Replication",
+    title: t("features.overview.server.replication"),
     source: "pg_stat_replication",
     counters: "none",
     columns: [
-      { key: "standby", label: "Standby" },
-      { key: "address", label: "Address" },
-      { key: "state", label: "State" },
-      { key: "sync_state", label: "Sync" },
-      { key: "replay_lag_bytes", label: "Behind", format: "bytes" },
-      { key: "write_lag_seconds", label: "Write lag", format: "seconds" },
-      { key: "flush_lag_seconds", label: "Flush lag", format: "seconds" },
-      { key: "replay_lag_seconds", label: "Replay lag", format: "seconds" },
+      { key: "standby", label: t("features.overview.server.standby") },
+      { key: "address", label: t("features.overview.server.address") },
+      { key: "state", label: t("features.overview.server.state") },
+      { key: "sync_state", label: t("features.overview.server.sync") },
+      { key: "replay_lag_bytes", label: t("features.overview.server.behind"), format: "bytes" },
+      {
+        key: "write_lag_seconds",
+        label: t("features.overview.server.writeLag"),
+        format: "seconds",
+      },
+      {
+        key: "flush_lag_seconds",
+        label: t("features.overview.server.flushLag"),
+        format: "seconds",
+      },
+      {
+        key: "replay_lag_seconds",
+        label: t("features.overview.server.replayLag"),
+        format: "seconds",
+      },
     ],
-    empty: "No standby streams from this server.",
+    empty: t("features.overview.server.noStandbyStreamsFromThisServer"),
     sql: lines(
       "SELECT r.application_name AS standby, r.client_addr::text AS address, r.state, r.sync_state,",
       "  pg_wal_lsn_diff(pg_current_wal_lsn(), r.replay_lsn)::bigint AS replay_lag_bytes,",
@@ -213,17 +230,25 @@ function primary() {
 function standby() {
   return /** @type {Section} */ ({
     id: "replication",
-    title: "Replication (this server is a standby)",
+    title: t("features.overview.server.replicationThisServerIsAStandby"),
     source: "pg_stat_wal_receiver, pg_last_wal_replay_lsn(), pg_last_xact_replay_timestamp()",
     counters: "none",
     columns: [
-      { key: "status", label: "Receiver" },
-      { key: "slot", label: "Slot" },
-      { key: "replay_lag_bytes", label: "Replay behind", format: "bytes" },
-      { key: "replay_lag_seconds", label: "Last replayed", format: "seconds" },
-      { key: "last_replayed", label: "Replayed at", format: "time" },
+      { key: "status", label: t("features.overview.server.receiver") },
+      { key: "slot", label: t("features.overview.server.slot") },
+      {
+        key: "replay_lag_bytes",
+        label: t("features.overview.server.replayBehind"),
+        format: "bytes",
+      },
+      {
+        key: "replay_lag_seconds",
+        label: t("features.overview.server.lastReplayed"),
+        format: "seconds",
+      },
+      { key: "last_replayed", label: t("features.overview.server.replayedAt"), format: "time" },
     ],
-    empty: "Nothing was read.",
+    empty: t("features.overview.server.nothingWasRead"),
     sql: lines(
       "SELECT coalesce(w.status, 'not streaming') AS status, w.slot_name AS slot,",
       "  pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())::bigint AS replay_lag_bytes,",

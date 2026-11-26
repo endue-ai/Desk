@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // Moving a console or a table view to another database of its server (PG-13, ADR 0321): its kept
 // session closes through PG-02's own path (asked first in a transaction), a console keeps its
 // text, and a table view reads the table on the new database.
@@ -22,12 +23,14 @@
 export function createRebind(/** @type {Parts} */ parts) {
   const { deps, discard, closing, release, bind, refresh, tableName, render } = parts;
   return async (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
-    if (target.running || target.filing)
-      throw new Error("A run is going on in this console: cancel it first.");
+    if (target.running || target.filing) throw new Error(t("consoleRebind.aRunIsGoingOnIn"));
     await discard(target);
     const open = closing(target);
-    if (open.length && !(await deps.confirm(`Move it to ${conn.name}?`, open)))
-      throw deps.cancelled("Not moved: it stays on its database.");
+    if (
+      open.length &&
+      !(await deps.confirm(t("consoleRebind.moveItTo", { name: String(conn.name) }), open))
+    )
+      throw deps.cancelled(t("consoleRebind.notMovedItStaysOnIts"));
     release(target); // its session closes (PG-02): the next run opens one on the new database
     target.edit = null;
     if (target.kind === "console") await bind(target, conn);

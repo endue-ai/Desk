@@ -3,6 +3,7 @@
 // pg_monitor holds both), whether pg_stat_statements is there, loaded or only available, and the
 // settings the sections' sentences name. Everything it calls is open to every role. No DOM.
 
+import { t } from "../../strings/index.js";
 import { lines } from "./sql.js";
 
 /**
@@ -100,5 +101,8 @@ export function blindSpots(/** @type {Server} */ server) {
     ...(server.allSettings ? [] : ["settings only a superuser reads are left out"]),
   ];
   if (parts.length === 0) return "";
-  return `${server.role || "This role"} is not a member of pg_monitor: ${parts.join(", and ")}.`;
+  return t("features.overview.probe.isNotAMemberOfPg", {
+    value: String(server.role || t("features.overview.probe.thisRole")),
+    value2: String(parts.join(", and ")),
+  });
 }

@@ -5,6 +5,7 @@
 // fields: agents never change it, only the person does. No DOM.
 
 import { baseOf } from "../../databases.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {{ closed: boolean, analyze: boolean, sensitive: string[] }} Access
@@ -22,8 +23,7 @@ export const openAccess = () => ({ closed: false, analyze: false, sensitive: [] 
 /** A sensitive column as the person types it, or the sentence why it is not one. */
 export function columnOf(/** @type {unknown} */ text) {
   const name = typeof text === "string" ? text.trim().replaceAll('"', "") : "";
-  if (!COLUMN.test(name))
-    return { error: "Name a column as column, table.column or schema.table.column." };
+  if (!COLUMN.test(name)) return { error: t("features.audit.access.nameAColumnAsColumnTable") };
   return { name };
 }
 

@@ -7,6 +7,7 @@
 // as before (keptPassword): the password typed, else the keychain's by name. No DOM.
 
 import { endpoint } from "../keychain.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -61,7 +62,11 @@ export async function signInWithCommand(helper, attempt, conn, where) {
     error: {
       kind: "connect",
       ...(server?.code ? { code: server.code } : {}),
-      message: `${where} refused the password ${conn.name}'s password command printed, also after it ran again: ${server?.message ?? "refused"}`,
+      message: t("auth.signIn.refusedThePasswordSPasswordCommand", {
+        where: String(where),
+        name: String(conn.name),
+        value: String(server?.message ?? t("auth.signIn.refused")),
+      }),
     },
   };
 }

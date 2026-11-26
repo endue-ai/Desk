@@ -3,6 +3,7 @@
 // the server, every part under an id of its catalog's (a column `c<attnum>`, a constraint or an
 // index `k<oid>`) so an edit keeps it. `factsOf` and `designOf` are pure; `readForm` runs the reads.
 
+import { t as messageText } from "../../strings/index.js";
 import { ACTIONS } from "./model.js";
 import { SERVER_READS, tableReads } from "./read-sql.js";
 import { labelOf } from "./types.js";
@@ -88,7 +89,13 @@ export function factsOf(/** @type {Record<string, Rows>} */ rows) {
  */
 export function designOf(schema, name, rows, facts) {
   const table = rows.table?.[0];
-  if (!table) throw new Error(`There is no table ${schema}.${name}: it may have been dropped.`);
+  if (!table)
+    throw new Error(
+      messageText("features.tableDesign.read.thereIsNoTableItMay", {
+        schema: String(schema),
+        name: String(name),
+      }),
+    );
   /** @type {Design} */
   const design = {
     schema,
@@ -187,7 +194,10 @@ export async function readForm(deps, conn, table) {
   });
   const { result } = run;
   const failed = result.error ?? result.statements.find((s) => s.error)?.error;
-  if (failed) throw new Error(`Not read: ${failed.message}`);
+  if (failed)
+    throw new Error(
+      messageText("features.tableDesign.read.notRead", { message: String(failed.message) }),
+    );
   /** @type {Record<string, Rows>} */
   const rows = {};
   reads.forEach((read, i) => {
@@ -197,7 +207,12 @@ export async function readForm(deps, conn, table) {
   if (!table) return { facts, original: null, partitioned: "", partition: false };
   const got = designOf(table.schema, table.name, rows, facts);
   if (got.kind !== "r" && got.kind !== "p")
-    throw new Error(`${table.schema}.${table.name} is not a table: the form changes tables.`);
+    throw new Error(
+      messageText("features.tableDesign.read.isNotATableTheForm", {
+        schema: String(table.schema),
+        name: String(table.name),
+      }),
+    );
   return {
     facts,
     original: got.design,

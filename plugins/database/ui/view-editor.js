@@ -15,6 +15,7 @@ import { dialectFacet, sqlLanguage } from "./editor/lexing.js";
 import { findAndReplace } from "./editor/search-panel.js";
 import { signatureHelp } from "./editor/signature-help.js";
 import { navigation } from "./navigate/editor.js";
+import { t } from "./strings/index.js";
 import {
   Annotation,
   Compartment,
@@ -88,7 +89,7 @@ export function createEditor(doc, { box, editor, layer, list }, act, running) {
     ]),
     placeholder(editor.placeholder),
     EditorView.contentAttributes.of({
-      "aria-label": editor.getAttribute("aria-label") ?? "SQL",
+      "aria-label": editor.getAttribute("aria-label") ?? t("viewEditor.sql"),
       "aria-multiline": "true",
     }),
     findAndReplace(),

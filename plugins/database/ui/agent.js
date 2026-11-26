@@ -12,6 +12,7 @@ import { homeOf, onDatabase } from "./databases.js";
 import { countChanges, deleteRows, editCell } from "./edit/pending.js";
 import { agentsOf } from "./features/audit/agents.js";
 import { keepable, readHistory } from "./history.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -41,24 +42,22 @@ export function createAgentCommands(deps) {
   /** The connection an agent names, on the database it names. */
   const named = (/** @type {unknown} */ ref, /** @type {unknown} */ database) => {
     const conn = typeof ref === "string" ? deps.find(ref) : undefined;
-    if (!conn) throw new Error(`No connection is named ${String(ref)}.`);
+    if (!conn) throw new Error(t("agent.noConnectionIsNamed", { value: String(String(ref)) }));
     if (typeof database !== "string") return conn;
     if (conn.engine !== "postgresql")
-      throw new Error(
-        `${conn.name} is not PostgreSQL: a database of its own is a schema here, name it as schema.`,
-      );
+      throw new Error(t("agent.isNotPostgresqlADatabaseOf", { name: String(conn.name) }));
     return onDatabase(conn, database);
   };
 
   const stage = async (/** @type {Parameters<Deps["consoles"]["edits"]["step"]>[1]} */ apply) => {
     const target = deps.consoles.current();
     const conn = target && deps.find(target.connection);
-    if (!target || !conn) throw new Error("Show the result to change.");
+    if (!target || !conn) throw new Error(t("agent.showTheResultToChange"));
     if ((await agents?.access.of(conn.id))?.closed)
-      throw new Error(`${conn.name} is closed to agents.`);
+      throw new Error(t("agent.isClosedToAgents", { name: String(conn.name) }));
     const { state } = await deps.consoles.edits.ready();
     if (deps.consoles.current() !== target)
-      throw new Error("The result on screen changed meanwhile. Try again.");
+      throw new Error(t("agent.theResultOnScreenChangedMeanwhile"));
     return deps.consoles.edits.step(state, (changes, table, set) => {
       apply(changes, table, set);
       return { pending: countChanges(changes) };
@@ -110,14 +109,15 @@ export function createAgentCommands(deps) {
     const conn = target && deps.find(target.connection);
     if (!target || !conn) return null;
     const access = await agents?.access.of(conn.id);
-    if (access?.closed) throw new Error(`${conn.name} is closed to agents.`);
+    if (access?.closed) throw new Error(t("agent.isClosedToAgents", { name: String(conn.name) }));
     const maxRows = agents?.limits({ maxRows: args.maxRows }).maxRows ?? ROWS_DEFAULT;
     return readView(target, conn, deps.view, args.include, maxRows, access?.sensitive ?? []);
   });
 
   provide("endue.database.write-console", async (args) => {
     const conn = named(args.connection, args.database);
-    if (typeof args.sql !== "string" || !args.sql.trim()) throw new Error("Give the SQL to draft.");
+    if (typeof args.sql !== "string" || !args.sql.trim())
+      throw new Error(t("agent.giveTheSqlToDraft"));
     const target =
       args.newTab === true ? await deps.consoles.openNew(conn) : await deps.consoles.open(conn);
     const before = deps.view.editor().text;
@@ -145,7 +145,7 @@ export function createAgentCommands(deps) {
   });
   provide("endue.database.stage-cells", ({ cells }) => {
     if (!Array.isArray(cells) || cells.length < 1 || cells.length > 100)
-      throw new Error("Give one to 100 cells to stage.");
+      throw new Error(t("agent.giveOneToCellsToStage"));
     return stage((changes, table, set) => {
       for (const { row, column, value } of cells) {
         if (
@@ -155,14 +155,14 @@ export function createAgentCommands(deps) {
           column < 0 ||
           (value !== null && typeof value !== "string")
         )
-          throw new Error("Use result row and column indices and a string or null value.");
+          throw new Error(t("agent.useResultRowAndColumnIndices"));
         editCell(changes, table, set, row, column, value);
       }
     });
   });
   provide("endue.database.stage-delete-rows", ({ rows }) => {
     if (!Array.isArray(rows) || rows.length < 1 || rows.length > 100)
-      throw new Error("Give one to 100 rows to stage.");
+      throw new Error(t("agent.giveOneToRowsToStage"));
     return stage((changes, table, set) => {
       if (
         rows.some(
@@ -170,7 +170,7 @@ export function createAgentCommands(deps) {
             !Number.isInteger(row) || row < 0 || row >= set.rows.length + changes.inserts.length,
         )
       )
-        throw new Error("Use indices of rows in the current result.");
+        throw new Error(t("agent.useIndicesOfRowsInThe"));
       deleteRows(changes, table, set, rows);
     });
   });

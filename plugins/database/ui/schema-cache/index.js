@@ -9,6 +9,7 @@
 // PG-13); the connection lists the ones it wrote, so removing it clears them. No DOM.
 
 import { baseOf, storeIdOf } from "../databases.js";
+import { t } from "../strings/index.js";
 import { DATABASE, isSystem, marksSql, POSTGRES_KINDS, signature } from "./kinds.js";
 import { staleReferences } from "./model.js";
 import { Cancelled, runPass } from "./pass.js";
@@ -257,7 +258,8 @@ export function createSchemaCache(deps) {
     } catch (error) {
       entry.check = request.quiet ? "quiet" : "failed";
       entry.error = error instanceof Error ? error : new Error(messageOf(error));
-      if (error instanceof Cancelled) set({ state: "cancelled", message: "Cancelled." });
+      if (error instanceof Cancelled)
+        set({ state: "cancelled", message: t("schemaCache.index.cancelled") });
       else set({ state: "error", message: messageOf(error) });
       throw error;
     }

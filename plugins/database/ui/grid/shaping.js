@@ -4,6 +4,7 @@
 // cursor's cell. A table view's keys and filters go to the server (the grid acts "sort" and
 // "filters"); a console's result keeps its own. No DOM: the grid hands in what it holds.
 
+import { t } from "../strings/index.js";
 import {
   emptyColumns,
   fitWidth,
@@ -95,7 +96,7 @@ export function createShaping(g) {
       asked = {};
     },
     hide() {
-      if (g.layout().visible.length <= 1) return "The last column on screen stays.";
+      if (g.layout().visible.length <= 1) return t("grid.shaping.theLastColumnOnScreenStays");
       columns(hide(g.shape().columns, cursorKey()), "");
       return "";
     },
@@ -156,8 +157,7 @@ export function createShaping(g) {
       const col = g.column();
       const cell = g.value();
       if (cell === undefined) return "";
-      if (WITH_VALUE.has(op) && cell === null)
-        return "A NULL cell has no value to compare with: filter by Is NULL instead.";
+      if (WITH_VALUE.has(op) && cell === null) return t("grid.shaping.aNullCellHasNoValue");
       const key = keyOf(col);
       /** @type {Filter} */
       const next = {

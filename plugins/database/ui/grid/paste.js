@@ -8,6 +8,7 @@
 
 import { copiedHere } from "../clipboard.js";
 import { readPaste } from "../edit/paste-text.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./rows-client.js").StartWorker} StartWorker
@@ -43,7 +44,8 @@ export function createPasteReader(startWorker, threshold = IN_WORKER) {
       else entry?.resolve({ rows: data.rows, format: data.format });
     };
     worker.onerror = () => {
-      for (const entry of pending.values()) entry.reject(new Error("The paste's worker stopped."));
+      for (const entry of pending.values())
+        entry.reject(new Error(t("grid.paste.thePasteSWorkerStopped")));
       pending.clear();
       worker = undefined;
     };
@@ -83,13 +85,12 @@ export function createGridPaste(doc, g) {
   const ops = {
     cells: () =>
       g.st.record
-        ? "Leave the record view (t) first: a paste, a fill or a clear works on the grid's rows."
+        ? t("grid.paste.leaveTheRecordViewTFirst")
         : { order: [...g.st.order], columns: [...g.st.layout.visible], ...g.block() },
     readPaste: ({ text }) => reader.read(String(text ?? ""), copiedHere(String(text ?? ""))),
     clipboard: async () => {
       const clipboard = doc.defaultView?.navigator?.clipboard;
-      const refused =
-        "The clipboard cannot be read here: put the cursor in the grid and press Mod+V.";
+      const refused = t("grid.paste.theClipboardCannotBeReadHere");
       if (typeof clipboard?.readText !== "function") return refused;
       return clipboard.readText().then(
         (text) => ({ text }),

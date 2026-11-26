@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // How the plugin's commands and the view's actions meet a failure: its words go to the status line
 // and a cancel stays quiet. A command's failure still ends its request (the palette or the agent
 // hears it); an action's never reaches the DOM. Each command id is answered once. No DOM.
@@ -26,7 +27,7 @@ export function answerer(commands, view) {
   /** @type {Set<string>} */
   const answered = new Set();
   return (name, handler) => {
-    if (answered.has(name)) throw new Error(`${name} is answered twice.`);
+    if (answered.has(name)) throw new Error(t("answer.isAnsweredTwice", { name: String(name) }));
     answered.add(name);
     commands.on(name, async (args, invocation) => {
       try {

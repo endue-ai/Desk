@@ -6,6 +6,7 @@
 // one file per object, or saved as a snapshot. controller.js keeps the panel, read.js / folder.js /
 // snapshot.js read the sides, diff.js compares, migrate.js writes the script, run.js runs it.
 
+import { t } from "../../strings/index.js";
 import { createSchemaCompare, summaryOf, TYPE } from "./controller.js";
 import { dumpOf } from "./dump.js";
 import { pickFolder, saveSnapshot, writeFolder } from "./files.js";
@@ -42,12 +43,23 @@ export const feature = {
         const folder =
           typeof args.folder === "string"
             ? args.folder
-            : await pickFolder(deps, `Dump ${schema} into which folder?`);
+            : await pickFolder(
+                deps,
+                t("features.compareSchema.index.dumpIntoWhichFolder", { schema: String(schema) }),
+              );
         const { model } = await readSchema(deps, conn, schema);
         const files = dumpOf(model);
         const done = await writeFolder(deps, folder, files);
         const gone = done.trashed.length ? `; ${done.trashed.length} stale moved to the trash` : "";
-        deps.say(`Dumped ${schema} of ${conn.name}: ${files.length} files in ${folder}${gone}.`);
+        deps.say(
+          t("features.compareSchema.index.dumpedOfFilesIn", {
+            schema: String(schema),
+            name: String(conn.name),
+            length: String(files.length),
+            folder: String(folder),
+            gone: String(gone),
+          }),
+        );
         return { folder, files: files.map((f) => f.path), trashed: done.trashed };
       },
       "endue.database.save-schema-snapshot": async (args) => {
@@ -58,7 +70,14 @@ export const feature = {
           schema,
           snapshotText(model, { from: conn.name, at: new Date() }),
         );
-        deps.say(`Saved ${schema} of ${conn.name} (${model.objects.length} objects) to ${path}.`);
+        deps.say(
+          t("features.compareSchema.index.savedOfObjectsTo", {
+            schema: String(schema),
+            name: String(conn.name),
+            length: String(model.objects.length),
+            path: String(path),
+          }),
+        );
         return { path, objects: model.objects.length };
       },
       "endue.database.schema-compare-refresh": async () => {
@@ -92,12 +111,12 @@ export const feature = {
   },
   panels: {
     [TYPE]: {
-      label: "Schema comparison",
+      label: t("features.compareSchema.index.schemaComparison"),
       render: schemaComparePanel,
       keep: (/** @type {any} */ s) => ({
         ...s,
         status: "cancelled",
-        error: "Compare again to see the difference.",
+        error: t("features.compareSchema.index.compareAgainToSeeTheDifference"),
         items: [],
         script: null,
         run: null,

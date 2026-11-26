@@ -8,6 +8,7 @@
 // Reading what the client printed is the result worker's (ui/output/mysql.js, #38).
 
 import { quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { env } from "./common.js";
 import { markOf, rowCounter } from "./text.js";
 
@@ -97,7 +98,7 @@ const userSchemas = (/** @type {string} */ column, /** @type {boolean} */ system
 
 export const mysql = {
   id: /** @type {const} */ ("mysql"),
-  title: "MySQL / MariaDB",
+  title: t("engines.mysql.mysqlMariadb"),
   dialect: /** @type {const} */ ("mysql"),
   port: 3306,
   client: "mysql",

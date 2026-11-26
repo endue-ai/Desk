@@ -6,6 +6,7 @@
 // script waits while any is there. Pure.
 
 import { oneExpression } from "../../catalog.js";
+import { t } from "../../strings/index.js";
 import { living, nameOf } from "./model.js";
 import { INTEGERS, typeOf, typeProblem } from "./types.js";
 
@@ -21,21 +22,31 @@ const bytes = (/** @type {string} */ name) => new TextEncoder().encode(name).len
 
 /** How a column is said: its name, else its place. */
 export const columnLabel = (/** @type {Design} */ design, /** @type {Column} */ column) =>
-  column.name.trim() ? `column ${column.name}` : `column ${design.columns.indexOf(column) + 1}`;
+  column.name.trim()
+    ? t("features.tableDesign.checks.column", { name: String(column.name) })
+    : t("features.tableDesign.checks.column2", {
+        value: String(design.columns.indexOf(column) + 1),
+      });
 
 /** A part's name problem ("" when none), `required` for a table or a column. */
 function nameProblem(/** @type {string} */ name, /** @type {string} */ what, required = false) {
-  if (required && name.trim() === "") return `${what} has no name.`;
-  if (bytes(name) > MAX) return `${what}'s name is longer than PostgreSQL's ${MAX} bytes.`;
+  if (required && name.trim() === "")
+    return t("features.tableDesign.checks.hasNoName", { what: String(what) });
+  if (bytes(name) > MAX)
+    return t("features.tableDesign.checks.sNameIsLongerThanPostgresql", {
+      what: String(what),
+      MAX: String(MAX),
+    });
   return "";
 }
 
 /** An expression's problem ("" when it is one expression, or empty and allowed). */
 function expressionProblem(/** @type {string} */ expression, /** @type {string} */ what) {
-  if (expression.trim() === "") return `${what} is empty.`;
+  if (expression.trim() === "")
+    return t("features.tableDesign.checks.isEmpty", { what: String(what) });
   return oneExpression(expression)
     ? ""
-    : `${what} is not one expression: it holds a ; or a comment, or its parentheses do not close.`;
+    : t("features.tableDesign.checks.isNotOneExpressionItHolds", { what: String(what) });
 }
 
 /** The problems of a list of keys (an index's, a partition's). */
@@ -44,7 +55,8 @@ function keysProblems(
   /** @type {Key[]} */ keys,
   /** @type {string} */ what,
 ) {
-  if (keys.length === 0) return [`${what} has no columns or expressions.`];
+  if (keys.length === 0)
+    return [t("features.tableDesign.checks.hasNoColumnsOrExpressions", { what: String(what) })];
   return keys.flatMap((k) =>
     k.column
       ? columnProblem(design, k.column, what)
@@ -59,10 +71,16 @@ function columnProblem(
   /** @type {string} */ what,
 ) {
   const column = design.columns.find((c) => c.id === id);
-  if (!column) return [`${what} names a column that is gone.`];
+  if (!column)
+    return [t("features.tableDesign.checks.namesAColumnThatIsGone", { what: String(what) })];
   // The server would drop the part with the column; the form has the person say so.
   return column.dropped
-    ? [`${what} holds ${column.name}, which is dropped: remove it too, or keep the column.`]
+    ? [
+        t("features.tableDesign.checks.holdsWhichIsDroppedRemoveIt", {
+          what: String(what),
+          name: String(column.name),
+        }),
+      ]
     : [];
 }
 
@@ -79,13 +97,15 @@ function columnProblems(
   if (type) out.push(`${Label} ${type}`);
   const valued = [column.default.trim(), column.generated.trim(), column.identity].filter(Boolean);
   if (valued.length > 1)
-    out.push(`${Label} can have one of a default, an identity and a generation.`);
+    out.push(t("features.tableDesign.checks.canHaveOneOfADefault", { Label: String(Label) }));
   if (column.default.trim()) out.push(expressionProblem(column.default, `The default of ${label}`));
   if (column.generated.trim())
     out.push(expressionProblem(column.generated, `The generation of ${label}`));
   const integer = INTEGERS.has(typeOf(facts.types, column.type)?.label ?? "");
   if (column.identity && (column.array || !integer))
-    out.push(`${Label} is an identity: that takes smallint, integer or bigint.`);
+    out.push(
+      t("features.tableDesign.checks.isAnIdentityThatTakesSmallint", { Label: String(Label) }),
+    );
   return out;
 }
 
@@ -101,7 +121,9 @@ export function problemsOf(design, facts) {
   for (const column of columns) {
     out.push(...columnProblems(design, column, facts));
     if (column.name && seen.has(column.name))
-      out.push(`Two columns are named ${column.name}: rename one.`);
+      out.push(
+        t("features.tableDesign.checks.twoColumnsAreNamedRenameOne", { name: String(column.name) }),
+      );
     seen.add(column.name);
   }
   const keyed = (
@@ -109,7 +131,9 @@ export function problemsOf(design, facts) {
     /** @type {string} */ what,
   ) => [
     nameProblem(key.name, what),
-    ...(key.columns.length ? [] : [`${what} has no columns.`]),
+    ...(key.columns.length
+      ? []
+      : [t("features.tableDesign.checks.hasNoColumns", { what: String(what) })]),
     ...key.columns.flatMap((id) => columnProblem(design, id, what)),
   ];
   const pk = design.primaryKey;
@@ -126,15 +150,20 @@ export function problemsOf(design, facts) {
     const what = `Index ${index.name || "(no name)"}`;
     out.push(nameProblem(index.name, what), ...keysProblems(design, index.keys, what));
     if (facts.methods.length && !facts.methods.includes(index.method))
-      out.push(`${what} uses ${index.method || "no method"}, which this server does not have.`);
+      out.push(
+        t("features.tableDesign.checks.usesWhichThisServerDoesNot", {
+          what: String(what),
+          value: String(index.method || t("features.tableDesign.checks.noMethod")),
+        }),
+      );
     if (index.unique && index.method !== "btree")
-      out.push(`${what}: only a btree index is unique.`);
+      out.push(t("features.tableDesign.checks.onlyABtreeIndexIsUnique", { what: String(what) }));
     if (index.where.trim()) out.push(expressionProblem(index.where, `The WHERE of ${what}`));
   }
   out.push(...partitionProblems(design));
   const owner = design.owner.trim();
   if (owner && facts.roles.length && !facts.roles.includes(owner))
-    out.push(`There is no role ${owner} on this server to own the table.`);
+    out.push(t("features.tableDesign.checks.thereIsNoRoleOnThis", { owner: String(owner) }));
   return out.filter(Boolean);
 }
 
@@ -145,13 +174,20 @@ function foreignProblems(
 ) {
   const what = `Foreign key ${fk.name || "(no name)"}`;
   const out = [nameProblem(fk.name, what)];
-  if (fk.columns.length === 0) out.push(`${what} has no columns.`);
+  if (fk.columns.length === 0)
+    out.push(t("features.tableDesign.checks.hasNoColumns", { what: String(what) }));
   out.push(...fk.columns.flatMap((id) => columnProblem(design, id, what)));
-  if (!fk.self && (!fk.refSchema || !fk.refTable)) out.push(`${what} references no table.`);
-  if (fk.refColumns.length === 0) out.push(`${what} references no columns.`);
+  if (!fk.self && (!fk.refSchema || !fk.refTable))
+    out.push(t("features.tableDesign.checks.referencesNoTable", { what: String(what) }));
+  if (fk.refColumns.length === 0)
+    out.push(t("features.tableDesign.checks.referencesNoColumns", { what: String(what) }));
   else if (fk.refColumns.length !== fk.columns.length)
     out.push(
-      `${what} has ${fk.columns.length} columns and references ${fk.refColumns.length}: make them as many.`,
+      t("features.tableDesign.checks.hasColumnsAndReferencesMakeThem", {
+        what: String(what),
+        length: String(fk.columns.length),
+        length2: String(fk.refColumns.length),
+      }),
     );
   if (fk.self) out.push(...fk.refColumns.flatMap((id) => columnProblem(design, id, what)));
   return out;
@@ -168,11 +204,14 @@ function partitionProblems(/** @type {Design} */ design) {
   ];
   for (const { what, key } of unique) {
     if (keys.some((k) => !k.column))
-      out.push(`${what} cannot go with a partition key that holds an expression.`);
+      out.push(t("features.tableDesign.checks.cannotGoWithAPartitionKey", { what: String(what) }));
     const missing = keys.filter((k) => k.column && !key.columns.includes(k.column));
     if (missing.length)
       out.push(
-        `${what} must hold the partition columns: ${missing.map((k) => nameOf(design, k.column)).join(", ")}.`,
+        t("features.tableDesign.checks.mustHoldThePartitionColumns", {
+          what: String(what),
+          value: String(missing.map((k) => nameOf(design, k.column)).join(", ")),
+        }),
       );
   }
   return out;

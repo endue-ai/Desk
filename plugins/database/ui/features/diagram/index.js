@@ -5,6 +5,7 @@
 // the database does not declare, and exports the diagram as SVG or PNG or copies it as an image.
 // controller.js and edit.js change diagrams, export.js writes them, panel.js draws. No DOM here.
 
+import { t as messageText } from "../../strings/index.js";
 import { createDiagrams, TYPE } from "./controller.js";
 import { createEdits } from "./edit.js";
 import { copyDiagram, exportDiagram } from "./export.js";
@@ -45,9 +46,9 @@ async function connectionOf(/** @type {Deps} */ deps, /** @type {Record<string, 
       ? deps.manager.get(ref.connection)
       : await deps.manager.choose(
           /** @type {string | undefined} */ (ref.connection),
-          "Database: diagram of which connection?",
+          messageText("features.diagram.index.databaseDiagramOfWhichConnection"),
         );
-  if (!conn) throw deps.cancelled("No diagram drawn.");
+  if (!conn) throw deps.cancelled(messageText("features.diagram.index.noDiagramDrawn"));
   return conn;
 }
 
@@ -63,10 +64,10 @@ async function schemaOf(
     schemas.length === 1
       ? schemas[0]
       : await deps.pick(
-          "Database: diagram of which schema?",
+          messageText("features.diagram.index.databaseDiagramOfWhichSchema"),
           schemas.map((s) => ({ id: s, label: s })),
         );
-  if (!picked) throw deps.cancelled("No diagram drawn.");
+  if (!picked) throw deps.cancelled(messageText("features.diagram.index.noDiagramDrawn"));
   return picked;
 }
 
@@ -81,7 +82,7 @@ async function draw(
     (typeof ref.connection !== "string" ||
       (typeof ref.schema !== "string" && !Array.isArray(ref.schemas)))
   )
-    throw new Error("Name the connection and schemas for the diagram.");
+    throw new Error(messageText("features.diagram.index.nameTheConnectionAndSchemasFor"));
   const conn = await connectionOf(deps, ref);
   const row = "kind" in ref;
   /** @type {Choice} */
@@ -115,7 +116,7 @@ async function around(
       typeof args.schema !== "string" ||
       typeof args.table !== "string")
   )
-    throw new Error("Name the connection, schema and table for the diagram.");
+    throw new Error(messageText("features.diagram.index.nameTheConnectionSchemaAndTable"));
   const conn = await connectionOf(deps, args);
   const schema = await schemaOf(deps, conn, args.schema);
   let table = typeof args.table === "string" ? args.table : "";
@@ -123,10 +124,10 @@ async function around(
     const tables = (await deps.catalog.tables(conn, schema)).filter((t) => t.type === "table");
     table =
       (await deps.pick(
-        "Database: neighbours of which table?",
+        messageText("features.diagram.index.databaseNeighboursOfWhichTable"),
         tables.map((t) => ({ id: t.name, label: t.name })),
       )) ?? "";
-    if (!table) throw deps.cancelled("No diagram drawn.");
+    if (!table) throw deps.cancelled(messageText("features.diagram.index.noDiagramDrawn"));
   }
   const depth = await of(deps).diagrams.depth(read ? (args.depth ?? 1) : args.depth);
   if (read)
@@ -183,7 +184,7 @@ export const feature = {
   },
   panels: {
     [TYPE]: {
-      label: "ER diagram",
+      label: messageText("features.diagram.index.erDiagram"),
       render: (doc, state, act, buffer) => diagramPanel(doc, state, act, buffer),
     },
   },

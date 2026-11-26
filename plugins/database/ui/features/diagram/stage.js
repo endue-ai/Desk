@@ -4,6 +4,7 @@
 // only the boxes and lines near the view are displayed, and far out the column rows are not drawn.
 // Every redraw of the view waits for the next frame. Keys are panel.js's.
 
+import { t } from "../../strings/index.js";
 import { moveBoxes } from "./layout.js";
 import { lineMarkup, sceneOf } from "./svg.js";
 
@@ -251,7 +252,10 @@ export function createStage(doc, host, hooks) {
       lineShown = lines.map(() => true);
       svg.setAttribute(
         "aria-label",
-        `${layout.boxes.length} tables, ${layout.lines.length} relations`,
+        t("features.diagram.stage.tablesRelations", {
+          length: String(layout.boxes.length),
+          length2: String(layout.lines.length),
+        }),
       );
       // The first frame has the stage's size: fit again then.
       if (fitted) {

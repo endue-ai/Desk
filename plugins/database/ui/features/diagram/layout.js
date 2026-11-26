@@ -4,6 +4,7 @@
 // for a large diagram (layout-worker.js), the frame for a small one (layout-client.js); `layoutOf`
 // puts the boxes, lines and bounds together for the panel and the export. Pure.
 
+import { t as messageText } from "../../strings/index.js";
 import { place } from "./arrange.js";
 import { routeAll } from "./route.js";
 
@@ -167,7 +168,9 @@ export function layoutOf(graph, mode, made, solution) {
     return {
       ...wire,
       name: l.name,
-      title: l.drawn ? `${ends} · not in the database` : `${ends} · ${l.name}`,
+      title: l.drawn
+        ? messageText("features.diagram.layout.notInTheDatabase", { ends: String(ends) })
+        : `${ends} · ${l.name}`,
       drawn: l.drawn,
       ends: l.ends,
       points: solution.points[i] ?? [],

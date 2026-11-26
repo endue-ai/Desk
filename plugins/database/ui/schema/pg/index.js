@@ -2,6 +2,7 @@
 // them), the explorer's folders under a schema, under a table and under the connection's Database
 // and Server rows, and each kind's DDL. A new kind is a module here and its lines below. Pure.
 
+import { t } from "../../strings/index.js";
 import * as database from "./database.js";
 import * as databaseDdl from "./database-ddl.js";
 import * as objects from "./objects.js";
@@ -48,7 +49,7 @@ export const TABLE_FOLDERS = /** @type {const} */ ([
 export const LEVELS = /** @type {const} */ ([
   {
     id: "database",
-    label: "Database",
+    label: t("schema.pg.index.database"),
     folders: [
       ["Extensions", ["extension"]],
       ["Foreign data wrappers", ["foreign data wrapper"]],
@@ -63,7 +64,7 @@ export const LEVELS = /** @type {const} */ ([
   },
   {
     id: "server",
-    label: "Server",
+    label: t("schema.pg.index.server"),
     folders: [
       ["Roles", ["role"]],
       ["Tablespaces", ["tablespace"]],

@@ -5,6 +5,7 @@
 // own five kinds. Pure.
 
 import { qualified, quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {{ kind: string, schema: string, name: string, table?: string, ident?: string }} Target
@@ -73,7 +74,7 @@ export const KINDS = /** @type {Record<string, KindRow>} */ ({
   "foreign table": relation("foreign table"),
   sequence: {
     on: "SEQUENCE",
-    label: "sequence",
+    label: t("features.privileges.kinds.sequence"),
     catalog: "pg_class",
     acl: "relacl",
     owner: "relowner",
@@ -84,7 +85,7 @@ export const KINDS = /** @type {Record<string, KindRow>} */ ({
   procedure: routine("PROCEDURE"),
   type: {
     on: "TYPE",
-    label: "type",
+    label: t("features.privileges.kinds.type"),
     catalog: "pg_type",
     acl: "typacl",
     owner: "typowner",
@@ -94,7 +95,7 @@ export const KINDS = /** @type {Record<string, KindRow>} */ ({
   schema: { ...single("SCHEMA", "pg_namespace", "nsp", "n", ["USAGE", "CREATE"]), level: false },
   database: {
     on: "DATABASE",
-    label: "database",
+    label: t("features.privileges.kinds.database"),
     catalog: "pg_database",
     acl: "datacl",
     owner: "datdba",
@@ -126,11 +127,23 @@ export const COLUMN_PRIVILEGES = ["SELECT", "INSERT", "UPDATE", "REFERENCES"];
 
 /** Default privileges' kinds: pg_default_acl's letter, the word, the privileges. */
 export const DEFAULT_KINDS = /** @type {const} */ ({
-  r: { on: "TABLES", label: "tables", privileges: TABLE },
-  S: { on: "SEQUENCES", label: "sequences", privileges: ["USAGE", "SELECT", "UPDATE"] },
-  f: { on: "FUNCTIONS", label: "functions and procedures", privileges: ["EXECUTE"] },
-  T: { on: "TYPES", label: "types", privileges: ["USAGE"] },
-  n: { on: "SCHEMAS", label: "schemas", privileges: ["USAGE", "CREATE"] },
+  r: { on: "TABLES", label: t("features.privileges.kinds.tables"), privileges: TABLE },
+  S: {
+    on: "SEQUENCES",
+    label: t("features.privileges.kinds.sequences"),
+    privileges: ["USAGE", "SELECT", "UPDATE"],
+  },
+  f: {
+    on: "FUNCTIONS",
+    label: t("features.privileges.kinds.functionsAndProcedures"),
+    privileges: ["EXECUTE"],
+  },
+  T: { on: "TYPES", label: t("features.privileges.kinds.types"), privileges: ["USAGE"] },
+  n: {
+    on: "SCHEMAS",
+    label: t("features.privileges.kinds.schemas"),
+    privileges: ["USAGE", "CREATE"],
+  },
 });
 
 /** A default privileges kind's privileges on a server's version. */
@@ -147,13 +160,19 @@ const lit = (/** @type {string} */ text) => quoteText(PG, text);
 /** The SQL condition that finds the target's catalog row as `x`. */
 export function whereOf(/** @type {Target} */ target) {
   const row = kindOf(target.kind);
-  if (!row) throw new Error(`A ${target.kind} has no privileges of its own.`);
+  if (!row)
+    throw new Error(
+      t("features.privileges.kinds.aHasNoPrivilegesOfIts", { kind: String(target.kind) }),
+    );
   const name = qualified(PG, target.schema, target.name);
   switch (row.catalog) {
     case "pg_class":
       return `x.oid = pg_catalog.to_regclass(${lit(name)})`;
     case "pg_proc":
-      if (!/^\d+$/u.test(target.ident ?? "")) throw new Error(`${target.name} has no catalog id.`);
+      if (!/^\d+$/u.test(target.ident ?? ""))
+        throw new Error(
+          t("features.privileges.kinds.hasNoCatalogId", { name: String(target.name) }),
+        );
       return `x.oid = ${target.ident}::oid`;
     case "pg_type":
       return `x.oid = pg_catalog.to_regtype(${lit(name)})`;

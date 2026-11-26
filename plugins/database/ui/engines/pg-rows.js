@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // Rows of the cursor a console's read keeps (PG-22, ADR 0352, engines/pg-cursor.js): `count` rows
 // from `from`, or every row counted. A fetch runs in the owner's turn as a run does, Cancel stops it
 // (it is one of the sessions' jobs), and a session gone is not opened again. No DOM.
@@ -20,7 +21,7 @@
 export function cursorRows({ jobs, onBusy, keeper, cursors }) {
   const gone = /** @type {const} */ ({
     kind: "client",
-    message: "The console's session ended: the rows past those held are gone.",
+    message: t("engines.pgRows.theConsoleSSessionEndedThe"),
   });
   /**
    * @param {Connection} conn @param {import("../session/keeper.js").Owner} owner

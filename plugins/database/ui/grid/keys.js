@@ -5,6 +5,7 @@
 // binding cannot say.
 
 import { actionFor, extending, pressOf } from "../keys.js";
+import { t } from "../strings/index.js";
 import { ROW } from "../view-grid-draw.js";
 
 /**
@@ -64,7 +65,7 @@ export function createGridKeys(g) {
       if (g.selected()) return act("clearCells");
       const cell = g.cursorCell();
       if (cell?.editable) act("editCell", cell.row, cell.col, null);
-      else act("say", cell?.reason || "This cell cannot change.");
+      else act("say", cell?.reason || t("grid.keys.thisCellCannotChange"));
     },
     addRow: () => g.addRows("addRow"),
     duplicateRows: () => g.addRows("duplicateRows"),

@@ -1,3 +1,5 @@
+import { t } from "../strings/index.js";
+
 // What a copy says before anything runs (PG-63): the differences between the two servers and what
 // the target already has. A problem holds the copy (a type the target lacks, a table that is there
 // already or is missing, a column the target has not); a note is said and the copy may start (an
@@ -32,30 +34,49 @@ export function differences(facts) {
   const { source, target } = facts;
   if (target.number && source.number && major(target) < major(source))
     notes.push(
-      `The target runs PostgreSQL ${target.text}, older than the source's ${source.text}: a type or a default it lacks fails before any row moves.`,
+      t("transfer.compare.theTargetRunsPostgresqlOlderThan", {
+        text: String(target.text),
+        text2: String(source.text),
+      }),
     );
   else if (target.number && source.number && major(target) !== major(source))
-    notes.push(`The source runs PostgreSQL ${source.text}, the target ${target.text}.`);
+    notes.push(
+      t("transfer.compare.theSourceRunsPostgresqlTheTarget", {
+        text: String(source.text),
+        text2: String(target.text),
+      }),
+    );
   const structure = facts.content !== "data";
   if (structure)
     for (const type of facts.missingTypes)
-      problems.push(`The target has no type ${type}: create it there first.`);
-  for (const schema of facts.newSchemas) notes.push(`Schema ${schema} is created on the target.`);
+      problems.push(t("transfer.compare.theTargetHasNoTypeCreate", { type: String(type) }));
+  for (const schema of facts.newSchemas)
+    notes.push(t("transfer.compare.schemaIsCreatedOnTheTarget", { schema: String(schema) }));
   for (const table of facts.tables) {
     if (structure && table.exists)
       problems.push(
-        `${table.label} is already on the target: choose another name, or copy the data only.`,
+        t("transfer.compare.isAlreadyOnTheTargetChoose", { label: String(table.label) }),
       );
     if (!structure && !table.exists)
-      problems.push(`${table.label} is not on the target: copy its structure too.`);
+      problems.push(t("transfer.compare.isNotOnTheTargetCopy", { label: String(table.label) }));
   }
   if (facts.content !== "structure")
     for (const pair of facts.columns) {
       if (pair.target === null)
-        problems.push(`${pair.table} on the target has no column ${pair.column}.`);
+        problems.push(
+          t("transfer.compare.onTheTargetHasNoColumn", {
+            table: String(pair.table),
+            column: String(pair.column),
+          }),
+        );
       else if (pair.target !== pair.source)
         notes.push(
-          `${pair.table}.${pair.column} is ${pair.source} here and ${pair.target} on the target: each value is read as the target's type.`,
+          t("transfer.compare.isHereAndOnTheTarget", {
+            table: String(pair.table),
+            column: String(pair.column),
+            source: String(pair.source),
+            target: String(pair.target),
+          }),
         );
     }
   notes.push(...(facts.notes ?? []));

@@ -7,6 +7,7 @@
 import { editCell } from "../../edit/pending.js";
 import { engineOf } from "../../engines/index.js";
 import { PAGE, readableColumn, searchSql } from "../../links/model.js";
+import { t } from "../../strings/index.js";
 import { cursorOf, onScreen, readKeys } from "./read.js";
 
 /**
@@ -61,11 +62,14 @@ export async function pickKey(
     k.from.columns.includes(column),
   );
   const key = keys[0];
-  if (!key) throw new Error(`${column} is in no foreign key: type its value instead.`);
+  if (!key)
+    throw new Error(t("features.links.pick.isInNoForeignKeyType", { column: String(column) }));
   const cols = key.from.columns.map((name) => here.set.columns.indexOf(name));
   const lacking = key.from.columns.filter((_, i) => (cols[i] ?? -1) < 0);
   if (lacking.length)
-    throw new Error(`${lacking.join(", ")} is not in this result: the key is set as a whole.`);
+    throw new Error(
+      t("features.links.pick.isNotInThisResultThe", { value: String(lacking.join(", ")) }),
+    );
   const fixed = cols.map((c) => state.target.columns[c]?.editor?.fixed).find(Boolean);
   if (fixed) throw new Error(fixed);
   const tableColumns = await deps.catalog.columns(here.conn, key.to.schema, key.to.table);
@@ -81,10 +85,19 @@ export async function pickKey(
       id: `${ROW}${i}`,
       label: row.map(shown).join(" · "),
     }));
-    if (page.more) items.push({ id: MORE, label: `More rows (from ${offset + PAGE + 1})` });
-    if (text && cols.length === 1) items.push({ id: TYPED, label: `Use “${text}” as it is` });
+    if (page.more)
+      items.push({
+        id: MORE,
+        label: t("features.links.pick.moreRowsFrom", { value: String(offset + PAGE + 1) }),
+      });
+    if (text && cols.length === 1)
+      items.push({ id: TYPED, label: t("features.links.pick.useAsItIs", { text: String(text) }) });
     const holding = text ? ` Holding “${text}”${page.rows.length ? "" : ": no row does"}` : "";
-    const title = `Database: ${key.from.columns.join(", ")} is which row of ${where}?${holding}`;
+    const title = t("features.links.pick.databaseIsWhichRowOf", {
+      value: String(key.from.columns.join(", ")),
+      where: String(where),
+      holding: String(holding),
+    });
     const picked = await deps.pick(title, items, true, `Search by ${by}`);
     if (picked === undefined) return undefined;
     if (picked === MORE) {
@@ -119,7 +132,11 @@ function setKey(
     });
   });
   const what = label ? ` (${label})` : "";
-  const words = `${key.from.columns.join(", ")} = ${values.map(shown).join(", ")}${what}: pending until Submit.`;
+  const words = t("features.links.pick.pendingUntilSubmit", {
+    value: String(key.from.columns.join(", ")),
+    value2: String(values.map(shown).join(", ")),
+    what: String(what),
+  });
   deps.say(words);
   return words;
 }

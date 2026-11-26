@@ -4,6 +4,7 @@
 // asks where); Cancel and Escape answer nothing.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../export/options.js").ExportOptions} ExportOptions
@@ -92,7 +93,12 @@ export function optionsDialog(doc, model, done) {
           type: number ? "number" : "text",
           ...(number ? { min: "1", max: "10000", step: "1" } : {}),
           ...(key === "table" && model.table ? { placeholder: model.table } : {}),
-          ...(key === "row" ? { required: true, placeholder: "{{id}}: {{name}}" } : {}),
+          ...(key === "row"
+            ? {
+                required: true,
+                placeholder: t("features.export.dialog.copy", { id: "{id}", name: "{name}" }),
+              }
+            : {}),
           spellcheck: "false",
         })
       );
@@ -112,18 +118,23 @@ export function optionsDialog(doc, model, done) {
           "label",
           { class: "check" },
           sheets,
-          ` Every result of the console (${model.results}), a sheet each`,
+          t("features.export.dialog.everyResultOfTheConsoleA", { results: String(model.results) }),
         )
       : undefined;
   const count = `${model.rows.toLocaleString("en-US")} row${model.rows === 1 ? "" : "s"}`;
   const notes = [
-    el(doc, "p", { class: "hint" }, `${count}. You choose where the file goes next.`),
+    el(
+      doc,
+      "p",
+      { class: "hint" },
+      t("features.export.dialog.youChooseWhereTheFileGoes", { count: String(count) }),
+    ),
     model.format === "template"
       ? el(
           doc,
           "p",
           { class: "hint" },
-          "In Each row, {{column}} or {{1}} is a value and {{#}} the row's number.",
+          t("features.export.dialog.inEachRowOrIsA", { column: "{column}", 1: "{1}" }),
         )
       : undefined,
     model.partial
@@ -131,24 +142,34 @@ export function optionsDialog(doc, model, done) {
           doc,
           "p",
           { class: "hint", "data-part": "partial" },
-          "The server has more rows than the result holds: load more rows first to export them.",
+          t("features.export.dialog.theServerHasMoreRowsThan"),
         )
       : undefined,
   ];
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.export.dialog.cancel"),
+  );
   cancel.addEventListener("click", () => done());
   const submit = el(
     doc,
     "button",
     { type: "submit", class: "desk-btn desk-btn-primary" },
-    "Export…",
+    t("features.export.dialog.export"),
   );
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
       "form",
       { class: "dialog export-options", "aria-labelledby": "export-options-title" },
-      el(doc, "h2", { id: "export-options-title" }, `Export as ${model.label}`),
+      el(
+        doc,
+        "h2",
+        { id: "export-options-title" },
+        t("features.export.dialog.exportAs", { label: String(model.label) }),
+      ),
       ...fields,
       many,
       ...notes,

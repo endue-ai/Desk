@@ -6,6 +6,7 @@
 // schema cache holds beyond these (PG-50) build their DDL from it in pg/.
 
 import { qualified, quoteName, quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { closeStatement, partsOf } from "./common.js";
 import * as pg from "./pg/index.js";
 
@@ -91,7 +92,8 @@ export function ddlQueries(/** @type {SchemaObject | Part} */ object) {
         `FROM pg_catalog.pg_sequence s JOIN pg_catalog.pg_class c ON c.oid = s.seqrelid ${inSchema("c", schema)} AND c.relname = ${q(name)}`,
     ];
   if (object.kind === "function" || object.kind === "procedure") {
-    if (!/^\d+$/u.test(object.ident)) throw new Error("This routine has no catalog id.");
+    if (!/^\d+$/u.test(object.ident))
+      throw new Error(t("schema.postgres.thisRoutineHasNoCatalogId"));
     return [`SELECT pg_catalog.pg_get_functiondef(${object.ident}::oid)`];
   }
   return [];

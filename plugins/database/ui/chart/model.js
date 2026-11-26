@@ -3,6 +3,7 @@
 // a starred query fit its next run. The defaults read the result: X is its first column of text,
 // Y its first of numbers, summed. No DOM.
 
+import { t } from "../strings/index.js";
 import { parseDecimal } from "./decimal.js";
 
 /**
@@ -15,18 +16,38 @@ import { parseDecimal } from "./decimal.js";
 export const TYPES = /** @type {const} */ (["bar", "line", "area", "scatter", "pie"]);
 export const AGGREGATES = /** @type {const} */ (["sum", "avg", "count", "min", "max"]);
 export const TYPE_NAMES = {
-  bar: "Bar",
-  line: "Line",
-  area: "Area",
-  scatter: "Scatter",
-  pie: "Pie",
+  get bar() {
+    return t("chart.type.bar");
+  },
+  get line() {
+    return t("chart.type.line");
+  },
+  get area() {
+    return t("chart.type.area");
+  },
+  get scatter() {
+    return t("chart.type.scatter");
+  },
+  get pie() {
+    return t("chart.type.pie");
+  },
 };
 export const AGGREGATE_NAMES = {
-  sum: "sum",
-  avg: "average",
-  count: "count",
-  min: "minimum",
-  max: "maximum",
+  get sum() {
+    return t("chart.aggregate.sum");
+  },
+  get avg() {
+    return t("chart.aggregate.average");
+  },
+  get count() {
+    return t("chart.aggregate.count");
+  },
+  get min() {
+    return t("chart.aggregate.minimum");
+  },
+  get max() {
+    return t("chart.aggregate.maximum");
+  },
 };
 /** Rows read to tell a column of numbers. */
 const SAMPLE = 2000;
@@ -62,16 +83,24 @@ export function settingsFor(set, given = {}) {
     const value = given[key];
     if (value === undefined) return base[key];
     const name = String(value);
-    if (name && !set.columns.includes(name)) throw new Error(`The result has no column ${name}.`);
-    if (!name && key === "x") throw new Error("A chart needs an X column.");
+    if (name && !set.columns.includes(name))
+      throw new Error(t("chart.model.theResultHasNoColumn", { name: String(name) }));
+    if (!name && key === "x") throw new Error(t("chart.model.aChartNeedsAnXColumn"));
     return name;
   };
   const type = given.type === undefined ? base.type : String(given.type);
   if (!TYPES.includes(/** @type {never} */ (type)))
-    throw new Error(`A chart is ${TYPES.join(", ")}: not ${type}.`);
+    throw new Error(
+      t("chart.model.aChartIsNot", { value: String(TYPES.join(", ")), type: String(type) }),
+    );
   const aggregate = given.aggregate === undefined ? base.aggregate : String(given.aggregate);
   if (!AGGREGATES.includes(/** @type {never} */ (aggregate)))
-    throw new Error(`A chart's aggregate is ${AGGREGATES.join(", ")}: not ${aggregate}.`);
+    throw new Error(
+      t("chart.model.aChartSAggregateIsNot", {
+        value: String(AGGREGATES.join(", ")),
+        aggregate: String(aggregate),
+      }),
+    );
   return {
     type: /** @type {Settings["type"]} */ (type),
     x: column("x"),
@@ -83,9 +112,21 @@ export function settingsFor(set, given = {}) {
 
 /** What a chart draws, in words: its type, what is aggregated and by what. */
 export function chartTitle(/** @type {Settings} */ s) {
-  const type = `${TYPE_NAMES[s.type]} chart`;
-  if (s.type === "scatter") return `${type} of ${s.y || "rows"} against ${s.x}`;
-  const what = s.y ? `the ${AGGREGATE_NAMES[s.aggregate]} of ${s.y}` : "the count of rows";
-  const split = s.series && s.type !== "pie" ? `, split by ${s.series}` : "";
-  return `${type} of ${what} by ${s.x}${split}`;
+  const type = t("chart.title.kind", { type: TYPE_NAMES[s.type] });
+  if (s.type === "scatter")
+    return t("chart.model.ofAgainst", {
+      type: String(type),
+      value: String(s.y || t("chart.model.rows")),
+      x: String(s.x),
+    });
+  const what = s.y
+    ? t("chart.title.aggregate", { aggregate: AGGREGATE_NAMES[s.aggregate], column: s.y })
+    : t("chart.title.rowCount");
+  const split = s.series && s.type !== "pie" ? t("chart.title.split", { column: s.series }) : "";
+  return t("chart.model.ofBy", {
+    type: String(type),
+    what: String(what),
+    x: String(s.x),
+    split: String(split),
+  });
 }

@@ -4,6 +4,7 @@
 // Cancel and Escape with nothing (view-dialog.js).
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {{ name: string, hint: string, needs?: "ANALYZE", not?: "ANALYZE" }} Shown
@@ -13,8 +14,7 @@ import { el } from "../../dom.js";
 /** "PostgreSQL 17" from 170012. */
 const release = (/** @type {number} */ version) => `PostgreSQL ${Math.floor(version / 10000)}`;
 
-export const SAFETY =
-  "ANALYZE runs the statement. A write runs inside a transaction that is rolled back, and still passes the connection's read-only, production and agent guards.";
+export const SAFETY = t("features.plans.optionsDialog.analyzeRunsTheStatementAWrite");
 
 /**
  * @param {Document} doc
@@ -59,25 +59,38 @@ export function optionsDialog(doc, model, done) {
   };
   analyze?.addEventListener("change", follow);
   follow();
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.plans.optionsDialog.cancel"),
+  );
   cancel.addEventListener("click", () => done());
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
       "form",
       { class: "dialog plan-options", "aria-labelledby": "plan-options-title" },
-      el(doc, "h2", { id: "plan-options-title" }, "Explain with options"),
+      el(
+        doc,
+        "h2",
+        { id: "plan-options-title" },
+        t("features.plans.optionsDialog.explainWithOptions"),
+      ),
       el(
         doc,
         "p",
         { class: "hint" },
-        `${model.connection} · ${release(model.version)} · remembered for this connection`,
+        t("features.plans.optionsDialog.rememberedForThisConnection", {
+          connection: String(model.connection),
+          value: String(release(model.version)),
+        }),
       ),
       el(
         doc,
         "fieldset",
         { class: "plan-option-list" },
-        el(doc, "legend", { class: "sr-only" }, "Options"),
+        el(doc, "legend", { class: "sr-only" }, t("features.plans.optionsDialog.options")),
         ...rows,
       ),
       el(doc, "p", { class: "hint plan-safety", id: "plan-options-safety", role: "note" }, SAFETY),
@@ -86,7 +99,12 @@ export function optionsDialog(doc, model, done) {
         "p",
         { class: "buttons" },
         cancel,
-        el(doc, "button", { type: "submit", class: "desk-btn desk-btn-primary" }, "Explain"),
+        el(
+          doc,
+          "button",
+          { type: "submit", class: "desk-btn desk-btn-primary" },
+          t("features.plans.optionsDialog.explain"),
+        ),
       ),
     )
   );

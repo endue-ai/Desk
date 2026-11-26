@@ -3,6 +3,7 @@
 // temporary name and renamed at the end, in a panel with its rows, bytes and Cancel. Commands:
 // Database: export every row to a file, export tables to a folder, cancel the export.
 
+import { t } from "../../strings/index.js";
 import { exportAllDialog } from "./dialog.js";
 import { createJobs, TYPE } from "./jobs.js";
 import { exportAllPanel } from "./panel.js";
@@ -36,9 +37,13 @@ function cancel(
           ? running[0]
           : undefined;
   if (target === undefined)
-    throw new Error(running.length ? "Show the export to cancel first." : "No export is running.");
-  if (!jobs.cancel(target)) throw new Error("That export has ended.");
-  deps.say("Cancelling…");
+    throw new Error(
+      running.length
+        ? t("features.exportAll.index.showTheExportToCancelFirst")
+        : t("features.exportAll.index.noExportIsRunning"),
+    );
+  if (!jobs.cancel(target)) throw new Error(t("features.exportAll.index.thatExportHasEnded"));
+  deps.say(t("features.exportAll.index.cancelling"));
   return { cancelled: target };
 }
 
@@ -53,7 +58,14 @@ export const feature = {
   actions: (deps) => ({
     exportAllCancel: (/** @type {string} */ id) => cancel(deps, id),
   }),
-  panels: { [TYPE]: { label: "Export every row", render: exportAllPanel } },
-  dialogs: { "export-all-options": { label: "Export every row", render: exportAllDialog } },
+  panels: {
+    [TYPE]: { label: t("features.exportAll.index.exportEveryRow"), render: exportAllPanel },
+  },
+  dialogs: {
+    "export-all-options": {
+      label: t("features.exportAll.index.exportEveryRow"),
+      render: exportAllDialog,
+    },
+  },
   styles: [new URL("./export-all.css", import.meta.url).href],
 };

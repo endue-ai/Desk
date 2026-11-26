@@ -6,6 +6,7 @@
 
 import { el } from "../../dom.js";
 import { costText, ms } from "../../explain/words.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../explain/compare.js").Comparison} Comparison
@@ -48,7 +49,8 @@ function cell(
   /** @type {Brief | null} */ b,
   /** @type {number} */ depth,
 ) {
-  if (!b) return el(doc, "td", { class: "plans-none" }, "not in this plan");
+  if (!b)
+    return el(doc, "td", { class: "plans-none" }, t("features.plans.comparePanel.notInThisPlan"));
   return el(
     doc,
     "td",
@@ -68,7 +70,12 @@ export function compareView(doc, state) {
       { class: row.changes.length ? "plans-changed" : undefined },
       cell(doc, row.before, row.depth),
       cell(doc, row.after, row.depth),
-      el(doc, "td", { class: "plans-change" }, row.changes.join(" · ") || "same"),
+      el(
+        doc,
+        "td",
+        { class: "plans-change" },
+        row.changes.join(" · ") || t("features.plans.comparePanel.same"),
+      ),
     ),
   );
   return el(
@@ -86,7 +93,10 @@ export function compareView(doc, state) {
       doc,
       "p",
       { class: "plans-count", role: "status" },
-      `${changed} of ${rows.length} nodes changed`,
+      t("features.plans.comparePanel.ofNodesChanged", {
+        changed: String(changed),
+        length: String(rows.length),
+      }),
     ),
     el(
       doc,
@@ -95,7 +105,7 @@ export function compareView(doc, state) {
         class: "plans-scroll",
         tabindex: "0",
         role: "region",
-        "aria-label": "The two plans, node by node",
+        "aria-label": t("features.plans.comparePanel.theTwoPlansNodeByNode"),
       },
       el(
         doc,
@@ -109,9 +119,9 @@ export function compareView(doc, state) {
             doc,
             "tr",
             {},
-            el(doc, "th", { scope: "col" }, "Before"),
-            el(doc, "th", { scope: "col" }, "After"),
-            el(doc, "th", { scope: "col" }, "What changed"),
+            el(doc, "th", { scope: "col" }, t("features.plans.comparePanel.before")),
+            el(doc, "th", { scope: "col" }, t("features.plans.comparePanel.after")),
+            el(doc, "th", { scope: "col" }, t("features.plans.comparePanel.whatChanged")),
           ),
         ),
         el(doc, "tbody", {}, ...body),

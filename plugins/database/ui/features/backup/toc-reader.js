@@ -1,6 +1,8 @@
 // The list reader: what pg_restore --list printed is read in the list worker (toc-worker.js) when
 // it is 64 KiB or more, in place when smaller, where starting a worker costs more than the reading.
 // The worker goes when its list is read: a restore reads one list.
+
+import { t } from "../../strings/index.js";
 import { parseToc } from "./toc.js";
 
 /**
@@ -31,7 +33,7 @@ export function readToc(bytes, startWorker) {
     };
     worker.onerror = (event) => {
       worker.terminate();
-      reject(new Error(event.message || "The list reader stopped."));
+      reject(new Error(event.message || t("features.backup.tocReader.theListReaderStopped")));
     };
     worker.postMessage({ id: 1, bytes });
   });

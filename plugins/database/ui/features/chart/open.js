@@ -5,6 +5,7 @@
 
 import { keepChart, keptChart } from "../../chart/kept.js";
 import { settingsFor } from "../../chart/model.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -48,12 +49,15 @@ export async function openChart(deps, args) {
   const { target, tabs, tab } = chartTarget(deps);
   const set = tab?.kind === "chart" ? tab.chart?.set : tab?.set;
   if (!target || !tab || !set)
-    throw new Error("Draw a chart of a result: run a query and pick its result tab first.");
+    throw new Error(messageText("features.chart.open.drawAChartOfAResult"));
   let index = tabs.findIndex((t) => t.kind === "chart" && t.chart?.set === set);
   if (index < 0) {
     index = tabs.indexOf(tab) + 1;
     tabs.splice(index, 0, {
-      label: tab.label === "Result" ? "Chart" : `Chart ${tab.label}`,
+      label:
+        tab.label === "Result"
+          ? messageText("features.chart.open.chart")
+          : messageText("features.chart.open.chart2", { label: String(tab.label) }),
       kind: "chart",
       statement: tab.statement,
       ...(tab.pin ? { pin: tab.pin } : {}),

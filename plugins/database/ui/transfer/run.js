@@ -6,6 +6,7 @@
 // Any failure or Cancel rolls the target back, and both sessions close at the end. No DOM.
 
 import { copyIn, copyOut } from "../copy/index.js";
+import { t } from "../strings/index.js";
 import { createPipe } from "./pipe.js";
 import { failureOf } from "./read.js";
 
@@ -22,7 +23,7 @@ import { failureOf } from "./read.js";
  */
 
 /** What the pipe fails the source's COPY with when the target stopped reading. */
-const STOPPED = "The target stopped reading the rows.";
+const STOPPED = t("transfer.run.theTargetStoppedReadingTheRows");
 const textOf = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
 
@@ -46,7 +47,7 @@ export async function runTransfer(deps, job) {
     conn = target,
   ) => {
     const failed = failureOf(await running);
-    if (signal.aborted) throw new Error("Cancelled.");
+    if (signal.aborted) throw new Error(t("transfer.run.cancelled"));
     if (failed) throw new Error(`${conn.name}: ${failed}`);
   };
   /** @type {number[]} */
@@ -92,7 +93,7 @@ export async function runTransfer(deps, job) {
         asked: true,
       }).finally(() => pipe.fail(new Error(STOPPED)));
       const [outFailed, inRun] = await Promise.all([out, read.catch((error) => error)]);
-      if (signal.aborted) throw new Error("Cancelled.");
+      if (signal.aborted) throw new Error(t("transfer.run.cancelled"));
       if (outFailed && !outFailed.includes(STOPPED))
         throw new Error(`${source.name}: ${outFailed}`);
       if (inRun instanceof Error) throw new Error(`${target.name}: ${inRun.message}`);
@@ -103,7 +104,7 @@ export async function runTransfer(deps, job) {
     if (plan.keys) await must(onTarget(plan.keys));
     if (plan.after) await must(onTarget(plan.after));
     // A cancel after this point would not undo the commit, so it runs without the signal.
-    if (signal.aborted) throw new Error("Cancelled.");
+    if (signal.aborted) throw new Error(t("transfer.run.cancelled"));
     const committed = failureOf(
       await deps.execute(target, "COMMIT", { session: into, asked: true }),
     );

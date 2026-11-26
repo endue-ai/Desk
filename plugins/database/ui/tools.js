@@ -13,6 +13,7 @@ import { addHistory, readHistory, readSaved, removeSaved, saveQuery } from "./hi
 import { FORMATS, formatRows, htmlTable } from "./results.js";
 import { RELATIONS } from "./schema/common.js";
 import { split, statementAt } from "./sql/split.js";
+import { t as messageText } from "./strings/index.js";
 import { describeValue } from "./value.js";
 
 /** The client program the footer names when an engine's is not found. */
@@ -47,7 +48,7 @@ export function createTools(deps) {
   const shownResult = () => {
     const shown = consoles.current();
     const tab = shown?.shown?.tabs[shown.tab];
-    if (!shown || !tab?.set) throw new Error("No result here: run a query first.");
+    if (!shown || !tab?.set) throw new Error(messageText("tools.noResultHereRunAQuery"));
     const conn = manager.get(shown.connection);
     const target = shown.edit?.target;
     const table = shown.table
@@ -82,7 +83,9 @@ export function createTools(deps) {
       ));
     if (!chosen) return undefined;
     if (!FORMATS.includes(/** @type {never} */ (chosen)))
-      throw new Error(`${title}: pick ${FORMATS.join(", ")}.`);
+      throw new Error(
+        messageText("tools.pick", { title: String(title), value: String(FORMATS.join(", ")) }),
+      );
     return /** @type {Format} */ (chosen);
   };
 
@@ -102,7 +105,7 @@ export function createTools(deps) {
   const here = () => {
     const shown = consoles.current();
     const conn = shown ? manager.get(shown.connection) : undefined;
-    if (!shown || !conn) throw new Error("Open a console first.");
+    if (!shown || !conn) throw new Error(messageText("tools.openAConsoleFirst"));
     return { shown, conn };
   };
 
@@ -112,7 +115,7 @@ export function createTools(deps) {
     const { text, start, end } = view.editor();
     if (start !== end) return text.slice(start, end).trim();
     const statement = statementAt(split(text, engineOf(conn.engine).dialect), start, text);
-    if (!statement) throw new Error("No statement at the caret.");
+    if (!statement) throw new Error(messageText("tools.noStatementAtTheCaret"));
     return statement.text;
   };
 
@@ -120,7 +123,7 @@ export function createTools(deps) {
   const objectOf = async (/** @type {Node | Record<string, unknown>} */ ref) => {
     if ("kind" in ref && (ref.object || ref.part)) {
       const conn = manager.get(String(ref.connection));
-      if (!conn) throw new Error("That connection is gone.");
+      if (!conn) throw new Error(messageText("tools.thatConnectionIsGone"));
       return {
         conn,
         object: /** @type {NonNullable<Node["object"] | Node["part"]>} */ (ref.part ?? ref.object),
@@ -128,13 +131,20 @@ export function createTools(deps) {
     }
     const conn = await manager.choose(
       /** @type {string | undefined} */ (ref.connection),
-      "Database: which connection?",
+      messageText("tools.databaseWhichConnection"),
     );
     if (!conn || typeof ref.name !== "string" || typeof ref.schema !== "string")
-      throw new Error("Pick an object in the explorer (d), or name connection, schema and name.");
+      throw new Error(messageText("tools.pickAnObjectInTheExplorer"));
     const objects = await catalog.objects(conn, ref.schema);
     const object = objects.find((o) => o.name === ref.name && (!ref.kind || o.kind === ref.kind));
-    if (!object) throw new Error(`No ${ref.kind ?? "object"} ${ref.schema}.${ref.name} was found.`);
+    if (!object)
+      throw new Error(
+        messageText("tools.noWasFound", {
+          value: String(ref.kind ?? messageText("tools.object")),
+          schema: String(ref.schema),
+          name: String(ref.name),
+        }),
+      );
     return { conn, object };
   };
 
@@ -147,7 +157,7 @@ export function createTools(deps) {
     /** @type {boolean} */ asked,
   ) => {
     if (!asked && !(await mayCopy(deps.confirm, { characters: text.length }))) {
-      view.say("Nothing copied.");
+      view.say(messageText("tools.nothingCopied"));
       return false;
     }
     view.say((await view.copy(text, html)) ? copied : refused);
@@ -165,23 +175,30 @@ export function createTools(deps) {
       // The cells are weighed before the text is built, the text after (copy-size.js).
       const asked = tooLarge({ cells });
       if (asked && !(await mayCopy(deps.confirm, { cells }))) {
-        view.say("Nothing copied.");
+        view.say(messageText("tools.nothingCopied"));
         return undefined;
       }
       const text = formatRows(set, chosen, { ...options, ...part });
       const html = chosen === "tsv" ? htmlTable(set, part) : undefined;
-      const refused = "The clipboard refused: select the grid and press Mod+C.";
-      const went = await put(text, html, `Copied as ${label(chosen)}.`, refused, asked);
+      const refused = messageText("tools.theClipboardRefusedSelectTheGrid");
+      const went = await put(
+        text,
+        html,
+        messageText("tools.copiedAs", { value: String(label(chosen)) }),
+        refused,
+        asked,
+      );
       return went ? text : undefined;
     },
     /** Copy a value whole: `text` given (the value viewer's), else the cursor's cell's. */
     async copyValue(/** @type {string | undefined} */ text) {
       const cell = text === undefined ? view.cell() : undefined;
-      if (text === undefined && !cell)
-        throw new Error("No cell here: put the grid's cursor on one.");
+      if (text === undefined && !cell) throw new Error(messageText("tools.noCellHerePutTheGrid"));
       const value = text ?? describeValue(cell?.value ?? null, cell?.type).text("text");
-      const refused = "The clipboard refused: select the text and press Mod+C.";
-      return (await put(value, undefined, "Copied the value.", refused, false)) ? value : undefined;
+      const refused = messageText("tools.theClipboardRefusedSelectTheText");
+      return (await put(value, undefined, messageText("tools.copiedTheValue"), refused, false))
+        ? value
+        : undefined;
     },
     /** What an export of the result on screen writes (features/export/): the set, its name, and its
      * options with the grid's selection. */
@@ -192,21 +209,24 @@ export function createTools(deps) {
     /** Pick an earlier statement of this connection (searching for `query`) into the editor. */
     async history(/** @type {string | undefined} */ query) {
       const { shown } = here();
-      if (shown.kind !== "console") throw new Error("History goes into a console: open one first.");
+      if (shown.kind !== "console")
+        throw new Error(messageText("tools.historyGoesIntoAConsoleOpen"));
       const saved = new Set((await readSaved(bridge, shown.connection)).map((s) => s.sql));
       const entries = (await readHistory(bridge, shown.connection)).filter(
         (e) => !query || e.sql.toLowerCase().includes(query.toLowerCase()),
       );
       if (entries.length === 0)
         throw new Error(
-          query ? `No statement holds ${query}.` : "Nothing ran on this connection yet.",
+          query
+            ? messageText("tools.noStatementHolds", { query: String(query) })
+            : messageText("tools.nothingRanOnThisConnectionYet"),
         );
       const items = entries.map((e, i) => ({
         id: String(i),
         label: `${saved.has(e.sql) ? "★ " : ""}${oneLine(e.sql)}`,
         detail: `${e.at.slice(0, 16).replace("T", " ")} · ${on(e)}${e.ok ? "" : "failed: "}${e.summary}`,
       }));
-      const chosen = await pick("Database: history", items);
+      const chosen = await pick(messageText("tools.databaseHistory"), items);
       const entry = chosen === undefined ? undefined : entries[Number(chosen)];
       if (entry) view.insert(entry.sql);
       return entry?.sql;
@@ -216,21 +236,26 @@ export function createTools(deps) {
       const { shown, conn } = here();
       const sql = statementHere();
       const given =
-        name ?? (await pick("Database: star the query as", [], true, oneLine(sql).slice(0, 60)));
+        name ??
+        (await pick(
+          messageText("tools.databaseStarTheQueryAs"),
+          [],
+          true,
+          oneLine(sql).slice(0, 60),
+        ));
       if (!given) return undefined;
       const database = conn.engine === "postgresql" ? { database: ownDatabase(conn) } : {};
       const kept = await saveQuery(bridge, shown.connection, { name: given, sql, ...database });
-      view.say(`Starred ${kept}.`);
+      view.say(messageText("tools.starred", { kept: String(kept) }));
       return kept;
     },
     /** Pick a starred query into the editor. */
     async starred() {
       const { shown } = here();
       const list = await readSaved(bridge, shown.connection);
-      if (list.length === 0)
-        throw new Error("No starred queries here yet: star one with Database: star the query.");
+      if (list.length === 0) throw new Error(messageText("tools.noStarredQueriesHereYetStar"));
       const chosen = await pick(
-        "Database: starred queries",
+        messageText("tools.databaseStarredQueries"),
         list.map((s, i) => ({
           id: String(i),
           label: `★ ${s.name}`,
@@ -248,12 +273,12 @@ export function createTools(deps) {
       const chosen =
         name ??
         (await pick(
-          "Database: unstar which query?",
+          messageText("tools.databaseUnstarWhichQuery"),
           list.map((s) => ({ id: s.name, label: s.name, detail: oneLine(s.sql) })),
         ));
       if (!chosen) return undefined;
       await removeSaved(bridge, shown.connection, chosen);
-      view.say(`Unstarred ${chosen}.`);
+      view.say(messageText("tools.unstarred", { chosen: String(chosen) }));
       return chosen;
     },
     /** Open an object's DDL in a view of its own. */
@@ -278,15 +303,19 @@ export function createTools(deps) {
       const names = tables.flatMap((t) =>
         t.object && RELATIONS.has(t.object.kind) && t.object.kind !== "view" ? [t] : [],
       );
-      if (names.length === 0)
-        throw new Error("Open a table, or a folder of tables, to count their rows.");
+      if (names.length === 0) throw new Error(messageText("tools.openATableOrAFolder"));
       const counts = await catalog.count(
         conn,
         at.schema ?? "",
         names.map((t) => t.label),
       );
       explorer.counted(names.map((t, i) => [t.key, counts[i] ?? null]));
-      view.say(`Counted ${names.length} table${names.length === 1 ? "" : "s"}.`);
+      view.say(
+        messageText("tools.countedTable", {
+          length: String(names.length),
+          value: String(names.length === 1 ? "" : messageText("tools.s")),
+        }),
+      );
       return counts;
     },
     /**
@@ -320,7 +349,9 @@ export function createTools(deps) {
           ),
         ),
       );
-      view.say(`Clients: ${found.map((f) => f.short).join(" · ")}`);
+      view.say(
+        messageText("tools.clients", { value: String(found.map((f) => f.short).join(" · ")) }),
+      );
       return found.map((f) => f.line);
     },
     addHistory,
@@ -334,10 +365,10 @@ const on = (/** @type {{ database?: string }} */ kept) =>
 /** A format's name as people say it. */
 function label(/** @type {string} */ format) {
   return format === "insert"
-    ? "SQL INSERT"
+    ? messageText("tools.sqlInsert")
     : format === "update"
-      ? "SQL UPDATE"
+      ? messageText("tools.sqlUpdate")
       : format === "markdown"
-        ? "Markdown"
+        ? messageText("tools.markdown")
         : format.toUpperCase();
 }

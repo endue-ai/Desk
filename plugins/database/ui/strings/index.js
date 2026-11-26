@@ -5,6 +5,22 @@
 // in the language's way (Intl.NumberFormat). A message from the server is never looked up: `server`
 // shows it as the server sent it, marked as the server's words. A value in a result is data, never
 // formatted here (NF-10).
+
+import administration from "./en/administration.json" with { type: "json" };
+import commands from "./en/commands.json" with { type: "json" };
+import connections from "./en/connections.json" with { type: "json" };
+import data from "./en/data.json" with { type: "json" };
+import drivers from "./en/drivers.json" with { type: "json" };
+import editor from "./en/editor.json" with { type: "json" };
+import features from "./en/features.json" with { type: "json" };
+import integrations from "./en/integrations.json" with { type: "json" };
+import monitoring from "./en/monitoring.json" with { type: "json" };
+import objects from "./en/objects.json" with { type: "json" };
+import privileges from "./en/privileges.json" with { type: "json" };
+import results from "./en/results.json" with { type: "json" };
+import schema from "./en/schema.json" with { type: "json" };
+import transfer from "./en/transfer.json" with { type: "json" };
+import workspace from "./en/workspace.json" with { type: "json" };
 import en from "./en.json" with { type: "json" };
 
 /**
@@ -16,7 +32,24 @@ import en from "./en.json" with { type: "json" };
 /** This folder, where each language's file is (a bundler leaves a variable base as it is). */
 const HERE = import.meta.url;
 /** English, every other language's fallback. */
-const ENGLISH = /** @type {Catalog} */ (en);
+const ENGLISH = /** @type {Catalog} */ ({
+  ...en,
+  ...administration,
+  ...commands,
+  ...connections,
+  ...data,
+  ...drivers,
+  ...editor,
+  ...features,
+  ...integrations,
+  ...monitoring,
+  ...objects,
+  ...privileges,
+  ...results,
+  ...schema,
+  ...transfer,
+  ...workspace,
+});
 /** The language in force, and its catalog when it is not English. */
 let language = "en";
 /** @type {Catalog} */

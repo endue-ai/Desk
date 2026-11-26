@@ -4,6 +4,7 @@
 // header still names the objects by what the server holds, which the ALTER then renames), and the
 // ALTER last. Pure.
 
+import { t } from "../strings/index.js";
 import { written } from "./syntax.js";
 
 /**
@@ -66,27 +67,26 @@ const comment = (/** @type {string} */ text) => `-- ${text.replace(/\r?\n/gu, " 
  */
 export function headerOf(r, parts) {
   const lines = [
-    `Rename ${labelOf(r)} to ${r.to}. Nothing has run.`,
-    "Read it, then run it in this console: one transaction, under the connection's guards.",
+    t("refactor.script.renameToNothingHasRun", { value: String(labelOf(r)), to: String(r.to) }),
+    t("refactor.script.readItThenRunItIn"),
     "",
-    `Rewritten here (${parts.replaced.length}): routine bodies the server keeps as text.`,
+    t("refactor.script.rewrittenHereRoutineBodiesTheServer", {
+      length: String(parts.replaced.length),
+    }),
     ...parts.replaced.map((p) => `  ${p.label}`),
-    `Follow the rename by themselves (${parts.kept.length}): the server records them by reference.`,
+    t("refactor.script.followTheRenameByThemselvesThe", { length: String(parts.kept.length) }),
     ...parts.kept.map((u) => `  ${keptLine(u)}`),
   ];
   if (
     r.kind === "column" &&
     parts.kept.some((u) => u.kind === "view" || u.kind === "materialized view")
   )
-    lines.push(
-      `  A view keeps ${r.name} as the name of its own column: rename that too if callers read it.`,
-    );
-  if (r.kind === "schema")
-    lines.push("  Every object in the schema, and what refers to them by reference.");
-  lines.push(`Check by hand (${parts.checks.length}): what cannot be proven safe.`);
+    lines.push(t("refactor.script.aViewKeepsAsTheName", { name: String(r.name) }));
+  if (r.kind === "schema") lines.push(t("refactor.script.everyObjectInTheSchemaAnd"));
+  lines.push(t("refactor.script.checkByHandWhatCannotBe", { length: String(parts.checks.length) }));
   for (const c of parts.checks)
     lines.push(`  ${c.label}${c.line ? `, line ${c.line}` : ""}: ${c.why}`);
-  if (parts.capped) lines.push("  More routines name it than were read: search their source too.");
+  if (parts.capped) lines.push(t("refactor.script.moreRoutinesNameItThanWere"));
   return lines.map(comment);
 }
 

@@ -8,6 +8,7 @@ import { PluginCommands } from "./plugin-commands";
 import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import type { PluginMessage } from "./plugin-messages";
 import { surfaceUrl } from "./plugin-origins";
+import { readTitleMessages } from "./plugin-title-messages";
 import { PluginAsks } from "./plugins-asks";
 import { closeSessions } from "./plugins-db";
 import {
@@ -36,20 +37,18 @@ export class PluginHost {
   readonly #deps: PluginHostDeps;
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
-  /** The windows of the mounted plugins: what the per-frame maps below are keyed by. */
   readonly #instances = new PluginInstances();
   readonly #search = new WindowSearch(this.#instances, this.#mounted);
   readonly #state = new Map<string, unknown>();
   /** Turns, watches, subscriptions, processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
-  /** Commands delivered to plugins that wait for their reply. */
   readonly #asks = new PluginAsks();
   readonly #shared = new Map<string, unknown>();
-  /** Plugins whose page said hello since their frame loaded, and callers waiting for one. */
   readonly #greetings = new PluginGreetings();
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
+  readonly #titleMessages: ReturnType<typeof readTitleMessages>;
   /** Which windows hear each core event, and what a plugin's change does (`plugins-events.ts`). */
   readonly #routes: EventRoutes;
   readonly #changes: ChangeHost;
@@ -64,6 +63,7 @@ export class PluginHost {
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
     this.#options = options;
+    this.#titleMessages = readTitleMessages(options.url, deps.language ?? (() => "en"));
     this.#commands = new PluginCommands(deps.bridge, {
       launch: (id, options) => this.launch(id, options),
       post: (id, message) => this.#post(this.#instances.resolve(id) ?? id, message),
@@ -237,7 +237,7 @@ export class PluginHost {
   async #list(): Promise<PluginInfo[]> {
     const { plugins } = await this.#deps.bridge.call("plugin.list", { scope: MANAGE_PLUGINS });
     this.#unready = new Set(plugins.filter((p) => p.status !== "ready").map((p) => p.id));
-    return plugins;
+    return this.#titleMessages(plugins);
   }
 
   /** Mount and unmount as `mayMount` says now: the roles setting changed (ADR 0104). */

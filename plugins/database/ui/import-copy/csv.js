@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // A CSV file read as it streams in (PG-60), with the person's delimiter, quote and escape (a quote
 // doubled inside quotes when the escape is the quote, RFC 4180), fed text in pieces cut anywhere, a
 // record across pieces included, and answering the records it has whole. An unquoted field equal to
@@ -111,7 +112,7 @@ export function createCsvReader({ delimiter, quote, escape: escapeChar, nullText
         afterQuote = false;
         quoted = false;
       }
-      if (quoted) throw new Error("The file ends inside a quoted field.");
+      if (quoted) throw new Error(t("importCopy.csv.theFileEndsInsideAQuoted"));
       if (field !== "" || wasQuoted || row.length > 0) endRow();
       return out;
     },

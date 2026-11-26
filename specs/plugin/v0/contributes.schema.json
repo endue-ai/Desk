@@ -64,6 +64,10 @@
       "properties": {
         "id": { "$ref": "#/$defs/CommandId" },
         "title": { "description": "Shown in the palette.", "type": "string", "minLength": 1 },
+        "titleMessage": {
+          "description": "A key in this plugin's messages catalog for the command title. The title is the fallback if the message is unavailable.",
+          "$ref": "https://endue.ai/specs/plugin/v0/messages.schema.json#/$defs/MessageId"
+        },
         "keywords": {
           "description": "More words the palette matches.",
           "type": "array",

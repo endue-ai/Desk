@@ -4,6 +4,7 @@
 // EMPTY is NaN, NaN. A curve comes back unread by its type; anything cut short, with bytes left
 // over or of an unknown type is an error. Pure; the map's worker runs it (geo/engine.js).
 
+import { t } from "../strings/index.js";
 import { absorb, geometry } from "./geometry.js";
 
 /** @typedef {import("./geometry.js").Geometry} Geometry @typedef {import("./geometry.js").Unread} Unread */
@@ -36,13 +37,12 @@ for (let i = 0; i < 16; i++) {
 
 /** The bytes of a hex text; throws on a character that is not a digit or an odd length. */
 export function bytesOf(/** @type {string} */ hex) {
-  if (hex.length % 2 !== 0) throw new Error("Not a geometry: the hex has an odd length.");
+  if (hex.length % 2 !== 0) throw new Error(t("geo.wkb.notAGeometryTheHexHas"));
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++) {
     const hi = DIGIT[hex.charCodeAt(i * 2)] ?? -1;
     const lo = DIGIT[hex.charCodeAt(i * 2 + 1)] ?? -1;
-    if (hi < 0 || lo < 0)
-      throw new Error("Not a geometry: the hex holds a character that is not a digit.");
+    if (hi < 0 || lo < 0) throw new Error(t("geo.wkb.notAGeometryTheHexHolds"));
     out[i] = hi * 16 + lo;
   }
   return out;
@@ -67,14 +67,14 @@ export function readWkb(hex) {
   let at = 0;
   let srid = 0;
   const need = (/** @type {number} */ n) => {
-    if (at + n > bytes.length) throw new Error("Not a geometry: the bytes end too soon.");
+    if (at + n > bytes.length) throw new Error(t("geo.wkb.notAGeometryTheBytesEnd"));
   };
 
   /** One geometry at `at`, its header first. @returns {Geometry} */
   const read = () => {
     need(5);
     const order = bytes[at];
-    if (order !== 0 && order !== 1) throw new Error("Not a geometry: no byte order.");
+    if (order !== 0 && order !== 1) throw new Error(t("geo.wkb.notAGeometryNoByteOrder"));
     const little = order === 1;
     const raw = data.getUint32(at + 1, little);
     at += 5;
@@ -83,7 +83,7 @@ export function readWkb(hex) {
     const iso = Math.floor(base / 1000);
     const type = TYPES[code];
     if (!type || iso > 3 || (raw & 0x10000000) !== 0)
-      throw new Error(`Not a geometry: type ${base} is not one.`);
+      throw new Error(t("geo.wkb.notAGeometryTypeIsNot", { base: String(base) }));
     const z = (raw & 0x80000000) !== 0 || iso === 1 || iso === 3;
     const m = (raw & 0x40000000) !== 0 || iso === 2 || iso === 3;
     if (raw & 0x20000000) {
@@ -128,7 +128,7 @@ export function readWkb(hex) {
 
   try {
     const g = read();
-    if (at !== bytes.length) throw new Error("Not a geometry: bytes are left after it.");
+    if (at !== bytes.length) throw new Error(t("geo.wkb.notAGeometryBytesAreLeft"));
     g.srid = srid;
     return g;
   } catch (error) {

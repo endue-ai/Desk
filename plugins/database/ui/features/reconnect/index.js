@@ -4,6 +4,7 @@
 // statements are not run again. The header's button and a command. No DOM.
 
 import { ownerOf } from "../../session/owners.js";
+import { t } from "../../strings/index.js";
 
 /** @typedef {import("../../feature-host.js").Deps} Deps */
 
@@ -12,14 +13,12 @@ async function reconnect(/** @type {Deps} */ deps) {
   const target = deps.consoles.current();
   const conn = target ? deps.manager.get(target.connection) : undefined;
   const who = target && ownerOf(target, conn);
-  if (!who)
-    throw new Error(
-      "Reconnect opens a PostgreSQL console's or table view's session: none is on screen.",
-    );
+  if (!who) throw new Error(t("features.reconnect.index.reconnectOpensAPostgresqlConsoleS"));
   const sessions = /** @type {{ reconnect?(owner: string): Promise<string> } | undefined} */ (
     deps.consoles.sessions
   );
-  if (sessions?.reconnect === undefined) throw new Error("This desk keeps no PostgreSQL sessions.");
+  if (sessions?.reconnect === undefined)
+    throw new Error(t("features.reconnect.index.thisDeskKeepsNoPostgresqlSessions"));
   const line = await sessions.reconnect(who.owner);
   deps.say(line);
   return line;

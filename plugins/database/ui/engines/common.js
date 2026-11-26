@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // What every engine shares: the shapes a run plans and returns, and the steps of turning a client's
 // outcome into statement outcomes (rows kept up to the limit, the first statement without its
 // marker as the one that failed or was stopped, those after it as not run).
@@ -97,16 +98,18 @@ export function resultSet(columns, rows, maxRows, stopped = false) {
 /** Why the client ended without finishing, when it was not a failure of the statement. */
 export function endedBy(/** @type {Outcome} */ outcome, /** @type {number} */ timeoutMs) {
   if (outcome.cancelled)
-    return /** @type {DbError} */ ({ kind: "cancelled", message: "Cancelled." });
+    return /** @type {DbError} */ ({ kind: "cancelled", message: t("engines.common.cancelled") });
   if (outcome.timedOut)
     return /** @type {DbError} */ ({
       kind: "timeout",
-      message: `Stopped after ${Math.round(timeoutMs / 1000)} s (the statement timeout).`,
+      message: t("engines.common.stoppedAfterSTheStatementTimeout", {
+        value: String(Math.round(timeoutMs / 1000)),
+      }),
     });
   if (outcome.overflow)
     return /** @type {DbError} */ ({
       kind: "client",
-      message: "The client wrote more than 64 MiB; add a LIMIT or export from the terminal.",
+      message: t("engines.common.theClientWroteMoreThanMib"),
     });
   return undefined;
 }

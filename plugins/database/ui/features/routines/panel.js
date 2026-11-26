@@ -7,6 +7,7 @@
 // routine again (outside the arguments). Layout: routines.css.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { callOf } from "./call.js";
 import { argumentRow } from "./fields.js";
 import { canRollBack, natureOf, ROLLBACK_WORDS, refusalOf, titleOf } from "./guard.js";
@@ -18,7 +19,7 @@ import { canRollBack, natureOf, ROLLBACK_WORDS, refusalOf, titleOf } from "./gua
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const HINTS = "Mod+Enter run · g read again · Alt+N NULL · Alt+D DEFAULT";
+const HINTS = t("features.routines.panel.modEnterRunGReadAgain");
 
 /**
  * @param {Document} doc
@@ -47,15 +48,18 @@ export function routinePanel(doc, first, act, buffer) {
       type: "button",
       class: "desk-btn desk-btn-quiet",
       "data-ctl": "refresh",
-      title: "Read the routine again (g)",
+      title: t("features.routines.panel.readTheRoutineAgainG"),
     },
-    "Read again",
+    t("features.routines.panel.readAgain"),
   );
   const facts = part("p", "facts", { class: "routine-facts" });
   const error = part("div", "error", { class: "desk-error", role: "alert" });
   const control = part("div", "control", { class: "desk-callout", "data-tone": "info" });
   const args = part("fieldset", "arguments", { class: "routine-args" });
-  const statement = part("pre", "statement", { class: "routine-sql", "aria-label": "Statement" });
+  const statement = part("pre", "statement", {
+    class: "routine-sql",
+    "aria-label": t("features.routines.panel.statement"),
+  });
   const problem = part("p", "problem", { class: "routine-problem", role: "status" });
   const check = /** @type {HTMLInputElement} */ (
     el(doc, "input", { type: "checkbox", class: "desk-check", "data-ctl": "rollback" })
@@ -64,7 +68,7 @@ export function routinePanel(doc, first, act, buffer) {
     "div",
     "rollback",
     { class: "routine-rollback" },
-    el(doc, "label", {}, check, " Run in a transaction and roll back"),
+    el(doc, "label", {}, check, t("features.routines.panel.runInATransactionAndRoll")),
     el(doc, "p", { class: "desk-muted" }, ROLLBACK_WORDS),
   );
   const refused = part("p", "refused", { class: "routine-refused" });
@@ -72,7 +76,7 @@ export function routinePanel(doc, first, act, buffer) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-primary", "data-ctl": "run" },
-    "Run",
+    t("features.routines.panel.run"),
   );
   const where = el(doc, "span", { class: "desk-muted" });
   const last = part("p", "last", { class: "routine-last", "aria-live": "polite" });
@@ -99,9 +103,9 @@ export function routinePanel(doc, first, act, buffer) {
         doc,
         "span",
         { class: "routine-keys" },
-        el(doc, "kbd", { class: "desk-kbd" }, "Mod"),
-        el(doc, "kbd", { class: "desk-kbd" }, "Enter"),
-        " run",
+        el(doc, "kbd", { class: "desk-kbd" }, t("features.routines.panel.mod")),
+        el(doc, "kbd", { class: "desk-kbd" }, t("features.routines.panel.enter")),
+        t("features.routines.panel.run2"),
       ),
     ),
     last,
@@ -181,10 +185,17 @@ export function routinePanel(doc, first, act, buffer) {
         },
       ),
     }));
-    const legend = el(doc, "legend", { class: "routine-legend" }, "Arguments");
+    const legend = el(
+      doc,
+      "legend",
+      { class: "routine-legend" },
+      t("features.routines.panel.arguments"),
+    );
     args.replaceChildren(legend, ...rows.map((x) => x.row.el));
     if (rows.length === 0)
-      args.append(el(doc, "p", { class: "desk-muted" }, "It takes no arguments."));
+      args.append(
+        el(doc, "p", { class: "desk-muted" }, t("features.routines.panel.itTakesNoArguments")),
+      );
     args.hidden = !r;
   };
 
@@ -197,18 +208,23 @@ export function routinePanel(doc, first, act, buffer) {
       build();
     }
     title.replaceChildren(
-      el(doc, "strong", {}, r ? titleOf(r) : "A routine"),
+      el(doc, "strong", {}, r ? titleOf(r) : t("features.routines.panel.aRoutine")),
       ` on ${s.conn.name}`,
     );
     refresh.toggleAttribute("disabled", s.running || s.reading);
     facts.textContent = r
       ? `${r.kind === "procedure" ? "" : `Returns ${r.result || "nothing"} · `}${r.language} · ${natureOf(r)}`
       : s.reading
-        ? "Reading…"
+        ? t("features.routines.panel.reading")
         : "";
     error.replaceChildren(
       el(doc, "p", {}, s.error),
-      el(doc, "button", { type: "button", class: "desk-btn", "data-ctl": "refresh" }, "Try again"),
+      el(
+        doc,
+        "button",
+        { type: "button", class: "desk-btn", "data-ctl": "refresh" },
+        t("features.routines.panel.tryAgain"),
+      ),
     );
     error.hidden = s.error === "";
     control.replaceChildren(
@@ -216,13 +232,13 @@ export function routinePanel(doc, first, act, buffer) {
         doc,
         "div",
         { class: "desk-callout-body" },
-        el(doc, "p", { class: "desk-callout-title" }, "Outside a transaction block"),
         el(
           doc,
           "p",
-          {},
-          "Its source commits or rolls back, so it runs alone, as its own statement: what it commits stays, and it cannot run rolled back.",
+          { class: "desk-callout-title" },
+          t("features.routines.panel.outsideATransactionBlock"),
         ),
+        el(doc, "p", {}, t("features.routines.panel.itsSourceCommitsOrRollsBack")),
       ),
     );
     control.hidden = !r?.controls;
@@ -233,13 +249,18 @@ export function routinePanel(doc, first, act, buffer) {
     refused.textContent = no;
     refused.hidden = no === "";
     run.textContent = s.running
-      ? "Running…"
+      ? t("features.routines.panel.running")
       : s.rollback && r && canRollBack(r)
-        ? "Run and roll back"
-        : "Run";
-    where.textContent = `In ${s.conn.name}'s console, where its result shows.`;
+        ? t("features.routines.panel.runAndRollBack")
+        : t("features.routines.panel.run");
+    where.textContent = t("features.routines.panel.inSConsoleWhereItsResult", {
+      name: String(s.conn.name),
+    });
     last.textContent = s.last
-      ? `Last run, in the console ${s.last.console}: ${s.last.summary}.`
+      ? t("features.routines.panel.lastRunInTheConsole", {
+          console: String(s.last.console),
+          summary: String(s.last.summary),
+        })
       : "";
     last.dataset.status = s.last?.status ?? "";
     last.hidden = !s.last;

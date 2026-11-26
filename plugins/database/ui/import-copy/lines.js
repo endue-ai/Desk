@@ -1,3 +1,5 @@
+import { t as messageText } from "../strings/index.js";
+
 // The line-shaped files an import reads as they stream in (PG-60): PostgreSQL's text format (TSV:
 // fields split by the delimiter, `\N` or the person's NULL text for NULL, backslash escapes), and
 // JSON lines (one object or array per line: an object's values by the columns its keys named in the
@@ -101,7 +103,10 @@ export function createJsonLinesReader({ columns, trim, line = 1 }) {
       value = JSON.parse(raw);
     } catch (error) {
       throw new Error(
-        `Line ${at} is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+        messageText("importCopy.lines.lineIsNotJson", {
+          at: String(at),
+          value: String(error instanceof Error ? error.message : String(error)),
+        }),
       );
     }
     if (Array.isArray(value)) return value.map(text);

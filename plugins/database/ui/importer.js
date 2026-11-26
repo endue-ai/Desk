@@ -15,6 +15,7 @@ import { createCopyStarts } from "./import-copy/start.js";
 import { changeCopy } from "./import-copy/wizard.js";
 import { readableName } from "./sql/quote.js";
 import { split } from "./sql/split.js";
+import { t as messageText } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -74,13 +75,14 @@ export function createImporter(deps) {
     }
     try {
       if (s.format === "xlsx" || s.format === "jsonl")
-        throw new Error(
-          "Only a PostgreSQL connection imports JSON lines and .xlsx files (by COPY).",
-        );
+        throw new Error(messageText("importer.onlyAPostgresqlConnectionImportsJson"));
       if (s.text === undefined) {
         if (s.head.size > WHOLE_MAX)
           throw new Error(
-            `${s.file} is larger than ${WHOLE_MAX / 1024 / 1024} MiB: a PostgreSQL connection imports it by COPY.`,
+            messageText("importer.isLargerThanMibAPostgresql", {
+              file: String(s.file),
+              value: String(WHOLE_MAX / 1024 / 1024),
+            }),
           );
         s.text = await deps.readText(s.path);
       }
@@ -150,10 +152,10 @@ export function createImporter(deps) {
     let problem = copy ? copy.problem : s.unreadable || s.problem;
     if (copy) {
       // A COPY makes no INSERTs: its own problem holds Import back.
-    } else if (!problem && !conn) problem = "That connection is gone.";
-    else if (!problem && !s.table) problem = "Pick the table to import into.";
-    else if (!problem && rows.length === 0) problem = "The file holds no rows.";
-    else if (!problem && used.length === 0) problem = "Map at least one column to the table.";
+    } else if (!problem && !conn) problem = messageText("importer.thatConnectionIsGone");
+    else if (!problem && !s.table) problem = messageText("importer.pickTheTableToImportInto");
+    else if (!problem && rows.length === 0) problem = messageText("importer.theFileHoldsNoRows");
+    else if (!problem && used.length === 0) problem = messageText("importer.mapAtLeastOneColumnTo");
     if (!problem && conn && !copy)
       try {
         const table = tableName(conn, s.schema, s.table);
@@ -237,7 +239,7 @@ export function createImporter(deps) {
       const shown = deps.current();
       const conn =
         deps.manager.get(into.connection ?? shown?.connection ?? "") ?? deps.manager.list()[0];
-      if (!conn) throw new Error("No connections yet: add one with New, then drop the file again.");
+      if (!conn) throw new Error(messageText("importer.noConnectionsYetAddOneWith"));
       const file = path.slice(path.lastIndexOf("/") + 1);
       s = {
         path,
@@ -317,7 +319,7 @@ export function createImporter(deps) {
       const sql = statements.join(";\n");
       const cut = split(sql, dialect);
       if (cut.length !== statements.length)
-        throw new Error("The import did not make one statement per batch; nothing was run.");
+        throw new Error(messageText("importer.theImportDidNotMakeOne"));
       s.running = true;
       publish();
       /** @type {string} */
@@ -326,13 +328,25 @@ export function createImporter(deps) {
       try {
         const { result } = await deps.execute(conn, sql, { mode: "transaction", statements: cut });
         const at = result.statements.findIndex((st) => st.error);
-        if (result.error) message = `Nothing was imported: ${result.error.message}`;
+        if (result.error)
+          message = messageText("importer.nothingWasImported", {
+            message: String(result.error.message),
+          });
         else if (at >= 0 || result.statements.some((st) => !st.ran))
-          message = `Rolled back, nothing was imported: ${result.statements[at]?.error?.message ?? "the run stopped before the end"}`;
+          message = messageText("importer.rolledBackNothingWasImported", {
+            value: String(
+              result.statements[at]?.error?.message ??
+                messageText("importer.theRunStoppedBeforeTheEnd"),
+            ),
+          });
         else {
           ok = true;
           const n = model.rows;
-          message = `Imported ${n} row${n === 1 ? "" : "s"} into ${named(conn)} in one transaction.`;
+          message = messageText("importer.importedRowIntoInOneTransaction", {
+            n: String(n),
+            value: String(n === 1 ? "" : messageText("importer.s")),
+            value2: String(named(conn)),
+          });
         }
       } catch (error) {
         if (!s) return undefined;

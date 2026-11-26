@@ -10,6 +10,7 @@
 // the arguments typed are kept for the session.
 // controller.js reads and runs, panel.js and fields.js draw, call.js writes the call.
 
+import { t } from "../../strings/index.js";
 import { createRoutines, TYPE } from "./controller.js";
 import { routinePanel } from "./panel.js";
 
@@ -55,6 +56,6 @@ export const feature = {
       routineRefresh: (/** @type {string} */ id) => r.refresh(id),
     };
   },
-  panels: { [TYPE]: { label: "Routine", render: routinePanel } },
+  panels: { [TYPE]: { label: t("features.routines.index.routine"), render: routinePanel } },
   styles: [new URL("./routines.css", import.meta.url).href],
 };

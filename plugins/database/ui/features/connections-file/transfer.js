@@ -6,6 +6,7 @@
 
 import { withGrant, writeScope } from "../../console-files.js";
 import { engineOf } from "../../engines/index.js";
+import { t } from "../../strings/index.js";
 import { fileText, MAX_BYTES, readFile } from "./file.js";
 import { applyImport, planImport } from "./plan.js";
 
@@ -34,7 +35,7 @@ export const detailOf = (/** @type {Connection} */ c) =>
 export async function exportConnections(deps, args, at = new Date()) {
   const list = deps.manager.list();
   if (list.length === 0)
-    throw new Error("No connections to export yet: add one with Database: new connection.");
+    throw new Error(t("features.connectionsFile.transfer.noConnectionsToExportYetAdd"));
   const wanted = Array.isArray(args.connections)
     ? args.connections.flatMap((ref) => deps.manager.get(String(ref))?.id ?? [])
     : list.map((c) => c.id);
@@ -48,13 +49,14 @@ export async function exportConnections(deps, args, at = new Date()) {
   );
   const ids = new Set(answer?.ids ?? []);
   const chosen = list.filter((c) => ids.has(c.id));
-  if (chosen.length === 0) throw deps.cancelled("Not exported.");
+  if (chosen.length === 0) throw deps.cancelled(t("features.connectionsFile.transfer.notExported"));
   const picked = await deps.bridge.call("dialog.save", {
-    title: "Export connections",
+    title: t("features.connectionsFile.transfer.exportConnections"),
     suggestedName: `connections-${at.toISOString().slice(0, 10)}.json`,
     filters: [{ name: "Connections", extensions: ["json"] }],
   });
-  if (picked.cancelled || !picked.path) throw deps.cancelled("Not exported.");
+  if (picked.cancelled || !picked.path)
+    throw deps.cancelled(t("features.connectionsFile.transfer.notExported"));
   const path = picked.path;
   const content = fileText(chosen, at);
   const scope = writeScope(path);
@@ -70,7 +72,12 @@ export async function exportConnections(deps, args, at = new Date()) {
       }),
     `To export connections to ${path}`,
   );
-  deps.say(`Exported ${plural(chosen.length, "connection")} to ${path}, without passwords.`);
+  deps.say(
+    t("features.connectionsFile.transfer.exportedToWithoutPasswords", {
+      value: String(plural(chosen.length, "connection")),
+      path: String(path),
+    }),
+  );
   return { path, count: chosen.length };
 }
 
@@ -86,7 +93,11 @@ async function readText(/** @type {Deps} */ deps, /** @type {string} */ path) {
   const size = read.size ?? new TextEncoder().encode(read.content).length;
   if (size > MAX_BYTES)
     throw new Error(
-      `${baseName(path)} cannot be imported: it is ${Math.ceil(size / 1024)} KiB, and a connections file is ${MAX_BYTES / 1024} KiB at most.`,
+      t("features.connectionsFile.transfer.cannotBeImportedItIsKib", {
+        value: String(baseName(path)),
+        value2: String(Math.ceil(size / 1024)),
+        value3: String(MAX_BYTES / 1024),
+      }),
     );
   return read.content;
 }
@@ -94,10 +105,10 @@ async function readText(/** @type {Deps} */ deps, /** @type {string} */ path) {
 /** @param {Deps} deps */
 export async function importConnections(deps) {
   const picked = await deps.bridge.call("dialog.open", {
-    title: "Import connections from which file?",
+    title: t("features.connectionsFile.transfer.importConnectionsFromWhichFile"),
   });
   const path = picked.cancelled ? undefined : picked.paths[0];
-  if (!path) throw deps.cancelled("Not imported.");
+  if (!path) throw deps.cancelled(t("features.connectionsFile.transfer.notImported"));
   const name = baseName(path);
   const text = await readText(deps, path);
   let file;
@@ -105,10 +116,16 @@ export async function importConnections(deps) {
     file = readFile(text);
   } catch (error) {
     throw new Error(
-      `${name} cannot be imported: ${error instanceof Error ? error.message : error}`,
+      t("features.connectionsFile.transfer.cannotBeImported", {
+        name: String(name),
+        value: String(error instanceof Error ? error.message : error),
+      }),
     );
   }
-  if (file.entries.length === 0) throw new Error(`${name} holds no connections.`);
+  if (file.entries.length === 0)
+    throw new Error(
+      t("features.connectionsFile.transfer.holdsNoConnections", { name: String(name) }),
+    );
   const rows = planImport(deps.manager.list(), file.entries);
   /** @type {ImportModel} */
   const model = {
@@ -122,9 +139,10 @@ export async function importConnections(deps) {
   const answer = /** @type {{ ticked?: number[] } | undefined} */ (
     await deps.dialog("connectionsImport", model)
   );
-  if (!answer) throw deps.cancelled("Not imported.");
+  if (!answer) throw deps.cancelled(t("features.connectionsFile.transfer.notImported"));
   const kept = applyImport(deps.manager.list(), rows, answer.ticked ?? []);
-  if (kept.length === 0) throw deps.cancelled("Nothing imported.");
+  if (kept.length === 0)
+    throw deps.cancelled(t("features.connectionsFile.transfer.nothingImported"));
   await deps.manager.adopt(kept.map((k) => k.conn));
   const changed = kept.filter((k) => rows[k.index]?.kind === "change").length;
   const added = kept.length - changed;
@@ -134,6 +152,11 @@ export async function importConnections(deps) {
     changed ? `${changed} changed` : "",
     skipped ? `${skipped} skipped` : "",
   ].filter(Boolean);
-  deps.say(`Imported from ${name}: ${parts.join(", ")}.`);
+  deps.say(
+    t("features.connectionsFile.transfer.importedFrom", {
+      name: String(name),
+      value: String(parts.join(", ")),
+    }),
+  );
   return { added, changed, skipped };
 }

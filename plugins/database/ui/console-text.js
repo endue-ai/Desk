@@ -1,3 +1,5 @@
+import { t } from "./strings/index.js";
+
 // A console's text, kept under the console's own id (ADR 0286): in the plugin's store a moment
 // after each change, at once when another console's text changes, and read back when the console
 // opens. Text past the store's limit (64 KiB a value) is kept whole in a file of the plugin's own,
@@ -51,7 +53,7 @@ export function createTexts({ bridge, view }) {
     clearTimeout(saving.timer);
     const { id, text } = saving;
     saving = null;
-    void write(id, text).catch(() => view.say("Could not save this console."));
+    void write(id, text).catch(() => view.say(t("consoleText.couldNotSaveThisConsole")));
   };
 
   return {
@@ -67,7 +69,7 @@ export function createTexts({ bridge, view }) {
         .call("fs.read", { path: file, encoding: "utf8", scope })
         .catch(() => undefined);
       if (!read) {
-        view.say("Could not read this console's text back from its file.");
+        view.say(t("consoleText.couldNotReadThisConsoleS"));
         return "";
       }
       spilled.add(id);

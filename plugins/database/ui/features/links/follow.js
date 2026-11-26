@@ -8,6 +8,7 @@ import { tableName } from "../../catalog.js";
 import { countSql, engineOf } from "../../engines/index.js";
 import { filterLabel, whereWith } from "../../grid/filters.js";
 import { keyFilters } from "../../links/model.js";
+import { t } from "../../strings/index.js";
 import { cursorOf, onScreen, readKeys } from "./read.js";
 
 /**
@@ -79,7 +80,11 @@ async function openFiltered(
   await deps.consoles.open(conn, { schema: end.schema, name: end.table, filters });
   if (had) await deps.consoles.page({ where: "", filters });
   deps.view.focus("grid");
-  return `${end.schema}.${end.table} where ${filters.map(filterLabel).join(" and ")}: b goes back.`;
+  return t("features.links.follow.whereBGoesBack", {
+    schema: String(end.schema),
+    table: String(end.table),
+    value: String(filters.map(filterLabel).join(" and ")),
+  });
 }
 
 /** One of several keys, picked; a named one (`constraint`) without asking. */
@@ -111,7 +116,11 @@ async function keysAtCursor(/** @type {Deps} */ deps) {
   const mine = keys.outgoing.filter((k) => k.from.columns.includes(column));
   if (mine.length === 0)
     throw new Error(
-      `${column} is in no foreign key of ${here.source.schema}.${here.source.name}: there is nothing to follow.`,
+      t("features.links.follow.isInNoForeignKeyOf", {
+        column: String(column),
+        schema: String(here.source.schema),
+        name: String(here.source.name),
+      }),
     );
   return { here, cursor, column, mine };
 }
@@ -123,7 +132,12 @@ export async function follow(
   /** @type {Record<string, unknown>} */ args,
 ) {
   const { here, cursor, mine } = await keysAtCursor(deps);
-  const key = await oneOf(deps, mine, args.constraint, "Database: follow which key?");
+  const key = await oneOf(
+    deps,
+    mine,
+    args.constraint,
+    t("features.links.follow.databaseFollowWhichKey"),
+  );
   if (!key) return undefined;
   const made = keyFilters({
     from: key.from.columns,
@@ -177,7 +191,12 @@ export async function referencing(
   const cursor = cursorOf(deps);
   const { incoming } = await readKeys(deps, here.conn, here.source);
   if (incoming.length === 0)
-    throw new Error(`No foreign key points at ${here.source.schema}.${here.source.name}.`);
+    throw new Error(
+      t("features.links.follow.noForeignKeyPointsAt", {
+        schema: String(here.source.schema),
+        name: String(here.source.name),
+      }),
+    );
   const row = here.row(cursor.row);
   const made = incoming.map((k) =>
     keyFilters({
@@ -196,15 +215,17 @@ export async function referencing(
       ? incoming.findIndex((k) => k.name === args.constraint)
       : undefined;
   if (chosen === -1)
-    throw new Error(`No foreign key ${args.constraint} points at this row's table.`);
+    throw new Error(
+      t("features.links.follow.noForeignKeyPointsAtThis", { constraint: String(args.constraint) }),
+    );
   while (chosen === undefined) {
     const items = incoming.map((k, i) => ({
       id: String(i),
       label: `${k.from.schema}.${k.from.table} (${k.from.columns.join(", ")})`,
       detail: counts ? countWords(counts[i]) : k.name,
     }));
-    const picked = await deps.pick("Database: open the rows that point at this row", [
-      ...(counts ? [] : [{ id: COUNT, label: "Count the rows of each" }]),
+    const picked = await deps.pick(t("features.links.follow.databaseOpenTheRowsThatPoint"), [
+      ...(counts ? [] : [{ id: COUNT, label: t("features.links.follow.countTheRowsOfEach") }]),
       ...items,
     ]);
     if (picked === undefined) return undefined;
@@ -214,7 +235,8 @@ export async function referencing(
   const key = incoming[chosen];
   const filters = filtersOf[chosen];
   const why = made[chosen];
-  if (!key || !filters) throw new Error(why && "error" in why ? why.error : "No such key.");
+  if (!key || !filters)
+    throw new Error(why && "error" in why ? why.error : t("features.links.follow.noSuchKey"));
   return said(
     deps,
     await go(deps, trail, here.target, () => openFiltered(deps, here.conn, key.from, filters)),
@@ -241,11 +263,17 @@ export async function back(/** @type {Deps} */ deps, /** @type {Trail} */ trail)
     }
     deps.view.focus("grid");
     const gone = closed ? ` (${closed} closed view${closed === 1 ? "" : "s"} skipped)` : "";
-    return said(deps, `Back to ${target ? nameOf(target) : "where it was"}${gone}.`);
+    return said(
+      deps,
+      t("features.links.follow.backTo", {
+        value: String(target ? nameOf(target) : t("features.links.follow.whereItWas")),
+        gone: String(gone),
+      }),
+    );
   }
   throw new Error(
     closed
-      ? "Nothing to go back to: the views keys were followed from are closed."
-      : "Nothing to go back to: follow a key first (g in the grid).",
+      ? t("features.links.follow.nothingToGoBackToThe")
+      : t("features.links.follow.nothingToGoBackToFollow"),
   );
 }

@@ -9,6 +9,7 @@
 
 import { DATABASE, READERS } from "../schema/pg/index.js";
 import { quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 export { DATABASE };
 
@@ -47,7 +48,7 @@ const names = (/** @type {string} */ rel, /** @type {string} */ keys) =>
  */
 const relations = {
   id: "relations",
-  label: "tables and views",
+  label: t("schemaCache.kinds.tablesAndViews"),
   marks: [
     `SELECT c.relnamespace AS ns, pg_catalog.count(*) AS c, ${sum("c")} AS x FROM pg_catalog.pg_class c GROUP BY 1`,
     viaClass(
@@ -71,7 +72,7 @@ const relations = {
 /** Every column: table, name, type, flags (n not null, p in the primary key), default, comment. */
 const columns = {
   id: "columns",
-  label: "columns",
+  label: t("schemaCache.kinds.columns"),
   marks: [
     viaClass("pg_catalog.pg_attribute a", "a", "a.attrelid WHERE a.attnum > 0"),
     viaClass("pg_catalog.pg_attrdef ad", "ad", "ad.adrelid"),
@@ -91,7 +92,7 @@ const columns = {
 /** Keys, checks, exclusions, foreign keys: table, contype, name, definition, columns, referenced. */
 const constraints = {
   id: "constraints",
-  label: "keys and foreign keys",
+  label: t("schemaCache.kinds.keysAndForeignKeys"),
   marks: [
     `SELECT k.connamespace AS ns, pg_catalog.count(*) AS c, ${sum("k")} AS x FROM pg_catalog.pg_constraint k GROUP BY 1`,
   ],
@@ -106,7 +107,7 @@ const constraints = {
 /** Indexes: table, name, definition, "c" when a constraint owns it. */
 const indexes = {
   id: "indexes",
-  label: "indexes",
+  label: t("schemaCache.kinds.indexes"),
   marks: [viaClass("pg_catalog.pg_index i", "i", "i.indrelid")],
   sql: (/** @type {string[]} */ schemas) =>
     "SELECT n.nspname, c.relname, x.relname, pg_catalog.pg_get_indexdef(i.indexrelid), CASE WHEN " +
@@ -119,7 +120,7 @@ const indexes = {
 /** Triggers a person made: table, name, definition. */
 const triggers = {
   id: "triggers",
-  label: "triggers",
+  label: t("schemaCache.kinds.triggers"),
   marks: [viaClass("pg_catalog.pg_trigger t", "t", "t.tgrelid")],
   sql: (/** @type {string[]} */ schemas) =>
     "SELECT n.nspname, c.relname, t.tgname, pg_catalog.pg_get_triggerdef(t.oid, true) FROM " +
@@ -133,7 +134,7 @@ const triggers = {
  */
 const routines = {
   id: "routines",
-  label: "routines",
+  label: t("schemaCache.kinds.routines"),
   marks: [
     `SELECT p.pronamespace AS ns, pg_catalog.count(*) AS c, ${sum("p")} AS x FROM pg_catalog.pg_proc p GROUP BY 1`,
     "SELECT p.pronamespace AS ns, pg_catalog.count(*) AS c, pg_catalog.sum(d.xmin::text::bigint) AS x " +

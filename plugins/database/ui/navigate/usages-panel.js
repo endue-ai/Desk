@@ -5,6 +5,7 @@
 // selected. While the read goes on it says so; a failure is said in the panel.
 
 import { el } from "../dom.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("./usages.js").Usage} Usage
@@ -29,19 +30,25 @@ function rowText(/** @type {Usage} */ u) {
   const own = routine ? `${name}(${u.detail ?? ""})` : name;
   const on = u.table ? ` on ${u.table}` : "";
   const body =
-    u.source === "parsed" ? `body names it ${u.count ?? 1}×, first on line ${u.line ?? 1}` : "";
+    u.source === "parsed"
+      ? messageText("navigate.usagesPanel.bodyNamesItFirstOnLine", {
+          value: String(u.count ?? 1),
+          value2: String(u.line ?? 1),
+        })
+      : "";
   return { kind: u.kind, name: `${own}${on}`, detail: routine ? body : (u.detail ?? "") };
 }
 
 /** The sentence over the lists. */
 export function summaryOf(/** @type {UsagesState} */ state) {
-  if (state.status === "reading") return `Reading the usages of ${state.of}…`;
+  if (state.status === "reading")
+    return messageText("navigate.usagesPanel.readingTheUsagesOf", { of: String(state.of) });
   if (state.status === "error") return `The usages could not be read: ${state.error ?? "failed"}`;
   const count = (/** @type {string} */ source) =>
     state.items.filter((u) => u.source === source).length;
   const n = state.items.length;
-  if (n === 0) return `Nothing names ${state.of}.`;
-  const cut = state.capped ? " The server's list was cut at its limit." : "";
+  if (n === 0) return messageText("navigate.usagesPanel.nothingNames", { of: String(state.of) });
+  const cut = state.capped ? messageText("navigate.usagesPanel.theServerSListWasCut") : "";
   return `${n} usage${n === 1 ? "" : "s"} of ${state.of}: ${count("catalog")} from the dependency catalog, ${count("parsed")} from parsed source.${cut}`;
 }
 
@@ -54,7 +61,12 @@ export function usagesPanel(doc, state, act) {
   const root = el(doc, "div", { class: "usages", "data-part": "usages" });
   const draw = (/** @type {UsagesState} */ s) => {
     root.replaceChildren(
-      el(doc, "h2", { class: "usages-title" }, `Usages of ${s.of}`),
+      el(
+        doc,
+        "h2",
+        { class: "usages-title" },
+        messageText("navigate.usagesPanel.usagesOf", { of: String(s.of) }),
+      ),
       el(
         doc,
         "p",

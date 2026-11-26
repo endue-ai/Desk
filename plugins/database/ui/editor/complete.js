@@ -10,6 +10,7 @@
 // so the caller reads them and asks again. Inside a string or a comment nothing is offered. Pure.
 
 import { quoteName } from "../sql/quote.js";
+import { t as messageText } from "../strings/index.js";
 import { builtinsOf } from "./builtins.js";
 import { caretOf, refsOf } from "./caret.js";
 import { joinItems } from "./joins.js";
@@ -167,7 +168,9 @@ export function complete(text, caret, dialect, schema, options = {}) {
         items.push({
           label: f,
           kind: "function",
-          detail: first ? `(${first.args}) → ${first.result}` : "function",
+          detail: first
+            ? `(${first.args}) → ${first.result}`
+            : messageText("editor.complete.function"),
           insert: f,
           ...(first ? { type: first.result } : {}),
           key: keyOf("function", f),
@@ -179,7 +182,7 @@ export function complete(text, caret, dialect, schema, options = {}) {
       items.push({
         label: k,
         kind: "keyword",
-        detail: "keyword",
+        detail: messageText("editor.complete.keyword"),
         insert: lower ? k.toLowerCase() : k,
         key: keyOf("keyword", k),
       });
@@ -233,7 +236,7 @@ export function complete(text, caret, dialect, schema, options = {}) {
       items.push({
         label: cte.name,
         kind: "cte",
-        detail: "WITH",
+        detail: messageText("editor.complete.with"),
         insert: name(cte.name),
         key: keyOf("cte", cte.name),
       });
@@ -248,7 +251,7 @@ export function complete(text, caret, dialect, schema, options = {}) {
         items.push({
           label: s,
           kind: "schema",
-          detail: "schema",
+          detail: messageText("editor.complete.schema"),
           insert: name(s),
           key: keyOf("schema", s),
         });
@@ -286,7 +289,7 @@ export function complete(text, caret, dialect, schema, options = {}) {
         items.push({
           label: k,
           kind: "keyword",
-          detail: "PL/pgSQL",
+          detail: messageText("editor.complete.plPgsql"),
           insert: c.prefix && c.prefix === c.prefix.toLowerCase() ? k.toLowerCase() : k,
           key: keyOf("keyword", k),
         });
@@ -301,7 +304,9 @@ export function complete(text, caret, dialect, schema, options = {}) {
         label: entry.name,
         kind: "alias",
         detail:
-          entry.relation && entry.relation.name !== entry.name ? entry.relation.name : "table",
+          entry.relation && entry.relation.name !== entry.name
+            ? entry.relation.name
+            : messageText("editor.complete.table"),
         insert: name(entry.name),
         key: keyOf("alias", entry.name),
       });

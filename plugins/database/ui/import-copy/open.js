@@ -4,6 +4,7 @@
 // (dropped.js): by COPY on a PostgreSQL connection, by INSERT on another engine.
 
 import { createImporter } from "../importer.js";
+import { t } from "../strings/index.js";
 import { textOf } from "./start.js";
 
 /**
@@ -29,13 +30,15 @@ export async function importFile(deps, args, agent = false) {
     ? /** @type {import("./wizard.js").CopyFormat} */ (args.format)
     : undefined;
   if (agent && connection && !deps.manager?.get(connection))
-    throw new Error(`No connection is named ${connection}.`);
+    throw new Error(t("importCopy.open.noConnectionIsNamed", { connection: String(connection) }));
   if (!path || agent) {
     const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
     const picked = await deps.bridge.call("dialog.open", {
       title: path
-        ? `Database: choose ${path.slice(slash + 1).slice(0, 100)} to import`
-        : "Database: import which file into a table?",
+        ? t("importCopy.open.databaseChooseToImport", {
+            value: String(path.slice(slash + 1).slice(0, 100)),
+          })
+        : t("importCopy.open.databaseImportWhichFileIntoA"),
       ...(slash > 0 ? { startIn: path.slice(0, slash) } : {}),
       ...(agent
         ? {

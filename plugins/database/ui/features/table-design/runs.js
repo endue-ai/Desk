@@ -6,6 +6,7 @@
 // failure says the server's words and which step stopped it. No DOM.
 
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { insideText, scriptOf, stepText } from "./script.js";
 
 /**
@@ -31,12 +32,12 @@ export function wordsOf(/** @type {Pick<DbError, "message" | "detail">} */ error
 /** Why the form's script does not run, or "". */
 export function refusalOf(/** @type {DesignState} */ s) {
   if (s.conn.readOnly)
-    return `${s.conn.name} is read-only: the form shows the script and runs nothing.`;
-  if (!s.read || !s.design) return s.error || "The table is not read yet.";
+    return t("features.tableDesign.runs.isReadOnlyTheFormShows", { name: String(s.conn.name) });
+  if (!s.read || !s.design) return s.error || t("features.tableDesign.runs.theTableIsNotReadYet");
   const script = scriptOf(s.read.original, s.design, s.read.facts);
   if (script.problems.length) return script.problems[0] ?? "";
   if (!script.inside.length && !script.after.length)
-    return s.read.original ? "Nothing changes yet: the form is as the table is." : "";
+    return s.read.original ? t("features.tableDesign.runs.nothingChangesYetTheFormIs") : "";
   return "";
 }
 
@@ -60,7 +61,8 @@ export function createRuns({ execute, stateOf, update, connOf }) {
    */
   const run = async (id, { dry = false } = {}) => {
     const { conn, state } = connOf(id);
-    if (state.run?.status === "running") throw new Error("The form's script is running.");
+    if (state.run?.status === "running")
+      throw new Error(t("features.tableDesign.runs.theFormSScriptIsRunning"));
     const refused = refusalOf(state);
     if (refused) throw new Error(refused);
     const read = /** @type {NonNullable<DesignState["read"]>} */ (state.read);
@@ -107,21 +109,41 @@ export function createRuns({ execute, stateOf, update, connOf }) {
       throw error;
     }
     const left =
-      dry && script.after.length ? " The CONCURRENTLY indexes are not part of a dry run." : "";
+      dry && script.after.length
+        ? t("features.tableDesign.runs.theConcurrentlyIndexesAreNotPart")
+        : "";
     const said = failed ? wordsOf(failed.error) : "";
     const message = failed
-      ? `Step ${failed.step + 1} failed: ${said}${/[.!?]$/u.test(said) ? "" : "."}${
-          failed.step >= script.inside.length && script.inside.length
-            ? " The transaction before it was committed."
-            : script.inside.length && failed.step < script.inside.length
-              ? " Nothing was changed: the transaction rolled back."
-              : ""
-        }`
+      ? t("features.tableDesign.runs.stepFailed", {
+          value: String(failed.step + 1),
+          said: String(said),
+          value2: String(/[.!?]$/u.test(said) ? "" : "."),
+          value3: String(
+            failed.step >= script.inside.length && script.inside.length
+              ? t("features.tableDesign.runs.theTransactionBeforeItWasCommitted")
+              : script.inside.length && failed.step < script.inside.length
+                ? t("features.tableDesign.runs.nothingWasChangedTheTransactionRolled")
+                : "",
+          ),
+        })
       : dry
-        ? `The dry run went through and rolled back: ${script.inside.length} ${
-            script.inside.length === 1 ? "step" : "steps"
-          } would apply.${left}`
-        : `Done: ${ran} ${ran === 1 ? "step" : "steps"} ran.`;
+        ? t("features.tableDesign.runs.theDryRunWentThroughAnd", {
+            length: String(script.inside.length),
+            value: String(
+              script.inside.length === 1
+                ? t("features.tableDesign.runs.step")
+                : t("features.tableDesign.runs.steps"),
+            ),
+            left: String(left),
+          })
+        : t("features.tableDesign.runs.doneRan", {
+            ran: String(ran),
+            value: String(
+              ran === 1
+                ? t("features.tableDesign.runs.step")
+                : t("features.tableDesign.runs.steps"),
+            ),
+          });
     setRun(id, { status: failed ? "failed" : "done", dry, message, step: failed?.step ?? -1 });
     return { script: script.text, ok: !failed, message };
   };

@@ -5,6 +5,7 @@
 // unique. Past the format's limits (1,048,576 rows, 16,384 columns, 32,767 characters a cell) it
 // refuses with a sentence. No DOM.
 
+import { t as messageText } from "../strings/index.js";
 import { cellOf, kindsOf } from "./cells.js";
 import { replaceUnsafe } from "./chars.js";
 import { zip } from "./zip.js";
@@ -106,7 +107,12 @@ function textCell(
 ) {
   if (v.length > MAX_TEXT)
     throw new Error(
-      `Export: ${sheet}!${ref} holds ${v.length} characters; a cell holds ${MAX_TEXT}. Export as CSV instead.`,
+      messageText("export.xlsx.exportHoldsCharactersACellHolds", {
+        sheet: String(sheet),
+        ref: String(ref),
+        length: String(v.length),
+        MAX_TEXT: String(MAX_TEXT),
+      }),
     );
   return `<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${cellText(v)}</t></is></c>`;
 }
@@ -118,7 +124,13 @@ export function sheetHead(
 ) {
   const count = sheet.columns.length;
   if (count > MAX_COLUMNS)
-    throw new Error(`Export: ${sheet.name} has ${count} columns; a sheet holds ${MAX_COLUMNS}.`);
+    throw new Error(
+      messageText("export.xlsx.exportHasColumnsASheetHolds", {
+        name: String(sheet.name),
+        count: String(count),
+        MAX_COLUMNS: String(MAX_COLUMNS),
+      }),
+    );
   const frozen = o.header
     ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
     : "";
@@ -136,7 +148,13 @@ function worksheet(/** @type {Sheet} */ sheet, /** @type {{ header: boolean, nul
   const total = sheet.rows.length + (o.header ? 1 : 0);
   const head = sheetHead(sheet, o);
   if (total > MAX_ROWS)
-    throw new Error(`Export: ${sheet.name} has ${total} rows; a sheet holds ${MAX_ROWS}.`);
+    throw new Error(
+      messageText("export.xlsx.exportHasRowsASheetHolds", {
+        name: String(sheet.name),
+        total: String(total),
+        MAX_ROWS: String(MAX_ROWS),
+      }),
+    );
   const count = sheet.columns.length;
   const kinds = kindsOf(sheet.rows, count, sheet.oids ?? [], sheet.types ?? []);
   return `${head}${rowsXml(sheet, sheet.rows, o.header ? 2 : 1, kinds, o)}${SHEET_FOOT}`;
@@ -151,7 +169,7 @@ const STYLES = `${HEAD}<styleSheet xmlns="${MAIN}"><numFmts count="3"><numFmt nu
  * @param {{ deflate?: boolean }} [packing]
  */
 export async function xlsxOf(sheets, options, packing = {}) {
-  if (sheets.length === 0) throw new Error("Export: no result to put in a sheet.");
+  if (sheets.length === 0) throw new Error(messageText("export.xlsx.exportNoResultToPutIn"));
   const names = sheetNames(sheets.map((s) => s.name));
   const encoder = new TextEncoder();
   const part = (/** @type {string} */ name, /** @type {string} */ xml) => ({

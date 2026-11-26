@@ -3,6 +3,7 @@
 // 0048). One worker serves every run. Cancel stops it (a parse cannot be interrupted otherwise):
 // every read in flight is cancelled and the next read starts a fresh worker.
 import { outputBytes } from "./run.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").EngineId} EngineId
@@ -17,7 +18,7 @@ import { outputBytes } from "./run.js";
  */
 
 export const cancelledRead = () =>
-  new DOMException("Reading the results was cancelled.", "AbortError");
+  new DOMException(t("outputClient.readingTheResultsWasCancelled"), "AbortError");
 
 /**
  * What crosses to the worker: the outcome's flags, its output as the runner's bytes when it has them
@@ -82,7 +83,8 @@ export function createOutputReader(startWorker, options = {}) {
       if ("error" in data) entry.reject(new Error(data.error));
       else entry.resolve(data.result);
     };
-    fresh.onerror = (event) => stop(new Error(event.message || "The result reader stopped."));
+    fresh.onerror = (event) =>
+      stop(new Error(event.message || t("outputClient.theResultReaderStopped")));
     worker = fresh;
     return fresh;
   };

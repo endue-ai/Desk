@@ -2,6 +2,7 @@
 // worker (worker.js), started for that one file and ended after it. Without a worker (the unit
 // tests, a frame that cannot start one) the same code writes it in the frame.
 
+import { t } from "../strings/index.js";
 import { cellsOf, exportFile } from "./file.js";
 
 /**
@@ -30,7 +31,7 @@ export async function writeFile(job, startWorker, threshold = LARGE) {
   try {
     const reply = await new Promise((resolve, reject) => {
       worker.onmessage = ({ data }) => resolve(data);
-      worker.onerror = () => reject(new Error("The export's worker stopped."));
+      worker.onerror = () => reject(new Error(t("export.client.theExportSWorkerStopped")));
       worker.postMessage({ id: 1, job });
     });
     if ("error" in reply) throw new Error(reply.error);

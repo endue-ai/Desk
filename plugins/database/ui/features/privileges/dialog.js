@@ -5,6 +5,7 @@
 // choices on; Cancel and Escape answer nothing (view-dialog.js).
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { scriptOf } from "./script.js";
 
 /**
@@ -113,7 +114,12 @@ export function privilegesDialog(doc, model, done) {
       model.run,
     )
   );
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.privileges.dialog.cancel"),
+  );
   cancel.addEventListener("click", () => done());
 
   const answers = () => ({
@@ -154,12 +160,17 @@ export function privilegesDialog(doc, model, done) {
             doc,
             "fieldset",
             { class: "privileges-choices" },
-            el(doc, "legend", { class: "sr-only" }, "Options"),
+            el(doc, "legend", { class: "sr-only" }, t("features.privileges.dialog.options")),
             ...choices,
           )
         : undefined,
       ...model.notes.map((note) => el(doc, "p", { class: "hint privileges-note" }, note)),
-      el(doc, "p", { class: "privileges-script-label", id: "privileges-script-label" }, "Runs"),
+      el(
+        doc,
+        "p",
+        { class: "privileges-script-label", id: "privileges-script-label" },
+        t("features.privileges.dialog.runs"),
+      ),
       script,
       problem,
       el(doc, "p", { class: "buttons" }, cancel, run),

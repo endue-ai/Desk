@@ -7,6 +7,7 @@
 // not a condition. The index definitions (pg_get_indexdef's words) are parsed once per relation of
 // the model. Pure.
 import { fieldsOf, listOf, walk } from "../sql/parse/tree.js";
+import { t as messageText } from "../strings/index.js";
 import { opOf, partsOf } from "./warn-context.js";
 
 /**
@@ -108,7 +109,14 @@ export function columnCast(/** @type {WarnContext} */ ctx) {
     ctx.put(
       "column-cast",
       ctx.refSpan(ref),
-      `${column.name} is ${column.type} and is compared with a ${to} value: the server casts ${column.name} to ${to}, so an index on ${column.name} cannot be used.`,
+      messageText("diagnose.warnTypes.isAndIsComparedWithA", {
+        name: String(column.name),
+        type: String(column.type),
+        to: String(to),
+        name2: String(column.name),
+        to2: String(to),
+        name3: String(column.name),
+      }),
     );
   }
 }
@@ -158,7 +166,12 @@ export function functionOnIndexedColumn(/** @type {WarnContext} */ ctx) {
       ctx.put(
         "function-on-indexed-column",
         { from, to: callEnd(ctx, from) },
-        `${partsOf(call.funcname).at(-1)}() over ${column.name} keeps the server from using the index ${index}: compare ${column.name} itself, or index the expression.`,
+        messageText("diagnose.warnTypes.overKeepsTheServerFromUsing", {
+          value: String(partsOf(call.funcname).at(-1)),
+          name: String(column.name),
+          index: String(index),
+          name2: String(column.name),
+        }),
       );
       break;
     }

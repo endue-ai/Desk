@@ -5,6 +5,7 @@
 // and moves it; `documentOf` is the export: the diagram alone, sized to its bounds, with the
 // theme's colours and font given as values. Pure.
 
+import { t } from "../../strings/index.js";
 import { HEAD, LINE, PAD, tagOf, typeText } from "./layout.js";
 
 /**
@@ -81,7 +82,7 @@ function lineOf(/** @type {Line} */ line, /** @type {number} */ i, /** @type {bo
 function boxOf(/** @type {Box} */ box, /** @type {number} */ i, /** @type {boolean} */ live) {
   const title = box.comment ? `${box.label}: ${box.comment}` : box.label;
   const attrs = live
-    ? ` data-b="${i}" tabindex="0" role="button" aria-label="${esc(`${box.label}: ${box.rows.length + box.more} columns shown. Enter opens its rows.`)}"`
+    ? ` data-b="${i}" tabindex="0" role="button" aria-label="${esc(t("features.diagram.svg.columnsShownEnterOpensItsRows", { label: String(box.label), value: String(box.rows.length + box.more) }))}"`
     : "";
   const tagged = tagOf(box.rows);
   const rows = box.rows.map((c, r) => {

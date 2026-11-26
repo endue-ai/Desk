@@ -6,6 +6,7 @@
 // `factsSql` and `factsOf` are pure; `readFacts` runs them.
 
 import { qualified, quoteText } from "../../sql/quote.js";
+import { t as messageText } from "../../strings/index.js";
 import { kindSql } from "./kinds.js";
 
 /**
@@ -31,7 +32,8 @@ export function rootSql(/** @type {Target} */ target) {
     case "pg_class":
       return `SELECT ${oidOf("pg_class")} AS c, pg_catalog.to_regclass(${lit(qualified(PG, target.schema, target.name))})::oid AS o`;
     case "pg_proc":
-      if (!/^\d+$/u.test(target.ident ?? "")) throw new Error("This routine has no catalog id.");
+      if (!/^\d+$/u.test(target.ident ?? ""))
+        throw new Error(messageText("features.objects.facts.thisRoutineHasNoCatalogId"));
       return `SELECT ${oidOf("pg_proc")} AS c, ${target.ident}::oid AS o`;
     case "pg_trigger":
       return `SELECT ${oidOf("pg_trigger")} AS c, t.oid AS o FROM pg_catalog.pg_trigger t WHERE t.tgrelid = pg_catalog.to_regclass(${table}) AND t.tgname = ${lit(target.name)}`;
@@ -40,7 +42,9 @@ export function rootSql(/** @type {Target} */ target) {
     case "pg_namespace":
       return `SELECT ${oidOf("pg_namespace")} AS c, n.oid AS o FROM pg_catalog.pg_namespace n WHERE n.nspname = ${lit(target.name)}`;
     default:
-      throw new Error(`A ${target.kind}'s catalog row is not known here.`);
+      throw new Error(
+        messageText("features.objects.facts.aSCatalogRowIsNot", { kind: String(target.kind) }),
+      );
   }
 }
 
@@ -287,7 +291,10 @@ export async function readFacts(deps, conn, op, target) {
   });
   const { result } = run;
   const failed = result.error ?? result.statements.find((s) => s.error)?.error;
-  if (failed) throw new Error(`Not read: ${failed.message}`);
+  if (failed)
+    throw new Error(
+      messageText("features.objects.facts.notRead", { message: String(failed.message) }),
+    );
   return factsOf(
     reads,
     result.statements.map((s) => s.sets[0]?.rows ?? []),

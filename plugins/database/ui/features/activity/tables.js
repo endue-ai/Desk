@@ -6,6 +6,7 @@
 
 import { el } from "../../dom.js";
 import { oneLine } from "../../execute.js";
+import { t } from "../../strings/index.js";
 import { durationOf, lockText, waitText } from "./model.js";
 import { nothingToCancel, refusal } from "./signal.js";
 import { blockingTree } from "./tree.js";
@@ -62,7 +63,14 @@ export function treeSection(doc, state) {
     const s = node.session;
     const name = node.pid === 0 ? "a prepared transaction" : `${node.pid} ${who(s)}`;
     const line = node.lock
-      ? `${name} waits ${durationOf(node.waitMs)} for ${lockText(node.lock)}${node.held ? `, held as ${node.held.mode}` : ""}`
+      ? t("features.activity.tables.waitsFor", {
+          name: String(name),
+          value: String(durationOf(node.waitMs)),
+          value2: String(lockText(node.lock)),
+          value3: String(
+            node.held ? t("features.activity.tables.heldAs", { mode: String(node.held.mode) }) : "",
+          ),
+        })
       : `${name}${s?.state ? ` · ${s.state}` : ""}${s?.xactMs ? ` · in a transaction for ${durationOf(s.xactMs)}` : ""}`;
     const li = el(
       doc,
@@ -76,7 +84,9 @@ export function treeSection(doc, state) {
         doc,
         "span",
         { class: "activity-node" },
-        node.again ? `${line} (again: they wait in a circle)` : line,
+        node.again
+          ? t("features.activity.tables.againTheyWaitInACircle", { line: String(line) })
+          : line,
       ),
     );
     if (node.children.length)
@@ -87,7 +97,11 @@ export function treeSection(doc, state) {
     el(
       doc,
       "ul",
-      { role: "tree", class: "activity-tree", "aria-label": "Who waits for whom" },
+      {
+        role: "tree",
+        class: "activity-tree",
+        "aria-label": t("features.activity.tables.whoWaitsForWhom"),
+      },
       ...roots.map(item),
     ),
   );
@@ -124,7 +138,7 @@ export function sessionsSection(doc, state, shown) {
         ),
       ),
     ),
-    el(doc, "th", { scope: "col" }, "Statement"),
+    el(doc, "th", { scope: "col" }, t("features.activity.tables.statement")),
   );
   const focusable = shown.some((s) => s.pid === state.selected) ? state.selected : shown[0]?.pid;
   const rows = shown.map((s) =>
@@ -155,13 +169,18 @@ export function sessionsSection(doc, state, shown) {
         {},
         `${waitText(s) ?? ""}${s.blockedBy.length ? ` · by ${s.blockedBy.join(", ")}` : ""}`,
       ),
-      el(doc, "td", { class: "activity-sql" }, s.hidden ? "hidden" : oneLine(s.query ?? "")),
+      el(
+        doc,
+        "td",
+        { class: "activity-sql" },
+        s.hidden ? t("features.activity.tables.hidden") : oneLine(s.query ?? ""),
+      ),
     ),
   );
   const table = el(
     doc,
     "table",
-    { class: "desk-table activity-table", "aria-label": "Sessions" },
+    { class: "desk-table activity-table", "aria-label": t("features.activity.tables.sessions") },
     el(doc, "thead", {}, head),
     el(doc, "tbody", {}, ...rows),
   );
@@ -169,7 +188,9 @@ export function sessionsSection(doc, state, shown) {
   const picked = state.read?.sessions.find((s) => s.pid === state.selected);
   if (picked) box.append(details(doc, state, picked));
   else if (shown.length === 0)
-    box.append(el(doc, "p", { class: "desk-muted" }, "No session is left by the filters."));
+    box.append(
+      el(doc, "p", { class: "desk-muted" }, t("features.activity.tables.noSessionIsLeftByThe")),
+    );
   return box;
 }
 
@@ -180,8 +201,8 @@ function details(
   /** @type {Session} */ s,
 ) {
   const query = s.hidden
-    ? "Hidden: the pg_read_all_stats role shows it."
-    : (s.query ?? "No statement yet.");
+    ? t("features.activity.tables.hiddenThePgReadAllStats")
+    : (s.query ?? t("features.activity.tables.noStatementYet"));
   const long = query.length > 400;
   const where = [
     `${s.user ?? "another role"} on ${s.database ?? "no database"}`,
@@ -193,7 +214,10 @@ function details(
   const box = el(
     doc,
     "div",
-    { class: "activity-details", "aria-label": `Session ${s.pid}` },
+    {
+      class: "activity-details",
+      "aria-label": t("features.activity.tables.session", { pid: String(s.pid) }),
+    },
     el(doc, "p", { class: "activity-who" }, `${s.pid} · ${where.filter(Boolean).join(" · ")}`),
     el(
       doc,
@@ -210,7 +234,9 @@ function details(
             doc,
             "button",
             { type: "button", class: "desk-btn desk-btn-quiet", "data-ctl": "whole" },
-            state.whole ? "Shorter" : "Whole statement",
+            state.whole
+              ? t("features.activity.tables.shorter")
+              : t("features.activity.tables.wholeStatement"),
           )
         : undefined,
       el(
@@ -221,9 +247,9 @@ function details(
           class: "desk-btn",
           "data-ctl": "cancel",
           disabled: Boolean(refused || nothingToCancel(s)),
-          title: nothingToCancel(s) || "Cancel its statement (c)",
+          title: nothingToCancel(s) || t("features.activity.tables.cancelItsStatementC"),
         },
-        "Cancel statement",
+        t("features.activity.tables.cancelStatement"),
       ),
       el(
         doc,
@@ -233,9 +259,9 @@ function details(
           class: "desk-btn desk-btn-danger",
           "data-ctl": "end",
           disabled: Boolean(refused) || s.own === "view",
-          title: "End the session (e)",
+          title: t("features.activity.tables.endTheSessionE"),
         },
-        "End session",
+        t("features.activity.tables.endSession"),
       ),
     ),
   );
@@ -278,7 +304,7 @@ export function locksSection(doc, state) {
   const table = el(
     doc,
     "table",
-    { class: "desk-table activity-table", "aria-label": "Locks" },
+    { class: "desk-table activity-table", "aria-label": t("features.activity.tables.locks") },
     el(
       doc,
       "thead",
@@ -294,7 +320,10 @@ export function locksSection(doc, state) {
         doc,
         "p",
         { class: "desk-muted" },
-        `The first ${LOCKS_DRAWN} of ${locks.length} locks, the waiting ones first.`,
+        t("features.activity.tables.theFirstOfLocksTheWaiting", {
+          LOCKS_DRAWN: String(LOCKS_DRAWN),
+          length: String(locks.length),
+        }),
       ),
     );
   return box;

@@ -3,10 +3,11 @@
 // title, dialect and port, the version query, EXPLAIN, and the catalog's queries.
 
 import { quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 export const postgres = {
   id: /** @type {const} */ ("postgresql"),
-  title: "PostgreSQL",
+  title: t("engines.postgres.postgresql"),
   dialect: /** @type {const} */ ("postgresql"),
   port: 5432,
   /** Its statements run on a session through the bridge, not in a client. */

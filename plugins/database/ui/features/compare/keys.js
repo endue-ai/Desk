@@ -6,6 +6,7 @@
 import { defaultSchema } from "../../catalog.js";
 import { sourceOf } from "../../edit/source.js";
 import { engineOf } from "../../engines/index.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -67,25 +68,34 @@ export async function chooseKey(deps, given, primary, common) {
   if (!picked) {
     const items = [
       ...(primary.length
-        ? [{ id: "primary", label: `The primary key (${primary.join(", ")})` }]
+        ? [
+            {
+              id: "primary",
+              label: t("features.compare.keys.thePrimaryKey", {
+                value: String(primary.join(", ")),
+              }),
+            },
+          ]
         : []),
-      { id: "position", label: "Row position", detail: "The first row with the first, and so on" },
+      {
+        id: "position",
+        label: t("features.compare.keys.rowPosition"),
+        detail: t("features.compare.keys.theFirstRowWithTheFirst"),
+      },
       ...common.map((name) => ({
         id: `column:${name}`,
         label: name,
-        detail: "A column both have",
+        detail: t("features.compare.keys.aColumnBothHave"),
       })),
     ];
-    picked = (await deps.pick("Database: compare the two results by which key?", items)) ?? "";
-    if (!picked) throw deps.cancelled("Not compared.");
+    picked =
+      (await deps.pick(t("features.compare.keys.databaseCompareTheTwoResultsBy"), items)) ?? "";
+    if (!picked) throw deps.cancelled(t("features.compare.keys.notCompared"));
     picked = picked.replace(/^column:/u, "");
   }
   if (picked === "position") return { key: [], why: "position" };
   if (picked === "primary") {
-    if (!primary.length)
-      throw new Error(
-        "The two results do not both carry a primary key: pick a column or position.",
-      );
+    if (!primary.length) throw new Error(t("features.compare.keys.theTwoResultsDoNotBoth"));
     return { key: primary, why: "primary" };
   }
   const key = picked.split(",").map((name) => name.trim());

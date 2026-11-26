@@ -5,6 +5,7 @@
 // sample is taken from. A proposal's text becomes the console's text through `editOf`. Pure.
 
 import { split, statementAt } from "../../sql/split.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../consoles.js").Console} Console
@@ -46,7 +47,7 @@ export function contextOf(task, shown, editor, dialect) {
     if (end > start && text.slice(start, end).trim())
       return { statement: text.slice(start, end), from: start, to: start, place: "above", sample };
     const at = statementAt(split(text, dialect), start, text);
-    if (!at) throw new Error("Put the caret in a statement for Eris to explain.");
+    if (!at) throw new Error(messageText("features.assist.context.putTheCaretInAStatement"));
     return { statement: at.text, from: at.start, to: at.start, place: "above", sample };
   }
   if (task === "fix") {
@@ -56,13 +57,16 @@ export function contextOf(task, shown, editor, dialect) {
       const whole = execution?.result.error;
       throw new Error(
         whole
-          ? `The last run failed before a statement ran (${whole.message}): Eris fixes a statement's error.`
-          : "This console's last run has no error for Eris to fix.",
+          ? messageText("features.assist.context.theLastRunFailedBeforeA", {
+              message: String(whole.message),
+            })
+          : messageText("features.assist.context.thisConsoleSLastRunHas"),
       );
     }
     const statement = execution.statements[failed.index]?.text ?? "";
     const from = statement ? text.indexOf(statement) : -1;
-    if (from < 0) throw new Error("The statement that failed is no longer in the console.");
+    if (from < 0)
+      throw new Error(messageText("features.assist.context.theStatementThatFailedIsNo"));
     return {
       statement,
       from,
@@ -77,7 +81,7 @@ export function contextOf(task, shown, editor, dialect) {
       shown.explained ?? []
     ).at(-1);
   if (!kept)
-    throw new Error("Explain a statement first (Database: explain), then ask Eris about its plan.");
+    throw new Error(messageText("features.assist.context.explainAStatementFirstDatabaseExplain"));
   const found = text.indexOf(kept.sql);
   const from = found < 0 ? start : found;
   return { statement: kept.sql, from, to: from, place: "above", plan: kept.plan, sample: null };

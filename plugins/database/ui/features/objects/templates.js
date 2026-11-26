@@ -4,6 +4,7 @@
 // parameter, so a run asks for it. Names are quoted as the dialect quotes them. Pure.
 
 import { qualified, quoteName } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").EngineId} EngineId
@@ -52,11 +53,18 @@ const nameOf = (/** @type {EngineId} */ engine, /** @type {Target} */ target) =>
  */
 export function templateOf(engine, which, target, read) {
   if (!templatesOf(target.kind).includes(which))
-    throw new Error(`A ${target.kind} has no ${TEMPLATES[which]} template.`);
+    throw new Error(
+      t("features.objects.templates.aHasNoTemplate", {
+        kind: String(target.kind),
+        value: String(TEMPLATES[which]),
+      }),
+    );
   if (which === "call") return callOf(engine, target, read.routine);
   const columns = read.columns ?? [];
   if (columns.length === 0)
-    throw new Error(`${target.name} has no columns to write a template of.`);
+    throw new Error(
+      t("features.objects.templates.hasNoColumnsToWriteA", { name: String(target.name) }),
+    );
   const q = (/** @type {string} */ name) => quoteName(engine, name);
   const from = nameOf(engine, target);
   const equals = (/** @type {Column} */ c, /** @type {number} */ i) =>
@@ -80,7 +88,10 @@ function callOf(
   /** @type {Target} */ target,
   /** @type {Routine | undefined} */ routine,
 ) {
-  if (!routine) throw new Error(`The arguments of ${target.name} were not read.`);
+  if (!routine)
+    throw new Error(
+      t("features.objects.templates.theArgumentsOfWereNotRead", { name: String(target.name) }),
+    );
   const procedure = target.kind === "procedure";
   const args = routine.params.flatMap((p, i) => {
     if (p.mode === "out" && !procedure) return [];

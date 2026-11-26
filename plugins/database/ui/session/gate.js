@@ -5,6 +5,7 @@
 // connects it again. Marks live in memory: a new page starts connected. No DOM.
 
 import { failedRun } from "../engines/common.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -14,7 +15,7 @@ import { failedRun } from "../engines/common.js";
 
 /** The sentence a refused run shows. */
 export const disconnectedLine = (/** @type {string} */ name) =>
-  `${name} is disconnected: Refresh by hand to connect again.`;
+  t("session.gate.isDisconnectedRefreshByHandTo", { name: String(name) });
 
 export function createGate() {
   /** @type {Set<string>} */

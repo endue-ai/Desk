@@ -8,6 +8,7 @@
 
 import { databaseOf } from "../../databases.js";
 import { refusedWords, whereOf } from "../../session/connect-gate.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -151,24 +152,22 @@ export function createGate(deps) {
   /** Refuse what an agent may not do before its command starts. */
   const check = async (/** @type {Call} */ call) => {
     if (PERSON_ONLY.has(call.command) && isAgent(call))
-      throw new AgentRefusal("Only the person changes what agents may reach.");
+      throw new AgentRefusal(t("features.audit.gate.onlyThePersonChangesWhatAgents"));
     if (PERSON_RUNS.has(call.command) && outsideCaller(call.caller))
-      throw new AgentRefusal(
-        "Only the person runs this: agents read with endue.database.query, read-only and masked.",
-      );
+      throw new AgentRefusal(t("features.audit.gate.onlyThePersonRunsThisAgents"));
     if (!isAgent(call)) return;
     const ref = call.ref;
     if (typeof ref === "string") {
       const conn = deps.find(ref);
       if (conn && (await deps.access.of(conn.id)).closed)
-        throw new AgentRefusal(`${conn.name} is closed to agents.`);
+        throw new AgentRefusal(
+          t("features.audit.gate.isClosedToAgents", { name: String(conn.name) }),
+        );
       const where = conn && SERVER_TOOLS.has(call.command) ? whereOf(conn) : undefined;
       if (conn && where && !(await deps.connected(conn)))
         throw new AgentRefusal(refusedWords(where));
     } else if (!WITHOUT_TARGET.has(call.command) && (await deps.access.anyClosed()))
-      throw new AgentRefusal(
-        "Name the connection: some connections are closed to agents, and this command would take the one on screen.",
-      );
+      throw new AgentRefusal(t("features.audit.gate.nameTheConnectionSomeConnectionsAre"));
   };
 
   /** The entries a finished call leaves, by connection. */

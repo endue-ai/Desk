@@ -8,6 +8,7 @@
 // write by its verb), so this asks only where it would not. Pure.
 
 import { oneLine } from "../../execute.js";
+import { t } from "../../strings/index.js";
 import { polymorphic } from "./call.js";
 
 /**
@@ -37,14 +38,23 @@ export function titleOf(/** @type {Routine} */ r) {
 /** Why a routine cannot be called from the form, or "". */
 export function uncallable(/** @type {Routine} */ r) {
   const name = `${r.schema}.${r.name}`;
-  if (r.prokind === "a") return `${name} is an aggregate: it runs over the rows of a query.`;
-  if (r.prokind === "w") return `${name} is a window function: it runs over a query's window.`;
+  if (r.prokind === "a")
+    return t("features.routines.guard.isAnAggregateItRunsOver", { name: String(name) });
+  if (r.prokind === "w")
+    return t("features.routines.guard.isAWindowFunctionItRuns", { name: String(name) });
   if (r.returns.typname === "trigger" || r.returns.typname === "event_trigger")
-    return `${name} is a trigger function: its trigger runs it, not a call.`;
+    return t("features.routines.guard.isATriggerFunctionItsTrigger", { name: String(name) });
   const inner = r.args.find((a) => a.typtype === "p" && !polymorphic(a) && a.typname !== "void");
-  if (inner) return `${name} takes ${inner.typname}: only the server calls it.`;
+  if (inner)
+    return t("features.routines.guard.takesOnlyTheServerCallsIt", {
+      name: String(name),
+      typname: String(inner.typname),
+    });
   if (r.returns.typtype === "p" && SERVER_ONLY.has(r.returns.typname))
-    return `${name} returns ${r.returns.typname}: only the server calls it.`;
+    return t("features.routines.guard.returnsOnlyTheServerCallsIt", {
+      name: String(name),
+      typname: String(r.returns.typname),
+    });
   return "";
 }
 
@@ -55,19 +65,18 @@ export const writes = (/** @type {Routine} */ r) => r.kind === "procedure" || r.
 export function natureOf(/** @type {Routine} */ r) {
   if (r.kind === "procedure")
     return r.controls
-      ? "A procedure may change data, so it runs as a write. Its source commits or rolls back: it runs alone, outside a transaction block, and cannot be rolled back."
-      : "A procedure may change data, so it runs as a write.";
-  if (r.volatility === "i") return "IMMUTABLE: it only reads, so it runs as a read.";
-  if (r.volatility === "s") return "STABLE: it only reads, so it runs as a read.";
-  return "VOLATILE: it may change data, so it runs as a write.";
+      ? t("features.routines.guard.aProcedureMayChangeDataSo")
+      : t("features.routines.guard.aProcedureMayChangeDataSo2");
+  if (r.volatility === "i") return t("features.routines.guard.immutableItOnlyReadsSoIt");
+  if (r.volatility === "s") return t("features.routines.guard.stableItOnlyReadsSoIt");
+  return t("features.routines.guard.volatileItMayChangeDataSo");
 }
 
 /** Whether "run in a transaction and roll back" is offered. */
 export const canRollBack = (/** @type {Routine} */ r) => writes(r) && !r.controls;
 
 /** What a rolled-back run undoes, said plainly. */
-export const ROLLBACK_WORDS =
-  "It runs between BEGIN and ROLLBACK: what it writes in this database is undone at the end. A sequence it advances stays advanced, and what it does outside the database is not undone.";
+export const ROLLBACK_WORDS = t("features.routines.guard.itRunsBetweenBeginAndRollback");
 
 /** Why a run does not start on this connection, or "". */
 export function refusalOf(/** @type {Conn} */ conn, /** @type {Routine} */ r) {
@@ -75,7 +84,12 @@ export function refusalOf(/** @type {Conn} */ conn, /** @type {Routine} */ r) {
   if (why) return why;
   if (conn.readOnly && writes(r)) {
     const what = r.kind === "procedure" ? "is a procedure" : "is VOLATILE";
-    return `${conn.name} is read-only: ${r.schema}.${r.name} ${what}, so it may change data; it does not run there, not even rolled back.`;
+    return t("features.routines.guard.isReadOnlySoItMay", {
+      name: String(conn.name),
+      schema: String(r.schema),
+      name2: String(r.name),
+      what: String(what),
+    });
   }
   return "";
 }
@@ -94,11 +108,31 @@ export function questionOf(conn, r, sql, how) {
   const production = conn.tag === "production" && !how.rollback && how.confirm;
   if (!how.agent && !production) return null;
   const reasons = [
-    ...(how.agent ? [`An agent asks to run ${r.schema}.${r.name}.`] : []),
-    ...(production ? [`${conn.name} is tagged production.`] : []),
-    `${r.schema}.${r.name} ${r.kind === "procedure" ? "is a procedure" : "is VOLATILE"}: it may change data.`,
-    ...(how.rollback ? ["It runs in a transaction rolled back at the end."] : []),
+    ...(how.agent
+      ? [
+          t("features.routines.guard.anAgentAsksToRun", {
+            schema: String(r.schema),
+            name: String(r.name),
+          }),
+        ]
+      : []),
+    ...(production
+      ? [t("features.routines.guard.isTaggedProduction", { name: String(conn.name) })]
+      : []),
+    t("features.routines.guard.itMayChangeData", {
+      schema: String(r.schema),
+      name: String(r.name),
+      value: String(
+        r.kind === "procedure"
+          ? t("features.routines.guard.isAProcedure")
+          : t("features.routines.guard.isVolatile"),
+      ),
+    }),
+    ...(how.rollback ? [t("features.routines.guard.itRunsInATransactionRolled")] : []),
     oneLine(sql),
   ];
-  return { title: `Run this statement on ${conn.name}?`, reasons };
+  return {
+    title: t("features.routines.guard.runThisStatementOn", { name: String(conn.name) }),
+    reasons,
+  };
 }

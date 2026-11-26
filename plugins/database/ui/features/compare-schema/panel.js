@@ -5,6 +5,7 @@
 // SHOWN objects of each group.
 
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("./controller.js").SchemaState} SchemaState
@@ -23,9 +24,17 @@ export function statusOf(/** @type {SchemaState} */ s) {
     return `${s.status === "reading" ? "Reading" : "Comparing"}${what ? ` ${what}` : ""}${share}…`;
   }
   if (s.status === "failed" || s.status === "cancelled") return s.error;
-  if (s.items.length === 0) return `No difference: ${n(s.same)} objects are the same.`;
+  if (s.items.length === 0)
+    return messageText("features.compareSchema.panel.noDifferenceObjectsAreTheSame", {
+      value: String(n(s.same)),
+    });
   const count = (/** @type {string} */ k) => s.items.filter((i) => i.state === k).length;
-  return `${n(count("left"))} only on the left, ${n(count("right"))} only on the right, ${n(count("differs"))} differ, ${n(s.same)} the same.`;
+  return messageText("features.compareSchema.panel.onlyOnTheLeftOnlyOn", {
+    value: String(n(count("left"))),
+    value2: String(n(count("right"))),
+    value3: String(n(count("differs"))),
+    value4: String(n(s.same)),
+  });
 }
 
 /** @param {Document} doc @param {SchemaState} s @param {Act} act @param {{ id: string }} buffer */
@@ -60,8 +69,18 @@ export function schemaComparePanel(doc, s, act, buffer) {
       doc,
       "div",
       { class: "sc-sides" },
-      el(doc, "p", {}, `Left: ${s.left.label}`),
-      el(doc, "p", {}, `Right: ${s.right.label}`),
+      el(
+        doc,
+        "p",
+        {},
+        messageText("features.compareSchema.panel.left", { label: String(s.left.label) }),
+      ),
+      el(
+        doc,
+        "p",
+        {},
+        messageText("features.compareSchema.panel.right", { label: String(s.right.label) }),
+      ),
     ),
     el(
       doc,
@@ -86,7 +105,12 @@ export function schemaComparePanel(doc, s, act, buffer) {
           doc,
           "div",
           { class: "desk-callout-body" },
-          el(doc, "p", { class: "desk-callout-title" }, "Not read from the folder"),
+          el(
+            doc,
+            "p",
+            { class: "desk-callout-title" },
+            messageText("features.compareSchema.panel.notReadFromTheFolder"),
+          ),
           el(doc, "ul", {}, ...s.notes.slice(0, 20).map((t) => el(doc, "li", {}, t))),
         ),
       ),
@@ -116,7 +140,9 @@ function body(
     const all = el(doc, "input", {
       type: "checkbox",
       class: "desk-check",
-      "aria-label": `Choose every object: ${title}`,
+      "aria-label": messageText("features.compareSchema.panel.chooseEveryObject", {
+        title: String(title),
+      }),
     });
     /** @type {HTMLInputElement} */ (all).checked = items.every((i) => chosen.has(i.key));
     all.addEventListener("change", () =>
@@ -132,7 +158,10 @@ function body(
       const box = el(doc, "input", {
         type: "checkbox",
         class: "desk-check",
-        "aria-label": `In the script: ${item.kind} ${item.name}`,
+        "aria-label": messageText("features.compareSchema.panel.inTheScript", {
+          kind: String(item.kind),
+          name: String(item.name),
+        }),
       });
       /** @type {HTMLInputElement} */ (box).checked = chosen.has(item.key);
       box.addEventListener("change", () =>
@@ -166,7 +195,9 @@ function body(
           doc,
           "p",
           { class: "sc-more" },
-          `And ${n(items.length - SHOWN)} more, chosen with the box above.`,
+          messageText("features.compareSchema.panel.andMoreChosenWithTheBox", {
+            value: String(n(items.length - SHOWN)),
+          }),
         ),
       );
   }
@@ -177,7 +208,12 @@ function body(
       "div",
       { class: "sc-ddl" },
       el(doc, "h3", {}, title),
-      el(doc, "pre", { tabindex: "0", "aria-label": title }, text || "Not on this side."),
+      el(
+        doc,
+        "pre",
+        { tabindex: "0", "aria-label": title },
+        text || messageText("features.compareSchema.panel.notOnThisSide"),
+      ),
     );
   const detail = item
     ? el(
@@ -205,7 +241,15 @@ function script(
       doc,
       "div",
       { class: "sc-script-head" },
-      el(doc, "h3", {}, `Script: makes ${target.label} like ${source.label}`),
+      el(
+        doc,
+        "h3",
+        {},
+        messageText("features.compareSchema.panel.scriptMakesLike", {
+          label: String(target.label),
+          label2: String(source.label),
+        }),
+      ),
       button("schemaCompareDirection", "Swap direction", "desk-btn-quiet", running),
     ),
   ];
@@ -222,8 +266,13 @@ function script(
     el(
       doc,
       "pre",
-      { class: "sc-script", tabindex: "0", "aria-label": "Script", "data-part": "script" },
-      s.script?.text || "Nothing chosen.",
+      {
+        class: "sc-script",
+        tabindex: "0",
+        "aria-label": messageText("features.compareSchema.panel.script"),
+        "data-part": "script",
+      },
+      s.script?.text || messageText("features.compareSchema.panel.nothingChosen"),
     ),
   );
   const actions = [

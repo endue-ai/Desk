@@ -5,6 +5,7 @@
 // is filtered, sorted, copied and exported as one. Pure.
 
 import { formatCount } from "../format.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("../tabs.js").Shown} Shown
@@ -22,13 +23,14 @@ export const timeOf = (/** @type {number} */ at) => {
 };
 
 /** Why an agent's run that LISTENs does not run. */
-export const AGENT_LISTEN =
-  "Not run: LISTEN and UNLISTEN are the person's. Nothing listens on an agent's behalf.";
+export const AGENT_LISTEN = messageText("session.listenTabs.notRunListenAndUnlistenAre");
 
 /** What the status line adds when a listening session ends. */
 export const stoppedLine = (/** @type {string[]} */ channels) =>
   channels.length
-    ? ` It stopped listening on ${channels.join(", ")}: Listen again, on its Notifications tab, runs LISTEN on them; nothing listens again on its own.`
+    ? messageText("session.listenTabs.itStoppedListeningOnListenAgain", {
+        value: String(channels.join(", ")),
+      })
     : "";
 
 /** A run's Messages while it goes on: the notices heard so far. @returns {Shown} */
@@ -41,13 +43,18 @@ export function liveShown(/** @type {{ lines: string[], dropped: number }} */ ru
   if (run.dropped)
     lines.unshift({
       level: "notice",
-      text: `${formatCount(run.dropped)} earlier line${run.dropped === 1 ? "" : "s"} left out while it runs; the run's end shows every notice.`,
+      text: messageText("session.listenTabs.earlierLineLeftOutWhileIt", {
+        value: String(formatCount(run.dropped)),
+        value2: String(run.dropped === 1 ? "" : messageText("session.listenTabs.s")),
+      }),
       statement: -1,
     });
   return {
-    tabs: [{ label: "Messages", kind: "messages", statement: -1, lines }],
+    tabs: [
+      { label: messageText("session.listenTabs.messages"), kind: "messages", statement: -1, lines },
+    ],
     open: 0,
-    summary: "Running…",
+    summary: messageText("session.listenTabs.running"),
   };
 }
 
@@ -55,15 +62,21 @@ export function liveShown(/** @type {{ lines: string[], dropped: number }} */ ru
 export function noteOf(/** @type {NonNullable<Listened>} */ l) {
   const parts = [];
   const names = (/** @type {string[]} */ c) => c.join(", ");
-  if (l.channels.length) parts.push(`Listening on ${names(l.channels)}.`);
+  if (l.channels.length)
+    parts.push(messageText("session.listenTabs.listeningOn", { value: String(names(l.channels)) }));
   else if (l.stopped.length)
     parts.push(
-      `Stopped listening on ${names(l.stopped)}: the session ended. Listen again runs LISTEN on them.`,
+      messageText("session.listenTabs.stoppedListeningOnTheSessionEnded", {
+        value: String(names(l.stopped)),
+      }),
     );
-  else parts.push("Not listening.");
+  else parts.push(messageText("session.listenTabs.notListening"));
   if (l.dropped)
     parts.push(
-      `Keeps the latest ${formatCount(l.heard.length)}: ${formatCount(l.dropped)} older dropped.`,
+      messageText("session.listenTabs.keepsTheLatestOlderDropped", {
+        value: String(formatCount(l.heard.length)),
+        value2: String(formatCount(l.dropped)),
+      }),
     );
   return parts.join(" ");
 }
@@ -71,7 +84,9 @@ export function noteOf(/** @type {NonNullable<Listened>} */ l) {
 /** The Notifications tab. @returns {Tab & { note: string, stopped: boolean }} */
 export function notificationsTab(/** @type {NonNullable<Listened>} */ l) {
   return {
-    label: l.unseen ? `Notifications · ${formatCount(l.unseen)} new` : "Notifications",
+    label: l.unseen
+      ? messageText("session.listenTabs.notificationsNew", { value: String(formatCount(l.unseen)) })
+      : messageText("session.listenTabs.notifications"),
     kind: "notifications",
     statement: -1,
     set: {

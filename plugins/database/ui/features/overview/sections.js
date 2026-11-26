@@ -2,6 +2,7 @@
 // for the server's version, and the sentence a section says when the server refused to read it.
 // No DOM.
 
+import { t } from "../../strings/index.js";
 import { indexSections, tableSections } from "./health.js";
 import { serverSections } from "./server.js";
 import { sizeSections } from "./sizes.js";
@@ -45,12 +46,15 @@ export function failureOf(section, message, role) {
   if (/must be loaded via "?shared_preload_libraries/u.test(words)) return { missing: NOT_LOADED };
   if (/permission denied/iu.test(words))
     return {
-      failed: `${role || "This role"} may not read ${section.source}: ${words}. A role with that privilege can; pg_monitor grants the statistics views.`,
+      failed: t("features.overview.sections.mayNotReadARoleWith", {
+        value: String(role || t("features.overview.sections.thisRole")),
+        source: String(section.source),
+        words: String(words),
+      }),
     };
   if (/lock timeout/iu.test(words))
     return {
-      failed:
-        "Not read: another session holds a lock on a table here for more than 2 seconds. Refresh in a moment.",
+      failed: t("features.overview.sections.notReadAnotherSessionHoldsA"),
     };
-  return { failed: `Not read: ${words}.` };
+  return { failed: t("features.overview.sections.notRead", { words: String(words) }) };
 }

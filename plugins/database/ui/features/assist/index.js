@@ -4,6 +4,7 @@
 // what this console sends to Eris, and a connection closed to Eris or opened again. The brain is
 // the desk's, through brain.ask (brain.js); what is sent is payload.js's and scope.js's.
 
+import { t } from "../../strings/index.js";
 import { createBrain } from "./brain.js";
 import { createChoices } from "./choices.js";
 import { createAssist } from "./flow.js";
@@ -46,8 +47,8 @@ export const feature = {
     assistPlan: () => assistOf(deps).ask("plan"),
   }),
   dialogs: {
-    "assist-sent": { label: "What is sent to Eris", render: sentDialog },
-    "assist-proposal": { label: "Eris's proposal", render: proposalDialog },
+    "assist-sent": { label: t("features.assist.index.whatIsSentToEris"), render: sentDialog },
+    "assist-proposal": { label: t("features.assist.index.erisSProposal"), render: proposalDialog },
   },
   styles: [new URL("./assist.css", import.meta.url).href],
 };

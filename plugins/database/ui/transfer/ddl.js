@@ -9,6 +9,7 @@
 import { closeStatement } from "../schema/common.js";
 import { ddl } from "../schema/postgres.js";
 import { qualified, quoteName, quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {(string | null)[][]} Rows
@@ -110,14 +111,19 @@ export function structureOf(def, target, options) {
   });
   const [relkind, persistence, ...rest] = def.meta[0] ?? [];
   if (relkind === "p")
-    notes.push(
-      `${at(def)} is partitioned: its copy is a plain table that holds every partition's rows.`,
-    );
+    notes.push(t("transfer.ddl.isPartitionedItsCopyIsA", { value: String(at(def)) }));
   if (relkind === "f")
-    notes.push(`${at(def)} is a foreign table: its copy is a plain table that holds its rows.`);
+    notes.push(t("transfer.ddl.isAForeignTableItsCopy", { value: String(at(def)) }));
   if (def.triggers.length)
     notes.push(
-      `${at(def)}'s ${def.triggers.length === 1 ? "trigger is" : `${def.triggers.length} triggers are`} not copied.`,
+      t("transfer.ddl.sNotCopied", {
+        value: String(at(def)),
+        value2: String(
+          def.triggers.length === 1
+            ? t("transfer.ddl.triggerIs")
+            : t("transfer.ddl.triggersAre", { length: String(def.triggers.length) }),
+        ),
+      }),
     );
   const meta = [
     [

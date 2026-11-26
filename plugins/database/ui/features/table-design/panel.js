@@ -9,6 +9,7 @@
 // the control that had the focus keeps it. Mod+Enter runs. Layout and colours: table-design.css.
 
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 import { selectField, textField } from "./bits.js";
 import { columnsView } from "./columns-view.js";
 import { setTable } from "./edits.js";
@@ -32,7 +33,7 @@ const TABS = /** @type {[Tab, string][]} */ ([
   ["indexes", "Indexes"],
   ["table", "Table"],
 ]);
-const HINTS = "Mod+Enter run";
+const HINTS = messageText("features.tableDesign.panel.modEnterRun");
 
 /** How many parts a tab holds, for its label. */
 function countOf(/** @type {Design} */ d, /** @type {Tab} */ tab) {
@@ -153,8 +154,11 @@ export function tableDesignPanel(doc, first, act, buffer) {
         : "";
     const title =
       s.mode === "create"
-        ? `New table in ${s.target.schema}`
-        : `Table ${s.target.schema}.${s.target.name}`;
+        ? messageText("features.tableDesign.panel.newTableIn", { schema: String(s.target.schema) })
+        : messageText("features.tableDesign.panel.table", {
+            schema: String(s.target.schema),
+            name: String(s.target.name),
+          });
     const refresh = el(
       doc,
       "button",
@@ -164,7 +168,7 @@ export function tableDesignPanel(doc, first, act, buffer) {
         "data-key": "ctl:refresh",
         ...(s.reading || s.run?.status === "running" ? { disabled: true } : {}),
       },
-      "Read again",
+      messageText("features.tableDesign.panel.readAgain"),
     );
     refresh.addEventListener("click", () => act("tableDesignRefresh", id));
     const parts = [
@@ -177,7 +181,10 @@ export function tableDesignPanel(doc, first, act, buffer) {
           "p",
           { class: "td-title" },
           el(doc, "strong", {}, title),
-          ` on ${s.conn.name}${where}`,
+          messageText("features.tableDesign.panel.on", {
+            name: String(s.conn.name),
+            where: String(where),
+          }),
           s.conn.tag && s.conn.tag !== "none"
             ? el(doc, "span", { class: `tag tag-${s.conn.tag}` }, s.conn.tag)
             : undefined,
@@ -206,12 +213,12 @@ export function tableDesignPanel(doc, first, act, buffer) {
             doc,
             {
               key: "table:schema",
-              label: "Schema",
+              label: messageText("features.tableDesign.panel.schema"),
               value: design.schema,
               options: schemas.map((n) => ({ value: n, label: n })),
               disabled: s.mode === "change",
               ...(s.mode === "change"
-                ? { hint: "Move it to another schema from the explorer." }
+                ? { hint: messageText("features.tableDesign.panel.moveItToAnotherSchemaFrom") }
                 : {}),
             },
             (v) => {
@@ -223,10 +230,10 @@ export function tableDesignPanel(doc, first, act, buffer) {
             doc,
             {
               key: "table:name",
-              label: "Name",
+              label: messageText("features.tableDesign.panel.name"),
               value: design.name,
-              placeholder: "orders",
-              hint: "Written as typed, in quotes.",
+              placeholder: messageText("features.tableDesign.panel.orders"),
+              hint: messageText("features.tableDesign.panel.writtenAsTypedInQuotes"),
             },
             (v) => set((d) => setTable(d, { name: v }), false),
           ),
@@ -240,7 +247,7 @@ export function tableDesignPanel(doc, first, act, buffer) {
           {
             class: "desk-tabs td-tabs",
             role: "tablist",
-            "aria-label": "Parts of the table",
+            "aria-label": messageText("features.tableDesign.panel.partsOfTheTable"),
             "data-part": "tabs",
           },
           ...TABS.map(([t, label]) => {

@@ -1,5 +1,7 @@
 // Where routine bodies name an aim (PG-32): in the worker (mentions-worker.js) past INLINE_MAX
 // characters in all, in place below, so a handful of small bodies costs no worker.
+
+import { t as messageText } from "../strings/index.js";
 import { mentionsOf } from "./mentions.js";
 
 /**
@@ -32,7 +34,11 @@ export function scanBodies(texts, aim, startWorker) {
     };
     worker.onerror = (event) => {
       worker.terminate();
-      reject(new Error(event.message || "The scan of the routine bodies stopped."));
+      reject(
+        new Error(
+          event.message || messageText("navigate.mentionsClient.theScanOfTheRoutineBodies"),
+        ),
+      );
     };
     worker.postMessage({ texts, aim });
   });

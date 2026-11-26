@@ -5,6 +5,7 @@
 // limit and left out unless asked. A table's own columns are read when its turn comes. No DOM.
 
 import { formatCount } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -98,7 +99,8 @@ export function aboutRows(/** @type {number} */ n) {
 /** The sentence said before a search starts: what it reads and what it leaves out. */
 export function estimateText(/** @type {Estimate} */ e, /** @type {Options} */ options) {
   const n = e.search.length;
-  if (n === 0 && e.over.length === 0) return "No table to search in the chosen schemas.";
+  if (n === 0 && e.over.length === 0)
+    return messageText("features.search.plan.noTableToSearchInThe");
   const unknown = e.unknown
     ? `${e.unknown === n ? "" : " and "}${formatCount(e.unknown)} of unknown size`
     : "";
@@ -106,10 +108,22 @@ export function estimateText(/** @type {Estimate} */ e, /** @type {Options} */ o
   const reads = `Reads ${formatCount(n)} ${n === 1 ? "table" : "tables"}${n ? `, ${rows}${unknown}` : ""}`;
   const each = `one at a time, read-only, at most ${options.timeoutSeconds} s each`;
   const left = e.over.length
-    ? ` Left out, over ${formatCount(options.sizeLimit)} rows: ${e.over
-        .slice(0, 3)
-        .map((c) => `${c.schema}.${c.name} (about ${aboutRows(c.rows ?? 0)})`)
-        .join(", ")}${e.over.length > 3 ? ` and ${formatCount(e.over.length - 3)} more` : ""}.`
+    ? messageText("features.search.plan.leftOutOverRows", {
+        value: String(formatCount(options.sizeLimit)),
+        value2: String(
+          e.over
+            .slice(0, 3)
+            .map((c) => `${c.schema}.${c.name} (about ${aboutRows(c.rows ?? 0)})`)
+            .join(", "),
+        ),
+        value3: String(
+          e.over.length > 3
+            ? messageText("features.search.plan.andMore", {
+                value: String(formatCount(e.over.length - 3)),
+              })
+            : "",
+        ),
+      })
     : "";
   return `${reads}, ${each}.${left}`;
 }

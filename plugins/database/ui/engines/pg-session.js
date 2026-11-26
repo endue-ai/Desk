@@ -16,19 +16,20 @@
 // tunnel, db:connect covers every hop (tunnel/, ADR 0359). No DOM.
 
 import { commandFor } from "../auth/fields.js";
-import { pooled, pooledSettings } from "../auth/pooler.js";
+import { pooled } from "../auth/pooler.js";
 import { keptPassword, signInWithCommand } from "../auth/sign-in.js";
 import { answering, hearEvents } from "../session/events.js";
 import { createKeeper } from "../session/keeper.js";
 import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
+import { t as messageText } from "../strings/index.js";
 import { createTunnel, scopeOf } from "../tunnel/open.js";
 import { failedRun } from "./common.js";
 import { createCursors, own as own_ } from "./pg-cursor.js";
 import { codeOf, openFailed, textOf } from "./pg-open-failed.js";
-import { sessionSettings } from "./pg-options.js";
 import { refusedOf } from "./pg-result.js";
 import { cursorRows } from "./pg-rows.js";
 import { createScript } from "./pg-script.js";
+import { settingsOf, targetOf } from "./pg-session-setup.js";
 import { runStartup } from "./pg-startup.js";
 import { createTls } from "./pg-tls.js";
 
@@ -43,44 +44,19 @@ import { createTls } from "./pg-tls.js";
  *   What Cancel stops: that owner's runs and the plugin's own short reads, else every run.
  */
 
-/** What the server shows as the session's application (pg_stat_activity.application_name). */
-export const APPLICATION = "endue";
 /** Short runs holding a session at once (session/slots.js); the core allows a plugin 16. */
 export const MAX_SESSIONS = RUNS_AT_ONCE;
 export { BACKSTOP_MS, GRACE_MS } from "./pg-script.js";
+export { APPLICATION, settingsOf, targetOf } from "./pg-session-setup.js";
 
 const SIGN_IN_MS = 10_000;
 /** Kept sessions per connection when no setting says. */
 const PER_CONNECTION = 8;
 /** @returns {DbError} */
-const cancelled = () => ({ kind: "cancelled", message: "Cancelled." });
-/** A host db.open takes: a name or an IPv4 address (no socket folder, no IPv6 yet). */
-const HOST = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/u;
-
-/** The server and the sign-in a connection names, or the sentence why it cannot be reached. */
-export function targetOf(/** @type {Connection} */ conn) {
-  const host = conn.host || "localhost";
-  if (!HOST.test(host))
-    return `${conn.name}: ${host} is not a host name or an IPv4 address, which is what the desk's PostgreSQL sessions connect to (a socket folder or an IPv6 address is not supported yet).`;
-  if (!conn.user) return `${conn.name} has no user: set the role PostgreSQL signs in as.`;
-  return { host, port: conn.port ?? 5432, database: conn.database || conn.user, user: conn.user };
-}
-
-/** The session's settings: its name on the server, ISO dates, the statement timeout, then the
- * connection's own session options (its application name over the plugin's). */
-export const settingsOf = (
-  /** @type {number} */ timeoutMs,
-  /** @type {Connection | undefined} */ conn = undefined,
-) =>
-  conn && pooled(conn)
-    ? pooledSettings(conn, APPLICATION)
-    : {
-        application_name: APPLICATION,
-        DateStyle: "ISO",
-        ...(timeoutMs > 0 ? { statement_timeout: String(timeoutMs) } : {}),
-        ...(conn ? sessionSettings(conn) : {}),
-      };
-
+const cancelled = () => ({
+  kind: "cancelled",
+  message: messageText("engines.pgSession.cancelled"),
+});
 /**
  * @param {Bridge} bridge
  * @param {{
@@ -140,7 +116,10 @@ export function createSessions(bridge, options = {}) {
     const decision = await call("perm.request", { permission: scope, reason }).catch(() => ({
       granted: false,
     }));
-    if (!decision.granted) throw Object.assign(new Error("refused"), { code: "permission_denied" });
+    if (!decision.granted)
+      throw Object.assign(new Error(messageText("engines.pgSession.refused")), {
+        code: "permission_denied",
+      });
     return open();
   };
 
@@ -174,7 +153,9 @@ export function createSessions(bridge, options = {}) {
       if (helper && quiet) {
         const permission = await call("perm.query", { permission: scope });
         if (!permission.grants?.length)
-          throw Object.assign(new Error("refused"), { code: "permission_denied" });
+          throw Object.assign(new Error(messageText("engines.pgSession.refused")), {
+            code: "permission_denied",
+          });
       }
       const attempt = async (/** @type {{ password?: string }} */ given) =>
         /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
@@ -211,8 +192,14 @@ export function createSessions(bridge, options = {}) {
       if (opened.error) return { error: refusedOf(opened.error) };
       const message =
         "passwordRef" in params
-          ? `${where} asks for a password, and neither the password file nor the keychain has one for ${target.user}.`
-          : `${where} asks for a password, and the password file has none for ${target.user}.`;
+          ? messageText("engines.pgSession.asksForAPasswordAndNeither", {
+              where: String(where),
+              user: String(target.user),
+            })
+          : messageText("engines.pgSession.asksForAPasswordAndThe", {
+              where: String(where),
+              user: String(target.user),
+            });
       return { error: { kind: "auth", message } };
     } catch (error) {
       return openFailed(error, where);

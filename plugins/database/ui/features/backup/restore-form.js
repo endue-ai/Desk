@@ -8,6 +8,7 @@
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
 import { fileName } from "../../platform.js";
+import { t } from "../../strings/index.js";
 import { commandLine, listPath, restoreArgs, restoreOptions } from "./args.js";
 
 /** @typedef {import("./restore.js").RestoreModel} RestoreModel */
@@ -106,15 +107,15 @@ export function restoreDialog(doc, model, done) {
   const filter = input({
     name: "filter",
     type: "search",
-    placeholder: "orders, TABLE DATA",
-    "aria-label": "Find entries",
+    placeholder: t("features.backup.restoreForm.ordersTableData"),
+    "aria-label": t("features.backup.restoreForm.findEntries"),
   });
   const count = el(doc, "span", { class: "hint", "data-part": "count" });
   const list = el(doc, "div", {
     class: "restore-entries",
     "data-part": "entries",
     role: "group",
-    "aria-label": "Entries",
+    "aria-label": t("features.backup.restoreForm.entries"),
   });
   const button = (/** @type {string} */ text, /** @type {boolean} */ on) => {
     const node = el(
@@ -168,7 +169,9 @@ export function restoreDialog(doc, model, done) {
             doc,
             "p",
             { class: "hint" },
-            `${formatCount(found.length - SHOWN_MAX)} more match: narrow the search to see them.`,
+            t("features.backup.restoreForm.moreMatchNarrowTheSearchTo", {
+              value: String(formatCount(found.length - SHOWN_MAX)),
+            }),
           )
         : undefined;
     list.replaceChildren(...rows, ...(more ? [more] : []));
@@ -181,7 +184,7 @@ export function restoreDialog(doc, model, done) {
   const command = el(doc, "pre", {
     class: "backup-command",
     "data-part": "command",
-    "aria-label": "Command line",
+    "aria-label": t("features.backup.restoreForm.commandLine"),
   });
   const problem = el(doc, "p", { class: "backup-problem", role: "alert" });
   const submit = /** @type {HTMLButtonElement} */ (
@@ -189,10 +192,17 @@ export function restoreDialog(doc, model, done) {
       doc,
       "button",
       { type: "submit", class: "desk-btn desk-btn-primary" },
-      plain ? "Run the script" : "Restore",
+      plain
+        ? t("features.backup.restoreForm.runTheScript")
+        : t("features.backup.restoreForm.restore"),
     )
   );
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.backup.restoreForm.cancel"),
+  );
   cancel.addEventListener("click", () => done());
 
   const raw = () => ({
@@ -217,14 +227,24 @@ export function restoreDialog(doc, model, done) {
     const into = model.connections.find((c) => c.id === target.value);
     ifExists.box.disabled = !clean.box.checked;
     jobsRow.hidden = model.format === "tar";
-    count.textContent = `${formatCount(chosen.size)} of ${formatCount(model.entries.length)} entries`;
+    count.textContent = t("features.backup.restoreForm.ofEntries", {
+      value: String(formatCount(chosen.size)),
+      value2: String(formatCount(model.entries.length)),
+    });
     try {
-      if (!into) throw new Error("Choose the connection to restore into.");
-      if (into.readOnly) throw new Error(`${into.name} is read-only: nothing is restored into it.`);
+      if (!into) throw new Error(t("features.backup.restoreForm.chooseTheConnectionToRestoreInto"));
+      if (into.readOnly)
+        throw new Error(
+          t("features.backup.restoreForm.isReadOnlyNothingIsRestored", { name: String(into.name) }),
+        );
       if (plain) {
-        command.textContent = `Database: run a .sql file · ${model.file} on ${into.name}`;
+        command.textContent = t("features.backup.restoreForm.databaseRunASqlFileOn", {
+          file: String(model.file),
+          name: String(into.name),
+        });
       } else {
-        if (chosen.size === 0) throw new Error("Choose an entry to restore.");
+        if (chosen.size === 0)
+          throw new Error(t("features.backup.restoreForm.chooseAnEntryToRestore"));
         const options = restoreOptions(raw(), /** @type {"custom"} */ (model.format));
         const some = chosen.size < model.entries.length;
         const argv = restoreArgs(options, {
@@ -248,8 +268,14 @@ export function restoreDialog(doc, model, done) {
   };
 
   const about = plain
-    ? "A plain SQL file: it runs as a script in a console of the connection, statement by statement, under its guards."
-    : `${FORMAT_NAMES[model.format] ?? "Archive"} of ${model.database || "a database"}, made by pg_dump ${model.by || "?"} from PostgreSQL ${model.from || "?"} · ${formatCount(model.entries.length)} entries`;
+    ? t("features.backup.restoreForm.aPlainSqlFileItRuns")
+    : t("features.backup.restoreForm.ofMadeByPgDumpFrom", {
+        value: String(FORMAT_NAMES[model.format] ?? t("features.backup.restoreForm.archive")),
+        value2: String(model.database || t("features.backup.restoreForm.aDatabase")),
+        value3: String(model.by || "?"),
+        value4: String(model.from || "?"),
+        value5: String(formatCount(model.entries.length)),
+      });
   const options = plain
     ? []
     : [
@@ -261,7 +287,7 @@ export function restoreDialog(doc, model, done) {
           doc,
           "fieldset",
           { class: "restore-pick" },
-          el(doc, "legend", {}, "Entries"),
+          el(doc, "legend", {}, t("features.backup.restoreForm.entries")),
           el(
             doc,
             "p",
@@ -279,7 +305,12 @@ export function restoreDialog(doc, model, done) {
       doc,
       "form",
       { class: "dialog wide backup-form restore-form", "aria-labelledby": "restore-title" },
-      el(doc, "h2", { id: "restore-title" }, `Restore ${fileName(model.file)}`),
+      el(
+        doc,
+        "h2",
+        { id: "restore-title" },
+        t("features.backup.restoreForm.restore2", { value: String(fileName(model.file)) }),
+      ),
       el(doc, "p", { class: "hint" }, about),
       labelled("Into", target, "into"),
       ...options,

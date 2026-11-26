@@ -2,6 +2,7 @@
 // streamed through zip-stream.js, its cells typed as xlsx.js types them (each column's kind from its
 // PostgreSQL type). Past the format's 1,048,576 rows it stops with a sentence. No DOM.
 
+import { t } from "../strings/index.js";
 import { kindsOf } from "./cells.js";
 import { MAX_ROWS, packageParts, rowsXml, SHEET_FOOT, sheetHead, sheetNames } from "./xlsx.js";
 import { zipStream } from "./zip-stream.js";
@@ -41,7 +42,10 @@ export function xlsxWriter(meta, o, name) {
       if (!open || !rows.length) return [];
       if (next - 1 + rows.length > MAX_ROWS)
         throw new Error(
-          `Export: ${sheetName} has more than ${MAX_ROWS.toLocaleString("en-US")} rows, as many as a sheet holds. Export as CSV instead.`,
+          t("export.xlsxStream.exportHasMoreThanRowsAs", {
+            sheetName: String(sheetName),
+            value: String(MAX_ROWS.toLocaleString("en-US")),
+          }),
         );
       kinds ??= kindsOf(rows, meta.columns.length, meta.oids, meta.types);
       const xml = rowsXml(sheet, rows, next, kinds, o);

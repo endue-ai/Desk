@@ -50,6 +50,13 @@ pub struct CommandContribution {
     pub id: CommandId,
     /// Shown in the palette.
     pub title: String,
+    /// A key in this plugin's messages catalog for the command title. The title is the fallback if the message is unavailable.
+    #[serde(
+        rename = "titleMessage",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub title_message: Option<MessageId>,
     /// More words the palette matches.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
@@ -1495,6 +1502,13 @@ pub struct Surface {
     /// Shown where the surface needs a label.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// A key in this plugin's messages catalog for the surface label. The title is the fallback if the message is unavailable.
+    #[serde(
+        rename = "titleMessage",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub title_message: Option<MessageId>,
     pub placement: SurfacePlacement,
     /// Mounted but not shown until the plugin shows it, like a palette. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // Compression as a stream (PG-64): gzip for a compressed export and raw deflate for a streamed
 // .xlsx's sheet, through the platform's CompressionStream (no library). Each push answers what the
 // compressor gave so far, so nothing holds more than a chunk or two. No DOM.
@@ -14,7 +15,7 @@ export const canCompress = () => typeof CompressionStream !== "undefined";
  * @returns {Deflater}
  */
 export function deflater(kind) {
-  if (!canCompress()) throw new Error("Export: this desk cannot compress.");
+  if (!canCompress()) throw new Error(t("export.deflate.exportThisDeskCannotCompress"));
   const stream = new CompressionStream(kind);
   const writer = stream.writable.getWriter();
   const reader = stream.readable.getReader();

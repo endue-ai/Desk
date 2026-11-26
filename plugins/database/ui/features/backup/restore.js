@@ -7,6 +7,7 @@
 // pg_restore sets are skipped, not a failure (restore-outcome.js, #647). No DOM.
 
 import { outputBytes } from "../../run.js";
+import { t } from "../../strings/index.js";
 import { runFile } from "../consoles/run-file.js";
 import {
   argPath,
@@ -61,17 +62,28 @@ const counts = (/** @type {string} */ line) =>
 
 /** The dump to restore: a file or a folder, from the open dialog. */
 async function chooseSource(/** @type {Deps} */ deps) {
-  const kind = await deps.pick("Database: restore from", [
-    { id: "files", label: "A file", detail: "A custom or tar archive, or a plain SQL file" },
-    { id: "folders", label: "A folder", detail: "A directory archive" },
+  const kind = await deps.pick(t("features.backup.restore.databaseRestoreFrom"), [
+    {
+      id: "files",
+      label: t("features.backup.restore.aFile"),
+      detail: t("features.backup.restore.aCustomOrTarArchiveOr"),
+    },
+    {
+      id: "folders",
+      label: t("features.backup.restore.aFolder"),
+      detail: t("features.backup.restore.aDirectoryArchive"),
+    },
   ]);
-  if (!kind) throw deps.cancelled("Not restored.");
+  if (!kind) throw deps.cancelled(t("features.backup.restore.notRestored"));
   const picked = await deps.bridge.call("dialog.open", {
     kind: /** @type {"files" | "folders"} */ (kind),
-    title: kind === "files" ? "Restore from which file?" : "Restore from which folder?",
+    title:
+      kind === "files"
+        ? t("features.backup.restore.restoreFromWhichFile")
+        : t("features.backup.restore.restoreFromWhichFolder"),
   });
   const path = picked.cancelled ? undefined : picked.paths[0];
-  if (!path) throw deps.cancelled("Not restored.");
+  if (!path) throw deps.cancelled(t("features.backup.restore.notRestored"));
   return path;
 }
 
@@ -96,12 +108,19 @@ async function listOf(
   if (outcome.code !== 0) {
     if (isPlain(outcome.stderr)) return { plain: true, toc: undefined };
     throw new Error(
-      `${command} cannot read ${fileName(path)}: ${errorWords(outcome.stderr, "pg_restore")}`,
+      t("features.backup.restore.cannotRead", {
+        command: String(command),
+        value: String(fileName(path)),
+        value2: String(errorWords(outcome.stderr, "pg_restore")),
+      }),
     );
   }
   const bytes = outputBytes(outcome)?.stdout;
   const toc = bytes ? await readToc(bytes, deps.startWorker) : parseToc(outcome.stdout);
-  if (!toc.format) throw new Error(`${fileName(path)} is not an archive pg_restore reads.`);
+  if (!toc.format)
+    throw new Error(
+      t("features.backup.restore.isNotAnArchivePgRestore", { value: String(fileName(path)) }),
+    );
   return { plain: false, toc };
 }
 
@@ -122,13 +141,23 @@ function question(
   /** @type {Toc} */ toc,
 ) {
   return {
-    title: `Restore ${fileName(path)} into ${conn.name}?`,
+    title: t("features.backup.restore.restoreInto", {
+      value: String(fileName(path)),
+      name: String(conn.name),
+    }),
     reasons: [
-      `${conn.name} is tagged production.`,
-      `Into the database ${conn.database || "of the connection"} on ${conn.host || "the local server"}.`,
-      ...(o.clean ? ["Clean drops each object in the dump before making it again."] : []),
+      t("features.backup.restore.isTaggedProduction", { name: String(conn.name) }),
+      t("features.backup.restore.intoTheDatabaseOn", {
+        value: String(conn.database || t("features.backup.restore.ofTheConnection")),
+        value2: String(conn.host || t("features.backup.restore.theLocalServer")),
+      }),
+      ...(o.clean ? [t("features.backup.restore.cleanDropsEachObjectInThe")] : []),
       ...(o.create
-        ? [`Create makes the database ${toc.database || "the dump was made from"}.`]
+        ? [
+            t("features.backup.restore.createMakesTheDatabase", {
+              value: String(toc.database || t("features.backup.restore.theDumpWasMadeFrom")),
+            }),
+          ]
         : []),
     ],
   };
@@ -142,7 +171,7 @@ function question(
 export async function restore(deps, jobs, args) {
   const targets = postgresOf(deps);
   if (targets.length === 0)
-    throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+    throw new Error(t("features.backup.restore.noPostgresqlConnectionYetAddOne"));
   const path = typeof args.path === "string" && args.path ? args.path : await chooseSource(deps);
   await askPath(deps, "fs:read", path, `To read ${fileName(path)} with pg_restore`);
   const program = () => deps.clients.program("pg_restore");
@@ -179,17 +208,22 @@ export async function restore(deps, jobs, args) {
     options,
   };
   const answer = /** @type {RestoreAnswer | undefined} */ (await deps.dialog("restore", model));
-  if (!answer) throw deps.cancelled("Not restored.");
+  if (!answer) throw deps.cancelled(t("features.backup.restore.notRestored"));
   const conn = deps.manager.get(answer.connection);
-  if (conn?.engine !== "postgresql") throw new Error("Restore into a PostgreSQL connection.");
-  if (conn.readOnly) throw new Error(`${conn.name} is read-only: nothing is restored into it.`);
+  if (conn?.engine !== "postgresql")
+    throw new Error(t("features.backup.restore.restoreIntoAPostgresqlConnection"));
+  if (conn.readOnly)
+    throw new Error(
+      t("features.backup.restore.isReadOnlyNothingIsRestored", { name: String(conn.name) }),
+    );
   const server = await serverVersion(deps, conn);
   const serverMajor = Math.floor(server / 10000);
   if (plain || !toc || !client)
     return runFile(deps, { path, connection: conn.id }, plainSkips(serverMajor));
 
   const chosen = Array.isArray(answer.chosen) ? answer.chosen : null;
-  if (chosen && chosen.length === 0) throw new Error("Choose an entry to restore.");
+  if (chosen && chosen.length === 0)
+    throw new Error(t("features.backup.restore.chooseAnEntryToRestore"));
   const chosenOptions = restoreOptions(answer.options ?? {}, toc.format || "custom");
   const restorer = await programFor(deps, "pg_restore", conn, server);
   const refused = chosenOptions.singleTransaction
@@ -198,7 +232,8 @@ export async function restore(deps, jobs, args) {
   if (refused) throw new Error(refused);
   if (conn.tag === "production") {
     const { title, reasons } = question(conn, path, chosenOptions, toc);
-    if (!(await deps.confirm(title, reasons))) throw deps.cancelled("Not restored.");
+    if (!(await deps.confirm(title, reasons)))
+      throw deps.cancelled(t("features.backup.restore.notRestored"));
   }
   const some = chosen && chosen.length < toc.entries.length;
   const list = some ? listPath(conn.id) : undefined;
@@ -223,7 +258,10 @@ export async function restore(deps, jobs, args) {
   const state = logState(
     {
       kind: "restore",
-      title: `Restore ${fileName(path)} into ${conn.name}`,
+      title: t("features.backup.restore.restoreInto2", {
+        value: String(fileName(path)),
+        name: String(conn.name),
+      }),
       command: commandLine(
         restorer.command,
         argv,
@@ -256,7 +294,9 @@ export async function restore(deps, jobs, args) {
       if (outcome.cancelled)
         return {
           status: "cancelled",
-          result: `Cancelled: ${conn.name} holds what was restored so far.`,
+          result: t("features.backup.restore.cancelledHoldsWhatWasRestoredSo", {
+            name: String(conn.name),
+          }),
         };
       const ignored = /errors ignored on restore: (\d+)/u.exec(outcome.stderr)?.[1];
       // Settings pg_restore sets that the server does not know are skipped, not a failure (#647).
@@ -266,7 +306,7 @@ export async function restore(deps, jobs, args) {
           status: "failed",
           result: ignored
             ? `Restored into ${conn.name} with ${ignored} errors, in ${took}: ${errorWords(outcome.stderr, "pg_restore")}`
-            : `pg_restore failed: ${errorWords(outcome.stderr, "pg_restore") || `it ended with ${outcome.code ?? outcome.signal}.`}`,
+            : `pg_restore failed: ${errorWords(outcome.stderr, "pg_restore") || t("features.backup.restore.itEndedWith", { value: String(outcome.code ?? outcome.signal) })}`,
         };
       return {
         status: "done",
@@ -274,6 +314,6 @@ export async function restore(deps, jobs, args) {
       };
     },
   });
-  deps.say(done.result || `Restore ${done.status}.`);
+  deps.say(done.result || t("features.backup.restore.restore", { status: String(done.status) }));
   return { status: done.status, connection: conn.name, said: done.result };
 }

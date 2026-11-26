@@ -4,6 +4,7 @@
 // ticked rows' indexes; Cancel and Escape nothing; nothing ticked holds the button.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { checkRow, pickList } from "./pick-list.js";
 import { applyImport } from "./plan.js";
 
@@ -13,9 +14,15 @@ const KINDS = { add: "new", change: "changes", same: "already here", taken: "nam
 
 /** What the row's line says after its name. */
 function whatOf(/** @type {import("./plan.js").Row} */ row) {
-  if (row.kind === "change") return `Changes ${row.changes.join(", ")}.`;
-  if (row.kind === "same") return "Already here: skipped.";
-  if (row.kind === "taken") return `A connection here is named ${row.was}.`;
+  if (row.kind === "change")
+    return t("features.connectionsFile.importForm.changes", {
+      value: String(row.changes.join(", ")),
+    });
+  if (row.kind === "same") return t("features.connectionsFile.importForm.alreadyHereSkipped");
+  if (row.kind === "taken")
+    return t("features.connectionsFile.importForm.aConnectionHereIsNamed", {
+      was: String(row.was),
+    });
   return "Added.";
 }
 
@@ -23,9 +30,17 @@ function whatOf(/** @type {import("./plan.js").Row} */ row) {
 function aboutOf(/** @type {ImportModel} */ model) {
   const n = model.rows.length;
   if (model.kind === "service")
-    return `A PostgreSQL service file · ${n} service${n === 1 ? "" : "s"}, each a PostgreSQL connection; passwords are left out. Nothing is kept until you import.`;
+    return t("features.connectionsFile.importForm.aPostgresqlServiceFileServiceEach", {
+      n: String(n),
+      value: String(n === 1 ? "" : t("features.connectionsFile.importForm.s")),
+    });
   const at = model.exported ? `, exported ${model.exported.slice(0, 10)}` : "";
-  return `A connections file, version ${model.version}${at} · ${n} connection${n === 1 ? "" : "s"}. Nothing is kept until you import.`;
+  return t("features.connectionsFile.importForm.aConnectionsFileVersionConnectionNothing", {
+    version: String(model.version),
+    at: String(at),
+    n: String(n),
+    value: String(n === 1 ? "" : t("features.connectionsFile.importForm.s")),
+  });
 }
 
 /**
@@ -60,12 +75,17 @@ export function importDialog(doc, model, done) {
     );
   });
   const submit = /** @type {HTMLButtonElement} */ (
-    el(doc, "button", { type: "submit", class: "desk-btn desk-btn-primary" }, "Import")
+    el(
+      doc,
+      "button",
+      { type: "submit", class: "desk-btn desk-btn-primary" },
+      t("features.connectionsFile.importForm.import"),
+    )
   );
   const ticked = () =>
     rows.filter((r) => r.box.checked && !r.box.disabled).map((r) => Number(r.box.value));
   const list = pickList(doc, {
-    label: "Connections",
+    label: t("features.connectionsFile.importForm.connections"),
     rows,
     count: (n) => `${n} of ${rows.length} to import`,
     follow: () => {
@@ -75,19 +95,33 @@ export function importDialog(doc, model, done) {
         const row = model.rows[k.index];
         const as = named[k.index];
         if (row && as && k.conn.name !== row.conn.name)
-          as.textContent = ` Imported as ${k.conn.name}.`;
+          as.textContent = t("features.connectionsFile.importForm.importedAs", {
+            name: String(k.conn.name),
+          });
       }
       submit.disabled = kept.length === 0;
     },
   });
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.connectionsFile.importForm.cancel"),
+  );
   cancel.addEventListener("click", () => done());
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
       "form",
       { class: "dialog wide connections-file", "aria-labelledby": "connections-import-title" },
-      el(doc, "h2", { id: "connections-import-title" }, `Import connections from ${model.file}`),
+      el(
+        doc,
+        "h2",
+        { id: "connections-import-title" },
+        t("features.connectionsFile.importForm.importConnectionsFrom", {
+          file: String(model.file),
+        }),
+      ),
       el(doc, "p", { class: "hint" }, aboutOf(model)),
       list.node,
       el(doc, "p", { class: "buttons" }, cancel, submit),

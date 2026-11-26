@@ -12,6 +12,7 @@
 // the changes stay pending either way. No DOM.
 
 import { split } from "../sql/split.js";
+import { t as messageText } from "../strings/index.js";
 import { planChanges } from "./pending.js";
 import { MATCHED } from "./tables.js";
 
@@ -49,11 +50,11 @@ export function previewSql(target, set, changes) {
  */
 export async function submitChanges({ execute, conn, target, set, changes }) {
   const plan = planChanges(target, set, changes);
-  if (plan.length === 0) throw new Error("No pending changes to submit.");
+  if (plan.length === 0) throw new Error(messageText("edit.submit.noPendingChangesToSubmit"));
   const sql = plan.map((change) => change.sql).join(";\n");
   const statements = split(sql, target.dialect);
   if (statements.length !== plan.length)
-    throw new Error("The changes did not make one statement each; nothing was run.");
+    throw new Error(messageText("edit.submit.theChangesDidNotMakeOne"));
   const execution = await execute(conn, sql, { mode: "transaction", statements });
   const { result } = execution;
   const count = `${plan.length} change${plan.length === 1 ? "" : "s"}`;
@@ -64,7 +65,9 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
       plan,
       execution,
       missed: [],
-      message: `Unknown whether the server committed ${count}: the session ended while COMMIT was on its way. They are still pending. Refresh reads the rows again: if the changes are there, Revert them; if not, Submit again.`,
+      message: messageText("edit.submit.unknownWhetherTheServerCommittedThe", {
+        count: String(count),
+      }),
     };
   if (result.error)
     return {
@@ -72,7 +75,9 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
       plan,
       execution,
       missed: [],
-      message: `Nothing was changed: ${result.error.message}`,
+      message: messageText("edit.submit.nothingWasChanged", {
+        message: String(result.error.message),
+      }),
     };
   const at = result.statements.findIndex((s) => s.error);
   if (at >= 0 || result.statements.some((s) => !s.ran)) {
@@ -95,16 +100,25 @@ export async function submitChanges({ execute, conn, target, set, changes }) {
       ...(failed && span ? { cell: { row: failed.row, col: span.col } } : {}),
       missed: [],
       message: gone
-        ? `Not committed: the session ended at ${failed ? describe(failed, set) : "a change"}, before COMMIT, so the server rolled the changes back. They are still pending: Submit again once the server answers. (${error.message})`
-        : `Rolled back, nothing was changed: ${where}${why}`,
+        ? messageText("edit.submit.notCommittedTheSessionEndedAt", {
+            value: String(failed ? describe(failed, set) : messageText("edit.submit.aChange")),
+            message: String(error.message),
+          })
+        : messageText("edit.submit.rolledBackNothingWasChanged", {
+            where: String(where),
+            why: String(why),
+          }),
     };
   }
   const missed = plan.filter(
     (change, i) => change.kind !== "insert" && result.statements[i]?.affected === 0,
   );
   const message = missed.length
-    ? `Committed ${count}; ${missed.map((c) => describe(c, set)).join(", ")} matched no row: it changed or went since it was read.`
-    : `Committed ${count} in one transaction.`;
+    ? messageText("edit.submit.committedMatchedNoRowItChanged", {
+        count: String(count),
+        value: String(missed.map((c) => describe(c, set)).join(", ")),
+      })
+    : messageText("edit.submit.committedInOneTransaction", { count: String(count) });
   return { ok: true, plan, execution, missed, message };
 }
 
@@ -121,14 +135,20 @@ function whyOf(
   /** @type {import("../engines/common.js").DbError | undefined} */ error,
   /** @type {Target} */ target,
 ) {
-  const message = error?.message ?? "the run stopped before the end";
+  const message = error?.message ?? messageText("edit.submit.theRunStoppedBeforeTheEnd");
   const count = failed?.guarded && MATCHED.test(message) ? /"(\d+) rows/u.exec(message)?.[1] : "";
   if (count === "0")
-    return `it matched no row of ${failed?.guarded}: the row moved or went since it was read (its ctid changes on every update). Read the rows again.`;
+    return messageText("edit.submit.itMatchedNoRowOfThe", { value: String(failed?.guarded) });
   if (count)
-    return `it matched ${count} rows of ${failed?.guarded}: its values do not tell it apart from another row. Select a key or ctid to change one of them.`;
+    return messageText("edit.submit.itMatchedRowsOfItsValues", {
+      count: String(count),
+      value: String(failed?.guarded),
+    });
   if (error?.code === "23503" && (target.tables?.length ?? 0) > 1)
-    return `${message}. A foreign key between ${target.tables?.map((t) => t.name).join(" and ")} holds against these changes in one Submit: submit them apart.`;
+    return messageText("edit.submit.aForeignKeyBetweenHoldsAgainst", {
+      message: String(message),
+      value: String(target.tables?.map((t) => t.name).join(" and ")),
+    });
   return message;
 }
 

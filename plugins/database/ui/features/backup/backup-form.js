@@ -5,6 +5,7 @@
 // button. Back up answers with the options; Cancel and Escape with nothing (view-dialog.js).
 
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 import { commandLine, dumpArgs, dumpOptions, majorOf } from "./args.js";
 
 /** @typedef {import("./backup.js").BackupModel} BackupModel */
@@ -21,11 +22,11 @@ const CONTENTS = [
   ["data", "Data only (--data-only)"],
 ];
 const METHOD_LABELS = {
-  default: "pg_dump's default",
-  none: "None",
-  gzip: "gzip",
-  lz4: "lz4",
-  zstd: "zstd",
+  default: messageText("features.backup.backupForm.pgDumpSDefault"),
+  none: messageText("features.backup.backupForm.none"),
+  gzip: messageText("features.backup.backupForm.gzip"),
+  lz4: messageText("features.backup.backupForm.lz4"),
+  zstd: messageText("features.backup.backupForm.zstd"),
 };
 
 /**
@@ -83,14 +84,14 @@ export function backupDialog(doc, model, done) {
     doc,
     "fieldset",
     { class: "backup-schemas", "data-part": "schemas" },
-    el(doc, "legend", { class: "sr-only" }, "Schemas"),
+    el(doc, "legend", { class: "sr-only" }, messageText("features.backup.backupForm.schemas")),
     ...schemaBoxes.map((b) => b.label),
   );
   const tables = field("input", {
     class: "desk-field",
     name: "tables",
-    placeholder: "public.orders, sales.*",
-    "aria-label": "Tables",
+    placeholder: messageText("features.backup.backupForm.publicOrdersSales"),
+    "aria-label": messageText("features.backup.backupForm.tables"),
   });
   tables.value = o.tables.join(", ");
   const tablesRow = el(
@@ -98,7 +99,12 @@ export function backupDialog(doc, model, done) {
     "p",
     { class: "backup-tables", "data-part": "tables" },
     tables,
-    el(doc, "span", { class: "hint" }, "Names or patterns, by commas; * matches any characters"),
+    el(
+      doc,
+      "span",
+      { class: "hint" },
+      messageText("features.backup.backupForm.namesOrPatternsByCommasMatches"),
+    ),
   );
   const content = field(
     "select",
@@ -120,15 +126,15 @@ export function backupDialog(doc, model, done) {
     type: "number",
     min: "1",
     max: "22",
-    placeholder: "default",
-    "aria-label": "Level",
+    placeholder: messageText("features.backup.backupForm.default"),
+    "aria-label": messageText("features.backup.backupForm.level"),
   });
   level.value = o.level === null ? "" : String(o.level);
   const compression = el(
     doc,
     "label",
     { "data-part": "compression" },
-    el(doc, "span", {}, "Compression"),
+    el(doc, "span", {}, messageText("features.backup.backupForm.compression")),
     el(doc, "span", { class: "backup-pair" }, method, level),
   );
   const jobs = field("input", {
@@ -148,7 +154,7 @@ export function backupDialog(doc, model, done) {
   const command = el(doc, "pre", {
     class: "backup-command",
     "data-part": "command",
-    "aria-label": "Command line",
+    "aria-label": messageText("features.backup.backupForm.commandLine"),
   });
   const problem = el(doc, "p", { class: "backup-problem", role: "alert" });
   const submit = field(
@@ -156,7 +162,12 @@ export function backupDialog(doc, model, done) {
     { type: "submit", class: "desk-btn desk-btn-primary" },
     model.path ? "Back up" : "Choose where and back up",
   );
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    messageText("features.backup.backupForm.cancel"),
+  );
   cancel.addEventListener("click", () => done());
 
   /** What the fields say now, as a command's arguments would. */
@@ -188,7 +199,9 @@ export function backupDialog(doc, model, done) {
       const argv = dumpArgs(options, model.path || "~/chosen", major);
       const target = model.path ? argv : [...argv.slice(0, -1)];
       const line = commandLine(model.program.command, target, model.env, model.program.platform);
-      command.textContent = model.path ? line : `${line} --file=(chosen next)`;
+      command.textContent = model.path
+        ? line
+        : messageText("features.backup.backupForm.fileChosenNext", { line: String(line) });
       problem.textContent = "";
       submit.disabled = false;
     } catch (error) {
@@ -197,7 +210,9 @@ export function backupDialog(doc, model, done) {
     }
   };
 
-  const title = `Back up ${model.connection}`;
+  const title = messageText("features.backup.backupForm.backUp", {
+    connection: String(model.connection),
+  });
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
@@ -216,7 +231,7 @@ export function backupDialog(doc, model, done) {
         doc,
         "fieldset",
         { class: "backup-scope", "data-part": "scope" },
-        el(doc, "legend", {}, "What"),
+        el(doc, "legend", {}, messageText("features.backup.backupForm.what")),
         ...scopes.map((s) => s.label),
       ),
       schemaList,
@@ -231,8 +246,8 @@ export function backupDialog(doc, model, done) {
         "p",
         { class: "hint" },
         model.path
-          ? `Into ${model.path}`
-          : "You choose the file or folder next, in the save dialog.",
+          ? messageText("features.backup.backupForm.into", { path: String(model.path) })
+          : messageText("features.backup.backupForm.youChooseTheFileOrFolder"),
       ),
       command,
       el(doc, "p", { class: "hint" }, model.password),

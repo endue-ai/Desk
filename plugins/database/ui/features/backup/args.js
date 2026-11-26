@@ -1,3 +1,4 @@
+import { t as messageText } from "../../strings/index.js";
 // pg_dump's and pg_restore's argument lists from the forms' options (ADR 0313): each option its own
 // argument in `--name=value` form, so no value can become another option, and no shell between.
 // The connection goes in libpq's PG* variables, as the core's session gets it (engines/pg-session.js),
@@ -71,7 +72,9 @@ function jobsOf(/** @type {unknown} */ value) {
   if (value === undefined || value === null || value === "") return 1;
   const jobs = Number(value);
   if (!Number.isInteger(jobs) || jobs < 1 || jobs > JOBS_MAX)
-    throw new Error(`Jobs are a whole number from 1 to ${JOBS_MAX}.`);
+    throw new Error(
+      messageText("features.backup.args.jobsAreAWholeNumberFrom", { JOBS_MAX: String(JOBS_MAX) }),
+    );
   return jobs;
 }
 
@@ -92,20 +95,33 @@ export function dumpOptions(raw, major) {
   );
   const schemas = scope === "schemas" ? names(raw.schemas) : [];
   const tables = scope === "tables" ? names(raw.tables) : [];
-  if (scope === "schemas" && schemas.length === 0) throw new Error("Choose a schema to back up.");
-  if (scope === "tables" && tables.length === 0) throw new Error("Name a table to back up.");
+  if (scope === "schemas" && schemas.length === 0)
+    throw new Error(messageText("features.backup.args.chooseASchemaToBackUp"));
+  if (scope === "tables" && tables.length === 0)
+    throw new Error(messageText("features.backup.args.nameATableToBackUp"));
   const archive = format === "custom" || format === "directory";
   const method = /** @type {Method} */ (
     archive ? oneOf(METHODS, raw.method, "default") : "default"
   );
   if ((method === "lz4" || method === "zstd") && major < 16)
-    throw new Error(`${method} compression needs pg_dump 16 or newer; this one is ${major}.`);
+    throw new Error(
+      messageText("features.backup.args.compressionNeedsPgDumpOrNewer", {
+        method: String(method),
+        major: String(major),
+      }),
+    );
   let level = null;
   if (method === "gzip" || method === "lz4" || method === "zstd") {
     const given = raw.level === "" || raw.level === undefined ? null : Number(raw.level);
     const [low, high] = LEVELS[method];
     if (given !== null && (!Number.isInteger(given) || given < low || given > high))
-      throw new Error(`A ${method} level is a whole number from ${low} to ${high}.`);
+      throw new Error(
+        messageText("features.backup.args.aLevelIsAWholeNumber", {
+          method: String(method),
+          low: String(low),
+          high: String(high),
+        }),
+      );
     level = given;
   }
   return {
@@ -135,9 +151,9 @@ export function restoreOptions(raw, format) {
   const jobs = format === "tar" ? 1 : jobsOf(raw.jobs);
   const singleTransaction = flag(raw.singleTransaction, false);
   if (singleTransaction && jobs > 1)
-    throw new Error("A single transaction runs in one job: set jobs to 1, or leave it off.");
+    throw new Error(messageText("features.backup.args.aSingleTransactionRunsInOne"));
   if (singleTransaction && create)
-    throw new Error("pg_restore cannot create the database inside a single transaction.");
+    throw new Error(messageText("features.backup.args.pgRestoreCannotCreateTheDatabase"));
   return {
     clean,
     ifExists: clean && flag(raw.ifExists, false),

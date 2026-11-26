@@ -12,6 +12,7 @@
 import { COPY_CHUNK, streamCopy } from "../copy/stream.js";
 import { placed, wireOf } from "../editor/bind.js";
 import { ROLLBACK_FIRST } from "../session/words.js";
+import { t } from "../strings/index.js";
 import { endedBy, notRun } from "./common.js";
 import { createDescribe } from "./pg-describe.js";
 import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.js";
@@ -134,7 +135,7 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
         ? ended("timedOut", timeoutMs)
         : /** @type {DbError} */ ({
             kind: "client",
-            message: `The session ended: ${textOf(failure)}`,
+            message: t("engines.pgScript.theSessionEnded", { value: String(textOf(failure)) }),
           });
     return { index, ran: true, sets: [], affected: null, warnings: 0, notices, error };
   };
@@ -346,11 +347,11 @@ export function createScript({ call, sinks, setTimer, clearTimer }) {
     if (nested)
       notices.push(
         back
-          ? "Rolled back to a savepoint: the console's open transaction stays open."
-          : "Ran under a savepoint inside the console's open transaction: COMMIT or ROLLBACK ends it.",
+          ? t("engines.pgScript.rolledBackToASavepointThe")
+          : t("engines.pgScript.ranUnderASavepointInsideThe"),
       );
     if (job.cancelled && !outcomes.some((o) => o.error?.kind === "cancelled"))
-      notices.push("Cancelled: the statements shown had finished before the cancel reached them.");
+      notices.push(t("engines.pgScript.cancelledTheStatementsShownHadFinished"));
     return result(error);
   };
 

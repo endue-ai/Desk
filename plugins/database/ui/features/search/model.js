@@ -3,6 +3,7 @@
 // cap for the whole search), the sentences that say what ran, and the answer agents get. No DOM.
 
 import { formatCount, formatDuration } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { FAMILY_IDS, MATCH_IDS } from "./columns.js";
 import { keyWidth } from "./sql.js";
 
@@ -140,11 +141,11 @@ export function fold(run, table, columns, conditions, rows) {
 }
 
 const WHY = {
-  size: "over the size limit",
-  permission: "no permission to read it",
-  timeout: "past its timeout",
-  failed: "failed",
-  cancelled: "cancelled",
+  size: messageText("features.search.model.overTheSizeLimit"),
+  permission: messageText("features.search.model.noPermissionToReadIt"),
+  timeout: messageText("features.search.model.pastItsTimeout"),
+  failed: messageText("features.search.model.failed"),
+  cancelled: messageText("features.search.model.cancelled"),
 };
 /** Why a table was not searched, in words. */
 export const whyText = (/** @type {Skipped} */ s) =>
@@ -177,7 +178,12 @@ export function summaryText(/** @type {Run} */ run) {
       : run.phase === "failed"
         ? `stopped: ${run.error}`
         : `in ${formatDuration(run.ms)}`;
-  return `${found}; ${tables(searched)} searched${left}, ${end}.`;
+  return messageText("features.search.model.searched", {
+    found: String(found),
+    value: String(tables(searched)),
+    left: String(left),
+    end: String(end),
+  });
 }
 
 /** What an agent gets back: per table and column the count and the first keys, and what was left. */
@@ -200,7 +206,13 @@ export function answerOf(/** @type {Run} */ run) {
       })),
     })),
     skipped: run.skipped.map((s) => ({ table: `${s.schema}.${s.name}`, why: whyText(s) })),
-    ...(run.capped ? { note: `Only the first ${formatCount(HIT_CAP)} hits were kept.` } : {}),
+    ...(run.capped
+      ? {
+          note: messageText("features.search.model.onlyTheFirstHitsWereKept", {
+            value: String(formatCount(HIT_CAP)),
+          }),
+        }
+      : {}),
     ...(run.error ? { error: run.error } : {}),
     summary: summaryText(run),
   };

@@ -5,6 +5,7 @@
 // Cancel and Escape answer nothing (view-dialog.js). Layout: transfer.css.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {{ id: string, name: string, database: string, readOnly: boolean }} Choice
@@ -62,7 +63,12 @@ export function transferDialog(doc, model, done) {
       { class: "desk-field", name: "target" },
       ...model.connections.map((c) => {
         const option = /** @type {HTMLOptionElement} */ (
-          el(doc, "option", { value: c.id }, c.readOnly ? `${c.name} (read-only)` : c.name)
+          el(
+            doc,
+            "option",
+            { value: c.id },
+            c.readOnly ? t("transfer.form.readOnly", { name: String(c.name) }) : c.name,
+          )
         );
         option.disabled = c.readOnly;
         option.selected = c.id === model.target;
@@ -99,9 +105,19 @@ export function transferDialog(doc, model, done) {
   );
   const problem = el(doc, "p", { class: "transfer-problem", role: "alert" });
   const submit = /** @type {HTMLButtonElement} */ (
-    el(doc, "button", { type: "submit", class: "desk-btn desk-btn-primary" }, "Check the copy")
+    el(
+      doc,
+      "button",
+      { type: "submit", class: "desk-btn desk-btn-primary" },
+      t("transfer.form.checkTheCopy"),
+    )
   );
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("transfer.form.cancel"),
+  );
   cancel.addEventListener("click", () => done());
 
   const tables = model.kind === "tables";
@@ -137,25 +153,24 @@ export function transferDialog(doc, model, done) {
         doc,
         "h2",
         { id: "transfer-title" },
-        tables ? `Copy ${model.what}` : "Copy the query's result",
+        tables
+          ? t("transfer.form.copy", { what: String(model.what) })
+          : t("transfer.form.copyTheQuerySResult"),
       ),
       el(
         doc,
         "p",
         { class: "hint" },
-        tables ? `From ${model.source}` : `From ${model.source}: ${model.what}`,
+        tables
+          ? t("transfer.form.from", { source: String(model.source) })
+          : t("transfer.form.from2", { source: String(model.source), what: String(model.what) }),
       ),
       labelled("Into", target, "target"),
       labelled("Database", database, "database"),
       labelled("Schema", schema, "schema"),
       ...(name.hidden ? [] : [labelled(tables ? "Name" : "Table", name, "name")]),
       ...(tables ? [labelled("Copy", content, "content"), keys.label] : [append.label]),
-      el(
-        doc,
-        "p",
-        { class: "hint" },
-        "Both sides are read and compared next; nothing runs until you start the copy.",
-      ),
+      el(doc, "p", { class: "hint" }, t("transfer.form.bothSidesAreReadAndCompared")),
       problem,
       el(doc, "p", { class: "buttons" }, cancel, submit),
     )

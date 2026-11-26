@@ -5,6 +5,7 @@
 // connection string, and options whose name may hold a secret (sql.js). Built-in casts and
 // languages (oid below 16384) and an extension's members are left out of their folders. Pure.
 
+import { t } from "../../strings/index.js";
 import {
   cls,
   countOf,
@@ -223,7 +224,7 @@ const DATABASE_COMMENTS = [
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "database",
-  label: "extensions, foreign data, publications and more",
+  label: t("schema.pg.database.extensionsForeignDataPublicationsAndMore"),
   level: "database",
   marks: [
     countOf("pg_catalog.pg_extension x", "x"),

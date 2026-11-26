@@ -5,6 +5,7 @@
 // INHERIT and SET; ADMIN OPTION before 16). A refusal is an Error the dialog shows. Pure.
 
 import { quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { q } from "./grants.js";
 
 /**
@@ -30,13 +31,15 @@ export const ATTRIBUTES = /** @type {const} */ ([
 /** A role's name as typed, refused where PostgreSQL would refuse it. */
 export function roleName(/** @type {string | undefined} */ value) {
   const name = value ?? "";
-  if (name.trim() === "") throw new Error("Type the role's name.");
+  if (name.trim() === "") throw new Error(t("features.privileges.roles.typeTheRoleSName"));
   const bytes = new TextEncoder().encode(name).length;
   if (bytes > 63)
-    throw new Error(`PostgreSQL keeps a name of 63 bytes at most: this one has ${bytes}.`);
-  if (/^pg_/u.test(name)) throw new Error("Names that start with pg_ are PostgreSQL's own.");
+    throw new Error(
+      t("features.privileges.roles.postgresqlKeepsANameOfBytes", { bytes: String(bytes) }),
+    );
+  if (/^pg_/u.test(name)) throw new Error(t("features.privileges.roles.namesThatStartWithPgAre"));
   if (["public", "none"].includes(name.toLowerCase()))
-    throw new Error(`${name} is a reserved word for roles: pick another name.`);
+    throw new Error(t("features.privileges.roles.isAReservedWordForRoles", { name: String(name) }));
   return name;
 }
 
@@ -45,7 +48,7 @@ function limitOf(/** @type {string | undefined} */ value) {
   const text = (value ?? "").trim();
   if (text === "") return undefined;
   if (!/^-?\d+$/u.test(text) || Number(text) < -1)
-    throw new Error("A connection limit is a whole number, or -1 for none.");
+    throw new Error(t("features.privileges.roles.aConnectionLimitIsAWhole"));
   return Number(text);
 }
 
@@ -53,7 +56,7 @@ function limitOf(/** @type {string | undefined} */ value) {
 function passwordPart(/** @type {Answers} */ a, /** @type {Secret} */ secret) {
   const typed = a.values.password ?? "";
   if (a.choices.includes("clearPassword")) {
-    if (typed) throw new Error("Type a password or remove it, not both.");
+    if (typed) throw new Error(t("features.privileges.roles.typeAPasswordOrRemoveIt"));
     return "PASSWORD NULL";
   }
   if (!typed) return "";
@@ -91,7 +94,10 @@ export function roleScript(before, answers, secret = {}) {
     const into = groups.length ? ` IN ROLE ${groups.map(q).join(", ")}` : "";
     return `CREATE ROLE ${q(name)}${words.length ? ` WITH ${words.join(" ")}` : ""}${into};`;
   }
-  if (words.length === 0) throw new Error(`Nothing changed: ${before.name} is as it was.`);
+  if (words.length === 0)
+    throw new Error(
+      t("features.privileges.roles.nothingChangedIsAsItWas", { name: String(before.name) }),
+    );
   return `ALTER ROLE ${q(before.name)} WITH ${words.join(" ")};`;
 }
 
@@ -118,15 +124,21 @@ export function listOf(/** @type {string | undefined} */ text) {
 export function membershipScript(data, answers) {
   const role = answers.values.role ?? data.role;
   const member = answers.values.member ?? data.member;
-  if (!role.trim()) throw new Error("Name the role to join.");
-  if (!member.trim()) throw new Error("Name the member.");
-  if (role === member) throw new Error("A role cannot be a member of itself.");
+  if (!role.trim()) throw new Error(t("features.privileges.roles.nameTheRoleToJoin"));
+  if (!member.trim()) throw new Error(t("features.privileges.roles.nameTheMember"));
+  if (role === member) throw new Error(t("features.privileges.roles.aRoleCannotBeAMember"));
   const on = new Set(answers.choices);
   const sixteen = data.version >= 160000;
   const ref = `${q(role)} TO ${q(member)}`;
   const from = `${q(role)} FROM ${q(member)}`;
   if (on.has("revoke")) {
-    if (!data.now) throw new Error(`${member} is not a member of ${role}.`);
+    if (!data.now)
+      throw new Error(
+        t("features.privileges.roles.isNotAMemberOf", {
+          member: String(member),
+          role: String(role),
+        }),
+      );
     return `REVOKE ${from};`;
   }
   const wanted = {
@@ -163,6 +175,11 @@ export function membershipScript(data, answers) {
         : `GRANT ${ref} WITH ADMIN OPTION;`,
     );
   if (statements.length === 0)
-    throw new Error(`Nothing changed: ${member} is in ${role} as it was.`);
+    throw new Error(
+      t("features.privileges.roles.nothingChangedIsInAsIt", {
+        member: String(member),
+        role: String(role),
+      }),
+    );
   return statements.join("\n");
 }

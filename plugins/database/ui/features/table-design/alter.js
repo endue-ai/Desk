@@ -6,6 +6,7 @@
 // reference them); CONCURRENTLY indexes after the transaction; comments and the owner last. A
 // part the form cannot write (`kept`) is only renamed or dropped. Pure.
 
+import { t } from "../../strings/index.js";
 import { addedColumns, columnChanges, dropsAndRenames } from "./alter-columns.js";
 import {
   columnComment,
@@ -116,17 +117,21 @@ export function alterSteps(was, now, facts) {
   const kept = (/** @type {Design} */ d, /** @type {Design} */ other) =>
     d.columns.flatMap((c) => (byId(other.columns, c.id) ? [c.id] : [])).join(" ");
   if (kept(now, was) !== kept(was, now))
-    held.push("PostgreSQL cannot move a column: an existing table's columns keep their order.");
+    held.push(t("features.tableDesign.alter.postgresqlCannotMoveAColumnAn"));
   for (const [, parts] of [...constraints, ["other", others]])
     for (const [w, n] of parts.renamed) {
-      if (n.name.trim() === "") held.push(`Constraint ${w.name} keeps a name: type one.`);
+      if (n.name.trim() === "")
+        held.push(
+          t("features.tableDesign.alter.constraintKeepsANameTypeOne", { name: String(w.name) }),
+        );
       steps.push({
         sql: `ALTER TABLE ${table} RENAME CONSTRAINT ${q(w.name)} TO ${q(n.name)}`,
         marks: [],
       });
     }
   for (const [w, n] of indexes.renamed) {
-    if (n.name.trim() === "") held.push(`Index ${w.name} keeps a name: type one.`);
+    if (n.name.trim() === "")
+      held.push(t("features.tableDesign.alter.indexKeepsANameTypeOne", { name: String(w.name) }));
     steps.push({ sql: `ALTER INDEX ${indexName(was, w.name)} RENAME TO ${q(n.name)}`, marks: [] });
   }
 

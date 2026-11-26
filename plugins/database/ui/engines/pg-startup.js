@@ -3,6 +3,7 @@
 // that fails ends the sign-in: the session closes, and the error names the startup script and the
 // statement, with the server's code and detail. No DOM.
 
+import { t } from "../strings/index.js";
 import { startupStatements } from "./pg-options.js";
 
 /**
@@ -35,7 +36,11 @@ export async function runStartup(deps, conn, sessionId, timeoutMs) {
   const why = failed?.message ?? job.ended ?? "";
   return {
     kind: failed?.kind === "timeout" || failed?.kind === "cancelled" ? failed.kind : "connect",
-    message: `${conn.name}'s startup script${at}: ${why}`,
+    message: t("engines.pgStartup.sStartupScript", {
+      name: String(conn.name),
+      at: String(at),
+      why: String(why),
+    }),
     ...(failed?.code ? { code: failed.code } : {}),
     ...(failed?.detail ? { detail: failed.detail } : {}),
   };

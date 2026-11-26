@@ -1,3 +1,4 @@
+import { t } from "../../strings/index.js";
 // What Eris is sent from a console (PG-90, ADR 0345), and the prompt that carries it. The facts are
 // the request, the statement, the error's SQLSTATE, message, position and HINT, a plan's nodes and
 // the schema in scope (assist/scope.js: names, kinds, types and comments). Rows and values are not
@@ -109,7 +110,7 @@ export function sampleAllowed(conn, choice) {
   if (conn.tag === "production" && !choice.production)
     return {
       ok: false,
-      why: "This connection is tagged production: no sample goes unless samples are turned on for it.",
+      why: t("features.assist.payload.thisConnectionIsTaggedProductionNo"),
     };
   return { ok: true, why: "" };
 }
@@ -177,12 +178,10 @@ export function factsOf(input) {
 
 /** What each task asks for. */
 const ASKS = /** @type {Record<Task, string>} */ ({
-  write:
-    "Write SQL for the person's request: one statement, or a short script when it needs more. Use only the tables and columns in the schema below. Prefer a statement that reads; when the request asks for a change, write it, and say in the explanation what it changes.",
-  explain:
-    "Explain what the statement does, in plain sentences, for the person about to run it: what it reads or changes, in what order, and anything that may surprise them.",
-  fix: "The statement failed with the error below. Give the statement fixed, as close to the person's as you can, and say in one or two sentences what was wrong.",
-  plan: "Explain the query plan below in plain sentences: where the time goes and why. When an index or a rewrite would help, give it as the suggestion.",
+  write: t("features.assist.payload.writeSqlForThePersonS"),
+  explain: t("features.assist.payload.explainWhatTheStatementDoesIn"),
+  fix: t("features.assist.payload.theStatementFailedWithTheError"),
+  plan: t("features.assist.payload.explainTheQueryPlanBelowIn"),
 });
 
 /**
@@ -194,12 +193,12 @@ export function promptOf(task, facts) {
   const { schema } = facts;
   const left =
     schema.left > 0
-      ? `The schema is cut to what the statement names and their neighbours by foreign key: ${schema.left} more tables are not sent.`
+      ? t("features.assist.payload.theSchemaIsCutToWhat", { left: String(schema.left) })
       : "";
   const lines = [
     `You help a person with SQL in a ${facts.engine} console of their desk. ${ASKS[task]}`,
-    `Answer only by calling the tool ${TOOL_NAMES[task]}. Nothing you write is run: the person reads it, may change it, and runs it themselves.`,
-    "The schema lists names, types and comments only. No rows or values are sent unless a sample is given.",
+    t("features.assist.payload.answerOnlyByCallingTheTool", { value: String(TOOL_NAMES[task]) }),
+    t("features.assist.payload.theSchemaListsNamesTypesAnd"),
     left,
     `Facts:\n${JSON.stringify(facts, null, 1)}`,
   ].filter(Boolean);

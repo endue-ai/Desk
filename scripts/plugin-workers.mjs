@@ -141,6 +141,8 @@ export function graph(entries) {
     const file = /** @type {string} */ (todo.pop());
     if (modules.has(file) || !existsSync(file)) continue;
     modules.add(file);
+    // JSON modules are data dependencies. Words in a catalog cannot import other modules.
+    if (file.endsWith(".json")) continue;
     const { imports, workers: started } = scan(readFileSync(file, "utf8"));
     for (const spec of imports) {
       const target = resolveFrom(file, spec);

@@ -16,6 +16,7 @@ import { createHelper } from "../auth/helper.js";
 import { failedRun } from "../engines/common.js";
 import { createSessions } from "../engines/pg-session.js";
 import { createPassphrases } from "../engines/pg-tls.js";
+import { t as messageText } from "../strings/index.js";
 import { createTunnel } from "../tunnel/open.js";
 import { connectHeld, wordRefusals } from "./connect-gate.js";
 import { createGate } from "./gate.js";
@@ -128,7 +129,10 @@ export function createPluginSessions(deps) {
     const session = target && ownerOf(target, conn);
     if (!conn || !session)
       return {
-        error: { kind: "client", message: "That buffer keeps no PostgreSQL session." },
+        error: {
+          kind: "client",
+          message: messageText("session.plugin.thatBufferKeepsNoPostgresqlSession"),
+        },
         notices: [],
       };
     return pg.run(conn, {
@@ -198,7 +202,10 @@ export function createPluginSessions(deps) {
       if (model.shown?.tabs[model.tab]?.kind === "notifications") {
         listening.seen(owner);
         const tab = /** @type {import("../tabs.js").Tab} */ (model.shown.tabs[model.tab]);
-        model.shown.tabs[model.tab] = { ...tab, label: "Notifications" };
+        model.shown.tabs[model.tab] = {
+          ...tab,
+          label: messageText("session.plugin.notifications"),
+        };
       }
     },
     /** The notifications kept for an owner, for Clear and Listen again. */

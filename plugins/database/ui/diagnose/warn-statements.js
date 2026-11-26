@@ -4,6 +4,7 @@
 // cached columns as the fix, as many as it has values), and a call that cancels or ends a server
 // session. Pure.
 import { fieldsOf, kindOf, listOf } from "../sql/parse/tree.js";
+import { t as messageText } from "../strings/index.js";
 import { startOf } from "./insert.js";
 import { isNull, partsOf } from "./warn-context.js";
 
@@ -18,10 +19,8 @@ const STAR = {
     "INSERT ... SELECT * pairs columns by position: a column added to either table later shifts the values.",
 };
 const SIGNALS = /** @type {Record<string, string>} */ ({
-  pg_terminate_backend:
-    "pg_terminate_backend ends a server session and rolls back its open transaction: a read-only connection refuses it, and production and agents ask first.",
-  pg_cancel_backend:
-    "pg_cancel_backend cancels a server session's statement: a read-only connection refuses it, and production and agents ask first.",
+  pg_terminate_backend: messageText("diagnose.warnStatements.pgTerminateBackendEndsAServer"),
+  pg_cancel_backend: messageText("diagnose.warnStatements.pgCancelBackendCancelsAServer"),
 });
 
 /** The `*` items of the select lists that make a query's output (each arm of a UNION). */
@@ -103,7 +102,10 @@ export function limitWithoutOrder(/** @type {WarnContext} */ ctx) {
     ctx.put(
       "limit-without-order",
       { from, to: ctx.tokenEnd(at) },
-      `${said} without ORDER BY ${verb} whichever rows the server reaches first, and they can differ from run to run.`,
+      messageText("diagnose.warnStatements.withoutOrderByWhicheverRowsThe", {
+        said: String(said),
+        verb: String(verb),
+      }),
     );
   });
 }
@@ -141,7 +143,9 @@ export function insertWithoutColumns(/** @type {WarnContext} */ ctx) {
         alias?.text.toUpperCase() === "AS" ? ctx.after(alias.end - ctx.start)[0] : alias;
       if (named) span.to = named.end - ctx.start;
     }
-    const message = `INSERT without a column list fills the columns of ${f.relation.relname} by position: a column added later shifts the values.`;
+    const message = messageText("diagnose.warnStatements.insertWithoutAColumnListFills", {
+      relname: String(f.relation.relname),
+    });
     const count = valuesOf(f.selectStmt);
     const columns = [...(ctx.relation(f.relation)?.columns?.keys() ?? [])];
     if (count === 0 || columns.length < count)
@@ -149,7 +153,7 @@ export function insertWithoutColumns(/** @type {WarnContext} */ ctx) {
     const list = columns.slice(0, count).map((c) => columnName(ctx, c));
     const old = ctx.text.slice(span.from + 1, span.to + 1);
     ctx.put("insert-without-columns", span, message, {
-      title: "List the columns",
+      title: messageText("diagnose.warnStatements.listTheColumns"),
       text: `${old} (${list.join(", ")})`,
     });
   });

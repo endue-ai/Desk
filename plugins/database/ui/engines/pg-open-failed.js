@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // What a PostgreSQL session's sign-in ends with when db.open throws: the grant refused, a desk that
 // serves no db.*, or the connection's own failure, each in words naming `where` (pg-session.js).
 // No DOM.
@@ -15,15 +16,26 @@ export const textOf = (/** @type {unknown} */ error) =>
 export function openFailed(/** @type {unknown} */ error, /** @type {string} */ where) {
   const code = codeOf(error);
   if (code === "permission_denied")
-    return { error: { kind: "refused", message: `Not allowed to connect to ${where}.` } };
+    return {
+      error: {
+        kind: "refused",
+        message: t("engines.pgOpenFailed.notAllowedToConnectTo", { where: String(where) }),
+      },
+    };
   if (code === "unsupported")
     return {
       error: {
         kind: "client",
-        message: "This desk cannot open database sessions: db.* is unsupported.",
+        message: t("engines.pgOpenFailed.thisDeskCannotOpenDatabaseSessions"),
       },
     };
   return {
-    error: { kind: "connect", message: `Could not connect to ${where}: ${textOf(error)}` },
+    error: {
+      kind: "connect",
+      message: t("engines.pgOpenFailed.couldNotConnectTo", {
+        where: String(where),
+        value: String(textOf(error)),
+      }),
+    },
   };
 }
