@@ -4,6 +4,7 @@
 // by hand, for script.js to write. Pure.
 
 import { catalogUsages } from "../navigate/usages.js";
+import { t } from "../strings/index.js";
 import { mentions, rewriteBody } from "./bodies.js";
 import { BODIES_MAX } from "./read-sql.js";
 
@@ -130,7 +131,11 @@ export function partsOf(r, facts, bodies, catalog) {
       continue;
     }
     parts.replaced.push({
-      label: `${label}: ${done.places} place${done.places === 1 ? "" : "s"}`,
+      label: t("refactor.object.place", {
+        label: String(label),
+        places: String(done.places),
+        value: String(done.places === 1 ? "" : t("refactor.object.s")),
+      }),
       definition: def.slice(0, at) + done.text + def.slice(at + (source ?? "").length),
     });
   }

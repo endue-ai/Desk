@@ -1,10 +1,12 @@
+import { t } from "../strings/index.js";
+
 // PostgreSQL's array text, as the server writes it and reads it (arrays.html, 8.15.6): elements
 // between braces apart by commas, quoted with backslash escapes where they hold a brace, a quote, a
 // comma, a backslash or space, are empty or read as NULL; an unquoted NULL is NULL. A nested
 // (multi-dimensional) array or one with its bounds written ([1:2]=...) is kept as text, its braces
 // checked. Pure.
 
-const BAD = "An array is written between { and }, its elements apart by commas: {1,2,3}.";
+const BAD = t("cellEditors.pgArray.anArrayIsWrittenBetweenAnd");
 
 /**
  * @param {string} text
@@ -35,7 +37,8 @@ export function parseArray(text) {
           break;
         } else value += c;
       }
-      if (!closed) return { error: `The quote of element ${n} is not closed.` };
+      if (!closed)
+        return { error: t("cellEditors.pgArray.theQuoteOfElementIsNot", { n: String(n) }) };
       while (/\s/u.test(body[i] ?? "")) i++;
       elements.push(value);
     } else {
@@ -47,12 +50,17 @@ export function parseArray(text) {
           value += body[++i] ?? "";
           escaped = true;
         } else if (c === '"' || c === "{" || c === "}")
-          return { error: `Element ${n} holds ${c}: put it between double quotes.` };
+          return {
+            error: t("cellEditors.pgArray.elementHoldsPutItBetweenDouble", {
+              n: String(n),
+              c: String(c),
+            }),
+          };
         else value += c;
       }
       const trimmed = value.trim();
       if (trimmed === "" && !escaped)
-        return { error: `Element ${n} is empty: write "" for empty text, or NULL.` };
+        return { error: t("cellEditors.pgArray.elementIsEmptyWriteForEmpty", { n: String(n) }) };
       elements.push(!escaped && /^null$/iu.test(trimmed) ? null : trimmed);
     }
     if (i >= body.length) return { elements };

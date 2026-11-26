@@ -6,6 +6,7 @@
 
 import { el } from "../../dom.js";
 import { formatDuration } from "../../format.js";
+import { t } from "../../strings/index.js";
 import { compared } from "./model.js";
 
 /** @typedef {import("./controller.js").MaintenanceState} MaintenanceState */
@@ -26,7 +27,9 @@ export function progressLine(/** @type {MaintenanceState} */ s, now = Date.now()
   if (p?.relation) parts.push(p.relation);
   if (!p) parts.push(run.reads ? "its session is not in the progress views yet" : "starting");
   const held = p?.blockedBy.length ? ` held by session ${p.blockedBy.join(", ")}` : "";
-  const wait = p?.wait ? `Waiting for a lock (${p.wait})${held}.` : "";
+  const wait = p?.wait
+    ? t("features.maintenance.result.waitingForALock", { wait: String(p.wait), held: String(held) })
+    : "";
   return {
     text: `${parts.join(" · ")}.`,
     value: p?.total ? (p.done ?? 0) : null,
@@ -37,9 +40,13 @@ export function progressLine(/** @type {MaintenanceState} */ s, now = Date.now()
 
 /** How a run ended, in one sentence. */
 function endedOf(/** @type {NonNullable<MaintenanceState["run"]>} */ run) {
-  if (run.status === "done") return `Done in ${formatDuration(run.ms)}.`;
-  if (run.status === "cancelled") return `Cancelled after ${formatDuration(run.ms)}.`;
-  return `Failed after ${formatDuration(run.ms)}.`;
+  if (run.status === "done")
+    return t("features.maintenance.result.doneIn", { value: String(formatDuration(run.ms)) });
+  if (run.status === "cancelled")
+    return t("features.maintenance.result.cancelledAfter", {
+      value: String(formatDuration(run.ms)),
+    });
+  return t("features.maintenance.result.failedAfter", { value: String(formatDuration(run.ms)) });
 }
 
 /** The run's section: its progress while it goes on, else its end, output and statistics. */
@@ -48,12 +55,15 @@ export function runSection(/** @type {Document} */ doc, /** @type {MaintenanceSt
   const section = el(doc, "section", {
     class: "maint-run",
     "data-part": "run",
-    "aria-label": "Run",
+    "aria-label": t("features.maintenance.result.run"),
   });
   if (run.status === "running") {
     const line = progressLine(s);
     const bar = /** @type {HTMLProgressElement} */ (
-      el(doc, "progress", { class: "desk-progress maint-bar", "aria-label": "Progress" })
+      el(doc, "progress", {
+        class: "desk-progress maint-bar",
+        "aria-label": t("features.maintenance.result.progress"),
+      })
     );
     if (line.max !== null && line.value !== null) {
       bar.max = line.max;
@@ -93,7 +103,14 @@ export function runSection(/** @type {Document} */ doc, /** @type {MaintenanceSt
           doc,
           "summary",
           {},
-          `The server's output (${run.output.length} ${run.output.length === 1 ? "line" : "lines"})`,
+          t("features.maintenance.result.theServerSOutput", {
+            length: String(run.output.length),
+            value: String(
+              run.output.length === 1
+                ? t("features.maintenance.result.line")
+                : t("features.maintenance.result.lines"),
+            ),
+          }),
         ),
         el(doc, "pre", {}, run.output.join("\n")),
       ),
@@ -105,7 +122,7 @@ export function runSection(/** @type {Document} */ doc, /** @type {MaintenanceSt
         doc,
         "table",
         { class: "desk-table maint-stats", "data-part": "stats" },
-        el(doc, "caption", {}, "Statistics before and after"),
+        el(doc, "caption", {}, t("features.maintenance.result.statisticsBeforeAndAfter")),
         el(
           doc,
           "thead",

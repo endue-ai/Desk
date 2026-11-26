@@ -5,6 +5,7 @@
 // script the target's side will run, for the person to read first. No DOM.
 
 import { qualified, quoteName } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { differences } from "./compare.js";
 import { keyOf, queryTable, structureOf } from "./ddl.js";
 import { foreignKeyOrder } from "./order.js";
@@ -147,9 +148,7 @@ export function planQuery(query, described, choice, facts) {
   const names = described.map((c) => c.name);
   const twice = names.find((n, i) => names.indexOf(n) !== i);
   if (twice !== undefined)
-    problems.push(
-      `The query answers two columns named ${twice}: give each a name of its own (AS).`,
-    );
+    problems.push(t("transfer.plan.theQueryAnswersTwoColumnsNamed", { twice: String(twice) }));
   const columns = [];
   /** @type {{ source: string, target: string }[]} */
   let pairs = described.map((c) => ({ source: c.name, target: c.name }));
@@ -172,9 +171,8 @@ export function planQuery(query, described, choice, facts) {
     const targets = pairs.map((p) => p.target);
     const again = targets.find((n, i) => targets.indexOf(n) !== i);
     if (again !== undefined)
-      problems.push(`Two result columns go into ${again}: map each to its own column.`);
-    if (pairs.length === 0)
-      problems.push("No result column goes into the table: map at least one.");
+      problems.push(t("transfer.plan.twoResultColumnsGoIntoMap", { again: String(again) }));
+    if (pairs.length === 0) problems.push(t("transfer.plan.noResultColumnGoesIntoThe"));
   }
   const newSchemas =
     !choice.append && !facts.target.schemas.includes(choice.schema) ? [choice.schema] : [];

@@ -1,6 +1,7 @@
 // The row security dialogs' models (PG-54): a policy's form, a drop and a table's row security,
 // in the shape of models.js's, so the same dialog draws them. Pure.
 
+import { t } from "../../strings/index.js";
 import { base, listText, text } from "./models.js";
 import { COMMANDS } from "./policies.js";
 
@@ -27,57 +28,49 @@ export function policyModel(conn, data, given) {
   model.fields.push(
     {
       name: "name",
-      label: "Name",
+      label: t("features.privileges.policyModels.name"),
       kind: "text",
       value: text(given, "newName") ?? text(given, "name") ?? p?.name ?? "",
     },
     {
       name: "command",
-      label: "For",
+      label: t("features.privileges.policyModels.for"),
       kind: "select",
       value: (text(given, "command") ?? p?.command ?? "ALL").toUpperCase(),
       options: COMMANDS,
     },
     {
       name: "roles",
-      label: "To",
+      label: t("features.privileges.policyModels.to"),
       kind: "text",
       value: roles ?? p?.roles.join(", ") ?? "PUBLIC",
       list: ["PUBLIC", ...data.roles],
-      hint: "Roles, comma-separated; PUBLIC for every role.",
+      hint: t("features.privileges.policyModels.rolesCommaSeparatedPublicForEvery"),
     },
     {
       name: "using",
-      label: "USING",
+      label: t("features.privileges.policyModels.using"),
       kind: "textarea",
       value: text(given, "using") ?? p?.using ?? "",
-      hint: "Which rows it may see, update or delete: an expression, e.g. owner = current_user.",
+      hint: t("features.privileges.policyModels.whichRowsItMaySeeUpdate"),
     },
     {
       name: "check",
-      label: "WITH CHECK",
+      label: t("features.privileges.policyModels.withCheck"),
       kind: "textarea",
       value: text(given, "check") ?? p?.check ?? "",
-      hint: "Which rows it may write. Empty on ALL and UPDATE: USING checks them too.",
+      hint: t("features.privileges.policyModels.whichRowsItMayWriteEmpty"),
     },
   );
   model.choices.push({
     name: "restrictive",
-    label: "AS RESTRICTIVE",
-    hint: "Every restrictive policy must pass too; permissive ones are joined with OR.",
+    label: t("features.privileges.policyModels.asRestrictive"),
+    hint: t("features.privileges.policyModels.everyRestrictivePolicyMustPassToo"),
     checked: typeof given.restrictive === "boolean" ? given.restrictive : p ? !p.permissive : false,
   });
-  if (!data.on)
-    model.notes.push(
-      "Row security is off on this table: its policies do nothing until it is turned on.",
-    );
-  if (p)
-    model.notes.push(
-      "Another command or kind, or an expression taken away, drops and creates the policy in one transaction.",
-    );
-  model.notes.push(
-    "The table's owner passes its policies unless row security is forced; superusers and BYPASSRLS roles always do.",
-  );
+  if (!data.on) model.notes.push(t("features.privileges.policyModels.rowSecurityIsOffOnThis"));
+  if (p) model.notes.push(t("features.privileges.policyModels.anotherCommandOrKindOrAn"));
+  model.notes.push(t("features.privileges.policyModels.theTableSOwnerPassesIts"));
   model.run = p ? "Change policy" : "Create policy";
   return model;
 }
@@ -95,9 +88,7 @@ export function dropPolicyModel(
     ),
     data,
   };
-  model.notes.push(
-    "The rows it let roles reach are hidden from them again, unless another policy lets them.",
-  );
+  model.notes.push(t("features.privileges.policyModels.theRowsItLetRolesReach"));
   model.run = "Drop";
   model.danger = true;
   return model;
@@ -116,14 +107,14 @@ export function rowSecurityModel(
   model.choices.push(
     {
       name: "enable",
-      label: "ENABLE",
-      hint: "Its policies decide which rows each role reaches; with none, no rows.",
+      label: t("features.privileges.policyModels.enable"),
+      hint: t("features.privileges.policyModels.itsPoliciesDecideWhichRowsEach"),
       checked: typeof given.enable === "boolean" ? given.enable : data.before.on,
     },
     {
       name: "force",
-      label: "FORCE",
-      hint: "Its owner is held to the policies too.",
+      label: t("features.privileges.policyModels.force"),
+      hint: t("features.privileges.policyModels.itsOwnerIsHeldToThe"),
       checked: typeof given.force === "boolean" ? given.force : data.before.forced,
     },
   );

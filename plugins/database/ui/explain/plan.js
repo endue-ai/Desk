@@ -5,6 +5,7 @@
 // of the whole that is the node's own (node.js), and `hot` marks where most of it goes. Pure: the
 // plan worker (worker.js) runs it on a big plan.
 
+import { t as messageText } from "../strings/index.js";
 import { annotate, flatten, missed, node, num, ratioOf } from "./node.js";
 import { explainPostgres } from "./options.js";
 import { postgresPlan } from "./postgres.js";
@@ -61,7 +62,12 @@ export function mysqlJsonPlan(/** @type {any} */ json) {
     const out = [];
     if (o.table) out.push(table(o.table));
     if (Array.isArray(o.nested_loop))
-      out.push(node({ label: "Nested loop", children: o.nested_loop.flatMap(inside) }));
+      out.push(
+        node({
+          label: messageText("explain.plan.nestedLoop"),
+          children: o.nested_loop.flatMap(inside),
+        }),
+      );
     for (const [key, label] of Object.entries(WRAPPERS))
       if (o[key]) {
         const w = o[key];
@@ -81,7 +87,12 @@ export function mysqlJsonPlan(/** @type {any} */ json) {
       }
     if (o.union_result) {
       const specs = o.union_result.query_specifications ?? [];
-      out.push(node({ label: "Union", children: specs.map((s) => block(s.query_block)) }));
+      out.push(
+        node({
+          label: messageText("explain.plan.union"),
+          children: specs.map((s) => block(s.query_block)),
+        }),
+      );
     }
     for (const key of ["attached_subqueries", "optimized_away_subqueries"])
       for (const sub of o[key] ?? []) out.push(block(sub.query_block, "Subquery"));
@@ -95,8 +106,16 @@ export function mysqlJsonPlan(/** @type {any} */ json) {
     const key = t.key ? ` using ${t.key}` : "";
     const own = (num(t.cost_info?.read_cost) ?? 0) + (num(t.cost_info?.eval_cost) ?? 0);
     return node({
-      label: `${access} on ${t.table_name ?? "?"}${key}`,
-      detail: t.attached_condition ? `Condition: ${t.attached_condition}` : "",
+      label: messageText("explain.plan.on", {
+        access: String(access),
+        value: String(t.table_name ?? "?"),
+        key: String(key),
+      }),
+      detail: t.attached_condition
+        ? messageText("explain.plan.condition", {
+            attached_condition: String(t.attached_condition),
+          })
+        : "",
       cost: t.cost_info ? own : null,
       rows: num(t.rows_examined_per_scan ?? t.rows),
       actualRows: num(t.r_rows),
@@ -129,7 +148,7 @@ function cumulate(/** @type {PlanNode} */ n) {
 
 /** MySQL's EXPLAIN ANALYZE (or FORMAT=TREE): one `-> ...` line per node, indented by depth. */
 export function mysqlTreePlan(/** @type {string} */ text) {
-  const root = node({ label: "Query" });
+  const root = node({ label: messageText("explain.plan.query") });
   /** @type {{ depth: number, node: PlanNode }[]} */
   const stack = [{ depth: -1, node: root }];
   for (const line of text.split("\n")) {
@@ -163,7 +182,7 @@ export function mysqlTreePlan(/** @type {string} */ text) {
 
 /** SQLite's EXPLAIN QUERY PLAN rows (id, parent, notused, detail); a full SCAN is marked. */
 export function sqlitePlan(/** @type {(string | null)[][]} */ rows) {
-  const root = node({ label: "Query plan" });
+  const root = node({ label: messageText("explain.plan.queryPlan") });
   /** @type {Map<string, PlanNode>} */
   const byId = new Map([["0", root]]);
   for (const [id, parent, , detail] of rows) {
@@ -194,6 +213,6 @@ export function explainSql(dialect, flavor, statement, analyze, chosen) {
     if (flavor === "mariadb") return `${analyze ? "ANALYZE" : "EXPLAIN"} FORMAT=JSON ${statement}`;
     return analyze ? `EXPLAIN ANALYZE ${statement}` : `EXPLAIN FORMAT=JSON ${statement}`;
   }
-  if (analyze) throw new Error("SQLite has no EXPLAIN ANALYZE: Explain shows its query plan.");
+  if (analyze) throw new Error(messageText("explain.plan.sqliteHasNoExplainAnalyzeExplain"));
   return `EXPLAIN QUERY PLAN ${statement}`;
 }

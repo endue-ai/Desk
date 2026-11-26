@@ -7,6 +7,7 @@
 // its savepoint and is sent again without it. Any other failure, and Cancel, roll back. No DOM.
 
 import { copyIn } from "../copy/index.js";
+import { t } from "../strings/index.js";
 import { replay } from "./source.js";
 
 /**
@@ -87,7 +88,9 @@ export async function runCopy(run) {
       held.lines.splice(line - 1, 1);
       held.rows.splice(line - 1, 1);
       if (++rejected > MAX_REJECTS)
-        throw new Stop(`More than ${MAX_REJECTS} rows were refused: nothing was imported.`);
+        throw new Stop(
+          t("importCopy.run.moreThanRowsWereRefusedNothing", { MAX_REJECTS: String(MAX_REJECTS) }),
+        );
       rows.clear();
       got = await copy(chain(replay([...held.lines]), fresh));
     }
@@ -112,7 +115,7 @@ export async function runCopy(run) {
       }
       // A COPY that read nothing would loop for ever: the server took none of the rows.
       if (rows.progress().rows === before && !rows.done())
-        throw new Stop("The server ended the COPY before it read the file's rows.");
+        throw new Stop(t("importCopy.run.theServerEndedTheCopyBefore"));
       inBatch += count;
       sent += count;
       if (run.batch > 0 && inBatch >= run.batch && !rows.done()) {

@@ -9,6 +9,7 @@
 
 import { literalFor } from "../cell-editors/values.js";
 import { qualified, quoteText } from "../sql/quote.js";
+import { t as messageText } from "../strings/index.js";
 import { isDefault, literal } from "./values.js";
 
 /**
@@ -30,7 +31,7 @@ const TAIL =
 /** A table of the target by its index, or throws. */
 const tableAt = (/** @type {Target} */ target, /** @type {number | undefined} */ t) => {
   const table = target.tables?.[t ?? -1];
-  if (!table) throw new Error("This cell belongs to no table of the result.");
+  if (!table) throw new Error(messageText("edit.tables.thisCellBelongsToNoTable"));
   return table;
 };
 
@@ -55,7 +56,11 @@ export function whereOf(target, t, row) {
     const v = row[c] ?? null;
     if (v === null)
       throw new Error(
-        `This row's ${column?.name ?? "key"} of ${table.name} is NULL, so its row of ${table.name} cannot be told apart.`,
+        messageText("edit.tables.thisRowSOfIsNull", {
+          value: String(column?.name ?? messageText("edit.tables.key")),
+          name: String(table.name),
+          name2: String(table.name),
+        }),
       );
     if (table.by === "ctid") return `ctid = ${quoteText(target.dialect, v)}::pg_catalog.tid`;
     return `${q(c)} = ${literal(target.dialect, v, column?.type ?? "")}`;
@@ -77,9 +82,16 @@ export function rowsRefusal(/** @type {Target} */ target, /** @type {"insert" | 
   const verb = kind === "insert" ? "added" : "deleted";
   const read = target.joined ?? tables.map((t) => t.name);
   if (read.length > 1)
-    return `Rows of a join of ${read.join(" and ")} cannot be ${verb}: open one table for that.`;
+    return messageText("edit.tables.rowsOfAJoinOfCannot", {
+      value: String(read.join(" and ")),
+      verb: String(verb),
+    });
   const [table] = tables;
-  if (table && !table[kind]) return `${table.name} takes no ${verb} rows: the server refuses them.`;
+  if (table && !table[kind])
+    return messageText("edit.tables.takesNoRowsTheServerRefuses", {
+      name: String(table.name),
+      verb: String(verb),
+    });
   return "";
 }
 
@@ -135,7 +147,12 @@ export function planTables(target, set, changes) {
       if (before && before[0] !== v) {
         const table = tableAt(target, t);
         throw new Error(
-          `Rows ${before[1] + 1} and ${row + 1} are one row of ${table.name} and change its ${target.columns[c]?.name} to two values: keep one.`,
+          messageText("edit.tables.rowsAndAreOneRowOf", {
+            value: String(before[1] + 1),
+            value2: String(row + 1),
+            name: String(table.name),
+            value3: String(target.columns[c]?.name),
+          }),
         );
       }
       entry.cells.set(c, [v, before?.[1] ?? row]);

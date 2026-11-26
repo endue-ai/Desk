@@ -9,6 +9,7 @@
 import { parseArray } from "../../cell-editors/pg-array.js";
 import { editorOf } from "../../cell-editors/resolve.js";
 import { quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -56,7 +57,7 @@ export function listSql(/** @type {{ schema?: string, name?: string, system?: bo
 }
 
 const checked = (/** @type {string} */ oid) => {
-  if (!/^\d+$/u.test(oid)) throw new Error("This routine has no catalog id.");
+  if (!/^\d+$/u.test(oid)) throw new Error(t("features.routines.read.thisRoutineHasNoCatalogId"));
   return oid;
 };
 
@@ -229,7 +230,7 @@ export function createReader(deps) {
     /** One routine by its oid; an Error when it is gone. */
     async routine(/** @type {Connection} */ conn, /** @type {string} */ oid) {
       const [facts = [], args = []] = await sets(conn, [factsSql(oid), argsSql(oid)]);
-      if (!facts[0]) throw new Error("This routine is gone: it was dropped or made again.");
+      if (!facts[0]) throw new Error(t("features.routines.read.thisRoutineIsGoneItWas"));
       return routineOf(facts[0], args);
     },
   };

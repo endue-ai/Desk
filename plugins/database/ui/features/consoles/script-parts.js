@@ -11,6 +11,7 @@
 import { formatCount } from "../../format.js";
 import { tokenize } from "../../sql/lexer.js";
 import { split } from "../../sql/split.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../sql/split.js").Statement} Statement
@@ -85,7 +86,11 @@ export function createScriptReader(dialect) {
       const last = statements.at(-1);
       if (!last || statements.length < 2) {
         if (pending.length > PENDING_MAX)
-          throw new Error(`line ${formatCount(line)} holds a statement larger than 16 MiB.`);
+          throw new Error(
+            messageText("features.consoles.scriptParts.lineHoldsAStatementLargerThan", {
+              value: String(formatCount(line)),
+            }),
+          );
         return [];
       }
       if (dialect === "mysql") {
@@ -210,7 +215,9 @@ export function createParts({ dialect, bytes, statements: count, max, most = Inf
       if (open) {
         if (size > max || current.length > most)
           throw new Error(
-            `line ${formatCount(open.line)} holds a transaction larger than one part of a file run may be`,
+            messageText("features.consoles.scriptParts.lineHoldsATransactionLargerThan", {
+              value: String(formatCount(open.line)),
+            }),
           );
         return [];
       }

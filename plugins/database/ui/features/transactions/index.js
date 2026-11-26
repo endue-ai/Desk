@@ -6,6 +6,7 @@
 
 import { clock, ISOLATIONS, nameSql, statementsLine } from "../../session/transaction-words.js";
 import { chosenOf } from "../../session/transactions.js";
+import { t } from "../../strings/index.js";
 import { consoleOf, control, idleNow } from "./control.js";
 
 /**
@@ -40,14 +41,22 @@ async function mode(/** @type {Deps} */ deps, /** @type {Record<string, unknown>
   const was = chosenOf(h.target).mode;
   const asked = args.mode;
   if (asked !== undefined && asked !== "auto" && asked !== "manual")
-    throw new Error("A console's mode is auto or manual.");
+    throw new Error(t("features.transactions.index.aConsoleSModeIsAuto"));
   const next = choose(deps, h, { mode: asked ?? (was === "manual" ? "auto" : "manual") }).mode;
   const stays =
-    h.transaction !== "idle" ? " Its open transaction stays open until Commit or Rollback." : "";
+    h.transaction !== "idle"
+      ? t("features.transactions.index.itsOpenTransactionStaysOpenUntil")
+      : "";
   deps.say(
     next === "manual"
-      ? `${h.label}: manual commit. The first statement begins a transaction, kept until Commit (Mod+Shift+Y) or Rollback (Mod+Shift+S).${stays}`
-      : `${h.label}: auto commit. Each statement commits by itself.${stays}`,
+      ? t("features.transactions.index.manualCommitTheFirstStatementBegins", {
+          label: String(h.label),
+          stays: String(stays),
+        })
+      : t("features.transactions.index.autoCommitEachStatementCommitsBy", {
+          label: String(h.label),
+          stays: String(stays),
+        }),
   );
   return next;
 }
@@ -57,25 +66,47 @@ async function options(/** @type {Deps} */ deps, /** @type {Record<string, unkno
   let isolation = args.isolation;
   if (isolation === undefined) {
     const items = Object.entries(ISOLATIONS).map(([id, { label }]) => ({ id, label }));
-    isolation = await deps.pick("Database: isolation level of the next transaction", items);
-    if (isolation === undefined) throw deps.cancelled("The isolation level stays.");
+    isolation = await deps.pick(
+      t("features.transactions.index.databaseIsolationLevelOfTheNext"),
+      items,
+    );
+    if (isolation === undefined)
+      throw deps.cancelled(t("features.transactions.index.theIsolationLevelStays"));
   }
   if (typeof isolation !== "string" || !Object.hasOwn(ISOLATIONS, isolation))
-    throw new Error(`An isolation level is one of ${Object.keys(ISOLATIONS).join(", ")}.`);
+    throw new Error(
+      t("features.transactions.index.anIsolationLevelIsOneOf", {
+        value: String(Object.keys(ISOLATIONS).join(", ")),
+      }),
+    );
   let readOnly = args.readOnly;
   if (readOnly === undefined) {
-    const access = await deps.pick("Database: read-only or read-write?", [
-      { id: "read-write", label: "Read write" },
-      { id: "read-only", label: "Read only", detail: "The server refuses every write in it." },
+    const access = await deps.pick(t("features.transactions.index.databaseReadOnlyOrReadWrite"), [
+      { id: "read-write", label: t("features.transactions.index.readWrite") },
+      {
+        id: "read-only",
+        label: t("features.transactions.index.readOnly"),
+        detail: t("features.transactions.index.theServerRefusesEveryWriteIn"),
+      },
     ]);
-    if (access === undefined) throw deps.cancelled("The isolation level stays.");
+    if (access === undefined)
+      throw deps.cancelled(t("features.transactions.index.theIsolationLevelStays"));
     readOnly = access === "read-only";
   }
   const chosen = { isolation: /** @type {Isolation} */ (isolation), readOnly: readOnly === true };
   choose(deps, h, { ...chosen, mode: "manual" });
   const when = h.transaction === "idle" ? "The next transaction" : "The transaction after this one";
   deps.say(
-    `${h.label}: ${when} is ${ISOLATIONS[chosen.isolation].label.toLowerCase()}, ${chosen.readOnly ? "read only" : "read write"} (manual commit).`,
+    t("features.transactions.index.isManualCommit", {
+      label: String(h.label),
+      when: String(when),
+      value: String(ISOLATIONS[chosen.isolation].label.toLowerCase()),
+      value2: String(
+        chosen.readOnly
+          ? t("features.transactions.index.readOnly2")
+          : t("features.transactions.index.readWrite2"),
+      ),
+    }),
   );
   return chosen;
 }
@@ -88,9 +119,16 @@ async function end(
 ) {
   const h = held(deps, args);
   idleNow(h);
-  if (h.transaction === "idle") throw new Error(`${h.label} has no open transaction.`);
+  if (h.transaction === "idle")
+    throw new Error(
+      t("features.transactions.index.hasNoOpenTransaction", { label: String(h.label) }),
+    );
   if (sql === "COMMIT" && h.transaction === "failed")
-    throw new Error(`${h.label}'s transaction failed: only Rollback ends it.`);
+    throw new Error(
+      t("features.transactions.index.sTransactionFailedOnlyRollbackEnds", {
+        label: String(h.label),
+      }),
+    );
   const count = h.model?.statements;
   const since = h.model?.since;
   await control(host(deps), h, sql);
@@ -113,17 +151,19 @@ async function nameFor(
   if (typed) {
     const name = await deps.pick(title, [], true, `sp${known.length + 1}`);
     if (name?.trim()) return name.trim();
-    throw deps.cancelled("No savepoint set.");
+    throw deps.cancelled(t("features.transactions.index.noSavepointSet"));
   }
   if (known.length === 0)
     throw new Error(
-      `${h.label}'s transaction has no savepoint: Database: set a savepoint sets one.`,
+      t("features.transactions.index.sTransactionHasNoSavepointDatabase", {
+        label: String(h.label),
+      }),
     );
   const picked = await deps.pick(
     title,
     known.map((name) => ({ id: name, label: name })),
   );
-  if (!picked) throw deps.cancelled("No savepoint picked.");
+  if (!picked) throw deps.cancelled(t("features.transactions.index.noSavepointPicked"));
   return picked;
 }
 
@@ -136,22 +176,31 @@ async function savepoint(
   const h = held(deps, args);
   idleNow(h);
   if (h.transaction === "idle")
-    throw new Error(`${h.label} has no open transaction: a savepoint lives in one.`);
+    throw new Error(
+      t("features.transactions.index.hasNoOpenTransactionASavepoint", { label: String(h.label) }),
+    );
   if (h.transaction === "failed" && verb !== "ROLLBACK TO SAVEPOINT")
-    throw new Error(`${h.label}'s transaction failed: Rollback, or roll back to a savepoint.`);
+    throw new Error(
+      t("features.transactions.index.sTransactionFailedRollbackOrRoll", { label: String(h.label) }),
+    );
   const title = {
     SAVEPOINT: "Database: set a savepoint named",
-    "ROLLBACK TO SAVEPOINT": "Database: roll back to which savepoint?",
-    "RELEASE SAVEPOINT": "Database: release which savepoint?",
+    "ROLLBACK TO SAVEPOINT": t("features.transactions.index.databaseRollBackToWhichSavepoint"),
+    "RELEASE SAVEPOINT": t("features.transactions.index.databaseReleaseWhichSavepoint"),
   }[verb];
   const name = await nameFor(deps, h, args, title, verb === "SAVEPOINT");
-  if (name.length > 63) throw new Error("A savepoint's name is 63 characters at most.");
+  if (name.length > 63)
+    throw new Error(t("features.transactions.index.aSavepointSNameIsCharacters"));
   await control(host(deps), h, `${verb} ${nameSql(name)}`);
   deps.say(
     {
-      SAVEPOINT: `Savepoint ${name} set.`,
-      "ROLLBACK TO SAVEPOINT": `Rolled back to savepoint ${name}: the work before it stays.`,
-      "RELEASE SAVEPOINT": `Savepoint ${name} released: its work stays in the transaction.`,
+      SAVEPOINT: t("features.transactions.index.savepointSet", { name: String(name) }),
+      "ROLLBACK TO SAVEPOINT": t("features.transactions.index.rolledBackToSavepointTheWork", {
+        name: String(name),
+      }),
+      "RELEASE SAVEPOINT": t("features.transactions.index.savepointReleasedItsWorkStaysIn", {
+        name: String(name),
+      }),
     }[verb],
   );
   return name;

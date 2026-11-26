@@ -5,6 +5,7 @@
 // the choices on; Cancel and Escape answer nothing (view-dialog.js).
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { scriptOf } from "./statements.js";
 
 /**
@@ -93,15 +94,22 @@ function dependentsOf(/** @type {Document} */ doc, /** @type {OperationModel} */
     "section",
     {
       class: blocking.length ? "object-depends blocking" : "object-depends",
-      "aria-label": "What depends on it",
+      "aria-label": t("features.objects.dialog.whatDependsOnIt"),
     },
     blocking.length
       ? el(doc, "h3", {}, heading(blocking.length))
-      : el(doc, "p", { class: "hint" }, "Nothing else depends on it."),
+      : el(doc, "p", { class: "hint" }, t("features.objects.dialog.nothingElseDependsOnIt")),
     blocking.length ? items(blocking) : undefined,
-    along.length ? el(doc, "h3", {}, "Goes with it") : undefined,
+    along.length ? el(doc, "h3", {}, t("features.objects.dialog.goesWithIt")) : undefined,
     along.length ? items(along) : undefined,
-    more ? el(doc, "p", { class: "hint" }, `and ${more} more`) : undefined,
+    more
+      ? el(
+          doc,
+          "p",
+          { class: "hint" },
+          t("features.objects.dialog.andMore", { more: String(more) }),
+        )
+      : undefined,
   );
 }
 
@@ -148,7 +156,12 @@ export function operationDialog(doc, model, done) {
       model.run,
     )
   );
-  const cancel = el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet" }, "Cancel");
+  const cancel = el(
+    doc,
+    "button",
+    { type: "button", class: "desk-btn desk-btn-quiet" },
+    t("features.objects.dialog.cancel"),
+  );
   cancel.addEventListener("click", () => done());
 
   const answers = () => ({
@@ -189,13 +202,18 @@ export function operationDialog(doc, model, done) {
             doc,
             "fieldset",
             { class: "object-choices" },
-            el(doc, "legend", { class: "sr-only" }, "Options"),
+            el(doc, "legend", { class: "sr-only" }, t("features.objects.dialog.options")),
             ...choices,
           )
         : undefined,
       dependentsOf(doc, model),
       ...model.notes.map((note) => el(doc, "p", { class: "hint object-note" }, note)),
-      el(doc, "p", { class: "object-script-label", id: "object-script-label" }, "Runs"),
+      el(
+        doc,
+        "p",
+        { class: "object-script-label", id: "object-script-label" },
+        t("features.objects.dialog.runs"),
+      ),
       script,
       problem,
       el(doc, "p", { class: "buttons" }, cancel, run),

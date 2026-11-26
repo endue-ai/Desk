@@ -8,6 +8,7 @@
 // for the parser.
 
 import { listOf, stringOf, walk } from "../sql/parse/tree.js";
+import { t as messageText } from "../strings/index.js";
 import { nearest } from "./text.js";
 
 /**
@@ -140,8 +141,17 @@ export function undeclared(/** @type {Input} */ input) {
         to: token.end,
         kind: "names",
         message:
-          `column "${name}" does not exist\n${name} is not a declared variable or parameter: the server ` +
-          `refuses this line when it runs.${near ? `\nPerhaps you meant "${near}".` : ""}`,
+          messageText("diagnose.plpgsqlChecks.columnDoesNotExistIsNot", {
+            name: String(name),
+            name2: String(name),
+          }) +
+          messageText("diagnose.plpgsqlChecks.refusesThisLineWhenItRuns", {
+            value: String(
+              near
+                ? messageText("diagnose.plpgsqlChecks.perhapsYouMeant", { near: String(near) })
+                : "",
+            ),
+          }),
       });
     }
   }
@@ -162,7 +172,9 @@ export function unused(/** @type {Input} */ input) {
       to: d.at + (tokens.find((t) => t.start === d.at)?.text.length ?? d.name.length),
       kind: "warning",
       rule: "unused-variable",
-      message: `${d.name} is declared and never used.`,
+      message: messageText("diagnose.plpgsqlChecks.isDeclaredAndNeverUsed", {
+        name: String(d.name),
+      }),
     });
   }
   return out;
@@ -228,9 +240,17 @@ export function unreachable(/** @type {Input} */ input) {
       to: last.end,
       kind: "warning",
       rule: "unreachable-code",
-      message: `This never runs: the ${said} on line ${linenoOf(stop)} of the body ${
-        said === "RETURN" ? "ends the routine" : said === "RAISE EXCEPTION" ? "raises" : "leaves"
-      } before it.`,
+      message: messageText("diagnose.plpgsqlChecks.thisNeverRunsTheOnLine", {
+        said: String(said),
+        value: String(linenoOf(stop)),
+        value2: String(
+          said === "RETURN"
+            ? messageText("diagnose.plpgsqlChecks.endsTheRoutine")
+            : said === "RAISE EXCEPTION"
+              ? messageText("diagnose.plpgsqlChecks.raises")
+              : messageText("diagnose.plpgsqlChecks.leaves"),
+        ),
+      }),
     });
   }
   return out;

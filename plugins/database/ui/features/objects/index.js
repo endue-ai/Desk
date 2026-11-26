@@ -6,6 +6,7 @@
 // with arguments, which agents get too; every one shows its exact script first and runs it only on
 // the person's answer (ADR 0312). kinds.js says what each engine's kinds take. No DOM here.
 
+import { t as messageText } from "../../strings/index.js";
 import { openRoutine } from "../routines/index.js";
 import { openTableEntry, tableEntries } from "../table-design/index.js";
 import { createObjects } from "./controller.js";
@@ -31,7 +32,7 @@ const OPERATIONS = /** @type {Record<string, Op>} */ ({
 });
 
 /** A PostgreSQL function's or procedure's form of its arguments (features/routines/), first. */
-const RUN = { id: "run", label: "Run with its arguments…" };
+const RUN = { id: "run", label: messageText("features.objects.index.runWithItsArguments") };
 
 /** One controller per plugin, shared by the feature's commands and actions. */
 const controllers = new WeakMap();
@@ -101,6 +102,11 @@ export const feature = {
     },
     applySource: () => applySource(deps),
   }),
-  dialogs: { "object-operation": { label: "Change an object", render: operationDialog } },
+  dialogs: {
+    "object-operation": {
+      label: messageText("features.objects.index.changeAnObject"),
+      render: operationDialog,
+    },
+  },
   styles: [new URL("./objects.css", import.meta.url).href],
 };

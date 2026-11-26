@@ -3,6 +3,7 @@
 // writes it. Text is read with PostgreSQL's words (yes, on, 1 ...).
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 
 const TRUE = /^(?:t|true|y|yes|on|1)$/iu;
 const FALSE = /^(?:f|false|n|no|off|0)$/iu;
@@ -16,7 +17,11 @@ export const boolean = {
     const value = boolOf(text);
     return value
       ? { value }
-      : { error: `${text.trim() || "Nothing"} is not a boolean: write true or false.` };
+      : {
+          error: t("cellEditors.boolean.isNotABooleanWriteTrue", {
+            value: String(text.trim() || t("cellEditors.boolean.nothing")),
+          }),
+        };
   },
   /** @param {import("./panel.js").Ctx} ctx */
   view(ctx) {
@@ -31,7 +36,11 @@ export const boolean = {
         doc,
         "button",
         { type: "button", class: "desk-tab", "data-value": value ?? "null", tabindex: "-1" },
-        value === null ? "NULL" : value === "t" ? "true" : "false",
+        value === null
+          ? t("cellEditors.boolean.null")
+          : value === "t"
+            ? t("cellEditors.boolean.true")
+            : t("cellEditors.boolean.false"),
       ),
     );
     const group = el(
@@ -41,7 +50,7 @@ export const boolean = {
         class: "desk-tabs",
         role: "group",
         tabindex: "0",
-        "aria-label": `${ctx.name}: true or false`,
+        "aria-label": t("cellEditors.boolean.trueOrFalse", { name: String(ctx.name) }),
       },
       ...buttons,
     );
@@ -65,10 +74,11 @@ export const boolean = {
       keys(event) {
         if (event.altKey || event.metaKey || event.ctrlKey) return false;
         const at = chosen === undefined ? -1 : values.indexOf(chosen);
-        if (event.key === "t") pick("t");
-        else if (event.key === "f") pick("f");
+        if (event.key === "t") pick(t("cellEditors.boolean.t"));
+        else if (event.key === "f") pick(t("cellEditors.boolean.f"));
         else if (event.key === "n" && editor.nullable) pick(null);
-        else if (event.key === " ") pick(chosen === "t" ? "f" : "t");
+        else if (event.key === " ")
+          pick(chosen === "t" ? t("cellEditors.boolean.f") : t("cellEditors.boolean.t"));
         else if (event.key === "ArrowRight")
           pick(values[Math.min(values.length - 1, at + 1)] ?? null);
         else if (event.key === "ArrowLeft") pick(values[Math.max(0, at - 1)] ?? null);

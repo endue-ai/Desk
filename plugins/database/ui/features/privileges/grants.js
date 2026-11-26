@@ -5,6 +5,7 @@
 // owner, in a schema or every one, on a kind. Pure.
 
 import { qualified, quoteName } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { DEFAULT_KINDS, kindOf } from "./kinds.js";
 
 /**
@@ -24,11 +25,16 @@ export const granteeOf = (/** @type {string} */ name) => (name === "PUBLIC" ? "P
  */
 export function objectRef(target, routine = []) {
   const row = kindOf(target.kind);
-  if (!row) throw new Error(`A ${target.kind} has no privileges of its own.`);
+  if (!row)
+    throw new Error(
+      t("features.privileges.grants.aHasNoPrivilegesOfIts", { kind: String(target.kind) }),
+    );
   if (row.routine) {
     const [name, args] = routine;
     if (name === undefined || args === undefined)
-      throw new Error(`The arguments of ${target.name} were not read.`);
+      throw new Error(
+        t("features.privileges.grants.theArgumentsOfWereNotRead", { name: String(target.name) }),
+      );
     return `${row.on} ${qualified(PG, target.schema, name)}(${args})`;
   }
   if (row.level || target.kind === "schema") return `${row.on} ${q(target.name)}`;
@@ -89,7 +95,8 @@ function groups(/** @type {Change[]} */ changes) {
  * @param {{ cascade?: boolean }} [options]
  */
 export function grantScript(on, changes, options = {}) {
-  if (changes.length === 0) throw new Error("Nothing changed: press a cell of the matrix first.");
+  if (changes.length === 0)
+    throw new Error(t("features.privileges.grants.nothingChangedPressACellOf"));
   return groups(changes)
     .map((g) => {
       const list = g.column
@@ -110,11 +117,16 @@ export function defaultScript(entry, changes) {
   const kind = Object.hasOwn(DEFAULT_KINDS, entry.letter)
     ? DEFAULT_KINDS[/** @type {keyof typeof DEFAULT_KINDS} */ (entry.letter)]
     : undefined;
-  if (!kind) throw new Error(`Default privileges have no kind ${entry.letter}.`);
-  if (!entry.owner.trim()) throw new Error("Name the role whose new objects these are.");
+  if (!kind)
+    throw new Error(
+      t("features.privileges.grants.defaultPrivilegesHaveNoKind", { letter: String(entry.letter) }),
+    );
+  if (!entry.owner.trim())
+    throw new Error(t("features.privileges.grants.nameTheRoleWhoseNewObjects"));
   if (kind.on === "SCHEMAS" && entry.schema)
-    throw new Error("Default privileges on schemas are for every schema: leave the schema empty.");
-  if (changes.length === 0) throw new Error("Nothing changed: press a cell of the matrix first.");
+    throw new Error(t("features.privileges.grants.defaultPrivilegesOnSchemasAreFor"));
+  if (changes.length === 0)
+    throw new Error(t("features.privileges.grants.nothingChangedPressACellOf"));
   const head = `ALTER DEFAULT PRIVILEGES FOR ROLE ${q(entry.owner)}${entry.schema ? ` IN SCHEMA ${q(entry.schema)}` : ""}`;
   return groups(changes)
     .map((g) => {

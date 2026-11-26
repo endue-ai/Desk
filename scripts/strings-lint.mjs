@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // strings-lint: a plugin whose words live in one catalog (the database plugin's ui/strings/, PG-108)
-// keeps them there. A view module may not hold a literal a person reads; it names a key of the
-// catalog instead (`t("grid.rows", { count })`). No baseline: a target is either clean or fails.
+// keeps them there. Modules and markup name catalog keys for what a person reads
+// (`t("grid.rows", { count })`). No baseline: a target is either clean or fails.
 //
 //   node scripts/strings-lint.mjs          check every target (just check)
 //   node scripts/strings-lint.mjs --list   print every finding, the same as a failure prints
 //
-// The rule. A view module is a `.js` file under a target's folder, outside `vendor/`, named
-// `view.js`, `view-*.js` or `*-view.js`. In it, a string literal or a template literal is the
+// Every module uses the syntax and markup checks. Views also keep their original lexical rule.
+// A view is named `view.js`, `view-*.js` or `*-view.js`. In it, a string literal or template is the
 // person's words when its text (each `${…}` read as a placeholder) holds a word (a letter, then
 // lowercase letters or apostrophes, with punctuation around it stripped) and
 //   1. a word starts with a capital letter (`Run`, `Not connected`), or
@@ -21,9 +21,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { htmlCopy } from "./strings-lint/html.mjs";
+import { javascriptCopy } from "./strings-lint/javascript.mjs";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
-/** The folders whose view modules read their words from a catalog. */
+/** The folders whose modules read their words from a catalog. */
 export const TARGETS = ["plugins/database/ui"];
 export const VIEW = /(^|\/)(view\.js|view-[^/]*\.js|[^/]*-view\.js)$/;
 
@@ -285,8 +287,8 @@ export function findings(src) {
   return out;
 }
 
-/** Every view module under the targets, by its path from `root` with forward slashes. */
-export function views(root = ROOT, targets = TARGETS) {
+/** Every matching first-party file under targets, by path from `root` with forward slashes. */
+function files(root, targets, matches) {
   const found = [];
   const walk = (abs) => {
     for (const name of readdirSync(abs).sort()) {
@@ -295,7 +297,7 @@ export function views(root = ROOT, targets = TARGETS) {
         if (name !== "vendor" && name !== "node_modules") walk(path);
       } else {
         const rel = relative(root, path).split(sep).join("/");
-        if (VIEW.test(rel)) found.push(rel);
+        if (matches.test(rel)) found.push(rel);
       }
     }
   };
@@ -303,13 +305,20 @@ export function views(root = ROOT, targets = TARGETS) {
   return found;
 }
 
+export const views = (root = ROOT, targets = TARGETS) => files(root, targets, VIEW);
+export const modules = (root = ROOT, targets = TARGETS) =>
+  files(root, targets, /\.(?:js|mjs|html)$/u);
+
 /** Every finding under the targets, as `path:line: "text"` lines. */
 export function scan(root = ROOT, targets = TARGETS) {
-  return views(root, targets).flatMap((file) =>
-    findings(readFileSync(join(root, file), "utf8")).map(
-      (f) => `${file}:${f.line}: ${JSON.stringify(f.text)}`,
-    ),
-  );
+  return modules(root, targets).flatMap((file) => {
+    const source = readFileSync(join(root, file), "utf8");
+    const copy = file.endsWith(".html")
+      ? htmlCopy(source).findings
+      : javascriptCopy(source).findings;
+    if (VIEW.test(file)) copy.push(...findings(source));
+    return [...new Set(copy.map((f) => `${file}:${f.line}: ${JSON.stringify(f.text)}`))];
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -320,10 +329,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   if (problems.length > 0) {
     for (const p of problems) console.error(p);
-    console.error(
-      `strings-lint: ${problems.length} literal(s) a person reads in view modules; name a key of the catalog (plugins/database/ui/strings/en.json) with t() instead`,
-    );
+    console.error(`strings-lint: ${problems.length} literal(s) a person reads; use a catalog key`);
     process.exit(1);
   }
-  console.log(`strings-lint: ${views().length} view modules read their words from the catalog`);
+  console.log(
+    `strings-lint: ${modules().length} modules and markup files read their words from the catalog`,
+  );
 }

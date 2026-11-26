@@ -6,6 +6,7 @@
 // Pure.
 
 import { binaryType, numericType } from "../edit/values.js";
+import { t as messageText } from "../strings/index.js";
 import { builtinType } from "./pg-types.js";
 
 /**
@@ -168,9 +169,13 @@ function autoOf(/** @type {Column} */ column, /** @type {TypeInfo | undefined} *
 /** Why a column cannot change: generated, or an identity GENERATED ALWAYS. */
 function fixedWhy(/** @type {string} */ name, /** @type {TypeInfo | undefined} */ info) {
   if (info?.generated === "s" || info?.generated === "v")
-    return `${name} is generated always from an expression: the server computes it.`;
+    return messageText("cellEditors.resolve.isGeneratedAlwaysFromAnExpression", {
+      name: String(name),
+    });
   if (info?.identity === "a")
-    return `${name} is an identity column GENERATED ALWAYS: the server numbers its rows.`;
+    return messageText("cellEditors.resolve.isAnIdentityColumnGeneratedAlways", {
+      name: String(name),
+    });
   return "";
 }
 

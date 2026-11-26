@@ -4,6 +4,7 @@
 // script from the same model (script.js), so a model is data only and never holds a password.
 // Pure.
 
+import { t } from "../../strings/index.js";
 import { dependentGrants, othersGrants } from "./acl.js";
 import { DEFAULT_KINDS } from "./kinds.js";
 import { ATTRIBUTES } from "./roles.js";
@@ -58,17 +59,22 @@ export function grantsModel(conn, data, given) {
   if (revokes)
     model.choices.push({
       name: "cascade",
-      label: "CASCADE",
+      label: t("features.privileges.models.cascade"),
       hint: along.length
-        ? `Also revokes what they granted with it: ${along.map((e) => `${e.privilege} to ${e.grantee}`).join(", ")}.`
-        : "Nothing was granted on from these grants.",
+        ? t("features.privileges.models.alsoRevokesWhatTheyGrantedWith", {
+            value: String(along.map((e) => `${e.privilege} to ${e.grantee}`).join(", ")),
+          })
+        : t("features.privileges.models.nothingWasGrantedOnFromThese"),
       checked: yes(given.cascade),
     });
   if (along.length)
-    model.notes.push("Without CASCADE the server refuses: they granted it on to others.");
+    model.notes.push(t("features.privileges.models.withoutCascadeTheServerRefusesThey"));
   for (const left of othersGrants(data.matrix, data.changes, data.as))
     model.notes.push(
-      `${left}: a REVOKE takes only what ${data.as[0]} granted, so that grant stays.`,
+      t("features.privileges.models.aRevokeTakesOnlyWhatGranted", {
+        left: String(left),
+        value: String(data.as[0]),
+      }),
     );
   model.run = revokes ? "Grant and revoke" : "Grant";
   model.danger = revokes;
@@ -82,7 +88,7 @@ export function grantsModel(conn, data, given) {
  */
 export function defaultsModel(conn, data) {
   const model = { ...base(conn, "defaults", "Change default privileges"), data };
-  model.notes.push("They apply to objects made from now on; objects already there keep theirs.");
+  model.notes.push(t("features.privileges.models.theyApplyToObjectsMadeFrom"));
   return model;
 }
 
@@ -102,49 +108,54 @@ export function newDefaultModel(conn, data, given) {
   model.fields.push(
     {
       name: "owner",
-      label: "Objects made by",
+      label: t("features.privileges.models.objectsMadeBy"),
       kind: "text",
       value: text(given, "owner") ?? "",
       list: data.roles,
     },
     {
       name: "schema",
-      label: "In schema",
+      label: t("features.privileges.models.inSchema"),
       kind: "text",
       value: text(given, "schema") ?? "",
       list: data.schemas,
-      hint: "Empty: every schema.",
+      hint: t("features.privileges.models.emptyEverySchema"),
     },
     {
       name: "on",
-      label: "On",
+      label: t("features.privileges.models.on"),
       kind: "select",
       value: on,
       options: Object.values(DEFAULT_KINDS).map((k) => k.on.toLowerCase()),
     },
     {
       name: "grantee",
-      label: "Grantee",
+      label: t("features.privileges.models.grantee"),
       kind: "text",
       value: text(given, "grantee") ?? "",
       list: ["PUBLIC", ...data.roles],
     },
     {
       name: "grant",
-      label: "Grant",
+      label: t("features.privileges.models.grant"),
       kind: "text",
       value: listText(given.grant),
-      hint: "Privileges, comma-separated: SELECT, INSERT.",
+      hint: t("features.privileges.models.privilegesCommaSeparatedSelectInsert"),
     },
-    { name: "revoke", label: "Revoke", kind: "text", value: listText(given.revoke) },
+    {
+      name: "revoke",
+      label: t("features.privileges.models.revoke"),
+      kind: "text",
+      value: listText(given.revoke),
+    },
   );
   model.choices.push({
     name: "option",
-    label: "WITH GRANT OPTION",
-    hint: "The grantee may grant them on.",
+    label: t("features.privileges.models.withGrantOption"),
+    hint: t("features.privileges.models.theGranteeMayGrantThemOn"),
     checked: yes(given.grantOption),
   });
-  model.notes.push("They apply to objects made from now on; objects already there keep theirs.");
+  model.notes.push(t("features.privileges.models.theyApplyToObjectsMadeFrom"));
   return model;
 }
 
@@ -157,13 +168,13 @@ export const listText = (/** @type {unknown} */ v) =>
 
 /** The role names and words for each attribute's choice. */
 const ATTRIBUTE_WORDS = {
-  login: ["LOGIN", "It may log in."],
-  superuser: ["SUPERUSER", "Every check passes: give it to as few roles as you can."],
-  createDb: ["CREATEDB", "It may create databases."],
-  createRole: ["CREATEROLE", "It may create, change and drop roles."],
-  replication: ["REPLICATION", "It may connect for replication."],
-  bypassRls: ["BYPASSRLS", "Row security policies do not apply to it."],
-  inherit: ["INHERIT", "It has the privileges of the roles it joins."],
+  login: ["LOGIN", t("features.privileges.models.itMayLogIn")],
+  superuser: ["SUPERUSER", t("features.privileges.models.everyCheckPassesGiveItTo")],
+  createDb: ["CREATEDB", t("features.privileges.models.itMayCreateDatabases")],
+  createRole: ["CREATEROLE", t("features.privileges.models.itMayCreateChangeAndDrop")],
+  replication: ["REPLICATION", t("features.privileges.models.itMayConnectForReplication")],
+  bypassRls: ["BYPASSRLS", t("features.privileges.models.rowSecurityPoliciesDoNotApply")],
+  inherit: ["INHERIT", t("features.privileges.models.itHasThePrivilegesOfThe")],
 };
 
 /**
@@ -181,10 +192,10 @@ export function roleModel(conn, data, given) {
   if (!before)
     model.fields.push({
       name: "name",
-      label: "Name",
+      label: t("features.privileges.models.name"),
       kind: "text",
       value: text(given, "name") ?? "",
-      hint: "Written as typed, in quotes: its case is kept.",
+      hint: t("features.privileges.models.writtenAsTypedInQuotesIts"),
     });
   for (const [choice, , field, fallback] of ATTRIBUTES) {
     const [label, hint] = ATTRIBUTE_WORDS[choice];
@@ -200,45 +211,43 @@ export function roleModel(conn, data, given) {
   model.fields.push(
     {
       name: "limit",
-      label: "Connection limit",
+      label: t("features.privileges.models.connectionLimit"),
       kind: "text",
       value: typeof limit === "number" ? String(limit) : String(before?.limit ?? -1),
-      hint: "-1: no limit.",
+      hint: t("features.privileges.models.noLimit"),
     },
     {
       name: "until",
-      label: "Valid until",
+      label: t("features.privileges.models.validUntil"),
       kind: "text",
       value: text(given, "validUntil") ?? before?.until ?? "",
-      hint: "A time its password stops working, e.g. 2027-01-01; empty: never.",
+      hint: t("features.privileges.models.aTimeItsPasswordStopsWorking"),
     },
     {
       name: "password",
-      label: "New password",
+      label: t("features.privileges.models.newPassword"),
       kind: "password",
       value: "",
-      hint: "Empty keeps it. It is sent only as its SCRAM-SHA-256 verifier.",
+      hint: t("features.privileges.models.emptyKeepsItItIsSent"),
     },
   );
   if (!before)
     model.fields.push({
       name: "memberOf",
-      label: "Member of",
+      label: t("features.privileges.models.memberOf"),
       kind: "text",
       value: listText(given.memberOf),
       list: data.roles,
-      hint: "Roles it joins, comma-separated.",
+      hint: t("features.privileges.models.rolesItJoinsCommaSeparated"),
     });
   else
     model.choices.push({
       name: "clearPassword",
-      label: "PASSWORD NULL",
-      hint: "Removes its password: it can no longer log in with one.",
+      label: t("features.privileges.models.passwordNull"),
+      hint: t("features.privileges.models.removesItsPasswordItCanNo"),
       checked: false,
     });
-  model.notes.push(
-    "A password is never read, kept, logged or written to the history: the script shows it masked.",
-  );
+  model.notes.push(t("features.privileges.models.aPasswordIsNeverReadKept"));
   model.run = before ? "Change role" : "Create role";
   return model;
 }
@@ -256,47 +265,56 @@ export function membershipModel(conn, data, given) {
   model.fields.push(
     {
       name: "role",
-      label: "Role",
+      label: t("features.privileges.models.role"),
       kind: "text",
       value: data.role,
       list: data.roles,
-      hint: "The role whose privileges the member gets.",
+      hint: t("features.privileges.models.theRoleWhosePrivilegesTheMember"),
     },
-    { name: "member", label: "Member", kind: "text", value: data.member, list: data.roles },
+    {
+      name: "member",
+      label: t("features.privileges.models.member"),
+      kind: "text",
+      value: data.member,
+      list: data.roles,
+    },
   );
   const pick = (/** @type {string} */ key, /** @type {boolean} */ fallback) =>
     typeof given[key] === "boolean" ? /** @type {boolean} */ (given[key]) : fallback;
   model.choices.push({
     name: "revoke",
-    label: "REVOKE",
-    hint: "Takes the membership away.",
+    label: t("features.privileges.models.revoke2"),
+    hint: t("features.privileges.models.takesTheMembershipAway"),
     checked: yes(given.revoke),
     disabled: !now,
   });
   model.choices.push({
     name: "admin",
-    label: "ADMIN",
-    hint: "The member may grant this role to others.",
-    checked: pick("admin", now?.admin ?? false),
+    label: t("features.privileges.models.admin"),
+    hint: t("features.privileges.models.theMemberMayGrantThisRole"),
+    checked: pick(t("features.privileges.models.admin2"), now?.admin ?? false),
   });
   if (sixteen) {
     model.choices.push({
       name: "inherit",
-      label: "INHERIT",
-      hint: "The member has its privileges without SET ROLE.",
-      checked: pick("inherit", now?.inherit ?? data.inheritDefault),
+      label: t("features.privileges.models.inherit"),
+      hint: t("features.privileges.models.theMemberHasItsPrivilegesWithout"),
+      checked: pick(t("features.privileges.models.inherit2"), now?.inherit ?? data.inheritDefault),
     });
     model.choices.push({
       name: "set",
-      label: "SET",
-      hint: "The member may SET ROLE to it.",
-      checked: pick("set", now?.set ?? true),
+      label: t("features.privileges.models.set"),
+      hint: t("features.privileges.models.theMemberMaySetRoleTo"),
+      checked: pick(t("features.privileges.models.set2"), now?.set ?? true),
     });
-  } else
+  } else model.notes.push(t("features.privileges.models.beforePostgresqlTheMemberSInherit"));
+  if (now)
     model.notes.push(
-      "Before PostgreSQL 16 the member's INHERIT attribute decides what it inherits.",
+      t("features.privileges.models.isAMemberOfNow", {
+        member: String(data.member),
+        role: String(data.role),
+      }),
     );
-  if (now) model.notes.push(`${data.member} is a member of ${data.role} now.`);
   model.run = "Run";
   return model;
 }

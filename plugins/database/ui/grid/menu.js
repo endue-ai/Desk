@@ -6,6 +6,7 @@
 // A <desk-menu>, so arrows, Enter and Escape work in it; the grid gets its focus back when it closes.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { menuLabel, OPS, WITH_VALUE } from "./filters.js";
 
 /**
@@ -43,7 +44,9 @@ const REFERENCING = ["referencingRows", "Rows that point at this row (r)"];
  * @param {MenuActs} acts
  */
 export function createCellMenu(doc, home, acts) {
-  const menu = /** @type {Menu} */ (el(doc, "desk-menu", { class: "grid-menu", label: "Cell" }));
+  const menu = /** @type {Menu} */ (
+    el(doc, "desk-menu", { class: "grid-menu", label: t("grid.menu.cell") })
+  );
   if (!menu.show) menu.hidden = true;
   home.append(menu);
   menu.addEventListener("desk-select", (event) => {
@@ -81,7 +84,7 @@ export function createCellMenu(doc, home, acts) {
           doc,
           "div",
           { ...ITEM, "data-column": action },
-          action === "pin" && of.pinned ? "Unpin the column (P)" : (label ?? ""),
+          action === "pin" && of.pinned ? t("grid.menu.unpinTheColumnP") : (label ?? ""),
         ),
       );
       const rows = of.editable

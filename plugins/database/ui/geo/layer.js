@@ -3,6 +3,7 @@
 // not be read and why, and the curves left for the viewer's own statement. Which shape is under a
 // point. The map's worker holds layers (geo/engine.js). Pure.
 
+import { t as messageText } from "../strings/index.js";
 import { readGeoJson } from "./geojson.js";
 import { boundsOf, isUnread, union } from "./geometry.js";
 import { readValue } from "./read.js";
@@ -65,7 +66,8 @@ export function readBack(layer, rows, texts) {
     const [{ srid } = { srid: 0 }] = layer.unread.splice(at, 1);
     const text = texts[i];
     try {
-      if (text === null || text === undefined) throw new Error("The server read no shape.");
+      if (text === null || text === undefined)
+        throw new Error(messageText("geo.layer.theServerReadNoShape"));
       const g = readGeoJson(text);
       g.srid = srid;
       add(layer, row, g);

@@ -7,6 +7,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { countText, HIT_CAP, summaryText, whyText } from "./model.js";
 
 /**
@@ -76,7 +77,10 @@ export function createResults(doc, open) {
           type: "button",
           class: "desk-btn desk-btn-quiet search-column",
           "data-open": `${at}.${ci}`,
-          title: `Open ${t.name} filtered to the rows whose ${c.name} matches`,
+          title: messageText("features.search.results.openFilteredToTheRowsWhose", {
+            name: String(t.name),
+            name2: String(c.name),
+          }),
         },
         el(doc, "span", { class: "search-column-name" }, c.name),
         el(doc, "span", { class: "search-column-type" }, c.type),
@@ -94,7 +98,7 @@ export function createResults(doc, open) {
               type: "button",
               class: "desk-btn desk-btn-quiet search-hit",
               "data-open": `${at}.${ci}.${hi}`,
-              title: "Open the table filtered to this row",
+              title: messageText("features.search.results.openTheTableFilteredToThis"),
             },
             el(doc, "span", { class: "search-key" }, keyText(t, h.key)),
             el(doc, "span", { class: "search-text" }, h.text),
@@ -113,7 +117,9 @@ export function createResults(doc, open) {
               doc,
               "p",
               { class: "search-more" },
-              `and ${formatCount(rest)} more: open the column to see them`,
+              messageText("features.search.results.andMoreOpenTheColumnTo", {
+                value: String(formatCount(rest)),
+              }),
             )
           : undefined,
       );
@@ -150,10 +156,19 @@ export function createResults(doc, open) {
       summary.hidden = run.phase === "running";
       const said = [
         run.capped
-          ? `Only the first ${formatCount(HIT_CAP)} hits are kept; the counts cover every table searched.`
+          ? messageText("features.search.results.onlyTheFirstHitsAreKept", {
+              value: String(formatCount(HIT_CAP)),
+            })
           : "",
         run.empty
-          ? `${formatCount(run.empty)} ${run.empty === 1 ? "table has" : "tables have"} no column of the chosen kinds that can hold the value.`
+          ? messageText("features.search.results.noColumnOfTheChosenKinds", {
+              value: String(formatCount(run.empty)),
+              value2: String(
+                run.empty === 1
+                  ? messageText("features.search.results.tableHas")
+                  : messageText("features.search.results.tablesHave"),
+              ),
+            })
           : "",
       ].filter(Boolean);
       notes.replaceChildren(
@@ -172,7 +187,9 @@ export function createResults(doc, open) {
           doc,
           "h3",
           { class: "search-table-name" },
-          `Not searched (${formatCount(run.skipped.length)})`,
+          messageText("features.search.results.notSearched", {
+            value: String(formatCount(run.skipped.length)),
+          }),
         ),
         el(
           doc,

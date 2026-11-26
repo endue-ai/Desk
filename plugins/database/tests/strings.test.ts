@@ -23,17 +23,23 @@ import {
 import { createGrid } from "../ui/view-grid.js";
 
 const ui = join(import.meta.dirname, "..", "ui");
-const en = JSON.parse(readFileSync(join(ui, "strings", "en.json"), "utf8")) as Record<
-  string,
-  string | Record<string, string>
->;
+const catalog = (path: string) =>
+  JSON.parse(readFileSync(join(ui, "strings", path), "utf8")) as Record<
+    string,
+    string | Record<string, string>
+  >;
+const english = [
+  catalog("en.json"),
+  ...readdirSync(join(ui, "strings", "en")).map((file) => catalog(join("en", file))),
+];
+const en = Object.assign({}, ...english) as ReturnType<typeof catalog>;
 
 /** Every source of the plugin's page, vendored code aside. */
 function sources(dir = ui): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return name === "vendor" ? [] : sources(path);
-    return name.endsWith(".js") || name.endsWith(".mjs") ? [readFileSync(path, "utf8")] : [];
+    return /\.(?:js|mjs|html)$/.test(name) ? [readFileSync(path, "utf8")] : [];
   });
 }
 
@@ -45,14 +51,27 @@ describe("the catalog", () => {
       readFileSync(join(ui, "../../../specs/plugin/v0/messages.schema.json"), "utf8"),
     );
     const validate = new Ajv2020({ strict: true }).compile(schema);
-    expect(validate(en), JSON.stringify(validate.errors)).toBe(true);
+    for (const source of english)
+      expect(validate(source), JSON.stringify(validate.errors)).toBe(true);
+    expect(Object.keys(en)).toHaveLength(
+      english.reduce((count, source) => count + Object.keys(source).length, 0),
+    );
     const manifest = JSON.parse(readFileSync(join(ui, "..", "plugin.json"), "utf8"));
-    expect(manifest.messages).toBe("ui/strings");
+    expect(manifest.messages).toBe("ui/strings/manifest");
+    const titles = catalog("manifest/en.json");
+    expect(validate(titles), JSON.stringify(validate.errors)).toBe(true);
+    const labeled = [...manifest.surfaces, ...manifest.contributes.commands];
+    expect(Object.keys(titles)).toHaveLength(labeled.length);
+    for (const { title, titleMessage } of labeled) expect(titles[titleMessage]).toBe(title);
   });
 
   it("holds every key the code names, and no key the code does not", () => {
     const all = sources().join("\n");
-    const named = [...all.matchAll(/\b(?:t|nodes)\(\s*"([a-z][\w.]*)"/g)].map((m) => m[1] ?? "");
+    const named = [
+      ...all.matchAll(
+        /(?:\b(?:t|messageText|nodes)\(\s*|\bdata-message(?:-[a-z-]+)?=)"([a-z][\w.]*)"/g,
+      ),
+    ].map((m) => m[1] ?? "");
     expect(named.filter((key) => !has(key))).toEqual([]);
     const unused = Object.keys(en).filter((key) => !all.includes(`"${key}"`));
     expect(unused).toEqual([]);

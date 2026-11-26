@@ -4,6 +4,7 @@
 // Auto layout, the columns shown, a table moved (kept a moment later, once the moves stop), and the
 // edits of edit.js. The graph each diagram read is held for its edits. No DOM.
 
+import { t as messageText } from "../../strings/index.js";
 import { bridgeStore, readKept, writeKept } from "./kept.js";
 import { MODES, moveBoxes } from "./layout.js";
 import { MAX_DEPTH, nameOf, shownIds, subgraph } from "./model.js";
@@ -38,7 +39,7 @@ export function createDiagrams(deps) {
       kept: false,
     }));
     if (!done.kept && t.state.kept)
-      deps.say("This diagram is too large to keep: its layout lasts until the plugin restarts.");
+      deps.say(messageText("features.diagram.controller.thisDiagramIsTooLargeTo"));
     t.state.kept = done.kept;
   };
 
@@ -51,9 +52,10 @@ export function createDiagrams(deps) {
       (shown?.kind === TYPE ? shown : undefined) ??
       [...list].sort((a, b) => (b.used ?? 0) - (a.used ?? 0))[0];
     if (!buffer)
-      throw new Error("No ER diagram is open: Database: ER diagram of a schema opens one.");
+      throw new Error(messageText("features.diagram.controller.noErDiagramIsOpenDatabase"));
     const conn = deps.manager.get(buffer.connection);
-    if (!conn) throw new Error("This diagram's connection was removed.");
+    if (!conn)
+      throw new Error(messageText("features.diagram.controller.thisDiagramSConnectionWasRemoved"));
     return { buffer, conn, state: /** @type {DiagramState} */ (buffer[TYPE]) };
   };
 
@@ -109,7 +111,12 @@ export function createDiagrams(deps) {
     const buffer = await deps.consoles.openPanel(conn, TYPE, `er: ${conn.name} · ${id}`, state);
     if (buffer?.id) graphs.set(buffer.id, graph);
     if (buffer?.id) await save({ buffer, conn, state });
-    deps.say(`${state.counts.tables} tables, ${state.counts.links} foreign keys.`);
+    deps.say(
+      messageText("features.diagram.controller.tablesForeignKeys", {
+        tables: String(state.counts.tables),
+        links: String(state.counts.links),
+      }),
+    );
     return { tables: state.counts.tables, links: state.counts.links };
   };
 
@@ -139,7 +146,7 @@ export function createDiagrams(deps) {
     /** Lay every table out again. */
     arrange: async (/** @type {unknown} */ id) => {
       await redraw(target(id), (r) => r, { arrange: true });
-      deps.say("Laid out again.");
+      deps.say(messageText("features.diagram.controller.laidOutAgain"));
     },
     /** Show all columns, keys only or none (asked when not given). */
     columns: async (/** @type {unknown} */ id, /** @type {unknown} */ mode) => {
@@ -147,13 +154,25 @@ export function createDiagrams(deps) {
       const picked = MODES.includes(/** @type {Mode} */ (mode))
         ? /** @type {Mode} */ (mode)
         : /** @type {Mode | undefined} */ (
-            await deps.pick("Database: show which columns in the diagram?", [
-              { id: "all", label: "All columns" },
-              { id: "keys", label: "Keys only", detail: "Primary and foreign key columns" },
-              { id: "none", label: "None", detail: "Table names only" },
-            ])
+            await deps.pick(
+              messageText("features.diagram.controller.databaseShowWhichColumnsInThe"),
+              [
+                { id: "all", label: messageText("features.diagram.controller.allColumns") },
+                {
+                  id: "keys",
+                  label: messageText("features.diagram.controller.keysOnly"),
+                  detail: messageText("features.diagram.controller.primaryAndForeignKeyColumns"),
+                },
+                {
+                  id: "none",
+                  label: messageText("features.diagram.controller.none"),
+                  detail: messageText("features.diagram.controller.tableNamesOnly"),
+                },
+              ],
+            )
           );
-      if (!picked) throw deps.cancelled("The columns stay as they are.");
+      if (!picked)
+        throw deps.cancelled(messageText("features.diagram.controller.theColumnsStayAsTheyAre"));
       await redraw(t, (r) => ({ ...r, mode: picked }));
       return picked;
     },
@@ -197,13 +216,16 @@ export function createDiagrams(deps) {
       const n = Number(given);
       if (Number.isInteger(n) && n >= 1 && n <= MAX_DEPTH) return n;
       const picked = await deps.pick(
-        "Database: neighbours how many foreign keys away?",
+        messageText("features.diagram.controller.databaseNeighboursHowManyForeignKeys"),
         [1, 2, 3, 4].map((d) => ({
           id: String(d),
-          label: d === 1 ? "1 foreign key away" : `${d} foreign keys away`,
+          label:
+            d === 1
+              ? messageText("features.diagram.controller.foreignKeyAway")
+              : messageText("features.diagram.controller.foreignKeysAway", { d: String(d) }),
         })),
       );
-      if (!picked) throw deps.cancelled("No diagram drawn.");
+      if (!picked) throw deps.cancelled(messageText("features.diagram.controller.noDiagramDrawn"));
       return Number(picked);
     },
   };

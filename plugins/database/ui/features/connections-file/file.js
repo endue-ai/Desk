@@ -7,6 +7,7 @@
 
 import { blank, newId, normalize } from "../../connections.js";
 import { OPTIONS } from "../../engines/pg-options.js";
+import { t } from "../../strings/index.js";
 import { TUNNEL } from "../../tunnel/fields.js";
 import { looksLikeService, readService } from "./service.js";
 
@@ -66,26 +67,38 @@ function entryFrom(
   const named = isObject(raw) && typeof (/** @type {any} */ (raw).name) === "string";
   const label = named && /** @type {any} */ (raw).name ? ` (${/** @type {any} */ (raw).name})` : "";
   try {
-    if (!isObject(raw)) throw new Error("an object expected.");
+    if (!isObject(raw)) throw new Error(t("features.connectionsFile.file.anObjectExpected"));
     const given = /** @type {Record<string, unknown>} */ (raw);
     const secret = Object.keys(given).find((key) => SECRET.test(key));
     if (secret)
       throw new Error(
-        `${secret}: a connections file carries no passwords; take it out of the file.`,
+        t("features.connectionsFile.file.aConnectionsFileCarriesNoPasswords", {
+          secret: String(secret),
+        }),
       );
     if (given.readOnly !== undefined && typeof given.readOnly !== "boolean")
-      throw new Error("readOnly: true or false.");
+      throw new Error(t("features.connectionsFile.file.readonlyTrueOrFalse"));
     if (given.id !== undefined && (typeof given.id !== "string" || !ID.test(given.id)))
-      throw new Error("id: lowercase letters, digits and dashes, at most 40.");
+      throw new Error(t("features.connectionsFile.file.idLowercaseLettersDigitsAndDashes"));
     if (given.id !== undefined && before.some((c) => c.id === given.id))
-      throw new Error(`id: ${given.id} is in the file twice.`);
+      throw new Error(
+        t("features.connectionsFile.file.idIsInTheFileTwice", { id: String(given.id) }),
+      );
     const known = Object.fromEntries(FIELDS.filter((k) => k in given).map((k) => [k, given[k]]));
     const conn = normalize({ ...known, id: /** @type {string} */ (given.id ?? newId(random)) });
     if (before.some((c) => c.name.toLowerCase() === conn.name.toLowerCase()))
-      throw new Error(`Name: "${conn.name}" is in the file twice.`);
+      throw new Error(
+        t("features.connectionsFile.file.nameIsInTheFileTwice", { name: String(conn.name) }),
+      );
     return conn;
   } catch (error) {
-    throw new Error(`Connection ${n}${label}: ${message(error)}`);
+    throw new Error(
+      t("features.connectionsFile.file.connection", {
+        n: String(n),
+        label: String(label),
+        value: String(message(error)),
+      }),
+    );
   }
 }
 
@@ -103,21 +116,27 @@ export function readFile(text, random = Math.random) {
     data = JSON.parse(text);
   } catch {
     if (looksLikeService(text)) return readService(text, random);
-    throw new Error("it is neither a connections file of Database nor a pg_service.conf.");
+    throw new Error(t("features.connectionsFile.file.itIsNeitherAConnectionsFile"));
   }
   if (!isObject(data) || /** @type {any} */ (data).format !== FORMAT)
-    throw new Error(`it is JSON, but not a connections file: it has no "format": "${FORMAT}".`);
+    throw new Error(t("features.connectionsFile.file.itIsJsonButNotA", { FORMAT: String(FORMAT) }));
   const file = /** @type {Record<string, unknown>} */ (data);
   const version = file.version;
   if (typeof version !== "number" || !Number.isInteger(version) || version < 1)
-    throw new Error("version: a whole number, 1 or more.");
+    throw new Error(t("features.connectionsFile.file.versionAWholeNumberOrMore"));
   if (version > VERSION)
     throw new Error(
-      `it is version ${version}, written by a newer Database; this one reads version ${VERSION}: update the desk to import it.`,
+      t("features.connectionsFile.file.itIsVersionWrittenByA", {
+        version: String(version),
+        VERSION: String(VERSION),
+      }),
     );
-  if (!Array.isArray(file.connections)) throw new Error("connections: a list expected.");
+  if (!Array.isArray(file.connections))
+    throw new Error(t("features.connectionsFile.file.connectionsAListExpected"));
   if (file.connections.length > MAX_ENTRIES)
-    throw new Error(`connections: at most ${MAX_ENTRIES}.`);
+    throw new Error(
+      t("features.connectionsFile.file.connectionsAtMost", { MAX_ENTRIES: String(MAX_ENTRIES) }),
+    );
   /** @type {Connection[]} */
   const conns = [];
   file.connections.forEach((raw, i) => {

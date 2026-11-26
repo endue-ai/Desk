@@ -4,6 +4,7 @@
 // keeps it by its `data-focus`. Layout and colours: privileges.css.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { defaultsTab, objectTab } from "./object-tab.js";
 import { rolesTab, roleTab } from "./tabs.js";
 
@@ -12,12 +13,17 @@ import { rolesTab, roleTab } from "./tabs.js";
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const LABELS = { roles: "Roles", object: "Object", role: "Role", defaults: "Defaults" };
+const LABELS = {
+  roles: t("features.privileges.panel.roles"),
+  object: t("features.privileges.panel.object"),
+  role: t("features.privileges.panel.role"),
+  defaults: t("features.privileges.panel.defaults"),
+};
 
 /** The status line: who read, which server, how many roles. */
 function statusOf(/** @type {PrivState} */ s) {
-  if (s.reading) return "Reading roles and privileges…";
-  if (!s.probe) return s.error ? "Not read." : "";
+  if (s.reading) return t("features.privileges.panel.readingRolesAndPrivileges");
+  if (!s.probe) return s.error ? t("features.privileges.panel.notRead") : "";
   const roles = s.roles?.roles.length ?? 0;
   return [
     `Read as ${s.probe.user}${s.probe.superuser ? " (superuser)" : ""}`,
@@ -47,7 +53,11 @@ export function privilegesPanel(doc, first, act, buffer) {
     const tabs = el(
       doc,
       "div",
-      { class: "desk-tabs privileges-tabs", role: "tablist", "aria-label": "Show" },
+      {
+        class: "desk-tabs privileges-tabs",
+        role: "tablist",
+        "aria-label": t("features.privileges.panel.show"),
+      },
       ...Object.entries(LABELS).map(([tab, label]) => {
         const b = el(
           doc,
@@ -73,14 +83,19 @@ export function privilegesPanel(doc, first, act, buffer) {
         type: "button",
         class: "desk-btn desk-btn-quiet",
         "data-focus": "refresh",
-        title: "Read again (g)",
+        title: t("features.privileges.panel.readAgainG"),
       },
-      "Refresh",
+      t("features.privileges.panel.refresh"),
     );
     refresh.addEventListener("click", () => go("privilegesRefresh"));
     const notices = el(doc, "div", { class: "privileges-notices" });
     if (s.error) {
-      const again = el(doc, "button", { type: "button", class: "desk-btn" }, "Try again");
+      const again = el(
+        doc,
+        "button",
+        { type: "button", class: "desk-btn" },
+        t("features.privileges.panel.tryAgain"),
+      );
       again.addEventListener("click", () => go("privilegesRefresh"));
       notices.append(
         el(doc, "div", { class: "desk-error", role: "alert" }, el(doc, "p", {}, s.error), again),
@@ -92,7 +107,10 @@ export function privilegesPanel(doc, first, act, buffer) {
           doc,
           "p",
           { class: "desk-callout privileges-cannot" },
-          `${s.probe.user} may not read ${s.probe.cannot.join(", ")}: what needs them says so below.`,
+          t("features.privileges.panel.mayNotReadWhatNeedsThem", {
+            user: String(s.probe.user),
+            value: String(s.probe.cannot.join(", ")),
+          }),
         ),
       );
     const section =

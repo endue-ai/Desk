@@ -7,6 +7,7 @@
 // search; the explorer's `f` opens it on a connection, schema or table. The panel keeps its options
 // across a restart, never its results. controller.js runs it, panel.js and results.js draw.
 
+import { t } from "../../strings/index.js";
 import { createSearchPanels, TYPE } from "./controller.js";
 import { searchPanel } from "./panel.js";
 
@@ -62,7 +63,7 @@ export const feature = {
   },
   panels: {
     [TYPE]: {
-      label: "Search for a value",
+      label: t("features.search.index.searchForAValue"),
       render: searchPanel,
       keep: (/** @type {import("./controller.js").SearchState} */ state) => ({
         ...state,

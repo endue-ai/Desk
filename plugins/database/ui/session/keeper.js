@@ -10,6 +10,7 @@
 // its next run (wake.js, PG-105, ADR 0355): one that does not answer is lost, and a run whose open
 // transaction went with it does not run. No DOM.
 
+import { t } from "../strings/index.js";
 import { lostLine, SLEPT, SLEPT_REFUSED } from "./lost-words.js";
 import { KEPT_MAX } from "./slots.js";
 import { monotonic, probe, slept } from "./wake.js";
@@ -149,9 +150,15 @@ export function createKeeper(deps) {
     const mine = (/** @type {Entry} */ e) => e.connection === conn.id;
     const held = [...entries.values()].filter(mine).length + (opening.get(conn.id) ?? 0);
     if (held >= limit && !reclaim(mine))
-      return `${conn.name} keeps ${limit} session${limit === 1 ? "" : "s"} open, its limit (Sessions per connection): close a console or a table view of it to open another.`;
+      return t("session.keeper.keepsSessionOpenItsLimitSessions", {
+        name: String(conn.name),
+        limit: String(limit),
+        value: String(limit === 1 ? "" : t("session.keeper.s")),
+      });
     if (entries.size + signing() >= KEPT_MAX && !reclaim(() => true))
-      return `The plugin keeps ${KEPT_MAX} PostgreSQL sessions open, the most the desk leaves it beside its own reads: close a console or a table view to open another.`;
+      return t("session.keeper.thePluginKeepsPostgresqlSessionsOpen", {
+        KEPT_MAX: String(KEPT_MAX),
+      });
     return undefined;
   };
 

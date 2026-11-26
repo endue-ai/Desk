@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // PostgreSQL's EXPLAIN options as toggles: which ones a server's version has, the EXPLAIN they
 // make, and the ones a person turned on, remembered per connection in the plugin's store. An
 // option that needs ANALYZE is left out without it and GENERIC_PLAN is never sent with it, so the
@@ -23,47 +24,52 @@ export const OPTIONS = [
   {
     name: "ANALYZE",
     since: 0,
-    hint: "Runs the statement and shows what each step took",
+    hint: t("explain.options.runsTheStatementAndShowsWhat"),
   },
   {
     name: "BUFFERS",
     since: 0,
-    hint: "Pages found in the cache and read from disk",
+    hint: t("explain.options.pagesFoundInTheCacheAnd"),
     byDefault: (analyze, version) => analyze && version >= 180000,
   },
-  { name: "VERBOSE", since: 0, hint: "Output columns and schema-qualified names" },
+  { name: "VERBOSE", since: 0, hint: t("explain.options.outputColumnsAndSchemaQualifiedNames") },
   {
     name: "SETTINGS",
     since: 120000,
-    hint: "Settings changed from their defaults that the plan used",
+    hint: t("explain.options.settingsChangedFromTheirDefaultsThat"),
   },
-  { name: "WAL", since: 130000, needs: "ANALYZE", hint: "Write-ahead log records and bytes" },
+  {
+    name: "WAL",
+    since: 130000,
+    needs: "ANALYZE",
+    hint: t("explain.options.writeAheadLogRecordsAndBytes"),
+  },
   {
     name: "TIMING",
     since: 0,
     needs: "ANALYZE",
-    hint: "Time per node; off, the run costs less",
+    hint: t("explain.options.timePerNodeOffTheRun"),
     byDefault: (analyze) => analyze,
   },
   {
     name: "SUMMARY",
     since: 0,
-    hint: "Planning and execution time",
+    hint: t("explain.options.planningAndExecutionTime"),
     byDefault: (analyze) => analyze,
   },
   {
     name: "GENERIC_PLAN",
     since: 160000,
     not: "ANALYZE",
-    hint: "A plan for any values of $1, $2 …, which stay as they are",
+    hint: t("explain.options.aPlanForAnyValuesOf"),
   },
   {
     name: "SERIALIZE",
     since: 170000,
     needs: "ANALYZE",
-    hint: "Time and bytes it takes to send the rows",
+    hint: t("explain.options.timeAndBytesItTakesTo"),
   },
-  { name: "MEMORY", since: 170000, hint: "Memory the planner used" },
+  { name: "MEMORY", since: 170000, hint: t("explain.options.memoryThePlannerUsed") },
 ];
 
 /** What is on when a connection has nothing saved. */

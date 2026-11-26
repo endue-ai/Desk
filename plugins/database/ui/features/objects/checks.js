@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // What the dialogs' answers must be before a statement is written from them (PG-52): a new name
 // that is there, changed and short enough for the engine, a choice of two that cannot go together.
 // A refusal is an Error whose words the dialog shows in place of the script. Pure.
@@ -19,15 +21,28 @@ const LIMITS = {
  */
 export function newName(engine, value, current, what = "name") {
   const name = value ?? "";
-  if (name.trim() === "") throw new Error(`Type the new ${what}.`);
-  if (name === current) throw new Error(`That is its ${what} now: type another.`);
+  if (name.trim() === "")
+    throw new Error(t("features.objects.checks.typeTheNew", { what: String(what) }));
+  if (name === current)
+    throw new Error(t("features.objects.checks.thatIsItsNowTypeAnother", { what: String(what) }));
   const limit = LIMITS[engine];
   const size = limit.bytes ? new TextEncoder().encode(name).length : [...name].length;
   if (size > limit.max)
     throw new Error(
-      `${engine === "mysql" ? "MySQL" : "PostgreSQL"} keeps a name of ${limit.max} ${
-        limit.bytes ? "bytes" : "characters"
-      } at most: this one has ${size}.`,
+      t("features.objects.checks.keepsANameOfAtMost", {
+        value: String(
+          engine === "mysql"
+            ? t("features.objects.checks.mysql")
+            : t("features.objects.checks.postgresql"),
+        ),
+        max: String(limit.max),
+        value2: String(
+          limit.bytes
+            ? t("features.objects.checks.bytes")
+            : t("features.objects.checks.characters"),
+        ),
+        size: String(size),
+      }),
     );
   return name;
 }

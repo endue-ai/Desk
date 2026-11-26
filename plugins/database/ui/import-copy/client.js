@@ -3,6 +3,7 @@
 // same code answers in place, an `.xlsx` only with the reader the caller gives. One request at a
 // time, in order.
 
+import { t } from "../strings/index.js";
 import { answer } from "./answer.js";
 
 /**
@@ -43,7 +44,8 @@ export function createReader(options = {}) {
       waiting.delete(data.id);
     };
     worker.onerror = () => {
-      for (const done of waiting.values()) done({ error: "The worker reading the file stopped." });
+      for (const done of waiting.values())
+        done({ error: t("importCopy.client.theWorkerReadingTheFileStopped") });
       waiting.clear();
     };
     return worker;

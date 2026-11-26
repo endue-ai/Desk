@@ -5,6 +5,7 @@
 import { pinnedTab, toLetGo, unpinFrom } from "../../compare/pins.js";
 import { labelOf } from "../../console-list.js";
 import { formatBytes } from "../../format.js";
+import { t as messageText } from "../../strings/index.js";
 import { primaryKey } from "./keys.js";
 
 /**
@@ -17,7 +18,7 @@ import { primaryKey } from "./keys.js";
 function consoleOf(/** @type {Deps} */ deps) {
   const target = deps.consoles.current();
   if (target?.kind !== "console")
-    throw new Error("Pin works on a console's result: run a query in a console first.");
+    throw new Error(messageText("features.compare.pin.pinWorksOnAConsoleS"));
   return target;
 }
 
@@ -31,10 +32,13 @@ const everyPin = (/** @type {Deps} */ deps) =>
 export async function pin(/** @type {Deps} */ deps, /** @type {number} */ limit) {
   const target = consoleOf(deps);
   const tab = target.shown?.tabs[target.tab];
-  if (!tab) throw new Error("No result here: run a query first.");
-  if (tab.kind === "pinned") throw new Error("This result is pinned already.");
+  if (!tab) throw new Error(messageText("features.compare.pin.noResultHereRunAQuery"));
+  if (tab.kind === "pinned")
+    throw new Error(messageText("features.compare.pin.thisResultIsPinnedAlready"));
   if (tab.kind !== "rows" || !tab.set)
-    throw new Error(`Pin a result with rows: ${tab.label} is not one.`);
+    throw new Error(
+      messageText("features.compare.pin.pinAResultWithRowsIs", { label: String(tab.label) }),
+    );
   const execution = target.execution;
   const sql = execution?.statements[tab.statement]?.text ?? execution?.sql ?? "";
   const key = await primaryKey(deps, target, tab);
@@ -47,7 +51,10 @@ export async function pin(/** @type {Deps} */ deps, /** @type {number} */ limit)
   );
   if (!gone)
     throw new Error(
-      `Not pinned: this result holds about ${formatBytes(made.pin?.bytes ?? 0)}, and pinned results keep at most ${formatBytes(limit)}. Load fewer rows and pin again.`,
+      messageText("features.compare.pin.notPinnedThisResultHoldsAbout", {
+        value: String(formatBytes(made.pin?.bytes ?? 0)),
+        value2: String(formatBytes(limit)),
+      }),
     );
   const names = gone.map((old) => {
     const owner = all.find((p) => p.tab === old)?.owner;
@@ -59,7 +66,10 @@ export async function pin(/** @type {Deps} */ deps, /** @type {number} */ limit)
   target.shown?.tabs.push(made);
   deps.consoles.render();
   const let_ = names.length
-    ? ` Let go of ${names.join(", ")}: pinned results keep at most ${formatBytes(limit)}.`
+    ? messageText("features.compare.pin.letGoOfPinnedResultsKeep", {
+        value: String(names.join(", ")),
+        value2: String(formatBytes(limit)),
+      })
     : "";
   const said = `Pinned ${made.label}.${let_}`;
   deps.say(said);
@@ -70,7 +80,8 @@ export async function pin(/** @type {Deps} */ deps, /** @type {number} */ limit)
 export async function unpin(/** @type {Deps} */ deps, /** @type {unknown} */ id) {
   const target = consoleOf(deps);
   const pinned = /** @type {Tab[]} */ (target.pinned ?? []);
-  if (pinned.length === 0) throw new Error("No result is pinned in this console.");
+  if (pinned.length === 0)
+    throw new Error(messageText("features.compare.pin.noResultIsPinnedInThis"));
   const on = target.shown?.tabs[target.tab];
   const chosen =
     typeof id === "string"
@@ -78,15 +89,15 @@ export async function unpin(/** @type {Deps} */ deps, /** @type {unknown} */ id)
       : on?.kind === "pinned"
         ? on.pin?.id
         : await deps.pick(
-            "Database: unpin which result?",
+            messageText("features.compare.pin.databaseUnpinWhichResult"),
             pinned.map((tab) => ({ id: tab.pin?.id ?? "", label: tab.label })),
           );
-  if (!chosen) throw deps.cancelled("Nothing unpinned.");
+  if (!chosen) throw deps.cancelled(messageText("features.compare.pin.nothingUnpinned"));
   const tab = pinned.find((t) => t.pin?.id === chosen);
-  if (!tab) throw new Error("That result is not pinned here.");
+  if (!tab) throw new Error(messageText("features.compare.pin.thatResultIsNotPinnedHere"));
   unpinFrom(target, tab);
   deps.consoles.render();
-  const said = `Unpinned ${tab.label}.`;
+  const said = messageText("features.compare.pin.unpinned", { label: String(tab.label) });
   deps.say(said);
   return said;
 }

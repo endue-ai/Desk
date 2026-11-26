@@ -3,6 +3,7 @@
 // Colours and sizes come from the theme through format.css's classes.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../sql/layout/style.js").Style} Style
@@ -42,19 +43,28 @@ export function previewView(doc, state) {
   return el(
     doc,
     "section",
-    { class: "format-preview", "aria-label": "Format SQL preview" },
-    el(doc, "p", { class: "format-style" }, `PostgreSQL: ${styleWords(state.style)}.`),
+    { class: "format-preview", "aria-label": t("features.format.panel.formatSqlPreview") },
+    el(
+      doc,
+      "p",
+      { class: "format-style" },
+      t("features.format.panel.postgresql", { value: String(styleWords(state.style)) }),
+    ),
     el(
       doc,
       "pre",
-      { class: "format-sample", tabindex: "0", "aria-label": "The sample, formatted" },
+      {
+        class: "format-sample",
+        tabindex: "0",
+        "aria-label": t("features.format.panel.theSampleFormatted"),
+      },
       state.text,
     ),
     el(
       doc,
       "p",
       { class: "format-hint" },
-      "The format settings of Database set the style; the sample is laid out again when one changes.",
+      t("features.format.panel.theFormatSettingsOfDatabaseSet"),
     ),
   );
 }

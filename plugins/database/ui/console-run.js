@@ -20,6 +20,7 @@ import { formatStyle } from "./settings.js";
 import { classify } from "./sql/classify.js";
 import { sqlParser } from "./sql/parse/client.js";
 import { split, statementAt } from "./sql/split.js";
+import { t as messageText } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -63,7 +64,8 @@ export function formatNote(/** @type {Laid} */ laid) {
     notes.push(
       `${laid.refused === 1 ? "a statement is" : `${laid.refused} statements are`} left as written: laid out, it would not read the same`,
     );
-  if (notes.length === 0) return laid.laid > 0 ? "Formatted." : "Nothing to format.";
+  if (notes.length === 0)
+    return laid.laid > 0 ? "Formatted." : messageText("consoleRun.nothingToFormat");
   return `${laid.laid > 0 ? "Formatted" : "Nothing formatted"}; ${notes.join("; ")}.`;
 }
 
@@ -82,7 +84,7 @@ export async function formatText(text, engine, settings) {
     return { from: 0, to: text.length, text: laid, note: "Formatted.", left: 0 };
   }
   const parser = sqlParser();
-  if (!parser) throw new Error("The SQL parser has not started.");
+  if (!parser) throw new Error(messageText("consoleRun.theSqlParserHasNotStarted"));
   const laid = await parser.layout(text, formatStyle(settings));
   const left = laid.left.length + laid.kept + laid.refused;
   return { from: laid.from, to: laid.to, text: laid.text, note: formatNote(laid), left };
@@ -126,7 +128,8 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
           `Value for ${param.label}`,
           typed.get(memo) ?? "42, it's, NULL or =now()",
         );
-        if (answer === undefined) throw deps.cancelled("Not run: a parameter has no value.");
+        if (answer === undefined)
+          throw deps.cancelled(messageText("consoleRun.notRunAParameterHasNo"));
         typed.set(memo, answer);
         values[param.key] = valueSql(dialect, answer);
       }
@@ -149,7 +152,7 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     /** @type {number} */ caret,
   ) => {
     const statement = statementAt(split(text, engineOf(conn.engine).dialect), caret, text);
-    if (!statement) throw new Error("Nothing to run: the editor holds no statement.");
+    if (!statement) throw new Error(messageText("consoleRun.nothingToRunTheEditorHolds"));
     return [statement];
   };
 
@@ -162,14 +165,14 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
   const run = async (scope, mode = "run") => {
     const { shown, conn } = active();
     if (shown.kind === "table") return pages.refresh(shown, conn);
-    if (shown.kind === "ddl") throw new Error("A DDL view does not run: copy it into a console.");
+    if (shown.kind === "ddl") throw new Error(messageText("consoleRun.aDdlViewDoesNotRun"));
     const { text, start, end } = deps.view.editor();
     shown.text = text;
     const { dialect } = engineOf(conn.engine);
     const selected = start !== end;
     const sql = selected ? text.slice(start, end) : text;
     const picked = selected || scope === "all" ? split(sql, dialect) : atCaret(conn, text, start);
-    if (picked.length === 0) throw new Error("Nothing to run: the editor holds no statement.");
+    if (picked.length === 0) throw new Error(messageText("consoleRun.nothingToRunTheEditorHolds"));
     const statements = await filled(conn, picked, shown);
     const said = await execute(shown, conn, sql, { mode, base: selected ? start : 0, statements });
     const only = statements.length === 1 ? statements[0] : undefined;
@@ -194,17 +197,18 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
    */
   const explain = async (analyze = false, on = undefined) => {
     const { shown, conn } = active();
-    if (shown.kind !== "console") throw new Error("Explain runs from a console.");
+    if (shown.kind !== "console")
+      throw new Error(messageText("consoleRun.explainRunsFromAConsole"));
     const { text, start, end } = deps.view.editor();
     const { dialect } = engineOf(conn.engine);
     const [picked] =
       start !== end ? split(text.slice(start, end), dialect) : atCaret(conn, text, start);
-    if (!picked) throw new Error("Nothing to explain.");
+    if (!picked) throw new Error(messageText("consoleRun.nothingToExplain"));
     const pg = dialect === "postgresql";
     const options = pg ? (on ?? (await readOptions(deps.bridge, conn.id))) : [];
     const generic = pg && !analyze && options.includes("GENERIC_PLAN");
     const [statement] = generic ? [picked] : await filled(conn, [picked], shown);
-    if (!statement) throw new Error("Nothing to explain.");
+    if (!statement) throw new Error(messageText("consoleRun.nothingToExplain"));
     const chosen = pg ? { on: options, version: await serverVersion(conn) } : undefined;
     const sql = explainSql(dialect, await deps.flavor(conn), statement.text, analyze, chosen);
     const view = shown.shown?.tabs.find((t) => t.kind === "plan")?.view ?? "tree";
@@ -222,7 +226,9 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     const set = shown.shown?.tabs.find((t) => t.kind === "rows")?.set;
     const plan = set ? await (deps.readPlan ? deps.readPlan(set) : planOf(set)) : undefined;
     if (plan && shown.shown) {
-      const label = analyze ? "Plan (analyzed)" : "Plan";
+      const label = analyze
+        ? messageText("consoleRun.planAnalyzed")
+        : messageText("consoleRun.plan");
       shown.shown.tabs.unshift({ label, kind: "plan", plan, statement: 0, view });
       shown.tab = 0;
       shown.page = null;
@@ -246,26 +252,26 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
    */
   const format = async (scope = "all") => {
     const { shown, conn } = active();
-    if (shown.kind !== "console") throw new Error("Format works in a console.");
+    if (shown.kind !== "console") throw new Error(messageText("consoleRun.formatWorksInAConsole"));
     const { text, start, end } = deps.view.editor();
     const { dialect } = engineOf(conn.engine);
     let [from, to] = start !== end ? [start, end] : [0, text.length];
     if (dialect !== "postgresql") {
       if (scope === "statement" && start === end) {
         const at = statementAt(split(text, dialect), start, text);
-        if (!at) return "Nothing to format.";
+        if (!at) return messageText("consoleRun.nothingToFormat");
         [from, to] = [at.start, at.end];
       }
       deps.view.replace(from, to, formatSql(text.slice(from, to), dialect));
       return "Formatted.";
     }
     const parser = sqlParser();
-    if (!parser) throw new Error("The SQL parser has not started.");
+    if (!parser) throw new Error(messageText("consoleRun.theSqlParserHasNotStarted"));
     const style = formatStyle(deps.settings());
     const options = scope === "statement" && start === end ? { at: start } : {};
     const laid = await parser.layout(text.slice(from, to), style, options);
     if (deps.view.editor().text !== text)
-      throw new Error("The console changed while it was formatted. Format it again.");
+      throw new Error(messageText("consoleRun.theConsoleChangedWhileItWas"));
     const before = text.slice(from + laid.from, from + laid.to);
     if (laid.text !== before) deps.view.replace(from + laid.from, from + laid.to, laid.text);
     return formatNote(laid);
@@ -277,7 +283,7 @@ export function createRunning({ deps, active, execute, render, typed, pages }) {
     const last = shown.execution;
     const truncated = last?.result.statements.some((s) => s.sets.some((set) => set.truncated));
     if (!last || !truncated || last.statements.length !== 1)
-      throw new Error("Nothing more to load.");
+      throw new Error(messageText("consoleRun.nothingMoreToLoad"));
     if (shown.kind === "table" && shown.table) return pages.refresh(shown, conn);
     const maxRows = Math.min(MORE_MAX, shown.maxRows * 4);
     return execute(shown, conn, last.sql, { statements: last.statements, maxRows, history: false });

@@ -5,6 +5,7 @@
 // every type change in one ALTER TABLE so the table is rewritten once, then the default, NOT NULL and
 // an identity), then the new columns. What the form cannot write safely is `held` in words. Pure.
 
+import { t } from "../../strings/index.js";
 import { columnSql, q } from "./ddl.js";
 import { byId } from "./model.js";
 import { changeOf, typeSql } from "./types.js";
@@ -74,7 +75,9 @@ export function dropsAndRenames(table, was, now) {
   );
   if (cycle.length)
     out.held.push(
-      `Columns ${cycle.map((r) => r.from).join(" and ")} take each other's names: rename one to another name first, run it, then the rest.`,
+      t("features.tableDesign.alterColumns.columnsTakeEachOtherSNames", {
+        value: String(cycle.map((r) => r.from).join(" and ")),
+      }),
     );
   for (const r of ordered)
     out.steps.push({
@@ -105,7 +108,11 @@ export function columnChanges(table, was, now, facts) {
     if (w.identity && !n.identity) alter(n, "DROP IDENTITY");
     if (w.generated && !n.generated.trim()) {
       if (facts.version && facts.version < 130000)
-        out.held.push(`Column ${n.name} stops being generated only from PostgreSQL 13 on.`);
+        out.held.push(
+          t("features.tableDesign.alterColumns.columnStopsBeingGeneratedOnlyFrom", {
+            name: String(n.name),
+          }),
+        );
       alter(n, "DROP EXPRESSION");
     }
     if (w.default && !n.default.trim()) alter(n, "DROP DEFAULT");
@@ -145,12 +152,16 @@ export function columnChanges(table, was, now, facts) {
     const expression = n.generated.trim();
     if (expression && !w.generated)
       out.held.push(
-        `Column ${n.name} becomes generated only as it is added: drop it and add a new one (its values go).`,
+        t("features.tableDesign.alterColumns.columnBecomesGeneratedOnlyAsIt", {
+          name: String(n.name),
+        }),
       );
     else if (expression && expression !== w.generated.trim()) {
       if (facts.version && facts.version < 170000)
         out.held.push(
-          `Column ${n.name}'s generation changes in place only from PostgreSQL 17 on: drop it and add a new one.`,
+          t("features.tableDesign.alterColumns.columnSGenerationChangesInPlace", {
+            name: String(n.name),
+          }),
         );
       alter(n, `SET EXPRESSION AS (${expression})`, [MARKS.rewrite]);
     }

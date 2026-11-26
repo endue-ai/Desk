@@ -3,6 +3,7 @@
 // OffscreenCanvas and handed back as a bitmap, the row under a point, a layer let go. Requests and
 // replies are plain data; a reply's bitmap is transferred. Pure but for the canvas it makes.
 
+import { t } from "../strings/index.js";
 import { drawLayer } from "./draw.js";
 import {
   boundsOfRows,
@@ -56,7 +57,7 @@ export function createEngine(make = offscreen) {
   const layers = new Map();
   const layerOf = (/** @type {string} */ key) => {
     const layer = layers.get(key);
-    if (!layer) throw new Error("The map's values are gone: open the Map tab again.");
+    if (!layer) throw new Error(t("geo.engine.theMapSValuesAreGone"));
     return layer;
   };
 

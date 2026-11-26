@@ -15,6 +15,7 @@ import { nonce as makeNonce } from "./engines/text.js";
 import { formatCount } from "./format.js";
 import { classify, readsOnly } from "./sql/classify.js";
 import { split } from "./sql/split.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -73,12 +74,11 @@ export function createExecutor(deps) {
     const engine = engineOf(conn.engine);
     const mode = options.mode ?? "run";
     const statements = options.statements ?? split(sql, engine.dialect);
-    if (statements.length === 0)
-      throw new Refusal("Nothing to run: the editor holds no statement.");
+    if (statements.length === 0) throw new Refusal(t("execute.nothingToRunTheEditorHolds"));
     const classes = statements.map((statement) => classify(statement, engine.dialect));
     const describe = mode === "describe";
     if (describe && !("session" in engine))
-      throw new Refusal("Only PostgreSQL checks a statement without running it.");
+      throw new Refusal(t("execute.onlyPostgresqlChecksAStatementWithout"));
     const step = copyStep(engine.dialect, statements, options);
     if (typeof step === "string") throw new Refusal(step);
     // A check streams nothing, so a COPY's is refused before any file is asked for (copy/plan.js).
@@ -96,7 +96,7 @@ export function createExecutor(deps) {
       await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
     const copy =
       step && (options.copy ?? (await deps.copies?.ask(conn, step.statement, step.direction)));
-    if (step && !copy) throw deps.cancelled("Not copied.");
+    if (step && !copy) throw deps.cancelled(t("execute.notCopied"));
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
     const timeoutMs = settings.timeoutSeconds * 1000;
@@ -105,11 +105,14 @@ export function createExecutor(deps) {
 
     const attempt = async (/** @type {string | undefined} */ password) => {
       if (options.signal?.aborted)
-        return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
+        return failedRun(statements, { kind: "cancelled", message: t("execute.cancelled") });
       const signal = options.signal ? { signal: options.signal } : {};
       if ("session" in engine) {
         if (!deps.sessions)
-          return failedRun(statements, { kind: "client", message: "No database sessions here." });
+          return failedRun(statements, {
+            kind: "client",
+            message: t("execute.noDatabaseSessionsHere"),
+          });
         const typed = password !== undefined ? { password } : {};
         // A check on a session of its own opens it read-only: nothing it does can write.
         const on = describe && !options.session ? { ...conn, readOnly: true } : conn;
@@ -149,13 +152,11 @@ export function createExecutor(deps) {
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))
-          result.notices.push(
-            "Cancelled: the statements shown had finished before the cancel reached them.",
-          );
+          result.notices.push(t("execute.cancelledTheStatementsShownHadFinished"));
         return result;
       } catch (error) {
         if (/** @type {{ name?: string }} */ (error)?.name === "AbortError")
-          return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
+          return failedRun(statements, { kind: "cancelled", message: t("execute.cancelled") });
         const kind =
           /** @type {{ kind?: string }} */ (error)?.kind === "missing" ? "missing" : "client";
         const message = error instanceof Error ? error.message : String(error);
@@ -195,8 +196,8 @@ export function createExecutor(deps) {
     const asked = deps.settings().confirm && (production || dangerous.length > 0);
     if (!asked && !(agent && writes)) return;
     const reasons = [
-      ...(agent && writes ? ["An agent asks to change data."] : []),
-      ...(production ? [`${conn.name} is tagged production.`] : []),
+      ...(agent && writes ? [t("execute.anAgentAsksToChangeData")] : []),
+      ...(production ? [t("execute.isTaggedProduction", { name: String(conn.name) })] : []),
       ...dangerous,
       ...(shown ?? statements.map((s) => s.text)).slice(0, 3).map(oneLine),
       ...(statements.length > 3
@@ -205,8 +206,13 @@ export function createExecutor(deps) {
     ];
     const count =
       statements.length === 1 ? "this statement" : `${formatCount(statements.length)} statements`;
-    if (!(await deps.confirm(`Run ${count} on ${conn.name}?`, reasons)))
-      throw deps.cancelled("Not run.");
+    if (
+      !(await deps.confirm(
+        t("execute.runOn", { count: String(count), name: String(conn.name) }),
+        reasons,
+      ))
+    )
+      throw deps.cancelled(t("execute.notRun"));
   };
 
   return { execute };
@@ -230,18 +236,22 @@ export function check(conn, ddlCommits, classes, mode) {
   if (conn.readOnly && !readsOnly(classes)) {
     const index = at((c) => c.kind === "write" || c.kind === "ddl" || c.opensWrite);
     const verb = classes[index]?.verb ?? "it";
-    throw new Refusal(`${conn.name} is read-only: statement ${index + 1} (${verb}) may change it.`);
+    throw new Refusal(
+      t("execute.isReadOnlyStatementMayChange", {
+        name: String(conn.name),
+        value: String(index + 1),
+        verb: String(verb),
+      }),
+    );
   }
   const own = at((c) => c.kind === "transaction");
   if (mode !== "run" && own >= 0) {
     throw new Refusal(
-      mode === "dry-run"
-        ? "A dry run rolls back at the end, so it cannot hold BEGIN, COMMIT or ROLLBACK."
-        : "Run in a transaction holds its own BEGIN and COMMIT: take them out of the script.",
+      mode === "dry-run" ? t("execute.aDryRunRollsBackAt") : t("execute.runInATransactionHoldsIts"),
     );
   }
   if (mode === "dry-run" && ddlCommits && at((c) => c.kind === "ddl") >= 0)
-    throw new Refusal("MySQL commits DDL at once, so a dry run cannot hold CREATE, ALTER or DROP.");
+    throw new Refusal(t("execute.mysqlCommitsDdlAtOnceSo"));
 }
 
 /** The authentication failure a run ended with, if any. */

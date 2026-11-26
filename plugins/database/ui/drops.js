@@ -4,6 +4,7 @@
 // action out.
 
 import { copyFormatOf as formatOf } from "./import-copy/wizard.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{ kind: "file", path: string, text?: string } | { kind: "text", text: string, name?: string }} Dropped
@@ -22,7 +23,7 @@ const SQLITE = /\.(?:sqlite3?|db3)$/iu;
 export function dropAction(/** @type {Dropped} */ item) {
   if (item.kind === "text") {
     if (item.text.trim() === "")
-      return { kind: "refuse", reason: "Nothing to put in the console." };
+      return { kind: "refuse", reason: t("drops.nothingToPutInTheConsole") };
     return { kind: "insert", text: item.text };
   }
   if (SQLITE.test(item.path)) return { kind: "visit", path: item.path };
@@ -34,6 +35,6 @@ export function dropAction(/** @type {Dropped} */ item) {
   if (format) return { kind: "import", path: item.path, format };
   return {
     kind: "refuse",
-    reason: `${item.path}: drop a .sql file, a .csv, .tsv, .json, .jsonl or .xlsx file, SQL text, or a SQLite database.`,
+    reason: t("drops.dropASqlFileACsv", { path: String(item.path) }),
   };
 }

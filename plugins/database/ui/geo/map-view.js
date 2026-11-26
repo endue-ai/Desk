@@ -293,7 +293,7 @@ export function createMaps(doc, act, startWorker) {
       if (!view) return Promise.resolve();
       const { width, height } = surface.size();
       const [x, y] = toData(view, px, py, width, height);
-      return pick({ op: "pick", x, y, tolerance: 4 / view.scale, kx: view.kx });
+      return pick({ op: t("geo.mapView.pick"), x, y, tolerance: 4 / view.scale, kx: view.kx });
     },
     step: (delta) => void pick(() => ({ op: "step", from: on?.link.picked ?? -1, delta })),
     showInGrid: () => void picking.then(showInGrid),

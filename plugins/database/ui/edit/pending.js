@@ -9,6 +9,7 @@
 
 import { literalFor } from "../cell-editors/values.js";
 import { qualified } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { planTables, rowsRefusal, whereOf } from "./tables.js";
 import { isDefault, literal } from "./values.js";
 
@@ -64,16 +65,15 @@ export function countChanges(/** @type {Changes} */ changes) {
  * @param {string} [missing] Why no target was found, when there is none.
  */
 export function refusalOf(conn, target, missing = "") {
-  if (conn.readOnly) return `${conn.name} is read-only: its rows cannot be changed here.`;
-  if (!target)
-    return missing || "Only one table's rows can be changed: this result does not come from one.";
+  if (conn.readOnly) return t("edit.pending.isReadOnlyItsRowsCannot", { name: String(conn.name) });
+  if (!target) return missing || t("edit.pending.onlyOneTableSRowsCan");
   if (target.tables) {
     if (target.columns.some((c) => c.known)) return "";
     const whys = [...new Set(target.columns.map((c) => c.why ?? "").filter(Boolean))];
     return `No cell of this result can change. ${whys.slice(0, 3).join(" ")}`.trim();
   }
   if (target.key.length === 0)
-    return `${target.name} has no primary key, so its rows cannot be told apart: edits are refused.`;
+    return t("edit.pending.hasNoPrimaryKeySoIts", { name: String(target.name) });
   return "";
 }
 
@@ -109,7 +109,10 @@ export function targetOf(dialect, table, resultColumns, tableColumns) {
   const lacking = primary.filter((_, i) => (key[i] ?? -1) < 0).map((c) => c.name);
   if (lacking.length)
     return {
-      reason: `The result lacks ${lacking.join(", ")} of ${table.name}'s primary key: add it to change rows.`,
+      reason: t("edit.pending.theResultLacksOfSPrimary", {
+        value: String(lacking.join(", ")),
+        name: String(table.name),
+      }),
     };
   return { target: { dialect, schema: table.schema, name: table.name, columns, key }, reason: "" };
 }
@@ -146,22 +149,23 @@ export function editCell(changes, target, set, row, col, value) {
   if (!column?.known)
     throw new Error(
       column?.why ||
-        `${column?.name ?? "This"} is not a column of ${target.name}: it cannot change.`,
+        t("edit.pending.isNotAColumnOfIt", {
+          value: String(column?.name ?? t("edit.pending.this")),
+          name: String(target.name),
+        }),
     );
   if (column.editor?.fixed) throw new Error(column.editor.fixed);
   if (isDefault(value) && target.dialect === "sqlite" && row < set.rows.length)
-    throw new Error(
-      `SQLite cannot set a column to DEFAULT in an UPDATE: type ${column.name}'s value instead.`,
-    );
+    throw new Error(t("edit.pending.sqliteCannotSetAColumnTo", { name: String(column.name) }));
   if (row >= set.rows.length) {
     const added = changes.inserts[row - set.rows.length];
-    if (!added) throw new Error("That row is gone.");
+    if (!added) throw new Error(t("edit.pending.thatRowIsGone"));
     added[col] = value;
     return;
   }
-  if (changes.deletes.has(row)) throw new Error("That row is deleted: restore it first.");
+  if (changes.deletes.has(row)) throw new Error(t("edit.pending.thatRowIsDeletedRestoreIt"));
   const original = set.rows[row];
-  if (!original) throw new Error("That row is gone.");
+  if (!original) throw new Error(t("edit.pending.thatRowIsGone"));
   if (target.tables) whereOf(target, column.table ?? 0, original);
   else keyOf(target, original);
   const update = changes.updates.get(row) ?? new Map();
@@ -285,13 +289,13 @@ export function planChanges(target, set, changes) {
 /** The WHERE of a row: each primary key column equal to its value. A NULL key cannot be matched. */
 function keyOf(/** @type {Target} */ target, /** @type {(string | null)[]} */ row) {
   if (target.key.length === 0)
-    throw new Error(`${target.name} has no primary key: edits are refused.`);
+    throw new Error(t("edit.pending.hasNoPrimaryKeyEditsAre", { name: String(target.name) }));
   return target.key
     .map((c) => {
       const column = target.columns[c];
       const v = row[c] ?? null;
       if (v === null)
-        throw new Error(`This row's ${column?.name} is NULL, so it cannot be told apart.`);
+        throw new Error(t("edit.pending.thisRowSIsNullSo", { value: String(column?.name) }));
       return `${qualified(target.dialect, "", column?.name ?? "")} = ${literal(target.dialect, v, column?.type ?? "")}`;
     })
     .join(" AND ");

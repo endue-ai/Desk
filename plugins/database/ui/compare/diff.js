@@ -7,6 +7,7 @@
 // comparison's worker (worker.js) or, small, in place (client.js). Only relative imports. No DOM.
 
 import { columnKeys } from "../grid/columns.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {{ columns: string[], rows: (string | null)[][] }} Side
@@ -47,7 +48,13 @@ export function tooLarge(
   ])) {
     const cells = side.rows.length * side.columns.length;
     if (cells > max)
-      return `Too large to compare: the result ${name} has ${count(cells)} cells (${count(side.rows.length)} rows of ${count(side.columns.length)} columns), and a comparison takes at most ${count(max)} cells a side. Narrow both queries to fewer rows or columns and compare again.`;
+      return t("compare.diff.tooLargeToCompareTheResult", {
+        name: String(name),
+        value: String(count(cells)),
+        value2: String(count(side.rows.length)),
+        value3: String(count(side.columns.length)),
+        value4: String(count(max)),
+      });
   }
   return "";
 }
@@ -73,7 +80,8 @@ export function compareSets(before, after, key, { keep = KEEP } = {}) {
   const onlyAfter = now.filter((name) => !was.includes(name));
   const keyed = (key ?? []).length > 0;
   for (const name of key ?? [])
-    if (!common.includes(name)) throw new Error(`The key ${name} is not a column of both results.`);
+    if (!common.includes(name))
+      throw new Error(t("compare.diff.theKeyIsNotAColumn", { name: String(name) }));
   // Where each difference column is in each result (-1: not there).
   const union = [...common, ...onlyBefore, ...onlyAfter];
   const fromBefore = union.map((name) => was.indexOf(name));

@@ -6,6 +6,7 @@
 
 import { keepColumns, readColumns } from "../../grid/columns.js";
 import { menuLabel, OPS } from "../../grid/filters.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -21,7 +22,7 @@ function gridOf(/** @type {Deps} */ deps) {
   const grid = deps.view.grid;
   return (/** @type {string} */ op, /** @type {Record<string, unknown>} */ args = {}) => {
     const done = grid?.(op, args);
-    if (done === undefined) throw new Error("No result is on screen: run a query or open a table.");
+    if (done === undefined) throw new Error(t("features.grid.index.noResultIsOnScreenRun"));
     if (typeof done === "string" && done) deps.say(done);
     return done;
   };
@@ -31,12 +32,12 @@ function gridOf(/** @type {Deps} */ deps) {
 async function showColumn(/** @type {Deps} */ deps, /** @type {unknown} */ column) {
   const grid = gridOf(deps);
   const shape = /** @type {{ hidden: string[] }} */ (grid("columns"));
-  if (shape.hidden.length === 0) throw new Error("No column of this result is hidden.");
+  if (shape.hidden.length === 0) throw new Error(t("features.grid.index.noColumnOfThisResultIs"));
   const chosen =
     typeof column === "string"
       ? column
       : await deps.pick(
-          "Database: show which column?",
+          t("features.grid.index.databaseShowWhichColumn"),
           shape.hidden.map((key) => ({ id: key, label: key })),
         );
   if (!chosen) return undefined;
@@ -48,7 +49,7 @@ async function contains(/** @type {Deps} */ deps, /** @type {unknown} */ value) 
   const text =
     typeof value === "string"
       ? value
-      : await deps.pick("Database: keep the rows whose cell contains", [], true, "text");
+      : await deps.pick(t("features.grid.index.databaseKeepTheRowsWhoseCell"), [], true, "text");
   if (text === undefined || text === "") return undefined;
   return gridOf(deps)("filter", { op: "contains", value: text });
 }
@@ -59,12 +60,14 @@ async function filterByCell(/** @type {Deps} */ deps, /** @type {Record<string, 
     typeof args.op === "string"
       ? args.op
       : await deps.pick(
-          "Database: keep the rows whose cell is",
+          t("features.grid.index.databaseKeepTheRowsWhoseCell2"),
           OPS.map((id) => ({ id, label: menuLabel(id, "the cell's value", false) })),
         );
   if (!op) return undefined;
   if (!OPS.includes(/** @type {FilterOp} */ (op)))
-    throw new Error(`Database: a filter is one of ${OPS.join(", ")}.`);
+    throw new Error(
+      t("features.grid.index.databaseAFilterIsOneOf", { value: String(OPS.join(", ")) }),
+    );
   if (op === "contains") return contains(deps, args.value);
   return gridOf(deps)("filter", { op });
 }

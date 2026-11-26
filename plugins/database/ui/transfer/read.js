@@ -6,6 +6,7 @@
 
 import { ddlQueries } from "../schema/postgres.js";
 import { quoteText } from "../sql/quote.js";
+import { t as messageText } from "../strings/index.js";
 import { keyOf } from "./ddl.js";
 
 /**
@@ -67,7 +68,13 @@ export async function readTable(execute, conn, table) {
   const [columns = [], constraints = [], indexes = [], triggers = [], meta = [], keys = []] =
     await read(execute, conn, [...queries, foreignKeysSql(table.schema, table.name)]);
   if (meta.length === 0)
-    throw new Error(`${conn.name} has no table ${table.schema}.${table.name}.`);
+    throw new Error(
+      messageText("transfer.read.hasNoTable", {
+        name: String(conn.name),
+        schema: String(table.schema),
+        name2: String(table.name),
+      }),
+    );
   return {
     ...table,
     columns,
@@ -150,6 +157,6 @@ export async function describeQuery(execute, conn, sql) {
     execution.result.statements[0]
   );
   const columns = outcome?.described?.columns;
-  if (!columns?.length) throw new Error("The statement answers no rows: copy a query's result.");
+  if (!columns?.length) throw new Error(messageText("transfer.read.theStatementAnswersNoRowsCopy"));
   return columns.map((c) => ({ name: c.name, type: c.type }));
 }

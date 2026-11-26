@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // A PostgreSQL connection's SSH tunnel (PG-10, ADR 0359), checked before it is kept: the SSH host,
 // its port and user, how it signs in (a key file the core reads, the SSH agent, or a password asked
 // when the server wants it), and an optional jump host written `user@host:port`, which signs in as
@@ -30,9 +31,14 @@ function text(
   /** @type {number} */ max,
 ) {
   if (value === undefined || value === null) return "";
-  if (typeof value !== "string") throw new Error(`${field}: text expected.`);
-  if (/[\n\r\0]/u.test(value)) throw new Error(`${field}: one line, please.`);
-  if (value.length > max) throw new Error(`${field}: at most ${max} characters.`);
+  if (typeof value !== "string")
+    throw new Error(t("tunnel.fields.textExpected", { field: String(field) }));
+  if (/[\n\r\0]/u.test(value))
+    throw new Error(t("tunnel.fields.oneLinePlease", { field: String(field) }));
+  if (value.length > max)
+    throw new Error(
+      t("tunnel.fields.atMostCharacters", { field: String(field), max: String(max) }),
+    );
   return value.trim();
 }
 
@@ -41,7 +47,7 @@ function port(/** @type {string} */ field, /** @type {unknown} */ value) {
   if (value === undefined || value === null || `${value}` === "") return undefined;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 65535)
-    throw new Error(`${field}: a number from 1 to 65535.`);
+    throw new Error(t("tunnel.fields.aNumberFromTo", { field: String(field) }));
   return n;
 }
 
@@ -52,12 +58,12 @@ function port(/** @type {string} */ field, /** @type {unknown} */ value) {
  */
 export function jumpOf(written, user) {
   const match = /^(?:([^@\s]+)@)?([^:@\s]+)(?::(\d+))?$/u.exec(written);
-  if (!match) throw new Error("Jump host: user@host:port, like deploy@gate.example.com:22.");
+  if (!match) throw new Error(t("tunnel.fields.jumpHostUserHostPortLike"));
   const host = match[2] ?? "";
   if (!HOST.test(host))
-    throw new Error(`Jump host: ${host} is not a host name or an IPv4 address.`);
+    throw new Error(t("tunnel.fields.jumpHostIsNotAHost", { host: String(host) }));
   const who = match[1] ?? user;
-  if (!USER.test(who)) throw new Error("Jump host: the user has no spaces, @ or :.");
+  if (!USER.test(who)) throw new Error(t("tunnel.fields.jumpHostTheUserHasNo"));
   return { host, port: port("Jump host", match[3]) ?? 22, user: who };
 }
 
@@ -71,23 +77,22 @@ export function tunnelOf(raw, conn) {
   if (conn.engine !== "postgresql") return {};
   const host = text("SSH host", raw.sshHost, 253);
   if (!host) return {};
-  if (!HOST.test(host)) throw new Error("SSH host: a host name or an IPv4 address.");
+  if (!HOST.test(host)) throw new Error(t("tunnel.fields.sshHostAHostNameOr"));
   const user = text("SSH user", raw.sshUser, 256);
-  if (!user) throw new Error("SSH user: who signs in on the SSH host.");
-  if (!USER.test(user)) throw new Error("SSH user: no spaces, @ or :.");
+  if (!user) throw new Error(t("tunnel.fields.sshUserWhoSignsInOn"));
+  if (!USER.test(user)) throw new Error(t("tunnel.fields.sshUserNoSpacesOr"));
   const auth = raw.sshAuth === undefined || raw.sshAuth === "" ? "key" : raw.sshAuth;
   if (!SSH_AUTH.includes(/** @type {never} */ (auth)))
-    throw new Error("Sign in with: a key file, the SSH agent or a password.");
+    throw new Error(t("tunnel.fields.signInWithAKeyFile"));
   /** @type {Partial<Pick<Connection, typeof TUNNEL[number]>>} */
   const out = { sshHost: host, sshUser: user, sshAuth: /** @type {"key"} */ (auth) };
   const sshPort = port("SSH port", raw.sshPort);
   if (sshPort !== undefined) out.sshPort = sshPort;
   const key = text("SSH key file", raw.sshKey, 1024);
   if (auth === "key") {
-    if (!key)
-      throw new Error("SSH key file: the private key to sign in with, like ~/.ssh/id_ed25519.");
+    if (!key) throw new Error(t("tunnel.fields.sshKeyFileThePrivateKey"));
     if (!/^(\/|~\/|[A-Za-z]:[\\/])/u.test(key))
-      throw new Error("SSH key file: a full path, starting with / or ~/.");
+      throw new Error(t("tunnel.fields.sshKeyFileAFullPath"));
     out.sshKey = key;
   }
   const jump = text("Jump host", raw.sshJump, 512);

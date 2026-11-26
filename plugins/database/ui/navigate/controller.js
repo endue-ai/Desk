@@ -9,6 +9,7 @@
 import { problemModel } from "../diagnose/model.js";
 import { pathOf } from "../engines/pg-options.js";
 import { sqlParser } from "../sql/parse/client.js";
+import { t } from "../strings/index.js";
 import { cardOf } from "./card.js";
 import { findUsages } from "./find.js";
 import { aimAt, definitionOf } from "./target.js";
@@ -35,8 +36,8 @@ export const PANEL = "usages";
  */
 export const typePath = (/** @type {string[]} */ searchPath, /** @type {string} */ user) =>
   searchPath.flatMap((s) => (s === "$user" ? (user ? [user] : []) : [s]));
-const NOT_PG = "Go to definition, the card and usages read PostgreSQL consoles.";
-const NOTHING = "Put the caret on a name the schema holds, a CTE or an alias.";
+const NOT_PG = t("navigate.controller.goToDefinitionTheCardAnd");
+const NOTHING = t("navigate.controller.putTheCaretOnAName");
 
 /** What an aim is called on the status line and in the panel's title. */
 export function labelOf(/** @type {Aim} */ aim) {
@@ -61,7 +62,7 @@ export function createNavigator(deps, parser = sqlParser) {
     const view = deps.catalog.cache.view(conn);
     const model = problemModel(conn.id, view);
     const sql = parser();
-    if (!view || !model || !sql) return "The schema of this connection is not read yet.";
+    if (!view || !model || !sql) return t("navigate.controller.theSchemaOfThisConnectionIs");
     // The connection's search path and role (PG-12), else the server's default path.
     const options = pathOf(conn);
     const resolve = (/** @type {string} */ text) => sql.resolve(text, model, options);
@@ -98,7 +99,7 @@ export function createNavigator(deps, parser = sqlParser) {
       let chosen = overloads[0];
       if (overloads.length > 1) {
         const id = await deps.pick(
-          `Database: which ${aim.name}?`,
+          t("navigate.controller.databaseWhich", { name: String(aim.name) }),
           overloads.map((r, i) => ({
             id: String(i),
             label: `${r.name}(${r.args})`,
@@ -108,10 +109,13 @@ export function createNavigator(deps, parser = sqlParser) {
         if (id === undefined) return undefined;
         chosen = overloads[Number(id)];
       }
-      if (!chosen) throw new Error(`The schema cache does not hold ${labelOf(aim)}.`);
+      if (!chosen)
+        throw new Error(
+          t("navigate.controller.theSchemaCacheDoesNotHold", { value: String(labelOf(aim)) }),
+        );
       return run({ schema: aim.schema, name: `${chosen.name}(${chosen.args})`, kind: chosen.kind });
     }
-    deps.say(`${labelOf(aim)} is a schema: it has no definition to open.`);
+    deps.say(t("navigate.controller.isASchemaItHasNo", { value: String(labelOf(aim)) }));
     return undefined;
   };
 
@@ -141,7 +145,9 @@ export function createNavigator(deps, parser = sqlParser) {
       }
       const { shown } = found;
       if (hit.aim.kind === "cte" || hit.aim.kind === "alias" || hit.aim.kind === "output") {
-        deps.say(`${hit.aim.name} is defined in this statement: F12 goes to it.`);
+        deps.say(
+          t("navigate.controller.isDefinedInThisStatementF12", { name: String(hit.aim.name) }),
+        );
         return null;
       }
       const state = {
@@ -163,7 +169,13 @@ export function createNavigator(deps, parser = sqlParser) {
       try {
         const done = await reading;
         deps.consoles.updatePanel(panel.id, { ...state, ...done, status: "done" });
-        deps.say(`${done.items.length} usage${done.items.length === 1 ? "" : "s"} of ${state.of}.`);
+        deps.say(
+          t("navigate.controller.usageOf", {
+            length: String(done.items.length),
+            value: String(done.items.length === 1 ? "" : t("navigate.controller.s")),
+            of: String(state.of),
+          }),
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         deps.consoles.updatePanel(panel.id, { ...state, status: "error", error: message });
@@ -174,12 +186,13 @@ export function createNavigator(deps, parser = sqlParser) {
     /** A usage picked in the panel: its console with the name selected, or the object's DDL. */
     async open(/** @type {string} */ connection, /** @type {Usage} */ usage) {
       if (usage.console) {
-        if (!deps.consoles.show(usage.console)) throw new Error("That console was closed.");
+        if (!deps.consoles.show(usage.console))
+          throw new Error(t("navigate.controller.thatConsoleWasClosed"));
         deps.view.select(usage.from ?? 0, usage.to ?? 0);
         return undefined;
       }
       const conn = deps.manager.get(connection);
-      if (!conn) throw new Error("That connection is gone.");
+      if (!conn) throw new Error(t("navigate.controller.thatConnectionIsGone"));
       const ddl = (/** @type {Record<string, unknown>} */ args) =>
         deps.tools.ddl({ connection: conn.id, schema: usage.schema, ...args });
       if (usage.kind === "function" || usage.kind === "procedure")

@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // The diagram's map (PG-55): from MAP_FROM tables, the whole diagram small in a corner, every box
 // one shape of a single path and the view a frame over it; a press or a drag on it puts that spot
 // at the stage's centre. Hidden for a small diagram.
@@ -19,7 +21,7 @@ export function createMap(doc, host, jump) {
   const map = doc.createElementNS(SVG, "svg");
   map.setAttribute("class", "er-map");
   map.setAttribute("role", "img");
-  map.setAttribute("aria-label", "Map of the diagram: press to move the view there");
+  map.setAttribute("aria-label", t("features.diagram.minimap.mapOfTheDiagramPressTo"));
   map.setAttribute("preserveAspectRatio", "xMidYMid meet");
   const boxes = doc.createElementNS(SVG, "path");
   boxes.setAttribute("class", "er-map-boxes");

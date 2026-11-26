@@ -1,3 +1,5 @@
+import { t } from "../strings/index.js";
+
 // What a PostgreSQL session answers (db.*, ADR 0281) as a run's result: a statement's pages as one
 // result set with its columns' type OIDs and tables of origin, the rows the command tag counts, the
 // server's error with its SQLSTATE and its DETAIL, HINT, QUERY and CONTEXT lines as psql printed
@@ -122,7 +124,10 @@ export function pageNotices(/** @type {import("@endue-ai/bridge").DbPage | undef
   const skipped = page?.noticesSkipped ?? 0;
   if (skipped > 0)
     lines.push(
-      `${skipped} more notice${skipped === 1 ? " was" : "s were"} left out: a page keeps 10,000.`,
+      t("engines.pgResult.moreNoticeLeftOutAPage", {
+        skipped: String(skipped),
+        value: String(skipped === 1 ? t("engines.pgResult.was") : t("engines.pgResult.sWere")),
+      }),
     );
   return lines;
 }

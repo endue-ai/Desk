@@ -4,6 +4,7 @@
 // agent's call, named among the ones listed. No DOM.
 
 import { engineOf } from "../../engines/index.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -16,7 +17,10 @@ import { engineOf } from "../../engines/index.js";
 export function postgres(/** @type {Connection} */ conn) {
   if (conn.engine !== "postgresql")
     throw new Error(
-      `${conn.name} is ${engineOf(conn.engine).title}: functions and procedures run from a form on PostgreSQL connections.`,
+      t("features.routines.choose.isFunctionsAndProceduresRunFrom", {
+        name: String(conn.name),
+        title: String(engineOf(conn.engine).title),
+      }),
     );
   return conn;
 }
@@ -30,7 +34,8 @@ export function createChooser(deps) {
   const connection = async (/** @type {unknown} */ ref) => {
     if (typeof ref === "string" && ref !== "") {
       const conn = deps.manager.get(ref);
-      if (!conn) throw new Error(`No connection is named ${ref}.`);
+      if (!conn)
+        throw new Error(t("features.routines.choose.noConnectionIsNamed", { ref: String(ref) }));
       return postgres(conn);
     }
     const shown = deps.consoles.current();
@@ -38,10 +43,10 @@ export function createChooser(deps) {
     if (here?.engine === "postgresql") return here;
     const list = deps.manager.list().filter((c) => c.engine === "postgresql");
     if (list.length === 0)
-      throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+      throw new Error(t("features.routines.choose.noPostgresqlConnectionYetAddOne"));
     if (list.length === 1) return list[0];
     const picked = await deps.pick(
-      "Database: run a routine of which connection?",
+      t("features.routines.choose.databaseRunARoutineOfWhich"),
       list.map((c) => ({
         id: c.id,
         label: c.name,
@@ -63,15 +68,30 @@ export function createChooser(deps) {
     const name = first ? `${first.schema}.${first.name}` : "";
     const list = found.map((l) => `${l.schema}.${l.name}(${l.identity})`).join("; ");
     if (named !== undefined && matching.length === 0)
-      throw new Error(`${name} has no signature (${args.signature}): it has ${list}.`);
+      throw new Error(
+        t("features.routines.choose.hasNoSignatureItHas", {
+          name: String(name),
+          signature: String(args.signature),
+          list: String(list),
+        }),
+      );
     if (args.run === true)
-      throw new Error(`${name} has ${found.length} signatures: name one with signature (${list}).`);
+      throw new Error(
+        t("features.routines.choose.hasSignaturesNameOneWithSignature", {
+          name: String(name),
+          length: String(found.length),
+          list: String(list),
+        }),
+      );
     const picked = await deps.pick(
-      `Database: which signature of ${name}?`,
+      t("features.routines.choose.databaseWhichSignatureOf", { name: String(name) }),
       found.map((l) => ({
         id: l.oid,
         label: `${l.schema}.${l.name}(${l.identity})`,
-        detail: l.kind === "procedure" ? "procedure" : `returns ${l.result}`,
+        detail:
+          l.kind === "procedure"
+            ? t("features.routines.choose.procedure")
+            : t("features.routines.choose.returns", { result: String(l.result) }),
       })),
     );
     return found.find((l) => l.oid === picked);
@@ -92,12 +112,19 @@ export function createChooser(deps) {
       });
       if (found.length === 0)
         throw new Error(
-          `${conn.name} has no function or procedure ${schema ? `${schema}.` : ""}${args.name}.`,
+          t("features.routines.choose.hasNoFunctionOrProcedure", {
+            name: String(conn.name),
+            value: String(schema ? `${schema}.` : ""),
+            name2: String(args.name),
+          }),
         );
       return signature(found, args);
     }
     const all = await deps.reader.list(conn, { system });
-    if (all.length === 0) throw new Error(`${conn.name} has no functions or procedures.`);
+    if (all.length === 0)
+      throw new Error(
+        t("features.routines.choose.hasNoFunctionsOrProcedures", { name: String(conn.name) }),
+      );
     /** @type {Map<string, Listed[]>} */
     const names = new Map();
     for (const l of all) {
@@ -105,12 +132,14 @@ export function createChooser(deps) {
       names.set(key, [...(names.get(key) ?? []), l]);
     }
     const picked = await deps.pick(
-      "Database: run which function or procedure?",
+      t("features.routines.choose.databaseRunWhichFunctionOrProcedure"),
       [...names].map(([key, list]) => ({
         id: key,
         label: `${list[0]?.schema}.${list[0]?.name}`,
         detail:
-          list.length > 1 ? `${list.length} signatures` : `${list[0]?.kind} (${list[0]?.identity})`,
+          list.length > 1
+            ? t("features.routines.choose.signatures", { length: String(list.length) })
+            : `${list[0]?.kind} (${list[0]?.identity})`,
       })),
     );
     const chosen = picked ? names.get(picked) : undefined;

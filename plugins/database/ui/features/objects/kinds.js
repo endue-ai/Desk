@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // What each engine can do to each kind of object from the explorer (PG-52): a row per kind, with
 // the word its DDL names it by, the catalog its dependents are read from (PostgreSQL's pg_depend),
 // whether it is named on its table (a trigger, a constraint) or by its arguments (a routine), and
@@ -41,35 +43,45 @@ const routine = (/** @type {string} */ word) => ({
 const POSTGRES = /** @type {Record<string, KindSql>} */ ({
   table: {
     word: "TABLE",
-    label: "table",
+    label: t("features.objects.kinds.table"),
     catalog: "pg_class",
     ops: [...RELATION, "truncate", "generate"],
   },
   "foreign table": {
     word: "FOREIGN TABLE",
-    label: "foreign table",
+    label: t("features.objects.kinds.foreignTable"),
     catalog: "pg_class",
     ops: [...RELATION, "generate"],
   },
   view: {
     word: "VIEW",
-    label: "view",
+    label: t("features.objects.kinds.view"),
     catalog: "pg_class",
     ops: ["source", ...RELATION, "generate"],
   },
   "materialized view": {
     word: "MATERIALIZED VIEW",
-    label: "materialized view",
+    label: t("features.objects.kinds.materializedView"),
     catalog: "pg_class",
     ops: ["refresh", "source", ...RELATION, "generate"],
   },
-  sequence: { word: "SEQUENCE", label: "sequence", catalog: "pg_class", ops: RELATION },
+  sequence: {
+    word: "SEQUENCE",
+    label: t("features.objects.kinds.sequence"),
+    catalog: "pg_class",
+    ops: RELATION,
+  },
   function: routine("FUNCTION"),
   procedure: routine("PROCEDURE"),
-  index: { word: "INDEX", label: "index", catalog: "pg_class", ops: ["rename", "comment", "drop"] },
+  index: {
+    word: "INDEX",
+    label: t("features.objects.kinds.index"),
+    catalog: "pg_class",
+    ops: ["rename", "comment", "drop"],
+  },
   trigger: {
     word: "TRIGGER",
-    label: "trigger",
+    label: t("features.objects.kinds.trigger"),
     catalog: "pg_trigger",
     on: true,
     ops: ["source", "enable", "rename", "comment", "drop"],
@@ -82,7 +94,7 @@ const POSTGRES = /** @type {Record<string, KindSql>} */ ({
   constraint: constraint("constraint"),
   schema: {
     word: "SCHEMA",
-    label: "schema",
+    label: t("features.objects.kinds.schema"),
     catalog: "pg_namespace",
     ops: ["rename", "owner", "comment", "drop"],
   },
@@ -92,28 +104,77 @@ const POSTGRES = /** @type {Record<string, KindSql>} */ ({
 const MYSQL = /** @type {Record<string, KindSql>} */ ({
   table: {
     word: "TABLE",
-    label: "table",
+    label: t("features.objects.kinds.table"),
     ops: ["rename", "move", "comment", "drop", "truncate", "generate"],
   },
-  view: { word: "VIEW", label: "view", ops: ["source", "rename", "drop", "generate"] },
-  sequence: { word: "SEQUENCE", label: "sequence", ops: ["rename", "drop"] },
-  function: { word: "FUNCTION", label: "function", ops: ["comment", "drop", "generate"] },
-  procedure: { word: "PROCEDURE", label: "procedure", ops: ["comment", "drop", "generate"] },
-  event: { word: "EVENT", label: "event", ops: ["rename", "drop"] },
-  index: { word: "INDEX", label: "index", on: true, ops: ["rename", "drop"] },
-  trigger: { word: "TRIGGER", label: "trigger", ops: ["drop"] },
-  "primary key": { word: "PRIMARY KEY", label: "primary key", on: true, ops: ["drop"] },
-  unique: { word: "INDEX", label: "unique constraint", on: true, ops: ["drop"] },
-  check: { word: "CHECK", label: "check constraint", on: true, ops: ["drop"] },
-  "foreign key": { word: "FOREIGN KEY", label: "foreign key", on: true, ops: ["drop"] },
+  view: {
+    word: "VIEW",
+    label: t("features.objects.kinds.view"),
+    ops: ["source", "rename", "drop", "generate"],
+  },
+  sequence: {
+    word: "SEQUENCE",
+    label: t("features.objects.kinds.sequence"),
+    ops: ["rename", "drop"],
+  },
+  function: {
+    word: "FUNCTION",
+    label: t("features.objects.kinds.function"),
+    ops: ["comment", "drop", "generate"],
+  },
+  procedure: {
+    word: "PROCEDURE",
+    label: t("features.objects.kinds.procedure"),
+    ops: ["comment", "drop", "generate"],
+  },
+  event: { word: "EVENT", label: t("features.objects.kinds.event"), ops: ["rename", "drop"] },
+  index: {
+    word: "INDEX",
+    label: t("features.objects.kinds.index"),
+    on: true,
+    ops: ["rename", "drop"],
+  },
+  trigger: { word: "TRIGGER", label: t("features.objects.kinds.trigger"), ops: ["drop"] },
+  "primary key": {
+    word: "PRIMARY KEY",
+    label: t("features.objects.kinds.primaryKey"),
+    on: true,
+    ops: ["drop"],
+  },
+  unique: {
+    word: "INDEX",
+    label: t("features.objects.kinds.uniqueConstraint"),
+    on: true,
+    ops: ["drop"],
+  },
+  check: {
+    word: "CHECK",
+    label: t("features.objects.kinds.checkConstraint"),
+    on: true,
+    ops: ["drop"],
+  },
+  "foreign key": {
+    word: "FOREIGN KEY",
+    label: t("features.objects.kinds.foreignKey"),
+    on: true,
+    ops: ["drop"],
+  },
 });
 
 /** SQLite's: a table renamed, dropped or emptied; a view, an index and a trigger dropped. */
 const SQLITE = /** @type {Record<string, KindSql>} */ ({
-  table: { word: "TABLE", label: "table", ops: ["rename", "drop", "truncate", "generate"] },
-  view: { word: "VIEW", label: "view", ops: ["source", "drop", "generate"] },
-  index: { word: "INDEX", label: "index", ops: ["drop"] },
-  trigger: { word: "TRIGGER", label: "trigger", ops: ["drop"] },
+  table: {
+    word: "TABLE",
+    label: t("features.objects.kinds.table"),
+    ops: ["rename", "drop", "truncate", "generate"],
+  },
+  view: {
+    word: "VIEW",
+    label: t("features.objects.kinds.view"),
+    ops: ["source", "drop", "generate"],
+  },
+  index: { word: "INDEX", label: t("features.objects.kinds.index"), ops: ["drop"] },
+  trigger: { word: "TRIGGER", label: t("features.objects.kinds.trigger"), ops: ["drop"] },
 });
 
 /** @type {Record<import("../../engines/common.js").EngineId, Record<string, KindSql>>} */
@@ -123,16 +184,16 @@ export const ENGINE_NAMES = { postgresql: "PostgreSQL", mysql: "MySQL", sqlite: 
 
 /** What the menu calls each operation, and the verb a status line says it with. */
 export const OPS = /** @type {const} */ ({
-  source: { label: "Edit the source", done: "Opened the source of" },
-  refresh: { label: "Refresh…", done: "Refreshed" },
-  enable: { label: "Enable or disable…", done: "Changed" },
-  rename: { label: "Rename…", done: "Renamed" },
-  move: { label: "Move to another schema…", done: "Moved" },
-  owner: { label: "Change the owner…", done: "Changed the owner of" },
-  comment: { label: "Comment…", done: "Commented" },
-  truncate: { label: "Truncate…", done: "Truncated" },
-  drop: { label: "Drop…", done: "Dropped" },
-  generate: { label: "Generate SQL", done: "Generated SQL for" },
+  source: { label: t("features.objects.kinds.editTheSource"), done: "Opened the source of" },
+  refresh: { label: t("features.objects.kinds.refresh"), done: "Refreshed" },
+  enable: { label: t("features.objects.kinds.enableOrDisable"), done: "Changed" },
+  rename: { label: t("features.objects.kinds.rename"), done: "Renamed" },
+  move: { label: t("features.objects.kinds.moveToAnotherSchema"), done: "Moved" },
+  owner: { label: t("features.objects.kinds.changeTheOwner"), done: "Changed the owner of" },
+  comment: { label: t("features.objects.kinds.comment"), done: "Commented" },
+  truncate: { label: t("features.objects.kinds.truncate"), done: "Truncated" },
+  drop: { label: t("features.objects.kinds.drop"), done: "Dropped" },
+  generate: { label: t("features.objects.kinds.generateSql"), done: "Generated SQL for" },
 });
 
 /**
@@ -176,5 +237,10 @@ export function notOffered(
   const label = kindSql(engine, target.kind)?.label ?? target.kind;
   const what = OPS[op].label.replace(/…$/u, "");
   const ddl = op === "source" && target.kind !== "schema" ? ": d shows its DDL" : "";
-  return `${what} is not on ${ENGINE_NAMES[engine]} for a ${label}${ddl}.`;
+  return t("features.objects.kinds.isNotOnForA", {
+    what: String(what),
+    value: String(ENGINE_NAMES[engine]),
+    label: String(label),
+    ddl: String(ddl),
+  });
 }

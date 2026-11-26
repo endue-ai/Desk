@@ -4,6 +4,7 @@
 // Enter shows the picked row in the grid and Escape lets it go. Focus puts the map's keys on the
 // hint line. Mod chords are left to the desk.
 
+import { t } from "../strings/index.js";
 import { pan } from "./plane.js";
 
 /**
@@ -15,8 +16,7 @@ import { pan } from "./plane.js";
  * }} Handlers
  */
 
-export const HINTS =
-  "Drag or arrows pan · wheel, + and − zoom · 0 fits · N and P pick a row · Enter shows it in the grid";
+export const HINTS = t("geo.mapInput.dragOrArrowsPanWheelAnd");
 const CLICK = 3;
 
 /** @param {HTMLCanvasElement} canvas @param {Handlers} on */

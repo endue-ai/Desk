@@ -1,3 +1,5 @@
+import { t } from "./strings/index.js";
+
 // The plugin's features (features/index.js, features/README.md), each a folder that declares its
 // commands, its actions, its panels and its dialogs. A command answers through answer.js as the
 // built-in ones do (a failure on the status line, a cancel quiet), an action joins the view's
@@ -82,9 +84,14 @@ export function panelsOf(features) {
   const panels = {};
   for (const feature of features)
     for (const [type, panel] of Object.entries(feature.panels ?? {})) {
-      if (RESERVED.has(type)) throw new Error(`${feature.id}: ${type} is a built-in buffer's.`);
+      if (RESERVED.has(type))
+        throw new Error(
+          t("featureHost.isABuiltInBufferS", { id: String(feature.id), type: String(type) }),
+        );
       if (Object.hasOwn(panels, type))
-        throw new Error(`${feature.id}: the panel ${type} is taken.`);
+        throw new Error(
+          t("featureHost.thePanelIsTaken", { id: String(feature.id), type: String(type) }),
+        );
       panels[type] = panel;
     }
   return panels;
@@ -101,7 +108,9 @@ export function dialogsOf(features) {
   for (const feature of features)
     for (const [type, dialog] of Object.entries(feature.dialogs ?? {})) {
       if (Object.hasOwn(dialogs, type))
-        throw new Error(`${feature.id}: the dialog ${type} is taken.`);
+        throw new Error(
+          t("featureHost.theDialogIsTaken", { id: String(feature.id), type: String(type) }),
+        );
       dialogs[type] = dialog;
     }
   return dialogs;
@@ -121,7 +130,9 @@ export function registerFeatures(features, deps, { answer, taken }) {
     for (const [id, handler] of Object.entries(feature.commands?.(deps) ?? {})) answer(id, handler);
     for (const [name, fn] of Object.entries(feature.actions?.(deps) ?? {})) {
       if (taken.has(name) || Object.hasOwn(actions, name))
-        throw new Error(`${feature.id}: the action ${name} is taken.`);
+        throw new Error(
+          t("featureHost.theActionIsTaken", { id: String(feature.id), name: String(name) }),
+        );
       actions[name] = deps.guard(fn);
     }
   }

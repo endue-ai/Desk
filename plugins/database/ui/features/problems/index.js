@@ -7,6 +7,7 @@
 // Shift+F8 and Mod+. do; fix the SQL warning at the caret applies its fix.
 import { problemModel } from "../../diagnose/model.js";
 import { pathOf } from "../../engines/pg-options.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -39,7 +40,7 @@ function step(/** @type {Deps} */ deps, /** @type {Step} */ what) {
   const view = /** @type {{ problems?(what: Step): boolean }} */ (
     /** @type {unknown} */ (deps.view)
   );
-  if (!view.problems?.(what)) deps.say("Open a PostgreSQL console to see its SQL problems.");
+  if (!view.problems?.(what)) deps.say(t("features.problems.index.openAPostgresqlConsoleToSee"));
   return undefined;
 }
 

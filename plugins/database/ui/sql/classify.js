@@ -8,6 +8,7 @@
 // ADR 0328), which changes the server whatever its verb.
 
 import { copyOf, copyWrites } from "../copy/statement.js";
+import { t as messageText } from "../strings/index.js";
 import { wordsOf } from "./lexer.js";
 
 /**
@@ -168,9 +169,9 @@ function danger(
   /** @type {string[]} */ words,
 ) {
   if (verb === "DROP") return `DROP ${top[1] ?? ""} removes it for good.`.replace("  ", " ");
-  if (verb === "TRUNCATE") return "TRUNCATE removes every row.";
+  if (verb === "TRUNCATE") return messageText("sql.classify.truncateRemovesEveryRow");
   if ((verb === "DELETE" || verb === "UPDATE") && !top.includes("WHERE"))
-    return `${verb} without WHERE changes every row.`;
+    return messageText("sql.classify.withoutWhereChangesEveryRow", { verb: String(verb) });
   if (verb === "ALTER" && words.includes("DROP"))
     return "ALTER ... DROP removes part of it for good.";
   return "";
@@ -190,13 +191,13 @@ function opensWrite(
 /** What a client would do with this statement that it must not do here, or "". */
 function refusal(/** @type {Statement} */ statement, /** @type {Dialect} */ dialect) {
   if (dialect === "postgresql" && statement.text.startsWith("\\"))
-    return "psql meta-commands (\\...) do not run here; use the terminal.";
+    return messageText("sql.classify.psqlMetaCommandsDoNotRun");
   if (dialect === "sqlite" && statement.text.startsWith("."))
-    return "sqlite3 dot-commands (.tables, .import ...) do not run here; use the terminal.";
+    return messageText("sql.classify.sqlite3DotCommandsTablesImportDo");
   if (dialect === "postgresql" && copyOf(statement))
-    return "a COPY through standard input or output runs alone from a console, which asks for its file.";
+    return messageText("sql.classify.aCopyThroughStandardInputOr");
   if (dialect === "mysql" && statement.text.startsWith("\\"))
-    return "mysql client commands (\\...) do not run here; use the terminal.";
+    return messageText("sql.classify.mysqlClientCommandsDoNotRun");
   return "";
 }
 

@@ -1,3 +1,5 @@
+import { t } from "../strings/index.js";
+
 // The plain plane a map is drawn on (PG-46), with no tiles: where the view is (its centre, its
 // pixels per unit, and how much an x unit is narrowed for degrees, the cosine of the latitude it was
 // fitted at), fitting a box, zooming about a point and panning, the units an SRID's coordinates are
@@ -129,10 +131,13 @@ export function scaleBar(/** @type {View} */ v, /** @type {Units} */ units, max 
   const per = metres ?? 1 / v.scale;
   const length = round125(per * max);
   const px = length / per;
-  if (metres === null) return { px, label: `${fixed(length, length)} units` };
+  if (metres === null)
+    return { px, label: t("geo.plane.units", { value: String(fixed(length, length)) }) };
   return {
     px,
     label:
-      length >= 1000 ? `${fixed(length / 1000, length / 1000)} km` : `${fixed(length, length)} m`,
+      length >= 1000
+        ? t("geo.plane.km", { value: String(fixed(length / 1000, length / 1000)) })
+        : t("geo.plane.m", { value: String(fixed(length, length)) }),
   };
 }

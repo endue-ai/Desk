@@ -3,6 +3,7 @@
 // database does not declare, drawn between two tables and kept with the diagram, or taken away.
 // Asked in the palette when the command does not say. Never a change to the database (PG-51). No DOM.
 
+import { t as messageText } from "../../strings/index.js";
 import { labelOf } from "./layout.js";
 import { drawnName, idOf, neighbours, refOf } from "./model.js";
 
@@ -56,7 +57,7 @@ export function createEdits(deps, diagrams) {
         ...(t.comment ? { detail: t.comment } : {}),
       })),
     );
-    if (!picked) throw deps.cancelled("The diagram stays as it is.");
+    if (!picked) throw deps.cancelled(messageText("features.diagram.edit.theDiagramStaysAsItIs"));
     return refOf(picked);
   };
 
@@ -68,8 +69,12 @@ export function createEdits(deps, diagrams) {
       const graph = await diagrams.graphOf(t);
       const left = graph.tables.filter((x) => !shown.has(x.id));
       if (!left.length && table === undefined)
-        throw new Error("Every table read is shown: Database: add a schema to the ER diagram.");
-      const ref = await tableOf(table, left, "Database: add which table to the diagram?");
+        throw new Error(messageText("features.diagram.edit.everyTableReadIsShownDatabase"));
+      const ref = await tableOf(
+        table,
+        left,
+        messageText("features.diagram.edit.databaseAddWhichTableToThe"),
+      );
       await diagrams.redraw(t, (r) => ({
         ...r,
         added: has(r.added, ref) ? r.added : [...r.added, ref],
@@ -85,7 +90,7 @@ export function createEdits(deps, diagrams) {
       const ref = await tableOf(
         table,
         graph.tables.filter((x) => shown.has(x.id)),
-        "Database: remove which table from the diagram?",
+        messageText("features.diagram.edit.databaseRemoveWhichTableFromThe"),
       );
       await diagrams.redraw(t, (r) => ({
         ...r,
@@ -106,7 +111,7 @@ export function createEdits(deps, diagrams) {
       const ref = await tableOf(
         table,
         graph.tables.filter((x) => shown.has(x.id)),
-        "Database: add the neighbours of which table?",
+        messageText("features.diagram.edit.databaseAddTheNeighboursOfWhich"),
       );
       const n = depth === undefined ? 1 : await diagrams.depth(depth);
       const near = [...neighbours(graph, idOf(...ref), n)].map(refOf);
@@ -116,7 +121,11 @@ export function createEdits(deps, diagrams) {
         added: [...r.added, ...fresh.filter((x) => !has(r.added, x))],
         removed: r.removed.filter((x) => !has(near, x)),
       }));
-      deps.say(fresh.length ? `Added ${fresh.length} tables.` : "Its neighbours are all shown.");
+      deps.say(
+        fresh.length
+          ? messageText("features.diagram.edit.addedTables", { length: String(fresh.length) })
+          : messageText("features.diagram.edit.itsNeighboursAreAllShown"),
+      );
       return fresh.length;
     },
     /** Add every table of another schema. */
@@ -128,10 +137,10 @@ export function createEdits(deps, diagrams) {
         typeof schema === "string" && all.includes(schema)
           ? schema
           : await deps.pick(
-              "Database: add which schema's tables to the diagram?",
+              messageText("features.diagram.edit.databaseAddWhichSchemaSTables"),
               left.map((s) => ({ id: s, label: s })),
             );
-      if (!picked) throw deps.cancelled("The diagram stays as it is.");
+      if (!picked) throw deps.cancelled(messageText("features.diagram.edit.theDiagramStaysAsItIs"));
       await diagrams.redraw(
         t,
         (r) => ({
@@ -148,8 +157,16 @@ export function createEdits(deps, diagrams) {
       const t = diagrams.target(id);
       const graph = await diagrams.graphOf(t);
       const shown = graph.tables.filter((x) => shownOf(t).has(x.id));
-      const from = await tableOf(args.from, shown, "Database: draw a relation from which table?");
-      const to = await tableOf(args.to, shown, `Database: ${from[1]} refers to which table?`);
+      const from = await tableOf(
+        args.from,
+        shown,
+        messageText("features.diagram.edit.databaseDrawARelationFromWhich"),
+      );
+      const to = await tableOf(
+        args.to,
+        shown,
+        messageText("features.diagram.edit.databaseRefersToWhichTable", { value: String(from[1]) }),
+      );
       const list = (/** @type {unknown} */ v) =>
         Array.isArray(v)
           ? v.map(String)
@@ -161,8 +178,17 @@ export function createEdits(deps, diagrams) {
         list(args.columns) ??
         list(
           await deps.pick(
-            `Database: which columns of ${from[1]} refer to ${to[1]}? (none: leave empty)`,
-            [{ id: " ", label: "No columns", detail: "Table to table" }],
+            messageText("features.diagram.edit.databaseWhichColumnsOfReferTo", {
+              value: String(from[1]),
+              value2: String(to[1]),
+            }),
+            [
+              {
+                id: " ",
+                label: messageText("features.diagram.edit.noColumns"),
+                detail: messageText("features.diagram.edit.tableToTable"),
+              },
+            ],
             true,
             "customer_id",
           ),
@@ -172,23 +198,32 @@ export function createEdits(deps, diagrams) {
         list(args.refColumns) ?? target?.columns.filter((c) => c.primary).map((c) => c.name) ?? [];
       const drawn = { from, to, columns, refColumns };
       await diagrams.redraw(t, (r) => ({ ...r, drawn: [...r.drawn, drawn] }));
-      deps.say(`Drew ${drawnName(drawn)}, kept with this diagram and not in the database.`);
+      deps.say(
+        messageText("features.diagram.edit.drewKeptWithThisDiagramAnd", {
+          value: String(drawnName(drawn)),
+        }),
+      );
       return drawnName(drawn);
     },
     /** Take away a relation the person drew. */
     async unrelate(/** @type {unknown} */ id, /** @type {unknown} */ which) {
       const t = diagrams.target(id);
       const drawn = t.state.record.drawn;
-      if (!drawn.length) throw new Error("This diagram has no drawn relations.");
+      if (!drawn.length)
+        throw new Error(messageText("features.diagram.edit.thisDiagramHasNoDrawnRelations"));
       const names = drawn.map(drawnName);
       const picked =
         typeof which === "string" && names.includes(which)
           ? which
           : await deps.pick(
-              "Database: remove which drawn relation?",
-              names.map((name) => ({ id: name, label: name, detail: "Not in the database" })),
+              messageText("features.diagram.edit.databaseRemoveWhichDrawnRelation"),
+              names.map((name) => ({
+                id: name,
+                label: name,
+                detail: messageText("features.diagram.edit.notInTheDatabase"),
+              })),
             );
-      if (!picked) throw deps.cancelled("The diagram stays as it is.");
+      if (!picked) throw deps.cancelled(messageText("features.diagram.edit.theDiagramStaysAsItIs"));
       await diagrams.redraw(t, (r) => ({
         ...r,
         drawn: r.drawn.filter((d) => drawnName(d) !== picked),

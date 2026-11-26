@@ -1,3 +1,5 @@
+import { t } from "../../strings/index.js";
+
 // What `pg_restore --list` says of an archive: its header (format, the database it was made from,
 // the server's and pg_dump's versions) and its entries, one a line, `<id>; <table oid> <oid> <kind>
 // <schema or -> <name> <owner>`. A kind may hold spaces (TABLE DATA, FK CONSTRAINT), so the known
@@ -85,5 +87,9 @@ export function errorWords(/** @type {string} */ stderr, /** @type {string} */ p
     (l) => l.startsWith(`${program}: error:`) || /^(?:FATAL|ERROR):/u.test(l),
   );
   const said = errors.length ? errors : lines.filter(Boolean).slice(-1);
-  return said.map((l) => l.replace(new RegExp(`^${program}: (?:error: )?`, "u"), "")).join(" ");
+  return said
+    .map((l) =>
+      l.replace(new RegExp(t("features.backup.toc.error", { program: String(program) }), "u"), ""),
+    )
+    .join(" ");
 }

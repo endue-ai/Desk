@@ -10,6 +10,7 @@
 // the list is being asked again, it waits for the answer and takes its first option (a new line
 // when nothing is offered).
 
+import { t } from "../strings/index.js";
 import {
   acceptCompletion,
   autocompletion,
@@ -132,7 +133,7 @@ export function sqlCompletion(act) {
     );
     if (context.aborted) return null;
     if (!found || found.items.length === 0) {
-      if (context.explicit) act("say", "Nothing to complete here.");
+      if (context.explicit) act("say", t("editor.completion.nothingToCompleteHere"));
       return null;
     }
     return {

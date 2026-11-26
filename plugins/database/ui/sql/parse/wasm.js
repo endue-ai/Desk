@@ -4,6 +4,8 @@
 // PL/pgSQL's own tree of its body or its grammar's message out (the problems read it, ADR 0343). No
 // DOM and no fetch: the caller hands over the wasm, so the same module runs in the parse worker and
 // in Node for the tests.
+
+import { t } from "../../strings/index.js";
 import PgQueryModule from "../../vendor/libpg-query.mjs";
 
 /**
@@ -58,17 +60,17 @@ export async function loadLibpgQuery(wasm) {
   return {
     broken: () => broken,
     scan(text) {
-      if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
+      if (broken) throw new Error(t("sql.parse.wasm.theSqlParserStoppedItStarts"));
       const sent = sendable(text);
       if (sent.trim() === "") return { tokens: [] };
       const size = module.lengthBytesUTF8(sent) + 1;
       const input = module._malloc(size);
-      if (!input) throw new Error("The SQL parser is out of memory.");
+      if (!input) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
       let result = 0;
       try {
         module.stringToUTF8(sent, input, size);
         result = module._wasm_scan(input);
-        if (!result) throw new Error("The SQL parser is out of memory.");
+        if (!result) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
         const answer = module.UTF8ToString(result);
         // The scanner answers its tokens as JSON, or its message as plain text.
         if (!answer.startsWith("{")) return { error: answer };
@@ -86,16 +88,16 @@ export async function loadLibpgQuery(wasm) {
       }
     },
     plpgsql(text) {
-      if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
+      if (broken) throw new Error(t("sql.parse.wasm.theSqlParserStoppedItStarts"));
       const sent = sendable(text);
       const size = module.lengthBytesUTF8(sent) + 1;
       const input = module._malloc(size);
-      if (!input) throw new Error("The SQL parser is out of memory.");
+      if (!input) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
       let result = 0;
       try {
         module.stringToUTF8(sent, input, size);
         result = module._wasm_parse_plpgsql(input);
-        if (!result) throw new Error("The SQL parser is out of memory.");
+        if (!result) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
         const answer = module.UTF8ToString(result);
         // The routines' trees as JSON, or the grammar's message as plain text.
         if (!answer.startsWith("{")) return { error: answer };
@@ -113,29 +115,29 @@ export async function loadLibpgQuery(wasm) {
       }
     },
     parse(text) {
-      if (broken) throw new Error("The SQL parser stopped; it starts again on the next parse.");
+      if (broken) throw new Error(t("sql.parse.wasm.theSqlParserStoppedItStarts"));
       const sent = sendable(text);
       const size = module.lengthBytesUTF8(sent) + 1;
       const input = module._malloc(size);
-      if (!input) throw new Error("The SQL parser is out of memory.");
+      if (!input) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
       let result = 0;
       try {
         module.stringToUTF8(sent, input, size);
         result = module._wasm_parse_query_raw(input);
-        if (!result) throw new Error("The SQL parser is out of memory.");
+        if (!result) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
         const failed = module.getValue(result + RESULT_ERROR, "i32");
         if (failed) {
           const message = module.UTF8ToString(module.getValue(failed, "i32"));
           return { error: { message, cursor: module.getValue(failed + ERROR_CURSOR, "i32") } };
         }
         const tree = module.getValue(result, "i32");
-        if (!tree) throw new Error("The SQL parser is out of memory.");
+        if (!tree) throw new Error(t("sql.parse.wasm.theSqlParserIsOutOf"));
         return { tree: JSON.parse(module.UTF8ToString(tree)) };
       } catch (error) {
         if (error instanceof SyntaxError) throw error;
         broken = true;
         if (error instanceof RangeError)
-          throw new Error("The script nests too deeply for the SQL parser.", { cause: error });
+          throw new Error(t("sql.parse.wasm.theScriptNestsTooDeeplyFor"), { cause: error });
         throw error;
       } finally {
         if (!broken) {

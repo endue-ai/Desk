@@ -9,6 +9,7 @@ import { problemModel } from "../diagnose/model.js";
 import { aimAt } from "../navigate/target.js";
 import { sqlParser } from "../sql/parse/client.js";
 import { split, statementAt } from "../sql/split.js";
+import { t } from "../strings/index.js";
 import { extractCte, inlineCte } from "./cte.js";
 import { renameLocal, targetAt } from "./local.js";
 import { factsOf, partsOf, renameOf } from "./object.js";
@@ -25,8 +26,8 @@ import { typed } from "./syntax.js";
  */
 
 const SEARCH_PATH = ["$user", "public"];
-const NOT_PG = "Rename, extract, inline and qualify read PostgreSQL consoles.";
-const NOTHING = "Put the caret on a name the schema holds, a CTE, an alias or a parameter.";
+const NOT_PG = t("refactor.controller.renameExtractInlineAndQualifyRead");
+const NOTHING = t("refactor.controller.putTheCaretOnAName");
 
 /** The statement at the caret of a console's text. @returns {Window | null} */
 export function windowOf(/** @type {string} */ text, /** @type {number} */ caret) {
@@ -53,16 +54,18 @@ export function createRefactor(deps, parser = sqlParser) {
   const here = async () => {
     const shown = deps.consoles.current();
     const conn = shown ? deps.manager.get(shown.connection) : undefined;
-    if (!shown || !conn || shown.kind !== "console") throw new Error("Open a console first.");
+    if (!shown || !conn || shown.kind !== "console")
+      throw new Error(t("refactor.controller.openAConsoleFirst"));
     if (conn.engine !== "postgresql") throw new Error(NOT_PG);
     await deps.catalog.cache.open(conn, true).catch(() => undefined);
     const view = deps.catalog.cache.view(conn);
     const model = problemModel(conn.id, view);
     const sql = parser();
-    if (!view || !model || !sql) throw new Error("The schema of this connection is not read yet.");
+    if (!view || !model || !sql)
+      throw new Error(t("refactor.controller.theSchemaOfThisConnectionIs"));
     const { text, end } = deps.view.editor();
     const w = windowOf(text, end);
-    if (!w) throw new Error("The console holds no statement.");
+    if (!w) throw new Error(t("refactor.controller.theConsoleHoldsNoStatement"));
     const { names } = await sql.resolve(w.text, model, {
       searchPath: [...SEARCH_PATH],
       user: conn.user,
@@ -90,10 +93,15 @@ export function createRefactor(deps, parser = sqlParser) {
     const to =
       typeof given === "string"
         ? given
-        : await deps.pick(`Database: rename ${what} to?`, [], true, now);
+        : await deps.pick(
+            t("refactor.controller.databaseRenameTo", { what: String(what) }),
+            [],
+            true,
+            now,
+          );
     if (to === undefined) return undefined;
     const name = typed(to);
-    if (!name) throw new Error("Give the new name.");
+    if (!name) throw new Error(t("refactor.controller.giveTheNewName"));
     return name;
   };
 
@@ -120,7 +128,8 @@ export function createRefactor(deps, parser = sqlParser) {
       (s) => s.sets[0]?.rows ?? [],
     );
     const facts = factsOf(factRows);
-    if (!facts) throw new Error(`The server holds no ${aimLabel(aim)}.`);
+    if (!facts)
+      throw new Error(t("refactor.controller.theServerHoldsNo", { value: String(aimLabel(aim)) }));
     let overload = 0;
     if (aim.kind === "function" && facts.overloads.length > 1) {
       const given =
@@ -128,7 +137,7 @@ export function createRefactor(deps, parser = sqlParser) {
       overload = given;
       if (given < 0) {
         const id = await deps.pick(
-          `Database: which ${aim.name}?`,
+          t("refactor.controller.databaseWhich", { name: String(aim.name) }),
           facts.overloads.map(([a], i) => ({ id: String(i), label: `${aim.name}(${a})` })),
         );
         if (id === undefined) return undefined;
@@ -145,8 +154,11 @@ export function createRefactor(deps, parser = sqlParser) {
     deps.consoles.edited(script);
     deps.view.select(0, 0);
     deps.say(
-      `The rename's script is in a console, not run: ${parts.replaced.length} rewritten, ` +
-        `${parts.kept.length} follow by themselves, ${parts.checks.length} to check by hand.`,
+      t("refactor.controller.theRenameSScriptIsIn", { length: String(parts.replaced.length) }) +
+        t("refactor.controller.followByThemselvesToCheckBy", {
+          length: String(parts.kept.length),
+          length2: String(parts.checks.length),
+        }),
     );
     return {
       script,
@@ -179,7 +191,12 @@ export function createRefactor(deps, parser = sqlParser) {
       if (typeof done === "string") throw new Error(done);
       apply(w, done.text);
       deps.say(
-        `Renamed ${local.name} to ${to} in ${done.places} place${done.places === 1 ? "" : "s"}.`,
+        t("refactor.controller.renamedToInPlace", {
+          name: String(local.name),
+          to: String(to),
+          places: String(done.places),
+          value: String(done.places === 1 ? "" : t("refactor.controller.s")),
+        }),
       );
       return { text: done.text };
     },
@@ -188,7 +205,7 @@ export function createRefactor(deps, parser = sqlParser) {
     async renameNamed(/** @type {Record<string, unknown>} */ args) {
       const conn = await deps.manager.choose(
         typeof args.connection === "string" ? args.connection : undefined,
-        "Database: which connection?",
+        t("refactor.controller.databaseWhichConnection"),
       );
       if (!conn) return undefined;
       if (conn.engine !== "postgresql") throw new Error(NOT_PG);
@@ -211,7 +228,7 @@ export function createRefactor(deps, parser = sqlParser) {
                     name: s("name"),
                     relkind: kind,
                   };
-      if (!aim.name) throw new Error("Name the object to rename.");
+      if (!aim.name) throw new Error(t("refactor.controller.nameTheObjectToRename"));
       return renameObject(conn, aim, args);
     },
 
@@ -231,7 +248,7 @@ export function createRefactor(deps, parser = sqlParser) {
       }
       if (typeof done === "string") throw new Error(done);
       apply(w, done.text);
-      deps.say(`The subquery is the CTE ${done.name}.`);
+      deps.say(t("refactor.controller.theSubqueryIsTheCte", { name: String(done.name) }));
       return { text: done.text };
     },
 
@@ -240,11 +257,11 @@ export function createRefactor(deps, parser = sqlParser) {
       const { w, names } = await here();
       const target = targetAt(w.text, names, w.caret);
       if (!target || !("local" in target) || target.local.kind !== "cte")
-        throw new Error("Put the caret on a CTE's name.");
+        throw new Error(t("refactor.controller.putTheCaretOnACte"));
       const done = inlineCte(w.text, names, target.local.at);
       if (typeof done === "string") throw new Error(done);
       apply(w, done.text);
-      deps.say(`${done.name} is inlined.`);
+      deps.say(t("refactor.controller.isInlined", { name: String(done.name) }));
       return { text: done.text };
     },
 
@@ -256,7 +273,13 @@ export function createRefactor(deps, parser = sqlParser) {
       const unsure = done.unsure
         ? `; ${done.unsure} left as written: their FROM item could not be told`
         : "";
-      deps.say(`${done.places} name${done.places === 1 ? "" : "s"} qualified${unsure}.`);
+      deps.say(
+        t("refactor.controller.nameQualified", {
+          places: String(done.places),
+          value: String(done.places === 1 ? "" : t("refactor.controller.s")),
+          unsure: String(unsure),
+        }),
+      );
       return { text: done.text };
     },
   };

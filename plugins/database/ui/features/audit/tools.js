@@ -11,6 +11,7 @@ import { paramsOf } from "../../editor/params.js";
 import { engineOf } from "../../engines/index.js";
 import { classify, readsOnly } from "../../sql/classify.js";
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { MASK, namesOn } from "./mask.js";
 import { readOnly } from "./run.js";
 import { explainSql, objectsOf, PREPARED, SESSIONS_SQL, sampleSql, statsSql } from "./sql.js";
@@ -35,16 +36,25 @@ export function agentTools(deps, agents) {
   /** The connection an agent names, on the database it names (PostgreSQL). */
   const named = (/** @type {unknown} */ ref, /** @type {unknown} */ database) => {
     const conn = typeof ref === "string" ? deps.manager.get(ref) : undefined;
-    if (!conn) throw new Error(`No connection is named ${String(ref)}.`);
+    if (!conn)
+      throw new Error(
+        t("features.audit.tools.noConnectionIsNamed", { value: String(String(ref)) }),
+      );
     if (typeof database !== "string" || !database) return conn;
     if (conn.engine !== "postgresql")
-      throw new Error(`${conn.name} is not PostgreSQL: name its schema instead of a database.`);
+      throw new Error(
+        t("features.audit.tools.isNotPostgresqlNameItsSchema", { name: String(conn.name) }),
+      );
     return onDatabase(conn, database);
   };
   const postgres = (/** @type {Connection} */ conn, /** @type {string} */ what) => {
     if (conn.engine !== "postgresql")
       throw new Error(
-        `${what} reads PostgreSQL's catalog: ${conn.name} is a ${engineOf(conn.engine).title} connection.`,
+        t("features.audit.tools.readsPostgresqlSCatalogIsA", {
+          what: String(what),
+          name: String(conn.name),
+          title: String(engineOf(conn.engine).title),
+        }),
       );
   };
   /** The one statement an agent hands in. */
@@ -52,12 +62,15 @@ export function agentTools(deps, agents) {
     const dialect = engineOf(conn.engine).dialect;
     const statements = split(typeof sql === "string" ? sql : "", dialect);
     if (statements.length !== 1)
-      throw new Error(`Hand in one statement: this SQL holds ${statements.length}.`);
+      throw new Error(
+        t("features.audit.tools.handInOneStatementThisSql", { length: String(statements.length) }),
+      );
     const statement = /** @type {import("../../sql/split.js").Statement} */ (statements[0]);
     return { text: statement.text, class: classify(statement, dialect) };
   };
   const text = (/** @type {unknown} */ value, /** @type {string} */ what) => {
-    if (typeof value !== "string" || !value) throw new Error(`Name the ${what}.`);
+    if (typeof value !== "string" || !value)
+      throw new Error(t("features.audit.tools.nameThe", { what: String(what) }));
     return value;
   };
 
@@ -69,12 +82,17 @@ export function agentTools(deps, agents) {
       if (analyze) {
         if (!(await agents.access.of(conn.id)).analyze)
           throw new Error(
-            `EXPLAIN ANALYZE runs the statement: the person has not allowed it for agents on ${conn.name}.`,
+            t("features.audit.tools.explainAnalyzeRunsTheStatementThe", {
+              name: String(conn.name),
+            }),
           );
-        if (conn.engine === "sqlite") throw new Error("SQLite has no EXPLAIN ANALYZE.");
+        if (conn.engine === "sqlite")
+          throw new Error(t("features.audit.tools.sqliteHasNoExplainAnalyze"));
         if (!readsOnly([statement.class]))
           throw new Error(
-            `EXPLAIN ANALYZE runs the statement, and an agent's runs only a read: this one is ${statement.class.verb}.`,
+            t("features.audit.tools.explainAnalyzeRunsTheStatementAnd", {
+              verb: String(statement.class.verb),
+            }),
           );
       }
       const sql = explainSql(conn.engine, statement.text, analyze);
@@ -100,7 +118,14 @@ export function agentTools(deps, agents) {
       const objects = await deps.catalog.objects(readOnly(conn), schema, true);
       const kind = typeof args.kind === "string" ? args.kind : "";
       const object = objects.find((o) => o.name === name && (!kind || o.kind === kind));
-      if (!object) throw new Error(`${schema} has no ${kind || "object"} named ${name}.`);
+      if (!object)
+        throw new Error(
+          t("features.audit.tools.hasNoNamed", {
+            schema: String(schema),
+            value: String(kind || t("features.audit.tools.object")),
+            name: String(name),
+          }),
+        );
       const ddl = await deps.catalog.ddl(readOnly(conn), object);
       agents.gate.note(args, "endue.database.object-ddl", {
         connection: conn.id,
@@ -155,7 +180,13 @@ export function agentTools(deps, agents) {
       const failed = failureOf(done);
       if (failed) throw new Error(failed);
       const [size, columns] = done.result.statements.map((s) => objectsOf(s.sets[0]));
-      if (!size?.[0]) throw new Error(`${schema} has no table named ${table}.`);
+      if (!size?.[0])
+        throw new Error(
+          t("features.audit.tools.hasNoTableNamed", {
+            schema: String(schema),
+            table: String(table),
+          }),
+        );
       const names = namesOn((await agents.access.of(conn.id)).sensitive, schema, table);
       const hidden = ["most_common_vals", "histogram_bounds"];
       return {
@@ -190,7 +221,10 @@ export function agentTools(deps, agents) {
       if (!PREPARED.has(statement.class.verb))
         return {
           checked: false,
-          why: `PostgreSQL checks without running only ${[...PREPARED].join(", ")}: this statement is ${statement.class.verb || "unknown"}.`,
+          why: t("features.audit.tools.postgresqlChecksWithoutRunningOnlyThis", {
+            value: String([...PREPARED].join(", ")),
+            value2: String(statement.class.verb || t("features.audit.tools.unknown")),
+          }),
         };
       const sent = numbered(statement.text, paramsOf(statement.text, "postgresql"));
       const done = await agents.runs.read(conn, statement.text, {

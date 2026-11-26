@@ -4,6 +4,7 @@
 // only when the person says so (run.js), or opened in a console. The models stay here, not in the
 // panel's state. No DOM.
 
+import { t as messageText } from "../../strings/index.js";
 import { compareIn } from "./client.js";
 import { openSnapshot, readFolder } from "./files.js";
 import { modelOfFiles, schemaOfFiles } from "./folder.js";
@@ -150,9 +151,11 @@ export function createSchemaCompare(deps) {
       const off = cancelled(error) || stop.signal.aborted;
       update(id, {
         status: off ? "cancelled" : "failed",
-        error: off ? "Cancelled: nothing was compared." : words(error),
+        error: off
+          ? messageText("features.compareSchema.controller.cancelledNothingWasCompared")
+          : words(error),
       });
-      if (off) throw deps.cancelled("Not compared.");
+      if (off) throw deps.cancelled(messageText("features.compareSchema.controller.notCompared"));
       throw error;
     } finally {
       if (mine(id).stop === stop) delete mine(id).stop;
@@ -200,7 +203,8 @@ export function createSchemaCompare(deps) {
     toConsole: run.toConsole,
     cancel(/** @type {string} */ id) {
       const stop = held.get(id)?.stop;
-      if (!stop) throw new Error("Nothing is being read.");
+      if (!stop)
+        throw new Error(messageText("features.compareSchema.controller.nothingIsBeingRead"));
       stop.abort();
     },
     choose(/** @type {string} */ id, /** @type {string[]} */ keys, /** @type {boolean} */ on) {
@@ -218,7 +222,9 @@ export function createSchemaCompare(deps) {
     shown() {
       const here = deps.consoles.current();
       if (here?.kind !== TYPE)
-        throw new Error("No comparison on screen: open one with Database: compare two schemas.");
+        throw new Error(
+          messageText("features.compareSchema.controller.noComparisonOnScreenOpenOne"),
+        );
       return here.id;
     },
   };
@@ -237,6 +243,6 @@ export function summaryOf(/** @type {SchemaState} */ s) {
     script: s.script?.text ?? "",
     ...(s.script?.held.length ? { held: s.script.held } : {}),
     ...(s.notes.length ? { notes: s.notes } : {}),
-    run: "The person reads the script in the panel and runs it there.",
+    run: messageText("features.compareSchema.controller.thePersonReadsTheScriptIn"),
   };
 }

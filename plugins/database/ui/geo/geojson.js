@@ -2,6 +2,7 @@
 // when none is named, as RFC 7946 has it), a Feature's geometry, and collections nested. A third
 // ordinate is Z. Pure; the map's worker runs it (geo/engine.js).
 
+import { t } from "../strings/index.js";
 import { absorb, geometry } from "./geometry.js";
 
 /** @typedef {import("./geometry.js").Geometry} Geometry */
@@ -39,7 +40,7 @@ export function readGeoJson(value) {
   try {
     object = typeof value === "string" ? JSON.parse(value) : value;
   } catch {
-    throw new Error("Not a geometry: the text is not JSON.");
+    throw new Error(t("geo.geojson.notAGeometryTheTextIs"));
   }
   if (object?.type === "Feature") {
     const inner = object.geometry
@@ -55,12 +56,13 @@ export function readGeoJson(value) {
 /** @returns {Geometry} */
 function read(/** @type {any} */ object) {
   const type = object?.type;
-  if (!TYPES.has(type)) throw new Error(`Not a geometry: ${String(type)} is not a GeoJSON type.`);
+  if (!TYPES.has(type))
+    throw new Error(t("geo.geojson.notAGeometryIsNotA", { value: String(String(type)) }));
   const g = geometry(type);
   /** A position into a flat run. */
   const position = (/** @type {unknown} */ p, /** @type {number[]} */ into) => {
     if (!Array.isArray(p) || p.length < 2 || typeof p[0] !== "number" || typeof p[1] !== "number")
-      throw new Error("Not a geometry: a position needs x and y.");
+      throw new Error(t("geo.geojson.notAGeometryAPositionNeeds"));
     if (p.length > 2) g.z = true;
     into.push(p[0], p[1]);
     g.vertices++;
@@ -93,6 +95,6 @@ function read(/** @type {any} */ object) {
 
 /** A list, or an error that says the value is not one. */
 function array(/** @type {unknown} */ value) {
-  if (!Array.isArray(value)) throw new Error("Not a geometry: coordinates are not a list.");
+  if (!Array.isArray(value)) throw new Error(t("geo.geojson.notAGeometryCoordinatesAreNot"));
   return value;
 }

@@ -6,6 +6,7 @@
 import { sizeText as size } from "../console-files.js";
 import { baseName } from "../console-list.js";
 import { wordsOf } from "../sql/lexer.js";
+import { t as messageText } from "../strings/index.js";
 import { fileSink, fileSource } from "./files.js";
 
 /**
@@ -46,12 +47,15 @@ export function barOf(direction, name, progress) {
   // Nothing moved yet reads as nothing, not as the smallest size sizeText names.
   const sizeText = (/** @type {number} */ n) => (n === 0 ? "0 KiB" : size(n));
   if (direction === "out")
-    return { label: `COPY to ${name}`, detail: `${sizeText(bytes)} written` };
+    return {
+      label: messageText("copy.console.copyTo", { name: String(name) }),
+      detail: messageText("copy.console.written", { value: String(sizeText(bytes)) }),
+    };
   const of = total ? ` of ${sizeText(total)}` : "";
   return {
-    label: `COPY from ${name}`,
+    label: messageText("copy.console.copyFrom", { name: String(name) }),
     ...(total ? { value: bytes, max: total } : {}),
-    detail: `${sizeText(bytes)}${of} sent`,
+    detail: messageText("copy.console.sent", { value: String(sizeText(bytes)), of: String(of) }),
   };
 }
 
@@ -84,7 +88,7 @@ export function createConsoleCopies(bridge, view) {
     async ask(conn, statement, direction) {
       if (direction === "out") {
         const chosen = await bridge.call("dialog.save", {
-          title: `Save the rows of the COPY on ${conn.name}`,
+          title: messageText("copy.console.saveTheRowsOfTheCopy", { name: String(conn.name) }),
           suggestedName: copyName(statement),
         });
         if (chosen.cancelled || !chosen.path) return undefined;
@@ -96,7 +100,7 @@ export function createConsoleCopies(bridge, view) {
         };
       }
       const chosen = await bridge.call("dialog.open", {
-        title: `The file whose rows the COPY on ${conn.name} reads`,
+        title: messageText("copy.console.theFileWhoseRowsTheCopy", { name: String(conn.name) }),
       });
       const path = chosen.cancelled ? undefined : chosen.paths?.[0];
       if (!path) return undefined;

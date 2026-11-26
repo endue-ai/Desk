@@ -6,6 +6,7 @@
 // the grid are asked about first. The header's database button calls the same action.
 
 import { homeOf, onDatabase, ownDatabase } from "../../databases.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -20,11 +21,11 @@ async function ask(
   const own = ownDatabase(home);
   const others = (await deps.catalog.databases(home)).map((d) => d.name).filter((n) => n !== own);
   return deps.pick(
-    `Database: move it to which database of ${home.name}?`,
+    t("features.databases.index.databaseMoveItToWhichDatabase", { name: String(home.name) }),
     [own, ...others].map((name) => ({
       id: name,
       label: `${name === here ? "✓ " : ""}${name}`,
-      detail: name === own ? "the connection's" : "",
+      detail: name === own ? t("features.databases.index.theConnectionS") : "",
     })),
   );
 }
@@ -33,11 +34,13 @@ async function ask(
 async function switchTo(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
   const shown = deps.consoles.current();
   if (shown?.kind !== "console" && shown?.kind !== "table")
-    throw new Error("Open a console or a table first: they run on a database.");
+    throw new Error(t("features.databases.index.openAConsoleOrATable"));
   const conn = deps.manager.get(shown.connection);
-  if (!conn) throw new Error("This console has no connection yet: run it to pick one.");
+  if (!conn) throw new Error(t("features.databases.index.thisConsoleHasNoConnectionYet"));
   if (conn.engine !== "postgresql")
-    throw new Error(`${conn.name} is not PostgreSQL: its databases are the explorer's schemas.`);
+    throw new Error(
+      t("features.databases.index.isNotPostgresqlItsDatabasesAre", { name: String(conn.name) }),
+    );
   const home = homeOf(conn);
   const here = ownDatabase(conn);
   const picked =
@@ -46,7 +49,7 @@ async function switchTo(/** @type {Deps} */ deps, /** @type {Record<string, unkn
       : await ask(deps, home, here);
   if (picked === undefined) return undefined;
   if (picked !== here) await deps.consoles.rebind(shown, onDatabase(home, picked));
-  deps.say(`On ${picked} of ${home.name}.`);
+  deps.say(t("features.databases.index.onOf", { picked: String(picked), name: String(home.name) }));
   return picked;
 }
 

@@ -6,6 +6,7 @@
 // dialog. A taken proposal goes into the console; nothing is ever run here.
 
 import { engineOf } from "../../engines/index.js";
+import { t } from "../../strings/index.js";
 import { checkWithServer, marksOf } from "./check.js";
 import { contextOf, editOf, offerOf } from "./context.js";
 import { factsOf, promptOf, sampleAllowed } from "./payload.js";
@@ -32,10 +33,10 @@ import { schemaFor } from "./scope.js";
  */
 
 const TITLES = /** @type {Record<Task, string>} */ ({
-  write: "Eris proposes a statement",
-  explain: "Eris explains the statement",
-  fix: "Eris proposes a fix",
-  plan: "Eris explains the plan",
+  write: t("features.assist.flow.erisProposesAStatement"),
+  explain: t("features.assist.flow.erisExplainsTheStatement"),
+  fix: t("features.assist.flow.erisProposesAFix"),
+  plan: t("features.assist.flow.erisExplainsThePlan"),
 });
 
 /**
@@ -51,9 +52,9 @@ export function createAssist(deps, { brain, choices }) {
   const consoleOf = () => {
     const shown = deps.consoles.current();
     if (shown?.kind !== "console")
-      throw new Error("Open a console first: Eris helps with the SQL in a console.");
+      throw new Error(t("features.assist.flow.openAConsoleFirstErisHelps"));
     const conn = deps.manager.get(shown.connection);
-    if (!conn) throw new Error("This console has no connection: pick one first.");
+    if (!conn) throw new Error(t("features.assist.flow.thisConsoleHasNoConnectionPick"));
     return { shown, conn };
   };
 
@@ -93,7 +94,7 @@ export function createAssist(deps, { brain, choices }) {
       connection: conn.name,
       prompt: p.plain,
       withSample: p.withSample,
-      sampleWhy: p.withSample ? "" : "The console has no rows from a last run to take a sample of.",
+      sampleWhy: p.withSample ? "" : t("features.assist.flow.theConsoleHasNoRowsFrom"),
       sample: choice.sample,
       production: conn.tag === "production",
       productionOn: choice.production,
@@ -125,32 +126,32 @@ export function createAssist(deps, { brain, choices }) {
     let choice = await choices.of(conn.id);
     if (choice.closed)
       throw new Error(
-        `${conn.name} is closed to Eris: nothing is sent from it (Database: open this connection to Eris).`,
+        t("features.assist.flow.isClosedToErisNothingIs", { name: String(conn.name) }),
       );
     let request = "";
     if (task === "write") {
       request =
         args.sentence ??
         (await deps.pick(
-          "Eris: what should the statement do?",
+          t("features.assist.flow.erisWhatShouldTheStatementDo"),
           [],
           true,
           "a sentence, in your words",
         )) ??
         "";
-      if (!request.trim()) throw deps.cancelled("Nothing was asked.");
+      if (!request.trim()) throw deps.cancelled(t("features.assist.flow.nothingWasAsked"));
     }
     const editor = deps.view.editor();
     const p = await prompts(task, shown, conn, request);
     if (!choice.shown) {
       const answer = await deps.dialog("assist-sent", sentModel("first", conn, choice, p));
-      if (!answer) throw deps.cancelled("Nothing was sent to Eris.");
+      if (!answer) throw deps.cancelled(t("features.assist.flow.nothingWasSentToEris"));
       choice = await keep(conn, answer, true);
     }
     const sample = choice.sample && p.withSample && sampleAllowed(conn, choice).ok;
     const prompt = sample ? p.withSample : p.plain;
     last.set(shown.id, { plain: p.plain, withSample: p.withSample });
-    deps.say("Asking Eris…");
+    deps.say(t("features.assist.flow.askingEris"));
     const asked = await brain.ask(prompt, task);
     if (!asked.ok) throw new Error(asked.text);
     const answer =
@@ -164,13 +165,16 @@ export function createAssist(deps, { brain, choices }) {
       suggestion: text(answer.suggestion),
     };
     const offered = offerOf(task, checked);
-    if (!offered.trim()) throw new Error("Eris gave nothing to propose: the console is as it was.");
+    if (!offered.trim()) throw new Error(t("features.assist.flow.erisGaveNothingToProposeThe"));
     const proposes = task === "write" || task === "fix";
     const server = proposes
       ? await checkWithServer(deps, conn, offered)
       : checked.suggestion
         ? await checkWithServer(deps, conn, checked.suggestion)
-        : { state: /** @type {const} */ ("unchecked"), text: "An explanation: nothing to check." };
+        : {
+            state: /** @type {const} */ ("unchecked"),
+            text: t("features.assist.flow.anExplanationNothingToCheck"),
+          };
     const marks = marksOf(conn, offered);
     /** @type {ProposalModel} */
     const model = {
@@ -192,15 +196,15 @@ export function createAssist(deps, { brain, choices }) {
       await deps.dialog("assist-proposal", model)
     );
     if (!taken || typeof taken.text !== "string") {
-      deps.say("Eris's proposal is put aside: the console is as it was.");
+      deps.say(t("features.assist.flow.erisSProposalIsPutAside"));
       return "put aside";
     }
     if (deps.consoles.current()?.id !== shown.id || deps.view.editor().text !== editor.text)
-      throw new Error("The console changed while Eris answered: ask again.");
+      throw new Error(t("features.assist.flow.theConsoleChangedWhileErisAnswered"));
     const edit = editOf(p.ctx, editor.text, taken.text);
     deps.view.replace(edit.from, edit.to, edit.text);
     deps.view.select(edit.from, edit.from + edit.text.length);
-    const said = "Eris's proposal is in the console; nothing ran.";
+    const said = t("features.assist.flow.erisSProposalIsInThe");
     deps.say(said);
     return said;
   }
@@ -225,8 +229,8 @@ export function createAssist(deps, { brain, choices }) {
       const { conn } = consoleOf();
       await choices.set(conn.id, { closed });
       const said = closed
-        ? `${conn.name} is closed to Eris: nothing is sent from it.`
-        : `${conn.name} is open to Eris again: what is sent is shown in Database: what this console sends to Eris.`;
+        ? t("features.assist.flow.isClosedToErisNothingIs2", { name: String(conn.name) })
+        : t("features.assist.flow.isOpenToErisAgainWhat", { name: String(conn.name) });
       deps.say(said);
       return said;
     },

@@ -10,6 +10,7 @@ import { check, oneLine } from "../../execute.js";
 import { formatCount } from "../../format.js";
 import { classify, readsOnly } from "../../sql/classify.js";
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { leakOf, maskSet, namesOf } from "./mask.js";
 
 /**
@@ -90,10 +91,12 @@ export function createAgentRuns(deps) {
       c.dangerous ? [`Statement ${i + 1}: ${c.dangerous}`] : [],
     );
     const reasons = [
-      "An agent asks to change data.",
-      ...(caller !== "desk" ? [`Asked by ${caller}.`] : []),
-      conn.tag === "none" ? `${conn.name} has no tag.` : `${conn.name} is tagged ${conn.tag}.`,
-      "For this run only: the next change asks again.",
+      t("features.audit.run.anAgentAsksToChangeData"),
+      ...(caller !== "desk" ? [t("features.audit.run.askedBy", { caller: String(caller) })] : []),
+      conn.tag === "none"
+        ? t("features.audit.run.hasNoTag", { name: String(conn.name) })
+        : t("features.audit.run.isTagged", { name: String(conn.name), tag: String(conn.tag) }),
+      t("features.audit.run.forThisRunOnlyTheNext"),
       ...dangerous,
       ...statements.slice(0, 3).map((s) => oneLine(s.text)),
       ...(statements.length > 3
@@ -102,7 +105,10 @@ export function createAgentRuns(deps) {
     ];
     const count =
       statements.length === 1 ? "this statement" : `${formatCount(statements.length)} statements`;
-    return deps.confirm(`Run ${count} on ${conn.name}?`, reasons);
+    return deps.confirm(
+      t("features.audit.run.runOn", { count: String(count), name: String(conn.name) }),
+      reasons,
+    );
   };
 
   /** Note each statement of a run on the call, and mask what it read. */
@@ -123,7 +129,7 @@ export function createAgentRuns(deps) {
         ? (outcome.affected ?? sets.reduce((n, set) => n + set.rows.length, 0))
         : null;
       const error = leak
-        ? `Not answered: it uses the sensitive column ${leak} other than by selecting it by name.`
+        ? t("features.audit.run.notAnsweredItUsesTheSensitive", { leak: String(leak) })
         : (outcome.error?.message ?? (result.error && !outcome.ran ? result.error.message : ""));
       notes.push({
         connection: done.conn.id,
@@ -151,7 +157,7 @@ export function createAgentRuns(deps) {
   const run = async (conn, sql, how) => {
     const engine = engineOf(conn.engine);
     const statements = split(sql, engine.dialect);
-    if (statements.length === 0) throw new Error("Nothing to run: the SQL holds no statement.");
+    if (statements.length === 0) throw new Error(t("features.audit.run.nothingToRunTheSqlHolds"));
     const classes = statements.map((s) => classify(s, engine.dialect));
     const { maxRows, timeoutMs } = limitsOf(deps.settings(), how.limits ?? {}, how.rows);
     const names = namesOf((await deps.access.of(conn.id)).sensitive);
@@ -171,7 +177,7 @@ export function createAgentRuns(deps) {
         asked: true,
         allowed: false,
       });
-      throw deps.cancelled("Not run.");
+      throw deps.cancelled(t("features.audit.run.notRun"));
     }
     const done = await timed(conn, sql, { ...base, asked: true }, timeoutMs);
     return finish(done, { ...how, asked: true, allowed: true }, names);

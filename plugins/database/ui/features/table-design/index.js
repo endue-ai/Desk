@@ -7,6 +7,7 @@
 // The explorer's row menu (features/objects/, tableEntries) opens it on a schema or a table.
 // controller.js reads and keeps the form, runs.js runs, script.js writes; panel.js draws.
 
+import { t as messageText } from "../../strings/index.js";
 import { createTableDesign, TYPE } from "./controller.js";
 import { tableDesignPanel } from "./panel.js";
 
@@ -30,8 +31,15 @@ const of = (/** @type {Deps} */ deps) => {
 /** What the explorer's row menu offers first for a PostgreSQL schema or table. */
 export function tableEntries(/** @type {Connection} */ conn, /** @type {Target} */ target) {
   if (conn.engine !== "postgresql") return [];
-  if (target.kind === "schema") return [{ id: "create-table", label: "New table…" }];
-  if (target.kind === "table") return [{ id: "change-table", label: "Change the table's design…" }];
+  if (target.kind === "schema")
+    return [{ id: "create-table", label: messageText("features.tableDesign.index.newTable") }];
+  if (target.kind === "table")
+    return [
+      {
+        id: "change-table",
+        label: messageText("features.tableDesign.index.changeTheTableSDesign"),
+      },
+    ];
   return [];
 }
 
@@ -56,31 +64,31 @@ async function chosen(
 ) {
   const conn = await deps.manager.choose(
     typeof args.connection === "string" ? args.connection : undefined,
-    "Database: which connection?",
+    messageText("features.tableDesign.index.databaseWhichConnection"),
   );
-  if (!conn) throw deps.cancelled("Nothing picked.");
+  if (!conn) throw deps.cancelled(messageText("features.tableDesign.index.nothingPicked"));
   if (conn.engine !== "postgresql")
-    throw new Error(
-      "The table form is PostgreSQL's: on MySQL and SQLite, write the CREATE or ALTER in a console.",
-    );
+    throw new Error(messageText("features.tableDesign.index.theTableFormIsPostgresqlS"));
   const schema =
     typeof args.schema === "string"
       ? args.schema
       : await deps.pick(
-          "Database: in which schema?",
+          messageText("features.tableDesign.index.databaseInWhichSchema"),
           (await deps.catalog.schemas(conn)).map((s) => ({ id: s, label: s })),
         );
-  if (!schema) throw deps.cancelled("Nothing picked.");
+  if (!schema) throw deps.cancelled(messageText("features.tableDesign.index.nothingPicked"));
   if (!table) return { conn, schema, name: "" };
   const tables = (await deps.catalog.objects(conn, schema)).filter((o) => o.kind === "table");
   const name =
     typeof args.name === "string"
       ? args.name
       : await deps.pick(
-          `Database: which table of ${schema}?`,
+          messageText("features.tableDesign.index.databaseWhichTableOf", {
+            schema: String(schema),
+          }),
           tables.map((t) => ({ id: t.name, label: t.name })),
         );
-  if (!name) throw deps.cancelled("Nothing picked.");
+  if (!name) throw deps.cancelled(messageText("features.tableDesign.index.nothingPicked"));
   return { conn, schema, name };
 }
 
@@ -103,7 +111,11 @@ export const feature = {
       "endue.database.table-design-console": () => forms.toConsole(forms.shown()),
       "endue.database.table-design-refresh": async () => {
         const read = await forms.refresh(forms.shown());
-        if (!read) throw new Error(forms.stateOf(forms.shown())?.error || "Not read.");
+        if (!read)
+          throw new Error(
+            forms.stateOf(forms.shown())?.error ||
+              messageText("features.tableDesign.index.notRead"),
+          );
         return { read: true };
       },
     };
@@ -121,6 +133,11 @@ export const feature = {
         forms.refs(id, schema, table),
     };
   },
-  panels: { [TYPE]: { label: "Table design", render: tableDesignPanel } },
+  panels: {
+    [TYPE]: {
+      label: messageText("features.tableDesign.index.tableDesign"),
+      render: tableDesignPanel,
+    },
+  },
   styles: [new URL("./table-design.css", import.meta.url).href],
 };

@@ -3,15 +3,16 @@
 // matches, and NOT IN over a list holding NULL or a subquery whose column the cache says can be
 // NULL, which no row passes once a NULL comes. Pure.
 import { fieldsOf, kindOf, listOf } from "../sql/parse/tree.js";
+import { t as messageText } from "../strings/index.js";
 import { isNull, opOf, partsOf } from "./warn-context.js";
 
 /** @typedef {import("./warn-context.js").WarnContext} WarnContext */
 
 const SAID = {
-  "=": "= NULL is never true, not even when the value is NULL: IS NULL tests for it.",
+  "=": messageText("diagnose.warnNull.nullIsNeverTrueNotEven"),
   "<>": "<> NULL is never true, whatever the value: IS NOT NULL tests for it.",
-  case: "CASE ... WHEN NULL never matches, since it compares with = NULL: CASE WHEN ... IS NULL tests for it.",
-  list: "NOT IN with a NULL in its list is never true: no row passes.",
+  case: messageText("diagnose.warnNull.caseWhenNullNeverMatchesSince"),
+  list: messageText("diagnose.warnNull.notInWithANullIn"),
 };
 
 /** IS NULL or IS NOT NULL, in the case the NULL was written in. */
@@ -40,7 +41,7 @@ export function nullComparison(/** @type {WarnContext} */ ctx) {
       const to = ctx.tokenEnd(at);
       const text = test(op, ctx.text.slice(at + 1, to + 1));
       ctx.put("null-comparison", { from, to }, message, {
-        title: `Use ${text.toUpperCase()}`,
+        title: messageText("diagnose.warnNull.use", { value: String(text.toUpperCase()) }),
         text,
       });
       return;
@@ -56,7 +57,7 @@ export function nullComparison(/** @type {WarnContext} */ ctx) {
     const span = ctx.refSpan(ref);
     const column = ctx.text.slice(span.from + 1, span.to + 1);
     const text = `${column} ${test(op, written)}`;
-    const title = `Use ${test(op, "NULL")}`;
+    const title = messageText("diagnose.warnNull.use", { value: String(test(op, "NULL")) });
     ctx.put("null-comparison", { from, to: span.to }, message, { title, text });
   });
 }
@@ -116,7 +117,10 @@ export function notInNull(/** @type {WarnContext} */ ctx) {
     ctx.put(
       "not-in-null",
       notInSpan(ctx, ctx.offsetOf(f.location ?? 0)),
-      `NOT IN is never true once its subquery returns a NULL, and ${column.relation}.${column.name} can be NULL: NOT EXISTS has no such trap.`,
+      messageText("diagnose.warnNull.notInIsNeverTrueOnce", {
+        relation: String(column.relation),
+        name: String(column.name),
+      }),
     );
   });
 }

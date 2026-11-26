@@ -11,6 +11,7 @@
 import { placed } from "../editor/bind.js";
 import { controlOf } from "../session/transaction-words.js";
 import { classify } from "../sql/classify.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./common.js").RunResult} RunResult
@@ -218,8 +219,7 @@ export function createCursors({ script, kept = () => [] }) {
         return {
           error: {
             kind: "client",
-            message:
-              "The rows past those held are gone: the console ran something else, or its session ended.",
+            message: t("engines.pgCursor.theRowsPastThoseHeldAre"),
           },
         };
       const from = "all" in ask ? undefined : ask.from;
@@ -239,12 +239,14 @@ export function createCursors({ script, kept = () => [] }) {
       const last = ran.statements.at(-1);
       const failure =
         ran.statements.find((s) => s.error)?.error ??
-        (job.cancelled ? { kind: "cancelled", message: "Cancelled." } : undefined);
+        (job.cancelled
+          ? { kind: "cancelled", message: t("engines.pgCursor.cancelled") }
+          : undefined);
       if (failure || !last?.ran) {
         await lost(job, plan, held, entry.sessionId);
         return {
           error: /** @type {DbError} */ (
-            failure ?? { kind: "client", message: "The rows could not be read." }
+            failure ?? { kind: "client", message: t("engines.pgCursor.theRowsCouldNotBeRead") }
           ),
         };
       }

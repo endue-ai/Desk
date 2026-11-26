@@ -8,6 +8,7 @@
 import { engineOf } from "../../engines/index.js";
 import { oneLine } from "../../execute.js";
 import { keepable } from "../../history.js";
+import { t } from "../../strings/index.js";
 import { agentsOf } from "../audit/agents.js";
 import { MASK, namesOf } from "../audit/mask.js";
 import { formatValue } from "./format.js";
@@ -27,9 +28,10 @@ const HIDDEN = "<insufficient privilege>";
 async function forAgent(/** @type {Deps} */ deps, /** @type {unknown} */ ref) {
   const conn = typeof ref === "string" ? deps.manager.get(ref) : undefined;
   if (conn?.engine !== "postgresql")
-    throw new Error("Name a PostgreSQL connection for the overview.");
+    throw new Error(t("features.overview.index.nameAPostgresqlConnectionForThe"));
   const access = await agentsOf(deps.bridge)?.access.of(conn.id);
-  if (access?.closed) throw new Error(`${conn.name} is closed to agents.`);
+  if (access?.closed)
+    throw new Error(t("features.overview.index.isClosedToAgents", { name: String(conn.name) }));
   const sensitive = namesOf(access?.sensitive ?? []);
   const quiet = (
     /** @type {Connection} */ c,
@@ -78,10 +80,17 @@ function createOverview(deps) {
   /** A connection named, else the one whose overview is on screen, else one picked. */
   const target = async (/** @type {unknown} */ ref, shownFirst = true) => {
     if (typeof ref === "string" && ref) return manager.choose(ref, "");
-    if (!shownFirst) return manager.choose(undefined, "Database: overview of which connection?");
+    if (!shownFirst)
+      return manager.choose(
+        undefined,
+        t("features.overview.index.databaseOverviewOfWhichConnection"),
+      );
     const shown = consoles.current();
     const conn = shown?.kind === TYPE ? manager.get(shown.connection) : undefined;
-    return conn ?? manager.choose(undefined, "Database: overview of which connection?");
+    return (
+      conn ??
+      manager.choose(undefined, t("features.overview.index.databaseOverviewOfWhichConnection"))
+    );
   };
 
   /** Read a connection's overview into its panel, opening the panel the first time. */
@@ -90,9 +99,13 @@ function createOverview(deps) {
     if (!conn) return undefined;
     if (conn.engine !== "postgresql")
       throw new Error(
-        `The overview reads PostgreSQL's statistics: ${conn.name} is a ${engineOf(conn.engine).title} connection.`,
+        t("features.overview.index.theOverviewReadsPostgresqlSStatistics", {
+          name: String(conn.name),
+          title: String(engineOf(conn.engine).title),
+        }),
       );
-    if (reading.has(conn.id)) return `The overview of ${conn.name} is being read.`;
+    if (reading.has(conn.id))
+      return t("features.overview.index.theOverviewOfIsBeingRead", { name: String(conn.name) });
     reading.add(conn.id);
     const { failed: _, ...before } = /** @type {OverviewState} */ (
       bufferOf(conn.id)?.[TYPE] ?? {
@@ -112,7 +125,7 @@ function createOverview(deps) {
       consoles.updatePanel(shown.id, state);
       const failed = state.sections.filter((s) => s.failed).length;
       const said = `Read ${state.sections.length - failed} of ${state.sections.length} sections of ${conn.name}${
-        failed ? `; ${failed} could not be read.` : "."
+        failed ? t("features.overview.index.couldNotBeRead", { failed: String(failed) }) : "."
       }`;
       deps.say(said);
       return said;
@@ -131,7 +144,9 @@ function createOverview(deps) {
     if (!conn) return undefined;
     const state = /** @type {OverviewState | undefined} */ (bufferOf(conn.id)?.[TYPE]);
     if (!state?.server)
-      throw new Error(`Read the overview of ${conn.name} first (Database: server overview).`);
+      throw new Error(
+        t("features.overview.index.readTheOverviewOfFirstDatabase", { name: String(conn.name) }),
+      );
     return { conn, state };
   };
 
@@ -145,17 +160,23 @@ function createOverview(deps) {
     let section = named
       ? state.sections.find((s) => s.id === named || s.title.toLowerCase() === named)
       : undefined;
-    if (named && !section) throw new Error(`The overview has no section ${id}.`);
+    if (named && !section)
+      throw new Error(t("features.overview.index.theOverviewHasNoSection", { id: String(id) }));
     if (!section) {
       const picked = await deps.pick(
-        "Database: open which section in the console?",
+        t("features.overview.index.databaseOpenWhichSectionInThe"),
         runnable.map((s) => ({ id: s.id, label: s.title, detail: s.source })),
       );
       section = runnable.find((s) => s.id === picked);
       if (!section) return undefined;
     }
     if (!section.sql || section.missing)
-      throw new Error(`${section.title} runs nothing: ${section.missing ?? "it has no SQL."}`);
+      throw new Error(
+        t("features.overview.index.runsNothing", {
+          title: String(section.title),
+          value: String(section.missing ?? t("features.overview.index.itHasNoSql")),
+        }),
+      );
     await consoles.open(conn);
     const text = `${section.sql};`;
     view.insert(text);
@@ -172,33 +193,46 @@ function createOverview(deps) {
     const section = state.sections.find((s) => s.id === "statements");
     const rows = section?.rows ?? [];
     if (!section || rows.length === 0)
-      throw new Error(section?.missing ?? section?.failed ?? "pg_stat_statements listed nothing.");
+      throw new Error(
+        section?.missing ??
+          section?.failed ??
+          t("features.overview.index.pgStatStatementsListedNothing"),
+      );
     const names = section.names ?? [];
     const col = (/** @type {string} */ key, /** @type {(string | null)[]} */ row) =>
       row[names.indexOf(key)] ?? null;
     let at = typeof index === "number" || typeof index === "string" ? Number(index) : Number.NaN;
     if (Number.isNaN(at)) {
       const picked = await deps.pick(
-        "Database: open which statement in the console?",
+        t("features.overview.index.databaseOpenWhichStatementInThe"),
         rows.map((row, i) => ({
           id: String(i),
           label: oneLine(col("query", row) ?? ""),
-          detail: `${formatValue("ms", col("total_ms", row))} in all, ${formatValue("count", col("calls", row))} calls`,
+          detail: t("features.overview.index.inAllCalls", {
+            value: String(formatValue("ms", col("total_ms", row))),
+            value2: String(formatValue("count", col("calls", row))),
+          }),
         })),
       );
       if (picked === undefined) return undefined;
       at = Number(picked);
     }
     const text = rows[at] ? col("query", /** @type {(string | null)[]} */ (rows[at])) : null;
-    if (!text) throw new Error(`The list has no statement ${at + 1}.`);
+    if (!text)
+      throw new Error(
+        t("features.overview.index.theListHasNoStatement", { value: String(at + 1) }),
+      );
     if (text === HIDDEN)
       throw new Error(
-        `Statement ${at + 1} is another role's: ${state.server?.role ?? "this role"} may not read its text. A member of pg_read_all_stats may.`,
+        t("features.overview.index.statementIsAnotherRoleSMay", {
+          value: String(at + 1),
+          value2: String(state.server?.role ?? t("features.overview.index.thisRole")),
+        }),
       );
     await consoles.open(conn);
     view.insert(text.trimEnd().endsWith(";") ? text : `${text.trimEnd()};`);
     const said = `Statement ${at + 1} is in the console of ${conn.name}${
-      /\$\d/u.test(text) ? ": its parameters are asked for when it runs." : "."
+      /\$\d/u.test(text) ? t("features.overview.index.itsParametersAreAskedForWhen") : "."
     }`;
     deps.say(said);
     return said;
@@ -237,7 +271,7 @@ export const feature = {
   }),
   panels: {
     [TYPE]: {
-      label: "Server overview",
+      label: t("features.overview.index.serverOverview"),
       render: (doc, /** @type {OverviewState} */ state, act, buffer) =>
         overviewView(doc, state, act, buffer),
     },

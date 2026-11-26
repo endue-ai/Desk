@@ -5,6 +5,7 @@
 // shows and the completion list is closed, ArrowUp and ArrowDown step through the overloads. The
 // controller's `complete` (with "signature") says what to show; nothing is asked of the server.
 
+import { t } from "../strings/index.js";
 import {
   completionStatus,
   EditorView,
@@ -73,7 +74,10 @@ function render(/** @type {View} */ view, /** @type {Shown} */ shown) {
   if (signature.overloads.length > 1) {
     const count = doc.createElement("div");
     count.className = "signature-count";
-    count.textContent = `${index + 1} of ${signature.overloads.length}, ArrowUp and ArrowDown for the others`;
+    count.textContent = t("editor.signatureHelp.ofArrowupAndArrowdownForThe", {
+      value: String(index + 1),
+      length: String(signature.overloads.length),
+    });
     dom.append(count);
   }
   if (overload.comment) {

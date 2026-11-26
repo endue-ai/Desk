@@ -9,6 +9,7 @@
 
 import { classify } from "../sql/classify.js";
 import { split } from "../sql/split.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
@@ -60,28 +61,39 @@ function checked(
   /** @type {unknown} */ value,
   max = 0,
 ) {
-  if (typeof value !== "string") throw new Error(`${label}: text expected.`);
-  if (/[\0]/u.test(value)) throw new Error(`${label}: no NUL characters.`);
+  if (typeof value !== "string")
+    throw new Error(t("engines.pgOptions.textExpected", { label: String(label) }));
+  if (/[\0]/u.test(value))
+    throw new Error(t("engines.pgOptions.noNulCharacters", { label: String(label) }));
   if (key === "startup") {
     if (value.length > STARTUP_MAX)
-      throw new Error(`Startup script: at most ${STARTUP_MAX} characters.`);
+      throw new Error(
+        t("engines.pgOptions.startupScriptAtMostCharacters", { STARTUP_MAX: String(STARTUP_MAX) }),
+      );
     return value.trim();
   }
-  if (/[\n\r]/u.test(value)) throw new Error(`${label}: one line, please.`);
+  if (/[\n\r]/u.test(value))
+    throw new Error(t("engines.pgOptions.oneLinePlease", { label: String(label) }));
   const text = value.trim();
-  if (text.length > max) throw new Error(`${label}: at most ${max} characters.`);
+  if (text.length > max)
+    throw new Error(
+      t("engines.pgOptions.atMostCharacters", { label: String(label), max: String(max) }),
+    );
   if (!text) return text;
   if (key === "searchPath") {
     const items = pathItems(text);
     if (!items?.length)
-      throw new Error(`${label}: schema names separated by commas, like app, public.`);
+      throw new Error(
+        t("engines.pgOptions.schemaNamesSeparatedByCommasLike", { label: String(label) }),
+      );
     return items.join(", ");
   }
   if (key === "timeZone" && !ZONE.test(text))
-    throw new Error(`${label}: a zone name like UTC or Asia/Seoul, or an offset like +09:00.`);
+    throw new Error(t("engines.pgOptions.aZoneNameLikeUtcOr", { label: String(label) }));
   if (key === "lockTimeout" || key === "idleTimeout") {
     const m = DURATION.exec(text);
-    if (!m) throw new Error(`${label}: milliseconds, or a number with ms, s, min, h or d.`);
+    if (!m)
+      throw new Error(t("engines.pgOptions.millisecondsOrANumberWithMs", { label: String(label) }));
     return `${m[1]}${m[2] ?? ""}`;
   }
   return text;
@@ -119,14 +131,27 @@ function guard(/** @type {Connection} */ conn) {
     const at = `Startup script: statement ${i + 1}`;
     if (c.refused) throw new Error(`${at}: ${c.refused}`);
     if (c.kind === "transaction")
-      throw new Error(`${at} (${c.verb}): each session runs the script outside a transaction.`);
+      throw new Error(
+        t("engines.pgOptions.eachSessionRunsTheScriptOutside", {
+          at: String(at),
+          verb: String(c.verb),
+        }),
+      );
     if (c.kind !== "write" && c.kind !== "ddl" && !c.opensWrite) return;
     const where = conn.readOnly
       ? "is read-only"
       : conn.tag === "production"
         ? "is tagged production"
         : "";
-    if (where) throw new Error(`${at} (${c.verb}) may change data, and ${conn.name} ${where}.`);
+    if (where)
+      throw new Error(
+        t("engines.pgOptions.mayChangeDataAnd", {
+          at: String(at),
+          verb: String(c.verb),
+          name: String(conn.name),
+          where: String(where),
+        }),
+      );
   });
 }
 
@@ -172,13 +197,13 @@ export function readOptions(/** @type {URLSearchParams} */ query) {
     if (word === "-c") word = words[++i] ?? "";
     else if (word.startsWith("--")) word = word.slice(2);
     else if (word.startsWith("-c")) word = word.slice(2);
-    else throw new Error(`options: ${word} is not a -c setting.`);
+    else throw new Error(t("engines.pgOptions.optionsIsNotACSetting", { word: String(word) }));
     const eq = word.indexOf("=");
     const name = (eq < 0 ? word : word.slice(0, eq)).toLowerCase().replace(/-/gu, "_");
     const value = word.slice(eq + 1).replace(/\\(.)/gu, "$1");
     const found = PARAMETERS.find((p) => p[2].toLowerCase() === name);
     if (eq < 0 || !found)
-      throw new Error(`options: ${name} is not one of the connection's session options.`);
+      throw new Error(t("engines.pgOptions.optionsIsNotOneOfThe", { name: String(name) }));
     out[found[0]] = value;
   }
   return out;

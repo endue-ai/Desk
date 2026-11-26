@@ -7,6 +7,7 @@
 import { NUMBER } from "../edit/values.js";
 import { tokenize } from "../sql/lexer.js";
 import { quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
@@ -34,7 +35,7 @@ export function paramsOf(text, dialect) {
       positional++;
       out.push({
         key: `?${positional}`,
-        label: `parameter ${positional}`,
+        label: t("editor.params.parameter", { positional: String(positional) }),
         start: token.start,
         end: token.end,
       });
@@ -76,7 +77,8 @@ export function fill(text, params, values) {
   let at = 0;
   for (const param of params) {
     const value = values[param.key];
-    if (value === undefined) throw new Error(`No value for ${param.label}.`);
+    if (value === undefined)
+      throw new Error(t("editor.params.noValueFor", { label: String(param.label) }));
     out += text.slice(at, param.start) + value;
     at = param.end;
   }

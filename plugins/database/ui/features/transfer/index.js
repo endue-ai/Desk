@@ -3,6 +3,7 @@
 // Database: copy tables to another database, copy the query's result into a table, start the copy,
 // cancel the copy. Nothing runs before the person starts it in the panel.
 
+import { t } from "../../strings/index.js";
 import { createTransfers, TYPE } from "../../transfer/controller.js";
 import { transferDialog } from "../../transfer/form.js";
 import { transferPanel } from "../../transfer/panel.js";
@@ -36,7 +37,11 @@ export const feature = {
       /** @type {string} */ into,
     ) => transfersOf(deps).map(id, column, into),
   }),
-  panels: { [TYPE]: { label: "Copy between databases", render: transferPanel } },
-  dialogs: { [TYPE]: { label: "Copy to another database", render: transferDialog } },
+  panels: {
+    [TYPE]: { label: t("features.transfer.index.copyBetweenDatabases"), render: transferPanel },
+  },
+  dialogs: {
+    [TYPE]: { label: t("features.transfer.index.copyToAnotherDatabase"), render: transferDialog },
+  },
   styles: [new URL("../../transfer/transfer.css", import.meta.url).href],
 };

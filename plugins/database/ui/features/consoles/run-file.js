@@ -9,6 +9,7 @@ import { readScope, withGrant } from "../../console-files.js";
 import { baseName } from "../../console-list.js";
 import { engineOf } from "../../engines/index.js";
 import { formatCount, formatDuration } from "../../format.js";
+import { t } from "../../strings/index.js";
 import { errorText } from "../../tabs.js";
 import { createParts, createScriptReader } from "./script-parts.js";
 
@@ -37,20 +38,20 @@ async function consoleFor(
   /** @type {string} */ name,
 ) {
   const ref = typeof args.connection === "string" ? args.connection : undefined;
-  const title = `Database: run ${name} on which connection?`;
+  const title = t("features.consoles.runFile.databaseRunOnWhichConnection", { name: String(name) });
   const shown = deps.consoles.current();
   if (shown?.kind === "console" && !ref) {
     const conn = deps.manager.get(shown.connection);
     if (conn) return { target: shown, conn };
     if (shown.file) {
       const picked = await deps.manager.choose(undefined, title);
-      if (!picked) throw deps.cancelled("Not run: pick the connection it runs on.");
+      if (!picked) throw deps.cancelled(t("features.consoles.runFile.notRunPickTheConnectionIt"));
       await deps.consoles.bind(shown, picked);
       return { target: shown, conn: picked };
     }
   }
   const conn = await deps.manager.choose(ref, title);
-  if (!conn) throw deps.cancelled("Not run: pick the connection it runs on.");
+  if (!conn) throw deps.cancelled(t("features.consoles.runFile.notRunPickTheConnectionIt"));
   return { target: await deps.consoles.open(conn), conn };
 }
 
@@ -65,12 +66,17 @@ export async function runFile(deps, args, skips) {
   const path =
     (typeof args.path === "string" && args.path) ||
     shown?.file?.path ||
-    (await deps.pick("Database: run which .sql file?", [], true, "~/queries/report.sql"));
-  if (!path) throw deps.cancelled("Not run.");
+    (await deps.pick(
+      t("features.consoles.runFile.databaseRunWhichSqlFile"),
+      [],
+      true,
+      "~/queries/report.sql",
+    ));
+  if (!path) throw deps.cancelled(t("features.consoles.runFile.notRun"));
   const name = baseName(path);
   const { target, conn } = await consoleFor(deps, args, name);
   if (target.running || target.filing)
-    throw new Error("A run is going on in this console: cancel it first.");
+    throw new Error(t("features.consoles.runFile.aRunIsGoingOnIn"));
   const dialect = engineOf(conn.engine).dialect;
   const reader = createScriptReader(dialect);
   const parts = createParts({ dialect, ...PART });
@@ -103,7 +109,12 @@ export async function runFile(deps, args, skips) {
       line = part.statements.at(-1)?.line ?? line;
       const done = size ? Math.min(99, Math.floor((offset / size) * 100)) : 0;
       deps.say(
-        `${name}: ${formatCount(total)} statements run · line ${formatCount(line)} · ${done}%`,
+        t("features.consoles.runFile.statementsRunLine", {
+          name: String(name),
+          value: String(formatCount(total)),
+          value2: String(formatCount(line)),
+          done: String(done),
+        }),
       );
       return;
     }
@@ -145,10 +156,17 @@ export async function runFile(deps, args, skips) {
   }
   const fail = /** @type {Failure | null} */ (failure);
   const said = fail
-    ? `${name}: stopped at line ${formatCount(fail.line)}: ${fail.text}`
-    : `${name}: done, ${formatCount(total)} statements in ${formatDuration(Date.now() - started)}${
-        skips && skipped.size ? `; ${skips.note([...skipped])}` : ""
-      }`;
+    ? t("features.consoles.runFile.stoppedAtLine", {
+        name: String(name),
+        value: String(formatCount(fail.line)),
+        text: String(fail.text),
+      })
+    : t("features.consoles.runFile.doneStatementsIn", {
+        name: String(name),
+        value: String(formatCount(total)),
+        value2: String(formatDuration(Date.now() - started)),
+        value3: String(skips && skipped.size ? `; ${skips.note([...skipped])}` : ""),
+      });
   const lines = [
     { level: /** @type {const} */ (fail ? "error" : "ok"), text: said, statement: -1 },
     ...(fail?.detail
@@ -157,7 +175,9 @@ export async function runFile(deps, args, skips) {
   ];
   Object.assign(target, {
     shown: {
-      tabs: [{ label: "Messages", kind: "messages", statement: -1, lines }],
+      tabs: [
+        { label: t("features.consoles.runFile.messages"), kind: "messages", statement: -1, lines },
+      ],
       open: 0,
       summary: said,
     },

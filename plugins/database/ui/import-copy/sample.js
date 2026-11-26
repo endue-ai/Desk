@@ -4,6 +4,7 @@
 // (the header line's names, a JSON line's keys, else `column N`) and its first rows. Pure.
 
 import { readTable } from "../import.js";
+import { t } from "../strings/index.js";
 import { createCsvReader } from "./csv.js";
 import { createJsonLinesReader, createTextReader, keysOf } from "./lines.js";
 import { decoderOf } from "./transform.js";
@@ -32,12 +33,12 @@ export const SAMPLE_ROWS = 1000;
 export function sampleOf(options, bytes, whole, readers = {}) {
   const limit = SAMPLE_ROWS + options.skip + 1;
   if (options.format === "xlsx") {
-    if (!readers.xlsx) throw new Error("An .xlsx file is read in a worker, and none started.");
+    if (!readers.xlsx) throw new Error(t("importCopy.sample.anXlsxFileIsReadIn"));
     return { records: readers.xlsx(bytes).slice(0, limit), keys: [] };
   }
   const text = decoderOf(options.encoding).decode(bytes);
   if (options.format === "json") {
-    if (!whole) throw new Error("A JSON array is read whole: this one is larger than 16 MiB.");
+    if (!whole) throw new Error(t("importCopy.sample.aJsonArrayIsReadWhole"));
     const table = readTable(text, "json", { header: options.header });
     return { records: table.rows.slice(0, limit), keys: table.columns };
   }

@@ -4,6 +4,7 @@
 // edited and added cells come with each request (`overrides`). Only relative imports: import maps do
 // not reach a module worker.
 
+import { t } from "../strings/index.js";
 import { findMatches, orderRows } from "./rows.js";
 
 /**
@@ -34,7 +35,7 @@ export function answer(request) {
     held.columns.set(Number(col), values);
   for (const col of needed(request))
     if (!held.columns.has(col))
-      return { id, error: `The grid's worker has no column ${col} of this result.` };
+      return { id, error: t("grid.worker.theGridSWorkerHasNo", { col: String(col) }) };
   /** @type {Map<number, Map<number, string | null>>} */
   const changed = new Map();
   for (const [row, col, value] of request.overrides ?? []) {

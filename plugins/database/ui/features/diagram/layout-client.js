@@ -2,6 +2,8 @@
 // worker (layout-worker.js), started with the SDK's startWorker the first time a large diagram needs
 // it and kept for the next. ui/main.js provides the starter (`provideLayoutWorker`); without one (the
 // unit tests, a frame that cannot start a worker) every layout runs in the frame.
+
+import { t } from "../../strings/index.js";
 import { solve } from "./layout.js";
 
 /**
@@ -48,7 +50,8 @@ const started = () => {
     if ("error" in data) entry.reject(new Error(data.error));
     else entry.resolve(data.solution);
   };
-  worker.onerror = (event) => stop(new Error(event.message || "The diagram's layout stopped."));
+  worker.onerror = (event) =>
+    stop(new Error(event.message || t("features.diagram.layoutClient.theDiagramSLayoutStopped")));
   return worker;
 };
 

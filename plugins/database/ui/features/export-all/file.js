@@ -8,6 +8,7 @@ import { copySql, directOf } from "../../copy/direct.js";
 import { copyOut } from "../../copy/index.js";
 import { partialFile } from "../../copy/partial.js";
 import { startPipe } from "../../export/pipe-client.js";
+import { t } from "../../strings/index.js";
 import { failureOf } from "./snapshot.js";
 
 /**
@@ -80,7 +81,8 @@ export async function exportItem(deps, job) {
       },
     );
     const why = failureOf(run);
-    if (why || job.signal.aborted) throw new Error(job.signal.aborted ? "Cancelled." : why);
+    if (why || job.signal.aborted)
+      throw new Error(job.signal.aborted ? t("features.exportAll.file.cancelled") : why);
     const path = await file.finish();
     const rows = pipe.rows();
     return { path, rows, bytes, direct: direct !== undefined };

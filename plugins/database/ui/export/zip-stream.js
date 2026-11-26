@@ -3,6 +3,7 @@
 // with their CRC-32 counted on the way, then a data descriptor with the sizes; the central directory
 // at the end. The same fixed time and UTF-8 names as zip.js. No ZIP64: past 4 GiB it refuses. No DOM.
 
+import { t } from "../strings/index.js";
 import { canCompress, deflater } from "./deflate.js";
 import { crc32 } from "./zip.js";
 
@@ -37,7 +38,7 @@ export function zipStream() {
     return out;
   };
   const grow = (/** @type {number} */ n) => {
-    if (offset + n > LIMIT) throw new Error("Export: the .xlsx is past 4 GiB.");
+    if (offset + n > LIMIT) throw new Error(t("export.zipStream.exportTheXlsxIsPastGib"));
     offset += n;
   };
   return {
@@ -87,7 +88,7 @@ export function zipStream() {
         },
         async close() {
           const parts = out(packer ? await packer.end() : []);
-          if (size > LIMIT) throw new Error("Export: the .xlsx is past 4 GiB.");
+          if (size > LIMIT) throw new Error(t("export.zipStream.exportTheXlsxIsPastGib"));
           const tail = new Uint8Array(16);
           const v = new DataView(tail.buffer);
           v.setUint32(0, 0x08074b50, true);

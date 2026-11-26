@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // The frame's side of the map's worker (PG-46): one worker for every map and value viewer of the
 // page, started with the SDK's startWorker the first time a shape is asked for; each request gets
 // its reply as a promise. Without a worker (unit tests, a frame that cannot start one) the same
@@ -45,7 +46,8 @@ export function createGeoClient(startWorker) {
       if (typeof data.error === "string") entry.reject(new Error(data.error));
       else entry.resolve(data);
     };
-    worker.onerror = (event) => stop(new Error(event.message || "The map's worker stopped."));
+    worker.onerror = (event) =>
+      stop(new Error(event.message || t("geo.client.theMapSWorkerStopped")));
     return worker;
   };
 

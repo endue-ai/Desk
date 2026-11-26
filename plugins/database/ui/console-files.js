@@ -10,6 +10,7 @@
 // (`format`, ADR 0292) Save lays the console out first, as Format SQL would. No DOM.
 
 import { baseName } from "./console-list.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -69,14 +70,27 @@ export async function withGrant(bridge, scope, call, reason) {
     return await call();
   } catch (error) {
     if (codeOf(error) !== "permission_denied")
-      throw new Error(`Could not ${verb} ${name}: ${codeOf(error)}.`);
+      throw new Error(
+        t("consoleFiles.couldNot", {
+          verb: String(verb),
+          name: String(name),
+          value: String(codeOf(error)),
+        }),
+      );
   }
   const decision = await bridge
     .call("perm.request", { permission: scope, reason })
     .catch(() => ({ granted: false }));
-  if (!decision.granted) throw new Error(`Not allowed to ${verb} ${name}.`);
+  if (!decision.granted)
+    throw new Error(t("consoleFiles.notAllowedTo", { verb: String(verb), name: String(name) }));
   return call().catch((again) => {
-    throw new Error(`Could not ${verb} ${name}: ${codeOf(again)}.`);
+    throw new Error(
+      t("consoleFiles.couldNot", {
+        verb: String(verb),
+        name: String(name),
+        value: String(codeOf(again)),
+      }),
+    );
   });
 }
 
@@ -130,7 +144,7 @@ export function createConsoleFiles(deps) {
     const kept = (await remembered()).find((e) => e.path === path);
     const known = kept ? deps.manager.get(kept.connection) : undefined;
     if (known) return known;
-    const title = `Database: run ${baseName(path)} on which connection?`;
+    const title = t("consoleFiles.databaseRunOnWhichConnection", { value: String(baseName(path)) });
     const conn = near ?? (await deps.manager.choose(undefined, title).catch(() => undefined));
     if (conn) await remember(path, conn.id);
     return conn;
@@ -222,7 +236,10 @@ export function createConsoleFiles(deps) {
       const name = baseName(path);
       if (large)
         throw new Error(
-          `${name} is larger than the editor's ${sizeText(EDITOR_MAX)}: it is not edited here.`,
+          t("consoleFiles.isLargerThanTheEditorS", {
+            name: String(name),
+            value: String(sizeText(EDITOR_MAX)),
+          }),
         );
       await laidOut(target);
       const text = target.text;

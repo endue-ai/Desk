@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // Passwords the desk keeps in the OS keychain (ADR 0311): which connections have one, keeping a
 // password the person typed or a URI gave, and forgetting it. The plugin hands a password in once
 // (db.passwords.set) and never gets it back; a session names it instead. PostgreSQL only, the one
@@ -68,9 +69,9 @@ export function createKeychain(bridge, changed) {
     ref: (/** @type {Connection} */ conn) => (has(conn) ? conn.id : undefined),
     /** Keep `password` for the connection; throws with the core's words when it cannot. */
     async keep(/** @type {Connection} */ conn, /** @type {string} */ password) {
-      if (!offered(conn)) throw new Error("Only a PostgreSQL connection's password is kept.");
+      if (!offered(conn)) throw new Error(t("keychain.onlyAPostgresqlConnectionSPassword"));
       const at = endpoint(conn);
-      if (!at.user) throw new Error("Name the connection's user to keep its password.");
+      if (!at.user) throw new Error(t("keychain.nameTheConnectionSUserTo"));
       await bridge.call("db.passwords.set", { name: conn.id, ...at, password });
       kept.set(conn.id, at);
       changed();

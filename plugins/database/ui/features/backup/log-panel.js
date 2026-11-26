@@ -5,6 +5,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("./job.js").LogState} LogState
@@ -43,7 +44,7 @@ export function logPanel(doc, first, act, buffer) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-quiet", "data-ctl": "cancel" },
-    "Cancel",
+    t("features.backup.logPanel.cancel"),
   );
   cancel.addEventListener("click", () => act("backupCancel", buffer.id));
   const command = el(doc, "pre", { class: "backup-command", "data-part": "command" });
@@ -53,7 +54,7 @@ export function logPanel(doc, first, act, buffer) {
     class: "backup-lines",
     "data-part": "log",
     tabindex: "0",
-    "aria-label": "Output",
+    "aria-label": t("features.backup.logPanel.output"),
   });
   const root = el(
     doc,

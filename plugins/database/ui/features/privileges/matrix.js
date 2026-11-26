@@ -5,6 +5,7 @@
 // turns it to the next one. Layout and colours: privileges.css.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 import { rowPrivileges, shownState } from "./acl.js";
 
 /**
@@ -26,7 +27,7 @@ export function matrixTable(doc, matrix, edits, options) {
     doc,
     "tr",
     {},
-    el(doc, "th", { scope: "col" }, "Grantee"),
+    el(doc, "th", { scope: "col" }, t("features.privileges.matrix.grantee")),
     ...matrix.privileges.map((p) => el(doc, "th", { scope: "col", class: "privileges-priv" }, p)),
   );
   const rows = matrix.rows.map((row) => {
@@ -44,7 +45,21 @@ export function matrixTable(doc, matrix, edits, options) {
         const grantors = (row.cells[privilege]?.grantors ?? [])
           .map((g) => `${g.name}${g.option ? " (with grant option)" : ""}`)
           .join(", ");
-        const title = `${privilege} to ${who}: ${WORDS[now]}${grantors ? `; granted by ${grantors}` : ""}${now !== before ? ` (was ${WORDS[before]})` : ""}`;
+        const title = t("features.privileges.matrix.to", {
+          privilege: String(privilege),
+          who: String(who),
+          value: String(WORDS[now]),
+          value2: String(
+            grantors
+              ? t("features.privileges.matrix.grantedBy", { grantors: String(grantors) })
+              : "",
+          ),
+          value3: String(
+            now !== before
+              ? t("features.privileges.matrix.was", { value: String(WORDS[before]) })
+              : "",
+          ),
+        });
         const button = /** @type {HTMLButtonElement} */ (
           el(
             doc,
@@ -79,11 +94,6 @@ export function matrixTable(doc, matrix, edits, options) {
       el(doc, "thead", {}, head),
       el(doc, "tbody", {}, ...rows),
     ),
-    el(
-      doc,
-      "p",
-      { class: "hint" },
-      "✓ granted · ✓* with grant option · a press goes none, ✓, ✓*; marked cells change when reviewed.",
-    ),
+    el(doc, "p", { class: "hint" }, t("features.privileges.matrix.grantedWithGrantOptionAPress")),
   );
 }

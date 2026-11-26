@@ -6,6 +6,7 @@
 // between BEGIN and ROLLBACK when the form says so. index.js's commands and actions call it. No DOM.
 
 import { labelOf as consoleLabel } from "../../console-list.js";
+import { t } from "../../strings/index.js";
 import { callOf } from "./call.js";
 import { createChooser, postgres } from "./choose.js";
 import { answerOf, entriesFrom } from "./entries.js";
@@ -47,7 +48,8 @@ export function createRoutines(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!found || !conn) throw new Error("This form's connection was removed.");
+    if (!found || !conn)
+      throw new Error(t("features.routines.controller.thisFormSConnectionWasRemoved"));
     return { conn, state: /** @type {RoutineState} */ (found[TYPE]) };
   };
   const update = (/** @type {string} */ id, /** @type {Partial<RoutineState>} */ patch) => {
@@ -73,7 +75,7 @@ export function createRoutines(deps) {
     const kept = panels().find((b) => b.connection === conn.id && b.name === name)?.[TYPE];
     if (kept?.running) {
       await deps.consoles.openPanel(conn, TYPE, name, kept);
-      throw new Error("This form's run is still going on.");
+      throw new Error(t("features.routines.controller.thisFormSRunIsStill"));
     }
     const remembered = memory.get(keyOf(conn, routine));
     const entries = entriesFrom(routine, remembered?.entries ?? [], args.arguments);
@@ -94,7 +96,12 @@ export function createRoutines(deps) {
     const panel = await deps.consoles.openPanel(conn, TYPE, name, state);
     memory.set(keyOf(conn, routine), { entries, rollback: state.rollback });
     if (args.run === true) return run(panel.id, { agent: true });
-    deps.say(`${titleOf(routine)} on ${conn.name}.`);
+    deps.say(
+      t("features.routines.controller.on", {
+        value: String(titleOf(routine)),
+        name: String(conn.name),
+      }),
+    );
     return answerOf(/** @type {RoutineState} */ (stateOf(panel.id) ?? state));
   };
 
@@ -122,14 +129,14 @@ export function createRoutines(deps) {
     const conn = deps.manager.get(node.connection);
     const object = node.object;
     if (!conn || !object || (object.kind !== "function" && object.kind !== "procedure"))
-      throw new Error("Pick a function or procedure in the explorer, under Routines.");
+      throw new Error(t("features.routines.controller.pickAFunctionOrProcedureIn"));
     return openFor(postgres(conn), object.ident, {});
   };
 
   /** Read a form's routine again: its fields are drawn again, the entries kept. */
   const refresh = async (/** @type {string} */ id) => {
     const { conn, state } = connOf(id);
-    if (state.running) throw new Error("A run is going on: read again after it.");
+    if (state.running) throw new Error(t("features.routines.controller.aRunIsGoingOnRead"));
     update(id, { reading: true, error: "" });
     try {
       const routine = await reader.routine(conn, state.oid);
@@ -167,9 +174,10 @@ export function createRoutines(deps) {
   ) => {
     if (how.entries) view(id, { entries: how.entries });
     const { conn, state } = connOf(id);
-    if (state.running) throw new Error("A run is going on from this form.");
+    if (state.running) throw new Error(t("features.routines.controller.aRunIsGoingOnFrom"));
     const r = state.routine;
-    if (!r) throw new Error(state.error || "The routine is not read yet.");
+    if (!r)
+      throw new Error(state.error || t("features.routines.controller.theRoutineIsNotReadYet"));
     const refused = refusalOf(conn, r);
     if (refused) throw new Error(refused);
     const rollback = state.rollback && canRollBack(r);
@@ -178,7 +186,7 @@ export function createRoutines(deps) {
     const agent = how.agent === true;
     const asked = questionOf(conn, r, sql, { rollback, agent, confirm: deps.settings().confirm });
     if (asked && !(await deps.confirm(asked.title, asked.reasons)))
-      throw deps.cancelled("Not run.");
+      throw deps.cancelled(t("features.routines.controller.notRun"));
     const target = await deps.consoles.open(conn);
     const where = consoleLabel(target, conn);
     update(id, { running: true });
@@ -204,7 +212,14 @@ export function createRoutines(deps) {
       rolledBack: rollback,
     };
     update(id, { last });
-    deps.say(`${r.schema}.${r.name} in the console ${where}: ${said || summary}.`);
+    deps.say(
+      t("features.routines.controller.inTheConsole", {
+        schema: String(r.schema),
+        name: String(r.name),
+        where: String(where),
+        value: String(said || summary),
+      }),
+    );
     const set = outcome?.sets[0];
     return {
       statement: sql,
@@ -222,9 +237,7 @@ export function createRoutines(deps) {
   const shown = () => {
     const here = deps.consoles.current();
     if (here?.kind !== TYPE)
-      throw new Error(
-        "No routine form on screen: open one with Database: run a function or procedure.",
-      );
+      throw new Error(t("features.routines.controller.noRoutineFormOnScreenOpen"));
     return here.id;
   };
 

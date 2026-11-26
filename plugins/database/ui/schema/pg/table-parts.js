@@ -3,6 +3,7 @@
 // security policies and its rules. One statement for every schema of a pass; each row names the
 // table, the part's kind and name, what the explorer shows and the rest as JSON. Pure.
 
+import { t } from "../../strings/index.js";
 import { assemble, commentOn, dotted, ident } from "./ddl.js";
 import { inSchemas, json, markOf } from "./sql.js";
 
@@ -70,7 +71,7 @@ const RULES =
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "table parts",
-  label: "partitions, inheritance, policies and rules",
+  label: t("schema.pg.tableParts.partitionsInheritancePoliciesAndRules"),
   marks: [
     inherits("p", "k"),
     inherits("k", "p"),

@@ -3,6 +3,7 @@
 // result (`data`), edited and added cells with each request (`overrides`). Only relative imports:
 // import maps do not reach a module worker.
 
+import { t } from "../strings/index.js";
 import { groupChart, totalsOf } from "./aggregate.js";
 
 /**
@@ -40,7 +41,8 @@ export function createChartEngine() {
     if (request.kind === "totals") {
       const { rows, columns: cols } = request;
       for (const col of cols)
-        if (!columns.has(col)) return { id, error: `The chart's worker has no column ${col}.` };
+        if (!columns.has(col))
+          return { id, error: t("chart.engine.theChartSWorkerHasNo", { col: String(col) }) };
       const values = function* () {
         for (const col of cols)
           for (let i = 0; i < rows.length; i++) yield value(rows[i] ?? 0, col);

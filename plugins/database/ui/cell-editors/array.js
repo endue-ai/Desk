@@ -5,6 +5,7 @@
 // its text, its braces checked.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { field, textOf } from "./panel.js";
 import { balanced, formatArray, parseArray } from "./pg-array.js";
 import { checkValue } from "./values.js";
@@ -39,7 +40,7 @@ export const array = {
     if ("nested" in parsed)
       return balanced(text)
         ? { value: text.trim() }
-        : { error: "The braces of this nested array do not match: each { needs its }." };
+        : { error: t("cellEditors.array.theBracesOfThisNestedArray") };
     return checkElements(parsed.elements, editor);
   },
   /** @param {import("./panel.js").Ctx} ctx */
@@ -57,7 +58,7 @@ export const array = {
     const list = el(doc, "ol", {
       class: "cell-editor-elements",
       tabindex: "-1",
-      "aria-label": `${ctx.name}'s elements`,
+      "aria-label": t("cellEditors.array.sElements", { name: String(ctx.name) }),
     });
     /** @type {{ input: HTMLInputElement, nil: HTMLButtonElement, item: HTMLElement }[]} */
     const rows = [];
@@ -65,7 +66,10 @@ export const array = {
       row.nil.getAttribute("aria-pressed") === "true";
     const number = () =>
       rows.forEach((row, i) => {
-        row.input.setAttribute("aria-label", `Element ${i + 1}`);
+        row.input.setAttribute(
+          "aria-label",
+          t("cellEditors.array.element", { value: String(i + 1) }),
+        );
       });
     const add = (/** @type {string | null} */ value, at = rows.length) => {
       const input = /** @type {HTMLInputElement} */ (
@@ -79,22 +83,22 @@ export const array = {
             type: "button",
             class: "desk-btn desk-btn-quiet",
             "data-do": "null-element",
-            title: "This element is NULL",
+            title: t("cellEditors.array.thisElementIsNull"),
           },
-          "NULL",
+          t("cellEditors.array.null"),
         )
       );
       const remove = el(
         doc,
         "button",
         { type: "button", class: "desk-btn desk-btn-quiet", "data-do": "remove" },
-        "Remove",
+        t("cellEditors.array.remove"),
       );
       const item = el(doc, "li", {}, input, nil, remove);
       const row = { input, nil, item };
       const setNull = (/** @type {boolean} */ on) => {
         nil.setAttribute("aria-pressed", String(on));
-        input.placeholder = on ? "NULL" : "";
+        input.placeholder = on ? t("cellEditors.array.null") : "";
         if (on) input.value = "";
       };
       input.value = value ?? "";
@@ -141,7 +145,14 @@ export const array = {
           editor,
         );
       },
-      tools: [{ label: "Add element", name: "add", key: "KeyA", run: () => add("").focus() }],
+      tools: [
+        {
+          label: t("cellEditors.array.addElement"),
+          name: "add",
+          key: "KeyA",
+          run: () => add("").focus(),
+        },
+      ],
     };
   },
 };

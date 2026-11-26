@@ -7,6 +7,7 @@
 // asking the server again, and what has been read is there at once for autocomplete (`snapshot`).
 // Each database of a PostgreSQL server is read under its own reference (databases.js, PG-13).
 
+import { oneExpression } from "./catalog-expressions.js";
 import { baseOf, homeOf, listedDatabases } from "./databases.js";
 import { countSql, engineOf, pageSql } from "./engines/index.js";
 import { pathOf } from "./engines/pg-options.js";
@@ -15,6 +16,9 @@ import { diagramOf, diagramQueries } from "./schema/diagram.js";
 import { schemaOf } from "./schema/index.js";
 import { createSchemaCache, DATABASE, ranDdl } from "./schema-cache/index.js";
 import { qualified } from "./sql/quote.js";
+import { t as messageText } from "./strings/index.js";
+
+export { oneExpression } from "./catalog-expressions.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -41,7 +45,7 @@ export function defaultSchema(/** @type {Connection} */ conn) {
 
 /** An Error with the kind of the client's failure. */
 const failure = (/** @type {{ message: string, kind?: string } | undefined} */ error) =>
-  Object.assign(new Error(error?.message ?? "Not read."), { kind: error?.kind });
+  Object.assign(new Error(error?.message ?? messageText("catalog.notRead")), { kind: error?.kind });
 
 /** A store in memory, for a catalog nobody keeps. */
 const memoryStore = () => {
@@ -105,7 +109,9 @@ export function createCatalog(execute, systemSchemas, options = {}) {
     return {
       rows: ran.map((s) => s.sets[0]?.rows ?? []),
       columns: ran.map((s) => s.sets[0]?.columns ?? []),
-      ...(at >= 0 ? { failed: { index: at, message: error?.message ?? "Not read." } } : {}),
+      ...(at >= 0
+        ? { failed: { index: at, message: error?.message ?? messageText("catalog.notRead") } }
+        : {}),
     };
   };
   const rows = async (/** @type {Connection} */ conn, /** @type {string} */ sql, quiet = false) =>
@@ -368,33 +374,18 @@ export function tableName(
  */
 export function tableSql(conn, page) {
   for (const [label, text] of /** @type {const} */ ([
-    ["Filter", page.where],
-    ["Order", page.order],
+    [messageText("catalog.filter"), page.where],
+    [messageText("catalog.order"), page.order],
   ]))
     if (!oneExpression(text))
-      throw new Error(`${label}: one expression, without ; or unbalanced parentheses.`);
+      throw new Error(
+        messageText("catalog.oneExpressionWithoutOrUnbalancedParentheses", {
+          label: String(label),
+        }),
+      );
   const from = tableName(conn, page.schema, page.table);
   return {
     page: pageSql(from, page),
     count: countSql(from, page.where),
   };
-}
-
-/** Whether text outside quotes has no `;` and balanced parentheses. */
-export function oneExpression(/** @type {string} */ text) {
-  let depth = 0;
-  let quote = "";
-  for (let i = 0; i < text.length; i++) {
-    const c = /** @type {string} */ (text[i]);
-    if (quote) {
-      if (c === quote) quote = "";
-      continue;
-    }
-    if (c === "'" || c === '"' || c === "`") quote = c;
-    else if (c === "(") depth++;
-    else if (c === ")" && --depth < 0) return false;
-    else if (c === ";" || (c === "-" && text[i + 1] === "-") || (c === "/" && text[i + 1] === "*"))
-      return false;
-  }
-  return depth === 0 && quote === "";
 }

@@ -1,3 +1,5 @@
+import { t } from "./strings/index.js";
+
 // Which client runs an engine, and whether it is new enough. PostgreSQL needs none: its sessions are
 // the core's (engines/pg-session.js, ADR 0281). A client is found on the desk's PATH, or else in the
 // folders the settings add and where package managers install them (Homebrew keeps libpq and
@@ -60,16 +62,15 @@ export const MINIMUM = {
 
 /** How to install each engine's client, said when it is missing. */
 export const INSTALL_HINTS = /** @type {Partial<Record<EngineId, string>>} */ ({
-  mysql:
-    "Install mysql: brew install mysql-client, or apt install mysql-client (or mariadb-client).",
-  sqlite: "Install sqlite3: brew install sqlite, or apt install sqlite3.",
+  mysql: t("clients.installMysqlBrewInstallMysqlClient"),
+  sqlite: t("clients.installSqlite3BrewInstallSqliteOr"),
 });
 
 /** How to install one of PostgreSQL's programs on `platform`, said when it is missing. */
 export function installHint(/** @type {string} */ name, /** @type {Platform} */ platform) {
   if (platform === "windows")
-    return `Install ${name}: the PostgreSQL installer for Windows puts it in C:\\Program Files\\PostgreSQL\\<version>\\bin.`;
-  return `Install ${name}: brew install libpq, or apt install postgresql-client.`;
+    return t("clients.installThePostgresqlInstallerForWindows", { name: String(name) });
+  return t("clients.installBrewInstallLibpqOrApt", { name: String(name) });
 }
 
 /** PostgreSQL's own programs, by name: the setting that names another one. */
@@ -121,7 +122,11 @@ export function parseProgram(/** @type {string} */ line) {
 /** The sentence for a pg_dump or pg_restore older than the plugin reads, or "". */
 function programTooOld(/** @type {Client} */ client) {
   if (compareVersions(client.version, PROGRAM_MINIMUM) >= 0) return "";
-  return `${client.command} ${client.version} is too old: ${PROGRAM_MINIMUM} or newer is needed.`;
+  return t("clients.isTooOldOrNewerIs", {
+    command: String(client.command),
+    version: String(client.version),
+    PROGRAM_MINIMUM: String(PROGRAM_MINIMUM),
+  });
 }
 
 /**
@@ -156,7 +161,12 @@ export function tooOld(/** @type {Client} */ client) {
   const need = client.flavor === "postgresql" ? undefined : MINIMUM[client.flavor];
   if (!need) return "";
   if (compareVersions(client.version, need.version) >= 0) return "";
-  return `${client.command} ${client.version} is too old: ${need.version} or newer is needed (for ${need.why}).`;
+  return t("clients.isTooOldOrNewerIs2", {
+    command: String(client.command),
+    version: String(client.version),
+    version2: String(need.version),
+    why: String(need.why),
+  });
 }
 
 /**
@@ -185,7 +195,8 @@ export function createClients(runner, settings, platform = "mac") {
     );
     const first = `${outcome.stdout}\n${outcome.stderr}`.trim().split(/\r?\n/u)[0] ?? "";
     const parsed = parse(first);
-    if (!parsed) throw new Error(`${command} --version did not say which client it is.`);
+    if (!parsed)
+      throw new Error(t("clients.versionDidNotSayWhichClient", { command: String(command) }));
     return { command, ...parsed };
   };
 

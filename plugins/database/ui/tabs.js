@@ -9,6 +9,7 @@ import { oneLine } from "./execute.js";
 import { formatCount, formatDuration } from "./format.js";
 import { spatialColumns } from "./geo/detect.js";
 import { offerOf } from "./session/connect-gate.js";
+import { t as messageText } from "./strings/index.js";
 
 /**
  * @typedef {import("./execute.js").Execution} Execution
@@ -67,7 +68,10 @@ export function show(execution, base = 0, pinned = []) {
       const columns = spatialColumns(set);
       if (columns.length)
         tabs.push({
-          label: label === "Result" ? "Map" : `Map ${label}`,
+          label:
+            label === "Result"
+              ? messageText("tabs.map")
+              : messageText("tabs.map2", { label: String(label) }),
           kind: "map",
           statement: index,
           geo: { set, columns },
@@ -107,9 +111,18 @@ export function show(execution, base = 0, pinned = []) {
   const finished = result.statements.filter((s) => s.ran && !s.error).length;
   const count = `${formatCount(cancelled ? finished : ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"}`;
   const summary = cancelled
-    ? `Cancelled: ${count} finished in ${formatDuration(result.ms)}${tail}`
-    : `${failed ? "Failed" : "Done"}: ${count} ran in ${formatDuration(result.ms)}${tail}`;
-  tabs.push({ label: "Messages", kind: "messages", statement: -1, lines });
+    ? messageText("tabs.cancelledFinishedIn", {
+        count: String(count),
+        value: String(formatDuration(result.ms)),
+        tail: String(tail),
+      })
+    : messageText("tabs.ranIn", {
+        value: String(failed ? messageText("tabs.failed") : messageText("tabs.done")),
+        count: String(count),
+        value2: String(formatDuration(result.ms)),
+        tail: String(tail),
+      });
+  tabs.push({ label: messageText("tabs.messages"), kind: "messages", statement: -1, lines });
   const open = failed || !tabs.some((t) => t.kind === "rows") ? tabs.length - 1 : 0;
   tabs.push(...pinned);
   return { tabs, open, summary, ...(error ? { error } : {}) };

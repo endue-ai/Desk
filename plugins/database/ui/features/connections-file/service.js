@@ -5,6 +5,7 @@
 // with its line and field. No DOM.
 
 import { newId, normalize } from "../../connections.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -51,14 +52,23 @@ export function readService(text, random = Math.random) {
     const head = HEAD.exec(line);
     if (head) {
       const name = (head[1] ?? "").trim();
-      if (!name) throw new Error(`Line ${i + 1}: a service needs a name between [ and ].`);
+      if (!name)
+        throw new Error(
+          t("features.connectionsFile.service.lineAServiceNeedsAName", { value: String(i + 1) }),
+        );
       services.push({ name, line: i + 1, values: new Map() });
       return;
     }
     const eq = line.indexOf("=");
-    if (eq < 1) throw new Error(`Line ${i + 1}: key=value expected.`);
+    if (eq < 1)
+      throw new Error(
+        t("features.connectionsFile.service.lineKeyValueExpected", { value: String(i + 1) }),
+      );
     const current = services.at(-1);
-    if (!current) throw new Error(`Line ${i + 1}: a setting before the first [service].`);
+    if (!current)
+      throw new Error(
+        t("features.connectionsFile.service.lineASettingBeforeTheFirst", { value: String(i + 1) }),
+      );
     current.values.set(line.slice(0, eq).trim().toLowerCase(), line.slice(eq + 1).trim());
   });
   /** @type {Connection[]} */
@@ -67,7 +77,12 @@ export function readService(text, random = Math.random) {
     const conn = connectionOf(service, conns, random);
     conns.push(conn);
     const left = [...service.values.keys()].filter((key) => !READ.has(key));
-    return { conn, notes: left.length ? [`Left out: ${left.join(", ")}.`] : [] };
+    return {
+      conn,
+      notes: left.length
+        ? [t("features.connectionsFile.service.leftOut", { value: String(left.join(", ")) })]
+        : [],
+    };
   });
   return { kind: "service", version: 0, exported: "", entries };
 }
@@ -80,12 +95,14 @@ function connectionOf(
   const v = service.values;
   try {
     const host = v.get("host") || v.get("hostaddr");
-    if (host?.includes(",")) throw new Error("Host: one host; a list of hosts is not read.");
+    if (host?.includes(","))
+      throw new Error(t("features.connectionsFile.service.hostOneHostAListOf"));
     const port = v.get("port");
-    if (port?.includes(",")) throw new Error("Port: one port; a list of ports is not read.");
+    if (port?.includes(","))
+      throw new Error(t("features.connectionsFile.service.portOnePortAListOf"));
     const mode = v.get("sslmode");
     if (before.some((c) => c.name.toLowerCase() === service.name.toLowerCase()))
-      throw new Error("Name: the service is in the file twice.");
+      throw new Error(t("features.connectionsFile.service.nameTheServiceIsInThe"));
     return normalize({
       id: newId(random),
       engine: "postgresql",
@@ -101,6 +118,12 @@ function connectionOf(
     });
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
-    throw new Error(`Service ${service.name} (line ${service.line}): ${why}`);
+    throw new Error(
+      t("features.connectionsFile.service.serviceLine", {
+        name: String(service.name),
+        line: String(service.line),
+        why: String(why),
+      }),
+    );
   }
 }

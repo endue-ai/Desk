@@ -8,6 +8,7 @@
 import { withGrant, writeScope } from "./console-files.js";
 import { writeFile } from "./export/client.js";
 import { EXPORT_FORMATS, EXTENSIONS, isExportFormat, LABELS, optionsOf } from "./export/options.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./export/options.js").ExportFormat} Format
@@ -66,13 +67,18 @@ const folderOf = (/** @type {string} */ path) => {
 export async function exportResult(bridge, input) {
   const { set, format, name, options = {}, at = new Date() } = input;
   if (!isExportFormat(format))
-    throw new Error(`Export as ${format}: pick ${EXPORT_FORMATS.join(", ")}.`);
+    throw new Error(
+      t("export.exportAsPick", {
+        format: String(format),
+        value: String(EXPORT_FORMATS.join(", ")),
+      }),
+    );
   const settings = optionsOf(format, input.settings);
   const parts = input.parts ?? [{ name, set, base: options }];
   const kept = await bridge.call("store.get", { key: FOLDER_KEY }).catch(() => ({}));
   const folder = typeof kept?.value === "string" ? kept.value : "";
   const chosen = await bridge.call("dialog.save", {
-    title: "Export the result",
+    title: t("export.exportTheResult"),
     suggestedName: exportName(name, format, at),
     ...(folder ? { startIn: folder } : {}),
     filters: [{ name: LABELS[format], extensions: [EXTENSIONS[format]] }],

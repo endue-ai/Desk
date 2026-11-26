@@ -1,3 +1,5 @@
+import { t as messageText } from "../strings/index.js";
+
 // JSON as text, without JavaScript's numbers: strict JSON (RFC 8259) cut into its tokens and checked,
 // with the line and column of the first thing wrong; laid out two spaces a level by its tokens, so a
 // number keeps its digits (12345678901234567890, 2.0) and a string its escapes; two texts the same
@@ -26,7 +28,10 @@ export function scanJson(text) {
   /** @type {Token[]} */
   const tokens = [];
   const fail = (/** @type {number} */ at, /** @type {string} */ why) => ({
-    error: `Not JSON at ${where(text, at)}: ${why}.`,
+    error: messageText("cellEditors.jsonText.notJsonAt", {
+      value: String(where(text, at)),
+      why: String(why),
+    }),
   });
   let i = 0;
   while (i < text.length) {

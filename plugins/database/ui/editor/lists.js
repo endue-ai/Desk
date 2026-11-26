@@ -3,6 +3,7 @@
 // columns listed, and `*` written out as the columns of what it reads, qualified when it reads more
 // than one FROM item. Pure.
 
+import { t } from "../strings/index.js";
 import { keyOf } from "./rank.js";
 import { literal } from "./snippets.js";
 
@@ -58,7 +59,7 @@ export function rowItems(columns, rest) {
     {
       label: columns.map((c) => c.name).join(", "),
       kind: "columns",
-      detail: "a value for each column",
+      detail: t("editor.lists.aValueForEachColumn"),
       insert: `${columns.map((c) => stop(c.name)).join(", ")}${rest ? "" : ")"}`,
       snippet: true,
       key: keyOf("columns", "row"),
@@ -88,7 +89,7 @@ export function starItems(entries, star, ident) {
     {
       label: text.length > 60 ? `${text.slice(0, 59)}…` : text,
       kind: "expand",
-      detail: `${parts.length} columns`,
+      detail: t("editor.lists.columns", { length: String(parts.length) }),
       info: text,
       insert: text,
       range: { from: star.from, to: star.to },

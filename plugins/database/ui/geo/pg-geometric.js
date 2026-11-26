@@ -4,6 +4,7 @@
 // is infinite and is not drawn. They have no SRID; a vertex count is the points the text holds (a
 // circle's centre), and a circle is drawn as a ring of 64 sides. Pure.
 
+import { t } from "../strings/index.js";
 import { geometry } from "./geometry.js";
 
 /** @typedef {import("./geometry.js").Geometry} Geometry */
@@ -39,7 +40,9 @@ function closed(/** @type {number[]} */ xy) {
 export function readGeometric(text, type) {
   const values = numbers(text);
   if (values.length < 2 || (type !== "circle" && values.length % 2 !== 0))
-    throw new Error(`Not a ${type}: ${text.slice(0, 40)}`);
+    throw new Error(
+      t("geo.pgGeometric.notA", { type: String(type), value: String(text.slice(0, 40)) }),
+    );
   const g = geometry(type);
   if (type === "point") {
     g.points.push(values[0] ?? 0, values[1] ?? 0);
@@ -70,6 +73,6 @@ export function readGeometric(text, type) {
     g.polygons.push([ring]);
     g.vertices = 1;
     g.radius = r;
-  } else throw new Error(`Not a geometric type: ${type}.`);
+  } else throw new Error(t("geo.pgGeometric.notAGeometricType", { type: String(type) }));
   return g;
 }

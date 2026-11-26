@@ -6,6 +6,7 @@
 
 import { formatStyle } from "../../settings.js";
 import { sqlParser } from "../../sql/parse/client.js";
+import { t } from "../../strings/index.js";
 import { previewView } from "./panel.js";
 
 /**
@@ -29,7 +30,7 @@ export const PREVIEW = "format: preview";
 /** The sample laid out by the settings in force. */
 async function laidOut(/** @type {Deps} */ deps) {
   const parser = sqlParser();
-  if (!parser) throw new Error("The SQL parser has not started.");
+  if (!parser) throw new Error(t("features.format.index.theSqlParserHasNotStarted"));
   const style = formatStyle(deps.settings());
   const laid = await parser.layout(SAMPLE, style);
   return /** @type {PreviewState} */ ({ text: laid.text, style });
@@ -63,7 +64,7 @@ export const feature = {
   },
   panels: {
     format: {
-      label: "Format SQL preview",
+      label: t("features.format.index.formatSqlPreview"),
       render: (doc, /** @type {PreviewState} */ state) => previewView(doc, state),
     },
   },

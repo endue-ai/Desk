@@ -9,6 +9,7 @@
 
 import { bodiesIn } from "../sql/plpgsql/bodies.js";
 import { outlineOf } from "../sql/plpgsql/outline.js";
+import { t as messageText } from "../strings/index.js";
 import { undeclared, unreachable, unused } from "./plpgsql-checks.js";
 
 /**
@@ -98,7 +99,10 @@ export function plpgsqlProblems(raw, text, kinds) {
     if (!kinds.syntax || !body) return [];
     const { from, to } = locate(raw, text, body, read.error);
     const line = lineIn(text, body, from);
-    const message = `${read.error}\nPL/pgSQL, line ${line} of the body.`;
+    const message = messageText("diagnose.plpgsql.plPgsqlLineOfTheBody", {
+      error: String(read.error),
+      line: String(line),
+    });
     return [{ from, to, kind: "syntax", message }];
   }
   bodies.forEach((body, i) => {

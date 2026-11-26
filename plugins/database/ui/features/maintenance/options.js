@@ -1,3 +1,4 @@
+import { t as messageText } from "../../strings/index.js";
 // What the maintenance form offers: the operations a target takes and each operation's options on
 // the server's version (PostgreSQL 13 and later), with the reason an option does not apply while
 // another rules it out (VACUUM FULL rewrites the table, so PARALLEL, INDEX_CLEANUP, TRUNCATE,
@@ -25,10 +26,10 @@
 
 export const OPERATIONS = /** @type {const} */ (["vacuum", "analyze", "reindex", "cluster"]);
 export const TITLES = {
-  vacuum: "VACUUM",
-  analyze: "ANALYZE",
-  reindex: "REINDEX",
-  cluster: "CLUSTER",
+  vacuum: messageText("features.maintenance.options.vacuum"),
+  analyze: messageText("features.maintenance.options.analyze"),
+  reindex: messageText("features.maintenance.options.reindex"),
+  cluster: messageText("features.maintenance.options.cluster"),
 };
 const FOURTEEN = 140000;
 const SIXTEEN = 160000;
@@ -70,19 +71,19 @@ const KEYS = {
 };
 
 export const LABELS = {
-  full: "FULL",
-  freeze: "FREEZE",
-  verbose: "VERBOSE",
-  analyze: "ANALYZE",
-  skipLocked: "SKIP_LOCKED",
-  indexCleanup: "INDEX_CLEANUP",
-  truncate: "TRUNCATE",
-  parallel: "PARALLEL",
-  processToast: "PROCESS_TOAST",
-  bufferUsageLimit: "BUFFER_USAGE_LIMIT",
-  concurrently: "CONCURRENTLY",
-  tablespace: "TABLESPACE",
-  using: "USING index",
+  full: messageText("features.maintenance.options.full"),
+  freeze: messageText("features.maintenance.options.freeze"),
+  verbose: messageText("features.maintenance.options.verbose"),
+  analyze: messageText("features.maintenance.options.analyze"),
+  skipLocked: messageText("features.maintenance.options.skipLocked"),
+  indexCleanup: messageText("features.maintenance.options.indexCleanup"),
+  truncate: messageText("features.maintenance.options.truncate"),
+  parallel: messageText("features.maintenance.options.parallel"),
+  processToast: messageText("features.maintenance.options.processToast"),
+  bufferUsageLimit: messageText("features.maintenance.options.bufferUsageLimit"),
+  concurrently: messageText("features.maintenance.options.concurrently"),
+  tablespace: messageText("features.maintenance.options.tablespace"),
+  using: messageText("features.maintenance.options.usingIndex"),
 };
 
 /** Indexes CLUSTER can order a table by: valid, whole, of an access method that keeps an order. */
@@ -106,13 +107,15 @@ export function applies(key, op, target, known, o) {
   if (key === "tablespace" && v < FOURTEEN) return null;
   const full = op === "vacuum" && o.full;
   if (full && ["indexCleanup", "truncate", "parallel", "bufferUsageLimit"].includes(key))
-    return "Not with FULL, which writes the table anew.";
-  if (full && key === "processToast") return "FULL always processes the TOAST table.";
-  if (key === "using" && target.kind === "index") return "The index this form is for.";
+    return messageText("features.maintenance.options.notWithFullWhichWritesThe");
+  if (full && key === "processToast")
+    return messageText("features.maintenance.options.fullAlwaysProcessesTheToastTable");
+  if (key === "using" && target.kind === "index")
+    return messageText("features.maintenance.options.theIndexThisFormIsFor");
   if (key === "using" && target.kind === "database")
-    return "The whole database: each table clustered before, by its own index.";
+    return messageText("features.maintenance.options.theWholeDatabaseEachTableClustered");
   if (key === "concurrently" && system(target))
-    return "System catalogs cannot be reindexed concurrently.";
+    return messageText("features.maintenance.options.systemCatalogsCannotBeReindexedConcurrently");
   return "";
 }
 
@@ -183,25 +186,35 @@ export const partitionedTooOld = (/** @type {Known} */ known) =>
 export function patched(now, patch, known) {
   const next = { ...now };
   for (const [key, value] of Object.entries(patch)) {
-    if (!Object.hasOwn(DEFAULTS, key)) throw new Error(`No option is named ${key}.`);
+    if (!Object.hasOwn(DEFAULTS, key))
+      throw new Error(
+        messageText("features.maintenance.options.noOptionIsNamed", { key: String(key) }),
+      );
     const name = LABELS[/** @type {keyof Options} */ (key)];
     const type = typeOf(/** @type {keyof Options} */ (key));
     if (type === "check") {
-      if (typeof value !== "boolean") throw new Error(`${name} is on or off (true or false).`);
+      if (typeof value !== "boolean")
+        throw new Error(
+          messageText("features.maintenance.options.isOnOrOffTrueOr", { name: String(name) }),
+        );
       Object.assign(next, { [key]: value });
     } else if (type === "switch") {
       if (!["", "auto", "on", "off"].includes(String(value)))
-        throw new Error(`${name} is auto, on or off, or empty for the table's setting.`);
+        throw new Error(
+          messageText("features.maintenance.options.isAutoOnOrOffOr", { name: String(name) }),
+        );
       Object.assign(next, { [key]: String(value) });
     } else if (type === "number") {
       const n = value === null || value === "" ? null : Number(value);
       if (n !== null && (!Number.isInteger(n) || n < 0 || n > 1024))
-        throw new Error("PARALLEL takes 0 to 1024 workers, or nothing to let the server choose.");
+        throw new Error(
+          messageText("features.maintenance.options.parallelTakesToWorkersOrNothing"),
+        );
       next.parallel = n;
     } else if (type === "text") {
       const text = String(value ?? "").trim();
       if (text !== "" && !/^\d+ ?(kB|MB|GB)?$/u.test(text))
-        throw new Error("BUFFER_USAGE_LIMIT is a size such as 256kB, 16MB or 1GB, or 0.");
+        throw new Error(messageText("features.maintenance.options.bufferUsageLimitIsASize"));
       next.bufferUsageLimit = text.replace(" ", "");
     } else {
       const text = String(value ?? "");
@@ -209,8 +222,12 @@ export function patched(now, patch, known) {
       if (!list.includes(text))
         throw new Error(
           key === "using"
-            ? `${text} is not an index CLUSTER can order this table by.`
-            : `No tablespace is named ${text}.`,
+            ? messageText("features.maintenance.options.isNotAnIndexClusterCan", {
+                text: String(text),
+              })
+            : messageText("features.maintenance.options.noTablespaceIsNamed", {
+                text: String(text),
+              }),
         );
       Object.assign(next, { [key]: text });
     }

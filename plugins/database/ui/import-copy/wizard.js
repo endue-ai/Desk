@@ -6,6 +6,7 @@
 // the job the reader runs, the COPY statement and the CREATE TABLE. Pure.
 
 import { quoteName } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { createTable, inferColumns, tableFromFile } from "./infer.js";
 
 /**
@@ -143,8 +144,8 @@ export function copyStatements(state, table, columns) {
     return {
       problem:
         state.target === "new"
-          ? "Give at least one column a name."
-          : "Map at least one column to the table.",
+          ? t("importCopy.wizard.giveAtLeastOneColumnA")
+          : t("importCopy.wizard.mapAtLeastOneColumnTo"),
     };
   /** @type {string | undefined} */
   let create;

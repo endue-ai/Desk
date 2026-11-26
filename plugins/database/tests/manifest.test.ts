@@ -112,7 +112,9 @@ describe("plugin.json", () => {
       entry: "ui/index.html",
     });
     expect(existsSync(join(folder, db.entry ?? "missing"))).toBe(true);
-    expect(db.surfaces).toEqual([{ id: "main", title: "Database", placement: "center" }]);
+    expect(db.surfaces).toEqual([
+      { id: "main", title: "Database", titleMessage: "database.surface.main", placement: "center" },
+    ]);
   });
 
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {

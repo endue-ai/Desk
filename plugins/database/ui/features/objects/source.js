@@ -9,6 +9,7 @@ import { engineOf } from "../../engines/index.js";
 import { closeStatement } from "../../schema/common.js";
 import { qualified, quoteText } from "../../sql/quote.js";
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { answersOf } from "./checks.js";
 import { readFacts } from "./facts.js";
 import { notOffered, said } from "./kinds.js";
@@ -35,11 +36,18 @@ async function definitionOf(
   if (target.kind === "trigger") {
     const facts = await readFacts(deps, conn, "source", target);
     if (!facts.source || !facts.fn)
-      throw new Error(`The function of ${said(conn.engine, target)} was not read.`);
+      throw new Error(
+        t("features.objects.source.theFunctionOfWasNotRead", {
+          value: String(said(conn.engine, target)),
+        }),
+      );
     return {
       text: closeStatement(facts.source),
       of: facts.fn,
-      label: `${said(conn.engine, facts.fn)} (of ${said(conn.engine, target)})`,
+      label: t("features.objects.source.of", {
+        value: String(said(conn.engine, facts.fn)),
+        value2: String(said(conn.engine, target)),
+      }),
     };
   }
   const object = { ...target, detail: "", rows: null, ident: target.ident ?? "" };
@@ -75,7 +83,7 @@ export async function openSource(
     );
   if (open) {
     deps.consoles.show(open.id);
-    deps.say(`The source of ${label} is open here with its edits.`);
+    deps.say(t("features.objects.source.theSourceOfIsOpenHere", { label: String(label) }));
     return deps.view.editor().text;
   }
   const shown = await deps.consoles.openNew(conn);
@@ -88,9 +96,7 @@ export async function openSource(
   if (now !== text) deps.view.replace(0, now.length, text);
   deps.consoles.edited(text);
   deps.view.select(0, 0);
-  deps.say(
-    `The source of ${label}: edit it, then Database: apply the source shows the script and runs it.`,
-  );
+  deps.say(t("features.objects.source.theSourceOfEditItThen", { label: String(label) }));
   return text;
 }
 
@@ -109,27 +115,35 @@ export async function applySource(/** @type {Deps} */ deps) {
   /** @type {ObjectSource | undefined} */
   const source = shown?.objectSource;
   if (shown?.kind !== "console" || !source)
-    throw new Error(
-      "This console holds no object's source: open one with s in the explorer (Database: edit the source).",
-    );
+    throw new Error(t("features.objects.source.thisConsoleHoldsNoObjectS"));
   const conn = deps.manager.get(shown.connection);
-  if (!conn) throw new Error("This console's connection was removed.");
+  if (!conn) throw new Error(t("features.objects.source.thisConsoleSConnectionWasRemoved"));
   if (conn.readOnly)
-    throw new Error(`${conn.name} is read-only: objects are not changed from here.`);
+    throw new Error(
+      t("features.objects.source.isReadOnlyObjectsAreNot", { name: String(conn.name) }),
+    );
   const { target } = source;
   const { text } = deps.view.editor();
   const facts = { ...(await readFacts(deps, conn, "apply", target)), text };
   const blocking = facts.dependents?.blocking ?? [];
   if (blocking.length)
     throw new Error(
-      `Not applied: ${blocking.map((d) => `${d.kind} ${d.name}`).join(", ")} ${
-        blocking.length === 1 ? "depends" : "depend"
-      } on it, and a materialized view is dropped and created again: drop or change ${
-        blocking.length === 1 ? "it" : "them"
-      } first.`,
+      t("features.objects.source.notAppliedOnItAndA", {
+        value: String(blocking.map((d) => `${d.kind} ${d.name}`).join(", ")),
+        value2: String(
+          blocking.length === 1
+            ? t("features.objects.source.depends")
+            : t("features.objects.source.depend"),
+        ),
+        value3: String(
+          blocking.length === 1
+            ? t("features.objects.source.it")
+            : t("features.objects.source.them"),
+        ),
+      }),
     );
   const answer = await deps.dialog(DIALOG, modelOf(conn, "apply", target, facts, {}));
-  if (answer === undefined) throw deps.cancelled("Not applied.");
+  if (answer === undefined) throw deps.cancelled(t("features.objects.source.notApplied2"));
   const script = scriptOf(conn.engine, "apply", target, facts, answersOf(answer));
   const { dialect } = engineOf(conn.engine);
   const before = split(applyPrefix(conn.engine, target, facts), dialect).map((s) => ({
@@ -151,8 +165,13 @@ export async function applySource(/** @type {Deps} */ deps) {
     const error = shown.shown?.error;
     const at = error && error.statement >= before.length ? lineAt(text, error.offset) : undefined;
     if (at) deps.view.select(at.from, at.to);
-    throw new Error(`Not applied: ${failed.message}${at ? ` (line ${at.line})` : ""}`);
+    throw new Error(
+      t("features.objects.source.notApplied", {
+        message: String(failed.message),
+        value: String(at ? t("features.objects.source.line", { line: String(at.line) }) : ""),
+      }),
+    );
   }
-  deps.say(`Applied the source of ${source.of}.`);
+  deps.say(t("features.objects.source.appliedTheSourceOf", { of: String(source.of) }));
   return { script };
 }

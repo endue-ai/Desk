@@ -114,7 +114,11 @@ export function createCellEditor(doc, host, commit, done, act = () => undefined)
       const empty = editing.value === null || isDefault(editing.value);
       input.value = typed ?? (empty ? "" : (editing.value ?? ""));
       input.placeholder =
-        editing.value === null ? "NULL" : isDefault(editing.value) ? "DEFAULT" : "";
+        editing.value === null
+          ? t("viewCell.null")
+          : isDefault(editing.value)
+            ? t("viewCell.default")
+            : "";
       input.title = [
         t("cell.keys"),
         editor?.nullable !== false ? t("cell.keyNull") : "",

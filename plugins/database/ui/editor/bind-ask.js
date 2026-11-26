@@ -5,6 +5,7 @@
 // (bind.js). A statement that does not parse is asked about without types, and its run says why.
 // No DOM.
 
+import { t } from "../strings/index.js";
 import { bind, isSql, misfit, numbered, sentValue } from "./bind.js";
 import { asked, paramsOf } from "./params.js";
 
@@ -21,7 +22,7 @@ import { asked, paramsOf } from "./params.js";
  * }} Deps
  */
 
-export const PLACEHOLDER = "42, it's, NULL, or =now() sent as SQL";
+export const PLACEHOLDER = t("editor.bindAsk.itSNullOrNowSent");
 
 /** @param {Deps} deps */
 export function createBoundAsk(deps) {
@@ -78,13 +79,16 @@ export function createBoundAsk(deps) {
       for (const param of asked(params)) {
         if (values[param.key] !== undefined) continue;
         const type = types.get(param.key);
-        const title = `Value for ${param.label}${type ? ` (${type.type})` : ""}`;
+        const title = t("editor.bindAsk.valueFor", {
+          label: String(param.label),
+          value: String(type ? ` (${type.type})` : ""),
+        });
         const kept = `${memo}\u0000${param.key}`;
         let why = "";
         let offered = deps.typed.get(kept) ?? PLACEHOLDER;
         for (;;) {
           const answer = await deps.ask(why ? `${title}: ${why}` : title, offered);
-          if (answer === undefined) throw deps.cancelled("Not run: a parameter has no value.");
+          if (answer === undefined) throw deps.cancelled(t("editor.bindAsk.notRunAParameterHasNo"));
           why = isSql(answer) ? "" : misfit(sentValue(answer), type?.oid ?? 0);
           // Refused: asked again, with what was typed to mend.
           offered = answer;

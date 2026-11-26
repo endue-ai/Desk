@@ -3,6 +3,7 @@
 // stops between them and inside one; then every table built by the table form's designOf from its
 // rows, and the other objects from theirs (objects.js). `modelOfRows` is pure.
 
+import { t } from "../../strings/index.js";
 import { designOf, factsOf } from "../table-design/read.js";
 import {
   compositeObj,
@@ -158,7 +159,7 @@ export async function readSchema(deps, conn, schema, { signal, progress } = {}) 
   /** @type {Record<string, Rows>} */
   const rows = {};
   for (const [i, batch] of batches.entries()) {
-    if (signal?.aborted) throw deps.cancelled("Not compared.");
+    if (signal?.aborted) throw deps.cancelled(t("features.compareSchema.read.notCompared"));
     progress?.({
       done: i,
       total: batches.length,
@@ -169,15 +170,27 @@ export async function readSchema(deps, conn, schema, { signal, progress } = {}) 
       maxRows: MAX_ROWS,
       ...(signal ? { signal } : {}),
     });
-    if (signal?.aborted) throw deps.cancelled("Not compared.");
+    if (signal?.aborted) throw deps.cancelled(t("features.compareSchema.read.notCompared"));
     const { result } = run;
     const failed = result.error ?? result.statements.find((s) => s.error)?.error;
-    if (failed) throw new Error(`${conn.name}: ${schema} was not read: ${failed.message}`);
+    if (failed)
+      throw new Error(
+        t("features.compareSchema.read.wasNotRead", {
+          name: String(conn.name),
+          schema: String(schema),
+          message: String(failed.message),
+        }),
+      );
     batch.forEach((read, k) => {
       const set = result.statements[k]?.sets[0];
       if (set?.truncated)
         throw new Error(
-          `${schema} on ${conn.name} has more than ${MAX_ROWS} rows of ${read.key}: it is not compared.`,
+          t("features.compareSchema.read.onHasMoreThanRowsOf", {
+            schema: String(schema),
+            name: String(conn.name),
+            MAX_ROWS: String(MAX_ROWS),
+            key: String(read.key),
+          }),
         );
       rows[read.key] = set?.rows ?? [];
     });

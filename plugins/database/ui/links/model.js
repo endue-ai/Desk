@@ -6,6 +6,7 @@
 
 import { filterSql } from "../grid/filters.js";
 import { qualified, quoteName, quoteText } from "../sql/quote.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
@@ -127,7 +128,12 @@ export function linkColumns(keys, columns) {
 /** What a link cell's title says: where it points, and how to go there. */
 export function linkTitle(/** @type {Key[]} */ keys) {
   const where = keys.map((k) => `${nameOf(k.to)} (${k.to.columns.join(", ")})`).join(" and ");
-  return `Points at ${where}: g or Mod+click opens ${keys.length > 1 ? "one" : "that row"}`;
+  return messageText("links.model.pointsAtGOrModClick", {
+    where: String(where),
+    value: String(
+      keys.length > 1 ? messageText("links.model.one") : messageText("links.model.thatRow"),
+    ),
+  });
 }
 
 /**
@@ -141,9 +147,11 @@ export function keyFilters({ from, onto, columns, row, numeric }) {
   const filters = [];
   for (const [i, name] of from.entries()) {
     const c = columns.indexOf(name);
-    if (c < 0) return { error: `${name} is not in this result: add it to follow the key.` };
+    if (c < 0)
+      return { error: messageText("links.model.isNotInThisResultAdd", { name: String(name) }) };
     const value = row[c] ?? null;
-    if (value === null) return { error: `${name} is NULL: the key points at no row.` };
+    if (value === null)
+      return { error: messageText("links.model.isNullTheKeyPointsAt", { name: String(name) }) };
     const target = onto[i] ?? name;
     filters.push({ key: target, name: target, op: "eq", value, numeric: numeric[c] ?? false });
   }

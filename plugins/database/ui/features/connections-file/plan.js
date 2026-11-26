@@ -7,6 +7,7 @@
 
 import { normalize } from "../../connections.js";
 import { chosen, withChoice } from "../../keychain.js";
+import { t } from "../../strings/index.js";
 import { entryOf, FIELDS } from "./file.js";
 
 /**
@@ -18,18 +19,18 @@ import { entryOf, FIELDS } from "./file.js";
  */
 
 const LABELS = /** @type {Record<string, string>} */ ({
-  ssl: "SSL",
-  sslCa: "CA file",
-  sslCert: "certificate file",
-  sslKey: "key file",
-  tag: "environment",
-  readOnly: "read-only",
-  color: "colour",
-  searchPath: "search path",
-  timeZone: "time zone",
-  lockTimeout: "lock timeout",
-  idleTimeout: "idle in transaction timeout",
-  applicationName: "application name",
+  ssl: t("features.connectionsFile.plan.ssl"),
+  sslCa: t("features.connectionsFile.plan.caFile"),
+  sslCert: t("features.connectionsFile.plan.certificateFile"),
+  sslKey: t("features.connectionsFile.plan.keyFile"),
+  tag: t("features.connectionsFile.plan.environment"),
+  readOnly: t("features.connectionsFile.plan.readOnly"),
+  color: t("features.connectionsFile.plan.colour"),
+  searchPath: t("features.connectionsFile.plan.searchPath"),
+  timeZone: t("features.connectionsFile.plan.timeZone"),
+  lockTimeout: t("features.connectionsFile.plan.lockTimeout"),
+  idleTimeout: t("features.connectionsFile.plan.idleInTransactionTimeout"),
+  applicationName: t("features.connectionsFile.plan.applicationName"),
 });
 const lower = (/** @type {string} */ name) => name.toLowerCase();
 

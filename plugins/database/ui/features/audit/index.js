@@ -5,6 +5,7 @@
 // list. What watches every call (gate.js) is made in database.js and found here by the bridge.
 // controller.js answers the person, panel.js draws.
 
+import { t } from "../../strings/index.js";
 import { agentsOf } from "./agents.js";
 import { createAudit, TYPE } from "./controller.js";
 import { auditPanel } from "./panel.js";
@@ -13,7 +14,7 @@ import { agentTools } from "./tools.js";
 /** The plugin's agents, which database.js makes before any feature. */
 const need = (/** @type {object} */ bridge) => {
   const agents = agentsOf(bridge);
-  if (!agents) throw new Error("The plugin's agents are not set up (database.js makes them).");
+  if (!agents) throw new Error(t("features.audit.index.thePluginSAgentsAreNot"));
   return agents;
 };
 
@@ -33,6 +34,6 @@ export const feature = {
   id: "audit",
   commands: (deps) => ({ ...agentTools(deps, need(deps.bridge)), ...of(deps).commands }),
   actions: (deps) => of(deps).actions,
-  panels: { [TYPE]: { label: "Agent audit", render: auditPanel } },
+  panels: { [TYPE]: { label: t("features.audit.index.agentAudit"), render: auditPanel } },
   styles: [new URL("./audit.css", import.meta.url).href],
 };

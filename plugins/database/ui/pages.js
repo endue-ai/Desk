@@ -10,6 +10,7 @@ import { formatCount } from "./format.js";
 import { orderSql, whereWith } from "./grid/filters.js";
 import { createRowsControl, windowed } from "./rows/control.js";
 import { split } from "./sql/split.js";
+import { t } from "./strings/index.js";
 import { createNaturalOrder } from "./table-order.js";
 
 /**
@@ -111,11 +112,10 @@ export function createPages(deps) {
     }
     if (target.kind === "console") {
       const at = target.page;
-      if (!at || !change.delta)
-        throw new Error("Paging is for a table's view or a console's SELECT.");
+      if (!at || !change.delta) throw new Error(t("pages.pagingIsForATableS"));
       const offset = Math.max(0, at.offset + change.delta * limit);
       const statement = pagedSql(at.statement, engineOf(conn.engine).dialect, limit, offset);
-      if (!statement) throw new Error("This statement pages itself (LIMIT, OFFSET or FETCH).");
+      if (!statement) throw new Error(t("pages.thisStatementPagesItselfLimitOffset"));
       const said = await deps.run(target, conn, statement.text, {
         maxRows: limit,
         history: false,
@@ -126,7 +126,7 @@ export function createPages(deps) {
       return said;
     }
     const table = target.table;
-    if (!table) throw new Error("Paging is for a table's view.");
+    if (!table) throw new Error(t("pages.pagingIsForATableS2"));
     if (change.sort !== undefined) {
       table.sort = change.sort ?? [];
       change.order = orderSql(engineOf(conn.engine).dialect, table.sort);

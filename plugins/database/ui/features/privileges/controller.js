@@ -5,6 +5,7 @@
 // commands and actions call it. No DOM.
 
 import { engineOf } from "../../engines/index.js";
+import { t } from "../../strings/index.js";
 import { createObjects, targetOfNode } from "../objects/controller.js";
 import { editKey, nextState } from "./acl.js";
 import { kindOf, saidOf } from "./kinds.js";
@@ -66,14 +67,17 @@ export function createPrivileges(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!conn) throw new Error("This panel's connection was removed.");
+    if (!conn) throw new Error(t("features.privileges.controller.thisPanelSConnectionWasRemoved"));
     return conn;
   };
 
   const postgres = (/** @type {Connection} */ conn) => {
     if (conn.engine !== "postgresql")
       throw new Error(
-        `${conn.name} is ${engineOf(conn.engine).title}: roles and privileges are read from PostgreSQL connections.`,
+        t("features.privileges.controller.isRolesAndPrivilegesAreRead", {
+          name: String(conn.name),
+          title: String(engineOf(conn.engine).title),
+        }),
       );
     return conn;
   };
@@ -81,7 +85,10 @@ export function createPrivileges(deps) {
   const choose = async (/** @type {unknown} */ ref) => {
     if (typeof ref === "string" && ref !== "") {
       const conn = deps.manager.get(ref);
-      if (!conn) throw new Error(`No connection is named ${ref}.`);
+      if (!conn)
+        throw new Error(
+          t("features.privileges.controller.noConnectionIsNamed", { ref: String(ref) }),
+        );
       return postgres(conn);
     }
     const shown = deps.consoles.current();
@@ -89,15 +96,18 @@ export function createPrivileges(deps) {
     if (here?.engine === "postgresql") return here;
     const list = deps.manager.list().filter((c) => c.engine === "postgresql");
     if (list.length === 0)
-      throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+      throw new Error(t("features.privileges.controller.noPostgresqlConnectionYetAddOne"));
     if (list.length === 1) return /** @type {Connection} */ (list[0]);
     const items = list.map((c) => ({
       id: c.id,
       label: c.name,
       ...(c.tag !== "none" ? { detail: c.tag } : {}),
     }));
-    const picked = await deps.pick("Database: roles and privileges of which connection?", items);
-    if (!picked) throw deps.cancelled("Nothing picked.");
+    const picked = await deps.pick(
+      t("features.privileges.controller.databaseRolesAndPrivilegesOfWhich"),
+      items,
+    );
+    if (!picked) throw deps.cancelled(t("features.privileges.controller.nothingPicked"));
     return /** @type {Connection} */ (deps.manager.get(picked));
   };
 
@@ -144,7 +154,8 @@ export function createPrivileges(deps) {
     const name = typeof args.name === "string" ? args.name : undefined;
     if (kind === "database") return { kind, schema: "", name: conn.database ?? "" };
     if (kind && kindOf(kind)?.level) {
-      if (!name) throw new Error(`Name the ${kind}.`);
+      if (!name)
+        throw new Error(t("features.privileges.controller.nameThe", { kind: String(kind) }));
       return { kind, schema: "", name };
     }
     if (kind === "schema") {
@@ -152,7 +163,10 @@ export function createPrivileges(deps) {
       if (schema) return { kind, schema, name: schema };
     }
     const { target } = await objects.resolve({ ...args, connection: conn.id }, undefined);
-    if (!kindOf(target.kind)) throw new Error(`A ${target.kind} has no privileges of its own.`);
+    if (!kindOf(target.kind))
+      throw new Error(
+        t("features.privileges.controller.aHasNoPrivilegesOfIts", { kind: String(target.kind) }),
+      );
     return target;
   };
 
@@ -167,7 +181,7 @@ export function createPrivileges(deps) {
   /** The explorer's `p` on a row: a role's view, an object's matrix, else the roles. */
   const fromNode = async (/** @type {import("../../explorer.js").Node} */ node) => {
     const conn = deps.manager.get(node.connection);
-    if (!conn) throw new Error("That connection is gone.");
+    if (!conn) throw new Error(t("features.privileges.controller.thatConnectionIsGone"));
     if (node.object?.kind === "role") return showRole(conn, node.object.name);
     if (node.part?.kind === "policy")
       return showObject(conn, { kind: "table", schema: node.part.schema, name: node.part.table });
@@ -187,7 +201,8 @@ export function createPrivileges(deps) {
 
   /** Change a panel's tab; a tab not read yet is read. */
   const tab = async (/** @type {string} */ id, /** @type {Tab} */ to) => {
-    if (!TABS.includes(to)) throw new Error(`No tab ${to}.`);
+    if (!TABS.includes(to))
+      throw new Error(t("features.privileges.controller.noTab", { to: String(to) }));
     update(id, { tab: to });
     return read(id);
   };
@@ -229,7 +244,8 @@ export function createPrivileges(deps) {
   ) => {
     const state = stateOf(id);
     const offered = /** @type {string[]} */ (state?.object?.privileges ?? []);
-    if (!state || state.object?.error) throw new Error(state?.object?.error || "Not read.");
+    if (!state || state.object?.error)
+      throw new Error(state?.object?.error || t("features.privileges.controller.notRead"));
     const who = grantee.trim().toUpperCase() === "PUBLIC" ? "PUBLIC" : grantee.trim();
     const words = (/** @type {unknown} */ list) => {
       const given = Array.isArray(list) ? list.map((x) => String(x).toUpperCase()) : [];
@@ -237,7 +253,11 @@ export function createPrivileges(deps) {
       for (const p of given)
         if (!offered.includes(p))
           throw new Error(
-            `${p} is not a privilege of ${saidOf(/** @type {Target} */ (state.target))}: ${offered.join(", ")}.`,
+            t("features.privileges.controller.isNotAPrivilegeOf", {
+              p: String(p),
+              value: String(saidOf(/** @type {Target} */ (state.target))),
+              value2: String(offered.join(", ")),
+            }),
           );
       return given;
     };

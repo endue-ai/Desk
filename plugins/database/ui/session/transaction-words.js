@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // The words and statements of a console's transaction (PG-20): the isolation levels and the BEGIN
 // that Manual mode sends with them, how a savepoint's name is written and read back, what the
 // header shows beside the session's state (the statements, the time it has been open, flagged when
@@ -18,10 +19,13 @@
 
 /** The isolation levels a transaction can take, in the order the question lists them. */
 export const ISOLATIONS = /** @type {const} */ ({
-  default: { sql: "", label: "Server default" },
-  "read-committed": { sql: "READ COMMITTED", label: "Read committed" },
-  "repeatable-read": { sql: "REPEATABLE READ", label: "Repeatable read" },
-  serializable: { sql: "SERIALIZABLE", label: "Serializable" },
+  default: { sql: "", label: t("session.transactionWords.serverDefault") },
+  "read-committed": { sql: "READ COMMITTED", label: t("session.transactionWords.readCommitted") },
+  "repeatable-read": {
+    sql: "REPEATABLE READ",
+    label: t("session.transactionWords.repeatableRead"),
+  },
+  serializable: { sql: "SERIALIZABLE", label: t("session.transactionWords.serializable") },
 });
 
 /** A console's choice before the person makes one. @type {Readonly<Chosen>} */
@@ -100,8 +104,7 @@ export function clock(/** @type {number} */ ms) {
 export const statementsLine = (/** @type {number} */ n) => `${n} statement${n === 1 ? "" : "s"}`;
 
 const KEYS = "Commit (Mod+Shift+Y) or Rollback (Mod+Shift+S) ends it";
-const ASKS =
-  "Closing the console or Disconnect asks first; quitting the desk rolls it back without asking.";
+const ASKS = t("session.transactionWords.closingTheConsoleOrDisconnectAsks");
 
 /**
  * What the header shows beside a console's session at `now`: the open transaction's statements and
@@ -123,7 +126,20 @@ export function transactionLine(model, now) {
   const points = model.savepoints?.length ? `; savepoints ${model.savepoints.join(", ")}` : "";
   const detail =
     model.state === "failed"
-      ? `A statement failed in this transaction: the server ignores every statement until Rollback (Mod+Shift+S), or Rollback to a savepoint. ${ASKS}`
-      : `${flagged ? `Idle for ${minutes} min with the transaction open: it holds its locks until it ends. ` : ""}Open for ${open} with ${count}${points}. ${KEYS}. ${ASKS}`;
+      ? t("session.transactionWords.aStatementFailedInThisTransaction", { ASKS: String(ASKS) })
+      : t("session.transactionWords.openForWith", {
+          value: String(
+            flagged
+              ? t("session.transactionWords.idleForMinWithTheTransaction", {
+                  minutes: String(minutes),
+                })
+              : "",
+          ),
+          open: String(open),
+          count: String(count),
+          points: String(points),
+          KEYS: String(KEYS),
+          ASKS: String(ASKS),
+        });
   return { text, flagged, tone: flagged ? "danger" : model.tone, detail };
 }

@@ -1,3 +1,5 @@
+import { t as messageText } from "../strings/index.js";
+
 // A PostgreSQL result's edit target from its columns' origins (PG-45, ADR 0350): the row description
 // names each column's table (OID) and column number, so a result that joins tables is mapped column
 // by column to the relations the catalog read by OID (edit/origins.js), never by the statement's
@@ -45,18 +47,21 @@ const KINDS = /** @type {Record<string, string>} */ ({
 function keyOf(rel, at, ctid, twice) {
   const { name } = rel;
   if (rel.relkind === "m")
-    return { why: `${name} is a materialized view: its rows are computed, not stored.` };
-  if (!KINDS[rel.relkind]) return { why: `${name} is not a table or a view: it cannot change.` };
+    return {
+      why: messageText("edit.originTarget.isAMaterializedViewItsRows", { name: String(name) }),
+    };
+  if (!KINDS[rel.relkind])
+    return { why: messageText("edit.originTarget.isNotATableOrA", { name: String(name) }) };
   if (twice)
     return {
-      why: `${name} is read more than once in this query, so which of its rows a cell shows is not certain.`,
+      why: messageText("edit.originTarget.isReadMoreThanOnceIn", { name: String(name) }),
     };
   if (!(rel.updatable & UPDATE))
     return {
       why:
         rel.relkind === "v"
-          ? `View ${name} cannot be updated: the server changes a view only when it reads one table without grouping, or through its INSTEAD OF triggers.`
-          : `${name} takes no changes on this server.`,
+          ? messageText("edit.originTarget.viewCannotBeUpdatedTheServer", { name: String(name) })
+          : messageText("edit.originTarget.takesNoChangesOnThisServer", { name: String(name) }),
     };
   const cols = (/** @type {number[]} */ nums) => nums.map((n) => at.get(n) ?? -1);
   const lacking = (/** @type {Key} */ key) =>
@@ -68,7 +73,11 @@ function keyOf(rel, at, ctid, twice) {
     const missing = lacking(primary);
     if (missing.length === 0) return { by: "primary", key: cols(primary.columns), match: [] };
     return {
-      why: `The result lacks ${missing.join(", ")} of ${name}'s primary key: add it to change ${name}'s cells.`,
+      why: messageText("edit.originTarget.theResultLacksOfSPrimary", {
+        value: String(missing.join(", ")),
+        name: String(name),
+        name2: String(name),
+      }),
     };
   }
   const unique = rel.keys.find((k) => lacking(k).length === 0);
@@ -79,13 +88,21 @@ function keyOf(rel, at, ctid, twice) {
   const [first] = rel.keys;
   if (first)
     return {
-      why: `The result lacks ${lacking(first).join(", ")} of ${name}'s unique key ${first.name}: add it to change ${name}'s cells.`,
+      why: messageText("edit.originTarget.theResultLacksOfSUnique", {
+        value: String(lacking(first).join(", ")),
+        name: String(name),
+        name2: String(first.name),
+        name3: String(name),
+      }),
     };
   return {
     why:
       rel.relkind === "r"
-        ? `${name} has no primary key or unique key on NOT NULL columns: select its ctid (SELECT ctid, * FROM ${name}) or every one of its columns to change its rows.`
-        : `${name} has no key: select every one of its columns to change its rows.`,
+        ? messageText("edit.originTarget.hasNoPrimaryKeyOrUnique", {
+            name: String(name),
+            name2: String(name),
+          })
+        : messageText("edit.originTarget.hasNoKeySelectEveryOne", { name: String(name) }),
   };
 }
 
@@ -164,23 +181,48 @@ export function originTarget(set, relations, repeated) {
     });
     const o = origins[i];
     if (!o || o.table === 0)
-      return off(`${label} is computed by the query, not read from a table: it cannot change.`);
+      return off(
+        messageText("edit.originTarget.isComputedByTheQueryNot", { label: String(label) }),
+      );
     const s = shape.find((x) => x.rel.oid === o.table);
-    if (!s) return off(`${label}'s table was not found in the catalog: it cannot change.`);
+    if (!s)
+      return off(messageText("edit.originTarget.sTableWasNotFoundIn", { label: String(label) }));
     const { rel, at, found } = s;
     if (o.column < 0)
       return off(
         o.column === -1
-          ? `${label} is ${rel.name}'s row id (ctid): the server sets it.`
-          : `${label} is a system column of ${rel.name}: the server sets it.`,
+          ? messageText("edit.originTarget.isSRowIdCtidThe", {
+              label: String(label),
+              name: String(rel.name),
+            })
+          : messageText("edit.originTarget.isASystemColumnOfThe", {
+              label: String(label),
+              name: String(rel.name),
+            }),
       );
     const column = rel.columns.find((c) => c.attnum === o.column);
-    if (!column) return off(`${label} was not found in ${rel.name}: it cannot change.`);
+    if (!column)
+      return off(
+        messageText("edit.originTarget.wasNotFoundInItCannot", {
+          label: String(label),
+          name: String(rel.name),
+        }),
+      );
     if (at.get(o.column) !== i)
-      return off(`${column.name} of ${rel.name} is in the result twice: change its first column.`);
+      return off(
+        messageText("edit.originTarget.ofIsInTheResultTwice", {
+          name: String(column.name),
+          name2: String(rel.name),
+        }),
+      );
     if ("why" in found) return off(found.why);
     if (!column.updatable)
-      return off(`${column.name} is computed by view ${rel.name}: it cannot change.`);
+      return off(
+        messageText("edit.originTarget.isComputedByViewItCannot", {
+          name: String(column.name),
+          name2: String(rel.name),
+        }),
+      );
     const t = editable.indexOf(s);
     return {
       name: column.name,

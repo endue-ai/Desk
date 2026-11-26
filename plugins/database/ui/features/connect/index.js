@@ -4,6 +4,7 @@
 // session; granted, the reads that waited for it run.
 
 import { allowConnect, whereOf } from "../../session/connect-gate.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @param {import("../../feature-host.js").Deps} deps
@@ -12,12 +13,20 @@ import { allowConnect, whereOf } from "../../session/connect-gate.js";
 async function allow(deps, conn) {
   const where = whereOf(conn);
   if (!where)
-    throw new Error(`${conn.name} connects through a client program, which asks nothing.`);
+    throw new Error(
+      t("features.connect.index.connectsThroughAClientProgramWhich", { name: String(conn.name) }),
+    );
   const allowed = await allowConnect(deps.bridge, conn);
   deps.say(
     allowed
-      ? `${conn.name} may connect to ${where} now.`
-      : `${conn.name} is still not allowed to connect to ${where}.`,
+      ? t("features.connect.index.mayConnectToNow", {
+          name: String(conn.name),
+          where: String(where),
+        })
+      : t("features.connect.index.isStillNotAllowedToConnect", {
+          name: String(conn.name),
+          where: String(where),
+        }),
   );
   return allowed;
 }
@@ -29,7 +38,7 @@ export const feature = {
     "endue.database.allow-connect": async ({ connection }) => {
       const conn = await deps.manager.choose(
         connection,
-        "Database: allow connecting for which connection?",
+        t("features.connect.index.databaseAllowConnectingForWhichConnection"),
       );
       return conn ? allow(deps, conn) : undefined;
     },

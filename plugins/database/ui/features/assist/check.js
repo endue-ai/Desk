@@ -9,6 +9,7 @@
 import { engineOf } from "../../engines/index.js";
 import { classify } from "../../sql/classify.js";
 import { split } from "../../sql/split.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
@@ -53,9 +54,10 @@ export function marksOf(conn, text) {
     marks.push(`${KINDS[c.kind] ?? "Writes"}: ${c.verb}`);
     if (c.dangerous) marks.push(c.dangerous);
   }
-  if (write && conn.readOnly) marks.push("This connection is read-only: a run refuses this write.");
+  if (write && conn.readOnly)
+    marks.push(messageText("features.assist.check.thisConnectionIsReadOnlyA"));
   else if (write && conn.tag === "production")
-    marks.push("This connection is tagged production: a run asks before it writes.");
+    marks.push(messageText("features.assist.check.thisConnectionIsTaggedProductionA"));
   return { write, marks: [...new Set(marks)] };
 }
 
@@ -73,20 +75,27 @@ const explainOf = (/** @type {string} */ dialect) =>
 export async function checkWithServer(deps, conn, text) {
   const { dialect } = engineOf(conn.engine);
   const statements = split(text, dialect);
-  if (!statements.length) return { state: "unchecked", text: "Nothing to check." };
+  if (!statements.length)
+    return { state: "unchecked", text: messageText("features.assist.check.nothingToCheck") };
   let checked = 0;
   for (const statement of statements) {
     const c = classify(statement, dialect);
     const why = c.refused
       ? c.refused
       : !EXPLAINED.has(c.verb)
-        ? `the server plans only reads and writes of rows, not ${c.verb}`
+        ? messageText("features.assist.check.theServerPlansOnlyReadsAnd", { verb: String(c.verb) })
         : statement.tokens.some((t) => t.type === "param")
-          ? "it has parameters"
+          ? messageText("features.assist.check.itHasParameters")
           : "";
     if (why) {
       const rest = checked ? `the first ${checked} checked; ` : "";
-      return { state: "unchecked", text: `Not checked by the server: ${rest}${why}.` };
+      return {
+        state: "unchecked",
+        text: messageText("features.assist.check.notCheckedByTheServer", {
+          rest: String(rest),
+          why: String(why),
+        }),
+      };
     }
     try {
       const done = await deps.execute(conn, `${explainOf(dialect)} ${statement.text}`, {
@@ -104,6 +113,8 @@ export async function checkWithServer(deps, conn, text) {
   }
   return {
     state: "ok",
-    text: `Checked by the server (${explainOf(dialect)}): it plans, and nothing ran.`,
+    text: messageText("features.assist.check.checkedByTheServerItPlans", {
+      value: String(explainOf(dialect)),
+    }),
   };
 }

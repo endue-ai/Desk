@@ -6,6 +6,7 @@
 
 import { homeOf } from "../../databases.js";
 import { bridgeStore } from "../../schema-cache/store.js";
+import { t } from "../../strings/index.js";
 import { agentsOf } from "../audit/agents.js";
 import { best } from "./match.js";
 import { resultOf } from "./results.js";
@@ -77,22 +78,26 @@ export const feature = {
       },
       "endue.database.copy-name": async ({ text }) => {
         if (typeof text !== "string" || text === "")
-          throw new Error("Say the name to copy as text.");
-        deps.say((await deps.view.copy(text)) ? `Copied ${text}` : text);
+          throw new Error(t("features.palette.index.sayTheNameToCopyAs"));
+        deps.say(
+          (await deps.view.copy(text))
+            ? t("features.palette.index.copied", { text: String(text) })
+            : text,
+        );
         return text;
       },
       "endue.database.palette-hide": async ({ connection }) => {
         const conn = await deps.manager.choose(
           typeof connection === "string" ? connection : undefined,
-          "Database: hide which connection from the palette, or show it again?",
+          t("features.palette.index.databaseHideWhichConnectionFromThe"),
         );
         if (!conn) return undefined;
         const home = homeOf(conn);
         const now = await sources.toggle(home.id);
         deps.say(
           now
-            ? `${home.name} is hidden from the palette.`
-            : `The palette finds ${home.name} again.`,
+            ? t("features.palette.index.isHiddenFromThePalette", { name: String(home.name) })
+            : t("features.palette.index.thePaletteFindsAgain", { name: String(home.name) }),
         );
         return now;
       },

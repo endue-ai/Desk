@@ -1,3 +1,4 @@
+import { t } from "../../strings/index.js";
 // The source search's matcher (PG-82): a text or a regular expression found line by line in a
 // definition, each matching line with its number, its text (a long one cut around its first match)
 // and the ranges that matched; matches inside SQL comments (`--`, nested `/* */`, also inside a
@@ -26,14 +27,16 @@ const BEFORE = 60;
  * @returns {RegExp}
  */
 export function testOf(how) {
-  if (how.text === "") throw new Error("Type the text to find first.");
+  if (how.text === "") throw new Error(t("features.sourceSearch.match.typeTheTextToFindFirst"));
   const flags = `gu${how.ignoreCase ? "i" : ""}`;
   if (!how.regex) return new RegExp(how.text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), flags);
   try {
     return new RegExp(how.text, flags);
   } catch (error) {
     throw new Error(
-      `Not a regular expression: ${error instanceof Error ? error.message : String(error)}`,
+      t("features.sourceSearch.match.notARegularExpression", {
+        value: String(error instanceof Error ? error.message : String(error)),
+      }),
     );
   }
 }

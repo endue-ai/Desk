@@ -8,6 +8,7 @@
 import { readScope, withGrant } from "../console-files.js";
 import { baseName } from "../console-list.js";
 import { copyIn, fileSink, fileSource } from "../copy/index.js";
+import { t as messageText } from "../strings/index.js";
 import { createReader } from "./client.js";
 import { createTable } from "./infer.js";
 import { createRejects } from "./rejects.js";
@@ -63,7 +64,10 @@ export async function headOf(bridge, path, whole = false) {
     const size = read.size ?? bytes;
     if (whole && size > XLSX_MAX)
       throw new Error(
-        `${baseName(path)} is larger than ${XLSX_MAX / 1024 / 1024} MiB, the most an .xlsx import reads.`,
+        messageText("importCopy.start.isLargerThanMibTheMost", {
+          value: String(baseName(path)),
+          value2: String(XLSX_MAX / 1024 / 1024),
+        }),
       );
     return { size, data: read.content, whole: bytes >= size };
   }
@@ -177,23 +181,36 @@ export function createCopyStarts(deps) {
      * @param {Target & { signal: AbortSignal, progress(p: Progress): void }} t
      */
     async run(t) {
-      if (t.conn.readOnly) throw new Error(`${t.conn.name} is read-only: an import changes it.`);
+      if (t.conn.readOnly)
+        throw new Error(
+          messageText("importCopy.start.isReadOnlyAnImportChanges", { name: String(t.conn.name) }),
+        );
       const planned = copyStatements(t.state, t.table, t.columns);
       if ("problem" in planned) throw new Error(planned.problem);
       if (t.conn.tag === "production" && deps.settings().confirm) {
         const reasons = [
-          `${t.conn.name} is tagged production.`,
+          messageText("importCopy.start.isTaggedProduction", { name: String(t.conn.name) }),
           ...(planned.create ? [planned.create.replace(/\s+/gu, " ")] : []),
           planned.copy ?? "",
         ];
-        if (!(await deps.confirm(`Import ${baseName(t.path)} on ${t.conn.name}?`, reasons)))
+        if (
+          !(await deps.confirm(
+            messageText("importCopy.start.importOn", {
+              value: String(baseName(t.path)),
+              name: String(t.conn.name),
+            }),
+            reasons,
+          ))
+        )
           return undefined;
       }
       let rejects;
       if (t.state.onError === "skip") {
         const name = baseName(t.path).replace(/\.[^.]*$/u, "");
         const chosen = await deps.bridge.call("dialog.save", {
-          title: `Where the rows ${t.conn.name} refuses go`,
+          title: messageText("importCopy.start.whereTheRowsRefusesGo", {
+            name: String(t.conn.name),
+          }),
           suggestedName: `${name}.rejects.csv`,
           filters: [{ name: "CSV", extensions: ["csv"] }],
         });

@@ -3,6 +3,7 @@
 // is one of the labels, exactly.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 
 /** @typedef {import("./resolve.js").Editor} Editor */
 
@@ -14,7 +15,11 @@ export const enumKind = {
     return editor.labels.includes(text)
       ? { value: text }
       : {
-          error: `${text || "Nothing"} is not a label of ${editor.type}: it is one of ${editor.labels.join(", ")}.`,
+          error: t("cellEditors.enum.isNotALabelOfIt", {
+            value: String(text || t("cellEditors.enum.nothing")),
+            type: String(editor.type),
+            value2: String(editor.labels.join(", ")),
+          }),
         };
   },
   /** @param {import("./panel.js").Ctx} ctx */
@@ -32,7 +37,7 @@ export const enumKind = {
         class: "cell-editor-options",
         role: "listbox",
         tabindex: "0",
-        "aria-label": `${ctx.name}'s labels`,
+        "aria-label": t("cellEditors.enum.sLabels", { name: String(ctx.name) }),
       },
       ...options,
     );

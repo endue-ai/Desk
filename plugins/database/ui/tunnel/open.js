@@ -7,6 +7,7 @@
 // store, the keychain, a log or the history), forgotten when it is refused. In the background
 // (`quiet`) nothing is asked. No DOM.
 
+import { t } from "../strings/index.js";
 import { jumpOf, tunneled } from "./fields.js";
 
 /**
@@ -87,10 +88,14 @@ export function createTunnel(deps = {}) {
     const key = answer.hostKey;
     const hop = hopsOf(conn)[answer.hop === "jump" ? 0 : hopsOf(conn).length - 1];
     if (!key || !hop || !deps.confirm) return false;
-    return deps.confirm(`Trust the key of ${WORDS[answer.hop]} ${hop.host}:${hop.port}?`, [
-      `${key.algorithm} ${key.fingerprint}`,
-      "This desk has not met this server before. Compare the fingerprint with the one its administrator gives you: once you trust it, a different key is refused.",
-    ]);
+    return deps.confirm(
+      t("tunnel.open.trustTheKeyOf", {
+        value: String(WORDS[answer.hop]),
+        host: String(hop.host),
+        port: String(hop.port),
+      }),
+      [`${key.algorithm} ${key.fingerprint}`, t("tunnel.open.thisDeskHasNotMetThis")],
+    );
   };
 
   /** Ask for `what` and hold it; false when the person cancels or nothing can ask. */
@@ -118,13 +123,19 @@ export function createTunnel(deps = {}) {
     const host = /** @type {At} */ (hopsOf(conn).at(-1));
     const where = `${host.host}:${host.port}`;
     if (conn.sshAuth === "password" && !held.has(at(conn, "password"))) {
-      const why = `the SSH host ${where} asks for ${host.user}'s password. It is used for this desk session and never kept.`;
+      const why = t("tunnel.open.theSshHostAsksForS", {
+        where: String(where),
+        user: String(host.user),
+      });
       if (quiet || !(await askFor(conn, "password", why)))
         return {
           ssh: {
             hop: "host",
             stage: "auth",
-            message: `The SSH host ${where} needs ${host.user}'s password, and it was not typed.`,
+            message: t("tunnel.open.theSshHostNeedsSPassword", {
+              where: String(where),
+              user: String(host.user),
+            }),
             needsPassword: true,
           },
         };
@@ -141,12 +152,15 @@ export function createTunnel(deps = {}) {
         held.delete(at(conn, "passphrase"));
         const why =
           failed.keyPassword === "wrong"
-            ? `the passphrase does not decrypt ${conn.sshKey}: type it again. It is used for this desk session and never kept.`
-            : `${conn.sshKey} is encrypted: type its passphrase. It is used for this desk session and never kept.`;
+            ? t("tunnel.open.thePassphraseDoesNotDecryptType", { sshKey: String(conn.sshKey) })
+            : t("tunnel.open.isEncryptedTypeItsPassphraseIt", { sshKey: String(conn.sshKey) });
         if (!(await askFor(conn, "passphrase", why))) return answer;
       } else if (failed.stage === "auth" && conn.sshAuth === "password" && failed.hop === "host") {
         held.delete(at(conn, "password"));
-        const why = `the SSH host ${where} refused the password: type ${host.user}'s password again.`;
+        const why = t("tunnel.open.theSshHostRefusedThePassword", {
+          where: String(where),
+          user: String(host.user),
+        });
         if (!(await askFor(conn, "password", why))) return answer;
       } else return answer;
       answer = await send({ ssh: params(conn, accepted) });
@@ -161,9 +175,7 @@ export function createTunnel(deps = {}) {
   /** The run's error for a tunnel that did not open: the core's words, naming the hop. */
   const refused = (/** @type {Connection} */ conn, /** @type {Answer} */ answer) => {
     const changed = answer.hostKey?.status === "changed";
-    const hint = changed
-      ? " If the server's key was replaced on purpose, run Database: forget the SSH host key, then connect and trust the new one."
-      : "";
+    const hint = changed ? t("tunnel.open.ifTheServerSKeyWas") : "";
     return /** @type {DbError} */ ({
       kind: answer.stage === "auth" ? "auth" : "connect",
       message: `${conn.name}: ${answer.message}${hint}`,

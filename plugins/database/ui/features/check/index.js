@@ -9,6 +9,7 @@ import { numbered } from "../../editor/bind.js";
 import { paramsOf } from "../../editor/params.js";
 import { formatCount } from "../../format.js";
 import { split, statementAt } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -37,18 +38,18 @@ export function saidOf(/** @type {Outcome | undefined} */ outcome) {
 /** @param {Deps} deps */
 async function check(deps) {
   const target = deps.consoles.current();
-  if (target?.kind !== "console") throw new Error("Check works in a console.");
+  if (target?.kind !== "console") throw new Error(t("features.check.index.checkWorksInAConsole"));
   const conn = deps.manager.get(target.connection);
-  if (!conn) throw new Error("This console's connection was removed.");
+  if (!conn) throw new Error(t("features.check.index.thisConsoleSConnectionWasRemoved"));
   if (conn.engine !== "postgresql")
-    throw new Error("Only PostgreSQL checks a statement without running it.");
+    throw new Error(t("features.check.index.onlyPostgresqlChecksAStatementWithout"));
   const { text, start, end } = deps.view.editor();
   const selected = start !== end;
   const sql = selected ? text.slice(start, end) : text;
   const all = split(sql, "postgresql");
   const at = selected ? undefined : statementAt(all, start, text);
   const picked = selected ? all : at ? [at] : [];
-  if (picked.length === 0) throw new Error("Nothing to check: the editor holds no statement.");
+  if (picked.length === 0) throw new Error(t("features.check.index.nothingToCheckTheEditorHolds"));
   const statements = picked.map((statement) => {
     const sent = numbered(statement.text, paramsOf(statement.text, "postgresql"));
     return { ...statement, text: sent.text, keys: sent.keys, shifts: sent.shifts };
@@ -66,7 +67,7 @@ async function check(deps) {
   const failure = target.execution?.result.error;
   if (failure) return `Not checked: ${failure.message}`;
   const said = outcomes.map((o, i) => (outcomes.length > 1 ? `${i + 1}: ${saidOf(o)}` : saidOf(o)));
-  const line = `Checked, nothing ran: ${said.join("; ")}.`;
+  const line = t("features.check.index.checkedNothingRan", { value: String(said.join("; ")) });
   // The result's own line says what the check found, not that a statement ran.
   if (target.shown) {
     target.shown.summary = line;

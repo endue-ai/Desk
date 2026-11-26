@@ -1,6 +1,8 @@
 // Where two models are compared (PG-53): in the worker (worker.js) past INLINE_MAX objects, in place
 // below it, a slice at a time so the frame keeps drawing. Either way it says how far it is along and
 // stops on Cancel (the signal): the worker is ended, the slices stop.
+
+import { t } from "../../strings/index.js";
 import { itemOf, keysOf } from "./diff.js";
 import { keyOf } from "./model.js";
 
@@ -13,7 +15,8 @@ import { keyOf } from "./model.js";
 /** Models with fewer objects than this are compared in place. */
 export const INLINE_MAX = 2_000;
 const SLICE = 500;
-const stopped = () => Object.assign(new Error("Not compared."), { code: "cancelled" });
+const stopped = () =>
+  Object.assign(new Error(t("features.compareSchema.client.notCompared")), { code: "cancelled" });
 
 /**
  * @param {Model} left
@@ -41,7 +44,7 @@ export function compareIn(left, right, { startWorker, signal, tick } = {}) {
       };
       worker.onerror = (event) => {
         worker.terminate();
-        reject(new Error(event.message || "The comparison stopped."));
+        reject(new Error(event.message || t("features.compareSchema.client.theComparisonStopped")));
       };
       worker.postMessage({ left, right });
     });

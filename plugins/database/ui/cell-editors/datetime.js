@@ -5,6 +5,7 @@
 // session's time zone for a type that keeps one.
 
 import { el } from "../dom.js";
+import { t as messageText } from "../strings/index.js";
 import { field } from "./panel.js";
 
 /** @typedef {import("./resolve.js").Editor} Editor */
@@ -26,13 +27,20 @@ const leap = (/** @type {number} */ y) => (y % 4 === 0 && y % 100 !== 0) || y % 
 function dayWhy(/** @type {string} */ text, /** @type {boolean} */ bc) {
   const [, y, m, d] = DATE.exec(text) ?? [];
   const [year, month, day] = [Number(y), Number(m), Number(d)];
-  if (year === 0) return "There is no year 0: 1 BC comes before 1.";
-  if (month < 1 || month > 12) return `Month ${m} does not exist: a month is 01 to 12.`;
+  if (year === 0) return messageText("cellEditors.datetime.thereIsNoYearBcComes");
+  if (month < 1 || month > 12)
+    return messageText("cellEditors.datetime.monthDoesNotExistAMonth", { m: String(m) });
   // Before Christ, year n is astronomical year 1 - n (1 BC is a leap year).
   const days =
     [31, leap(bc ? 1 - year : year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ??
     31;
-  if (day < 1 || day > days) return `${MONTHS[month - 1]} ${y}${bc ? " BC" : ""} has ${days} days.`;
+  if (day < 1 || day > days)
+    return messageText("cellEditors.datetime.hasDays", {
+      value: String(MONTHS[month - 1]),
+      y: String(y),
+      value2: String(bc ? messageText("cellEditors.datetime.bc") : ""),
+      days: String(days),
+    });
   return "";
 }
 
@@ -42,20 +50,26 @@ function timeWhy(/** @type {string} */ text, /** @type {Editor} */ editor) {
   if (h === undefined) return "";
   const [hour, minute, second] = [Number(h), Number(m), Number(s ?? 0)];
   if (hour > 24 || (hour === 24 && (minute > 0 || second > 0)))
-    return `Hour ${h} does not exist: an hour is 00 to 23 (24:00:00 is the end of a day).`;
-  if (minute > 59) return `Minute ${m} does not exist: a minute is 00 to 59.`;
-  if (second > 60) return `Second ${s} does not exist: a second is 00 to 59.`;
-  if (rest && !ZONE.test(rest)) return "bad";
-  if (rest && !editor.zone) return `${editor.type} keeps no offset: remove "${rest.trim()}".`;
+    return messageText("cellEditors.datetime.hourDoesNotExistAnHour", { h: String(h) });
+  if (minute > 59)
+    return messageText("cellEditors.datetime.minuteDoesNotExistAMinute", { m: String(m) });
+  if (second > 60)
+    return messageText("cellEditors.datetime.secondDoesNotExistASecond", { s: String(s) });
+  if (rest && !ZONE.test(rest)) return messageText("cellEditors.datetime.bad");
+  if (rest && !editor.zone)
+    return messageText("cellEditors.datetime.keepsNoOffsetRemove", {
+      type: String(editor.type),
+      value: String(rest.trim()),
+    });
   return "";
 }
 
 const formats = (/** @type {Editor} */ editor) => {
   const zone = editor.zone ? ", with an offset such as +09 if you like" : "";
-  if (editor.kind === "date")
-    return "A date is YYYY-MM-DD, as 2026-11-21, or infinity, -infinity, today.";
-  if (editor.kind === "time") return `A time is HH:MM or HH:MM:SS, as 14:30:00${zone}.`;
-  return `A timestamp is YYYY-MM-DD HH:MM[:SS], as 2026-11-21 14:30:00${zone}.`;
+  if (editor.kind === "date") return messageText("cellEditors.datetime.aDateIsYyyyMmDd");
+  if (editor.kind === "time")
+    return messageText("cellEditors.datetime.aTimeIsHhMmOr", { zone: String(zone) });
+  return messageText("cellEditors.datetime.aTimestampIsYyyyMmDd", { zone: String(zone) });
 };
 
 /** @param {string} text @param {Editor} editor */
@@ -92,7 +106,10 @@ function picker(doc, part) {
       type: part,
       class: "desk-field cell-editor-pick",
       ...(part === "time" ? { step: "1" } : {}),
-      "aria-label": part === "date" ? "Pick a date" : "Pick a time",
+      "aria-label":
+        part === "date"
+          ? messageText("cellEditors.datetime.pickADate")
+          : messageText("cellEditors.datetime.pickATime"),
     })
   );
 }

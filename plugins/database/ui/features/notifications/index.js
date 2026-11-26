@@ -4,6 +4,7 @@
 // buttons and commands; what is heard lives with the sessions (session/listen.js). No DOM.
 
 import { ownerOf } from "../../session/owners.js";
+import { t as messageText } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -20,7 +21,9 @@ function here(/** @type {Deps} */ deps) {
   const who = target?.kind === "console" ? ownerOf(target, conn) : undefined;
   const sessions = /** @type {{ listening?: Listening } | undefined} */ (deps.consoles.sessions);
   if (!target || !conn || !who || !sessions?.listening)
-    throw new Error("Notifications belong to a PostgreSQL console: none is on screen.");
+    throw new Error(
+      messageText("features.notifications.index.notificationsBelongToAPostgresqlConsole"),
+    );
   return { target, conn, owner: who.owner, listening: sessions.listening };
 }
 
@@ -31,24 +34,32 @@ function clear(/** @type {Deps} */ deps) {
   const { owner, listening } = here(deps);
   listening.clear(owner);
   deps.consoles.render();
-  deps.say("Notifications cleared.");
+  deps.say(messageText("features.notifications.index.notificationsCleared"));
 }
 
 async function again(/** @type {Deps} */ deps) {
   const { target, conn, owner, listening } = here(deps);
   const channels = listening.model(owner)?.stopped ?? [];
   if (!channels.length)
-    throw new Error("Nothing to listen to again: no session stopped listening.");
+    throw new Error(messageText("features.notifications.index.nothingToListenToAgainNo"));
   const sql = channels.map((c) => `LISTEN ${quoted(c)}`).join(";\n");
   const said = await deps.consoles.runIn(target, conn, sql, {});
-  deps.say(String(said ?? `Listening again on ${channels.join(", ")}.`));
+  deps.say(
+    String(
+      said ??
+        messageText("features.notifications.index.listeningAgainOn", {
+          value: String(channels.join(", ")),
+        }),
+    ),
+  );
 }
 
 /** The Notifications tab on screen, then the result's export. */
 function exportTab(/** @type {Deps} */ deps) {
   const { target } = here(deps);
   const index = target.shown?.tabs.findIndex((t) => t.kind === "notifications") ?? -1;
-  if (index < 0) throw new Error("No notifications here: LISTEN on a channel first.");
+  if (index < 0)
+    throw new Error(messageText("features.notifications.index.noNotificationsHereListenOnA"));
   deps.consoles.tab(index);
   return deps.commands.run("endue.database.export");
 }

@@ -4,6 +4,7 @@
 // one is not built only to be dropped; its text is weighed after. No DOM.
 
 import { formatBytes, formatCount } from "./format.js";
+import { t } from "./strings/index.js";
 
 export const COPY_LIMITS = Object.freeze({ cells: 100_000, characters: 10_000_000 });
 
@@ -26,8 +27,8 @@ export function copyQuestion(/** @type {CopySize} */ size) {
   ];
   const what = parts.join(", ") || "this much";
   return {
-    title: `Copy ${what} to the clipboard?`,
-    reasons: ["Pasting this much can stall the app it goes to."],
+    title: t("copySize.copyToTheClipboard", { what: String(what) }),
+    reasons: [t("copySize.pastingThisMuchCanStallThe")],
   };
 }
 

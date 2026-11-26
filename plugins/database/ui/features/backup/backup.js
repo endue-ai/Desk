@@ -4,6 +4,7 @@
 // the file or folder, its grant is asked for, and pg_dump runs in its log panel. The end says what
 // was written and its size. No DOM.
 
+import { t } from "../../strings/index.js";
 import {
   commandLine,
   connectionEnv,
@@ -68,15 +69,16 @@ async function chooseTarget(
   const extension = suggested.split(".").at(-1) ?? "";
   const title =
     options.format === "directory"
-      ? "Name the folder the backup is written into"
-      : "Save the backup as";
+      ? t("features.backup.backup.nameTheFolderTheBackupIs")
+      : t("features.backup.backup.saveTheBackupAs");
   const named = options.format === "directory" ? undefined : DIALOG_NAMES[options.format];
   const chosen = await deps.bridge.call("dialog.save", {
     title,
     suggestedName: suggested,
     ...(named ? { filters: [{ name: named, extensions: [extension] }] } : {}),
   });
-  if (chosen.cancelled || !chosen.path) throw deps.cancelled("Not backed up.");
+  if (chosen.cancelled || !chosen.path)
+    throw deps.cancelled(t("features.backup.backup.notBackedUp"));
   return chosen.path;
 }
 
@@ -98,8 +100,12 @@ const counter = (/** @type {string} */ format) => {
  * @param {Record<string, unknown>} args
  */
 export async function backup(deps, jobs, args) {
-  const conn = await choosePostgres(deps, args.connection, "Database: back up which connection?");
-  if (!conn) throw deps.cancelled("Not backed up.");
+  const conn = await choosePostgres(
+    deps,
+    args.connection,
+    t("features.backup.backup.databaseBackUpWhichConnection"),
+  );
+  if (!conn) throw deps.cancelled(t("features.backup.backup.notBackedUp"));
   const server = await serverVersion(deps, conn);
   const program = await programFor(deps, "pg_dump", conn, server);
   const major = majorOf(program.version);
@@ -127,7 +133,7 @@ export async function backup(deps, jobs, args) {
   const answer = /** @type {Record<string, unknown> | undefined} */ (
     await deps.dialog("backup", model)
   );
-  if (!answer) throw deps.cancelled("Not backed up.");
+  if (!answer) throw deps.cancelled(t("features.backup.backup.notBackedUp"));
   const options = dumpOptions(answer, major);
   const path = model.path || (await chooseTarget(deps, options, conn));
   await askPath(deps, "fs:write", path, `To write the backup of ${conn.name} with pg_dump`);
@@ -136,7 +142,10 @@ export async function backup(deps, jobs, args) {
   const state = logState(
     {
       kind: "backup",
-      title: `Back up ${conn.name} to ${fileName(path)}`,
+      title: t("features.backup.backup.backUpTo", {
+        name: String(conn.name),
+        value: String(fileName(path)),
+      }),
       command: commandLine(program.command, argv, shown, deps.clients.platform),
       password: passwordNote(password, deps.clients.platform),
       noun: "tables",
@@ -163,21 +172,30 @@ export async function backup(deps, jobs, args) {
       if (outcome.cancelled)
         return {
           status: "cancelled",
-          result: `Cancelled: what pg_dump wrote so far stays in ${path}; it is not a whole backup.`,
+          result: t("features.backup.backup.cancelledWhatPgDumpWroteSo", { path: String(path) }),
         };
       if (outcome.code !== 0)
         return {
           status: "failed",
-          result: `pg_dump failed: ${errorWords(outcome.stderr, "pg_dump") || `it ended with ${outcome.code ?? outcome.signal}.`}`,
+          result: `pg_dump failed: ${errorWords(outcome.stderr, "pg_dump") || t("features.backup.backup.itEndedWith", { value: String(outcome.code ?? outcome.signal) })}`,
         };
       const size = await sizeOf(deps, path);
       const measured = size === undefined ? "" : ` (${sizeText(size)})`;
       const rows = last.done
         ? `, with ${last.done === 1 ? "1 table's" : `${last.done} tables'`} rows`
         : "";
-      return { status: "done", result: `Wrote the ${what} ${path}${measured} in ${took}${rows}.` };
+      return {
+        status: "done",
+        result: t("features.backup.backup.wroteTheIn", {
+          what: String(what),
+          path: String(path),
+          measured: String(measured),
+          took: String(took),
+          rows: String(rows),
+        }),
+      };
     },
   });
-  deps.say(done.result || `Backup ${done.status}.`);
+  deps.say(done.result || t("features.backup.backup.backup", { status: String(done.status) }));
   return { status: done.status, path, said: done.result };
 }

@@ -4,6 +4,7 @@
 // the exact script, and the run through deps.execute (the production and agent guards; a DDL
 // statement reads the schema cache again). Generate SQL writes a template into a console. No DOM.
 
+import { t as messageText } from "../../strings/index.js";
 import { answersOf } from "./checks.js";
 import { readFacts } from "./facts.js";
 import { ENGINE_NAMES, notOffered, OPS, opsOf, said } from "./kinds.js";
@@ -53,24 +54,27 @@ export function createObjects(deps) {
       const node = /** @type {Node} */ (ref);
       const conn = deps.manager.get(node.connection);
       const target = targetOfNode(node);
-      if (!conn) throw new Error("That connection is gone.");
+      if (!conn) throw new Error(messageText("features.objects.controller.thatConnectionIsGone"));
       if (!target)
-        throw new Error("Pick a schema, an object or a table's part in the explorer first.");
+        throw new Error(messageText("features.objects.controller.pickASchemaAnObjectOr"));
       return { conn, target };
     }
     const args = /** @type {Record<string, unknown>} */ (ref);
     const str = (/** @type {string} */ key) =>
       typeof args[key] === "string" ? String(args[key]) : undefined;
-    const conn = await deps.manager.choose(str("connection"), "Database: which connection?");
-    if (!conn) throw deps.cancelled("Nothing picked.");
+    const conn = await deps.manager.choose(
+      str("connection"),
+      messageText("features.objects.controller.databaseWhichConnection"),
+    );
+    if (!conn) throw deps.cancelled(messageText("features.objects.controller.nothingPicked"));
     const schemas = await deps.catalog.schemas(conn);
     const schema =
       str("schema") ??
       (await deps.pick(
-        "Database: in which schema?",
+        messageText("features.objects.controller.databaseInWhichSchema"),
         schemas.map((s) => ({ id: s, label: s })),
       ));
-    if (!schema) throw deps.cancelled("Nothing picked.");
+    if (!schema) throw deps.cancelled(messageText("features.objects.controller.nothingPicked"));
     if (str("kind") === "schema") return { conn, target: { kind: "schema", schema, name: schema } };
     const table = str("table");
     if (table) {
@@ -79,7 +83,14 @@ export function createObjects(deps) {
         (p) => p.name === str("name") && (!str("kind") || p.kind === str("kind")),
       );
       if (!part)
-        throw new Error(`No ${str("kind") ?? "part"} ${str("name")} is on ${schema}.${table}.`);
+        throw new Error(
+          messageText("features.objects.controller.noIsOn", {
+            value: String(str("kind") ?? messageText("features.objects.controller.part")),
+            value2: String(str("name")),
+            schema: String(schema),
+            table: String(table),
+          }),
+        );
       const target = { kind: part.kind, schema, name: part.name, table };
       return {
         conn,
@@ -98,14 +109,23 @@ export function createObjects(deps) {
     const name =
       str("name") ??
       (await deps.pick(
-        `Database: which object of ${schema}?`,
+        messageText("features.objects.controller.databaseWhichObjectOf", {
+          schema: String(schema),
+        }),
         offered.map((o) => ({ id: o.name, label: o.name, detail: o.kind })),
       ));
-    if (!name) throw deps.cancelled("Nothing picked.");
+    if (!name) throw deps.cancelled(messageText("features.objects.controller.nothingPicked"));
     const found =
       objects.find((o) => o.name === name) ??
       oneOf(objects.filter((o) => o.name.startsWith(`${name}(`)));
-    if (!found) throw new Error(`No ${str("kind") ?? "object"} ${schema}.${name} was found.`);
+    if (!found)
+      throw new Error(
+        messageText("features.objects.controller.noWasFound", {
+          value: String(str("kind") ?? messageText("features.objects.controller.object")),
+          schema: String(schema),
+          name: String(name),
+        }),
+      );
     return {
       conn,
       target: {
@@ -128,7 +148,11 @@ export function createObjects(deps) {
     const refused = notOffered(conn.engine, op, target);
     if (refused) throw new Error(refused);
     if (conn.readOnly)
-      throw new Error(`${conn.name} is read-only: objects are not changed from here.`);
+      throw new Error(
+        messageText("features.objects.controller.isReadOnlyObjectsAreNot", {
+          name: String(conn.name),
+        }),
+      );
     const facts = await readFacts(deps, conn, op, target);
     const schemas = op === "move" ? await deps.catalog.schemas(conn) : [];
     const model = modelOf(conn, op, target, facts, given, schemas);
@@ -137,11 +161,15 @@ export function createObjects(deps) {
       approved && destructive
         ? { choices: model.choices.filter(({ checked }) => checked).map(({ id }) => id) }
         : await deps.dialog(DIALOG, model);
-    if (answer === undefined) throw deps.cancelled("Not run.");
+    if (answer === undefined)
+      throw deps.cancelled(messageText("features.objects.controller.notRun2"));
     const script = scriptOf(conn.engine, op, target, facts, answersOf(answer));
     const done = await deps.execute(conn, script, destructive ? { asked: true } : undefined);
     const failed = done.result.error ?? done.result.statements.find((s) => s.error)?.error;
-    if (failed) throw new Error(`Not run: ${failed.message}`);
+    if (failed)
+      throw new Error(
+        messageText("features.objects.controller.notRun", { message: String(failed.message) }),
+      );
     deps.say(`${OPS[op].done} ${said(conn.engine, target)}.`);
     return { script };
   };
@@ -159,10 +187,12 @@ export function createObjects(deps) {
         : offered.length === 1
           ? offered[0]
           : await deps.pick(
-              `Database: generate which statement for ${said(conn.engine, target)}?`,
+              messageText("features.objects.controller.databaseGenerateWhichStatementFor", {
+                value: String(said(conn.engine, target)),
+              }),
               offered.map((t) => ({ id: t, label: TEMPLATES[t] })),
             );
-    if (!chosen) throw deps.cancelled("Nothing generated.");
+    if (!chosen) throw deps.cancelled(messageText("features.objects.controller.nothingGenerated"));
     const routine = target.kind === "function" || target.kind === "procedure";
     const read = routine
       ? await readFacts(deps, conn, "generate", target)
@@ -171,7 +201,12 @@ export function createObjects(deps) {
     await deps.consoles.open(conn);
     deps.view.focus("editor");
     deps.view.insert(text);
-    deps.say(`${OPS.generate.done} ${said(conn.engine, target)}: run it when it is filled in.`);
+    deps.say(
+      messageText("features.objects.controller.runItWhenItIsFilled", {
+        done: String(OPS.generate.done),
+        value: String(said(conn.engine, target)),
+      }),
+    );
     return text;
   };
 
@@ -183,18 +218,30 @@ export function createObjects(deps) {
   ) => {
     const ops = opsOf(conn.engine, target.kind);
     if (ops.length === 0 && first.length === 0)
-      throw new Error(`Nothing here changes a ${target.kind} on ${ENGINE_NAMES[conn.engine]}.`);
+      throw new Error(
+        messageText("features.objects.controller.nothingHereChangesAOn", {
+          kind: String(target.kind),
+          value: String(ENGINE_NAMES[conn.engine]),
+        }),
+      );
     const own = ops.flatMap((op) =>
       op === "generate"
         ? templatesOf(target.kind).map((t) => ({
             id: `generate:${t}`,
-            label: `Generate ${TEMPLATES[t]}`,
+            label: messageText("features.objects.controller.generate", {
+              value: String(TEMPLATES[t]),
+            }),
           }))
         : [{ id: op, label: OPS[op].label }],
     );
     const items = [...first, ...own];
-    const picked = await deps.pick(`Database: ${said(conn.engine, target)}`, items);
-    if (!picked) throw deps.cancelled("Nothing picked.");
+    const picked = await deps.pick(
+      messageText("features.objects.controller.database", {
+        value: String(said(conn.engine, target)),
+      }),
+      items,
+    );
+    if (!picked) throw deps.cancelled(messageText("features.objects.controller.nothingPicked"));
     return picked;
   };
 

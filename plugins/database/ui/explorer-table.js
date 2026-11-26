@@ -6,6 +6,7 @@ import { formatCount } from "./format.js";
 import { PART_FOLDERS, RELATIONS } from "./schema/common.js";
 import { TABLE_FOLDERS } from "./schema/pg/index.js";
 import { partDetail } from "./schema/pg/tree.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -38,7 +39,7 @@ export function tableRows(at, conn, object, key) {
     ...base,
     key: columnsKey,
     kind: "folder",
-    label: "Columns",
+    label: t("explorerTable.columns"),
     detail: "",
     level: 5,
     expandable: true,

@@ -10,6 +10,7 @@ import { engineOf } from "../../engines/index.js";
 import { valueAt } from "../../grid-model.js";
 import { keysOfCache, keysOfRows, keysSql } from "../../links/model.js";
 import { numericColumns } from "../../results.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -18,7 +19,7 @@ import { numericColumns } from "../../results.js";
  * @typedef {import("../../links/model.js").Keys} Keys
  */
 
-const PG_ONLY = "Following foreign keys is for PostgreSQL connections.";
+const PG_ONLY = t("features.links.read.followingForeignKeysIsForPostgresql");
 
 /** The one table a console's or a table view's rows come from, or undefined. */
 function sourceTable(/** @type {Console} */ target, /** @type {Connection} */ conn) {
@@ -35,13 +36,12 @@ function sourceTable(/** @type {Console} */ target, /** @type {Connection} */ co
 export function onScreen(/** @type {Deps} */ deps) {
   const target = deps.consoles.current();
   const set = target ? shownSet(target) : undefined;
-  if (!target || !set) throw new Error("No result is on screen: run a query or open a table.");
+  if (!target || !set) throw new Error(t("features.links.read.noResultIsOnScreenRun"));
   const conn = deps.manager.get(target.connection);
-  if (!conn) throw new Error("This result's connection was removed.");
+  if (!conn) throw new Error(t("features.links.read.thisResultSConnectionWasRemoved"));
   if (conn.engine !== "postgresql") throw new Error(PG_ONLY);
   const source = sourceTable(target, conn);
-  if (!source)
-    throw new Error("This result does not come from one table: its keys cannot be followed.");
+  if (!source) throw new Error(t("features.links.read.thisResultDoesNotComeFrom"));
   const changes = target.edit?.status === "ready" ? target.edit.changes : null;
   return {
     target,
@@ -58,7 +58,7 @@ export function onScreen(/** @type {Deps} */ deps) {
 /** The grid's cursor: its result row and column. */
 export function cursorOf(/** @type {Deps} */ deps) {
   const cell = deps.view.cell();
-  if (!cell) throw new Error("Put the grid's cursor on a cell first.");
+  if (!cell) throw new Error(t("features.links.read.putTheGridSCursorOn"));
   return { row: cell.row, col: cell.col };
 }
 

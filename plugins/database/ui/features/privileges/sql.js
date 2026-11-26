@@ -6,6 +6,7 @@
 // read as acldefault gives it; names come from pg_get_userbyid, which needs no catalog read. Pure.
 
 import { quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 import { kindOf, whereOf } from "./kinds.js";
 
 /** @typedef {import("./kinds.js").Target} Target */
@@ -64,7 +65,10 @@ export const MEMBERSHIPS =
  */
 export function objectSql(/** @type {Target} */ target, /** @type {boolean} */ columns) {
   const row = kindOf(target.kind);
-  if (!row) throw new Error(`A ${target.kind} has no privileges of its own.`);
+  if (!row)
+    throw new Error(
+      t("features.privileges.sql.aHasNoPrivilegesOfIts", { kind: String(target.kind) }),
+    );
   const where = whereOf(target);
   const relation = row.catalog === "pg_class";
   const extra = row.routine

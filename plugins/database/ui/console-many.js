@@ -19,6 +19,7 @@ import {
   readKept,
 } from "./console-list.js";
 import { baseOf } from "./databases.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -81,7 +82,7 @@ export function createMany(buffers, texts, deps) {
   /** The console on screen, or the one named, that the person may close or rename. */
   const pickConsole = (/** @type {string | undefined} */ id) => {
     const target = id ? buffers.get(id) : buffers.current();
-    if (target?.kind !== "console") throw new Error("No console is on screen.");
+    if (target?.kind !== "console") throw new Error(t("consoleMany.noConsoleIsOnScreen"));
     return target;
   };
 
@@ -126,16 +127,21 @@ export function createMany(buffers, texts, deps) {
     /** Close a console (the one on screen unless named), asking first for unsaved edits. */
     async close(/** @type {string | undefined} */ id) {
       const target = pickConsole(id);
-      if (target.running) throw new Error("A run is going on in this console: cancel it first.");
+      if (target.running) throw new Error(t("consoleMany.aRunIsGoingOnIn"));
       const label = labelOf(target, deps.connection(target.connection));
       if (target.file?.modified) {
         const name = baseName(target.file.path);
-        const ok = await deps.confirm(`Close ${name} without saving?`, ["Its edits are lost."]);
-        if (!ok) throw deps.cancelled("Not closed.");
+        const ok = await deps.confirm(t("consoleMany.closeWithoutSaving", { name: String(name) }), [
+          t("consoleMany.itsEditsAreLost"),
+        ]);
+        if (!ok) throw deps.cancelled(t("consoleMany.notClosed"));
       }
       const open = deps.closing?.(target) ?? [];
-      if (open.length && !(await deps.confirm(`Close ${label}?`, open)))
-        throw deps.cancelled("Not closed.");
+      if (
+        open.length &&
+        !(await deps.confirm(t("consoleMany.close", { label: String(label) }), open))
+      )
+        throw deps.cancelled(t("consoleMany.notClosed"));
       buffers.closed(target.id);
       gone(target);
       await deps.commands.run("desk.buffers.close", { id: target.id }).catch(() => {});
@@ -150,7 +156,7 @@ export function createMany(buffers, texts, deps) {
     /** Name the console on screen (an empty name gives it its connection's again). */
     async rename(/** @type {string} */ name) {
       const target = pickConsole(undefined);
-      if (target.file) throw new Error("A .sql file's console is named after its file.");
+      if (target.file) throw new Error(t("consoleMany.aSqlFileSConsoleIs"));
       const title = name.trim().slice(0, 60);
       if (title) target.title = title;
       else delete target.title;
@@ -167,9 +173,9 @@ export function createMany(buffers, texts, deps) {
       const shown = buffers.current();
       if (!shown?.file || deps.connection(shown.connection) || !deps.choose) return;
       const conn = await deps.choose(
-        `Database: run ${baseName(shown.file.path)} on which connection?`,
+        t("consoleMany.databaseRunOnWhichConnection", { value: String(baseName(shown.file.path)) }),
       );
-      if (!conn) throw deps.cancelled("Not run: pick the connection it runs on.");
+      if (!conn) throw deps.cancelled(t("consoleMany.notRunPickTheConnectionIt"));
       await this.bind(shown, conn);
     },
     /** Run a .sql file's console on another connection. */
@@ -177,9 +183,15 @@ export function createMany(buffers, texts, deps) {
       const open = target.connection === conn.id ? [] : (deps.closing?.(target) ?? []);
       if (
         open.length &&
-        !(await deps.confirm(`Run ${baseName(target.file?.path ?? "")} on ${conn.name}?`, open))
+        !(await deps.confirm(
+          t("consoleMany.runOn", {
+            value: String(baseName(target.file?.path ?? "")),
+            name: String(conn.name),
+          }),
+          open,
+        ))
       )
-        throw deps.cancelled("Not moved: the console stays on its connection.");
+        throw deps.cancelled(t("consoleMany.notMovedTheConsoleStaysOn"));
       if (target.connection !== conn.id) deps.release?.(target);
       target.connection = conn.id;
       target.name = nameOf(target, conn);

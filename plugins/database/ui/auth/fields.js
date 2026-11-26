@@ -3,6 +3,7 @@
 // when on, so a connection that never chose either reads as before. A command gives every session
 // its password, so the keychain keeps none for that connection. No DOM.
 
+import { t } from "../strings/index.js";
 import { commandOf } from "./command.js";
 import { checkPooled } from "./pooler.js";
 
@@ -24,9 +25,7 @@ export function authOf(raw, conn) {
   const command = commandOf(raw.passwordCommand);
   if (command) {
     if (/** @type {{ keychain?: boolean }} */ (conn).keychain === true)
-      throw new Error(
-        "Keychain: a connection with a password command gets its password from it; turn one off.",
-      );
+      throw new Error(t("auth.fields.keychainAConnectionWithAPassword"));
     out.passwordCommand = command;
   }
   if (raw.pooler === true) out.pooler = true;

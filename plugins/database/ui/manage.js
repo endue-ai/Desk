@@ -1,20 +1,21 @@
-// Managing connections: the form to add or change one (from blank, a URI or a SQLite file), a test
-// that asks the server its version, duplicate, remove (asked first, its history and buffers go with
-// it), disconnect (the session's password is forgotten), and the password prompt the executor
-// calls when a client needs one. Passwords live in memory, and in the OS keychain for a PostgreSQL
-// connection whose choice says so (keychain.js, ADR 0311): kept once a typed one works or a URI's
-// on Save, forgotten when the choice goes off, the server or user changes, or the connection goes.
-// Disconnect, removing a connection and saving a change to how it signs in close its PostgreSQL
-// sessions (PG-02), asked first while one is in a transaction.
+// The connection form adds or changes a blank, URI or SQLite connection. It tests the server version,
+// duplicates, disconnects and confirms removal with the connection's history and buffers. The
+// executor prompts for passwords, which stay in memory unless the person keeps one in the OS
+// keychain (ADR 0311). A valid password or a saved URI password is stored there on request.
+// Turning off that choice, changing the server or user, or removing the connection forgets it.
+// Disconnect, removal and sign-in changes close PostgreSQL sessions after confirming a transaction.
 // A key file's passphrase (ADR 0331) is asked in the same prompt and forgotten with the password.
 // An import (features/connections-file/) keeps its connections at once with `adopt`, closing
 // sessions as Save does.
 
+import { chooseConnection, findConnection } from "./choose-connection.js";
+import { disconnectedMessage } from "./connection-messages.js";
 import { blank, newId, normalize, parseUri, SIGN_IN, saveConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
 import { formatDuration } from "./format.js";
 import { clearHistory } from "./history.js";
 import { chosen, offered, withChoice } from "./keychain.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -71,26 +72,14 @@ export function createManager(deps) {
     return reasons.length === 0 || deps.confirm(title, reasons);
   };
 
-  const get = (/** @type {string} */ ref) =>
-    list.find((c) => c.id === ref) ?? list.find((c) => c.name.toLowerCase() === ref.toLowerCase());
-
-  const choose = async (/** @type {string | undefined} */ ref, /** @type {string} */ title) => {
-    if (ref) {
-      const found = get(ref);
-      if (!found) throw new Error(`No connection is named ${ref}.`);
-      return found;
-    }
-    if (list.length === 0)
-      throw new Error("No connections yet: add one with Database: new connection.");
-    if (list.length === 1) return /** @type {Connection} */ (list[0]);
-    const items = list.map((c) => ({
-      id: c.id,
-      label: c.name,
-      detail: `${engineOf(c.engine).title}${c.tag !== "none" ? ` · ${c.tag}` : ""}`,
-    }));
-    const picked = await deps.pick(title, items);
-    return picked ? get(picked) : undefined;
-  };
+  const get = (/** @type {string} */ ref) => findConnection(list, ref);
+  const choose = (/** @type {string | undefined} */ ref, /** @type {string} */ title) =>
+    chooseConnection(
+      () => list,
+      (prompt, items) => deps.pick(prompt, items),
+      ref,
+      title,
+    );
 
   const open = (/** @type {"new" | "edit"} */ mode, /** @type {Partial<Connection>} */ fields) => {
     if (form) deps.view.form(null);
@@ -106,7 +95,7 @@ export function createManager(deps) {
   };
 
   const checked = (/** @type {Partial<Connection>} */ fields) => {
-    if (!form) throw new Error("The form is closed.");
+    if (!form) throw new Error(t("manage.theFormIsClosed"));
     const id = form.mode === "edit" ? form.fields.id : form.fields.id || newId(deps.random);
     try {
       return normalize({ ...fields, id }, list);
@@ -133,11 +122,11 @@ export function createManager(deps) {
   const keep = async (/** @type {Connection} */ conn, /** @type {string} */ value) => {
     try {
       await deps.keychain.keep(conn, value);
-      deps.view.say(`The keychain remembers the password of ${conn.name}.`);
+      deps.view.say(t("manage.theKeychainRemembersThePasswordOf", { name: String(conn.name) }));
     } catch (error) {
       const why = error instanceof Error ? error.message : String(error);
       deps.view.say(
-        `The keychain did not take the password of ${conn.name} (${why}): it is kept until you disconnect.`,
+        t("manage.theKeychainDidNotTakeThe", { name: String(conn.name), why: String(why) }),
       );
     }
   };
@@ -147,7 +136,9 @@ export function createManager(deps) {
       return await deps.keychain.forget(conn.id);
     } catch (error) {
       const why = error instanceof Error ? error.message : String(error);
-      deps.view.say(`The keychain still keeps the password of ${conn.name}: ${why}`);
+      deps.view.say(
+        t("manage.theKeychainStillKeepsThePassword", { name: String(conn.name), why: String(why) }),
+      );
       return false;
     }
   };
@@ -201,17 +192,22 @@ export function createManager(deps) {
       open("new", { ...fields, id: "" });
     },
     async edit(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: change which connection?");
+      const conn = await choose(ref, t("manage.databaseChangeWhichConnection"));
       if (conn) open("edit", conn);
     },
     async duplicate(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: duplicate which connection?");
+      const conn = await choose(ref, t("manage.databaseDuplicateWhichConnection"));
       if (conn) open("new", { ...conn, id: "", name: `${conn.name} copy` });
     },
     async importUri(/** @type {string | undefined} */ uri) {
       const typed =
         uri ??
-        (await deps.pick("Database: connection URI", [], true, "postgresql://user@host:5432/db"));
+        (await deps.pick(
+          t("manage.databaseConnectionUri"),
+          [],
+          true,
+          "postgresql://user@host:5432/db",
+        ));
       if (!typed) return;
       const { fields, password } = parseUri(typed);
       open("new", { ...fields, id: "" });
@@ -219,7 +215,7 @@ export function createManager(deps) {
       if (password !== undefined) {
         form = {
           .../** @type {FormModel} */ (form),
-          note: "The URI's password is used for this session, and kept only when the keychain remembers it.",
+          note: t("manage.theUriSPasswordIsUsed"),
         };
         showForm();
       }
@@ -229,14 +225,18 @@ export function createManager(deps) {
       const session = formSession;
       const before = form?.mode === "edit" ? list.find((c) => c.id === conn.id) : undefined;
       const signIn = before && SIGN_IN.some((key) => (before[key] ?? "") !== (conn[key] ?? ""));
-      if (before && signIn && !(await letClose(before, `Save ${before.name}?`))) {
-        deps.view.say(`Not saved: ${before.name}'s sessions stay open.`);
+      if (
+        before &&
+        signIn &&
+        !(await letClose(before, t("manage.save", { name: String(before.name) })))
+      ) {
+        deps.view.say(t("manage.notSavedSSessionsStayOpen", { name: String(before.name) }));
         return undefined;
       }
       const allowed = await deps.reviewConnection?.(conn);
       if (session !== formSession) return undefined;
       if (allowed === false) {
-        deps.view.say(`Not saved: connecting to ${conn.name} was refused.`);
+        deps.view.say(t("manage.notSavedConnectingToWasRefused", { name: String(conn.name) }));
         return undefined;
       }
       if (signIn) deps.sessions?.close(conn.id);
@@ -258,7 +258,7 @@ export function createManager(deps) {
       deps.view.focus("explorer");
       await deps.renamed(conn);
       deps.changed();
-      deps.view.say(`Saved ${conn.name}.`);
+      deps.view.say(t("manage.saved", { name: String(conn.name) }));
       return conn;
     },
     async test(/** @type {Partial<Connection>} */ fields) {
@@ -281,7 +281,7 @@ export function createManager(deps) {
           : await deps.execute(conn, engineOf(conn.engine).versionSql, options);
       const error = done
         ? (done.result.error ?? done.result.statements[0]?.error)
-        : { message: `Connecting to ${conn.name} was refused.` };
+        : { message: t("manage.connectingToWasRefused", { name: String(conn.name) }) };
       const version = done?.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
       if (form && session === formSession) {
         form = {
@@ -307,8 +307,8 @@ export function createManager(deps) {
         confirming = session;
         let discard;
         try {
-          discard = await deps.confirm("Discard changes to this connection?", [
-            "The fields you changed will be lost.",
+          discard = await deps.confirm(t("manage.discardChangesToThisConnection"), [
+            t("manage.theFieldsYouChangedWillBe"),
           ]);
         } finally {
           if (confirming === session) confirming = 0;
@@ -323,13 +323,14 @@ export function createManager(deps) {
       deps.view.focus("explorer");
     },
     async remove(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: remove which connection?");
+      const conn = await choose(ref, t("manage.databaseRemoveWhichConnection"));
       if (!conn) return undefined;
       const reasons = [
-        "Its console, history and saved settings go too.",
+        t("manage.itsConsoleHistoryAndSavedSettings"),
         ...(deps.sessions?.reasons(conn.id) ?? []),
       ];
-      if (!(await deps.confirm(`Remove ${conn.name}?`, reasons))) return undefined;
+      if (!(await deps.confirm(t("manage.remove", { name: String(conn.name) }), reasons)))
+        return undefined;
       deps.sessions?.close(conn.id);
       const next = list.filter((c) => c.id !== conn.id);
       await saveConnections(deps.bridge, next);
@@ -341,26 +342,25 @@ export function createManager(deps) {
       await deps.bridge.call("store.set", { key: `console:${conn.id}`, value: "" }).catch(() => {});
       await deps.forget(conn.id);
       deps.changed();
-      deps.view.say(`Removed ${conn.name}.`);
+      deps.view.say(t("manage.removed", { name: String(conn.name) }));
       return conn.id;
     },
     /** Close the connection's sessions and forget its password. */
     async disconnect(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: disconnect which connection?");
+      const conn = await choose(ref, t("manage.databaseDisconnectWhichConnection"));
       if (!conn) return undefined;
-      if (!(await letClose(conn, `Disconnect ${conn.name}?`))) throw refused("Not disconnected.");
+      if (!(await letClose(conn, t("manage.disconnect", { name: String(conn.name) }))))
+        throw refused(t("manage.notDisconnected"));
       deps.sessions?.disconnect?.(conn.id);
       deps.sessions?.close(conn.id);
       passwords.delete(conn.id);
-      const closed = conn.engine === "postgresql" ? "its sessions are closed and " : "";
       deps.sessions?.forget?.(conn.id);
-      const kept = deps.keychain.has(conn) ? "; the keychain still remembers it" : "";
-      deps.view.say(`Disconnected ${conn.name}: ${closed}its password is forgotten${kept}.`);
+      deps.view.say(disconnectedMessage(conn, deps.keychain.has(conn)));
       return conn.id;
     },
     /** Disconnect and forget: the session's password, the keychain's, and the choice. */
     async forgetPassword(/** @type {string | undefined} */ ref) {
-      const conn = await choose(ref, "Database: forget the password of which connection?");
+      const conn = await choose(ref, t("manage.databaseForgetThePasswordOfWhich"));
       if (!conn) return undefined;
       passwords.delete(conn.id);
       deps.sessions?.forget?.(conn.id);
@@ -368,8 +368,8 @@ export function createManager(deps) {
       await setChoice(conn, false);
       deps.view.say(
         was
-          ? `Forgot the password of ${conn.name}: the keychain no longer remembers it.`
-          : `Forgot the password of ${conn.name}: the keychain kept none.`,
+          ? t("manage.forgotThePasswordOfTheKeychain", { name: String(conn.name) })
+          : t("manage.forgotThePasswordOfTheKeychain2", { name: String(conn.name) }),
       );
       return conn.id;
     },
@@ -383,8 +383,8 @@ export function createManager(deps) {
       for (const conn of incoming) normalize(conn, next);
       const moved = list.filter((c) => SIGN_IN.some((k) => (byId.get(c.id) ?? c)[k] !== c[k]));
       for (const c of moved)
-        if (!(await letClose(c, `Import over ${c.name}?`)))
-          throw refused(`Not imported: ${c.name}'s sessions stay open.`);
+        if (!(await letClose(c, t("manage.importOver", { name: String(c.name) }))))
+          throw refused(t("manage.notImportedSSessionsStayOpen", { name: String(c.name) }));
       for (const c of moved) deps.sessions?.close(c.id);
       await saveConnections(deps.bridge, next);
       list = next;

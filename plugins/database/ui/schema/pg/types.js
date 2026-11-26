@@ -4,6 +4,7 @@
 // extension's types are left out. The DDL is built from the cached row, a base type's with its I/O
 // functions read on `d` (their bodies are never cached). Pure.
 
+import { t } from "../../strings/index.js";
 import { assemble, commentOn, dotted, ident, literal } from "./ddl.js";
 import { described, inSchemas, json, markOf, notMember } from "./sql.js";
 
@@ -55,7 +56,7 @@ const DETAIL =
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "types",
-  label: "types",
+  label: t("schema.pg.types.types"),
   marks: [
     markOf(
       "pg_catalog.pg_enum e JOIN pg_catalog.pg_type t ON t.oid = e.enumtypid",
@@ -86,9 +87,9 @@ export function objectsOf(/** @type {Row[]} */ rows, /** @type {string} */ schem
     const kind = TYPTYPE[typtype ?? ""] ?? "base";
     const shown =
       kind === "domain"
-        ? `domain of ${def.base ?? ""}`
+        ? t("schema.pg.types.domainOf", { value: String(def.base ?? "") })
         : kind === "range"
-          ? `range of ${def.subtype ?? ""}`
+          ? t("schema.pg.types.rangeOf", { value: String(def.subtype ?? "") })
           : kind;
     return /** @type {SchemaObject} */ ({
       schema,
@@ -121,7 +122,7 @@ const lines = (/** @type {string[]} */ items) => `(\n    ${items.join(",\n    ")
 /** The queries a type's DDL needs on `d`: a base type's I/O functions in its own schema. */
 export function ddlQueries(/** @type {SchemaObject} */ object) {
   if (object.def?.typtype !== "base") return [];
-  if (!/^\d+$/u.test(object.ident)) throw new Error("This type has no catalog id.");
+  if (!/^\d+$/u.test(object.ident)) throw new Error(t("schema.pg.types.thisTypeHasNoCatalogId"));
   return [
     "SELECT pg_catalog.pg_get_functiondef(p.oid) FROM pg_catalog.pg_type t JOIN pg_catalog.pg_proc " +
       "p ON p.oid IN (t.typinput, t.typoutput, t.typreceive, t.typsend) AND p.pronamespace = " +

@@ -1,3 +1,5 @@
+import { t } from "../strings/index.js";
+
 // A zip archive of a few files (PG-61, the .xlsx package): each file deflated by the platform's
 // CompressionStream when it has one and that is smaller, else stored, with its CRC-32, UTF-8 names
 // and a fixed time (1980-01-01), so the same files always make the same bytes. No ZIP64: past 4 GiB
@@ -69,7 +71,7 @@ export async function zip(entries, { deflate = true } = {}) {
     const packed = deflate ? await deflated(entry.data) : undefined;
     const method = packed && packed.length < entry.data.length ? 8 : 0;
     const body = method === 8 && packed ? packed : entry.data;
-    if (offset + body.length > 0xffffffff) throw new Error("Export: the .xlsx is past 4 GiB.");
+    if (offset + body.length > 0xffffffff) throw new Error(t("export.zip.exportTheXlsxIsPastGib"));
     const local = new Uint8Array(30 + name.length);
     const l = new DataView(local.buffer);
     l.setUint32(0, 0x04034b50, true);

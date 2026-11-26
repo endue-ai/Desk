@@ -6,6 +6,7 @@
 // promise; the grid draws only the answer to its latest question.
 
 import { valueAt } from "../grid-model.js";
+import { t } from "../strings/index.js";
 import { findMatches, orderRows } from "./rows.js";
 
 /**
@@ -49,7 +50,8 @@ export function createRowsClient(startWorker, threshold = LARGE) {
       else entry.resolve(data);
     };
     worker.onerror = () => {
-      for (const entry of pending.values()) entry.reject(new Error("The grid's worker stopped."));
+      for (const entry of pending.values())
+        entry.reject(new Error(t("grid.rowsClient.theGridSWorkerStopped")));
       pending.clear();
       worker = undefined;
       held = { result: "", sent: new Set() };

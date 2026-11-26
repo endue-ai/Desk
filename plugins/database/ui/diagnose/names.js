@@ -6,6 +6,7 @@
 // or IMPORT FOREIGN SCHEMA filled, and every name of a statement under IF EXISTS. Pure.
 import { effectivePath } from "../sql/parse/scope.js";
 import { walk } from "../sql/parse/tree.js";
+import { t } from "../strings/index.js";
 import { pathText, searchPathOf } from "./script.js";
 import { nearest } from "./text.js";
 
@@ -102,8 +103,14 @@ function relationMessage(
 ) {
   if (schema) {
     const near = nearest(name, relationsOn(state, [schema]), (r) => r.name);
-    const hint = near ? `\nPerhaps you meant "${schema}.${near.name}".` : "";
-    return `relation "${schema}.${name}" does not exist${hint}`;
+    const hint = near
+      ? t("diagnose.names.perhapsYouMeant", { schema: String(schema), name: String(near.name) })
+      : "";
+    return t("diagnose.names.relationDoesNotExist", {
+      schema: String(schema),
+      name: String(name),
+      hint: String(hint),
+    });
   }
   const path = effectivePath(searchPathOf(state), state.user);
   const near = nearest(name, relationsOn(state, path), (r) => r.name);
@@ -112,11 +119,15 @@ function relationMessage(
     .map((r) => `${r.schema}.${name}`)
     .sort();
   const hint = near
-    ? `\nPerhaps you meant "${near.name}".`
+    ? t("diagnose.names.perhapsYouMeant2", { name: String(near.name) })
     : elsewhere.length > 0
-      ? `\nOff the search path: ${elsewhere.join(", ")}.`
+      ? t("diagnose.names.offTheSearchPath", { value: String(elsewhere.join(", ")) })
       : "";
-  return `relation "${name}" does not exist (${pathText(state.path)})${hint}`;
+  return t("diagnose.names.relationDoesNotExist2", {
+    name: String(name),
+    value: String(pathText(state.path)),
+    hint: String(hint),
+  });
 }
 
 /** Whether nothing but space and comments stands between two names: one dotted name. */
@@ -162,7 +173,11 @@ export function nameProblems(names, tree, state, sql) {
         put(
           name,
           after,
-          `relation "${name.name}.${after.name}" does not exist\nThere is no schema "${name.name}".`,
+          t("diagnose.names.relationDoesNotExistThereIs", {
+            name: String(name.name),
+            name2: String(after.name),
+            name3: String(name.name),
+          }),
         );
         i++;
       } else put(name, name, `schema "${name.name}" does not exist`);
@@ -172,7 +187,11 @@ export function nameProblems(names, tree, state, sql) {
       const schema = before?.kind === "schema" && dotted(sql, before, name) ? before.name : null;
       if (schema ? state.open.has(schema) : pathOpen) continue;
       const message = dropped
-        ? `${dropped} "${schema ? `${schema}.` : ""}${name.name}" does not exist`
+        ? t("diagnose.names.doesNotExist", {
+            dropped: String(dropped),
+            value: String(schema ? `${schema}.` : ""),
+            name: String(name.name),
+          })
         : relationMessage(state, schema, name.name);
       put(schema && before ? before : name, name, message);
       continue;
@@ -190,7 +209,10 @@ export function nameProblems(names, tree, state, sql) {
           of?.kind === "relation" ? relationIn(state, of.schema, of.name)?.found : undefined;
         const near = nearest(name.name, found?.columns?.keys() ?? [], (c) => c);
         const hint = near
-          ? `\nPerhaps you meant to reference the column "${qualifier.name}.${near}".`
+          ? t("diagnose.names.perhapsYouMeantToReferenceThe", {
+              name: String(qualifier.name),
+              near: String(near),
+            })
           : "";
         put(qualifier, name, `column ${qualifier.name}.${name.name} does not exist${hint}`);
       } else if (facts.written.has(name.start.byte))
@@ -203,7 +225,10 @@ export function nameProblems(names, tree, state, sql) {
         put(
           name,
           name,
-          `column "${name.name}" does not exist\n"${name.name}" is a name the select list gives; only ORDER BY and GROUP BY can use it.`,
+          t("diagnose.names.columnDoesNotExistIsA", {
+            name: String(name.name),
+            name2: String(name.name),
+          }),
         );
       else {
         // Inside a subquery the nearest column may be another level's: no hint then.
@@ -228,7 +253,12 @@ function columnHint(
     return [...(found?.columns?.keys() ?? [])].map((column) => ({ ref: item.name, column }));
   });
   const near = nearest(name, candidates, (c) => c.column);
-  return near ? `\nPerhaps you meant to reference the column "${near.ref}.${near.column}".` : "";
+  return near
+    ? t("diagnose.names.perhapsYouMeantToReferenceThe2", {
+        ref: String(near.ref),
+        column: String(near.column),
+      })
+    : "";
 }
 
 /** A qualifier no FROM item in reach is named: an alias's table, an item it cannot see, or none. */
@@ -238,12 +268,22 @@ function qualifierMessage(
 ) {
   const aliased = facts.items.find((item) => item.aliased && item.relname === name.name);
   if (aliased && !facts.items.some((item) => item.name === name.name))
-    return `invalid reference to FROM-clause entry for table "${name.name}"\nPerhaps you meant to reference the table alias "${aliased.name}".`;
+    return t("diagnose.names.invalidReferenceToFromClauseEntry", {
+      name: String(name.name),
+      name2: String(aliased.name),
+    });
   const item = facts.items.find((it) => it.name === name.name);
-  const missing = `missing FROM-clause entry for table "${name.name}"`;
+  const missing = t("diagnose.names.missingFromClauseEntryForTable", { name: String(name.name) });
   if (!item) return missing;
   if (item.byte >= 0 && item.byte < name.start.byte)
-    return `invalid reference to FROM-clause entry for table "${name.name}"\nThere is an entry for table "${name.name}", but it cannot be referenced from this part of the query.`;
+    return t("diagnose.names.invalidReferenceToFromClauseEntry2", {
+      name: String(name.name),
+      name2: String(name.name),
+    });
   const where = facts.inOn.has(name.start.byte) ? ": a JOIN's ON sees only its own two sides" : "";
-  return `${missing}\n"${name.name}" is in FROM, but not where this part of the query can see it${where}.`;
+  return t("diagnose.names.isInFromButNotWhere", {
+    missing: String(missing),
+    name: String(name.name),
+    where: String(where),
+  });
 }

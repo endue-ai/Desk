@@ -5,6 +5,7 @@
 // and their types come from the query with no rows, in the same snapshot. No DOM.
 
 import { quoteText } from "../../sql/quote.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -43,7 +44,7 @@ export async function openSnapshot(deps, conn, signal) {
   };
   const begun = await run(`${BEGIN};\nSELECT current_setting('server_version_num')::int4`);
   const why = failureOf(begun);
-  if (why) throw new Error(signal.aborted ? "Cancelled." : why);
+  if (why) throw new Error(signal.aborted ? t("features.exportAll.snapshot.cancelled") : why);
   const version = Number(begun.result.statements[1]?.sets[0]?.rows[0]?.[0] ?? 0);
   return {
     session,

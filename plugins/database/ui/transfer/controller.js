@@ -6,6 +6,7 @@
 // panel at a time. No DOM.
 
 import { formatCount, formatDuration } from "../format.js";
+import { t } from "../strings/index.js";
 import { createChooser, targetOf } from "./choose.js";
 import { keyOf } from "./ddl.js";
 import { planQuery, planTables, scriptOf } from "./plan.js";
@@ -57,7 +58,7 @@ export function createTransfers(deps) {
     const busy = deps.consoles
       .list()
       .some((b) => b.kind === TYPE && b.name === name && jobs.get(b.id)?.control);
-    if (busy) throw new Error("This copy is running: cancel it first.");
+    if (busy) throw new Error(t("transfer.controller.thisCopyIsRunningCancelIt"));
     const panel = await deps.consoles.openPanel(source, TYPE, name, state);
     jobs.set(panel.id, { source, target, plan: /** @type {any} */ (null), state });
     deps.consoles.updatePanel(panel.id, state);
@@ -94,7 +95,7 @@ export function createTransfers(deps) {
         foreignKeys: args.foreignKeys !== false,
       })
     );
-    if (!answer) throw deps.cancelled("Not copied.");
+    if (!answer) throw deps.cancelled(t("transfer.controller.notCopied"));
     const target = targetOf(deps, answer);
     const schema = String(answer.schema ?? "").trim() || "public";
     const content = /** @type {import("./compare.js").Content} */ (
@@ -111,7 +112,14 @@ export function createTransfers(deps) {
       source,
       target,
       {
-        title: `${one ? `${one.schema}.${one.name}` : `${names.length} tables`} to ${target.name}`,
+        title: t("transfer.controller.to", {
+          value: String(
+            one
+              ? `${one.schema}.${one.name}`
+              : t("transfer.controller.tables", { length: String(names.length) }),
+          ),
+          name: String(target.name),
+        }),
         from: `${source.name} · ${source.database}`,
         to: `${target.name} · ${target.database} · ${into}`,
       },
@@ -154,17 +162,17 @@ export function createTransfers(deps) {
         append: args.append === true,
       })
     );
-    if (!answer) throw deps.cancelled("Not copied.");
+    if (!answer) throw deps.cancelled(t("transfer.controller.notCopied"));
     const target = targetOf(deps, answer);
     const schema = String(answer.schema ?? "").trim() || "public";
     const name = String(answer.name ?? "").trim();
-    if (!name) throw new Error("Name the table the result goes into.");
+    if (!name) throw new Error(t("transfer.controller.nameTheTableTheResultGoes"));
     const append = answer.append === true;
     return open(
       source,
       target,
       {
-        title: `query to ${target.name}`,
+        title: t("transfer.controller.queryTo", { name: String(target.name) }),
         from: `${source.name} · the query`,
         to: `${target.name} · ${target.database} · ${schema}.${name}${append ? " (append)" : ""}`,
       },
@@ -239,18 +247,18 @@ export function createTransfers(deps) {
   const start = async (/** @type {unknown} */ ref) => {
     const id = typeof ref === "string" ? ref : deps.consoles.current()?.id;
     const job = id ? jobs.get(id) : undefined;
-    if (!id || !job) throw new Error("Show the copy to start first: Database: copy tables.");
-    if (job.control) throw new Error("This copy is running.");
+    if (!id || !job) throw new Error(t("transfer.controller.showTheCopyToStartFirst"));
+    if (job.control) throw new Error(t("transfer.controller.thisCopyIsRunning"));
     if (job.state.status !== "ready")
-      throw new Error(job.state.problems[0] ?? "Read the copy again first.");
+      throw new Error(job.state.problems[0] ?? t("transfer.controller.readTheCopyAgainFirst"));
     const { target, plan } = job;
     if (target.tag === "production" && deps.settings().confirm) {
       const into = plan.steps.map((s) => s.target);
-      const yes = await deps.confirm(`Copy into ${target.name}?`, [
-        `${target.name} is tagged production.`,
-        ...into,
-      ]);
-      if (!yes) throw deps.cancelled("Not copied.");
+      const yes = await deps.confirm(
+        t("transfer.controller.copyInto", { name: String(target.name) }),
+        [t("transfer.controller.isTaggedProduction", { name: String(target.name) }), ...into],
+      );
+      if (!yes) throw deps.cancelled(t("transfer.controller.notCopied"));
     }
     const control = new AbortController();
     job.control = control;
@@ -288,15 +296,22 @@ export function createTransfers(deps) {
         };
       });
       const total = rows.reduce((a, b) => a + b, 0);
-      const said = `Copied ${formatCount(total)} rows into ${target.name} in ${formatDuration(Date.now() - began)}.`;
+      const said = t("transfer.controller.copiedRowsIntoIn", {
+        value: String(formatCount(total)),
+        name: String(target.name),
+        value2: String(formatDuration(Date.now() - began)),
+      });
       draw(id, { status: "done", steps: [...steps], result: said });
       deps.say(said);
       return { copied: total };
     } catch (error) {
       const cancelled = control.signal.aborted;
       const result = cancelled
-        ? "Cancelled: nothing was copied."
-        : `Not copied: ${textOf(error)} Nothing was changed on ${target.name}.`;
+        ? t("transfer.controller.cancelledNothingWasCopied")
+        : t("transfer.controller.notCopiedNothingWasChangedOn", {
+            value: String(textOf(error)),
+            name: String(target.name),
+          });
       draw(id, { status: cancelled ? "cancelled" : "failed", result });
       throw cancelled ? deps.cancelled(result) : new Error(result);
     } finally {
@@ -315,9 +330,13 @@ export function createTransfers(deps) {
           (running.length === 1 ? running[0]?.[0] : undefined));
     const job = id ? jobs.get(id) : undefined;
     if (!job?.control)
-      throw new Error(running.length ? "Show the copy to cancel first." : "No copy is running.");
+      throw new Error(
+        running.length
+          ? t("transfer.controller.showTheCopyToCancelFirst")
+          : t("transfer.controller.noCopyIsRunning"),
+      );
     job.control.abort();
-    deps.say("Cancelling the copy…");
+    deps.say(t("transfer.controller.cancellingTheCopy"));
     return { cancelled: id };
   };
 

@@ -9,6 +9,7 @@
 // files: import maps do not reach a module worker.
 import { createChecker } from "../../diagnose/check.js";
 import { createCompleter } from "../../editor/statement.js";
+import { t } from "../../strings/index.js";
 import { createLayout } from "../layout/layout.js";
 import { indexModel } from "./model.js";
 import { createParse } from "./parse.js";
@@ -71,7 +72,7 @@ export function createService(raw, models = new Map()) {
         if (request.type === "check" || request.type === "complete") {
           const index = request.model === undefined ? undefined : models.get(request.model);
           if (request.model !== undefined && !index)
-            throw new Error("The schema model was not sent to the parser.");
+            throw new Error(t("sql.parse.worker.theSchemaModelWasNotSent"));
           if (request.type === "complete")
             return { id, result: completer.complete(request, index) };
           return { id, result: checker.check(request, index) };
@@ -81,7 +82,7 @@ export function createService(raw, models = new Map()) {
         if (request.type === "parse")
           return { id, result: request.trees ? parsed : outline(parsed) };
         const index = models.get(request.model);
-        if (!index) throw new Error("The schema model was not sent to the parser.");
+        if (!index) throw new Error(t("sql.parse.worker.theSchemaModelWasNotSent"));
         const { searchPath, user } = request;
         const bound = resolve(sql, parsed, index, { searchPath, user, positions });
         return { id, result: { ...outline(parsed), ...bound } };
@@ -103,7 +104,10 @@ let running;
 async function service() {
   compiled ??= fetch(WASM)
     .then((answer) => {
-      if (!answer.ok) throw new Error(`The SQL parser could not be read (${answer.status}).`);
+      if (!answer.ok)
+        throw new Error(
+          t("sql.parse.worker.theSqlParserCouldNotBe", { status: String(answer.status) }),
+        );
       return answer.arrayBuffer();
     })
     .then((bytes) => WebAssembly.compile(bytes));

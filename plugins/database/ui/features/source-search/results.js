@@ -6,6 +6,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 import { LINES_CAP, summaryText } from "./model.js";
 
 /**
@@ -70,7 +71,10 @@ export function createResults(doc, open) {
             type: "button",
             class: "desk-btn desk-btn-quiet src-line",
             "data-open": `${at}.${li}`,
-            title: `Open ${h.name} at line ${line.line}`,
+            title: t("features.sourceSearch.results.openAtLine", {
+              name: String(h.name),
+              line: String(line.line),
+            }),
           },
           el(doc, "span", { class: "src-number" }, String(line.line)),
           marked(doc, line),
@@ -99,7 +103,14 @@ export function createResults(doc, open) {
             doc,
             "p",
             { class: "src-more" },
-            `and ${formatCount(rest)} more ${rest === 1 ? "line" : "lines"}`,
+            t("features.sourceSearch.results.andMore", {
+              value: String(formatCount(rest)),
+              value2: String(
+                rest === 1
+                  ? t("features.sourceSearch.results.line")
+                  : t("features.sourceSearch.results.lines"),
+              ),
+            }),
           )
         : undefined,
     );
@@ -123,7 +134,9 @@ export function createResults(doc, open) {
       const said = [
         ...run.notes,
         run.capped
-          ? `Only the first ${formatCount(LINES_CAP)} lines in all, and 50 an object, are kept; the counts cover every line.`
+          ? t("features.sourceSearch.results.onlyTheFirstLinesInAll", {
+              value: String(formatCount(LINES_CAP)),
+            })
           : "",
       ].filter(Boolean);
       notes.replaceChildren(

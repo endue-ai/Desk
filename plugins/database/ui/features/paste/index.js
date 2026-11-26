@@ -9,6 +9,7 @@
 import { applyCells, fillDownValues, PASTE_ASK, planCells, refusalOf } from "../../edit/cells.js";
 import { duplicateRows } from "../../edit/duplicate.js";
 import { formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -29,7 +30,7 @@ async function onGrid(
   /** @type {Record<string, unknown>} */ args = {},
 ) {
   const got = await deps.view.grid?.(op, args);
-  if (got === undefined) throw new Error("No result is on screen: run a query or open a table.");
+  if (got === undefined) throw new Error(t("features.paste.index.noResultIsOnScreenRun"));
   if (typeof got === "string") throw new Error(got);
   return got;
 }
@@ -60,7 +61,7 @@ async function paste(/** @type {Deps} */ deps, /** @type {unknown} */ given) {
     typeof given === "string"
       ? given
       : /** @type {{ text: string }} */ (await onGrid(deps, "clipboard")).text;
-  if (text === "") throw new Error("Nothing to paste: the clipboard holds no text.");
+  if (text === "") throw new Error(t("features.paste.index.nothingToPasteTheClipboardHolds"));
   const read = /** @type {Pasted} */ (await onGrid(deps, "readPaste", { text }));
   const { target, changes } = state;
   const plan = planCells({ target, set, changes, at, values: read.rows });
@@ -68,18 +69,30 @@ async function paste(/** @type {Deps} */ deps, /** @type {unknown} */ given) {
   if (refused) throw new Error(refused);
   const added = plan.added ? `, ${formatCount(plan.added)} of them new` : "";
   if (plan.cells.length > PASTE_ASK) {
-    const ok = await deps.confirm(`Paste ${formatCount(plan.cells.length)} cells?`, [
-      `${counted(plan.rows, "row")} by ${counted(plan.width, "column")}${added}, pending until Submit.`,
-    ]);
-    if (!ok) throw deps.cancelled("Not pasted: nothing changed.");
+    const ok = await deps.confirm(
+      t("features.paste.index.pasteCells", { value: String(formatCount(plan.cells.length)) }),
+      [
+        t("features.paste.index.byPendingUntilSubmit", {
+          value: String(counted(plan.rows, "row")),
+          value2: String(counted(plan.width, "column")),
+          added: String(added),
+        }),
+      ],
+    );
+    if (!ok) throw deps.cancelled(t("features.paste.index.notPastedNothingChanged"));
   }
-  const header = plan.header ? "The first line names the columns, so it is left out. " : "";
+  const header = plan.header ? t("features.paste.index.theFirstLineNamesTheColumns") : "";
   const cells = counted(plan.cells.length, "cell");
   return apply(
     deps,
     state,
     plan,
-    `${header}Pasted ${cells} into ${counted(plan.rows, "row")}${added}: pending until Submit.`,
+    t("features.paste.index.pastedIntoPendingUntilSubmit", {
+      header: String(header),
+      cells: String(cells),
+      value: String(counted(plan.rows, "row")),
+      added: String(added),
+    }),
   );
 }
 
@@ -90,7 +103,9 @@ async function fillDown(/** @type {Deps} */ deps) {
   const plan = planCells({ target: state.target, set, changes: state.changes, ...fill });
   const refused = refusalOf(plan, "filled");
   if (refused) throw new Error(refused);
-  const words = `Filled ${counted(plan.cells.length, "cell")} down: pending until Submit.`;
+  const words = t("features.paste.index.filledDownPendingUntilSubmit", {
+    value: String(counted(plan.cells.length, "cell")),
+  });
   return apply(deps, state, plan, words);
 }
 
@@ -106,7 +121,9 @@ async function clear(/** @type {Deps} */ deps) {
   });
   const refused = refusalOf(plan, "cleared");
   if (refused) throw new Error(refused);
-  const words = `Set ${counted(plan.cells.length, "cell")} to NULL: pending until Submit.`;
+  const words = t("features.paste.index.setToNullPendingUntilSubmit", {
+    value: String(counted(plan.cells.length, "cell")),
+  });
   return apply(deps, state, plan, words);
 }
 
@@ -114,7 +131,7 @@ async function clear(/** @type {Deps} */ deps) {
 async function duplicate(/** @type {Deps} */ deps) {
   const { state, at } = await selected(deps);
   const rows = at.order.slice(at.top, at.bottom + 1);
-  if (rows.length === 0) throw new Error("Select a row to duplicate first.");
+  if (rows.length === 0) throw new Error(t("features.paste.index.selectARowToDuplicateFirst"));
   const done = deps.consoles.edits.step(state, (changes, target, set) =>
     duplicateRows(changes, target, set, rows),
   );
@@ -124,7 +141,7 @@ async function duplicate(/** @type {Deps} */ deps) {
     ? `; ${listed(done.left)} take${done.left.length === 1 ? "s its" : " their"} DEFAULT`
     : "";
   const keys = done.keys.length
-    ? ` Change ${listed(done.keys)} before Submit: a key must differ.`
+    ? t("features.paste.index.changeBeforeSubmitAKeyMust", { value: String(listed(done.keys)) })
     : "";
   const words = `Duplicated ${what} at the end${left}.${keys}`;
   deps.say(words);
@@ -134,8 +151,8 @@ async function duplicate(/** @type {Deps} */ deps) {
 /** Take back the last pending change of the result on screen. */
 function undo(/** @type {Deps} */ deps) {
   const words = deps.consoles.edits.undo()
-    ? "Took back the last pending change."
-    : "Nothing to undo.";
+    ? t("features.paste.index.tookBackTheLastPendingChange")
+    : t("features.paste.index.nothingToUndo");
   deps.say(words);
   return words;
 }

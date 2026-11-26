@@ -6,6 +6,7 @@
 // server's language. A plain dump, which runs through run-file, leaves such a SET out before it
 // runs. Pure.
 
+import { t } from "../../strings/index.js";
 import { majorOf } from "./args.js";
 
 /** The settings pg_restore sets on every session, by the PostgreSQL major that added them. */
@@ -81,7 +82,12 @@ export function oneTransactionRefusal(version, serverMajor) {
   const [name, added] = hit;
   const older = Array.from({ length: added - serverMajor }, (_, i) => serverMajor + i);
   const which = older.length > 1 ? `${older.slice(0, -1).join(", ")} or ${older.at(-1)}` : older[0];
-  return `pg_restore ${version} sets ${name}, which PostgreSQL ${serverMajor} does not know, and in a single transaction that error undoes the whole restore: turn Single transaction off, or use pg_restore ${which} (the setting endue.database.pg-restore).`;
+  return t("features.backup.restoreOutcome.pgRestoreSetsWhichPostgresqlDoes", {
+    version: String(version),
+    name: String(name),
+    serverMajor: String(serverMajor),
+    which: String(which),
+  });
 }
 
 /** What the result adds when settings were skipped. */
@@ -90,7 +96,11 @@ export const skippedNote = (
   /** @type {number} */ serverMajor,
   /** @type {string} */ version,
 ) =>
-  `PostgreSQL ${serverMajor} does not know ${names.join(", ")}, which pg_restore ${version} sets: skipped.`;
+  t("features.backup.restoreOutcome.postgresqlDoesNotKnowWhichPg", {
+    serverMajor: String(serverMajor),
+    value: String(names.join(", ")),
+    version: String(version),
+  });
 
 const PLAIN_SET = /^SET\s+(\w+)\s*(?:=|TO)\s*[^;]*;?$/iu;
 
@@ -109,6 +119,9 @@ export function plainSkips(serverMajor) {
       return added !== undefined && serverMajor < added ? name : undefined;
     },
     note: (/** @type {string[]} */ names) =>
-      `PostgreSQL ${serverMajor} does not know ${names.join(", ")}: skipped.`,
+      t("features.backup.restoreOutcome.postgresqlDoesNotKnowSkipped", {
+        serverMajor: String(serverMajor),
+        value: String(names.join(", ")),
+      }),
   };
 }

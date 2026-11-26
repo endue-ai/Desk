@@ -6,6 +6,7 @@
 
 import { baseOf } from "../../databases.js";
 import { EXPORT_FOLDER, exportName } from "../../export.js";
+import { t } from "../../strings/index.js";
 import { columnOf } from "./access.js";
 
 /**
@@ -35,11 +36,14 @@ export function createAudit(deps, agents) {
     if (typeof ref === "string" && ref) return manager.choose(ref, "");
     const shown = consoles.current();
     const conn = shown?.kind === TYPE ? manager.get(shown.connection) : undefined;
-    return conn ?? manager.choose(undefined, "Database: agent audit of which connection?");
+    return (
+      conn ??
+      manager.choose(undefined, t("features.audit.controller.databaseAgentAuditOfWhichConnection"))
+    );
   };
   const byId = (/** @type {string} */ id) => {
     const conn = manager.get(id);
-    if (!conn) throw new Error("That connection is gone.");
+    if (!conn) throw new Error(t("features.audit.controller.thatConnectionIsGone"));
     return conn;
   };
 
@@ -90,8 +94,22 @@ export function createAudit(deps, agents) {
     patch.sensitive = sensitive;
     const next = await agents.access.set(conn.id, patch);
     const said = next.closed
-      ? `${conn.name} is closed to agents.`
-      : `Agents may read ${conn.name}${next.sensitive.length ? `, with ${next.sensitive.length} sensitive ${next.sensitive.length === 1 ? "column" : "columns"} masked` : ""}.`;
+      ? t("features.audit.controller.isClosedToAgents", { name: String(conn.name) })
+      : t("features.audit.controller.agentsMayRead", {
+          name: String(conn.name),
+          value: String(
+            next.sensitive.length
+              ? t("features.audit.controller.withSensitiveMasked", {
+                  length: String(next.sensitive.length),
+                  value: String(
+                    next.sensitive.length === 1
+                      ? t("features.audit.controller.column")
+                      : t("features.audit.controller.columns"),
+                  ),
+                })
+              : "",
+          ),
+        });
     deps.say(said);
     await redraw(conn, said);
     return next;
@@ -115,10 +133,19 @@ export function createAudit(deps, agents) {
           reason: `To export the agent audit list to ${path}`,
         })
         .catch(() => ({ granted: false }));
-      if (!decision.granted) throw new Error(`Not allowed to write ${path}.`);
+      if (!decision.granted)
+        throw new Error(t("features.audit.controller.notAllowedToWrite", { path: String(path) }));
       await write();
     }
-    const said = `Exported ${entries.length} ${entries.length === 1 ? "entry" : "entries"} to ${path}.`;
+    const said = t("features.audit.controller.exportedTo", {
+      length: String(entries.length),
+      value: String(
+        entries.length === 1
+          ? t("features.audit.controller.entry")
+          : t("features.audit.controller.entries"),
+      ),
+      path: String(path),
+    });
     deps.say(said);
     await redraw(conn, said);
     return { path, entries: entries.length };
@@ -126,12 +153,24 @@ export function createAudit(deps, agents) {
 
   const clear = async (/** @type {Connection} */ conn) => {
     const count = (await agents.log.read(conn.id)).length;
-    const asked = await deps.confirm(`Clear the agent audit list of ${conn.name}?`, [
-      `Its ${count} ${count === 1 ? "entry goes" : "entries go"} for good: export the list first to keep it.`,
-    ]);
-    if (!asked) throw deps.cancelled("Not cleared.");
+    const asked = await deps.confirm(
+      t("features.audit.controller.clearTheAgentAuditListOf", { name: String(conn.name) }),
+      [
+        t("features.audit.controller.itsForGoodExportTheList", {
+          count: String(count),
+          value: String(
+            count === 1
+              ? t("features.audit.controller.entryGoes")
+              : t("features.audit.controller.entriesGo"),
+          ),
+        }),
+      ],
+    );
+    if (!asked) throw deps.cancelled(t("features.audit.controller.notCleared"));
     await agents.log.clear(conn.id);
-    const said = `Cleared the agent audit list of ${conn.name}.`;
+    const said = t("features.audit.controller.clearedTheAgentAuditListOf", {
+      name: String(conn.name),
+    });
     deps.say(said);
     await redraw(conn, said);
     return said;
@@ -139,7 +178,7 @@ export function createAudit(deps, agents) {
 
   const chosen = async (/** @type {unknown} */ ref) => {
     const conn = await target(ref);
-    if (!conn) throw deps.cancelled("No connection chosen.");
+    if (!conn) throw deps.cancelled(t("features.audit.controller.noConnectionChosen"));
     return conn;
   };
 

@@ -4,6 +4,7 @@
 // and the notes that say what the statement does beyond its words. The dialog writes the script
 // from the same model (statements.js), so it is data only. Pure.
 
+import { t } from "../../strings/index.js";
 import { ENGINE_NAMES, OPS, said } from "./kinds.js";
 
 /**
@@ -66,19 +67,22 @@ export function modelOf(conn, op, target, facts, given, schemas = []) {
   if (op === "rename") {
     fields.push({
       name: "to",
-      label: "New name",
+      label: t("features.objects.models.newName"),
       kind: "text",
       value: text("to") ?? ownName(target, facts),
-      hint: "Written as typed, in quotes: its case and spaces are kept.",
+      hint: t("features.objects.models.writtenAsTypedInQuotesIts"),
     });
     if (pg && (target.kind === "table" || target.kind === "view"))
-      notes.push("Views and keys follow it; a function body that names it does not.");
+      notes.push(t("features.objects.models.viewsAndKeysFollowItA"));
   }
   if (op === "move") {
     const options = schemas.filter((s) => s !== target.schema);
     fields.push({
       name: "to",
-      label: conn.engine === "mysql" ? "Database" : "Schema",
+      label:
+        conn.engine === "mysql"
+          ? t("features.objects.models.database")
+          : t("features.objects.models.schema"),
       kind: "select",
       value: text("to") ?? options[0] ?? "",
       options,
@@ -87,20 +91,24 @@ export function modelOf(conn, op, target, facts, given, schemas = []) {
   if (op === "owner") {
     fields.push({
       name: "to",
-      label: "New owner",
+      label: t("features.objects.models.newOwner"),
       kind: "text",
       value: text("to") ?? "",
       list: facts.roles ?? [],
     });
-    if (facts.owner) notes.push(`${facts.owner} owns it now.`);
+    if (facts.owner)
+      notes.push(t("features.objects.models.ownsItNow", { owner: String(facts.owner) }));
   }
   if (op === "comment")
     fields.push({
       name: "comment",
-      label: "Comment",
+      label: t("features.objects.models.comment"),
       kind: "textarea",
       value: text("comment") ?? facts.comment ?? "",
-      hint: conn.engine === "mysql" ? "Empty leaves no comment." : "Empty removes the comment.",
+      hint:
+        conn.engine === "mysql"
+          ? t("features.objects.models.emptyLeavesNoComment")
+          : t("features.objects.models.emptyRemovesTheComment"),
     });
   if (op === "drop") dropParts(conn, target, facts, given, choices, notes);
   if (op === "truncate") truncateParts(conn, facts, given, choices, notes);
@@ -108,17 +116,17 @@ export function modelOf(conn, op, target, facts, given, schemas = []) {
     const can = facts.populated !== false && facts.unique === true;
     choices.push({
       name: "concurrently",
-      label: "CONCURRENTLY",
+      label: t("features.objects.models.concurrently"),
       hint: can
-        ? "Reads go on while it refreshes."
-        : "Needs data and a unique index on plain columns that covers every row: not here.",
+        ? t("features.objects.models.readsGoOnWhileItRefreshes")
+        : t("features.objects.models.needsDataAndAUniqueIndex"),
       checked: can && given.concurrently !== false,
       disabled: !can,
     });
     choices.push({
       name: "nodata",
-      label: "WITH NO DATA",
-      hint: "Empties it; it cannot be read until the next refresh.",
+      label: t("features.objects.models.withNoData"),
+      hint: t("features.objects.models.emptiesItItCannotBeRead"),
       checked: yes(given.withNoData),
     });
   }
@@ -127,12 +135,19 @@ export function modelOf(conn, op, target, facts, given, schemas = []) {
     const wanted = typeof given.enabled === "boolean" ? given.enabled : now === "D";
     fields.push({
       name: "state",
-      label: "Trigger",
+      label: t("features.objects.models.trigger"),
       kind: "select",
       value: wanted ? "enable" : "disable",
       options: ["enable", "disable"],
     });
-    notes.push(`It is ${ENABLED[/** @type {keyof typeof ENABLED} */ (now)] ?? "enabled"} now.`);
+    notes.push(
+      t("features.objects.models.itIsNow", {
+        value: String(
+          ENABLED[/** @type {keyof typeof ENABLED} */ (now)] ??
+            t("features.objects.models.enabled"),
+        ),
+      }),
+    );
   }
   if (op === "apply") notes.push(...applyNotes(conn, target));
   return {
@@ -163,23 +178,26 @@ function dropParts(
 ) {
   if (conn.engine !== "postgresql") {
     notes.push(
-      `${ENGINE_NAMES[conn.engine]} keeps no list of what depends on it: views and triggers that use it stop working.`,
+      t("features.objects.models.keepsNoListOfWhatDepends", {
+        value: String(ENGINE_NAMES[conn.engine]),
+      }),
     );
     return;
   }
   const blocking = facts.dependents?.blocking.length ?? 0;
   choices.push({
     name: "cascade",
-    label: "CASCADE",
+    label: t("features.objects.models.cascade"),
     hint: blocking
       ? blocking === 1
-        ? "Also drops the object that depends on it."
-        : `Also drops the ${blocking} objects that depend on it.`
-      : "Nothing depends on it now; CASCADE would drop what does by the time it runs.",
+        ? t("features.objects.models.alsoDropsTheObjectThatDepends")
+        : t("features.objects.models.alsoDropsTheObjectsThatDepend", { blocking: String(blocking) })
+      : t("features.objects.models.nothingDependsOnItNowCascade"),
     checked: yes(given.cascade),
   });
-  if (blocking) notes.push("Without CASCADE the server refuses while anything depends on it.");
-  if (target.kind === "schema") notes.push("CASCADE drops every object in the schema.");
+  if (blocking) notes.push(t("features.objects.models.withoutCascadeTheServerRefusesWhile"));
+  if (target.kind === "schema")
+    notes.push(t("features.objects.models.cascadeDropsEveryObjectInThe"));
 }
 
 /** A truncate's options, with the row estimate and the tables its foreign keys meet. */
@@ -192,51 +210,54 @@ function truncateParts(
 ) {
   const rows = facts.rows;
   if (typeof rows === "number")
-    notes.push(`About ${rows.toLocaleString("en-US")} rows (the server's estimate) go.`);
+    notes.push(
+      t("features.objects.models.aboutRowsTheServerSEstimate", {
+        value: String(rows.toLocaleString("en-US")),
+      }),
+    );
   else if (conn.engine === "postgresql")
-    notes.push("The server has no estimate of its rows yet: it was not analyzed.");
+    notes.push(t("features.objects.models.theServerHasNoEstimateOf"));
   if (conn.engine === "sqlite") {
-    notes.push("SQLite has no TRUNCATE: DELETE FROM removes every row.");
+    notes.push(t("features.objects.models.sqliteHasNoTruncateDeleteFrom"));
     return;
   }
   if (conn.engine === "mysql") {
-    notes.push("MySQL commits a TRUNCATE at once: it cannot be rolled back.");
+    notes.push(t("features.objects.models.mysqlCommitsATruncateAtOnce"));
     return;
   }
   const sequences = facts.sequences ?? [];
   choices.push({
     name: "restart",
-    label: "RESTART IDENTITY",
+    label: t("features.objects.models.restartIdentity"),
     hint: sequences.length
-      ? `Starts ${sequences.join(", ")} again.`
-      : "It owns no sequence: nothing starts again.",
+      ? t("features.objects.models.startsAgain", { value: String(sequences.join(", ")) })
+      : t("features.objects.models.itOwnsNoSequenceNothingStarts"),
     checked: yes(given.restartIdentity),
   });
   const referencing = facts.referencing ?? [];
   choices.push({
     name: "cascade",
-    label: "CASCADE",
+    label: t("features.objects.models.cascade"),
     hint: referencing.length
-      ? `Also empties ${referencing.join(", ")}, whose foreign keys point here.`
-      : "No other table's foreign key points here.",
+      ? t("features.objects.models.alsoEmptiesWhoseForeignKeysPoint", {
+          value: String(referencing.join(", ")),
+        })
+      : t("features.objects.models.noOtherTableSForeignKey"),
     checked: yes(given.cascade),
   });
   if (referencing.length)
-    notes.push("Without CASCADE the server refuses: other tables point here.");
-  notes.push("ON DELETE triggers do not fire; TRUNCATE triggers do.");
+    notes.push(t("features.objects.models.withoutCascadeTheServerRefusesOther"));
+  notes.push(t("features.objects.models.onDeleteTriggersDoNotFire"));
 }
 
 /** What applying a source does beyond its text. */
 function applyNotes(/** @type {Connection} */ conn, /** @type {Target} */ target) {
-  if (conn.engine === "sqlite")
-    return [
-      "SQLite has no CREATE OR REPLACE: the view is dropped and created again in one transaction.",
-    ];
-  if (conn.engine === "mysql") return ["MySQL commits DDL at once: it cannot be rolled back."];
+  if (conn.engine === "sqlite") return [t("features.objects.models.sqliteHasNoCreateOrReplace")];
+  if (conn.engine === "mysql") return [t("features.objects.models.mysqlCommitsDdlAtOnceIt")];
   if (target.kind === "materialized view")
     return [
-      "A materialized view has no CREATE OR REPLACE: it is dropped and created again in one transaction, with the indexes and the comment the text writes.",
-      "Its grants are not kept: grant them again after.",
+      t("features.objects.models.aMaterializedViewHasNoCreate"),
+      t("features.objects.models.itsGrantsAreNotKeptGrant"),
     ];
   if (target.kind === "view")
     return [

@@ -6,6 +6,8 @@
 // in the answer; so is a routine whose body is BEGIN ATOMIC (PG-35). Between statements only space
 // changes: a statement a line, one blank line apart, and comments there stay as they are. It runs
 // in the parse worker (worker.js). Pure over the raw parser.
+
+import { t as messageText } from "../../strings/index.js";
 import { createParse } from "../parse/parse.js";
 import { createPositions } from "../parse/positions.js";
 import { kindOf } from "../parse/tree.js";
@@ -93,7 +95,8 @@ export function createLayout(raw) {
     let answer;
     if (statement.error || !statement.tree) {
       const at = statement.error?.position ?? statement.start;
-      const message = statement.error?.message ?? "The statement does not parse.";
+      const message =
+        statement.error?.message ?? messageText("sql.layout.layout.theStatementDoesNotParse");
       answer = { left: { line: at.line, column: at.column, message } };
     } else if (atomic(statement.tree)) answer = { kept: true };
     else {

@@ -4,6 +4,7 @@
 // and Mod+Enter all; Escape, anywhere in the bar, closes it and gives the editor its focus back.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import {
   closeSearchPanel,
   findNext,
@@ -99,9 +100,12 @@ function createPanel(view) {
       count.textContent =
         n === null
           ? query.search
-            ? "Not a valid expression"
+            ? t("editor.searchPanel.notAValidExpression")
             : ""
-          : `${many} match${n === 1 ? "" : "es"}`;
+          : t("editor.searchPanel.match", {
+              many: String(many),
+              value: String(n === 1 ? "" : t("editor.searchPanel.es")),
+            });
       find.setAttribute("aria-invalid", String(n === null && Boolean(query.search)));
     }, COUNT_DELAY);
   };
@@ -137,7 +141,7 @@ function createPanel(view) {
   const dom = el(
     doc,
     "div",
-    { class: "find-bar", role: "search", "aria-label": "Find and replace" },
+    { class: "find-bar", role: "search", "aria-label": t("editor.searchPanel.findAndReplace") },
     find,
     el(
       doc,

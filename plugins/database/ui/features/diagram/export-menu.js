@@ -3,6 +3,7 @@
 // unit tests' jsdom), shown and hidden by `hidden`.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {HTMLElement & { show?(anchor: HTMLElement): void, close?(): void }} Menu
@@ -26,12 +27,22 @@ export function createExportMenu(doc, home, choose) {
     el(
       doc,
       "desk-menu",
-      { class: "er-export-menu", label: "Export the diagram" },
+      { class: "er-export-menu", label: t("features.diagram.exportMenu.exportTheDiagram") },
       ...FILES.map(([format, label]) =>
-        el(doc, "div", { ...ITEM, "data-choice": format }, `Export as ${label}…`),
+        el(
+          doc,
+          "div",
+          { ...ITEM, "data-choice": format },
+          t("features.diagram.exportMenu.exportAs", { label: String(label) }),
+        ),
       ),
       el(doc, "div", { role: "separator" }),
-      el(doc, "div", { ...ITEM, "data-choice": "copy" }, "Copy as an image"),
+      el(
+        doc,
+        "div",
+        { ...ITEM, "data-choice": "copy" },
+        t("features.diagram.exportMenu.copyAsAnImage"),
+      ),
     )
   );
   if (!menu.show) menu.hidden = true;

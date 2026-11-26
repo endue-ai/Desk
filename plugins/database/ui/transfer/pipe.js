@@ -7,6 +7,7 @@
 // character's edge. No DOM.
 
 import { COPY_CHUNK } from "../copy/index.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../copy/stream.js").Chunk} Chunk
@@ -74,7 +75,7 @@ export function createPipe(signal) {
     failed ??= error;
     nudge();
   };
-  const cancelled = () => fail(new Error("Cancelled."));
+  const cancelled = () => fail(new Error(t("transfer.pipe.cancelled")));
   if (signal?.aborted) cancelled();
   else signal?.addEventListener("abort", cancelled, { once: true });
 

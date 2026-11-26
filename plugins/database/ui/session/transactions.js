@@ -7,6 +7,7 @@
 // A transaction lost with its session (PG-105, ADR 0355) keeps its statements' text until the next
 // run of the console says them, and the header lists them meanwhile; none is run again. No DOM.
 
+import { t } from "../strings/index.js";
 import { lostDetail, lostNotice } from "./lost-words.js";
 import { AUTO, beginSql, controlOf, nextLabel } from "./transaction-words.js";
 
@@ -54,7 +55,12 @@ function withoutBegin(/** @type {RunResult} */ result) {
   const [begin, ...rest] = result.statements;
   const error =
     result.error ??
-    (begin?.error ? { ...begin.error, message: `BEGIN: ${begin.error.message}` } : undefined);
+    (begin?.error
+      ? {
+          ...begin.error,
+          message: t("session.transactions.begin", { message: String(begin.error.message) }),
+        }
+      : undefined);
   return {
     ...result,
     statements: rest.map((outcome) => ({ ...outcome, index: outcome.index - 1 })),

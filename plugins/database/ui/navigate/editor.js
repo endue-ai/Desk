@@ -7,6 +7,7 @@
 
 import { statementWindow } from "../editor/completion.js";
 import { dialectFacet } from "../editor/lexing.js";
+import { t } from "../strings/index.js";
 import {
   EditorSelection,
   hoverTooltip,
@@ -67,7 +68,7 @@ export function navigation(act) {
   /** Run one of the three at the caret; false when the dialect has none. */
   const run = async (/** @type {View} */ view, /** @type {What} */ what) => {
     if (!pg(view)) {
-      act("say", "Go to definition, the card and usages read PostgreSQL consoles.");
+      act("say", t("navigate.editor.goToDefinitionTheCardAnd"));
       return false;
     }
     const doc = view.state.doc;
@@ -86,7 +87,7 @@ export function navigation(act) {
         view.dispatch({
           effects: set.of({ card: answer.card, from: answer.from ?? 0, to: answer.to ?? 0 }),
         });
-      else act("say", "The schema cache holds nothing to show for the name at the caret.");
+      else act("say", t("navigate.editor.theSchemaCacheHoldsNothingTo"));
     }
     return true;
   };

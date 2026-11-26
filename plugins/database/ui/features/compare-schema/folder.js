@@ -6,6 +6,7 @@
 // never changed by a script. Pure.
 
 import { split } from "../../sql/split.js";
+import { t as messageText } from "../../strings/index.js";
 import { cursor, items, literal } from "./cursor.js";
 import { factsFor } from "./model.js";
 import {
@@ -64,7 +65,12 @@ function sequenceOf(/** @type {ReturnType<typeof cursor>} */ c) {
     } else if (c.take("cache")) s.cache = num();
     else if (c.take("cycle")) s.cycle = true;
     else if (c.take("owned", "by")) c.rest();
-    else throw new Error(`a sequence option it cannot read: ${c.rest()}`);
+    else
+      throw new Error(
+        messageText("features.compareSchema.folder.aSequenceOptionItCannotRead", {
+          value: String(c.rest()),
+        }),
+      );
   }
   return sequenceDefaults(s);
 }
@@ -165,7 +171,12 @@ export function modelOfFiles(schema, files) {
           else if (c.take("check")) {
             d.checks.push({ name: named, sql: `CHECK (${(c.group() ?? "").trim()})` });
             named = "";
-          } else throw new Error(`a domain option it cannot read: ${c.rest()}`);
+          } else
+            throw new Error(
+              messageText("features.compareSchema.folder.aDomainOptionItCannotRead", {
+                value: String(c.rest()),
+              }),
+            );
         }
         objects.push(domainObj(schema, name.name, d));
       } else if (/^create (or replace )?(function|procedure) /u.test(h)) {
@@ -204,7 +215,10 @@ export function modelOfFiles(schema, files) {
           kind: "table",
           name,
           ddl: st.text,
-          held: `${st.path} did not read (${why}).`,
+          held: messageText("features.compareSchema.folder.didNotRead", {
+            path: String(st.path),
+            why: String(why),
+          }),
         });
       }
     }
@@ -215,7 +229,12 @@ export function modelOfFiles(schema, files) {
       if (h.startsWith("comment on")) {
         const cm = parseComment(st.text);
         const t = tables.get(cm.table)?.read.design;
-        if (!t) throw new Error(`a comment on ${cm.table}, which no file creates`);
+        if (!t)
+          throw new Error(
+            messageText("features.compareSchema.folder.aCommentOnWhichNoFile", {
+              table: String(cm.table),
+            }),
+          );
         if (cm.kind === "table") t.comment = cm.value;
         else {
           const col = t.columns.find((x) => x.name === cm.column);
@@ -225,7 +244,11 @@ export function modelOfFiles(schema, files) {
         const ix = parseIndex(st.text);
         const t = tables.get(ix.table.name)?.read.design;
         if (!t || !own(ix.table))
-          throw new Error(`an index on ${ix.table.name}, which no file creates`);
+          throw new Error(
+            messageText("features.compareSchema.folder.anIndexOnWhichNoFile", {
+              name: String(ix.table.name),
+            }),
+          );
         const base = {
           id: `k${++ctx.seq.n}`,
           name: ix.name,
@@ -245,7 +268,8 @@ export function modelOfFiles(schema, files) {
         c.take("only");
         const name = c.qualified();
         const t = tables.get(name.name)?.read.design;
-        if (!t || !c.take("add")) throw new Error(`an ALTER TABLE it cannot read`);
+        if (!t || !c.take("add"))
+          throw new Error(messageText("features.compareSchema.folder.anAlterTableItCannotRead"));
         const named = c.take("constraint") ? c.one() : "";
         addConstraint(t, named, st.text.slice(c.at), ctx);
       }

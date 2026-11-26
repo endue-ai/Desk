@@ -7,6 +7,7 @@
 
 import { el } from "../../dom.js";
 import { formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 import { KINDS } from "./items.js";
 import { SCOPES } from "./model.js";
 import { createResults } from "./results.js";
@@ -16,7 +17,7 @@ import { createResults } from "./results.js";
  * @typedef {(action: string, ...args: unknown[]) => unknown} Act
  */
 
-const HINTS = "Enter search · Escape cancel · a line opens the source there";
+const HINTS = t("features.sourceSearch.panel.enterSearchEscapeCancelALine");
 
 /**
  * @param {Document} doc
@@ -59,10 +60,10 @@ export function sourcePanel(doc, first, act, buffer) {
       type: "search",
       name: "text",
       "data-field": "text",
-      placeholder: "customer_id",
+      placeholder: t("features.sourceSearch.panel.customerId"),
       autocomplete: "off",
       spellcheck: "false",
-      "aria-label": "Text to find",
+      "aria-label": t("features.sourceSearch.panel.textToFind"),
     })
   );
   const regex = check("regex", "yes", "Regular expression");
@@ -78,17 +79,26 @@ export function sourcePanel(doc, first, act, buffer) {
       doc,
       "button",
       { type: "submit", class: "desk-btn desk-btn-primary", "data-ctl": "search" },
-      "Search",
+      t("features.sourceSearch.panel.search"),
     )
   );
   const cancel = /** @type {HTMLButtonElement} */ (
-    el(doc, "button", { type: "button", class: "desk-btn", "data-ctl": "cancel" }, "Cancel")
+    el(
+      doc,
+      "button",
+      { type: "button", class: "desk-btn", "data-ctl": "cancel" },
+      t("features.sourceSearch.panel.cancel"),
+    )
   );
   const form = /** @type {HTMLFormElement} */ (
     el(
       doc,
       "form",
-      { class: "src-form", role: "search", "aria-label": "Search the source" },
+      {
+        class: "src-form",
+        role: "search",
+        "aria-label": t("features.sourceSearch.panel.searchTheSource"),
+      },
       el(
         doc,
         "div",
@@ -103,7 +113,7 @@ export function sourcePanel(doc, first, act, buffer) {
         doc,
         "fieldset",
         { class: "src-set" },
-        el(doc, "legend", {}, "Look in"),
+        el(doc, "legend", {}, t("features.sourceSearch.panel.lookIn")),
         el(doc, "div", { class: "src-row" }, ...kinds.map((k) => k.label)),
       ),
       el(doc, "div", { class: "src-row" }, search, cancel),
@@ -127,7 +137,12 @@ export function sourcePanel(doc, first, act, buffer) {
         doc,
         "div",
         { class: "desk-header-text" },
-        el(doc, "h2", { class: "desk-header-title" }, "Search the source"),
+        el(
+          doc,
+          "h2",
+          { class: "desk-header-title" },
+          t("features.sourceSearch.panel.searchTheSource"),
+        ),
         el(doc, "p", { class: "desk-header-desc", "data-part": "about" }),
       ),
     ),
@@ -195,8 +210,10 @@ export function sourcePanel(doc, first, act, buffer) {
       s.conn.tag !== "none" ? s.conn.tag : "",
       s.conn.readOnly ? "read-only" : "",
     ];
-    /** @type {HTMLElement} */ (root.querySelector('[data-part="about"]')).textContent =
-      `In the definitions the schema cache of ${about.filter(Boolean).join(" · ")} holds, and the bodies of its routines and views.`;
+    /** @type {HTMLElement} */ (root.querySelector('[data-part="about"]')).textContent = t(
+      "features.sourceSearch.panel.inTheDefinitionsTheSchemaCache",
+      { value: String(about.filter(Boolean).join(" · ")) },
+    );
     search.disabled = running();
     cancel.disabled = !running();
     error.replaceChildren(
@@ -223,7 +240,7 @@ export function sourcePanel(doc, first, act, buffer) {
           class: "desk-progress",
           max: String(Math.max(1, run.total)),
           value: String(run.done),
-          "aria-label": "Schemas searched",
+          "aria-label": t("features.sourceSearch.panel.schemasSearched"),
         }),
       );
     } else progress.replaceChildren();

@@ -8,6 +8,7 @@
 // read by the reader the caller gives (the vendored one, in the worker).
 
 import { readTable } from "../import.js";
+import { t } from "../strings/index.js";
 import { createCsvReader } from "./csv.js";
 import { createJsonLinesReader, createTextReader } from "./lines.js";
 
@@ -57,7 +58,9 @@ export function decoderOf(/** @type {string} */ encoding) {
   try {
     return new TextDecoder(encoding || "utf-8");
   } catch {
-    throw new Error(`The encoding ${encoding} is not one the import reads.`);
+    throw new Error(
+      t("importCopy.transform.theEncodingIsNotOneThe", { encoding: String(encoding) }),
+    );
   }
 }
 
@@ -105,7 +108,7 @@ export function createTransform(job, readers = {}) {
     }
     parts.length = 0;
     if (job.format === "xlsx") {
-      if (!readers.xlsx) throw new Error("An .xlsx file is read in a worker, and none started.");
+      if (!readers.xlsx) throw new Error(t("importCopy.transform.anXlsxFileIsReadIn"));
       return readers.xlsx(bytes);
     }
     return readTable(decoder.decode(bytes), "json", { header: job.header }).rows;

@@ -2,6 +2,7 @@
 // units (3 hours, 1 year 2 mons, 1.5 weeks), a time (02:00:00), the @ and ago of the old style, a
 // year-month 1-2, infinity, and ISO 8601 (P1Y2M3DT4H5M6S). The value stays as typed.
 
+import { t as messageText } from "../strings/index.js";
 import { field } from "./panel.js";
 
 const UNITS = new Set(
@@ -16,8 +17,7 @@ const ISO =
 const NUMBER = /^([-+]?(?:\d+(?:\.\d*)?|\.\d+))([a-z]*)$/iu;
 const CLOCK = /^[-+]?\d+:\d{2}(?::\d{2}(?:\.\d+)?)?$/u;
 const YEAR_MONTH = /^[-+]?\d+-\d+$/u;
-const HOW =
-  "An interval is numbers with units, as 3 hours or 1 day 02:00:00, or ISO 8601, as P1DT2H.";
+const HOW = messageText("cellEditors.interval.anIntervalIsNumbersWithUnits");
 
 export const interval = {
   check(/** @type {string} */ text) {
@@ -42,7 +42,7 @@ export const interval = {
           : "");
       if (unit && !UNITS.has(unit.toLowerCase()))
         return {
-          error: `"${unit}" is not a unit of an interval: use seconds, minutes, hours, days, weeks, months or years.`,
+          error: messageText("cellEditors.interval.isNotAUnitOfAn", { unit: String(unit) }),
         };
       if (!unit && i + 1 < words.length) return { error: `${word} needs a unit: ${HOW}` };
     }

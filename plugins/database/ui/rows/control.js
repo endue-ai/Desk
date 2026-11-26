@@ -13,6 +13,7 @@ import { formatCount } from "../format.js";
 import { orderSql, whereWith } from "../grid/filters.js";
 import { ownerOf } from "../session/owners.js";
 import { split } from "../sql/split.js";
+import { t } from "../strings/index.js";
 import { askFor, counted, lost, placed, whole } from "./window.js";
 
 /**
@@ -94,8 +95,7 @@ export function createRowsControl(deps) {
   };
   const owner = (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
     const who = ownerOf(target, conn);
-    if (!who || !deps.sessions)
-      throw new Error("Only a PostgreSQL console's read keeps its rows on the server.");
+    if (!who || !deps.sessions) throw new Error(t("rows.control.onlyAPostgresqlConsoleSRead"));
     return who;
   };
   const timeout = () => deps.settings().timeoutSeconds * 1000;
@@ -109,9 +109,9 @@ export function createRowsControl(deps) {
   };
   const held = (/** @type {Console} */ target) => {
     const set = windowed(target);
-    if (!set?.window) throw new Error("This result holds every row it has.");
+    if (!set?.window) throw new Error(t("rows.control.thisResultHoldsEveryRowIt"));
     if ((target.edit?.status === "ready" && target.edit.count) || 0)
-      throw new Error("Submit or drop the pending changes before reading other rows.");
+      throw new Error(t("rows.control.submitOrDropThePendingChanges"));
     return /** @type {ResultSet & { window: import("../engines/common.js").Window }} */ (set);
   };
 
@@ -133,7 +133,9 @@ export function createRowsControl(deps) {
       );
       if ("error" in got) {
         swap(target, set, lost(set, "the rest cannot be read"));
-        throw new Error(`The rows past those held cannot be read: ${got.error.message}`);
+        throw new Error(
+          t("rows.control.theRowsPastThoseHeldCannot", { message: String(got.error.message) }),
+        );
       }
       swap(target, set, placed(set, way, got));
       return "";
@@ -162,7 +164,8 @@ export function createRowsControl(deps) {
   const all = (/** @type {Console} */ target, /** @type {Connection} */ conn) =>
     once(target, async () => {
       const set = held(target);
-      if (whole(set)) return `Every row is held: ${formatCount(set.rows.length)}.`;
+      if (whole(set))
+        return t("rows.control.everyRowIsHeld", { value: String(formatCount(set.rows.length)) });
       if (set.window.done && set.window.known > ALL_MAX) return tooMany();
       const rows = [];
       for (let from = 0; ; from += ALL_PAGE) {
@@ -179,7 +182,7 @@ export function createRowsControl(deps) {
       }
       const window = { ...set.window, first: 0, known: rows.length, done: true };
       swap(target, set, { ...set, rows, truncated: false, window });
-      return `Fetched every row: ${formatCount(rows.length)}.`;
+      return t("rows.control.fetchedEveryRow", { value: String(formatCount(rows.length)) });
     });
 
   /**
@@ -201,7 +204,13 @@ export function createRowsControl(deps) {
     if (next?.window)
       swap(target, next, { ...next, window: { ...next.window, base, sort, filters } });
     const what = change.filters !== undefined ? "Filtering" : "Sorting";
-    const said = `${what} needs every row, and this result was not fully read: the statement ran again with ${change.filters !== undefined ? "WHERE" : "ORDER BY"} around it, on the server. Fetch every row to ${what.toLowerCase().replace("ing", "")} here instead.`;
+    const said = t("rows.control.needsEveryRowAndThisResult", {
+      what: String(what),
+      value: String(
+        change.filters !== undefined ? t("rows.control.where") : t("rows.control.orderBy"),
+      ),
+      value2: String(what.toLowerCase().replace("ing", "")),
+    });
     deps.say?.(said);
     return said;
   };
@@ -217,7 +226,11 @@ export function createRowsControl(deps) {
     const said = await all(target, conn).catch((/** @type {Error} */ error) => error.message);
     if (!said || said.startsWith("Fetched every row")) return said;
     const view = tab.kind === "map" ? "Map" : "Chart";
-    const line = `${view}: drawn from the ${formatCount(set.rows.length)} rows held. ${said}`;
+    const line = t("rows.control.drawnFromTheRowsHeld", {
+      view: String(view),
+      value: String(formatCount(set.rows.length)),
+      said: String(said),
+    });
     deps.say?.(line);
     return line;
   };
@@ -226,4 +239,4 @@ export function createRowsControl(deps) {
 }
 
 const tooMany = () =>
-  `More than ${formatCount(ALL_MAX)} rows: put ORDER BY or WHERE into the statement instead, or export it.`;
+  t("rows.control.moreThanRowsPutOrderBy", { value: String(formatCount(ALL_MAX)) });

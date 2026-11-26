@@ -17,6 +17,7 @@ import { OBJECT_FOLDERS, RELATIONS } from "./schema/common.js";
 import { DATABASE, SCHEMA_FOLDERS } from "./schema/pg/index.js";
 import { levelRows, objectDetail } from "./schema/pg/tree.js";
 import { labelsOf } from "./schema-cache/view.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -37,7 +38,11 @@ import { labelsOf } from "./schema-cache/view.js";
  * @typedef {{ status: "loading" | "ready" | "error", items: unknown[], message?: string }} Load
  */
 
-const ENGINE_LABELS = { postgresql: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite" };
+const ENGINE_LABELS = {
+  postgresql: t("explorer.postgresql"),
+  mysql: t("explorer.mysql"),
+  sqlite: t("explorer.sqlite"),
+};
 const SEP = "\u0000";
 
 /**
@@ -119,7 +124,7 @@ export function createExplorer(catalog, connections, changed, kept = () => false
           state.status === "loading"
             ? loading
             : state.status === "error"
-              ? (state.message ?? "Failed")
+              ? (state.message ?? t("explorer.failed"))
               : empty,
         detail: "",
         level: level + depth,
@@ -242,7 +247,9 @@ export function createExplorer(catalog, connections, changed, kept = () => false
         const shown = all.filter((o) => matches(o.name));
         if (all.length === 0 || (filter && shown.length === 0)) continue;
         const folderKey = `${key}${SEP}f${SEP}${label}`;
-        const count = filter ? `${shown.length} of ${all.length}` : formatCount(all.length);
+        const count = filter
+          ? t("explorer.of", { length: String(shown.length), length2: String(all.length) })
+          : formatCount(all.length);
         const open = push({
           key: folderKey,
           kind: "folder",

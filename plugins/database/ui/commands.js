@@ -7,6 +7,7 @@ import { formatUri, loadConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
 import { settle } from "./features/transactions/settle.js";
 import { formatDuration } from "./format.js";
+import { t } from "./strings/index.js";
 
 const CONNECTION_FIELDS = new Set([
   "name",
@@ -51,7 +52,7 @@ export function registerCommands(deps) {
       manager.create();
       return null;
     }
-    const conn = await manager.choose(ref, "Database: open which connection?");
+    const conn = await manager.choose(ref, t("commands.databaseOpenWhichConnection"));
     if (!conn) return null;
     await consoles.open(conn);
     view.focus("editor");
@@ -73,7 +74,7 @@ export function registerCommands(deps) {
   answer("endue.database.remove-connection", ({ connection }) => manager.remove(connection));
   // An open transaction of its consoles asks commit, roll back or stay first (PG-20).
   answer("endue.database.disconnect", async ({ connection }) => {
-    const conn = await manager.choose(connection, "Database: disconnect which connection?");
+    const conn = await manager.choose(connection, t("commands.databaseDisconnectWhichConnection"));
     if (!conn) return undefined;
     const mine = consoles.consoles().filter((c) => c.connection === conn.id);
     const cancelled = (/** @type {string} */ message) =>
@@ -82,15 +83,16 @@ export function registerCommands(deps) {
     await settle(
       { ...asks, say: (text) => view.say(text), cancelled },
       mine,
-      `Disconnect ${conn.name}?`,
-      "Not disconnected.",
+      t("commands.disconnect", { name: String(conn.name) }),
+      t("commands.notDisconnected"),
     );
     return manager.disconnect(conn.id);
   });
   answer("endue.database.test-connection", async ({ connection }, invocation) => {
     const agent = fromAgent(invocation);
-    if (agent && typeof connection !== "string") throw new Error("Name the connection to test.");
-    const conn = await manager.choose(connection, "Database: test which connection?");
+    if (agent && typeof connection !== "string")
+      throw new Error(t("commands.nameTheConnectionToTest"));
+    const conn = await manager.choose(connection, t("commands.databaseTestWhichConnection"));
     if (!conn) return undefined;
     const done = await deps.execute(conn, engineOf(conn.engine).versionSql, {
       catalog: true,
@@ -99,14 +101,20 @@ export function registerCommands(deps) {
     const error = done.result.error ?? done.result.statements[0]?.error;
     if (error) throw new Error(`${conn.name}: ${error.message}`);
     const version = done.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
-    view.say(`${conn.name}: connected in ${formatDuration(done.result.ms)}, ${version}`);
+    view.say(
+      t("commands.connectedIn", {
+        name: String(conn.name),
+        value: String(formatDuration(done.result.ms)),
+        version: String(version),
+      }),
+    );
     return version;
   });
   answer("endue.database.copy-uri", async ({ connection }) => {
-    const conn = await manager.choose(connection, "Database: copy which connection's URI?");
+    const conn = await manager.choose(connection, t("commands.databaseCopyWhichConnectionSUri"));
     if (!conn) return undefined;
     const uri = formatUri(conn);
-    view.say((await view.copy(uri)) ? `Copied ${uri}` : uri);
+    view.say((await view.copy(uri)) ? t("commands.copied", { uri: String(uri) }) : uri);
     return uri;
   });
   answer("endue.database.run", () => consoles.run("statement"));
@@ -122,12 +130,12 @@ export function registerCommands(deps) {
   answer("endue.database.previous-page", () => consoles.page({ delta: -1 }));
   answer("endue.database.cancel", () => {
     deps.cancel();
-    view.say("Cancelling…");
+    view.say(t("commands.cancelling"));
   });
   answer("endue.database.open-table", async ({ connection, schema, table }) => {
-    const conn = await manager.choose(connection, "Database: which connection?");
+    const conn = await manager.choose(connection, t("commands.databaseWhichConnection"));
     if (!conn || typeof table !== "string")
-      throw new Error("Open a table from the explorer, or name connection, schema and table.");
+      throw new Error(t("commands.openATableFromTheExplorer"));
     await consoles.open(conn, { schema: typeof schema === "string" ? schema : "", name: table });
     view.focus("grid");
   });
@@ -141,7 +149,7 @@ export function registerCommands(deps) {
       typeof text === "string"
         ? text
         : await deps.pick(
-            "Database: show objects whose name holds",
+            t("commands.databaseShowObjectsWhoseNameHolds"),
             [],
             true,
             explorer.filtering() || "orders",
@@ -165,8 +173,11 @@ export function registerCommands(deps) {
     const dropped = consoles.edits.revert(undefined);
     view.say(
       dropped
-        ? `Reverted ${dropped} pending change${dropped === 1 ? "" : "s"}.`
-        : "No pending changes.",
+        ? t("commands.revertedPendingChange", {
+            dropped: String(dropped),
+            value: String(dropped === 1 ? "" : t("commands.s")),
+          })
+        : t("commands.noPendingChanges"),
     );
     return dropped;
   });

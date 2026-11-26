@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // The desk's requests the plugin answers: a buffer of its own shown or closed (desk.buffers.show and
 // .closed), a SQLite or .sql file opened with it (desk.files.visit), and a .sql file's console saved
 // or read again (desk.files.save, .revert, console-files.js). A database file has nothing to save
@@ -16,7 +17,7 @@ export function answerRequests({ commands, consoles, visit, files }) {
   commands.on("desk.buffers.closed", (args) => consoles.closed(bufferOf(args)));
   commands.on("desk.files.visit", (args) => {
     const { buffer, path } = /** @type {{ buffer?: string, path?: string }} */ (args ?? {});
-    if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
+    if (!buffer || !path) throw new Error(t("requests.aVisitNeedsABufferAnd"));
     return visit(buffer, path);
   });
   commands.on("desk.files.save", async (args) => void (await files.save(bufferOf(args))));

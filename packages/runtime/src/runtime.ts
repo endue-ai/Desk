@@ -249,18 +249,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   );
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);
-    // Content and side panels share the window manager; overlays and the dock keep their roles.
     const windowed =
       options.windows !== undefined && !["overlay", "bottom"].includes(decision.area);
     const placed = { ...spec, placement: decision.area };
     const section = surfaces.open(placed, windowed ? null : undefined);
     if (windowed) options.windows?.adopt(placed, section);
     display.sizeEdge(section, decision);
-    // Overlays cover the desk and edge surfaces sit around it; the rest are buffers.
     if ((windowed || takesBuffer(decision.area)) && !spec.hidden) {
       buffers.surfaceOpened(spec.id, spec.title);
     }
-    // A visible overlay is modal: a surface that mounts under it does not take the focus from it.
     const modal = root.querySelector(".desk-surface--overlay:not([hidden])");
     if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
       focusSurface(spec.id);
@@ -282,6 +279,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       {
         bridge: pluginSettings(bridge, personalOf(hub, preferences)),
         win,
+        language: speech.current,
         open: openSurface,
         close: closeSurface,
         reload: (id, src) => frames.reload(id, src),

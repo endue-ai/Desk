@@ -4,6 +4,7 @@
 // or may only SET ROLE to, and every object it may use with where each privilege comes from.
 
 import { el } from "../../dom.js";
+import { t as messageText } from "../../strings/index.js";
 import { attributeWords, grantsLine } from "./effective.js";
 import { membersOf } from "./model.js";
 
@@ -64,7 +65,7 @@ export function rolesTab(
     doc,
     "div",
     { class: "privileges-tools" },
-    button(doc, "New role…", () => go("privilegesRole"), {
+    button(doc, messageText("features.privileges.tabs.newRole"), () => go("privilegesRole"), {
       "data-focus": "new-role",
       disabled: s.conn.readOnly,
     }),
@@ -125,7 +126,10 @@ export function rolesTab(
       el(
         doc,
         "table",
-        { class: "desk-table privileges-roles", "aria-label": "Roles" },
+        {
+          class: "desk-table privileges-roles",
+          "aria-label": messageText("features.privileges.tabs.roles"),
+        },
         el(
           doc,
           "thead",
@@ -135,7 +139,7 @@ export function rolesTab(
         el(doc, "tbody", {}, ...rows),
       ),
     ),
-    said(doc, "Passwords are never read. PostgreSQL's own pg_* roles are left out of the list."),
+    said(doc, messageText("features.privileges.tabs.passwordsAreNeverReadPostgresqlS")),
   );
 }
 
@@ -150,8 +154,12 @@ export function roleTab(
     el(
       doc,
       "select",
-      { class: "desk-field", "aria-label": "Role", "data-focus": "role-pick" },
-      el(doc, "option", { value: "" }, "Pick a role"),
+      {
+        class: "desk-field",
+        "aria-label": messageText("features.privileges.tabs.role"),
+        "data-focus": "role-pick",
+      },
+      el(doc, "option", { value: "" }, messageText("features.privileges.tabs.pickARole")),
       ...names.map((n) => el(doc, "option", { value: n }, n)),
     )
   );
@@ -165,9 +173,18 @@ export function roleTab(
       "div",
       {},
       top,
-      s.role ? undefined : said(doc, "Pick a role to see everything it may do and why."),
+      s.role
+        ? undefined
+        : said(doc, messageText("features.privileges.tabs.pickARoleToSeeEverything")),
     );
-  if (v.error || !v.view) return el(doc, "div", {}, top, said(doc, v.error || "Not read.", true));
+  if (v.error || !v.view)
+    return el(
+      doc,
+      "div",
+      {},
+      top,
+      said(doc, v.error || messageText("features.privileges.tabs.notRead"), true),
+    );
   const view = v.view;
   const role = s.roles?.roles.find((r) => r.name === s.role);
   const powers = [...attributeWords(role), ...view.powers];
@@ -184,24 +201,31 @@ export function roleTab(
     { class: "privileges-role" },
     top,
     v.note ? said(doc, v.note, true) : undefined,
-    powers.length ? el(doc, "h3", {}, `What ${s.role} is`) : undefined,
+    powers.length
+      ? el(doc, "h3", {}, messageText("features.privileges.tabs.whatIs", { role: String(s.role) }))
+      : undefined,
     powers.length ? list(powers) : undefined,
-    el(doc, "h3", {}, "Has the privileges of"),
+    el(doc, "h3", {}, messageText("features.privileges.tabs.hasThePrivilegesOf")),
     list([
       `PUBLIC, as every role does`,
       ...inherits.map((m) => `${m.role} (${m.path.join(" → ")})`),
     ]),
-    sets.length ? el(doc, "h3", {}, "May SET ROLE to, without inheriting") : undefined,
+    sets.length
+      ? el(doc, "h3", {}, messageText("features.privileges.tabs.maySetRoleToWithoutInheriting"))
+      : undefined,
     sets.length ? list(sets.map((m) => `${m.role} (${m.path.join(" → ")})`)) : undefined,
-    el(doc, "h3", {}, "May use"),
+    el(doc, "h3", {}, messageText("features.privileges.tabs.mayUse")),
     view.objects.length === 0
-      ? said(doc, "Nothing is granted to it, to PUBLIC or to a role it inherits.")
+      ? said(doc, messageText("features.privileges.tabs.nothingIsGrantedToItTo"))
       : undefined,
     view.objects.length
       ? el(
           doc,
           "table",
-          { class: "desk-table privileges-reach", "aria-label": "May use" },
+          {
+            class: "desk-table privileges-reach",
+            "aria-label": messageText("features.privileges.tabs.mayUse"),
+          },
           el(
             doc,
             "thead",
@@ -210,8 +234,13 @@ export function roleTab(
               doc,
               "tr",
               {},
-              el(doc, "th", { scope: "col" }, "Object"),
-              el(doc, "th", { scope: "col" }, "What it may do, and why"),
+              el(doc, "th", { scope: "col" }, messageText("features.privileges.tabs.object")),
+              el(
+                doc,
+                "th",
+                { scope: "col" },
+                messageText("features.privileges.tabs.whatItMayDoAndWhy"),
+              ),
             ),
           ),
           el(
@@ -238,7 +267,13 @@ export function roleTab(
         )
       : undefined,
     view.total > view.listed
-      ? said(doc, `${view.listed} of ${view.total} grants are listed.`)
+      ? said(
+          doc,
+          messageText("features.privileges.tabs.ofGrantsAreListed", {
+            listed: String(view.listed),
+            total: String(view.total),
+          }),
+        )
       : undefined,
   );
 }

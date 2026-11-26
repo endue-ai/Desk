@@ -7,6 +7,7 @@
 // table's form with it), run, cancel and read the form again. The explorer's m opens it. The form
 // keeps nothing across a restart. controller.js reads and runs, panel.js and result.js draw.
 
+import { t } from "../../strings/index.js";
 import { createMaintenance, TYPE } from "./controller.js";
 import { maintenancePanel } from "./panel.js";
 
@@ -45,6 +46,8 @@ export const feature = {
       maintenanceProgress: (/** @type {string} */ id) => m.progress(id),
     };
   },
-  panels: { [TYPE]: { label: "Maintenance", render: maintenancePanel } },
+  panels: {
+    [TYPE]: { label: t("features.maintenance.index.maintenance"), render: maintenancePanel },
+  },
   styles: [new URL("./maintenance.css", import.meta.url).href],
 };

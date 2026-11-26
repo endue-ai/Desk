@@ -2,6 +2,8 @@
 // editor on screen for a call's signature help and for `*` written out as its columns. The `complete`
 // action is the view's built-in one (actions.js), answered by controller.js here. The editor draws the
 // list and the help (editor/completion.js, editor/signature-help.js).
+
+import { t } from "../../strings/index.js";
 import { picksFor } from "./picks.js";
 
 /** @typedef {import("../../feature-host.js").Deps} Deps */
@@ -15,8 +17,8 @@ async function inEditor(/** @type {Deps} */ deps, /** @type {"signatures" | "exp
   if (!done)
     deps.say(
       what === "signatures"
-        ? "Put the caret inside a function's parentheses to see its arguments."
-        : "Put the caret after a * in a select list to write out its columns.",
+        ? t("features.completion.index.putTheCaretInsideAFunction")
+        : t("features.completion.index.putTheCaretAfterAIn"),
     );
   return undefined;
 }

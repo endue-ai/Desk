@@ -6,6 +6,7 @@
 
 import { el } from "../../dom.js";
 import { cellText } from "../../grid-model.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../compare/diff.js").Difference} Difference
@@ -32,7 +33,10 @@ export function summaryOf(/** @type {Difference} */ d, /** @type {Why} */ why) {
     d.total === 0
       ? `no difference, ${n(same)} row${same === 1 ? "" : "s"} the same`
       : `${n(changed)} changed, ${n(added)} added, ${n(removed)} removed, ${n(same)} the same`;
-  return `Compared by ${keyed(d, why)}: ${counts}.`;
+  return t("features.compare.panel.comparedBy", {
+    value: String(keyed(d, why)),
+    counts: String(counts),
+  });
 }
 
 /** The panel's state: the difference, the two results, and what is said of them. */
@@ -63,7 +67,14 @@ function cell(
   return el(
     doc,
     "td",
-    { class: "compare-cell", "aria-label": `${name}: ${was}, now ${now}` },
+    {
+      class: "compare-cell",
+      "aria-label": t("features.compare.panel.now", {
+        name: String(name),
+        was: String(was),
+        now: String(now),
+      }),
+    },
     el(doc, "del", {}, was),
     el(doc, "ins", {}, now),
   );
@@ -74,16 +85,20 @@ export function comparePanel(doc, state, act) {
   const side = (/** @type {string} */ name, /** @type {Side} */ s) =>
     el(doc, "p", { title: s.sql }, `${name}: ${s.label} (${s.console})`);
   const only = [
-    state.onlyBefore.length ? `Only before: ${state.onlyBefore.join(", ")}.` : "",
-    state.onlyAfter.length ? `Only after: ${state.onlyAfter.join(", ")}.` : "",
+    state.onlyBefore.length
+      ? t("features.compare.panel.onlyBefore", { value: String(state.onlyBefore.join(", ")) })
+      : "",
+    state.onlyAfter.length
+      ? t("features.compare.panel.onlyAfter", { value: String(state.onlyAfter.join(", ")) })
+      : "",
   ].filter(Boolean);
   const cut = [state.before.truncated, state.after.truncated];
   const note = cut[0]
     ? cut[1]
-      ? "Both results have more rows than they loaded: only the rows loaded are compared."
-      : "The result before has more rows than it loaded: only the rows loaded are compared."
+      ? t("features.compare.panel.bothResultsHaveMoreRowsThan")
+      : t("features.compare.panel.theResultBeforeHasMoreRows")
     : cut[1]
-      ? "The result after has more rows than it loaded: only the rows loaded are compared."
+      ? t("features.compare.panel.theResultAfterHasMoreRows")
       : "";
   const button = (
     /** @type {string} */ what,
@@ -138,14 +153,26 @@ export function comparePanel(doc, state, act) {
     ),
     el(doc, "p", { class: "compare-count", role: "status" }, state.summary),
     only.length
-      ? el(doc, "p", { class: "compare-columns hint" }, `${only.join(" ")} Not compared.`)
+      ? el(
+          doc,
+          "p",
+          { class: "compare-columns hint" },
+          t("features.compare.panel.notCompared", { value: String(only.join(" ")) }),
+        )
       : undefined,
     state.repeated
       ? el(
           doc,
           "p",
           { class: "compare-repeated hint" },
-          `${n(state.repeated)} row${state.repeated === 1 ? " repeats" : "s repeat"} a key: they are paired in order.`,
+          t("features.compare.panel.rowAKeyTheyArePaired", {
+            value: String(n(state.repeated)),
+            value2: String(
+              state.repeated === 1
+                ? t("features.compare.panel.repeats")
+                : t("features.compare.panel.sRepeat"),
+            ),
+          }),
         )
       : undefined,
     note ? el(doc, "p", { class: "compare-note hint" }, note) : undefined,
@@ -154,7 +181,10 @@ export function comparePanel(doc, state, act) {
           doc,
           "p",
           { class: "compare-kept hint" },
-          `Listed: the first ${n(state.rows.length)} of ${n(state.total)} differences; copy and export hold the same.`,
+          t("features.compare.panel.listedTheFirstOfDifferencesCopy", {
+            value: String(n(state.rows.length)),
+            value2: String(n(state.total)),
+          }),
         )
       : undefined,
     state.rows.length
@@ -165,7 +195,7 @@ export function comparePanel(doc, state, act) {
             class: "compare-scroll",
             tabindex: "0",
             role: "region",
-            "aria-label": "The differences, row by row",
+            "aria-label": t("features.compare.panel.theDifferencesRowByRow"),
           },
           el(
             doc,
@@ -175,6 +205,6 @@ export function comparePanel(doc, state, act) {
             el(doc, "tbody", {}, ...body),
           ),
         )
-      : el(doc, "p", { class: "empty" }, "The two results hold the same rows."),
+      : el(doc, "p", { class: "empty" }, t("features.compare.panel.theTwoResultsHoldTheSame")),
   );
 }

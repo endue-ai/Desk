@@ -6,6 +6,7 @@
 // irreversible). The panel keeps nothing across a restart. controller.js reads and signals,
 // panel.js and tables.js draw.
 
+import { t } from "../../strings/index.js";
 import { createActivity, TYPE } from "./controller.js";
 import { activityPanel } from "./panel.js";
 
@@ -45,6 +46,6 @@ export const feature = {
         activity.stopFrom(id, how, pid),
     };
   },
-  panels: { [TYPE]: { label: "Server activity", render: activityPanel } },
+  panels: { [TYPE]: { label: t("features.activity.index.serverActivity"), render: activityPanel } },
   styles: [new URL("./activity.css", import.meta.url).href],
 };

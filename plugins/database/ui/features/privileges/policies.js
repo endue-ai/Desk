@@ -6,6 +6,7 @@
 
 import { qualified } from "../../sql/quote.js";
 import { split } from "../../sql/split.js";
+import { t as messageText } from "../../strings/index.js";
 import { granteeOf, q } from "./grants.js";
 import { listOf } from "./roles.js";
 
@@ -23,25 +24,40 @@ function expression(/** @type {string | undefined} */ text, /** @type {string} *
   const value = (text ?? "").trim();
   if (value === "") return "";
   if (split(value, "postgresql").length > 1)
-    throw new Error(`${what} is one expression: take the ; out.`);
+    throw new Error(
+      messageText("features.privileges.policies.isOneExpressionTakeTheOut", { what: String(what) }),
+    );
   return value;
 }
 
 /** The form as a policy, checked as PostgreSQL checks it. @returns {Policy} */
 export function policyOf(/** @type {Answers} */ a) {
   const name = (a.values.name ?? "").trim();
-  if (!name) throw new Error("Type the policy's name.");
+  if (!name) throw new Error(messageText("features.privileges.policies.typeThePolicySName"));
   const bytes = new TextEncoder().encode(name).length;
   if (bytes > 63)
-    throw new Error(`PostgreSQL keeps a name of 63 bytes at most: this one has ${bytes}.`);
+    throw new Error(
+      messageText("features.privileges.policies.postgresqlKeepsANameOfBytes", {
+        bytes: String(bytes),
+      }),
+    );
   const command = (a.values.command ?? "ALL").toUpperCase();
-  if (!COMMANDS.includes(command)) throw new Error(`A policy is for ${COMMANDS.join(", ")}.`);
+  if (!COMMANDS.includes(command))
+    throw new Error(
+      messageText("features.privileges.policies.aPolicyIsFor", {
+        value: String(COMMANDS.join(", ")),
+      }),
+    );
   const using = expression(a.values.using, "USING");
   const check = expression(a.values.check, "WITH CHECK");
   if (command === "INSERT" && using)
-    throw new Error("An INSERT policy takes only WITH CHECK: new rows have nothing to filter.");
+    throw new Error(messageText("features.privileges.policies.anInsertPolicyTakesOnlyWith"));
   if ((command === "SELECT" || command === "DELETE") && check)
-    throw new Error(`A ${command} policy takes only USING: it writes no rows to check.`);
+    throw new Error(
+      messageText("features.privileges.policies.aPolicyTakesOnlyUsingIt", {
+        command: String(command),
+      }),
+    );
   const roles = listOf(a.values.roles);
   return {
     name,
@@ -92,7 +108,12 @@ export function policyScript(table, before, answers) {
     ...(p.check !== before.check ? [`WITH CHECK (${p.check})`] : []),
   ];
   if (parts.length) statements.push(`ALTER POLICY ${q(p.name)} ON ${on} ${parts.join(" ")};`);
-  if (statements.length === 0) throw new Error(`Nothing changed: ${before.name} is as it was.`);
+  if (statements.length === 0)
+    throw new Error(
+      messageText("features.privileges.policies.nothingChangedIsAsItWas", {
+        name: String(before.name),
+      }),
+    );
   return statements.join("\n");
 }
 
@@ -116,6 +137,7 @@ export function rowSecurityScript(table, before, answers) {
     statements.push(`ALTER TABLE ${on} ${enable ? "ENABLE" : "DISABLE"} ROW LEVEL SECURITY;`);
   if (force !== before.forced)
     statements.push(`ALTER TABLE ${on} ${force ? "FORCE" : "NO FORCE"} ROW LEVEL SECURITY;`);
-  if (statements.length === 0) throw new Error("Nothing changed: row security is as it was.");
+  if (statements.length === 0)
+    throw new Error(messageText("features.privileges.policies.nothingChangedRowSecurityIsAs"));
   return statements.join("\n");
 }

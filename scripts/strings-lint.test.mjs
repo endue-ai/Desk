@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { findings, scan, VIEW, views } from "./strings-lint.mjs";
+import { findings, modules, scan, VIEW, views } from "./strings-lint.mjs";
 
 const texts = (src) => findings(src).map((f) => f.text);
 
@@ -91,6 +91,6 @@ test("scan reads model modules and static markup as well as view modules, except
 });
 
 test("the database plugin's modules and markup hold no literal a person reads", () => {
-  assert.ok(views().length >= 29);
+  assert.ok(modules().length >= 648);
   assert.deepEqual(scan(), []);
 });

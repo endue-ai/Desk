@@ -3,6 +3,7 @@
 // grid sorts and filters them here. Scrolling needs no command: the grid asks for the pages itself.
 
 import { windowed } from "../../rows/control.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -12,7 +13,7 @@ import { windowed } from "../../rows/control.js";
 const keeping = (/** @type {Deps} */ deps) => {
   const shown = deps.consoles.current();
   if (!shown || !windowed(shown))
-    throw new Error("The result on screen holds every row it has: nothing to count or fetch.");
+    throw new Error(t("features.rows.index.theResultOnScreenHoldsEvery"));
   return shown;
 };
 

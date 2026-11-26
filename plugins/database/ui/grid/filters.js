@@ -4,6 +4,7 @@
 // so nothing the cell holds can end the condition. No DOM.
 
 import { quoteName, quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
@@ -32,10 +33,11 @@ function shown(/** @type {string | null} */ value, /** @type {boolean} */ numeri
 /** A filter's words on its chip: `name = 'Cy'`, `total > 12`, `note is NULL`. */
 export function filterLabel(/** @type {Filter} */ filter) {
   const { name, op, value, numeric } = filter;
-  if (op === "contains") return `${name} contains ${shown(value, false)}`;
-  if (op === "empty") return `${name} is empty`;
-  if (op === "null") return `${name} is NULL`;
-  if (op === "notNull") return `${name} is not NULL`;
+  if (op === "contains")
+    return t("grid.filters.contains", { name: String(name), value: String(shown(value, false)) });
+  if (op === "empty") return t("grid.filters.isEmpty", { name: String(name) });
+  if (op === "null") return t("grid.filters.isNull", { name: String(name) });
+  if (op === "notNull") return t("grid.filters.isNotNull", { name: String(name) });
   return `${name} ${SHOWN[op]} ${shown(value, numeric)}`;
 }
 
@@ -45,10 +47,10 @@ export function menuLabel(
   /** @type {string | null} */ value,
   /** @type {boolean} */ numeric,
 ) {
-  if (op === "contains") return "Contains…";
-  if (op === "empty") return "Is empty";
-  if (op === "null") return "Is NULL";
-  if (op === "notNull") return "Is not NULL";
+  if (op === "contains") return t("grid.filters.contains2");
+  if (op === "empty") return t("grid.filters.isEmpty2");
+  if (op === "null") return t("grid.filters.isNull2");
+  if (op === "notNull") return t("grid.filters.isNotNull2");
   return `${SHOWN[op]} ${shown(value, numeric)}`;
 }
 

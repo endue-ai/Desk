@@ -6,6 +6,7 @@
 // runs through `execute` as the plugin's own reading (`catalog: true`), so it moves with the engine
 // to the core's sessions (PG-01c). No DOM.
 
+import { t } from "../strings/index.js";
 import { DATABASE } from "./kinds.js";
 import { bySchema } from "./model.js";
 
@@ -62,16 +63,18 @@ export async function runPass(run, plan) {
     const error = result.error ?? result.statements[0]?.error;
     if (error?.kind === "cancelled" || run.stopped()) throw new Cancelled();
     if (error) throw Object.assign(new Error(error.message), { kind: error.kind });
-    if (!result.statements[0]?.ran) throw new Error("The catalog was not read.");
+    if (!result.statements[0]?.ran) throw new Error(t("schemaCache.pass.theCatalogWasNotRead"));
     const set = result.statements[0]?.sets[0];
     if (set?.truncated)
       throw new Error(
-        `More than ${PASS_ROWS.toLocaleString("en")} rows of the catalog: choose fewer schemas (Database: choose the schemas to read).`,
+        t("schemaCache.pass.moreThanRowsOfTheCatalog", {
+          value: String(PASS_ROWS.toLocaleString("en")),
+        }),
       );
     return set?.rows ?? [];
   };
 
-  run.progress({ step: 1, steps, label: "schemas" });
+  run.progress({ step: 1, steps, label: t("schemaCache.pass.schemas") });
   const marks = await rowsOf(run.marksSql);
   const version = Number(marks[0]?.[3]) || NEWEST;
   const listed = marks.map(([name, system, mark]) => ({

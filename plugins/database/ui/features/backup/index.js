@@ -5,6 +5,7 @@
 // back up a database, restore a database, cancel the backup or restore. Agents get the first two:
 // the form opens for the person, who submits it (restore is irreversible).
 
+import { t } from "../../strings/index.js";
 import { backup } from "./backup.js";
 import { backupDialog } from "./backup-form.js";
 import { createJobs, TYPE } from "./job.js";
@@ -41,10 +42,12 @@ function cancel(
           : undefined;
   if (target === undefined)
     throw new Error(
-      running.length ? "Show the one to cancel first." : "No backup or restore is running.",
+      running.length
+        ? t("features.backup.index.showTheOneToCancelFirst")
+        : t("features.backup.index.noBackupOrRestoreIsRunning"),
     );
-  if (!jobs.cancel(target)) throw new Error("That backup or restore has ended.");
-  deps.say("Cancelling…");
+  if (!jobs.cancel(target)) throw new Error(t("features.backup.index.thatBackupOrRestoreHasEnded"));
+  deps.say(t("features.backup.index.cancelling"));
   return { cancelled: target };
 }
 
@@ -59,10 +62,10 @@ export const feature = {
   actions: (deps) => ({
     backupCancel: (/** @type {string} */ id) => cancel(deps, id),
   }),
-  panels: { [TYPE]: { label: "Backup or restore", render: logPanel } },
+  panels: { [TYPE]: { label: t("features.backup.index.backupOrRestore"), render: logPanel } },
   dialogs: {
-    backup: { label: "Back up a database", render: backupDialog },
-    restore: { label: "Restore a database", render: restoreDialog },
+    backup: { label: t("features.backup.index.backUpADatabase"), render: backupDialog },
+    restore: { label: t("features.backup.index.restoreADatabase"), render: restoreDialog },
   },
   styles: [new URL("./backup.css", import.meta.url).href],
 };

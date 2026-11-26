@@ -5,6 +5,7 @@
 // out of the diagram, n adds its neighbours; + - and 0 zoom and fit, a lays the tables out again.
 // A new state of the same diagram draws in place and keeps the view and the focus.
 
+import { t } from "../../strings/index.js";
 import { createExportMenu } from "./export-menu.js";
 import { createMap } from "./minimap.js";
 import { createStage } from "./stage.js";
@@ -56,10 +57,10 @@ export function diagramPanel(doc, first, act, buffer) {
   const root = make("div", "diagram");
   const bar = make("div", "desk-bar er-bar");
   bar.setAttribute("role", "toolbar");
-  bar.setAttribute("aria-label", "ER diagram");
+  bar.setAttribute("aria-label", t("features.diagram.panel.erDiagram"));
   const columns = make("div", "desk-tabs er-columns");
   columns.setAttribute("role", "group");
-  columns.setAttribute("aria-label", "Columns shown");
+  columns.setAttribute("aria-label", t("features.diagram.panel.columnsShown"));
   const modes = /** @type {const} */ ([
     ["all", "All", "Every column"],
     ["keys", "Keys", "Primary and foreign key columns only"],
@@ -71,10 +72,12 @@ export function diagramPanel(doc, first, act, buffer) {
     return b;
   });
   const out = button("−", "Zoom out (-)", () => stage.zoom(1 / 1.25), "desk-icon-btn");
-  out.setAttribute("aria-label", "Zoom out");
+  out.setAttribute("aria-label", t("features.diagram.panel.zoomOut"));
   const into = button("+", "Zoom in (+)", () => stage.zoom(1.25), "desk-icon-btn");
-  into.setAttribute("aria-label", "Zoom in");
-  const exporting = button("Export image…", "Save as SVG or PNG", () => menu.open(exporting));
+  into.setAttribute("aria-label", t("features.diagram.panel.zoomIn"));
+  const exporting = button(t("features.diagram.panel.exportImage"), "Save as SVG or PNG", () =>
+    menu.open(exporting),
+  );
   exporting.setAttribute("aria-haspopup", "menu");
   const status = make("span", "er-count");
   status.setAttribute("role", "status");
@@ -95,7 +98,7 @@ export function diagramPanel(doc, first, act, buffer) {
     status,
   );
   const host = make("div", "er-stage");
-  const empty = make("p", "empty", "No tables in this diagram: Add table or Add schema adds some.");
+  const empty = make("p", "empty", t("features.diagram.panel.noTablesInThisDiagramAdd"));
   root.append(bar, host, empty);
   const menu = createExportMenu(doc, root, (choice) =>
     choice === "copy" ? run("diagramCopy") : run("diagramExport", choice),

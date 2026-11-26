@@ -2,6 +2,7 @@
 // statement for every schema of a pass: each row its kind, name, arguments, the definition as JSON,
 // owner, oid and comment. An extension's are left out. The DDL is built from the cached row. Pure.
 
+import { t } from "../../strings/index.js";
 import { assemble, commentOn, dotted, ident, literal } from "./ddl.js";
 import { described, inSchemas, json, markOf, notMember } from "./sql.js";
 
@@ -78,7 +79,7 @@ const descriptionsOf = (/** @type {string} */ catalog, /** @type {string} */ ns)
 /** @type {import("../../schema-cache/kinds.js").Kind} */
 export const reader = {
   id: "objects",
-  label: "aggregates, operators, collations and text search",
+  label: t("schema.pg.objects.aggregatesOperatorsCollationsAndTextSearch"),
   marks: [
     markOf("pg_catalog.pg_operator o", "o.oprnamespace", "o"),
     markOf("pg_catalog.pg_collation o", "o.collnamespace", "o"),

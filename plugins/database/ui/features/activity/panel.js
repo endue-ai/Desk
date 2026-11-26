@@ -7,6 +7,7 @@
 
 import { el } from "../../dom.js";
 import { readAtText } from "../../schema-cache/view.js";
+import { t } from "../../strings/index.js";
 import { databasesOf, hiddenOf, PERIODS, saidOf, sorted, visible } from "./model.js";
 import { LOCK_ROWS } from "./sql.js";
 import { locksSection, sessionsSection, treeSection } from "./tables.js";
@@ -37,7 +38,12 @@ const FIELDS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 
 /** The status line: when it was read, what, and how it refreshes. */
 function statusOf(/** @type {ActivityState} */ s) {
-  if (!s.read) return s.reading ? "Reading the server's activity…" : s.error ? "Not read." : "";
+  if (!s.read)
+    return s.reading
+      ? t("features.activity.panel.readingTheServerSActivity")
+      : s.error
+        ? t("features.activity.panel.notRead")
+        : "";
   const waiting = s.read.sessions.filter((x) => x.blockedBy.length).length;
   const refresh = s.reading
     ? "reading…"
@@ -95,15 +101,21 @@ export function activityPanel(doc, first, act, buffer) {
       doc,
       "select",
       { class: "desk-field", "data-ctl": "period" },
-      ...PERIODS.map((p) => el(doc, "option", { value: String(p) }, `${p} s`)),
+      ...PERIODS.map((p) =>
+        el(doc, "option", { value: String(p) }, t("features.activity.panel.s", { p: String(p) })),
+      ),
     )
   );
   const database = /** @type {HTMLSelectElement} */ (
     el(
       doc,
       "select",
-      { class: "desk-field", "data-ctl": "database", "aria-label": "Database" },
-      el(doc, "option", { value: "" }, "All databases"),
+      {
+        class: "desk-field",
+        "data-ctl": "database",
+        "aria-label": t("features.activity.panel.database"),
+      },
+      el(doc, "option", { value: "" }, t("features.activity.panel.allDatabases")),
     )
   );
   const [idle, own, system] = [
@@ -114,10 +126,14 @@ export function activityPanel(doc, first, act, buffer) {
   const bar = el(
     doc,
     "div",
-    { class: "activity-bar", role: "toolbar", "aria-label": "Server activity" },
+    {
+      class: "activity-bar",
+      role: "toolbar",
+      "aria-label": t("features.activity.panel.serverActivity"),
+    },
     button("refresh", "Refresh", "Read again (g)"),
     pause,
-    el(doc, "label", { class: "activity-field" }, "Every ", period),
+    el(doc, "label", { class: "activity-field" }, t("features.activity.panel.every"), period),
     database,
     idle.label,
     own.label,
@@ -210,7 +226,9 @@ export function activityPanel(doc, first, act, buffer) {
   const tell = (/** @type {ActivityState} */ s) => {
     const hidden = s.read ? hiddenOf(s.read.sessions) : "";
     const more = s.read?.more
-      ? `Only the first ${LOCK_ROWS.toLocaleString("en-US")} locks were read, the waiting ones first.`
+      ? t("features.activity.panel.onlyTheFirstLocksWereRead", {
+          value: String(LOCK_ROWS.toLocaleString("en-US")),
+        })
       : "";
     const key = [s.error, hidden, more].join("\n");
     if (key === told) return;
@@ -234,7 +252,7 @@ export function activityPanel(doc, first, act, buffer) {
                 doc,
                 "button",
                 { type: "button", class: "desk-btn", "data-ctl": "refresh" },
-                "Try again",
+                t("features.activity.panel.tryAgain"),
               ),
             ),
           ]
@@ -245,7 +263,9 @@ export function activityPanel(doc, first, act, buffer) {
 
   const draw = () => {
     const s = state;
-    pause.textContent = s.paused ? "Resume" : "Pause";
+    pause.textContent = s.paused
+      ? t("features.activity.panel.resume")
+      : t("features.activity.panel.pause");
     pause.setAttribute("aria-pressed", String(s.paused));
     period.value = String(s.period);
     const names = s.read ? databasesOf(s.read.sessions) : [];

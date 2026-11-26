@@ -1,6 +1,7 @@
 // The UUID editor (PG-40): the forms PostgreSQL reads (32 hex digits, a hyphen after any group of
 // four, braces around), and Generate (Alt+G) for a new random one.
 
+import { t as messageText } from "../strings/index.js";
 import { field } from "./panel.js";
 
 const FORM = /^[0-9a-f]{4}(?:-?[0-9a-f]{4}){7}$/iu;
@@ -11,7 +12,7 @@ export const uuid = {
     const inner = t.startsWith("{") && t.endsWith("}") ? t.slice(1, -1) : t;
     return FORM.test(inner)
       ? { value: t }
-      : { error: "A UUID is 32 hex digits, as a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11." };
+      : { error: messageText("cellEditors.uuid.aUuidIsHexDigitsAs") };
   },
   /** @param {import("./panel.js").Ctx} ctx */
   view(ctx) {
@@ -25,7 +26,14 @@ export const uuid = {
       el: f.input,
       read: f.read,
       focus: f.focus,
-      tools: [{ label: "Generate", name: "generate", key: "KeyG", run: generate }],
+      tools: [
+        {
+          label: messageText("cellEditors.uuid.generate"),
+          name: "generate",
+          key: "KeyG",
+          run: generate,
+        },
+      ],
     };
   },
 };

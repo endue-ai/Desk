@@ -5,6 +5,7 @@
 // page's imager (imager.js) resolves the colours and draws the PNG.
 
 import { withGrant, writeScope } from "../../console-files.js";
+import { t as messageText } from "../../strings/index.js";
 import { imagerOf } from "./imager.js";
 import { documentOf, sizeOfDocument } from "./svg.js";
 
@@ -20,7 +21,7 @@ const NAMES = { svg: "SVG", png: "PNG", png2x: "PNG at 2x" };
 
 const imager = () => {
   const found = imagerOf();
-  if (!found) throw new Error("This page cannot draw the diagram as an image.");
+  if (!found) throw new Error(messageText("features.diagram.export.thisPageCannotDrawTheDiagram"));
   return found;
 };
 
@@ -62,22 +63,35 @@ export async function exportDiagram(deps, t, args) {
   const format = FORMATS.includes(/** @type {Format} */ (args.format))
     ? /** @type {Format} */ (args.format)
     : /** @type {Format | undefined} */ (
-        await deps.pick("Database: export the ER diagram as", [
-          { id: "svg", label: "SVG", detail: "Vector, in the theme's colours" },
-          { id: "png", label: "PNG", detail: "At its size on screen" },
-          { id: "png2x", label: "PNG at 2x", detail: "Twice as sharp" },
+        await deps.pick(messageText("features.diagram.export.databaseExportTheErDiagramAs"), [
+          {
+            id: "svg",
+            label: messageText("features.diagram.export.svg"),
+            detail: messageText("features.diagram.export.vectorInTheThemeSColours"),
+          },
+          {
+            id: "png",
+            label: messageText("features.diagram.export.png"),
+            detail: messageText("features.diagram.export.atItsSizeOnScreen"),
+          },
+          {
+            id: "png2x",
+            label: messageText("features.diagram.export.pngAtX"),
+            detail: messageText("features.diagram.export.twiceAsSharp"),
+          },
         ])
       );
-  if (!format) throw deps.cancelled("Not exported.");
+  if (!format) throw deps.cancelled(messageText("features.diagram.export.notExported"));
   const { base } = imageOf(t);
   let path = typeof args.path === "string" && args.path ? args.path : "";
   if (!path) {
     const picked = await deps.bridge.call("dialog.save", {
-      title: "Export the ER diagram",
+      title: messageText("features.diagram.export.exportTheErDiagram"),
       suggestedName: fileName(base, format),
       filters: [{ name: `${NAMES[format]} image`, extensions: [EXT[format]] }],
     });
-    if (picked.cancelled || !picked.path) throw deps.cancelled("Not exported.");
+    if (picked.cancelled || !picked.path)
+      throw deps.cancelled(messageText("features.diagram.export.notExported"));
     path = picked.path;
   }
   const { content, encoding, scale, want } = await contentOf(t, format);
@@ -96,7 +110,13 @@ export async function exportDiagram(deps, t, args) {
   );
   const smaller =
     want && scale < want ? ` (drawn at ${scale.toFixed(2)}x, the largest that fits)` : "";
-  deps.say(`Exported the diagram as ${NAMES[format]} to ${path}${smaller}.`);
+  deps.say(
+    messageText("features.diagram.export.exportedTheDiagramAsTo", {
+      value: String(NAMES[format]),
+      path: String(path),
+      smaller: String(smaller),
+    }),
+  );
   return { path, format, scale };
 }
 
@@ -106,8 +126,8 @@ export async function copyDiagram(/** @type {Deps} */ deps, /** @type {Target} *
   const done = await imager().copy(content);
   deps.say(
     done
-      ? "Copied the diagram as an image."
-      : "Could not copy the diagram: the desk did not let the page write images to the clipboard.",
+      ? messageText("features.diagram.export.copiedTheDiagramAsAnImage")
+      : messageText("features.diagram.export.couldNotCopyTheDiagramThe"),
   );
   return done;
 }

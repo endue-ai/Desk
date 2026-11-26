@@ -7,6 +7,7 @@
 // Layout and colours: table-design.css.
 
 import { el } from "../../dom.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {(value: string, redraw: false) => void} OnText
@@ -121,7 +122,7 @@ export function columnsPick(
       doc,
       "span",
       { class: "td-chip" },
-      el(doc, "span", { class: "td-mono" }, named.get(id) ?? "(gone)"),
+      el(doc, "span", { class: "td-mono" }, named.get(id) ?? t("features.tableDesign.bits.gone")),
       f.disabled
         ? undefined
         : remove(doc, `${f.key}:x${i}`, `Take ${named.get(id) ?? "it"} out`, () =>
@@ -137,11 +138,22 @@ export function columnsPick(
       {
         class: "desk-field td-add",
         "data-key": `${f.key}:add`,
-        "aria-label": `Add a column to ${f.label.toLowerCase()}`,
+        "aria-label": t("features.tableDesign.bits.addAColumnTo", {
+          value: String(f.label.toLowerCase()),
+        }),
         ...(f.disabled || left.length === 0 ? { disabled: true } : {}),
       },
-      el(doc, "option", { value: "" }, left.length ? "Add a column…" : "No more columns"),
-      ...left.map((c) => el(doc, "option", { value: c.id }, c.name || "(no name)")),
+      el(
+        doc,
+        "option",
+        { value: "" },
+        left.length
+          ? t("features.tableDesign.bits.addAColumn")
+          : t("features.tableDesign.bits.noMoreColumns"),
+      ),
+      ...left.map((c) =>
+        el(doc, "option", { value: c.id }, c.name || t("features.tableDesign.bits.noName")),
+      ),
     )
   );
   add.addEventListener("change", () => add.value && on([...f.ids, add.value]));
@@ -168,11 +180,13 @@ export function keysPick(
         {
           class: "desk-field",
           "data-key": `${f.key}:${i}:pick`,
-          "aria-label": `Key ${i + 1}`,
+          "aria-label": t("features.tableDesign.bits.key", { value: String(i + 1) }),
           ...(f.disabled ? { disabled: true } : {}),
         },
-        ...f.columns.map((c) => el(doc, "option", { value: c.id }, c.name || "(no name)")),
-        el(doc, "option", { value: "" }, "An expression"),
+        ...f.columns.map((c) =>
+          el(doc, "option", { value: c.id }, c.name || t("features.tableDesign.bits.noName")),
+        ),
+        el(doc, "option", { value: "" }, t("features.tableDesign.bits.anExpression")),
       )
     );
     pick.value = k.column;
@@ -184,9 +198,9 @@ export function keysPick(
           doc,
           {
             key: `${f.key}:${i}:expr`,
-            label: "Expression",
+            label: t("features.tableDesign.bits.expression"),
             value: k.expression,
-            placeholder: "lower(name)",
+            placeholder: t("features.tableDesign.bits.lowerName"),
             mono: true,
             disabled: f.disabled,
           },
@@ -217,7 +231,7 @@ export function keysPick(
       "data-key": `${f.key}:add`,
       ...(f.disabled ? { disabled: true } : {}),
     },
-    "Add a key",
+    t("features.tableDesign.bits.addAKey"),
   );
   add.addEventListener("click", () =>
     on([...f.keys, { column: f.columns[0]?.id ?? "", expression: "" }], true),
@@ -260,7 +274,7 @@ export function itemList(
         doc,
         "button",
         { type: "button", class: "desk-btn", "data-key": `${f.key}:add` },
-        f.add ?? "Add",
+        f.add ?? t("features.tableDesign.bits.add"),
       )
     : undefined;
   adder?.addEventListener("click", () => add?.());
@@ -268,7 +282,9 @@ export function itemList(
     doc,
     "div",
     { class: "td-list", role: "group", "aria-label": f.label },
-    ...(rows.length ? rows : [el(doc, "p", { class: "td-hint" }, "None yet.")]),
+    ...(rows.length
+      ? rows
+      : [el(doc, "p", { class: "td-hint" }, t("features.tableDesign.bits.noneYet"))]),
     adder,
   );
 }

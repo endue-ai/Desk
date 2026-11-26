@@ -6,6 +6,7 @@
 // the core honours only from the person's press. No DOM.
 
 import { targetOf } from "../engines/pg-session.js";
+import { t } from "../strings/index.js";
 import { scopeOf } from "../tunnel/open.js";
 
 /**
@@ -24,11 +25,15 @@ export function whereOf(/** @type {Connection} */ conn) {
 }
 
 /** The label of the press that asks again. */
-export const allowLabel = (/** @type {string} */ where) => `Allow connecting to ${where}`;
+export const allowLabel = (/** @type {string} */ where) =>
+  t("session.connectGate.allowConnectingTo", { where: String(where) });
 
 /** What a refusal says: the server, and the press that asks again. */
 export const refusedWords = (/** @type {string} */ where) =>
-  `Not allowed to connect to ${where}. ${allowLabel(where)} asks again (Database: allow connecting).`;
+  t("session.connectGate.notAllowedToConnectToAsks", {
+    where: String(where),
+    value: String(allowLabel(where)),
+  });
 
 /**
  * The press beside a refused run's line, for a Messages tab: Allow connecting to its server.

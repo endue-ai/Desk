@@ -4,6 +4,7 @@
 // size among it. A refresh on any of these rows reads the database level again. No DOM.
 
 import { formatBytes, formatCount } from "../../format.js";
+import { t } from "../../strings/index.js";
 import { DATABASE, isNewKind, LEVELS } from "./index.js";
 
 /**
@@ -51,7 +52,9 @@ export function levelRows({ conn, key, objects, push, filter }) {
         key: folderKey,
         kind: "folder",
         label,
-        detail: filter ? `${shown.length} of ${all.length}` : formatCount(all.length),
+        detail: filter
+          ? t("schema.pg.tree.of", { length: String(shown.length), length2: String(all.length) })
+          : formatCount(all.length),
         level: 3,
         expandable: true,
       });
@@ -73,7 +76,7 @@ export function levelRows({ conn, key, objects, push, filter }) {
         ...base,
         key: `${levelKey}${SEP}info`,
         kind: "info",
-        label: "Empty",
+        label: t("schema.pg.tree.empty"),
         detail: "",
         level: 3,
         expandable: false,

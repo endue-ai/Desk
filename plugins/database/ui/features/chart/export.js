@@ -8,6 +8,7 @@ import { chartClient } from "../../chart/client.js";
 import { drawChart } from "../../chart/draw.js";
 import { chartPageOf } from "../../chart/page.js";
 import { withGrant, writeScope } from "../../console-files.js";
+import { t } from "../../strings/index.js";
 import { chartTarget } from "./open.js";
 
 /** @typedef {import("../../feature-host.js").Deps} Deps */
@@ -36,30 +37,37 @@ export async function exportChart(deps, args) {
   const { target, tab } = chartTarget(deps);
   const chart = tab?.kind === "chart" ? tab.chart : undefined;
   if (!target || !tab || !chart?.settings)
-    throw new Error(
-      "Export a chart from its tab: open one with Database: draw the result as a chart.",
-    );
+    throw new Error(t("features.chart.export.exportAChartFromItsTab"));
   const page = chartPageOf();
-  if (!page) throw new Error("This page cannot draw the chart as an image.");
+  if (!page) throw new Error(t("features.chart.export.thisPageCannotDrawTheChart"));
   const format =
     args.format === "svg" || args.format === "png"
       ? args.format
       : /** @type {"svg" | "png" | undefined} */ (
-          await deps.pick("Database: export the chart as", [
-            { id: "png", label: "PNG", detail: "960 by 540" },
-            { id: "svg", label: "SVG", detail: "Vector, in the theme's colours" },
+          await deps.pick(t("features.chart.export.databaseExportTheChartAs"), [
+            {
+              id: "png",
+              label: t("features.chart.export.png"),
+              detail: t("features.chart.export.by"),
+            },
+            {
+              id: "svg",
+              label: t("features.chart.export.svg"),
+              detail: t("features.chart.export.vectorInTheThemeSColours"),
+            },
           ])
         );
-  if (!format) throw deps.cancelled("Not exported.");
+  if (!format) throw deps.cancelled(t("features.chart.export.notExported"));
   const conn = deps.manager.get(target.connection);
   let path = typeof args.path === "string" && args.path ? args.path : "";
   if (!path) {
     const picked = await deps.bridge.call("dialog.save", {
-      title: "Export the chart",
+      title: t("features.chart.export.exportTheChart"),
       suggestedName: fileName(`chart-${conn?.name ?? "result"}-${tab.label}`, format),
       filters: [{ name: `${NAMES[format]} image`, extensions: [format] }],
     });
-    if (picked.cancelled || !picked.path) throw deps.cancelled("Not exported.");
+    if (picked.cancelled || !picked.path)
+      throw deps.cancelled(t("features.chart.export.notExported"));
     path = picked.path;
   }
   const data = await chartClient(deps.startWorker).chart(chart.set, chart.settings);
@@ -79,6 +87,11 @@ export async function exportChart(deps, args) {
       }),
     `To export the chart to ${path}`,
   );
-  deps.say(`Exported the chart as ${NAMES[format]} to ${path}.`);
+  deps.say(
+    t("features.chart.export.exportedTheChartAsTo", {
+      value: String(NAMES[format]),
+      path: String(path),
+    }),
+  );
   return { path, format };
 }
