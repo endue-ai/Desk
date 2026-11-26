@@ -34,6 +34,9 @@
       {
         "id": "endue.agents.open",
         "title": "Agents: Home",
+        "description": "Open the Agents home for the person.",
+        "args": { "type": "object" },
+        "agent": true,
         "keywords": ["agents", "studio", "endue", "claude", "codex", "cards"],
         "runs": {
           "command": "desk.plugins.open",

@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { browserCore } from "../bridge/core";
 import type { Buffer } from "../buffers";
 import { PolicyHub } from "../hub";
+import { invokeAsEris } from "./agent-tool-test";
 import { installBuffers } from "./buffers";
 import type { DeskContext } from "./context";
 
@@ -63,7 +64,7 @@ async function desk(answers: Array<string | undefined>, options: { palette?: boo
   await hub.commands.settled();
   const add = (id: string, plugin: string, modified: boolean, surface = false): Buffer =>
     policy.buffers.add({ id, name: id, plugin, modified, surface });
-  return { hub, ctx, policy, list: policy.buffers, request, asked, saved, add, away, focus };
+  return { core, hub, ctx, policy, list: policy.buffers, request, asked, saved, add, away, focus };
 }
 
 const labels = (asked: Asked | undefined) => asked?.items.map((item) => item.label);
@@ -186,4 +187,23 @@ describe("after a close, the buffer used before it shows", () => {
     await d.hub.commands.run("desk.buffers.close");
     expect(d.focus).toHaveBeenCalledTimes(1);
   });
+});
+
+it("Eris can switch and close explicit buffers, asking even when the person's shortcut is unguarded", async () => {
+  const d = await desk(["cancel", "save"]);
+  const { client } = d.core;
+  d.add("a.md", NOTES, false);
+  d.add("b.md", NOTES, true);
+  d.hub.settings.set("desk.buffers.confirm-unsaved", false);
+  expect(await invokeAsEris(client, "desk.buffers.switch", { id: "b.md" })).toBe("b.md");
+  expect(await invokeAsEris(client, "desk.buffers.close", { id: "b.md" })).toBe(false);
+  expect(d.list.get("b.md")?.modified).toBe(true);
+  expect(await invokeAsEris(client, "desk.buffers.close", { id: "b.md" })).toBe(true);
+  expect(d.asked.map((a) => a.title)).toEqual([
+    "b.md has unsaved changes",
+    "b.md has unsaved changes",
+  ]);
+  expect(d.saved).toEqual(["b.md"]);
+  expect(d.list.get("b.md")).toBeUndefined();
+  expect(d.list.get("a.md")).toBeDefined();
 });

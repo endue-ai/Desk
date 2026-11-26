@@ -6,9 +6,10 @@
  * opener read access to the file's folder first (perm.grant, ADR 0131). An autoload opener that is
  * off comes on for a file and, when the desk turned it on, goes off again with its last buffer (ADR
  * 0046). A file no rule names opens in the fallbacks (`files-open.ts`), and a file is named in one
- * spelling, so it is one buffer. An opener that asks for it opens each file in a window of its own
- * (`files-windows.ts`, ADR 0212).
+ * spelling, so it is one buffer. Openers can give each file its own window (ADR 0212).
  */
+
+import { WORKSPACE_TOOLS } from "../agent-specs";
 import { baseName, windowOf } from "../buffers";
 import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
@@ -232,7 +233,6 @@ export function installFiles(
     return show ? reveal(id) : id;
   };
 
-  /** The file buffer a command is about: the one named, or the one in use. */
   const fileBuffer = (args: unknown) => {
     const named = (args as { buffer?: string } | undefined)?.buffer;
     const buffer = named ? list.get(named) : list.current();
@@ -298,7 +298,8 @@ export function installFiles(
   define(
     "desk.files.recent",
     "Open a recent file",
-    async () => {
+    async (_args, { caller }) => {
+      if (caller?.startsWith("agent:")) return recent;
       const path = await pickFileChoice(
         commands,
         "Recent files",
@@ -307,11 +308,14 @@ export function installFiles(
       return path ? open(path) : null;
     },
     ["recentf", "history"],
+    WORKSPACE_TOOLS.filesRecent,
   );
   define(
     "desk.files.save",
     "Save the file",
     async (args, { caller }) => {
+      if (caller?.startsWith("agent:") && !(args as { buffer?: string } | undefined)?.buffer)
+        throw new CommandError("failed", "Give a file buffer ID from desk.buffers.list");
       const buffer = fileBuffer(args);
       await choices.save(buffer, caller);
       await ctx.request(windowOf(buffer), "desk.files.save", {
@@ -324,6 +328,7 @@ export function installFiles(
       return buffer.id;
     },
     ["save-buffer", "write"],
+    WORKSPACE_TOOLS.fileSave,
   );
   define("desk.files.revert", "Reload the file from disk", revert, ["revert-buffer"]);
   define(

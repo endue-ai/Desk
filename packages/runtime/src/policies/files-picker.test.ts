@@ -2,6 +2,7 @@ import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it, vi } from "vitest";
 import { browserCore } from "../bridge/core";
 import { PolicyHub } from "../hub";
+import { invokeAsEris } from "./agent-tool-test";
 import { installBuffers } from "./buffers";
 import type { DeskContext } from "./context";
 import { installFiles } from "./files";
@@ -40,6 +41,7 @@ async function desk(pickFile?: () => Promise<string | null>) {
   hub.apply(core.plugins);
   await hub.commands.settled();
   return {
+    core,
     run: (args?: unknown) => hub.commands.run("desk.files.open", args),
     palette,
     request,
@@ -88,5 +90,20 @@ describe("the host's native picker", () => {
     const d = await desk();
     expect(await d.run()).toBe("file:/from/palette.md");
     expect(d.palette).toHaveBeenCalledOnce();
+  });
+});
+
+it("returns recent file names without a picker and saves a named buffer", async () => {
+  const d = await desk();
+  const buffer = await d.run({ path: "/fixture/notes.md" });
+  expect(typeof buffer).toBe("string");
+  const recent = await invokeAsEris(d.core.client, "desk.files.recent");
+  expect(recent).toEqual([{ path: "/fixture/notes.md", plugin: "test.notes" }]);
+  expect(d.palette).not.toHaveBeenCalled();
+  await expect(invokeAsEris(d.core.client, "desk.files.save")).rejects.toThrow(/buffer/i);
+  expect(await invokeAsEris(d.core.client, "desk.files.save", { buffer })).toBe(buffer);
+  expect(d.request).toHaveBeenCalledWith("test.notes", "desk.files.save", {
+    buffer,
+    path: "/fixture/notes.md",
   });
 });

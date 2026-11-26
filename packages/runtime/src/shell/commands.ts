@@ -3,7 +3,7 @@
  * all run these ids. Pane commands belong to desk.display; desktops, views, profiles, agents and
  * Eris's settings to desk.shell. Profiles and agents come and go, so their commands follow them.
  */
-import type { CommandInfo, CommandSpec } from "../commands";
+import type { AgentSpec, CommandHandler, CommandInfo, CommandSpec } from "../commands";
 import { defineDesktopCommands, defineNumbered } from "../desktops/commands";
 import { selectAgent, spaceAgents } from "../system/agents";
 import { desktopsOf } from "./actions";
@@ -38,16 +38,20 @@ export function defineCommands(ctx: ShellCtx): () => void {
     owner: string,
     title: CommandSpec["title"],
     keywords: string[],
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     into = fixed,
+    agent?: AgentSpec,
   ) => {
     const off = commands.define(id, {
       title,
       keywords,
       owner,
-      run: async (args) => {
-        await run(args);
-      },
+      run: agent
+        ? run
+        : async (args, from) => {
+            await run(args, from);
+          },
+      ...(agent ? { agent } : {}),
     });
     into.push(off);
     return off;
@@ -56,9 +60,10 @@ export function defineCommands(ctx: ShellCtx): () => void {
     id: string,
     title: CommandSpec["title"],
     keywords: string[],
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     into = fixed,
-  ) => define(`desk.shell.${id}`, "desk.shell", title, keywords, run, into);
+    agent?: AgentSpec,
+  ) => define(`desk.shell.${id}`, "desk.shell", title, keywords, run, into, agent);
   const display = (
     id: string,
     title: CommandSpec["title"],
@@ -101,7 +106,9 @@ export function defineCommands(ctx: ShellCtx): () => void {
   defineWindowCommands(ctx, display);
   // Desktops (ADR 0117): new, next, rename, remove, reorder, the overview, moving a window across.
   fixed.push(
-    defineDesktopCommands(ctx, (id, title, words, run) => shell(id, title, words, run, [])),
+    defineDesktopCommands(ctx, (id, title, words, run, agent) =>
+      shell(id, title, words, run, [], agent),
+    ),
   );
   for (const [id, key, words] of VIEWS) {
     const name = ctx.tr(key);

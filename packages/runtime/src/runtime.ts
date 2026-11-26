@@ -30,6 +30,7 @@ import { installProfiles } from "./policies/profiles";
 import { installSession } from "./policies/session";
 import { installSettingCommands } from "./policies/settings-commands";
 import { installTheme } from "./policies/theme";
+import { installWorkspaceTools } from "./policies/workspace-tools";
 import { chosenOf, mayMount, ROLES_SETTING } from "./roles";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
 import type { SettingsLanguage } from "./settings-ui/copy";
@@ -85,7 +86,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const clock = options.clock ?? realClock();
   const doc = root.ownerDocument;
   const win = doc.defaultView ?? window;
-
   root.classList.add("desk");
   root.replaceChildren();
   // The built-in tokens until desk.theme applies the theme in force, where it will apply it.
@@ -156,9 +156,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const keys = installKeys(ctx, speech.current(), notify.notify);
   const preferences = installSettingCommands(hub, bridge);
   const settingsWindow = installLiveSettingsWindow(ctx, keys, preferences, speech);
-  // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
   const aliases = installAliases(ctx);
   const palette = installPalette(ctx);
+  installWorkspaceTools(commands, bridge);
   const show = (id: string) => options.windows?.show?.(id) ?? undefined;
   const moved = (id: string | null) => focusMoved(id);
   const focusing = surfaceFocus({ root, shortcuts, surfaces, show, moved });

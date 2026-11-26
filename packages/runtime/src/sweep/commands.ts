@@ -4,6 +4,7 @@
  * "these"), .select and .clear change it, and .snapshot hands Eris a snapshot of the selection (or
  * of the whole desk) with the next line.
  */
+import { WORKSPACE_TOOLS } from "../agent-specs";
 import type { ShellCtx } from "../shell/context";
 import { around, SWEEP_LABELS, SWEEP_MODES, type SweepMode } from "./model";
 import { askWith, setSweep, windowsSeen } from "./Sweep";
@@ -88,7 +89,8 @@ export function defineSweepCommands(root: HTMLElement, ctx: ShellCtx): () => voi
       title: () => "Sweep: snapshot for Eris",
       keywords: ["snapshot", "screenshot", "capture", "eris", "스냅샷"],
       owner: "desk",
-      run: async () => {
+      agent: WORKSPACE_TOOLS.snapshot,
+      run: async (_args, { caller }) => {
         const all = windowsSeen(root, ctx);
         const picked = selected();
         const r = root.getBoundingClientRect();
@@ -97,7 +99,7 @@ export function defineSweepCommands(root: HTMLElement, ctx: ShellCtx): () => voi
         const background = getComputedStyle(root).backgroundColor;
         const shown = picked.length > 0 ? picked : all;
         const context = await takeSnapshot(ctx.bridge, area, shown, background);
-        await askWith(ctx, context);
+        if (!caller?.startsWith("agent:")) await askWith(ctx, context);
         return { said: context.text, ...(context.path ? { path: context.path } : {}) };
       },
     }),
