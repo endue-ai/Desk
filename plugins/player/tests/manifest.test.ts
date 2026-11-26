@@ -49,7 +49,7 @@ describe("plugin.json", () => {
     expect(fs).toEqual([{ permission: "fs:read", paths: ["/**"] }]);
     expect(player.permissions).toContainEqual({
       permission: "cmd:invoke",
-      ids: ["desk.files.changed"],
+      ids: ["desk.files.changed", "desk.files.playlist-entries"],
     });
     // Show in Finder on a file this build does not play: shown, never opened or run.
     expect(player.permissions).toContainEqual({

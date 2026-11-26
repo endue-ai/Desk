@@ -3737,6 +3737,8 @@ export interface CmdInvokedData {
   caller: CallerId;
   /** True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request. */
   approved?: boolean;
+  /** Set by the core when a person's turn lets Eris pass its readable file to the desk-selected opener. The caller cannot set it. */
+  fileOpenGranted?: boolean;
 }
 
 /** A command's provider answered an invocation. Sent to the caller that invoked it. */
@@ -5094,6 +5096,9 @@ export type DialogTitle = string;
 /** What the person picks: files (the default) or folders. */
 export type DialogOpenKind = "files" | "folders";
 
+/** A destination folder is chosen for writing. The dialog tells the person and grants read and write in the folder. */
+export type DialogOpenIntent = "destination";
+
 /** Ask the person for files or folders to open. */
 export interface DialogOpenRequest {
   id: RequestId;
@@ -5104,6 +5109,7 @@ export interface DialogOpenRequest {
 /** Parameters of dialog.open. */
 export interface DialogOpenParams {
   kind?: DialogOpenKind;
+  intent?: DialogOpenIntent;
   /** Whether the person may pick several; false by default. */
   multiple?: boolean;
   title?: DialogTitle;
@@ -5130,6 +5136,8 @@ export interface DialogSaveParams {
   title?: DialogTitle;
   /** The file name the dialog suggests, without a folder. */
   suggestedName?: string;
+  /** Also grant write access to the exact .<name>.partial sibling used to stage this save before renaming it. */
+  temporarySibling?: boolean;
   /** The folder the dialog starts in. */
   startIn?: Path;
   filters?: DialogFilters;

@@ -225,7 +225,8 @@
       "properties": {
         "type": { "const": "drag.status" },
         "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
-        "effect": { "$ref": "#/$defs/SurfaceDropAnswer" }
+        "effect": { "$ref": "#/$defs/SurfaceDropAnswer" },
+        "destination": { "$ref": "#/$defs/SurfaceDragPath" }
       },
       "required": ["type", "surface", "effect"],
       "additionalProperties": false
@@ -239,6 +240,12 @@
         "x": { "type": "number" },
         "y": { "type": "number" },
         "effect": { "$ref": "#/$defs/SurfaceDropEffect" },
+        "source": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "destination": { "$ref": "#/$defs/SurfaceDragPath" },
+        "personDropped": {
+          "description": "Set by the compositor when the drop was committed by a physical release or an operating system drop.",
+          "type": "boolean"
+        },
         "items": {
           "type": "array",
           "items": { "$ref": "#/$defs/SurfaceDragItem" },

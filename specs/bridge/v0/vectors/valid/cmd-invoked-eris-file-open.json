@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "only the core's delivery can mark a file as authorized by Eris's turn",
+  "instance": {
+    "event": "cmd.invoked",
+    "data": {
+      "invocationId": "i2",
+      "id": "desk.files.open",
+      "args": { "path": "~/Notes/guide.md" },
+      "caller": "agent:eris",
+      "fileOpenGranted": true
+    }
+  }
+}

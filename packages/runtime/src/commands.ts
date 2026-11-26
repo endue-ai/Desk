@@ -9,6 +9,8 @@ import type { BridgeClient, BridgeEvent, CmdAnsweredData } from "@endue-ai/bridg
 /** Who runs a command: a plugin by id, or the person (keys, the palette's runs for them) when absent. */
 export interface CommandCaller {
   caller?: string;
+  /** The core verified the named file came from a person's choice. */
+  fileOpenGranted?: boolean;
 }
 
 export type CommandHandler = (args: unknown, from: CommandCaller) => unknown;
@@ -231,14 +233,16 @@ export class Commands {
         this.#schedule();
         break;
       case "cmd.invoked": {
-        const { id, invocationId, args, caller } = event.data;
+        const { id, invocationId, args, caller, fileOpenGranted } = event.data;
         const spec = this.#builtIn.get(id);
         if (spec && this.#registered.has(id)) {
           const ends = [...this.#watchers].map((watch) => watch({ id, args, caller }));
           const heard = (result: unknown) => {
             for (const end of ends) end?.(result);
           };
-          void this.#answer(invocationId, spec, args, caller, heard);
+          const from =
+            caller === DESK ? {} : { caller, ...(fileOpenGranted ? { fileOpenGranted } : {}) };
+          void this.#answer(invocationId, spec, args, from, heard);
         }
         break;
       }
@@ -260,11 +264,11 @@ export class Commands {
     invocationId: string,
     spec: CommandSpec,
     args: unknown,
-    caller: string,
+    from: CommandCaller,
     heard: (result: unknown) => void,
   ) {
     try {
-      const result = await spec.run(args ?? {}, caller === DESK ? {} : { caller });
+      const result = await spec.run(args ?? {}, from);
       heard(result);
       await this.#bridge.call("cmd.answer", {
         invocationId,

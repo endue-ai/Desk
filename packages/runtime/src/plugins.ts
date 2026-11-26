@@ -90,7 +90,7 @@ export class PluginHost {
       },
       rise: (id) => this.#sleepers.rise(id),
     };
-    this.#dnd = installDnd(deps, () => this.#instances.keys());
+    this.#dnd = installDnd(deps, () => this.#instances.keys(), this.#mounted);
   }
 
   async start(): Promise<void> {

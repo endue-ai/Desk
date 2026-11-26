@@ -7,7 +7,7 @@ describe("explicit Eris file context", () => {
     const h = mounted();
     expect(h.calls).toHaveLength(0);
     await h.click("attach-file");
-    expect(h.commands.run).toHaveBeenCalledWith("desk.buffers.list");
+    expect(h.commands.run).toHaveBeenCalledWith("desk.files.attach");
     expect(h.calls.find((c) => c.method === "fs.read")?.params).toMatchObject({
       path: "~/notes.txt",
       offset: 0,
@@ -41,7 +41,7 @@ describe("explicit Eris file context", () => {
     }
   });
 
-  it("declined permission never retries the read or attaches content", async () => {
+  it("a refused read never retries with a broader request or attaches content", async () => {
     const h = mounted({
       granted: false,
       read: () => {
@@ -50,10 +50,7 @@ describe("explicit Eris file context", () => {
     });
     await h.click("attach-file");
     expect(h.calls.filter((c) => c.method === "fs.read")).toHaveLength(1);
-    expect(h.calls.find((c) => c.method === "perm.request")?.params.permission).toEqual({
-      permission: "fs:read",
-      paths: ["~/notes.txt"],
-    });
+    expect(h.calls.some((c) => c.method === "perm.request")).toBe(false);
     await h.send("hello");
     expect(h.calls.find((c) => c.method === "brain.say")?.params.text).toBe("hello");
   });

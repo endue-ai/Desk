@@ -321,6 +321,8 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
     {
       accept: ["desk/paths", "desk/json:docker/file"],
       at: (element) => view.landing?.(element) ?? null,
+      destination: ({ element }) =>
+        /** @type {{ dataset?: { path?: string } }} */ (element)?.dataset?.path,
       // A container's file is copied: it has no path here to move from.
       effect: (over) =>
         over.types.includes("desk/paths")

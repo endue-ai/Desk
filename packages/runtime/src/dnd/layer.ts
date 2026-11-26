@@ -31,7 +31,7 @@ const OFFSET = 12;
 
 export interface LayerHandlers {
   move(at: Point, keys: DragKeys): void;
-  up(at: Point, keys: DragKeys): void;
+  up(at: Point, keys: DragKeys, trusted: boolean): void;
   cancel(): void;
 }
 
@@ -61,7 +61,7 @@ export function dragLayer(doc: Document, handlers: LayerHandlers) {
   };
   const point = (event: PointerEvent) => ({ x: event.clientX, y: event.clientY });
   const onMove = (event: PointerEvent) => handlers.move(point(event), keysOf(event));
-  const onUp = (event: PointerEvent) => handlers.up(point(event), keysOf(event));
+  const onUp = (event: PointerEvent) => handlers.up(point(event), keysOf(event), event.isTrusted);
   const onKey = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.preventDefault();

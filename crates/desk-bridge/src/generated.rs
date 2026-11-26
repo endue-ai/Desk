@@ -5886,6 +5886,13 @@ pub struct CmdInvokedData {
     /// True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub approved: Option<bool>,
+    /// Set by the core when a person's turn lets Eris pass its readable file to the desk-selected opener. The caller cannot set it.
+    #[serde(
+        rename = "fileOpenGranted",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub file_open_granted: Option<bool>,
 }
 
 /// A command's provider answered an invocation. Sent to the caller that invoked it.
@@ -7994,6 +8001,13 @@ pub enum DialogOpenKind {
     Folders,
 }
 
+/// A destination folder is chosen for writing. The dialog tells the person and grants read and write in the folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DialogOpenIntent {
+    #[serde(rename = "destination")]
+    Destination,
+}
+
 /// Ask the person for files or folders to open.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -8009,6 +8023,8 @@ pub struct DialogOpenRequest {
 pub struct DialogOpenParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<DialogOpenKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent: Option<DialogOpenIntent>,
     /// Whether the person may pick several; false by default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub multiple: Option<bool>,
@@ -8051,6 +8067,13 @@ pub struct DialogSaveParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub suggested_name: Option<String>,
+    /// Also grant write access to the exact .<name>.partial sibling used to stage this save before renaming it.
+    #[serde(
+        rename = "temporarySibling",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub temporary_sibling: Option<bool>,
     /// The folder the dialog starts in.
     #[serde(rename = "startIn", default, skip_serializing_if = "Option::is_none")]
     pub start_in: Option<Path>,

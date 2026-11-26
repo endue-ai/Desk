@@ -97,6 +97,9 @@ impl Broker {
             x: f64::from(local.x),
             y: f64::from(local.y),
             effect,
+            source: drag.source.map(|_| drag.from),
+            destination: drag.destination,
+            person_dropped: Some(true),
             items,
         }))]
     }

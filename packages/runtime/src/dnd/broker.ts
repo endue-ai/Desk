@@ -11,6 +11,7 @@ import {
   readImage,
   readItems,
   readKeys,
+  readPath,
   readTypes,
   taken,
   typeOf,
@@ -47,6 +48,7 @@ export interface BrokerDeps {
    * frame gives its ancestors too. False refuses a frame's drag; undefined (no such API) allows it.
    */
   gesture?(): boolean | undefined;
+  grantDrop?(from: string, to: string, paths: string[], destination?: string): Promise<void>;
 }
 
 interface Drag {
@@ -64,6 +66,7 @@ interface Drag {
   seq: number;
   answered: number;
   effect: DropAnswer;
+  destination?: string;
   answers: Array<() => void>;
   done(outcome: DragOutcome): void;
 }
@@ -120,7 +123,12 @@ export class DragBroker {
       case "desk:drag-status": {
         const hovered = drag ?? this.#settling;
         if (hovered?.over === id && m.drag === hovered.id && typeof m.seq === "number")
-          this.#answered(hovered, m.seq, readAnswer(m.effect, hovered.effectAllowed));
+          this.#answered(
+            hovered,
+            m.seq,
+            readAnswer(m.effect, hovered.effectAllowed),
+            readPath(m.destination),
+          );
         return true;
       }
       case "desk:drop-done": {
@@ -149,7 +157,7 @@ export class DragBroker {
   }
 
   /** The pointer was released at `at`: the items go to the frame there if it answered an effect. */
-  async release(at: Point, keys: DragKeys = NO_KEYS): Promise<DragOutcome> {
+  async release(at: Point, keys: DragKeys = NO_KEYS, personDropped = false): Promise<DragOutcome> {
     const drag = this.#drag;
     if (!drag) return { effect: "none" };
     // Released elsewhere, or with other keys, than the last hover: the target answers that first.
@@ -179,7 +187,18 @@ export class DragBroker {
     const done = new Promise<DropAnswer>((resolve) =>
       this.#drops.set(drag.id, { target, resolve }),
     );
-    this.#deps.post(target, { type: "desk:drop", drag: drag.id, ...local, keys, effect, items });
+    if (personDropped && this.#deps.grantDrop) {
+      const paths = items.flatMap((item) =>
+        item.type === "desk/paths" ? item.paths.map((entry) => entry.path) : [],
+      );
+      if (paths.length)
+        await this.#deps
+          .grantDrop(drag.from, target, paths, effect === "link" ? undefined : drag.destination)
+          .catch(() => undefined);
+    }
+    if (this.#accepts.has(target))
+      this.#deps.post(target, { type: "desk:drop", drag: drag.id, ...local, keys, effect, items });
+    else this.#drops.get(drag.id)?.resolve("none");
     const performed = readAnswer(await done, drag.effectAllowed);
     this.#drops.delete(drag.id);
     return this.#finish(
@@ -303,11 +322,12 @@ export class DragBroker {
     this.#deps.layer.move(at, drag.effect);
   }
 
-  #answered(drag: Drag, seq: number, effect: DropAnswer): void {
+  #answered(drag: Drag, seq: number, effect: DropAnswer, destination?: string): void {
     if (seq > drag.seq || seq < drag.answered) return;
     drag.answered = seq;
     if (seq === drag.seq) {
       drag.effect = effect;
+      drag.destination = destination;
       this.#deps.layer.move(drag.at, effect);
       this.#feedback(drag);
       for (const resolve of drag.answers.splice(0)) resolve();

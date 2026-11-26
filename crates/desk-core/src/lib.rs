@@ -53,6 +53,7 @@ mod core_db_ssh;
 mod core_dialog;
 mod core_directory;
 mod core_events;
+mod core_files_gesture;
 mod core_fs;
 mod core_fs_url;
 mod core_history;

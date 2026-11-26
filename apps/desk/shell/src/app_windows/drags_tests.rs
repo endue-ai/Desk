@@ -13,6 +13,7 @@ fn types(acts: &[Act]) -> Vec<String> {
     acts.iter()
         .map(|a| match a {
             Act::Page(m) => m["type"].as_str().unwrap_or("?").to_owned(),
+            Act::GrantFiles { .. } => "grant".to_owned(),
             Act::Open(_) => "open".to_owned(),
             Act::Wait => "wait".to_owned(),
         })
@@ -58,8 +59,7 @@ fn a_file_from_the_os_lands_on_the_target_that_answers_an_effect() {
     // The page learns the types, never the paths, until it drops them.
     assert!(!entered.iter().any(|a| format!("{a:?}").contains("/Docs")));
     let id = enter["drag"].clone();
-    let answer =
-        |seq: u64| json!({ "type": "desk:drag-status", "drag": id, "seq": seq, "effect": "copy" });
+    let answer = |seq: u64| json!({ "type": "desk:drag-status", "drag": id, "seq": seq, "effect": "copy", "destination": "/Inbox" });
     assert!(
         up(&mut drags, answer(1)).is_empty(),
         "no feedback for the OS"
@@ -70,6 +70,15 @@ fn a_file_from_the_os_lands_on_the_target_that_answers_an_effect() {
     );
     assert_eq!(types(&released), ["desk:dragover", "wait"]);
     let landed = up(&mut drags, answer(2));
+    assert_eq!(types(&landed), ["grant", "desk:drop"]);
+    assert_eq!(
+        landed[0],
+        Act::GrantFiles {
+            target: OWNER.to_owned(),
+            paths: vec!["/Docs/a.md".to_owned()],
+            destination: Some("/Inbox".to_owned())
+        }
+    );
     let drop = page(&landed, "desk:drop");
     assert_eq!(drop["effect"], "copy");
     assert_eq!(drop["items"][0]["paths"][0]["path"], "/Docs/a.md");

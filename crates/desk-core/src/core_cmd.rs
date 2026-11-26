@@ -178,6 +178,7 @@ impl Core {
             self.run_went_on(run, Err(&refused.message));
         }
         held?;
+        let file_open_granted = self.file_open_granted(caller, id, &info.provider, args.as_ref());
         let approval = self.provider_approval(review, &info, args.as_ref());
         let approved = approval.is_some().then_some(true);
         let invocation_id = {
@@ -213,6 +214,7 @@ impl Core {
                     args,
                     caller: caller.to_owned(),
                     approved,
+                    file_open_granted,
                 },
             }),
         );

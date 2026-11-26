@@ -38,6 +38,18 @@ fn apply(acts: Vec<Act>, frame: &Frame, desk: &Arc<Desk>, drags: &Arc<Mutex<Drag
     for act in acts {
         match act {
             Act::Page(m) => host::send(frame.clone(), m.to_string()),
+            Act::GrantFiles {
+                target,
+                paths,
+                destination,
+            } => {
+                desk.core.grant_file_drop(
+                    None,
+                    &target,
+                    paths.iter().map(String::as_str),
+                    destination.as_deref(),
+                );
+            }
             Act::Open(paths) => {
                 desk.pump.run(move |shell, _| shell.open_dropped(paths));
             }

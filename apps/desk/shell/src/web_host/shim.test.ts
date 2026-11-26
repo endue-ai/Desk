@@ -18,6 +18,7 @@ interface FakeDrag {
   shiftKey: boolean;
   ctrlKey: boolean;
   metaKey: boolean;
+  isTrusted: boolean;
   dataTransfer: { types: string[]; dropEffect: string };
   prevented: boolean;
   stopped: boolean;
@@ -35,7 +36,7 @@ function page() {
     },
   };
   new Function("globalThis", SOURCE)(scope);
-  const fire = (type: string, x = 0, y = 0, types = ["Files"]): FakeDrag => {
+  const fire = (type: string, x = 0, y = 0, types = ["Files"], isTrusted = true): FakeDrag => {
     const event: FakeDrag = {
       type,
       clientX: x,
@@ -44,6 +45,7 @@ function page() {
       shiftKey: false,
       ctrlKey: false,
       metaKey: false,
+      isTrusted,
       dataTransfer: { types, dropEffect: "none" },
       prevented: false,
       stopped: false,
@@ -102,6 +104,8 @@ describe("the shim and files dragged in from the OS", () => {
   it("never passes on what the page says in the shim's name", () => {
     const p = page();
     p.parent.postMessage({ type: "desk:os-drop", x: 1, y: 1 });
+    p.parent.postMessage({ toJSON: () => ({ type: "desk:os-drop", x: 1, y: 1 }) });
+    expect(p.fire("drop", 1, 1, ["Files"], false).prevented).toBe(false);
     p.parent.postMessage({ type: "desk:hello" });
     expect(p.kinds()).toEqual(["desk:hello"]);
   });
