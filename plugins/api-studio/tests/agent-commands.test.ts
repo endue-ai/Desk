@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createActions, failure, SEND_HOOKS } from "../ui/actions.js";
-import { createFiles } from "../ui/collection-fs.js";
+import type { Collection } from "../ui/collection-fs.js";
 import { wireCommands } from "../ui/commands.js";
 import { installAuth } from "../ui/features-auth.js";
+import { installCollections } from "../ui/features-collections.js";
 import { installImport } from "../ui/features-import.js";
 import { newRequest, pair } from "../ui/model.js";
 import { scope } from "../ui/vars.js";
@@ -220,28 +221,63 @@ it("reads a selected description under an exact file scope and asks for a writab
   expect(call).toHaveBeenCalledTimes(2);
 });
 
-it("shares one folder permission prompt and can retry after a denial", async () => {
-  let approved = false;
-  const call = vi.fn(async (method: string) => {
-    if (method === "perm.request") return { granted: approved };
-    if (!approved)
-      throw Object.assign(new Error("permission denied"), { code: "permission_denied" });
-    return {};
+it("shares one prompt and requires the collection menu to retry a remembered refusal", async () => {
+  const root = "/outside/shop";
+  let refused = false;
+  let allowed = false;
+  let cards = 0;
+  const call = vi.fn(async (method: string, params: { again?: boolean }) => {
+    if (method === "perm.request") {
+      if (refused && !params.again) return { granted: false, reason: "refused-earlier" };
+      cards++;
+      if (cards === 1) {
+        refused = true;
+        return { granted: false };
+      }
+      allowed = true;
+      return { granted: true };
+    }
+    if (method === "fs.write" && allowed) return {};
+    throw Object.assign(new Error("permission denied"), { code: "permission_denied" });
   });
-  const files = createFiles({ call } as never);
+  const studio = {
+    ctx: { bridge: { call, onEvent: () => () => {} } },
+    app: { emit: vi.fn(), toast: vi.fn() },
+    scopeProviders: [],
+    homeActions: () => [],
+  };
+  const { files } = installCollections(studio as never);
+  const menu = (
+    studio as typeof studio & {
+      collectionMenu(
+        coll: Partial<Collection>,
+        adds: unknown[],
+      ): Array<string | { label: string; run(): unknown }>;
+    }
+  ).collectionMenu;
+  const allow = () =>
+    menu({ path: root, name: "Shop" }, []).find(
+      (item) => typeof item !== "string" && item.label === "Allow writing this collection",
+    );
   const first = await Promise.allSettled([
-    files.write("/outside/shop/a.json", "a", "/outside/shop"),
-    files.write("/outside/shop/b.json", "b", "/outside/shop"),
+    files.write(`${root}/a.json`, "a", root),
+    files.write(`${root}/b.json`, "b", root),
   ]);
   expect(first.map((x) => x.status)).toEqual(["rejected", "rejected"]);
   expect(call.mock.calls.filter(([m]) => m === "perm.request")).toHaveLength(1);
-  approved = true;
-  call.mockImplementation(async (method) => {
-    if (method === "perm.request") return { granted: true };
-    if (call.mock.calls.filter(([m]) => m === "perm.request").length < 2)
-      throw Object.assign(new Error("permission denied"), { code: "permission_denied" });
-    return {};
+  await expect(files.write(`${root}/a.json`, "a", root)).rejects.toThrow("permission denied");
+  expect(cards).toBe(1);
+  const item = allow();
+  if (!item || typeof item === "string")
+    throw new Error("The collection has no write retry action.");
+  await item.run();
+  expect(cards).toBe(2);
+  expect(call).toHaveBeenLastCalledWith("perm.request", {
+    permission: { permission: "fs:write", paths: [root, `${root}/**`] },
+    reason: expect.any(String),
+    again: true,
   });
-  await expect(files.write("/outside/shop/a.json", "a", "/outside/shop")).resolves.toEqual({});
-  expect(call.mock.calls.filter(([m]) => m === "perm.request")).toHaveLength(2);
+  expect(allow()).toBeUndefined();
+  expect(call.mock.calls.filter(([m]) => m === "fs.write")).toHaveLength(3);
+  await expect(files.write(`${root}/a.json`, "a", root)).resolves.toEqual({});
 });
