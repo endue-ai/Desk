@@ -196,7 +196,7 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
     expect(await does("stop")).toMatchObject({ url: there.url, loading: false });
   });
 
-  it("holds native reload and history steps that can resend a submitted form", async () => {
+  it("holds history steps that can resend a form and traverses ordinary entries", async () => {
     echo = await serve({ port: 18788, delayMs: 0 });
     const brains = `${MODE} [data-popover=brain]`;
     if (!(await $(brains).isExisting())) await press(`${MODE} [data-key=rail-brain]`);
@@ -219,7 +219,7 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
       };
       return approvals.find((card) => card.action === "web.act");
     };
-    const held = async (step: string, copies: number) => {
+    const tell = async (step: string) => {
       const sent = await browser.execute((line) => {
         const input = document.querySelector<HTMLInputElement>("#composer-input");
         if (!input) return false;
@@ -231,6 +231,13 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
         return true;
       }, `tool endue_browser_${step} as mira: {}`);
       expect(sent).toBe(true);
+    };
+    const finished = () =>
+      browser
+        .execute(() => document.querySelector<HTMLElement>(".eris")?.dataset.state)
+        .then((state) => state !== "thinking");
+    const held = async (step: string, copies: number) => {
+      await tell(step);
       await browser.waitUntil(async () => Boolean(await pending()), {
         timeout: 10_000,
         timeoutMsg: `${step} did not ask to resend the form`,
@@ -244,14 +251,9 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
       expect(card?.task).toBeUndefined();
       expect(posts).toBe(copies);
       await call("perm.approve", { scope, approvalId: card?.approvalId, answer: "deny" });
-      await browser.waitUntil(
-        async () =>
-          !(await pending()) &&
-          (await browser.execute(
-            () => document.querySelector<HTMLElement>(".eris")?.dataset.state,
-          )) !== "thinking",
-        { timeout: 10_000 },
-      );
+      await browser.waitUntil(async () => !(await pending()) && (await finished()), {
+        timeout: 10_000,
+      });
       expect(posts).toBe(copies);
     };
     const post = async () => {
@@ -266,5 +268,18 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
     await post();
     await does("go", { url: `${origin}/b` });
     await held("back", 2);
+    await does("go", { url: `${origin}/` });
+    for (const [step, path] of [
+      ["back", "/b"],
+      ["forward", "/"],
+    ]) {
+      await tell(step);
+      await browser.waitUntil(
+        async () => (await does("read")).url === `${origin}${path}` && (await finished()),
+        { timeout: 10_000, timeoutMsg: `${step} did not traverse the ordinary history entry` },
+      );
+      expect(await pending()).toBeUndefined();
+    }
+    expect(posts).toBe(2);
   });
 });

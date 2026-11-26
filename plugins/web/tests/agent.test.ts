@@ -43,7 +43,8 @@ describe("reading saved web files through commands", () => {
         ...reads,
         "fs.read": (input, caller) => {
           const read = reads["fs.read"];
-          if (input.path === PAGE.path || !read) throw denied("saved file");
+          if (input.path === PAGE.path || !read || input.scope.paths[0] !== input.path)
+            throw denied("saved file");
           return read(input, caller);
         },
       },

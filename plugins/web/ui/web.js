@@ -337,6 +337,7 @@ export function createWeb({ bridge, commands, surface }, view, options) {
           signal: new AbortController().signal,
           report: () => {},
           ask: false,
+          scope: { permission: "fs:read", paths: [range.path] },
         })
       : current();
     return readSaved(file.model, range);

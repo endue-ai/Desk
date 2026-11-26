@@ -39,8 +39,8 @@ Back and forward send the inspected Chromium history ID explicitly, since the to
 entries. If the entry cannot be verified, the command asks the operator to read again.
 
 Web's read and entry commands return saved text or link metadata as source content. The caller
-can read the active file or name a path with an existing grant. The reader uses an inert
-template for saved HTML and leaves page resources unresolved.
+can read the active file or name a path using its exact file scope and an existing grant. The
+reader uses an inert template for saved HTML and leaves page resources unresolved.
 
 ## More Information
 

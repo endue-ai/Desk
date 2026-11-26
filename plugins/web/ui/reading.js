@@ -48,10 +48,14 @@ export const codeOf = (/** @type {unknown} */ error) =>
  * unless `ask` is false (a window coming back from a sleep never asks).
  * @param {Deps} deps
  * @param {string} path
- * @param {{ signal: AbortSignal, onProgress: (done: number, total: number) => void, ask: boolean }} how
+ * @param {{ signal: AbortSignal, onProgress: (done: number, total: number) => void, ask: boolean,
+ *   scope?: import("@endue-ai/bridge").FsReadPermission }} how
  */
-export async function readWhole({ bridge, readBytes }, path, { signal, onProgress, ask }) {
-  const scope = scopeOf(folderOf(path));
+export async function readWhole(
+  { bridge, readBytes },
+  path,
+  { signal, onProgress, ask, scope = scopeOf(folderOf(path)) },
+) {
   const refused = new Error(`Not allowed to read ${path}.`);
   const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
   const failed = (/** @type {unknown} */ error) => {
@@ -104,10 +108,11 @@ export const resourceOf =
  * @param {Deps & { startWorker?: import("./remote.js").StartWorker, workerOver?: number }} deps
  * @param {string} buffer
  * @param {string} path
- * @param {{ signal: AbortSignal, report: Report, ask: boolean }} how
+ * @param {{ signal: AbortSignal, report: Report, ask: boolean,
+ *   scope?: import("@endue-ai/bridge").FsReadPermission }} how
  * @returns {Promise<OpenFile>}
  */
-export async function loadFile(deps, buffer, path, { signal, report, ask }) {
+export async function loadFile(deps, buffer, path, { signal, report, ask, scope }) {
   const { bridge, readBytes, startWorker, workerOver = WORKER_OVER } = deps;
   const name = nameOf(path);
   report("Reading", null, 1, name);
@@ -115,6 +120,7 @@ export async function loadFile(deps, buffer, path, { signal, report, ask }) {
     signal,
     onProgress: (done, total) => report("Reading", done, total, bytesText(done, total)),
     ask,
+    scope,
   });
   const size = bytes.length;
   const [{ openFile }, { NoWorker, openInWorker }] = await readers();
