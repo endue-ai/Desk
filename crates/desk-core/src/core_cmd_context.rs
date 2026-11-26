@@ -1,10 +1,12 @@
 //! Authenticate the provider of an operation delegated by a pending command.
 
 use desk_bridge::{BridgeError, CommandInfo, ErrorCode, WebAction};
+use serde_json::{Map, Value};
 
 use super::{Core, ProviderApproval, error};
 
 const BROWSER: &str = "endue.browser";
+const DATABASE: &str = "endue.database";
 
 #[derive(Clone)]
 pub(crate) struct AgentInvocation {
@@ -30,6 +32,45 @@ impl Core {
 }
 
 impl Core {
+    /// Reuse an irreversible command's review for its exact Database operation.
+    pub(crate) fn database_reviewed(
+        &self,
+        reviewed: bool,
+        info: &CommandInfo,
+        args: Option<&Map<String, Value>>,
+    ) -> Result<bool, BridgeError> {
+        if !reviewed || !self.trusted_builtin(&info.provider, DATABASE) {
+            return Ok(false);
+        }
+        let required: &[&str] = match info.id.as_str() {
+            "endue.database.drop-object" => &["schema", "name", "kind"],
+            "endue.database.truncate-table" => &["schema", "name"],
+            "endue.database.drop-policy" => &["schema", "table", "name"],
+            "endue.database.end-session" => &[],
+            _ => return Ok(false),
+        };
+        let supplied = |key: &str| {
+            args.and_then(|args| args.get(key))
+                .and_then(Value::as_str)
+                .is_some_and(|name| !name.trim().is_empty())
+        };
+        let pid = info.id != "endue.database.end-session"
+            || args
+                .and_then(|args| args.get("pid"))
+                .and_then(Value::as_u64)
+                .is_some_and(|pid| (1..=i32::MAX as u64).contains(&pid));
+        if supplied("connection") && required.iter().all(|k| supplied(k)) && pid {
+            return Ok(true);
+        }
+        Err(error(
+            ErrorCode::InvalidParams,
+            format!(
+                "{} needs the connection and exact operation target before review",
+                info.id
+            ),
+        ))
+    }
+
     pub(crate) fn delegates_web_act(&self, info: &CommandInfo) -> bool {
         matches!(
             info.id.as_str(),

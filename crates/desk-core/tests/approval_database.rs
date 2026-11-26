@@ -4,6 +4,7 @@ mod support;
 
 use std::path::Path;
 
+use desk_bridge::ErrorCode;
 use desk_core::Core;
 use serde_json::{Value, json};
 use support::*;
@@ -47,6 +48,11 @@ fn only_the_reviewed_builtin_database_call_with_a_complete_target_carries_approv
             )
         };
         let deliveries = core.events().subscribe_addressed();
+        if built_in && !complete {
+            assert_eq!(invoke(AGENT).unwrap_err().code, ErrorCode::InvalidParams);
+            assert!(named(&deliveries, "perm.approval").is_empty());
+            continue;
+        }
         let (review, invoked) = held(&core, &deliveries, "once", || invoke(AGENT));
         assert_eq!(review.data()["target"], DROP);
         let id = invoked.unwrap()["invocationId"].clone();

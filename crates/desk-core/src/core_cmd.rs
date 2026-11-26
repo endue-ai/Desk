@@ -2,8 +2,7 @@
 //! commands (the runtime registers the desk's built-in ones as `desk`); cmd.invoke checks the
 //! caller's `cmd:invoke` grant and the args, then the provider hears `cmd.invoked`, runs the command
 //! and answers with cmd.answer, which reaches the caller as `cmd.answered`. The registry tracks
-//! irreversible commands from the desk or a plugin's manifest. An agent waits for the person's
-//! approval (`approvals`, ADR 0078). The ok answers of commands that name an
+//! irreversible commands from the desk or a plugin manifest (ADR 0078). Commands that name an
 //! `undo` land on the desk's undo stack (`core_undo`, ADR 0077). What a registration leaves out comes
 //! from the manifest (`core_tools::described`), and commands marked `agent` are agents' tools
 //! (`core_tools`, ADR 0088).
@@ -162,6 +161,7 @@ impl Core {
         if let Some(schema) = &info.args_schema {
             check_args(schema, args.as_ref())?;
         }
+        let database_review = self.database_reviewed(review, &info, args.as_ref())?;
         let browser_act = kind == Kind::Command && self.delegates_web_act(&info);
         let review = review && !browser_act;
         let invoke = Action::Invoke {
@@ -189,7 +189,7 @@ impl Core {
         held?;
         let file_open_granted = self.file_open_granted(caller, id, &info.provider, args.as_ref());
         let approval = self.provider_approval(review, &info, args.as_ref());
-        let approved = approval.is_some().then_some(true);
+        let approved = (approval.is_some() || database_review).then_some(true);
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
