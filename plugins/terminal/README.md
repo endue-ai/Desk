@@ -17,7 +17,7 @@ buffer (`desk.buffers.open`), so `Mod+B` and `Mod+W` work on them. The requireme
 | Command | What it does |
 | --- | --- |
 | `endue.terminal.new { cwd? }` (`Mod+Shift+T`), `.focus { session? }` (`` Control+` ``), `.close`, `.next`, `.previous`, `.tabs { query, limit }` | New starts in the folder the tab on screen is in (OSC 7) or `cwd`; `.close` sends a hang-up; `.focus`, `.new`, `.next` and `.previous` bring the window forward; `.tabs` is the palette's Terminals group (`paletteProviders`), whose Enter runs `.focus` |
-| `endue.terminal.clear`, `.interrupt`, `.restart`, `.find`, `.rename { session?, title }` | Clear; send `int`; start the shell again; search the scrollback; name the tab |
+| `endue.terminal.clear`, `.interrupt`, `.restart`, `.find { session?, text? }`, `.rename { session?, title }` | Clear; send `int`; start the program again; search the scrollback; name the tab. Close and restart protect running work, with one confirmation for `force: true` (ADR 0381) |
 | `endue.terminal.split { direction, session? }` (⌘\\ · ⌃⌘\\, elsewhere `Control+Alt+\\` · `+Shift`), `.focus-pane { direction }` (`Mod+Shift+Arrow`) | A shell beside the pane, right or down, in its folder and tab; the focus to the pane beside. `.close` closes a pane, a tab's last one the tab; the layout and folders come back after a restart (`store` key `layout`, ADR 0249) |
 | `endue.terminal.run { command, args?, cwd?, title? }` | A program of its own in a new terminal, without a shell; answers `{ session, procId }`. A shell with arguments is refused |
 | `endue.terminal.sessions`, `.output { session?, chars? }`, `.send { session?, text, enter? }` (`ui/agent.js`) | Agents' tools (ADR 0088); `.run` and `.send` wait for the person's approval of an agent's every call |

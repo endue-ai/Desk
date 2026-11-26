@@ -16,8 +16,8 @@ and Codex are not on by default). Programs run through `proc.spawn` without a sh
 argument a leading dash cannot turn into an option. With `endue.local-agents.access` `read-only` (the
 default) Claude runs in plan mode and Codex in its read-only sandbox, and the desk asks once before
 running a program nothing holds read-only. No flag that widens a program's permissions is ever passed.
-Agents get `list`, `ask` (always read-only), `work` (agent access, so their call waits for approval)
-and `add-card` (never run); `ask` and `work` take a `folder` inside the work folder (ADR 0099).
+Agents can read `detect`, `list`, `board`, `activity` and a named `transcript`. `ask` is read-only,
+`work` waits for approval, `stop` is for owned work runs, and `add-card` prepares a card (ADR 0381).
 
 | Permission | Why |
 | --- | --- |
