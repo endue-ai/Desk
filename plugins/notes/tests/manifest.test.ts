@@ -81,6 +81,9 @@ describe("plugin.json", () => {
       "endue.notes.read",
       "endue.notes.append",
       "endue.notes.replace",
+      "endue.notes.show",
+      "endue.notes.rename",
+      "endue.notes.trash",
     ]);
     expect(contributes?.commands?.[0]).toMatchObject({ title: "New note" });
     expect(contributes?.commands?.[3]).toMatchObject({ title: "Open a note…" });

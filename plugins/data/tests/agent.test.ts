@@ -47,6 +47,31 @@ describe("endue.data.read", () => {
     expect(read.errors.length).toBeGreaterThan(0);
   });
 
+  it("sets a pointer in the existing edit session and searches without exposing masked values", async () => {
+    const { host, params, view } = await mount({ handlers: disk({ [A.path]: json }) });
+    await host.command("desk.files.visit", A);
+    await expect(
+      host.command("endue.data.set", { path: A.path, pointer: "/db/port", value: 6543 }),
+    ).resolves.toMatchObject({ pointer: "/db/port", changed: true });
+    await expect(host.command("endue.data.read", { pointer: "/db/port" })).resolves.toMatchObject({
+      value: 6543,
+    });
+    view.places.set(A.buffer, { mode: "tree", expanded: ["0", "0/1"], selected: "0/1/1" });
+    await expect(host.command("endue.data.read")).resolves.toMatchObject({
+      selectedPointer: "/db/port",
+    });
+    expect(params("fs.write")).toEqual([]);
+    await expect(
+      host.command("endue.data.search", { path: A.path, query: "hunter2" }),
+    ).resolves.toMatchObject({ matches: [] });
+    await expect(host.command("endue.data.search", { query: "6543" })).resolves.toMatchObject({
+      matches: [expect.any(Object)],
+    });
+    await expect(host.command("endue.data.problems", { path: A.path })).resolves.toMatchObject({
+      problems: [],
+    });
+  });
+
   it("is offered to agents as a read", () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),

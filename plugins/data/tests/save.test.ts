@@ -10,7 +10,7 @@ const B = file("~/data/b.yaml");
 const X = file("~/data/feed.xml");
 const JSON_TEXT = '{\n  "name": "desk",\n  "count": 1\n}\n';
 const YAML_TEXT = "# made-up\nname: desk # the name\ncount: 1\n";
-const WRITE = { permission: "fs:write", paths: ["~/data/**"] } as const;
+const WRITE = (path: string) => ({ permission: "fs:write", paths: [path] }) as const;
 
 const base64 = (text: string) => Buffer.from(text).toString("base64");
 const decoded = (content: unknown) => Buffer.from(String(content), "base64").toString("utf8");
@@ -49,7 +49,7 @@ describe("editing and saving JSON (lossless)", () => {
     await expect(host.command("desk.files.save", A)).resolves.toBeUndefined();
     const expected = '{\n  "name": "Desk",\n  "count": 2\n}\n';
     expect(params("fs.write")).toEqual([
-      { path: A.path, content: base64(expected), encoding: "base64", scope: WRITE },
+      { path: A.path, content: base64(expected), encoding: "base64", scope: WRITE(A.path) },
     ]);
     expect(ran("desk.palette.pick")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Saved a.json.");
@@ -58,7 +58,7 @@ describe("editing and saving JSON (lossless)", () => {
     expect(ran("desk.buffers.update")).toHaveLength(2);
   });
 
-  it("a refused write asks once for the file's folder, then writes", async () => {
+  it("a refused write asks once for the exact file, then writes", async () => {
     let writes = 0;
     const files = { [A.path]: JSON_TEXT };
     const { host, app, params } = await mount({
@@ -84,7 +84,7 @@ describe("editing and saving JSON (lossless)", () => {
     await app.edit([0, 1], "5");
     await host.command("desk.files.save", A);
     expect(params("perm.request")).toEqual([
-      { permission: WRITE, reason: "To save ~/data/a.json" },
+      { permission: WRITE(A.path), reason: "To save ~/data/a.json" },
     ]);
     expect(params("fs.write")).toHaveLength(2);
     expect(files[A.path]).toContain('"count": 5');
@@ -124,93 +124,85 @@ describe("editing and saving JSON (lossless)", () => {
   });
 });
 
-describe("saving YAML (text): Save as copy or Overwrite, asked once per file", () => {
-  const yaml = async (pick: Commands[string]) => {
+describe("saving YAML (text): one writable destination choice per file", () => {
+  const copy = "~/data/b.copy.yaml";
+  const yaml = async (picked: string | undefined) => {
     const files: Record<string, string> = { [B.path]: YAML_TEXT };
-    const mounted = await mount({ handlers: writable(files), commands: answering(pick) });
+    const mounted = await mount({
+      handlers: writable(files, {
+        "dialog.save": () => ({ path: picked, cancelled: picked === undefined }),
+      }),
+      commands: { "desk.buffers.update": () => undefined },
+    });
     await mounted.host.command("desk.files.visit", B);
     await mounted.app.edit([0, 0], "Desk");
     return { ...mounted, files };
   };
 
-  it("asks first, Save as copy first; the copy is written beside it and the file stays", async () => {
-    const { host, ran, params, view, files } = await yaml(() => "copy");
+  it("suggests a copy once and writes it under the dialog's exact grant", async () => {
+    const { host, ran, params, view, files } = await yaml(copy);
     expect(view.shown.at(-1)?.tier).toBe("text");
     await host.command("desk.files.save", B);
-    expect(ran("desk.palette.pick")).toEqual([
-      {
-        title: "Save b.yaml: YAML is saved as text",
-        items: [
-          {
-            id: "copy",
-            label: "Save as copy",
-            detail: "Writes b.copy.yaml beside it; b.yaml stays as it is",
-          },
-          {
-            id: "overwrite",
-            label: "Overwrite",
-            detail: "Rewrites b.yaml; its formatting may change",
-          },
-        ],
-      },
+    expect(params("dialog.save")).toEqual([
+      { title: "Save b.yaml as YAML text", startIn: "~/data", suggestedName: "b.copy.yaml" },
     ]);
-    expect(params("fs.write")).toMatchObject([{ path: "~/data/b.copy.yaml", scope: WRITE }]);
-    expect(files["~/data/b.copy.yaml"]).toBe("# made-up\nname: Desk # the name\ncount: 1\n");
+    expect(ran("desk.palette.pick")).toEqual([]);
+    expect(params("perm.request")).toEqual([]);
+    expect(params("fs.write")).toMatchObject([{ path: copy, scope: WRITE(copy) }]);
+    expect(files[copy]).toBe("# made-up\nname: Desk # the name\ncount: 1\n");
     expect(files[B.path]).toBe(YAML_TEXT);
     expect(view.statuses.at(-1)).toBe("Saved a copy as b.copy.yaml; b.yaml is unchanged.");
 
     await host.command("desk.files.save", B);
-    expect(ran("desk.palette.pick")).toHaveLength(1);
-    expect(params("fs.write")).toMatchObject([
-      { path: "~/data/b.copy.yaml" },
-      { path: "~/data/b.copy.yaml" },
-    ]);
+    expect(params("dialog.save")).toHaveLength(1);
+    expect(params("fs.write")).toMatchObject([{ path: copy }, { path: copy }]);
   });
 
-  it("says when the copy would replace one already there", async () => {
-    const files: Record<string, string> = { [B.path]: YAML_TEXT, "~/data/b.copy.yaml": "old" };
-    const { host, app, ran } = await mount({
-      handlers: writable(files),
-      commands: answering(() => "copy"),
-    });
-    await host.command("desk.files.visit", B);
-    await app.edit([0, 1], "2");
-    await host.command("desk.files.save", B);
-    const [asked] = ran("desk.palette.pick") as Array<{ items: Array<{ detail: string }> }>;
-    expect(asked?.items[0]?.detail).toBe("Replaces b.copy.yaml beside it; b.yaml stays as it is");
-  });
-
-  it("Overwrite writes the file, and is not asked again", async () => {
-    const { host, app, ran, files } = await yaml(() => "overwrite");
+  it("writes the original when chosen, and keeps that destination for later saves", async () => {
+    const { host, app, params, files } = await yaml(B.path);
     await host.command("desk.files.save", B);
     expect(files[B.path]).toBe("# made-up\nname: Desk # the name\ncount: 1\n");
     await app.edit([0, 1], "2");
     await host.command("desk.files.save", B);
     expect(files[B.path]).toContain("count: 2");
-    expect(ran("desk.palette.pick")).toHaveLength(1);
-    expect(files["~/data/b.copy.yaml"]).toBeUndefined();
+    expect(params("dialog.save")).toHaveLength(1);
+    expect(files[copy]).toBeUndefined();
   });
 
   it("a cancelled question writes nothing, and the next save asks again", async () => {
-    const { host, ran, params, view } = await yaml(() => undefined);
+    const { host, params, view } = await yaml(undefined);
     await expect(host.command("desk.files.save", B)).rejects.toThrow("Did not save b.yaml.");
     expect(params("fs.write")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Did not save b.yaml.");
     await expect(host.command("desk.files.save", B)).rejects.toThrow();
-    expect(ran("desk.palette.pick")).toHaveLength(2);
+    expect(params("dialog.save")).toHaveLength(2);
   });
 
-  it("with the palette off it writes the copy, the default", async () => {
-    const files: Record<string, string> = { [B.path]: YAML_TEXT };
+  it("can save a copy outside the source's folder using only the native file choice", async () => {
+    const source = file("/outside/original/b.yaml");
+    const target = "/outside/destination/b.copy.yaml";
+    const files: Record<string, string> = { [source.path]: YAML_TEXT };
+    let chosen = false;
     const { host, app, params } = await mount({
-      handlers: writable(files),
-      commands: { "desk.buffers.update": () => undefined },
+      handlers: writable(files, {
+        "dialog.save": () => {
+          chosen = true;
+          return { path: target, cancelled: false };
+        },
+        "fs.write": ({ path, scope, content }) => {
+          if (!chosen || scope.paths.join(",") !== target) throw denied("file was not chosen");
+          files[path] = decoded(content);
+          return { bytesWritten: 1 };
+        },
+      }),
     });
-    await host.command("desk.files.visit", B);
+    await host.command("desk.files.visit", source);
     await app.edit([0, 0], "Desk");
-    await host.command("desk.files.save", B);
-    expect(params("fs.write")).toMatchObject([{ path: "~/data/b.copy.yaml" }]);
-    expect(files[B.path]).toBe(YAML_TEXT);
+    await host.command("desk.files.save", source);
+    expect(params("dialog.save")).toHaveLength(1);
+    expect(params("perm.request")).toEqual([]);
+    expect(params("fs.write")).toMatchObject([{ path: target, scope: WRITE(target) }]);
+    expect(files[source.path]).toBe(YAML_TEXT);
   });
 });
 

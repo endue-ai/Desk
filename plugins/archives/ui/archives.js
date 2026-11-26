@@ -309,7 +309,21 @@ export function createArchives({ bridge, commands, surface }, view, sdk) {
     view.preview(null);
   });
 
-  answerAgents(commands, { open: () => [...held.values()], shown: () => shown });
+  answerAgents(commands, {
+    open: () => [...held.values()],
+    shown: () => shown,
+    extract: extractor.extract,
+    async show(file, entry) {
+      const level = file.levels.at(-1);
+      if (!level?.tree.byId.has(entry)) throw new Error("That entry is unavailable.");
+      const parts = entry.split("/");
+      for (let length = 1; length < parts.length; length++)
+        level.expanded.add(parts.slice(0, length).join("/"));
+      frame.filter = "";
+      level.selected = entry;
+      await present(file.buffer);
+    },
+  });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

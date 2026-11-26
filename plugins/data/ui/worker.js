@@ -1,5 +1,6 @@
 // One worker owns one document for its lifetime. Replies contain bounded, already-masked views. It
 // also keeps the document's edit session (edit/session.js): edits run here, and save takes its bytes.
+import { planEdit, readDocument, searchDocument, visibleProblems } from "./agent.js";
 import { createSession } from "./edit/session.js";
 import { bytesSum } from "./edit/sum.js";
 import { openFile } from "./formats.js";
@@ -130,6 +131,10 @@ export function attachDataWorker(port) {
       };
     }
     if (!opened) throw new Error("Open a document first.");
+    if (method === "agent-read") return readDocument(opened.doc, args, opened.label);
+    if (method === "agent-edit") return planEdit(opened.doc, args, opened.label);
+    if (method === "agent-search") return searchDocument(opened.doc, args.query);
+    if (method === "agent-problems") return visibleProblems(opened.doc, args.errors);
     if (method === "begin") return session.valueOf(args.path);
     if (method === "edit") {
       if (!session.edit(args.path, args.text).changed) return { changed: false };

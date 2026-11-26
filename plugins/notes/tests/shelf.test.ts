@@ -107,6 +107,36 @@ describe("the shelf", () => {
     });
   });
 
+  it("switches away from an edited outside note without writing or asking", async () => {
+    const source = "/outside/a.md";
+    const files = { [source]: "on disk", "~/Notes/b.md": "another note" };
+    const { m, shelf } = await shelved(files);
+    await m.host.command("desk.files.visit", note(source));
+    m.app.edit("unsaved typing");
+    await shelf.open("~/Notes/b.md");
+    expect(files[source]).toBe("on disk");
+    expect(m.params("fs.write")).toEqual([]);
+    expect(m.params("perm.request")).toEqual([]);
+    await m.host.command("desk.buffers.show", { buffer: note(source).buffer });
+    expect(m.app.current()).toMatchObject({ path: source, modified: true });
+  });
+
+  it("can show, rename and trash a named library note through agent commands", async () => {
+    const files = { "~/Notes/a.md": "note" } as Record<string, string>;
+    const { m } = await shelved(files);
+    await expect(m.host.command("endue.notes.show", { path: "a.md" })).resolves.toMatchObject({
+      path: "~/Notes/a.md",
+    });
+    await expect(
+      m.host.command("endue.notes.rename", { path: "a.md", name: "renamed" }),
+    ).resolves.toMatchObject({ path: "~/Notes/renamed.md" });
+    expect(files).toEqual({ "~/Notes/renamed.md": "note" });
+    await expect(
+      m.host.command("endue.notes.trash", { path: "renamed.md" }),
+    ).resolves.toMatchObject({ path: "~/Notes/renamed.md" });
+    expect(files).toEqual({});
+  });
+
   it("renames the note on screen, opens it under the new name and closes the old buffer", async () => {
     const files: Record<string, string> = { "~/Notes/a.md": "text" };
     const { m, shelf } = await shelved(files);

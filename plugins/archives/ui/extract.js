@@ -1,5 +1,5 @@
-// Extraction: the selection or everything, to a folder the person picks in the palette, after one
-// question, perm.request for fs:write on it (#162 finding 15). Names that would land outside are
+// Extraction to a destination folder chosen by the person or named in a command.
+// Names that would land outside are
 // refused and listed; where Archives may read the folder an existing file asks once for the run
 // (overwrite, skip or stop), where it may not one is replaced and named (existing.js); "Allow once"
 // lets one file through. The progress element counts files and bytes, and stop() (its Cancel, or
@@ -45,6 +45,7 @@ export function stem(name) {
 export function createExtractor({ bridge, commands }, files, out) {
   let stopping = false;
   let running = false;
+  let choosing = false;
 
   /** One answer from the palette; undefined when cancelled. @param {object} args */
   const pick = (args) =>
@@ -56,23 +57,60 @@ export function createExtractor({ bridge, commands }, files, out) {
   /**
    * @param {Archive} archive
    * @param {Entry[]} chosen files and links, in the archive's order
-   * @param {{ name: string, beside: string }} what the archive's name and the file's folder
+   * @param {{ name: string, beside: string, to?: string }} what the archive and its destination
    */
-  const extract = async (archive, chosen, what) => {
-    if (running) return out.say("An extraction is already running.");
+  const runExtract = async (archive, chosen, what) => {
     if (archive.refusal) return out.say(archive.refusal);
     if (chosen.length === 0) return out.say("Nothing to extract.");
-    const fallback = `${what.beside}/${stem(what.name)}`;
-    const answer = await pick({
-      title: `Extract ${what.name} to`,
-      items: [{ id: fallback, label: fallback, detail: "A new folder beside the archive" }],
-      free: true,
-      placeholder: fallback,
-    });
-    if (!answer) return out.say("Nothing was extracted.");
-    const target = answer.replace(/\/+$/, "");
-    const write = scopeUnder("fs:write", target);
-    const allowed = await files.request(write, `To extract ${what.name} to ${target}`);
+    const destination = async () => {
+      if (what.to !== undefined) return { answer: what.to, chosen: false };
+      const dialog = await bridge
+        .call("dialog.open", {
+          kind: "folders",
+          intent: "destination",
+          startIn: what.beside,
+          title: `Extract ${what.name.slice(0, 150)} to a folder`,
+        })
+        .catch((error) => {
+          if (codeOf(error) !== "unsupported") throw error;
+          return undefined;
+        });
+      if (dialog) return { answer: dialog.cancelled ? undefined : dialog.paths[0], chosen: true };
+      const fallback = `${what.beside}/${stem(what.name)}`;
+      const answer = await pick({
+        title: `Extract ${what.name} to`,
+        items: [{ id: fallback, label: fallback, detail: "A new folder beside the archive" }],
+        free: true,
+        placeholder: fallback,
+      });
+      return { answer, chosen: false };
+    };
+    const granted = async () => {
+      const { answer, chosen } = await destination();
+      if (!answer) return undefined;
+      const target = answer.replace(/\/+$/, "");
+      if (
+        !target ||
+        /[*?]/u.test(target) ||
+        target.includes("\0") ||
+        target.split("/").includes("..")
+      )
+        throw new Error("Give an exact destination folder.");
+      const write = scopeUnder("fs:write", target);
+      const held =
+        chosen ||
+        (await bridge.call("perm.query", { permission: write }).then(
+          ({ grants }) => grants.some((grant) => grant.duration !== "once"),
+          () => false,
+        ));
+      const allowed = held
+        ? { granted: true, once: false, grantId: undefined }
+        : await files.request(write, `To extract ${what.name} to ${target}`);
+      return { target, write, allowed };
+    };
+    const grant = await granted();
+    if (!grant) return out.say("Nothing was extracted.");
+    const { target, write, allowed } = grant;
     if (!allowed.granted) return out.say(`Not allowed to write ${target}.`);
 
     /** @type {Array<{ entry: Entry, path: string }>} */
@@ -224,10 +262,22 @@ export function createExtractor({ bridge, commands }, files, out) {
     if (large.length)
       ending += ` Larger than ${formatSize(EXTRACT_LIMIT)}, which the desk cannot write in one piece yet: ${large.join(", ")}.`;
     out.say(ending);
+    return { to: target, written: done, skipped, status: ending };
   };
 
   const stop = () => {
     if (running) stopping = true;
+  };
+
+  /** @type {typeof runExtract} */
+  const extract = async (archive, chosen, what) => {
+    if (choosing) return out.say("An extraction is already running.");
+    choosing = true;
+    try {
+      return await runExtract(archive, chosen, what);
+    } finally {
+      choosing = false;
+    }
   };
 
   return {

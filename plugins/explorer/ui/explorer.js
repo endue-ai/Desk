@@ -249,6 +249,7 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     void save();
   };
   const { reveal, addFolder, removeFolder } = createReach({
+    bridge,
     desk,
     surface,
     settings,
@@ -334,6 +335,7 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
   const context = contextActions(bridge, commands, {
     selected: () => rowOf(selected),
     reach: async (path) => ((await reveal(path)) ? rowOf(path) : undefined),
+    rootOf,
     say,
     open: async (row) => {
       if (row.kind !== "dir") return open(row.path);

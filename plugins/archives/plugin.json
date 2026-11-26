@@ -342,6 +342,43 @@
         },
         "agent": true,
         "readOnly": true
+      },
+      {
+        "id": "endue.archives.show",
+        "title": "Show an archive entry",
+        "description": "Select and preview a named entry in the active archive.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "entry": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          "required": ["entry"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.archives.extract",
+        "title": "Extract archive entries",
+        "description": "Extract entries in an open archive to the named destination folder. Omit entries to extract all.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "entries": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "minItems": 1,
+              "maxItems": 5000,
+              "uniqueItems": true
+            },
+            "to": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          "required": ["to"],
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ]
   }

@@ -3,13 +3,16 @@
 // commands and the bridge, and to the notes controller (notes.js) through its save and current.
 // Opening a note runs desk.files.open from Notes itself, so the note opens in this window (ADR 0212).
 
+import { createNoteActions, fileNameOf } from "./file-actions.js";
 import { ROOT } from "./library.js";
+
+export { fileNameOf };
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {{ path: string, name: string, title: string, modifiedAt?: string }} Shelved
  * @typedef {{ list(items: Shelved[], current: string | undefined, filter: string): void, confirming(on: boolean): void }} ShelfView
- * @typedef {{ save(buffer: string): Promise<unknown>, current(): { buffer: string, path: string, name: string, modified: boolean } | undefined, grants: ReturnType<typeof import("./grants.js").createGrants>, say(text: string): void }} NotesApp
+ * @typedef {{ save(buffer: string, ask?: boolean): Promise<unknown>, current(): { buffer: string, path: string, name: string, modified: boolean } | undefined, grants: ReturnType<typeof import("./grants.js").createGrants>, say(text: string): void }} NotesApp
  * @typedef {{ shelved(): Promise<Shelved[]> }} Library
  */
 
@@ -25,18 +28,6 @@ const READ = { permission: "fs:read", paths: [`${ROOT}/**`] };
 /** Notes in ~/Notes save themselves; any other file waits for Save (Mod+S). */
 export const autosaves = (/** @type {string} */ path) => path.startsWith(`${ROOT}/`);
 
-const folderOf = (/** @type {string} */ path) => path.slice(0, path.lastIndexOf("/"));
-
-/**
- * A file name for a typed one: trimmed, without slashes, `.md` added unless it ends in .md or .txt.
- * Empty for a name that cannot be a file.
- */
-export const fileNameOf = (/** @type {string} */ typed) => {
-  const name = typed.trim().replace(/[/\\:]/g, "-");
-  if (name === "" || name === "." || name === "..") return "";
-  return /\.(md|txt)$/i.test(name) ? name : `${name}.md`;
-};
-
 /**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {NotesApp} app
@@ -47,6 +38,7 @@ export const fileNameOf = (/** @type {string} */ typed) => {
 export function createShelf({ bridge, commands }, app, library, view, options = {}) {
   const set = options.timers?.set ?? setTimeout;
   const clear = options.timers?.clear ?? clearTimeout;
+  const actions = createNoteActions({ bridge, commands }, app.grants);
   /** @type {Shelved[]} */
   let items = [];
   let filter = "";
@@ -102,12 +94,12 @@ export function createShelf({ bridge, commands }, app, library, view, options = 
     }
   };
 
-  /** Write the note on screen now, when it has unsaved text. */
+  /** Finish an autosave quietly before leaving the note. */
   const flush = async () => {
     clear(saving);
     saving = undefined;
     const note = app.current();
-    if (note?.modified) await app.save(note.buffer);
+    if (note?.modified && autosaves(note.path)) await attempt(() => app.save(note.buffer, false));
   };
 
   return {
@@ -147,21 +139,8 @@ export function createShelf({ bridge, commands }, app, library, view, options = 
       attempt(async () => {
         const note = app.current();
         if (!note) return;
-        const name = fileNameOf(typed);
-        if (!name) throw new Error("A note's name cannot be empty.");
-        const to = `${folderOf(note.path)}/${name}`;
-        if (to === note.path) return;
-        await flush();
-        const from = note.path;
-        await app.grants.withGrant(
-          "fs:write",
-          to,
-          (scope) => bridge.call("fs.rename", { from, to, scope }),
-          `To rename ${from} to ${name}`,
-        );
-        // The new name opens in this window first, so closing the old one leaves the window.
-        await commands.run("desk.files.open", { path: to });
-        await commands.run("desk.buffers.close", { id: note.buffer });
+        if (note.modified) await app.save(note.buffer);
+        await actions.rename(note.path, typed, note.buffer);
         await refresh();
       }),
     /** Delete asks once more on the same button; the second press moves the note to the Trash. */
@@ -182,14 +161,7 @@ export function createShelf({ bridge, commands }, app, library, view, options = 
         view.confirming(false);
         clear(saving);
         saving = undefined;
-        await app.grants.withGrant(
-          "fs:write",
-          note.path,
-          (scope) => bridge.call("fs.trash", { path: note.path, scope }),
-          `To move ${note.path} to the Trash`,
-        );
-        await commands.run("desk.buffers.update", { id: note.buffer, modified: false });
-        await commands.run("desk.buffers.close", { id: note.buffer });
+        await actions.trash(note.path, note.buffer);
         app.say(`${note.name} was moved to the Trash.`);
         await refresh();
       }),

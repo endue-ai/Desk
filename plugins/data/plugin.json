@@ -195,6 +195,51 @@
         },
         "agent": true,
         "readOnly": true
+      },
+      {
+        "id": "endue.data.set",
+        "title": "Set a data value",
+        "description": "Set a scalar at a JSON Pointer in an open file. Uses the field's original type and leaves the edit unsaved.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "pointer": { "type": "string", "maxLength": 4096 },
+            "value": { "type": ["string", "number", "boolean", "null"] },
+            "document": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["pointer", "value"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.data.problems",
+        "title": "Read schema problems",
+        "description": "Read schema problems in an open data file. This omits masked values.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.data.search",
+        "title": "Search a data file",
+        "description": "Find keys and unmasked values in an open data file. Answers bounded paths and JSON Pointers.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "query": { "type": "string", "minLength": 1, "maxLength": 2000 }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       }
     ]
   }

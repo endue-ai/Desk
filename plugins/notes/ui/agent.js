@@ -3,11 +3,12 @@
 // folder the manifest holds a grant for, so nothing here asks the person for a folder; a note open
 // with unsaved edits is read as the person sees it and never written over, since their typing comes
 // first. Every write is one fs.write, which keeps the text it replaced as a version (fs.history).
+import { createNoteActions } from "./file-actions.js";
 import { dateOf, ROOT } from "./library.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
- * @typedef {{ path: string, name: string, text: string, modified: boolean }} Open
+ * @typedef {{ buffer: string, path: string, name: string, text: string, modified: boolean }} Open
  */
 
 const READ = /** @type {const} */ ({ permission: "fs:read", paths: [`${ROOT}/**`] });
@@ -37,14 +38,18 @@ const nameFor = (/** @type {unknown} */ name, /** @type {Date} */ now) => {
 };
 
 /**
- * @param {{ bridge: PluginContext["bridge"], commands: PluginContext["commands"],
+ * @param {{ bridge: PluginContext["bridge"], commands: PluginContext["commands"], grants: ReturnType<typeof import("./grants.js").createGrants>,
  *   open(): Open[], all(): Promise<Array<{ path: string, name: string, size?: number,
  *   modifiedAt?: string, text: string }>>, now(): Date }} deps
  * @returns {Record<string, (args: Record<string, unknown>) => Promise<unknown>>}
  */
 export function agentCommands(deps) {
   const { bridge } = deps;
+  const actions = createNoteActions(deps, deps.grants);
   const openAt = (/** @type {string} */ path) => deps.open().find((note) => note.path === path);
+  // The library is the default scope. An already open note has an exact path of its own.
+  const shownPath = (/** @type {unknown} */ value) =>
+    typeof value === "string" && openAt(value) ? value : notePath(value);
   const disk = async (/** @type {string} */ path) =>
     /** @type {{ content: string }} */ (
       await bridge.call("fs.read", { path, encoding: "utf8", scope: READ })
@@ -62,6 +67,18 @@ export function agentCommands(deps) {
   };
 
   return {
+    "endue.notes.show": async (a) => actions.show(shownPath(a.path)),
+    "endue.notes.rename": async (a) => {
+      const path = shownPath(a.path);
+      writable(path);
+      if (typeof a.name !== "string") throw new Error("Give the note's new name.");
+      return actions.rename(path, a.name, openAt(path)?.buffer);
+    },
+    "endue.notes.trash": async (a) => {
+      const path = shownPath(a.path);
+      writable(path);
+      return actions.trash(path, openAt(path)?.buffer);
+    },
     "endue.notes.list": async (a) => {
       const words =
         typeof a.query === "string" ? a.query.toLowerCase().split(/\s+/).filter(Boolean) : [];

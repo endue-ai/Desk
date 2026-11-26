@@ -10,7 +10,7 @@ import { createDialogs } from "./dialogs.js";
 import { createDrops } from "./drops.js";
 import { createGrants } from "./grants.js";
 import { keptText, openFiles, readEdit, readPlace } from "./keep.js";
-import { createLibrary } from "./library.js";
+import { createLibrary, ROOT } from "./library.js";
 import { createSearch } from "./search.js";
 
 /** A command's arguments as an object. */
@@ -187,13 +187,12 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   const saveNote = async (
     /** @type {string} */ buffer,
     /** @type {string | undefined} */ asked,
+    ask = true,
   ) => {
     const note = await holding(buffer);
     const path = asked ?? note.path;
     const content = note.text;
-    await withGrant("fs:write", path, (scope) =>
-      bridge.call("fs.write", { path, content, encoding: "utf8", scope }),
-    );
+    await grants.write(path, content, { ask, exact: !path.startsWith(`${ROOT}/`) });
     // desk.files clears the list's mark after a save; text typed while it was written stays unsaved,
     // and the desk hears so once this answer has reached it.
     note.reported = false;
@@ -252,6 +251,7 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   const agent = agentCommands({
     bridge,
     commands,
+    grants,
     open: () => [...notes.values()],
     all: library.notes,
     now: () => new Date(),
@@ -381,8 +381,8 @@ export function createNotes({ bridge, commands, surface, dnd }, view, sdk) {
   });
 
   /** Notes' own save (auto-save, rename): written, and the desk's unsaved mark cleared. */
-  const save = async (/** @type {string} */ buffer) => {
-    const note = await saveNote(buffer, undefined);
+  const save = async (/** @type {string} */ buffer, ask = true) => {
+    const note = await saveNote(buffer, undefined, ask);
     if (!note.modified)
       await commands.run("desk.buffers.update", { id: buffer, modified: false }).catch(() => {});
     return note;
