@@ -149,6 +149,16 @@ it("lists and switches profiles and saves the current setup under a new ID", asy
     invoke(bridge, "desk.profiles.save", { id: "focused", name: "Other" }),
   ).rejects.toThrow();
   expect(core.folder.read("~/.desk/profiles/focused.yaml")).toContain("name: Focused");
+  const existing = "~/.desk/profiles/existing.yaml";
+  core.folder.write(existing, "old profile text");
+  await expect(
+    invoke(bridge, "desk.profiles.save", { id: "existing", name: "Replacement" }),
+  ).rejects.toThrow(/already exists/);
+  expect(core.folder.read(existing)).toBe("old profile text");
+  expect(Object.keys(core.folder.files()).filter((file) => file.endsWith(".tmp"))).toEqual([]);
+  await expect(
+    invoke(bridge, "desk.profiles.save", { id: "injected", name: "Injected", settings: {} }),
+  ).rejects.toThrow(/new profile ID and name/);
   profiles.dispose();
   hub.commands.dispose();
 });

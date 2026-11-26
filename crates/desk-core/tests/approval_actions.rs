@@ -308,6 +308,10 @@ fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
         "desk.profiles.switch",
         "desk.profiles.save",
     ];
+    let ask = |id: &str| {
+        let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
+        call(&core, "agent:eris", "cmd.invoke", params)
+    };
     let irreversible = ["desk.notify.clear", "desk.profiles.remove"];
     for (ids, irreversible) in [(&reversible[..], false), (&irreversible[..], true)] {
         for id in ids {
@@ -324,15 +328,13 @@ fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
         }
     }
     for id in reversible {
-        invoke(&core, "agent:eris", id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+        ask(id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
     }
 
     grant(&core, "desk", manage());
     let deliveries = core.events().subscribe_addressed();
     for id in irreversible {
-        let (approval, denied) = held(&core, &deliveries, "deny", || {
-            invoke(&core, "agent:eris", id)
-        });
+        let (approval, denied) = held(&core, &deliveries, "deny", || ask(id));
         assert_eq!(approval.data()["target"], id);
         assert_eq!(denied.unwrap_err().code, ErrorCode::PermissionDenied);
     }

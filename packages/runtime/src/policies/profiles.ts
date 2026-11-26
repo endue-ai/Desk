@@ -7,7 +7,8 @@
  * the plugin's back, also in force). Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
  */
 import type { ProfileContribution } from "@endue-ai/bridge";
-import { CommandError } from "../commands";
+import { PROFILE_TOOLS } from "../agent-specs";
+import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
 import { autoloads } from "../policy";
 import { type DeskContext, disposer, type Installed } from "./context";
@@ -115,9 +116,9 @@ export function installProfiles(
   const define = (
     id: string,
     title: string,
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     keywords: string[],
-    options: { irreversible?: boolean } = {},
+    agent: AgentSpec,
   ) =>
     offs.add(
       commands.define(id, {
@@ -125,7 +126,7 @@ export function installProfiles(
         keywords: ["profiles", ...keywords],
         owner: "desk.profiles",
         run,
-        ...options,
+        agent,
       }),
     );
   const idOf = (args: unknown) => (args as { id?: string } | undefined)?.id;
@@ -133,23 +134,40 @@ export function installProfiles(
   define(
     "desk.profiles.switch",
     "Switch to another profile",
-    async (args) => {
+    async (args, { caller }) => {
+      if (caller?.startsWith("agent:") && !idOf(args))
+        throw new CommandError("failed", "Give a profile ID from desk.profiles.list");
       const id = idOf(args) ?? (await pick("Switch to a profile", false));
       return id ? apply(id) : null;
     },
     ["mode"],
+    PROFILE_TOOLS.switch,
   );
-  define("desk.profiles.list", "List profiles", () => ({ active, profiles: all() }), []);
+  define(
+    "desk.profiles.list",
+    "List profiles",
+    (_args, { caller }) => ({
+      active,
+      profiles: caller?.startsWith("agent:") ? all().map(({ id, name }) => ({ id, name })) : all(),
+    }),
+    [],
+    PROFILE_TOOLS.list,
+  );
   define(
     "desk.profiles.save",
     "Save this setup as a profile",
-    async (args) => {
+    async (args, { caller }) => {
       // `settings` and `plugins` save that profile as given (a copy of another) instead of this setup.
       const { id: given, name, ...rest } = (args ?? {}) as Partial<ProfileContribution>;
+      const agent = caller?.startsWith("agent:") === true;
+      if (agent && (!given || !name || Object.keys(rest).length > 0))
+        throw new CommandError("failed", "Give a new profile ID and name");
       const id = given ?? (await pick("Save this setup as", true));
       if (!id) return null;
       if (!PROFILE_ID.test(id))
         throw new CommandError("failed", `${id} is not a profile name (lowercase, digits, . _ -)`);
+      if (agent && all().some((profile) => profile.id === id))
+        throw new CommandError("failed", `Profile ${id} already exists`);
       const plugins = hub.plugins.filter((p) => p.status === "ready" && !autoloads(p));
       // The person's key bindings are keys.yaml's, for every profile: they stay in the session.
       const { [PERSONAL_KEYS]: keys, ...session } = settings.layer("session");
@@ -166,7 +184,7 @@ export function installProfiles(
       };
       // The file before anything else: a write the core refuses switches nothing and says why
       // (#102). Whoever runs the command, the runtime writes as itself (ADR 0079's grant).
-      await files.save(profile).catch((error: unknown) => {
+      await files.save(profile, agent).catch((error: unknown) => {
         const why = error instanceof Error ? error.message : String(error);
         throw new CommandError("failed", `profile ${id} was not saved: ${why}`);
       });
@@ -179,9 +197,10 @@ export function installProfiles(
       }
       changed();
       notify({ caller: "desk", title: `Saved profile ${profile.name}`, level: "success" });
-      return profile;
+      return agent ? { id, name: profile.name } : profile;
     },
     ["mode", "init"],
+    PROFILE_TOOLS.save,
   );
   define(
     "desk.profiles.remove",
@@ -200,7 +219,7 @@ export function installProfiles(
       return { id };
     },
     ["delete", "forget"],
-    { irreversible: true },
+    PROFILE_TOOLS.remove,
   );
 
   return {

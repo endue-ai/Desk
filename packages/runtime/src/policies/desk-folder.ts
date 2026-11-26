@@ -14,7 +14,7 @@ export interface DeskFolder {
   /** The file's text, or undefined when there is none (or it cannot be read). */
   read(path: string): Promise<string | undefined>;
   /** Create or replace the file, and its folder when missing. */
-  write(path: string, text: string): Promise<void>;
+  write(path: string, text: string, newOnly?: boolean): Promise<void>;
   /** Move the file to the Trash; whether it went (where there is no trash, it stays). */
   trash(path: string): Promise<boolean>;
   /** The names of the files in a folder; none when it is missing. */
@@ -49,6 +49,25 @@ export function deskFolder(bridge: BridgeClient): DeskFolder {
     return watching;
   };
 
+  const write = async (path: string, text: string) => {
+    // The core makes only folders the scope covers (#102): a file in a folder of the desk folder
+    // (profiles/) names that folder in its scope too. One at the top (keys.yaml) asks for no
+    // folder, which the runtime's grant could not cover: the core makes ~/.desk itself.
+    const dir = path.slice(0, path.lastIndexOf("/"));
+    const nested = dir !== DESK_DIR;
+    const scope: FsWritePermission = {
+      permission: "fs:write",
+      paths: nested ? [path, dir] : [path],
+    };
+    await bridge.call("fs.write", {
+      path,
+      content: text,
+      encoding: "utf8",
+      ...(nested ? { createDirs: true } : {}),
+      scope,
+    });
+  };
+
   return {
     read: async (path) => {
       try {
@@ -57,23 +76,24 @@ export function deskFolder(bridge: BridgeClient): DeskFolder {
         return undefined;
       }
     },
-    write: async (path, text) => {
-      // The core makes only folders the scope covers (#102): a file in a folder of the desk folder
-      // (profiles/) names that folder in its scope too. One at the top (keys.yaml) asks for no
-      // folder, which the runtime's grant could not cover: the core makes ~/.desk itself.
-      const dir = path.slice(0, path.lastIndexOf("/"));
-      const nested = dir !== DESK_DIR;
-      const scope: FsWritePermission = {
-        permission: "fs:write",
-        paths: nested ? [path, dir] : [path],
-      };
-      await bridge.call("fs.write", {
-        path,
-        content: text,
-        encoding: "utf8",
-        ...(nested ? { createDirs: true } : {}),
-        scope,
-      });
+    write: async (path, text, newOnly) => {
+      if (!newOnly) return write(path, text);
+      // The staging file is ignored by the profile watcher. Rename refuses an existing final ID.
+      const slash = path.lastIndexOf("/");
+      const temp = `${path.slice(0, slash)}/.profile-${crypto.randomUUID()}.tmp`;
+      await write(temp, text);
+      try {
+        await bridge.call("fs.rename", {
+          from: temp,
+          to: path,
+          scope: { permission: "fs:write", paths: [temp, path] },
+        });
+      } catch (error) {
+        await bridge
+          .call("fs.trash", { path: temp, scope: { permission: "fs:write", paths: [temp] } })
+          .catch(() => {});
+        throw error;
+      }
     },
     trash: async (path) => {
       try {

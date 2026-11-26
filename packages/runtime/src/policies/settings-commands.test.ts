@@ -81,6 +81,9 @@ it("writes only declared, editable values that meet their whole schema", async (
     default: 1000,
     layer: "session",
   });
+  await hub.preferences.settled();
+  const saved = await hub.preferences.bridge.call("store.get", { key: "preferences" });
+  expect(saved.value).toMatchObject({ values: { "desk.notify.info-ms": 2500 } });
   await expect(
     hub.commands.run("desk.settings.get", { key: "endue.terminal.env" }),
   ).rejects.toThrow();
