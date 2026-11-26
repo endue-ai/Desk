@@ -444,7 +444,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.run",
@@ -751,7 +752,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.prune",
@@ -786,7 +788,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.cancel",
@@ -797,7 +800,8 @@
           "type": "object",
           "properties": {},
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.overview",
@@ -830,7 +834,8 @@
           },
           "required": ["query"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.sort",
@@ -852,7 +857,8 @@
           },
           "required": ["key"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.open-port",
@@ -872,7 +878,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.docker.history",
@@ -941,7 +948,9 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.docker.copy-out",
@@ -995,6 +1004,17 @@
           "additionalProperties": false
         },
         "agent": true
+      },
+      {
+        "id": "endue.docker.view",
+        "title": "Docker: Read the current view",
+        "description": "Read the current list, search, sort, selection, marked items and detail pane tab.",
+        "args": {
+          "type": "object",
+          "properties": {}
+        },
+        "agent": true,
+        "readOnly": true
       }
     ],
     "keys": [

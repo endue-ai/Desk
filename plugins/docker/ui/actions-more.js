@@ -49,14 +49,15 @@ export function createMoreActions(deps, known) {
     args[kind] === undefined ? deps.marked().filter((item) => item.kind === kind) : [];
 
   /** @param {Args} [args] */
-  const removeVolume = async (args = {}) => {
+  const removeVolume = async (args = {}, reviewed = false) => {
     const marked = /** @type {Array<{ kind: "volume", name: string }>} */ (marks(args, "volume"));
     if (marked.length > 1) {
       const targets = marked.map((item) => ({ ref: item.name, name: item.name, state: "", item }));
-      await ensure(
-        `Remove ${targets.length} volumes: ${names(targets.map((t) => t.name))}? Their data is gone for good.`,
-        `Remove ${targets.length} volumes`,
-      );
+      if (!reviewed)
+        await ensure(
+          `Remove ${targets.length} volumes: ${names(targets.map((t) => t.name))}? Their data is gone for good.`,
+          `Remove ${targets.length} volumes`,
+        );
       return bulk(
         targets,
         { past: "Removed", verb: "remove" },
@@ -66,21 +67,23 @@ export function createMoreActions(deps, known) {
       );
     }
     const name = volume(args);
-    await ensure(`Remove the volume ${name}? Its data is gone for good.`, `Remove ${name}`);
+    if (!reviewed)
+      await ensure(`Remove the volume ${name}? Its data is gone for good.`, `Remove ${name}`);
     await docker(["volume", "rm", "--", name]);
     return done(`Removed the volume ${name}.`);
   };
 
   /** @param {Args} [args] `all: true` takes named volumes too, not only anonymous ones. */
-  const pruneVolumes = async (args = {}) => {
+  const pruneVolumes = async (args = {}, reviewed = false) => {
     const all = args.all === true;
-    await ensure(
-      all
-        ? "Remove every volume no container uses, named ones too? Their data is gone for good."
-        : "Remove every anonymous volume no container uses? Their data is gone for good.",
-      "Remove them",
-      await preview(() => previewVolumes(docker, all)),
-    );
+    if (!reviewed)
+      await ensure(
+        all
+          ? "Remove every volume no container uses, named ones too? Their data is gone for good."
+          : "Remove every anonymous volume no container uses? Their data is gone for good.",
+        "Remove them",
+        await preview(() => previewVolumes(docker, all)),
+      );
     const { stdout } = await docker(["volume", "prune", "-f", ...(all ? ["-a"] : [])], {
       timeoutMs: 0,
     });
@@ -88,17 +91,18 @@ export function createMoreActions(deps, known) {
   };
 
   /** @param {Args} [args] */
-  const removeNetwork = async (args = {}) => {
+  const removeNetwork = async (args = {}, reviewed = false) => {
     const marked =
       /** @type {Array<{ kind: "network", id: string, name: string, builtin: boolean }>} */ (
         marks(args, "network")
       ).filter((n) => !n.builtin);
     if (marked.length > 1) {
       const targets = marked.map((item) => ({ ref: item.id, name: item.name, state: "", item }));
-      await ensure(
-        `Remove ${targets.length} networks: ${names(targets.map((t) => t.name))}?`,
-        `Remove ${targets.length} networks`,
-      );
+      if (!reviewed)
+        await ensure(
+          `Remove ${targets.length} networks: ${names(targets.map((t) => t.name))}?`,
+          `Remove ${targets.length} networks`,
+        );
       return bulk(
         targets,
         { past: "Removed", verb: "remove" },
@@ -112,17 +116,18 @@ export function createMoreActions(deps, known) {
     const name = "named" in found ? found.named : found.name;
     if (["bridge", "host", "none"].includes(name))
       throw new Error(`${name} is one of the engine's own networks and cannot be removed.`);
-    await ensure(`Remove the network ${name}?`, `Remove ${name}`);
+    if (!reviewed) await ensure(`Remove the network ${name}?`, `Remove ${name}`);
     await docker(["network", "rm", "--", ref]);
     return done(`Removed the network ${name}.`);
   };
 
-  const pruneNetworks = async () => {
-    await ensure(
-      "Remove every network no container uses?",
-      "Remove them",
-      await preview(() => previewNetworks(docker)),
-    );
+  const pruneNetworks = async (_args = {}, reviewed = false) => {
+    if (!reviewed)
+      await ensure(
+        "Remove every network no container uses?",
+        "Remove them",
+        await preview(() => previewNetworks(docker)),
+      );
     const { stdout } = await docker(["network", "prune", "-f"]);
     const gone = stdout.split("\n").filter((line) => line.trim() !== "" && !/^Deleted/.test(line));
     return done(
@@ -177,15 +182,16 @@ export function createMoreActions(deps, known) {
   };
 
   /** @param {Args} [args] `volumes: true` also removes the project's named volumes. */
-  const down = async (args = {}) => {
+  const down = async (args = {}, reviewed = false) => {
     const ref = project(args);
     const volumes = args.volumes === true;
-    await ensure(
-      volumes
-        ? `Take ${label(ref)} down and remove its volumes? Their data is gone for good.`
-        : `Take ${label(ref)} down? Its containers and networks are removed; volumes and images stay.`,
-      `Take ${label(ref)} down`,
-    );
+    if (!reviewed)
+      await ensure(
+        volumes
+          ? `Take ${label(ref)} down and remove its volumes? Their data is gone for good.`
+          : `Take ${label(ref)} down? Its containers and networks are removed; volumes and images stay.`,
+        `Take ${label(ref)} down`,
+      );
     await docker([...base(ref, ref.name === ""), "down", ...(volumes ? ["-v"] : [])], {
       ...where(ref, ref.name === ""),
       timeoutMs: 0,
@@ -221,14 +227,15 @@ export function createMoreActions(deps, known) {
   };
 
   /** @param {Args} [args] `volumes: true` also removes anonymous volumes; `all: true` unused images. */
-  const pruneSystem = async (args = {}) => {
+  const pruneSystem = async (args = {}, reviewed = false) => {
     const volumes = args.volumes === true;
     const all = args.all === true;
-    await ensure(
-      `Remove stopped containers, unused networks, ${all ? "every unused image" : "dangling images"} and the build cache${volumes ? ", and anonymous volumes no container uses" : ""}?`,
-      "Clean up",
-      await preview(() => previewSystem(docker, { all, volumes })),
-    );
+    if (!reviewed)
+      await ensure(
+        `Remove stopped containers, unused networks, ${all ? "every unused image" : "dangling images"} and the build cache${volumes ? ", and anonymous volumes no container uses" : ""}?`,
+        "Clean up",
+        await preview(() => previewSystem(docker, { all, volumes })),
+      );
     const { stdout } = await docker(
       ["system", "prune", "-f", ...(all ? ["-a"] : []), ...(volumes ? ["--volumes"] : [])],
       { timeoutMs: 0 },

@@ -2,6 +2,7 @@
 // images, the build cache, unused networks, and unused volumes, which hold data and stay unticked),
 // then one prune after another with each one's result.
 
+import { runPrune } from "./cleanup.js";
 import { button, h, icon } from "./dom.js";
 import { check } from "./form.js";
 import { bytes } from "./format.js";
@@ -24,7 +25,7 @@ export function openCleanupDialog(app) {
   const networks = s.networks.filter((n) => !n.builtin && n.members.length === 0);
   const sum = (/** @type {number[]} */ list) => list.reduce((a, b) => a + b, 0);
 
-  const items = [
+  const items = /** @type {const} */ ([
     {
       id: "containers",
       label: "Stopped containers",
@@ -33,7 +34,6 @@ export function openCleanupDialog(app) {
         .map((c) => c.name)
         .join(", ")}${stopped.length > 4 ? "…" : ""}`,
       size: disk("containers")?.reclaimable ?? 0,
-      args: ["container", "prune", "--force"],
       on: stopped.length > 0,
       n: stopped.length,
     },
@@ -42,7 +42,6 @@ export function openCleanupDialog(app) {
       label: "Dangling images",
       note: `${dangling.length} without a name, left by builds`,
       size: sum(dangling.map((i) => i.size)),
-      args: ["image", "prune", "--force"],
       on: dangling.length > 0,
       n: dangling.length,
     },
@@ -51,7 +50,6 @@ export function openCleanupDialog(app) {
       label: "Every unused image",
       note: `${unused.length} no container uses; pulled or built again when needed`,
       size: sum(unused.map((i) => i.size)),
-      args: ["image", "prune", "--all", "--force"],
       on: false,
       n: unused.length,
     },
@@ -60,7 +58,6 @@ export function openCleanupDialog(app) {
       label: "Build cache",
       note: "Builds run every step again once",
       size: disk("cache")?.reclaimable ?? 0,
-      args: ["builder", "prune", "--force"],
       on: (disk("cache")?.reclaimable ?? 0) > 0,
       n: 1,
     },
@@ -69,7 +66,6 @@ export function openCleanupDialog(app) {
       label: "Unused networks",
       note: networks.map((n) => n.name).join(", ") || "none",
       size: 0,
-      args: ["network", "prune", "--force"],
       on: networks.length > 0,
       n: networks.length,
     },
@@ -78,12 +74,13 @@ export function openCleanupDialog(app) {
       label: "Unused volumes",
       note: `${volumes.length} no container mounts — their data is deleted for good`,
       size: sum(volumes.map((v) => s.volumeSizes.get(v.name) ?? 0)),
-      args: ["volume", "prune", "--all", "--force"],
       on: false,
       n: volumes.length,
       danger: true,
     },
-  ].filter((i) => i.n > 0);
+  ])
+    .map((i) => ({ ...i }))
+    .filter((i) => i.n > 0);
 
   const total = h("b.cleanup-total");
   const sync = () => {
@@ -118,20 +115,19 @@ export function openCleanupDialog(app) {
     kind: "desk-btn-primary",
     onClick: async () => {
       go.disabled = true;
-      for (const { i, result } of rows) {
-        if (!i.on) continue;
-        result.replaceChildren(h("span.spinner"));
-        try {
-          const { stdout } = await app.docker(i.args, { timeoutMs: 0 });
-          const freed = /Total(?: reclaimed space)?:\s*(.+)/.exec(stdout)?.[1]?.trim();
-          result.replaceChildren(icon("check", 14), freed ? ` ${freed}` : "");
-        } catch (error) {
-          result.replaceChildren(icon("alert", 14));
-          app.toast(String(/** @type {any} */ (error)?.message ?? error), "danger");
-        }
-      }
-      for (const name of ["containers", "images", "volumes", "networks", "disk"])
-        void app.engine.load(/** @type {any} */ (name));
+      const chosen = new Map(rows.filter(({ i }) => i.on).map(({ i, result }) => [i.id, result]));
+      await runPrune(
+        app,
+        [...chosen.keys()],
+        (kind) => chosen.get(kind)?.replaceChildren(h("span.spinner")),
+        ({ kind, done, freed }) =>
+          chosen
+            .get(kind)
+            ?.replaceChildren(
+              done ? icon("check", 14) : icon("alert", 14),
+              freed ? ` ${freed}` : "",
+            ),
+      );
       app.toast("Cleaned up.", "success");
       go.replaceWith(
         button({ label: "Done", kind: "desk-btn-primary", onClick: () => dialog.close() }),

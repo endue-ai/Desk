@@ -4,12 +4,15 @@
 // call waits for approval. Commands that open the window (open, cleanup, ask, build) are the
 // palette's.
 
+import { buildForCommand, wireResources } from "./agent-resources.js";
 import { problemOf, stackState, stateLabel } from "./model.js";
 import { imageRef, objectRef, projectName } from "./refs.js";
+import { CONTAINER_OPERATIONS } from "./schemas.js";
 
 /** @typedef {import("./studio.js").App} App */
+/** @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation */
 
-const OPS = new Set(["start", "stop", "restart", "pause", "unpause", "kill", "remove"]);
+const OPS = new Set(CONTAINER_OPERATIONS);
 const STACK_OPS = new Set(["up", "start", "stop", "restart", "pull"]);
 const SECTIONS = new Set([
   "dashboard",
@@ -44,8 +47,15 @@ export function containerData(c) {
 
 /** @param {any} ctx @param {App} app */
 export function wireCommands(ctx, app) {
-  const on = (/** @type {string} */ name, /** @type {(args: any) => unknown} */ fn) =>
-    ctx.commands?.on?.(`endue.docker-studio.${name}`, (/** @type {any} */ args) => fn(args ?? {}));
+  const on = (
+    /** @type {string} */ name,
+    /** @type {(args: any, invocation?: Invocation) => unknown} */ fn,
+  ) =>
+    ctx.commands?.on?.(
+      `endue.docker-studio.${name}`,
+      (/** @type {unknown} */ args, /** @type {Invocation | undefined} */ invocation) =>
+        fn(args ?? {}, invocation),
+    );
   const state = () => app.store.state;
   /** Wait until the engine answers (a command can come before the window has read anything). */
   const ready = async () => {
@@ -55,9 +65,13 @@ export function wireCommands(ctx, app) {
   };
   const find = (/** @type {unknown} */ ref) => {
     const name = objectRef(ref);
-    const c = state().containers.find((x) => x.name === name || x.id.startsWith(name));
-    if (!c) throw new Error(`No container is called ${name}.`);
-    return c;
+    const exact = state().containers.find((x) => x.name === name || x.id === name);
+    if (exact) return exact;
+    const matches = state().containers.filter((x) => x.id.startsWith(name));
+    if (matches.length === 1 && matches[0]) return matches[0];
+    throw new Error(
+      matches.length ? `Container ${name} is ambiguous.` : `No container is called ${name}.`,
+    );
   };
 
   on("open", (args) => {
@@ -137,17 +151,31 @@ export function wireCommands(ctx, app) {
     );
     return { container: c.name, lines: `${stdout}\n${stderr}`.split("\n").filter(Boolean).sort() };
   });
-  on("act", async (args) => {
+  const actOnContainers = async (
+    /** @type {typeof CONTAINER_OPERATIONS[number]} */ op,
+    /** @type {unknown} */ containers,
+    reviewed = false,
+  ) => {
     await ready();
-    if (!OPS.has(args.action))
-      throw new Error(`${args.action} is not one of ${[...OPS].join(", ")}.`);
-    const list = (Array.isArray(args.containers) ? args.containers : [args.containers]).map(find);
+    if (!Array.isArray(containers) || containers.length === 0)
+      throw new Error("Name at least one container.");
+    const list = containers.map(find);
     const ok = await app.act.container(
-      args.action,
+      op,
       list.map((c) => ({ id: c.id, name: c.name, state: c.state })),
+      reviewed,
     );
     return { done: ok, containers: list.map((c) => c.name) };
+  };
+  on("act", async ({ action, containers }) => {
+    if (!OPS.has(action)) throw new Error(`${action} is not one of ${[...OPS].join(", ")}.`);
+    return actOnContainers(action, Array.isArray(containers) ? containers : [containers]);
   });
+  for (const op of CONTAINER_OPERATIONS) {
+    on(op, ({ containers }, invocation) =>
+      actOnContainers(op, containers, invocation?.approved === true),
+    );
+  }
   on("images", async () => {
     await ready();
     return state().images.map((i) => ({
@@ -197,9 +225,11 @@ export function wireCommands(ctx, app) {
       throw new Error(`${args.action} is not one of ${[...STACK_OPS].join(", ")}.`);
     return { done: await app.act.compose(args.action, projectName(args.stack)) };
   });
-  on("compose-down", async (args) => {
+  on("compose-down", async (args, invocation) => {
     await ready();
-    return { done: await app.act.compose("down", projectName(args.stack)) };
+    return {
+      done: await app.act.compose("down", projectName(args.stack), invocation?.approved === true),
+    };
   });
   on("diagnose", (args) => {
     ctx.surface?.show?.();
@@ -216,7 +246,11 @@ export function wireCommands(ctx, app) {
     app.dialogs.cleanup();
     return { opened: true };
   });
-  on("build", (args) => {
+  on("build", async (args, invocation) => {
+    if (invocation?.caller.startsWith("agent:")) {
+      await ready();
+      return buildForCommand(app, args);
+    }
     ctx.surface?.show?.();
     app.dialogs.build({
       context: typeof args.context === "string" ? args.context : "",
@@ -224,4 +258,5 @@ export function wireCommands(ctx, app) {
     });
     return { opened: true };
   });
+  wireResources(app, on, ready, find);
 }

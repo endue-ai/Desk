@@ -336,6 +336,7 @@ describe("detail, shell and files", () => {
         command: "docker",
         args: ["--context", "build", "exec", "-it", "--", WEB_ID, "/bin/sh"],
         title: "shop-web-1: /bin/sh",
+        dockerShell: true,
       },
     ]);
     await m.host.invoke("endue.docker.shell", {
