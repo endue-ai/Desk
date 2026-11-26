@@ -285,7 +285,7 @@
       "additionalProperties": false
     },
     "WebActRequest": {
-      "description": "Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are.",
+      "description": "Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -319,7 +319,11 @@
         { "$ref": "#/$defs/WebPress" },
         { "$ref": "#/$defs/WebType" },
         { "$ref": "#/$defs/WebKey" },
-        { "$ref": "#/$defs/WebChoose" }
+        { "$ref": "#/$defs/WebChoose" },
+        { "$ref": "#/$defs/WebFollow" },
+        { "$ref": "#/$defs/WebFind" },
+        { "$ref": "#/$defs/WebZoom" },
+        { "$ref": "#/$defs/WebHistory" }
       ]
     },
     "WebScroll": {
@@ -433,6 +437,46 @@
         }
       },
       "required": ["do", "ref", "option"],
+      "additionalProperties": false
+    },
+    "WebFollow": {
+      "description": "Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "follow" },
+        "ref": { "$ref": "#/$defs/WebRef" }
+      },
+      "required": ["do", "ref"],
+      "additionalProperties": false
+    },
+    "WebFind": {
+      "description": "Find text in the current page. Asking again for the same text moves to the next match.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "find" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      },
+      "required": ["do", "text"],
+      "additionalProperties": false
+    },
+    "WebZoom": {
+      "description": "Set the page magnification, where 1 is the usual size.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "zoom" },
+        "level": { "type": "number", "minimum": 0.25, "maximum": 5 }
+      },
+      "required": ["do", "level"],
+      "additionalProperties": false
+    },
+    "WebHistory": {
+      "description": "Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "history" },
+        "to": { "$ref": "#/$defs/WebStep" }
+      },
+      "required": ["do", "to"],
       "additionalProperties": false
     },
     "WebActResult": {
