@@ -110,6 +110,18 @@ describe("a web view's page, read", () => {
 });
 
 describe("a web view's page, acted in", () => {
+  it("finds text in the main page and reports when there is no match", () => {
+    const find = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+    vi.stubGlobal("find", find);
+    try {
+      expect(ask({ do: "find", text: "Fixture" })).toEqual({ ok: {} });
+      expect(find).toHaveBeenCalledWith("Fixture", false, false, true, false, false, false);
+      expect(ask({ do: "find", text: "missing" }).error?.code).toBe("not_found");
+      expect(ask({ do: "find", text: "" }).error?.code).toBe("invalid");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("resolves a live HTTP link without pressing it", () => {
     page(
       '<a id="link" href="/page">Next</a> <a href="javascript:void(0)">Script</a> <button>Submit</button>',

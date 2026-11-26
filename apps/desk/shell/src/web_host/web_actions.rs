@@ -131,29 +131,6 @@ impl WebHost {
         self.web_load(view, url)
     }
 
-    pub fn web_find(&self, view: &str, at: &str, text: &str) -> Result<(), WebError> {
-        if text.is_empty() || text.chars().count() > 1000 {
-            return Err(WebError::Invalid("find needs 1 to 1000 characters".into()));
-        }
-        let browser = self.web_browser_at(view, at)?;
-        let host = browser.host().ok_or_else(|| missing(view))?;
-        let completion = host
-            .visible_navigation_entry()
-            .map_or(0, |entry| entry.completion_time().val);
-        let mut inner = self.inner();
-        let surface = inner.web.host_of(view).ok_or_else(|| missing(view))?;
-        let web = inner
-            .web
-            .by_host
-            .get_mut(&surface)
-            .ok_or_else(|| missing(view))?;
-        let previous = web.last_find.replace((text.to_owned(), completion));
-        let next = previous.is_some_and(|(last, stamp)| last == text && stamp == completion);
-        drop(inner);
-        host.find(Some(&text.into()), 1, 0, i32::from(next));
-        Ok(())
-    }
-
     pub fn web_zoom(&self, view: &str, at: &str, level: f64) -> Result<(), WebError> {
         if !(0.25..=5.0).contains(&level) {
             return Err(WebError::Invalid(

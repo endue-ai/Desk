@@ -246,8 +246,7 @@ impl Web {
                 Ok(DONE)
             }
             WebAction::WebFind(find) => {
-                let (view, at, text) = (view.to_owned(), at.to_owned(), find.text.clone());
-                self.ask(move |c| c.host.web_find(&view, &at, &text))?;
+                self.ask_page(view, at, json!({ "do": "find", "text": find.text }))?;
                 Ok(DONE)
             }
             WebAction::WebZoom(zoom) => {

@@ -220,6 +220,12 @@ globalThis.__deskPage = (request) => {
         return read();
       case "scroll":
         return scroll();
+      case "find":
+        if (!request.text || Array.from(request.text).length > 1000)
+          return fail("invalid", "find needs 1 to 1000 characters");
+        return globalThis.find(request.text, false, false, true, false, false, false)
+          ? { ok: {} }
+          : fail("not_found", "the page has no match for that text");
       case "show":
         return on((el) => {
           el.scrollIntoView?.({ block: "center", inline: "nearest", behavior: "instant" });

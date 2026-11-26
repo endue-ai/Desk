@@ -32,7 +32,6 @@ fn a_view_shows_only_with_a_box_and_lays_out_at_whole_pixels() {
 fn a_view_is_found_by_the_id_the_core_gave_it() {
     let mut views = Views::default();
     let web = WebView {
-        last_find: None,
         id: "w-3".into(),
         place: place(1.0, 1.0, true),
         keys: false,
