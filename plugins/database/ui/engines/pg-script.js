@@ -27,7 +27,7 @@ import { affectedOf, CANCELED, errorOf, pageNotices, setOf } from "./pg-result.j
  *   statements: Statement[], maxRows: number, timeoutMs: number, password?: string,
  *   mode: "run" | "transaction" | "dry-run" | "describe",
  *   session?: import("../session/keeper.js").Owner, agent?: boolean, signal?: AbortSignal,
- *   quiet?: boolean, background?: boolean, copy?: import("../copy/stream.js").Copy,
+ *   quiet?: boolean, background?: boolean, permissionsReviewed?: boolean, copy?: import("../copy/stream.js").Copy,
  * }} Plan
  *   `session` runs on that owner's kept session (a console's, a table view's); `agent` is an
  *   agent's run, which the console's Cancel leaves alone; `signal` cancels this run alone: its

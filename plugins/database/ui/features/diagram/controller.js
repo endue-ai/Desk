@@ -6,7 +6,7 @@
 
 import { bridgeStore, readKept, writeKept } from "./kept.js";
 import { MODES, moveBoxes } from "./layout.js";
-import { MAX_DEPTH, nameOf } from "./model.js";
+import { MAX_DEPTH, nameOf, shownIds, subgraph } from "./model.js";
 import { readGraph, schemasFor, stateOf } from "./read.js";
 
 /**
@@ -115,6 +115,24 @@ export function createDiagrams(deps) {
 
   return {
     open,
+    /** Read a diagram's bounded schema graph without opening or changing its panel. */
+    async read(/** @type {Connection} */ conn, /** @type {Choice} */ choice) {
+      const schemas = await schemasFor(deps.catalog, conn, choice, true);
+      const graph = await readGraph(deps.catalog, conn, schemas, true);
+      const found = subgraph(graph, shownIds(graph, choice));
+      const picked = subgraph(found, new Set(found.tables.slice(0, 100).map(({ id }) => id)));
+      return {
+        connection: conn.id,
+        tables: picked.tables.map(({ id, schema, name, columns }) => ({
+          id,
+          schema,
+          name,
+          columns: columns.map(({ name, type }) => ({ name, type })),
+        })),
+        links: picked.links.slice(0, 200),
+        truncated: found.tables.length > picked.tables.length || found.links.length > 200,
+      };
+    },
     target,
     graphOf,
     redraw,

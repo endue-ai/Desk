@@ -20,12 +20,11 @@ others are reached through a connection pooler. A PostgreSQL connection can say 
   and the server's message; no password prompt opens, since the command is where the password comes from.
 - A command that fails ends the run with "<connection>'s password command exited with <code>: <the first
   line of its standard error>"; one that prints nothing, or takes over 30 s, says that.
-- Before a command first runs on this desk, the palette asks "run a program to get <connection>'s
-  password?" with the command under Yes. The yes is kept in the plugin's store (`password-commands`, by
-  connection id, the command only), so a command that came another way (a hand-edited store, a changed
-  command) never runs unseen. Then the desk asks once to let the plugin run that program by name
-  (`proc:spawn` on `*`), as for any client a setting names. The database clients the plugin runs without
-  asking (`mysql`, `mariadb`, `sqlite3`, `pg_dump`, `pg_restore`) cannot be a password command.
+- Save or Test reviews the server's missing `db:connect` and the helper's missing `proc:spawn` together.
+  The card shows the exact configured command and the permission scopes it needs. The plugin remembers
+  the reviewed command by connection id in `password-commands`. An agent's read requires that review
+  and the applicable grants. A connection kept before the form review can still ask when the person
+  uses it. Database clients already allowed to run cannot be a password command.
 - The connections file carries no command (`connections-file.md`), and a URI has none.
 
 ## Through a pooler

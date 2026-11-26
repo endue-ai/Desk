@@ -191,6 +191,7 @@ export function createActivity(deps) {
     /** @type {How} */ how,
     /** @type {Record<string, unknown>} */ args,
     /** @type {Connection} */ from = undefined,
+    approved = false,
   ) => {
     const conn = from ?? (await choose(args.connection));
     if (!conn) return undefined;
@@ -205,7 +206,7 @@ export function createActivity(deps) {
     if (pid === undefined) return undefined;
     const session = read.sessions.find((s) => s.pid === pid);
     if (!session) throw new Error(`No session ${pid} on ${conn.name}: it may have ended.`);
-    deps.say(await stop(deps, how, conn, session, read.version));
+    deps.say(await stop(deps, how, conn, session, read.version, how === "end" && approved));
     for (const panel of panels().filter((b) => b.connection === conn.id))
       await refresh(panel.id, true);
     return { pid, done: how === "cancel" ? "cancelled" : "ended" };

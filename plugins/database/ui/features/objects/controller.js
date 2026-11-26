@@ -124,7 +124,7 @@ export function createObjects(deps) {
    * @param {Target} target
    * @param {Record<string, unknown>} given
    */
-  const operate = async (conn, op, target, given) => {
+  const operate = async (conn, op, target, given, approved = false) => {
     const refused = notOffered(conn.engine, op, target);
     if (refused) throw new Error(refused);
     if (conn.readOnly)
@@ -132,10 +132,14 @@ export function createObjects(deps) {
     const facts = await readFacts(deps, conn, op, target);
     const schemas = op === "move" ? await deps.catalog.schemas(conn) : [];
     const model = modelOf(conn, op, target, facts, given, schemas);
-    const answer = await deps.dialog(DIALOG, model);
+    const destructive = op === "drop" || op === "truncate";
+    const answer =
+      approved && destructive
+        ? { choices: model.choices.filter(({ checked }) => checked).map(({ id }) => id) }
+        : await deps.dialog(DIALOG, model);
     if (answer === undefined) throw deps.cancelled("Not run.");
     const script = scriptOf(conn.engine, op, target, facts, answersOf(answer));
-    const done = await deps.execute(conn, script);
+    const done = await deps.execute(conn, script, destructive ? { asked: true } : undefined);
     const failed = done.result.error ?? done.result.statements.find((s) => s.error)?.error;
     if (failed) throw new Error(`Not run: ${failed.message}`);
     deps.say(`${OPS[op].done} ${said(conn.engine, target)}.`);

@@ -31,7 +31,7 @@ import { chosen, offered, withChoice } from "./keychain.js";
  *   forget(connection: string): Promise<void>,
  *   renamed(conn: Connection): Promise<void>,
  *   changed(): void,
- *   random?(): number,
+ *   random?(): number, reviewConnection?(conn: Connection): Promise<boolean>,
  *   sessions?: {
  *     reasons(connection: string): string[],
  *     close(connection: string): void,
@@ -55,7 +55,6 @@ export function createManager(deps) {
   let opened = null;
   let formSession = 0;
   let confirming = 0;
-  /** A URI's password, waiting for its connection to be saved. */
   let pending = "";
   /** @type {((value: string | undefined) => void) | null} */
   let answer = null;
@@ -67,7 +66,6 @@ export function createManager(deps) {
   const showForm = () => deps.view.form(form);
   const refused = (/** @type {string} */ message) =>
     deps.cancelled?.(message) ?? Object.assign(new Error(message), { code: "cancelled" });
-  /** Whether the person lets the connection's sessions close, asked while one is in a transaction. */
   const letClose = async (/** @type {Connection} */ conn, /** @type {string} */ title) => {
     const reasons = deps.sessions?.reasons(conn.id) ?? [];
     return reasons.length === 0 || deps.confirm(title, reasons);
@@ -76,7 +74,6 @@ export function createManager(deps) {
   const get = (/** @type {string} */ ref) =>
     list.find((c) => c.id === ref) ?? list.find((c) => c.name.toLowerCase() === ref.toLowerCase());
 
-  /** The connection a command names, or the one the person picks. */
   const choose = async (/** @type {string | undefined} */ ref, /** @type {string} */ title) => {
     if (ref) {
       const found = get(ref);
@@ -95,7 +92,6 @@ export function createManager(deps) {
     return picked ? get(picked) : undefined;
   };
 
-  /** Open the form, for a new connection or to change one. */
   const open = (/** @type {"new" | "edit"} */ mode, /** @type {Partial<Connection>} */ fields) => {
     if (form) deps.view.form(null);
     form = {
@@ -109,7 +105,6 @@ export function createManager(deps) {
     showForm();
   };
 
-  /** Check the form's fields into a connection, or show what is wrong and throw. */
   const checked = (/** @type {Partial<Connection>} */ fields) => {
     if (!form) throw new Error("The form is closed.");
     const id = form.mode === "edit" ? form.fields.id : form.fields.id || newId(deps.random);
@@ -127,7 +122,6 @@ export function createManager(deps) {
     }
   };
 
-  /** Turn the connection's keychain choice on or off, and keep the list. */
   const setChoice = async (/** @type {Connection} */ conn, /** @type {boolean} */ on) => {
     if (chosen(conn) === on) return;
     const next = list.map((c) => (c.id === conn.id ? withChoice(c, on) : c));
@@ -136,7 +130,6 @@ export function createManager(deps) {
     deps.changed();
   };
 
-  /** Keep a password that worked in the keychain, saying how it went; a failure keeps it in memory. */
   const keep = async (/** @type {Connection} */ conn, /** @type {string} */ value) => {
     try {
       await deps.keychain.keep(conn, value);
@@ -149,7 +142,6 @@ export function createManager(deps) {
     }
   };
 
-  /** Forget what the keychain keeps for the connection; a failure is said, never thrown. */
   const forgetKept = async (/** @type {Connection} */ conn) => {
     try {
       return await deps.keychain.forget(conn.id);
@@ -160,7 +152,6 @@ export function createManager(deps) {
     }
   };
 
-  /** A typed password worked: keep it, or forget the kept one, as the prompt's choice says. */
   const settleChoice = async (/** @type {string} */ id, /** @type {string} */ value) => {
     const remember = choices.get(id);
     choices.delete(id);
@@ -193,7 +184,6 @@ export function createManager(deps) {
           deps.view.password({ connection: conn.name, message: why, ...remember });
         }),
     },
-    /** The password prompt was answered (a string, with the keychain choice) or cancelled. */
     answered(/** @type {string | undefined} */ value, /** @type {boolean} */ remember = false) {
       const settle = answer;
       if (value !== undefined && asking && offered(asking)) choices.set(asking.id, remember);
@@ -218,7 +208,6 @@ export function createManager(deps) {
       const conn = await choose(ref, "Database: duplicate which connection?");
       if (conn) open("new", { ...conn, id: "", name: `${conn.name} copy` });
     },
-    /** A URI typed or handed in: its fields in the form, its password kept for the save. */
     async importUri(/** @type {string | undefined} */ uri) {
       const typed =
         uri ??
@@ -237,10 +226,17 @@ export function createManager(deps) {
     },
     async save(/** @type {Partial<Connection>} */ fields) {
       const conn = checked(fields);
+      const session = formSession;
       const before = form?.mode === "edit" ? list.find((c) => c.id === conn.id) : undefined;
       const signIn = before && SIGN_IN.some((key) => (before[key] ?? "") !== (conn[key] ?? ""));
       if (before && signIn && !(await letClose(before, `Save ${before.name}?`))) {
         deps.view.say(`Not saved: ${before.name}'s sessions stay open.`);
+        return undefined;
+      }
+      const allowed = await deps.reviewConnection?.(conn);
+      if (session !== formSession) return undefined;
+      if (allowed === false) {
+        deps.view.say(`Not saved: connecting to ${conn.name} was refused.`);
         return undefined;
       }
       if (signIn) deps.sessions?.close(conn.id);
@@ -265,26 +261,33 @@ export function createManager(deps) {
       deps.view.say(`Saved ${conn.name}.`);
       return conn;
     },
-    /** Ask the server its version with the form's fields. */
     async test(/** @type {Partial<Connection>} */ fields) {
       const conn = checked(fields);
       const session = formSession;
       if (pending) passwords.set(conn.id, pending);
       form = {
         .../** @type {FormModel} */ (form),
-        fields: { .../** @type {FormModel} */ (form).fields, ...fields },
+        fields: { .../** @type {FormModel} */ (form).fields, ...fields, id: conn.id },
         error: "",
         note: "Testing…",
       };
       showForm();
-      const done = await deps.execute(conn, engineOf(conn.engine).versionSql, { catalog: true });
-      const error = done.result.error ?? done.result.statements[0]?.error;
-      const version = done.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
+      const options = { catalog: true, permissionsReviewed: deps.reviewConnection !== undefined };
+      const allowed = await deps.reviewConnection?.(conn);
+      if (session !== formSession) return undefined;
+      const done =
+        allowed === false
+          ? undefined
+          : await deps.execute(conn, engineOf(conn.engine).versionSql, options);
+      const error = done
+        ? (done.result.error ?? done.result.statements[0]?.error)
+        : { message: `Connecting to ${conn.name} was refused.` };
+      const version = done?.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
       if (form && session === formSession) {
         form = {
           ...form,
           error: error ? error.message : "",
-          note: error ? "" : `Connected in ${formatDuration(done.result.ms)}: ${version}`,
+          note: done && !error ? `Connected in ${formatDuration(done.result.ms)}: ${version}` : "",
         };
         showForm();
       }

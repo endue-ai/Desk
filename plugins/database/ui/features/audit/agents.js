@@ -3,6 +3,7 @@
 // (access.js), their audit list (log.js), how their SQL runs (run.js), and who hears a list change
 // (the audit panel). The feature (index.js) finds it by the plugin's bridge. No DOM.
 
+import { connectHeld } from "../../session/connect-gate.js";
 import { createAccess } from "./access.js";
 import { createGate } from "./gate.js";
 import { createLog } from "./log.js";
@@ -10,7 +11,7 @@ import { createAgentRuns, limitsOf } from "./run.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
- * @typedef {Pick<import("../../feature-host.js").Deps, "manager" | "execute" | "settings" | "confirm" | "cancelled">} Deps
+ * @typedef {Pick<import("../../feature-host.js").Deps, "manager" | "consoles" | "execute" | "settings" | "confirm" | "cancelled">} Deps
  */
 
 /** The plugin's id: its own calls are neither checked nor listed. */
@@ -29,9 +30,10 @@ export function createAgents(bridge, deps) {
   const access = createAccess(bridge);
   const log = createLog(bridge);
   const gate = createGate({
-    bridge,
     own: OWN,
     find: (ref) => deps().manager.get(ref),
+    active: () => deps().consoles.current()?.connection,
+    connected: (conn) => connectHeld(bridge, conn),
     access,
     log,
     changed: (connection) => {

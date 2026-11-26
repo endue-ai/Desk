@@ -9,25 +9,46 @@ import { textOf } from "./start.js";
 /**
  * @typedef {{
  *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">,
- *   drop(item: import("../drops.js").Dropped): Promise<unknown>,
+ *   drop(item: import("../drops.js").Dropped, into?: import("../importer.js").Into & { format?: import("./wizard.js").CopyFormat }): Promise<unknown>,
+ *   manager?: Pick<import("../feature-host.js").Deps["manager"], "get">,
  * }} Deps
  */
 
 /**
  * Open the import of `args.path`, else of a file the person picks; null when they cancel.
  * @param {Deps} deps
- * @param {{ path?: unknown }} args
+ * @param {{ path?: unknown, connection?: unknown, schema?: unknown, table?: unknown, format?: unknown }} args
+ * @param {boolean} [agent]
  */
-export async function importFile(deps, args) {
+export async function importFile(deps, args, agent = false) {
   let path = typeof args.path === "string" ? args.path : "";
-  if (!path) {
+  const connection = typeof args.connection === "string" ? args.connection : undefined;
+  const schema = typeof args.schema === "string" ? args.schema : undefined;
+  const table = typeof args.table === "string" ? args.table : undefined;
+  const format = ["csv", "tsv", "json", "jsonl", "xlsx"].includes(String(args.format))
+    ? /** @type {import("./wizard.js").CopyFormat} */ (args.format)
+    : undefined;
+  if (agent && connection && !deps.manager?.get(connection))
+    throw new Error(`No connection is named ${connection}.`);
+  if (!path || agent) {
+    const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
     const picked = await deps.bridge.call("dialog.open", {
-      title: "Database: import which file into a table?",
+      title: path
+        ? `Database: choose ${path.slice(slash + 1).slice(0, 100)} to import`
+        : "Database: import which file into a table?",
+      ...(slash > 0 ? { startIn: path.slice(0, slash) } : {}),
+      ...(agent
+        ? {
+            filters: [
+              { name: "Tabular data", extensions: ["csv", "tsv", "json", "jsonl", "xlsx"] },
+            ],
+          }
+        : {}),
     });
     path = picked.cancelled ? "" : (picked.paths[0] ?? "");
   }
   if (!path) return null;
-  await deps.drop({ kind: "file", path });
+  await deps.drop({ kind: "file", path }, { connection, schema, table, format });
   return path.slice(path.lastIndexOf("/") + 1);
 }
 

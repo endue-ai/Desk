@@ -2,10 +2,24 @@
 // answer.js: a failure goes to the status line and ends the request with the same words; a cancel
 // ends it quietly. A feature answers its own (features/). No DOM.
 
+import { pendingOf } from "./agent-view.js";
 import { formatUri, loadConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
 import { settle } from "./features/transactions/settle.js";
 import { formatDuration } from "./format.js";
+
+const CONNECTION_FIELDS = new Set([
+  "name",
+  "engine",
+  "host",
+  "port",
+  "database",
+  "user",
+  "file",
+  "readOnly",
+  "tag",
+  "ssl",
+]);
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -46,7 +60,13 @@ export function registerCommands(deps) {
 
   answer("endue.database.open", ({ connection }) => openConsole(connection));
   answer("endue.database.console", ({ connection }) => openConsole(connection));
-  answer("endue.database.new-connection", (fields) => manager.create(fields));
+  answer("endue.database.new-connection", (fields, invocation) => {
+    if (!fromAgent(invocation)) return manager.create(fields);
+    const safe = Object.fromEntries(
+      Object.entries(fields).filter(([key]) => CONNECTION_FIELDS.has(key)),
+    );
+    return manager.create(safe);
+  });
   answer("endue.database.import-uri", ({ uri }) => manager.importUri(uri));
   answer("endue.database.edit-connection", ({ connection }) => manager.edit(connection));
   answer("endue.database.duplicate-connection", ({ connection }) => manager.duplicate(connection));
@@ -67,10 +87,15 @@ export function registerCommands(deps) {
     );
     return manager.disconnect(conn.id);
   });
-  answer("endue.database.test-connection", async ({ connection }) => {
+  answer("endue.database.test-connection", async ({ connection }, invocation) => {
+    const agent = fromAgent(invocation);
+    if (agent && typeof connection !== "string") throw new Error("Name the connection to test.");
     const conn = await manager.choose(connection, "Database: test which connection?");
     if (!conn) return undefined;
-    const done = await deps.execute(conn, engineOf(conn.engine).versionSql, { catalog: true });
+    const done = await deps.execute(conn, engineOf(conn.engine).versionSql, {
+      catalog: true,
+      ...(agent ? { interactive: false, permissionsReviewed: true } : {}),
+    });
     const error = done.result.error ?? done.result.statements[0]?.error;
     if (error) throw new Error(`${conn.name}: ${error.message}`);
     const version = done.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
@@ -145,9 +170,19 @@ export function registerCommands(deps) {
     );
     return dropped;
   });
-  answer("endue.database.preview-changes", () => {
+  answer("endue.database.preview-changes", (_args, invocation) => {
+    if (fromAgent(invocation)) {
+      const active = consoles.current();
+      return active ? pendingOf(active) : null;
+    }
     const sql = consoles.edits.preview();
     view.preview(sql);
     return sql;
   });
+}
+
+function fromAgent(
+  /** @type {import("@endue-ai/plugin-sdk").Invocation | undefined} */ invocation,
+) {
+  return /^(agent|mcp):/u.test(invocation?.caller ?? "");
 }

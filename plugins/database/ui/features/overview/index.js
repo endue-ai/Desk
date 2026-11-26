@@ -7,6 +7,9 @@
 
 import { engineOf } from "../../engines/index.js";
 import { oneLine } from "../../execute.js";
+import { keepable } from "../../history.js";
+import { agentsOf } from "../audit/agents.js";
+import { MASK, namesOf } from "../audit/mask.js";
 import { formatValue } from "./format.js";
 import { overviewView } from "./panel.js";
 import { readOverview } from "./read.js";
@@ -19,6 +22,50 @@ import { readOverview } from "./read.js";
 
 const TYPE = "overview";
 const HIDDEN = "<insufficient privilege>";
+
+/** The agent reads the same sections without opening a panel or returning server statement text. */
+async function forAgent(/** @type {Deps} */ deps, /** @type {unknown} */ ref) {
+  const conn = typeof ref === "string" ? deps.manager.get(ref) : undefined;
+  if (conn?.engine !== "postgresql")
+    throw new Error("Name a PostgreSQL connection for the overview.");
+  const access = await agentsOf(deps.bridge)?.access.of(conn.id);
+  if (access?.closed) throw new Error(`${conn.name} is closed to agents.`);
+  const sensitive = namesOf(access?.sensitive ?? []);
+  const quiet = (
+    /** @type {Connection} */ c,
+    /** @type {string} */ sql,
+    /** @type {import("../../execute.js").ExecuteOptions} */ opts,
+  ) =>
+    deps.execute(c, sql, {
+      ...opts,
+      interactive: false,
+      permissionsReviewed: true,
+      maxRows: Math.min(opts?.maxRows ?? 100, 100),
+    });
+  const result = await readOverview(quiet, { ...conn, readOnly: true });
+  const server = result.server;
+  return {
+    connection: conn.id,
+    server: server
+      ? { version: server.version, database: server.database, standby: server.standby }
+      : null,
+    sections: result.sections.map(({ id, names = [], rows = [], failed }) => ({
+      id,
+      columns: names,
+      rows: rows.map((row) =>
+        row.map((value, index) => {
+          const name = (names[index] ?? "").toLowerCase();
+          return sensitive.has(name) ||
+            /query|statement|sql/u.test(name) ||
+            (value !== null && !keepable(value))
+            ? MASK
+            : (value?.slice(0, 1000) ?? null);
+        }),
+      ),
+      ...(failed ? { unavailable: true } : {}),
+    })),
+  };
+}
 
 /** @param {Deps} deps */
 function createOverview(deps) {
@@ -171,7 +218,10 @@ const of = (/** @type {Deps} */ deps) => {
 export const feature = {
   id: "overview",
   commands: (deps) => ({
-    "endue.database.overview": ({ connection }) => of(deps).read(connection, false),
+    "endue.database.overview": ({ connection }, invocation) =>
+      /^(agent|mcp):/u.test(invocation?.caller ?? "")
+        ? forAgent(deps, connection)
+        : of(deps).read(connection, false),
     "endue.database.refresh-overview": ({ connection }) => of(deps).read(connection),
     "endue.database.overview-result": ({ connection, section }) =>
       of(deps).result(connection, section),

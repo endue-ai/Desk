@@ -35,7 +35,7 @@ export function installPalette(ctx: Pick<DeskContext, "hub">): Installed {
       title: "Search the desk",
       owner: "desk",
       agent: WORKSPACE_TOOLS.search,
-      run: async (args) => {
+      run: async (args, { caller }) => {
         const {
           query: typed,
           groups,
@@ -62,7 +62,12 @@ export function installPalette(ctx: Pick<DeskContext, "hub">): Installed {
         );
         const results = await Promise.all(
           selected.map(async ({ command, title }) => {
-            const answer = await hub.commands.run(command, { query, limit }).catch(() => undefined);
+            // Agent-aware providers apply their own visibility rules to the original caller.
+            const agent =
+              caller?.startsWith("agent:") && hub.commands.readOnly(command) ? caller : undefined;
+            const answer = await hub.commands
+              .run(command, { query, limit }, agent)
+              .catch(() => undefined);
             return { provider: command, title, results: matches(answer) };
           }),
         );

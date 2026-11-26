@@ -181,6 +181,7 @@ export async function exportAll(deps, jobs, /** @type {Record<string, any>} */ a
   const name = exportName(item.name, format, new Date());
   const chosen = await deps.bridge.call("dialog.save", {
     title: "Export every row",
+    temporarySibling: true,
     suggestedName: gzip ? `${name}.gz` : name,
     ...(folder ? { startIn: folder } : {}),
     filters: [
@@ -246,6 +247,7 @@ export async function exportTables(deps, jobs, /** @type {Record<string, any>} *
   const picked = await deps.bridge.call("dialog.open", {
     title: `The folder the tables of ${schema} go to`,
     kind: "folders",
+    intent: "destination",
   });
   const folder = picked.cancelled ? undefined : picked.paths?.[0];
   if (!folder) throw deps.cancelled("Not exported.");

@@ -45,7 +45,7 @@
  *   guard: ReturnType<typeof import("./answer.js").guarded>,
  *   cancelled(message: string): Error,
  *   dialog(type: string, model: unknown): Promise<unknown>,
- *   drop(item: import("./drops.js").Dropped): Promise<unknown>,
+ *   drop(item: import("./drops.js").Dropped, into?: import("./importer.js").Into & { format?: import("./import-copy/wizard.js").CopyFormat }): Promise<unknown>,
  * }} Deps
  *   `execute` runs SQL under the read-only, production and agent guards; every write goes through
  *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled);
@@ -56,7 +56,7 @@
  *   `startWorker` starts a feature's worker (absent in tests: read in place).
  * @typedef {{
  *   id: string,
- *   commands?(deps: Deps): Record<string, (args: Record<string, any>) => unknown>,
+ *   commands?(deps: Deps): Record<string, (args: Record<string, any>, invocation?: import("@endue-ai/plugin-sdk").Invocation) => unknown>,
  *   actions?(deps: Deps): Record<string, (...args: any[]) => unknown>,
  *   panels?: Record<string, Panel>,
  *   dialogs?: Record<string, Dialog>,

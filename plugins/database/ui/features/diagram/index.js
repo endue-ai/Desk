@@ -35,6 +35,9 @@ const of = (/** @type {Deps} */ deps) => {
 const modeOf = (/** @type {unknown} */ m) =>
   MODES.includes(/** @type {Mode} */ (m)) ? { mode: /** @type {Mode} */ (m) } : {};
 
+const byAgent = (/** @type {import("@endue-ai/plugin-sdk").Invocation | undefined} */ invocation) =>
+  /^(agent|mcp):/u.test(invocation?.caller ?? "");
+
 /** The connection a request names (an explorer row's, or the command's, asked when missing). */
 async function connectionOf(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ ref) {
   const conn =
@@ -68,7 +71,17 @@ async function schemaOf(
 }
 
 /** A diagram from an explorer row (r) or from Database: ER diagram of a schema. */
-async function draw(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ ref) {
+async function draw(
+  /** @type {Deps} */ deps,
+  /** @type {Record<string, unknown>} */ ref,
+  read = false,
+) {
+  if (
+    read &&
+    (typeof ref.connection !== "string" ||
+      (typeof ref.schema !== "string" && !Array.isArray(ref.schemas)))
+  )
+    throw new Error("Name the connection and schemas for the diagram.");
   const conn = await connectionOf(deps, ref);
   const row = "kind" in ref;
   /** @type {Choice} */
@@ -85,11 +98,24 @@ async function draw(/** @type {Deps} */ deps, /** @type {Record<string, unknown>
       typeof ref.filter === "string" ? ref.filter.trim() : row ? deps.explorer.filtering() : "";
     choice = { schemas, ...(filter ? { filter } : {}) };
   }
-  return of(deps).diagrams.open(conn, choice, modeOf(ref.columns));
+  return read
+    ? of(deps).diagrams.read(conn, choice)
+    : of(deps).diagrams.open(conn, choice, modeOf(ref.columns));
 }
 
 /** Database: ER diagram of a table and its neighbours: the table asked when not named. */
-async function around(/** @type {Deps} */ deps, /** @type {Record<string, unknown>} */ args) {
+async function around(
+  /** @type {Deps} */ deps,
+  /** @type {Record<string, unknown>} */ args,
+  read = false,
+) {
+  if (
+    read &&
+    (typeof args.connection !== "string" ||
+      typeof args.schema !== "string" ||
+      typeof args.table !== "string")
+  )
+    throw new Error("Name the connection, schema and table for the diagram.");
   const conn = await connectionOf(deps, args);
   const schema = await schemaOf(deps, conn, args.schema);
   let table = typeof args.table === "string" ? args.table : "";
@@ -102,7 +128,9 @@ async function around(/** @type {Deps} */ deps, /** @type {Record<string, unknow
       )) ?? "";
     if (!table) throw deps.cancelled("No diagram drawn.");
   }
-  const depth = await of(deps).diagrams.depth(args.depth);
+  const depth = await of(deps).diagrams.depth(read ? (args.depth ?? 1) : args.depth);
+  if (read)
+    return of(deps).diagrams.read(conn, { schemas: [schema], around: [schema, table], depth });
   return of(deps).diagrams.open(
     conn,
     { schemas: [schema], around: [schema, table], depth },
@@ -116,8 +144,8 @@ export const feature = {
   commands: (deps) => {
     const { diagrams, edits } = of(deps);
     return {
-      "endue.database.er-diagram": (args) => draw(deps, args),
-      "endue.database.er-neighbours": (args) => around(deps, args),
+      "endue.database.er-diagram": (args, invocation) => draw(deps, args, byAgent(invocation)),
+      "endue.database.er-neighbours": (args, invocation) => around(deps, args, byAgent(invocation)),
       "endue.database.er-arrange": (args) => diagrams.arrange(args.diagram),
       "endue.database.er-columns": (args) => diagrams.columns(args.diagram, args.columns),
       "endue.database.er-add-table": (args) => edits.add(args.diagram, args.table),

@@ -67,12 +67,12 @@ export const feature = {
   id: "objects",
   commands: (deps) => {
     const objects = of(deps);
-    /** @type {Record<string, (args: Record<string, unknown>) => unknown>} */
+    /** @type {Record<string, (args: Record<string, unknown>, invocation?: import("@endue-ai/plugin-sdk").Invocation) => unknown>} */
     const operations = {};
     for (const [id, op] of Object.entries(OPERATIONS))
-      operations[id] = async (args) => {
+      operations[id] = async (args, invocation) => {
         const { conn, target } = await objects.resolve(args, op);
-        return objects.operate(conn, op, target, args);
+        return objects.operate(conn, op, target, args, invocation?.approved === true);
       };
     return {
       ...operations,

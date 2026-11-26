@@ -1,24 +1,59 @@
 // Who calls the plugin's commands, and what agents may not (PG-91, ADR 0346). The core's cmd.invoked
-// says the caller (`desk` is the person; agent:<id> an agent of the brain; another plugin, such as
-// the assistant, by its id); the SDK hands the handler the same arguments object, so the call is
-// found by it a turn later (else by the order invocations came in). A request the desk sends by name
-// has no cmd.invoked: it is the person's.
+// says the caller and the SDK passes that invocation to its handler. A request the desk sends by
+// name has no command invocation and is the person's.
 // An agent's call naming a connection closed to agents is refused, so is one naming none while any
 // is closed (the command would take the one on screen), and only the person changes agents' access
 // or clears their list. Every call of an agent tool by anyone but the plugin itself, and every other
 // command's call by an agent, goes on the connection's audit list with how it ended. No DOM.
 
 import { databaseOf } from "../../databases.js";
+import { refusedWords, whereOf } from "../../session/connect-gate.js";
 
 /**
  * @typedef {import("../../engines/common.js").Connection} Connection
  * @typedef {import("./log.js").Entry} Entry
  * @typedef {Omit<Entry, "at" | "caller" | "command" | "outcome"> & { connection: string, outcome?: Entry["outcome"] }} Note
- * @typedef {{ caller: string, command: string, at: number, notes: Note[] }} Call
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
+ * @typedef {{ caller: string, command: string, at: number, notes: Note[], ref?: string }} Call
  */
 
 export const PERSON = "desk";
-const HEARD_MAX = 64;
+const ACTIVE_TOOLS = new Set([
+  "endue.database.view-state",
+  "endue.database.preview-changes",
+  "endue.database.stage-cells",
+  "endue.database.stage-delete-rows",
+  "endue.database.export",
+]);
+const WITHOUT_TARGET = new Set([
+  "endue.database.connections",
+  "endue.database.find-objects",
+  "endue.database.new-connection",
+]);
+const SERVER_TOOLS = new Set(
+  [
+    "schema",
+    "query",
+    "explain-statement",
+    "object-ddl",
+    "sample-rows",
+    "table-stats",
+    "sessions-list",
+    "check-statement",
+    "search-data",
+    "search-source",
+    "activity",
+    "test-connection",
+    "er-diagram",
+    "er-neighbours",
+    "overview",
+    "drop-object",
+    "truncate-table",
+    "drop-policy",
+    "cancel-session",
+    "end-session",
+  ].map((id) => `endue.database.${id}`),
+);
 /** The agents' tools: every call is recorded, whoever makes it. */
 export const TOOLS = new Set(
   [
@@ -31,6 +66,11 @@ export const TOOLS = new Set(
     "table-stats",
     "sessions-list",
     "check-statement",
+    "view-state",
+    "write-console",
+    "history-list",
+    "stage-cells",
+    "stage-delete-rows",
   ].map((id) => `endue.database.${id}`),
 );
 /** What only the person may call: what agents may reach, and their list. */
@@ -80,9 +120,10 @@ export class AgentRefusal extends Error {
 
 /**
  * @param {{
- *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "onEvent">,
  *   own: string,
  *   find(ref: string): Connection | undefined,
+ *   active(): string | undefined,
+ *   connected(conn: Connection): Promise<boolean>,
  *   access: ReturnType<typeof import("./access.js").createAccess>,
  *   log: ReturnType<typeof import("./log.js").createLog>,
  *   changed(connection: string): void,
@@ -93,29 +134,11 @@ export function createGate(deps) {
   const now = deps.now ?? (() => Date.now());
   /** @type {WeakMap<object, Call>} */
   const calls = new WeakMap();
-  /** The invocations heard and not yet taken by their handler, oldest first, by command. */
-  /** @type {Map<string, Array<{ caller: string, args: unknown }>>} */
-  const heard = new Map();
-  deps.bridge.onEvent?.((event) => {
-    if (event.event !== "cmd.invoked") return;
-    const { id, caller, args } = event.data;
-    const list = heard.get(id) ?? [];
-    list.push({ caller, args });
-    if (list.length > HEARD_MAX) list.shift();
-    heard.set(id, list);
-  });
-
-  /**
-   * The call these arguments came with: the invocation heard with this very object, else the oldest
-   * one of the command not taken yet (arguments the SDK made afresh), else the person's request.
-   */
+  /** The invocation on the handler's argument object, or a direct request from the desk. */
   const callOf = (/** @type {string} */ command, /** @type {object} */ args) => {
     let call = calls.get(args);
     if (!call) {
-      const list = heard.get(command) ?? [];
-      const at = list.findIndex((h) => h.args === args);
-      const [taken] = list.splice(Math.max(at, 0), 1);
-      call = { caller: taken?.caller ?? PERSON, command, at: now(), notes: [] };
+      call = { caller: PERSON, command, at: now(), notes: [] };
       calls.set(args, call);
     }
     return call;
@@ -126,7 +149,7 @@ export function createGate(deps) {
     call.caller !== deps.own && (TOOLS.has(call.command) || call.caller !== PERSON);
 
   /** Refuse what an agent may not do before its command starts. */
-  const check = async (/** @type {Call} */ call, /** @type {Record<string, unknown>} */ args) => {
+  const check = async (/** @type {Call} */ call) => {
     if (PERSON_ONLY.has(call.command) && isAgent(call))
       throw new AgentRefusal("Only the person changes what agents may reach.");
     if (PERSON_RUNS.has(call.command) && outsideCaller(call.caller))
@@ -134,12 +157,15 @@ export function createGate(deps) {
         "Only the person runs this: agents read with endue.database.query, read-only and masked.",
       );
     if (!isAgent(call)) return;
-    const ref = args.connection;
+    const ref = call.ref;
     if (typeof ref === "string") {
       const conn = deps.find(ref);
       if (conn && (await deps.access.of(conn.id)).closed)
         throw new AgentRefusal(`${conn.name} is closed to agents.`);
-    } else if (call.command !== "endue.database.connections" && (await deps.access.anyClosed()))
+      const where = conn && SERVER_TOOLS.has(call.command) ? whereOf(conn) : undefined;
+      if (conn && where && !(await deps.connected(conn)))
+        throw new AgentRefusal(refusedWords(where));
+    } else if (!WITHOUT_TARGET.has(call.command) && (await deps.access.anyClosed()))
       throw new AgentRefusal(
         "Name the connection: some connections are closed to agents, and this command would take the one on screen.",
       );
@@ -165,7 +191,7 @@ export function createGate(deps) {
             : "ran";
     let notes = call.notes;
     if (notes.length === 0) {
-      const ref = typeof args.connection === "string" ? args.connection : "";
+      const ref = call.ref ?? "";
       const conn = ref ? deps.find(ref) : undefined;
       if (!conn) return;
       const { connection: _, ...rest } = args;
@@ -209,30 +235,45 @@ export function createGate(deps) {
 
   /**
    * The commands, each call checked first and recorded after.
-   * @template {{ on(name: string, handler: (args: unknown) => unknown): unknown }} C
+   * @template {{ on(name: string, handler: (args: unknown, invocation?: Invocation) => unknown): unknown }} C
    * @param {C} commands
    * @returns {C}
    */
   const watch = (commands) => ({
     ...commands,
-    on: (/** @type {string} */ name, /** @type {(args: unknown) => unknown} */ handler) =>
-      commands.on(name, async (/** @type {unknown} */ given) => {
-        const args = /** @type {Record<string, unknown>} */ (
-          given && typeof given === "object" ? given : {}
-        );
-        // cmd.invoked reaches the event listeners in the same turn, after the handler starts.
-        await Promise.resolve();
-        const call = callOf(name, args);
-        try {
-          await check(call, args);
-          const result = await handler(args);
-          await settle(call, args, undefined);
-          return result;
-        } catch (error) {
-          await settle(call, args, error);
-          throw error;
-        }
-      }),
+    on: (
+      /** @type {string} */ name,
+      /** @type {(args: unknown, invocation?: Invocation) => unknown} */ handler,
+    ) =>
+      commands.on(
+        name,
+        async (/** @type {unknown} */ given, /** @type {Invocation | undefined} */ invocation) => {
+          const args = /** @type {Record<string, unknown>} */ (
+            given && typeof given === "object" ? { ...given } : {}
+          );
+          const call = {
+            caller: invocation?.caller ?? PERSON,
+            command: name,
+            at: now(),
+            notes: [],
+            ref: ACTIVE_TOOLS.has(name)
+              ? deps.active()
+              : typeof args.connection === "string"
+                ? args.connection
+                : undefined,
+          };
+          calls.set(args, call);
+          try {
+            await check(call);
+            const result = await handler(args, invocation);
+            await settle(call, args, undefined);
+            return result;
+          } catch (error) {
+            await settle(call, args, error);
+            throw error;
+          }
+        },
+      ),
   });
 
   return {

@@ -81,7 +81,6 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
-  // A run is busy from the client's start until its output is read, or while its session runs.
   let running = 0;
   let reading = 0;
   let sessions = 0;
@@ -127,7 +126,6 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
   const list = options.features ?? Object.values(features);
 
   const changed = () => view.explorer(explorer.rows());
-  // Passwords the desk keeps in the OS keychain (ADR 0311); the plugin never reads one back.
   const keychain = createKeychain(bridge, () => changed());
   const manager = createDatabasesManager({
     bridge,
@@ -144,6 +142,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     renamed: (conn) => consoles.renamed(conn),
     changed: () => changed(),
     sessions: held.connections,
+    reviewConnection: held.reviewConnection,
     cancelled,
     ...(options.random ? { random: options.random } : {}),
   });
@@ -301,12 +300,13 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     find: manager.get,
     catalog,
     execute,
+    consoles,
+    view,
   });
 
   const guard = guarded(view);
   /** @type {Set<(next: import("./settings.js").Settings) => void>} */
   const followers = new Set();
-  // Settings while running (PG-104): in force at the next run, open takes it where safe; said once.
   const effects = effectsOf({
     clients,
     catalog,
@@ -349,7 +349,7 @@ export function createDatabase({ bridge, commands: raw, state, settings: source 
     guard,
     cancelled,
     dialog: (type, model) => (view.dialog ? view.dialog(type, model) : Promise.resolve(undefined)),
-    drop: (item) => dropped(item),
+    drop: dropped,
   };
   const builtins = {
     ...builtinActions({

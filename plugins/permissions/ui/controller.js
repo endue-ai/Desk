@@ -3,6 +3,7 @@
 // every caller's grants and this session's refusals. It only talks to the bridge, its surface and a
 // view, so the SDK's test host runs it with a recording view.
 import { answeredLabel, approvalModel } from "./approval.js";
+import { connectionReview } from "./connection-review.js";
 import { describeCaller, describePermission, durationLabel } from "./describe.js";
 import { grantList, parentOffer, promptModel } from "./model.js";
 import { createOverlay } from "./overlay.js";
@@ -90,6 +91,12 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     settled.add(`${card.kind}:${idOf(card)}`);
     if (settled.size > SETTLED) settled.delete(settled.values().next().value);
   };
+  const reviewOf = (/** @type {PermPromptData} */ front) =>
+    connectionReview(
+      front,
+      queue.flatMap((c) => (c.kind === "prompt" ? [c.data] : [])),
+      plugins,
+    );
 
   /** The card in front, in the dialog it belongs to; the other dialog closes first. */
   const showPrompt = () => {
@@ -97,7 +104,8 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     const waiting = queue.length - 1;
     if (front?.kind === "prompt") {
       view.approval(null);
-      view.prompt(promptModel(front.data, plugins, waiting));
+      const review = reviewOf(front.data);
+      view.prompt(promptModel(front.data, plugins, waiting - (review?.other.length ?? 0), review));
     } else {
       view.prompt(null);
       view.approval(front ? /** @type {CardModel} */ (modelOf(front, waiting)) : null);
@@ -237,34 +245,42 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     const parent = choice === "parent" ? parentOffer(prompt) : null;
     if (choice === "parent" ? !parent : choice !== "refuse" && !DURATIONS.has(choice)) return;
     answering = true;
+    const prompts = [prompt, ...(reviewOf(prompt)?.other ?? [])];
     const granted = choice !== "refuse";
     const duration = parent ? prompt.duration : /** @type {GrantDuration} */ (choice);
-    const { label } = describePermission(prompt.permission);
+    const label = prompts
+      .map(({ permission }) => describePermission(permission).label)
+      .join(" and ");
     const { name } = describeCaller(prompt.caller, plugins);
     const what = parent ? `${label} in all of ${parent.folder}` : label;
     let said;
-    try {
-      await bridge.call("perm.answer", {
-        promptId: prompt.promptId,
-        granted,
-        ...(granted ? { duration } : {}),
-        ...(parent ? { parent: true } : {}),
-        scope: MANAGE,
-      });
+    const results = await Promise.allSettled(
+      prompts.map(async (part) => {
+        await bridge.call("perm.answer", {
+          promptId: part.promptId,
+          granted,
+          ...(granted ? { duration } : {}),
+          ...(parent ? { parent: true } : {}),
+          scope: MANAGE,
+        });
+        if (!granted) {
+          const { caller, permission, duration: asked } = part;
+          refusals.add({ caller, permission, duration: asked });
+          keepRefusals();
+        }
+      }),
+    );
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) said = `Could not answer ${name}: ${codeOf(failed.reason)}.`;
+    else
       said = granted
         ? `Allowed ${name}: ${what} (${durationLabel(duration)}).`
         : `Refused ${name}: ${label}.`;
-      if (!granted) {
-        const { caller, permission, duration: asked } = prompt;
-        refusals.add({ caller, permission, duration: asked });
-        keepRefusals();
-      }
-    } catch (error) {
-      said = `Could not answer ${name}: ${codeOf(error)}.`;
-    }
     answering = false;
-    const card = queue.shift();
-    if (card) settle(card);
+    for (const part of prompts) {
+      const at = queue.findIndex((c) => c.kind === "prompt" && idOf(c) === part.promptId);
+      if (at >= 0) settle(queue.splice(at, 1)[0]);
+    }
     // The dialog stays open for the next card; the live region says that it changed.
     moveOn(said);
   };

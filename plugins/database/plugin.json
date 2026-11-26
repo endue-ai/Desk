@@ -124,12 +124,95 @@
       {
         "id": "endue.database.new-connection",
         "title": "Database: new connection",
-        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
+        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"],
+        "description": "Prepare a connection form for the person to review and save. Supply no credentials or executable.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "engine": {
+              "enum": ["postgresql", "mysql", "sqlite"]
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "readOnly": {
+              "type": "boolean"
+            },
+            "tag": {
+              "enum": ["none", "development", "staging", "production"]
+            },
+            "ssl": {
+              "enum": ["default", "disable", "prefer", "require", "verify-ca", "verify-full"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.database.import-file",
         "title": "Database: import a file into a table",
-        "keywords": ["csv", "xlsx", "json", "copy", "load"]
+        "keywords": ["csv", "xlsx", "json", "copy", "load"],
+        "description": "Prepare the import form with a file, connection and table. The person opens the file and submits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "format": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.database.import-uri",
@@ -154,7 +237,21 @@
       {
         "id": "endue.database.test-connection",
         "title": "Database: test a connection",
-        "keywords": ["ping", "version"]
+        "keywords": ["ping", "version"],
+        "description": "Read the version of the named database server using permissions that are already held.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.disconnect",
@@ -334,12 +431,89 @@
       {
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
-        "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
+        "keywords": ["entity relationship", "foreign keys", "relations", "erd"],
+        "description": "Read schema tables and relationships as an ER diagram.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "columns": {
+              "type": "string"
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "maxItems": 20
+            },
+            "filter": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.er-neighbours",
         "title": "Database: ER diagram of a table and its neighbours",
-        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"]
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"],
+        "description": "Read a table and the schemas and relationships around it in an ER diagram.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "columns": {
+              "type": "string"
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.er-arrange",
@@ -883,8 +1057,7 @@
           },
           "additionalProperties": false
         },
-        "agent": true,
-        "readOnly": true
+        "agent": true
       },
       {
         "id": "endue.database.activity",
@@ -940,8 +1113,7 @@
           },
           "additionalProperties": false
         },
-        "agent": true,
-        "irreversible": true
+        "agent": true
       },
       {
         "id": "endue.database.end-session",
@@ -1400,8 +1572,7 @@
           },
           "additionalProperties": false
         },
-        "agent": true,
-        "irreversible": true
+        "agent": true
       },
       {
         "id": "endue.database.backup-cancel",
@@ -1588,7 +1759,21 @@
           "vacuum",
           "replication",
           "pg_stat_statements"
-        ]
+        ],
+        "description": "Read the server overview of a named PostgreSQL connection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.refresh-overview",
@@ -2070,7 +2255,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.database.add-row",
@@ -2080,7 +2266,15 @@
       {
         "id": "endue.database.preview-changes",
         "title": "Database: preview the pending changes",
-        "keywords": ["diff", "sql", "edit"]
+        "keywords": ["diff", "sql", "edit"],
+        "description": "Read the pending grid changes for the active result. Submit stays with the person.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.submit-changes",
@@ -2949,7 +3143,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "description": "Write a schema as separate object definitions in a folder."
       },
       {
         "id": "endue.database.save-schema-snapshot",
@@ -2970,7 +3165,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "description": "Save a schema snapshot the person can compare with a later version."
       },
       {
         "id": "endue.database.schema-compare-run",
@@ -3000,7 +3196,25 @@
       {
         "id": "endue.database.find-objects",
         "title": "Database: find objects by name",
-        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"]
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"],
+        "description": "Search the object names known to Database by text.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.copy-name",
@@ -3286,7 +3500,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.database.export-tables",
@@ -3388,7 +3603,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.database.export-cancel",
@@ -3474,6 +3690,159 @@
           "required": ["connection", "sql"],
           "additionalProperties": false
         },
+        "agent": true
+      },
+      {
+        "id": "endue.database.view-state",
+        "title": "Database: read the current view",
+        "args": {
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "enum": ["console", "result", "selection", "pending", "plan", "transaction"]
+              },
+              "maxItems": 6,
+              "uniqueItems": true
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Read the current editor, result page, selection, pending changes, plan or transaction. Result rows are bounded and sensitive values are masked.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.write-console",
+        "title": "Database: draft SQL in a console",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16000
+            },
+            "newTab": {
+              "type": "boolean"
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "description": "Put SQL in a named connection’s console as an unrun draft. Set newTab for a new console.",
+        "agent": true
+      },
+      {
+        "id": "endue.database.history-list",
+        "title": "Database: read query history",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": ["connection"],
+          "additionalProperties": false
+        },
+        "description": "Read a named connection’s recent statement history as data.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.stage-cells",
+        "title": "Database: stage grid cell edits",
+        "args": {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000000
+                  },
+                  "column": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "value": {
+                    "type": ["string", "null"],
+                    "maxLength": 10000
+                  }
+                },
+                "required": ["row", "column", "value"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["cells"],
+          "additionalProperties": false
+        },
+        "description": "Stage cells of the current result by zero-based row and column. The person submits the changes.",
+        "agent": true
+      },
+      {
+        "id": "endue.database.stage-delete-rows",
+        "title": "Database: stage grid row deletions",
+        "args": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000000
+              },
+              "minItems": 1,
+              "maxItems": 100,
+              "uniqueItems": true
+            }
+          },
+          "required": ["rows"],
+          "additionalProperties": false
+        },
+        "description": "Stage the removal of rows of the current result by zero-based row index. The person submits the changes.",
         "agent": true
       }
     ],

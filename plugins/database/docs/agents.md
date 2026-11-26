@@ -20,6 +20,11 @@ Each is an agent command with an argument schema, marked read-only, and runs as 
   server on a read-only session (Parse and Describe, nothing runs; `params.md`), which checks its names and
   types and answers its parameters' and columns' types; the error answers with its position in the
   agent's statement. Any other statement answers that it was not checked.
+- `.view-state` returns selected parts of the active console, including bounded and masked result rows,
+  the selection, pending change positions, the plan structure and the transaction state.
+- `.history-list`, `.overview`, `.test-connection`, `.find-objects` and the ER diagram commands answer data.
+- `.write-console` drafts SQL without running it. `.stage-cells` and `.stage-delete-rows` only prepare edits.
+  Exports ask the person for a destination. New connection and import tools prepare forms for the person.
 
 ## How an agent's SQL runs
 
@@ -31,14 +36,16 @@ Each is an agent command with an argument schema, marked read-only, and runs as 
 - A write (`.query` only) is always asked, whoever calls: the statement, the connection and its tag, that it
   is allowed for this run only, and who asked. Nothing is remembered: the next write asks again. A read-only
   connection refuses it before anyone is asked.
+- A PostgreSQL tool requires the existing connection grant. The person can allow connecting from the
+  connection form or the database's explicit Allow connecting command.
 
 ## What agents may reach
 
 The person sets it per connection in Database: agent audit (or Database: what agents may reach of a
 connection); agents can neither call those commands nor change it.
 
-- **Closed to agents.** Every command an agent calls naming the connection is refused before it starts, a
-  call naming none is refused while any connection is closed, and `.connections` leaves it out.
+- **Closed to agents.** An agent command targeting that connection is refused. The inventory and object
+  search omit it. Active-buffer tools check the connection of the buffer they read or change.
 - **EXPLAIN ANALYZE**, off by default.
 - **Sensitive columns** (`column`, `table.column`, `schema.table.column`), masked in everything an agent reads:
   a query's results mask every column of that name (a result does not say its table), sample rows and

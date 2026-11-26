@@ -172,7 +172,7 @@ describe("Database: export every row to a file", () => {
       options: { lineEnding: "lf" },
       compress: true,
     })) as { files: { path: string }[] };
-    expect(calls[0]).toMatchObject({ dialog: "open", kind: "folders" });
+    expect(calls[0]).toMatchObject({ dialog: "open", kind: "folders", intent: "destination" });
     expect(done.files.map((f) => f.path)).toEqual([
       "~/Exports/items-2.csv.gz",
       "~/Exports/orders.csv.gz",

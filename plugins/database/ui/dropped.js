@@ -83,7 +83,7 @@ export function createDropped(deps) {
    * Carry out a drop: undefined when it was (the effect agreed), "none" when nothing was done;
    * a refusal throws the sentence to say.
    * @param {Dropped} item
-   * @param {Into} [into] The explorer table it landed on, for an import.
+   * @param {Into & { format?: import("./import-copy/wizard.js").CopyFormat }} [into] The import target.
    */
   return async (item, into) => {
     const action = dropAction(item);
@@ -103,16 +103,17 @@ export function createDropped(deps) {
         return undefined;
       }
       case "import": {
-        const head = await headOf(deps.bridge, action.path, action.format === "xlsx");
+        const format = into?.format ?? action.format;
+        const head = await headOf(deps.bridge, action.path, format === "xlsx");
         const text =
-          head.whole && action.format !== "xlsx"
+          head.whole && format !== "xlsx"
             ? new TextDecoder().decode(Uint8Array.from(atob(head.data), (c) => c.charCodeAt(0)))
             : undefined;
         await deps.importer.start({
           path: action.path,
           head,
           ...(text === undefined ? {} : { text }),
-          format: action.format,
+          format,
           ...(into ? { into } : {}),
         });
         return undefined;

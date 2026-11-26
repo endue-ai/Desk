@@ -313,7 +313,9 @@ describe("one PostgreSQL connection shows every database of its server", () => {
   });
 
   it("agents name a database", async () => {
-    const { m, seen } = await mounted();
+    const { m, seen } = await mounted({
+      grants: [{ permission: "db:connect", hosts: ["db.example:5432"] }],
+    });
     expect(await m.host.invoke("endue.database.schema", { connection: "Shop" })).toEqual({
       schemas: ["public", "sales"],
       databases: ["analytics", "locked", "shop"],

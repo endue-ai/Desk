@@ -42,6 +42,38 @@ const elsewhere = (m: Awaited<ReturnType<typeof shop>>) =>
   ]);
 
 describe("a connection's password command", () => {
+  it("asks for the server and helper together on Test before spawning or signing in", async () => {
+    const helper = scriptedHelper([{ stdout: "tok-new\n" }]);
+    const requests: Array<{ permission: { permission: string }; reason?: string }> = [];
+    const m = await shop(
+      {
+        handlers: {
+          ...helper.handlers,
+          "perm.query": () => ({ grants: [] }),
+          "perm.request": (params) => {
+            requests.push(params);
+            return { granted: false };
+          },
+        },
+        password: "tok-new",
+      },
+      [TOKENS.conn],
+    );
+    helper.attach(m.host);
+    await m.host.command("endue.database.edit-connection", { connection: "Shop" });
+    const fields = m.view.forms.at(-1)?.fields;
+    if (!fields) throw new Error("The connection form is closed");
+    expect(await m.app.formTest(fields)).toMatch(/refused/i);
+    expect(requests.map(({ permission }) => permission.permission)).toEqual([
+      "db:connect",
+      "proc:spawn",
+    ]);
+    expect(requests[0]?.reason).toBe(requests[1]?.reason);
+    expect(requests[0]?.reason).toContain(COMMAND);
+    expect(helper.spawned).toEqual([]);
+    expect(passwords(m)).toEqual([]);
+  });
+
   it("asks once for the command, runs it for each new session and signs in with its first line", async () => {
     const { m, helper } = await mounted([{ stdout: "tok-new\nsecond line\n" }]);
     await run(m, "select 1");

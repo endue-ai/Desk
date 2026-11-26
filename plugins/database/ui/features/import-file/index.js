@@ -7,6 +7,7 @@ import { importFile } from "../../import-copy/open.js";
 export const feature = {
   id: "importFile",
   commands: (deps) => ({
-    "endue.database.import-file": (args) => importFile(deps, args),
+    "endue.database.import-file": (args, invocation) =>
+      importFile(deps, args, /^(agent|mcp):/u.test(invocation?.caller ?? "")),
   }),
 };

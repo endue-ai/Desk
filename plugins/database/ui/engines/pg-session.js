@@ -129,11 +129,12 @@ export function createSessions(bridge, options = {}) {
     /** @type {() => Promise<unknown>} */ open,
     /** @type {{ permission: "db:connect", hosts: string[] }} */ scope,
     /** @type {Connection} */ conn,
+    quiet = false,
   ) => {
     try {
       return await open();
     } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw error;
+      if (codeOf(error) !== "permission_denied" || quiet) throw error;
     }
     const reason = `To run SQL on ${conn.name}, a PostgreSQL server`;
     const decision = await call("perm.request", { permission: scope, reason }).catch(() => ({
@@ -159,6 +160,7 @@ export function createSessions(bridge, options = {}) {
     }
     const scope = scopeOf(where, conn);
     const helper = commandFor(conn) && plan.password === undefined ? options.helper : undefined;
+    const quiet = plan.agent === true || plan.permissionsReviewed === true;
     const params = {
       engine: "postgresql",
       ...target,
@@ -169,6 +171,11 @@ export function createSessions(bridge, options = {}) {
       scope,
     };
     try {
+      if (helper && quiet) {
+        const permission = await call("perm.query", { permission: scope });
+        if (!permission.grants?.length)
+          throw Object.assign(new Error("refused"), { code: "permission_denied" });
+      }
       const attempt = async (/** @type {{ password?: string }} */ given) =>
         /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
           await granted(
@@ -180,10 +187,16 @@ export function createSessions(bridge, options = {}) {
               ),
             scope,
             conn,
+            quiet,
           )
         );
       const signed = helper
-        ? await signInWithCommand(helper, (password) => attempt({ password }), conn, where)
+        ? await signInWithCommand(
+            (connection) => helper(connection, quiet),
+            (password) => attempt({ password }),
+            conn,
+            where,
+          )
         : { opened: await attempt({}) };
       if ("error" in signed) return { error: signed.error };
       const { opened } = signed;
@@ -207,7 +220,6 @@ export function createSessions(bridge, options = {}) {
   };
 
   const { script } = createScript({ call, sinks, setTimer, clearTimer });
-  /** What the startup script runs on, before the session is handed out. */
   const first = {
     script,
     close: (/** @type {string} */ id) => call("db.close", { sessionId: id }),
@@ -229,7 +241,6 @@ export function createSessions(bridge, options = {}) {
 
   hearEvents(bridge, { own, sinks, answered, keeper, cursors, ...options });
 
-  /** A run on a short session of its own, opened and closed around it. */
   const short = async (
     /** @type {Job} */ job,
     /** @type {Connection} */ conn,

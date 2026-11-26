@@ -47,9 +47,14 @@ export function createChanges(deps, ctl) {
   };
 
   /** Ask with the model's dialog, run its script, answer the script as shown. */
-  const run = async (/** @type {Connection} */ conn, /** @type {ChangeModel} */ model) => {
+  const run = async (
+    /** @type {Connection} */ conn,
+    /** @type {ChangeModel} */ model,
+    approved = false,
+  ) => {
     refuse(conn);
-    const answer = await deps.dialog(DIALOG, model);
+    const dropping = model.op === "drop-policy";
+    const answer = approved && dropping ? {} : await deps.dialog(DIALOG, model);
     if (answer === undefined) throw deps.cancelled("Not run.");
     const a = answersOf(answer);
     const shown = scriptOf(model, a);
@@ -59,6 +64,7 @@ export function createChanges(deps, ctl) {
     const done = await deps.execute(conn, script, {
       mode: "transaction",
       shown: split(shown, "postgresql").map((s) => s.text),
+      ...(dropping ? { asked: true } : {}),
     });
     const failed = done.result.error ?? done.result.statements.find((s) => s.error)?.error;
     if (failed) throw new Error(`Not run: ${failed.message}`);
@@ -242,13 +248,14 @@ export function createChanges(deps, ctl) {
   const dropPolicy = async (
     /** @type {Connection} */ conn,
     /** @type {Record<string, unknown>} */ given,
+    approved = false,
   ) => {
     refuse(conn);
     const { table, security } = await tableOf(conn, { ...given, name: undefined });
     const name = typeof given.name === "string" ? given.name : "";
     if (!security.policies.some((/** @type {{ name: string }} */ p) => p.name === name))
       throw new Error(`No policy ${name} on ${table.schema}.${table.table}.`);
-    return after(conn, run(conn, dropPolicyModel(conn, { table, name })));
+    return after(conn, run(conn, dropPolicyModel(conn, { table, name }), approved));
   };
 
   /** Turn a table's row security on or off, forced or not. */

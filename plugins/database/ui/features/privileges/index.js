@@ -98,7 +98,8 @@ export const feature = {
       "endue.database.change-membership": async (args) =>
         changes.membership(await conn(args), args),
       "endue.database.policy": async (args) => changes.policy(await conn(args), args),
-      "endue.database.drop-policy": async (args) => changes.dropPolicy(await conn(args), args),
+      "endue.database.drop-policy": async (args, invocation) =>
+        changes.dropPolicy(await conn(args), args, invocation?.approved === true),
       "endue.database.row-security": async (args) => changes.rowSecurity(await conn(args), args),
     };
   },
