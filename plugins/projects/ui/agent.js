@@ -36,7 +36,8 @@ const text = (/** @type {unknown} */ v) =>
 
 /**
  * @param {(name: string, handler: (a: Record<string, unknown>) => unknown) => void} answer
- * @param {{ works(): Work[], named(a: Record<string, unknown>): Promise<Work> }} deps
+ * @param {{ works(): Work[], named(a: Record<string, unknown>): Promise<Work>,
+ *   screen(): import("./present.js").Screen }} deps
  */
 export function answerAgents(answer, deps) {
   answer("endue.projects.tasks", (a) => {
@@ -65,11 +66,13 @@ export function answerAgents(answer, deps) {
     const asked = Number(a.limit);
     const limit = Number.isInteger(asked) && asked > 0 ? Math.min(asked, 200) : 50;
     const statuses = [...new Set(deps.works().map((w) => w.status))];
+    const { view, group, search, source: shownSource, zoom, showDone, period } = deps.screen();
     return {
       tasks: all.slice(0, limit).map(taskAnswer),
       total: all.length,
       more: all.length > limit,
       statuses,
+      screen: { view, group, search, source: shownSource, zoom, showDone, period },
     };
   });
 

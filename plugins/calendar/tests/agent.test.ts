@@ -116,6 +116,7 @@ describe("agent commands", () => {
       calendar: "Work Calendar",
       raw: {
         uid: "plan",
+        path: A.path,
         status: "CONFIRMED",
         busy: true,
         sequence: 3,
@@ -323,6 +324,23 @@ describe("agent commands", () => {
       path: B.path,
     });
     expect(ran("desk.files.save")).toEqual([{ buffer: B.buffer }]);
+  });
+
+  it("requires the calendar file when two files have the same event", async () => {
+    const B = file("~/Calendar/duplicate.ics");
+    const { host, ran, settle } = await mount({
+      handlers: disk({ [A.path]: WORK, [B.path]: WORK }),
+    });
+    await host.command("desk.files.visit", B);
+    await host.command("desk.files.visit", A);
+    const event = { id: "plan", start: "2026-11-02T10:00:00+09:00" };
+    await expect(host.command("endue.calendar.delete", event)).rejects.toThrow(
+      /more than one calendar/i,
+    );
+    expect(ran("desk.buffers.update")).toEqual([]);
+    await host.command("endue.calendar.delete", { ...event, calendar: B.buffer });
+    await settle();
+    expect(ran("desk.buffers.update")).toEqual([{ id: B.buffer, modified: true }]);
   });
 
   it("goes to a named view, reads its span and selection and preloads the editor", async () => {

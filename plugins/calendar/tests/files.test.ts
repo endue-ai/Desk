@@ -1,8 +1,9 @@
 // The desk's file and buffer requests, the person's commands and the editor, on the SDK's test host.
 import { describe, expect, it } from "vitest";
+import type { TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import type { EventFields } from "../ui/calendar/write.js";
 import { ics } from "./fixtures";
-import { denied, disk, file, type Handlers, mount, READ, WRITE } from "./harness";
+import { denied, disk, file, type Handlers, mount, WRITE } from "./harness";
 
 /** The fields the editor was last opened with. */
 const opened = (editors: Array<{ fields: EventFields } | null>): EventFields => {
@@ -35,8 +36,9 @@ describe("the desk's file requests", () => {
   it("visit reads, parses and shows the calendar, and watches the file", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: TEAM }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "utf8", scope: READ }]);
-    expect(params("fs.watch")).toEqual([{ path: A.path, scope: READ }]);
+    const scope = { permission: "fs:read", paths: [A.path] };
+    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "utf8", scope }]);
+    expect(params("fs.watch")).toEqual([{ path: A.path, scope }]);
     const state = view.last;
     expect(state.calendar).toEqual({
       name: "team",
@@ -82,7 +84,12 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     await host.command("desk.files.save", A);
     expect(params("fs.write")).toEqual([
-      { path: A.path, content: TEAM, encoding: "utf8", scope: WRITE },
+      {
+        path: A.path,
+        content: TEAM,
+        encoding: "utf8",
+        scope: { permission: "fs:write", paths: [A.path] },
+      },
     ]);
   });
 
@@ -232,6 +239,53 @@ describe("the desk's file requests", () => {
       { path: outside.path, scope: { permission: "fs:write", paths: [outside.path] } },
     ]);
     expect(params("perm.request")).toEqual([]);
+  });
+
+  it("keeps the changes unsaved when a reviewed agent save lacks the file grant", async () => {
+    const outside = file("~/Work/plan.ics");
+    const files = { [outside.path]: TEAM };
+    let host: TestHost;
+    const mounted = await mount({
+      handlers: {
+        ...disk(files),
+        "fs.write": () => {
+          throw denied("fs:write");
+        },
+      },
+      commands: { "desk.files.save": () => host.command("desk.files.save", outside) },
+    });
+    ({ host } = mounted);
+    await host.command("desk.files.visit", outside);
+    await host.command("endue.calendar.add", {
+      title: "Keep in the buffer",
+      start: "2026-10-30T13:00",
+    });
+    host.emit({
+      event: "cmd.invoked",
+      data: {
+        id: "endue.calendar.save",
+        invocationId: "calendar-review",
+        caller: "agent:eris",
+        args: { calendar: outside.path },
+      },
+    });
+    await mounted.settle();
+    expect(mounted.params("fs.write")).toMatchObject([
+      { path: outside.path, scope: { paths: [outside.path] } },
+    ]);
+    expect(mounted.params("perm.request")).toEqual([]);
+    expect(mounted.params("cmd.answer")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          invocationId: "calendar-review",
+          error: expect.objectContaining({
+            message: expect.stringMatching(/not allowed to write/i),
+          }),
+        }),
+      ]),
+    );
+    expect(mounted.view.last.calendar?.modified).toBe(true);
+    expect(files[outside.path]).toBe(TEAM);
   });
 
   it("closing the buffer forgets the calendar", async () => {

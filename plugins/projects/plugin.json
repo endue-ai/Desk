@@ -64,7 +64,29 @@
       {
         "id": "endue.projects.group",
         "title": "Group tasks by a field",
-        "keywords": ["projects", "group", "lanes", "assignee", "priority", "sprint"]
+        "keywords": ["projects", "group", "lanes", "assignee", "priority", "sprint"],
+        "description": "Group tasks by the given field in views that support grouping. Use none to clear it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "by": {
+              "type": "string",
+              "enum": [
+                "status",
+                "category",
+                "assignee",
+                "priority",
+                "project",
+                "sprint",
+                "type",
+                "source",
+                "none"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.search",
@@ -86,22 +108,50 @@
       {
         "id": "endue.projects.source",
         "title": "Show one source's tasks",
-        "keywords": ["projects", "source", "jira", "linear", "asana", "filter"]
+        "keywords": ["projects", "source", "jira", "linear", "asana", "filter"],
+        "description": "Show tasks from one source by its connector/instance key. Use null to show all connected sources.",
+        "args": {
+          "type": "object",
+          "properties": { "source": { "type": ["string", "null"], "maxLength": 1000 } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.show-done",
         "title": "Show or hide finished tasks",
-        "keywords": ["projects", "done", "completed", "closed"]
+        "keywords": ["projects", "done", "completed", "closed"],
+        "description": "Set whether finished tasks are shown. Omit on to toggle the current setting.",
+        "args": {
+          "type": "object",
+          "properties": { "on": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.zoom",
         "title": "Zoom the timeline",
-        "keywords": ["projects", "timeline", "week", "month", "quarter"]
+        "keywords": ["projects", "timeline", "week", "month", "quarter"],
+        "description": "Set the timeline's zoom to week, month or quarter.",
+        "args": {
+          "type": "object",
+          "properties": { "zoom": { "type": "string", "enum": ["week", "month", "quarter"] } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.go",
         "title": "Go to today, or a period back or ahead",
-        "keywords": ["projects", "today", "next", "previous", "timeline", "calendar"]
+        "keywords": ["projects", "today", "next", "previous", "timeline", "calendar"],
+        "description": "Move the timeline or calendar to today or one period forward or back. The answer is the period shown.",
+        "args": {
+          "type": "object",
+          "properties": { "to": { "type": "string", "enum": ["today", "next", "previous"] } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.refresh",
@@ -155,7 +205,8 @@
         "id": "endue.projects.move",
         "title": "Move the open task to a status",
         "keywords": ["projects", "status", "move", "transition", "done", "progress"],
-        "description": "Move a task to another status in its tracker (Jira, Linear, Asana, GitHub…), through its connector: status is one of the statuses endue.projects.tasks lists. The task is { source, id } as endue.projects.tasks answers them; without them, the task open or selected. Answers the status it has now.",
+        "description": "Move the named task to a new status in its tracker after review. Give source, id and a status listed by endue.projects.tasks. Answers the status it has now.",
+        "irreversible": true,
         "args": {
           "type": "object",
           "properties": {
@@ -191,7 +242,8 @@
         "id": "endue.projects.update",
         "title": "Change the open task's dates, priority or assignee",
         "keywords": ["projects", "due", "start", "schedule", "priority", "assign"],
-        "description": "Change a task's due or start date (YYYY-MM-DD, null to clear), priority (1 urgent to 4 low, null to clear) or assignee (a name, an email or null) in its tracker, through its connector. The task is { source, id } as endue.projects.tasks answers them; without them, the task open or selected. Answers the fields changed.",
+        "description": "After review, change the named task in its tracker. Give source and id from endue.projects.tasks. Set the due or start date (YYYY-MM-DD), priority (1 urgent to 4 low) or assignee (a name or address). Use null to clear a field. Answers the fields changed.",
+        "irreversible": true,
         "args": {
           "type": "object",
           "properties": {
@@ -270,7 +322,7 @@
         "id": "endue.projects.tasks",
         "title": "Projects: tasks as data",
         "keywords": ["projects", "tasks", "issues", "tickets", "todo", "jira", "linear"],
-        "description": "The tasks Projects holds from every connected tracker, as data, leaving the screen as it is: each with source and id (to show, move or update it), ref, title, status, category (todo, doing, done, cancelled), priority, assignee, project, sprint, start, due, labels and updatedAt. Open tasks only unless done is true; query narrows to words in the ref, title, project or labels, source to a connector, status to a status or category, assignee to a name or email, dueBefore to tasks due before a date. Soonest due first, up to limit (50, at most 200), with total, more and every status in use.",
+        "description": "Read tasks across connected trackers and the current Projects view, group, search, source, zoom, period and show-done setting. Each task includes source and id for follow-up calls. Filter by query, source, status, assignee or dueBefore. Open tasks only unless done is true. Soonest due first, up to limit (50, at most 200).",
         "args": {
           "type": "object",
           "properties": {

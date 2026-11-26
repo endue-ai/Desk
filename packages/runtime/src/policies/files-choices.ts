@@ -6,6 +6,7 @@ import { folderRead, onePath } from "./files-open";
 
 const ERIS = "endue.eris";
 const PLAYER = "endue.player";
+const CALENDAR = "endue.calendar";
 const TEXT =
   /\.(txt|md|markdown|csv|tsv|json|jsonl|yaml|yml|xml|html|css|js|ts|jsx|tsx|rs|py|sh|toml|ini|cfg|sql|log|c|h|cpp|java|go|rb|php|svelte|vue)$/i;
 
@@ -114,6 +115,8 @@ export function installFileChoices(ctx: DeskContext, files: Buffers) {
       ).catch(() => undefined);
     },
     async save(buffer: Buffer & { path: string }, caller?: string) {
+      if (caller?.startsWith("agent:") && buffer.plugin === CALENDAR && builtIn(CALENDAR))
+        throw new CommandError("failed", "Use endue.calendar.save for this Calendar buffer");
       if (caller === undefined && chosen.get(buffer.id) === buffer.path)
         await grantFiles(
           ctx,

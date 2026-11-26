@@ -40,6 +40,8 @@ const PAGE = 500;
 const MOST = 5000;
 const COLOR = /^#[0-9a-f]{6}$/i;
 const PREFIX = "system:";
+export const isLayerId = (/** @type {unknown} */ id) =>
+  typeof id === "string" && id.startsWith(PREFIX);
 
 const itemKey = (
   /** @type {{ connector: string, instance: string }} */ s,
@@ -154,19 +156,17 @@ export function createLayer({ data }, host) {
     );
   };
 
-  /**
-   * The shown calendars' events that overlap the days of a view.
-   * @param {{ from: number, to: number }} days day numbers, [from, to)
-   * @param {Zone} display
-   */
-  const occurrences = (days, display) => {
-    const from = display.toUtc(days.from * DAY);
-    const to = display.toUtc(days.to * DAY);
+  /** The shown calendars' events that overlap a span of instants. */
+  const entries = (
+    /** @type {number} */ from,
+    /** @type {number} */ to,
+    /** @type {Zone} */ display,
+  ) => {
     return [...items.values()]
       .filter((item) => !hidden.has(sourceOf(item).key))
-      .map((item) => layerOccurrence(item, display))
+      .map((item) => ({ item, occ: layerOccurrence(item, display) }))
       .filter(
-        (o) =>
+        ({ occ: o }) =>
           Number.isFinite(o.start) &&
           Number.isFinite(o.end) &&
           o.start < to &&
@@ -199,7 +199,11 @@ export function createLayer({ data }, host) {
     /** Resolves once the first read is done, whatever it found. */
     ready: () => ready,
     sources,
-    occurrences,
+    entries,
+    occurrences: (/** @type {{ from: number, to: number }} */ days, /** @type {Zone} */ display) =>
+      entries(display.toUtc(days.from * DAY), display.toUtc(days.to * DAY), display).map(
+        ({ occ }) => occ,
+      ),
     toggle,
     /** endue.calendar.layer `{ calendar?, on? }`: a calendar by name or key, or all of them. */
     command: (/** @type {unknown} */ args) => {

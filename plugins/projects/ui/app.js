@@ -314,7 +314,7 @@ export function createProjects({ bridge, commands, settings, surface }, view, op
       update: editing.update,
     },
   });
-  answerAgents(answer, { works: () => s.works, named });
+  answerAgents(answer, { works: () => s.works, named, screen: () => screen });
 
   settings.onChange(({ key: name, value }) => {
     if (name === "week-start" && typeof value === "string")

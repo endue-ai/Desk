@@ -126,6 +126,6 @@ describe("the manifest offers them to agents", () => {
         description: expect.any(String),
         args: { additionalProperties: false },
       });
-    expect(byId("update")).toMatchObject({ irreversible: true });
+    for (const id of ["move", "update"]) expect(byId(id)).toMatchObject({ irreversible: true });
   });
 });

@@ -1,6 +1,6 @@
 // What agents read of the calendar's agent commands (ADR 0088): each one's title, description and
 // argument schema, as plugin.json declares them; agent.js answers them, and the tests compare the
-// two, so the manifest and the code never drift. Reads are read-only; delete is irreversible.
+// two, so the manifest and the code never drift. The agent's file save waits for review.
 
 export const TIME = {
   type: "string",
@@ -11,10 +11,17 @@ const SPAN = {
   from: { ...TIME, description: `${TIME.description}; today when absent` },
   to: { ...TIME, description: `${TIME.description}; seven days after from when absent` },
 };
+const CALENDAR = {
+  type: "string",
+  minLength: 1,
+  maxLength: 4096,
+  description: "An open calendar's file path or buffer ID",
+};
 /** What names one event: its item id and start, as endue.calendar.events answers them. */
 const NAMED = {
   id: { type: "string", minLength: 1, maxLength: 512, description: "The event item's id" },
   start: { ...TIME, description: "The event item's start, as events answered it" },
+  calendar: CALENDAR,
   scope: {
     enum: ["one", "following", "all"],
     description:
@@ -43,10 +50,45 @@ const ITEM = { type: "object", properties: { item: { type: "object" } } };
 
 /** @type {Record<string, { title: string, description: string, args: object, result?: object, readOnly?: true, irreversible?: true }>} */
 export const SPECS = {
+  "endue.calendar.show": {
+    title: "Calendar: show a date or view",
+    description: "Show a date or a Calendar view. An omitted date or view keeps the current one.",
+    args: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "A date in YYYY-MM-DD or a day such as today" },
+        view: { type: "string", enum: ["month", "week", "day", "agenda"] },
+      },
+      additionalProperties: false,
+    },
+  },
+  "endue.calendar.current": {
+    title: "Calendar: read the current view",
+    description:
+      "Read the open calendar, view, date span and event in the editor. The span's to date is exclusive.",
+    args: { type: "object", properties: {}, additionalProperties: false },
+    readOnly: true,
+  },
+  "endue.calendar.new": {
+    title: "Calendar: new event",
+    description:
+      "Open a new event in the editor for review. Optional fields prefill it without changing or saving the calendar.",
+    args: {
+      type: "object",
+      properties: {
+        fields: {
+          type: "object",
+          properties: { ...FIELDS, start: TIME },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+  },
   "endue.calendar.events": {
     title: "Calendar: list events",
     description:
-      "The events between from and to in the open calendars (or the default calendar file), as specs/item/v0 event items, earliest first: id, title, start, end, allDay, location, body, recurrence and raw.uid. text narrows to events whose title, place or notes hold it.",
+      "Read events between from and to in the open calendars (or the default file) and visible system calendars as event items. File events give raw.path for editing. System events are read-only. text narrows their titles, places or notes.",
     args: {
       type: "object",
       properties: {
@@ -67,7 +109,7 @@ export const SPECS = {
   "endue.calendar.conflicts": {
     title: "Calendar: find overlapping events",
     description:
-      "Pairs of busy events between from and to that overlap, with when the overlap starts and ends and for how many minutes.",
+      "Find overlaps between busy events in open calendars and visible system calendars. Answers the events and when and for how long they overlap.",
     args: { type: "object", properties: SPAN, additionalProperties: false },
     result: {
       type: "object",
@@ -77,10 +119,10 @@ export const SPECS = {
   },
   "endue.calendar.add": {
     title: "Calendar: add an event",
-    description: `Add an event to the calendar on screen (or the default calendar file) and answer it as an item. ${UNSAVED}`,
+    description: `Add an event to the named open calendar, or the open or default calendar without a name. ${UNSAVED}`,
     args: {
       type: "object",
-      properties: { title: FIELDS.title, start: TIME, ...FIELDS },
+      properties: { title: FIELDS.title, start: TIME, ...FIELDS, calendar: CALENDAR },
       required: ["title", "start"],
       additionalProperties: false,
     },
@@ -88,7 +130,7 @@ export const SPECS = {
   },
   "endue.calendar.update": {
     title: "Calendar: change an event",
-    description: `Change an event of the calendar on screen: the fields given take the place of its own, the rest stay; newStart moves it. A repeating event changes as scope says. Answers it as an item. ${UNSAVED}`,
+    description: `Change the named event in an open file. Give calendar if several files match. Given fields replace their old values, and newStart moves the event. Scope selects instances of a repeat. ${UNSAVED}`,
     args: {
       type: "object",
       properties: {
@@ -103,7 +145,7 @@ export const SPECS = {
   },
   "endue.calendar.delete": {
     title: "Calendar: delete an event",
-    description: `Delete an event of the calendar on screen, after the person says yes; a repeating event as scope says. ${UNSAVED}`,
+    description: `Remove the named event from an open calendar buffer. Give calendar if several files match. Scope selects instances of a repeat. ${UNSAVED}`,
     args: {
       type: "object",
       properties: NAMED,
@@ -111,13 +153,13 @@ export const SPECS = {
       additionalProperties: false,
     },
     result: { type: "object", properties: { deleted: { type: "string" } } },
-    irreversible: true,
   },
   "endue.calendar.save": {
     title: "Calendar: save the calendar",
     description:
-      "Save the calendar on screen to its file, as the person's save does; the desk keeps what it replaced as a version. Answers the path, or null when nothing was unsaved.",
-    args: { type: "object", properties: {}, additionalProperties: false },
+      "Save pending edits to the named calendar after review. Agents give its path or buffer ID and need write access. The desk keeps the previous file version. Answers the path or null when there are no edits.",
+    args: { type: "object", properties: { calendar: CALENDAR }, additionalProperties: false },
     result: { type: "object", properties: { path: { type: ["string", "null"] } } },
+    irreversible: true,
   },
 };
