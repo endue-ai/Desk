@@ -67,6 +67,43 @@ describe("an agent's projects commands", () => {
       truncated: false,
     });
   });
+
+  it("steers the visible projects view and answers its state", async () => {
+    const m = await mount();
+    const source = `${JIRA}/work`;
+    for (const [command, args] of [
+      ["view", { view: "timeline" }],
+      ["group", { by: "source" }],
+      ["source", { source }],
+      ["show-done", { on: false }],
+      ["zoom", { zoom: "week" }],
+      ["search", { text: "payments" }],
+      ["go", { to: "next" }],
+    ] as const)
+      await m.host.command(`endue.projects.${command}`, args);
+    expect(await m.host.command("endue.projects.tasks")).toMatchObject({
+      screen: {
+        view: "timeline",
+        group: "source",
+        source,
+        showDone: false,
+        zoom: "week",
+        search: "payments",
+        period: m.view.last().period,
+      },
+    });
+  });
+
+  it("requires a status for a named move and leaves the palette alone", async () => {
+    const m = await mount();
+    await expect(
+      m.host.command("endue.projects.move", {
+        source: { connector: JIRA, instance: "work" },
+        id: "10001",
+      }),
+    ).rejects.toThrow(/status/i);
+    expect(m.host.ran.filter(({ name }) => name === "desk.palette.pick")).toEqual([]);
+  });
 });
 
 describe("the manifest offers them to agents", () => {
@@ -83,5 +120,12 @@ describe("the manifest offers them to agents", () => {
       expect(byId(id), id).toMatchObject({ agent: true, args: { additionalProperties: false } });
       expect(byId(id)?.args?.required, id).toBeUndefined();
     }
+    for (const id of ["group", "source", "show-done", "zoom", "go"])
+      expect(byId(id), id).toMatchObject({
+        agent: true,
+        description: expect.any(String),
+        args: { additionalProperties: false },
+      });
+    expect(byId("update")).toMatchObject({ irreversible: true });
   });
 });

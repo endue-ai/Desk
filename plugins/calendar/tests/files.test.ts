@@ -183,7 +183,7 @@ describe("the desk's file requests", () => {
     expect(ran("desk.files.changed")).toEqual([{ path: A.path }]);
   });
 
-  it("a refused read asks once for the file's folder and tries again", async () => {
+  it("a refused read asks once for the exact file and tries again", async () => {
     const files = { "~/Work/plan.ics": TEAM };
     const read = disk(files)["fs.read"];
     if (!read) throw new Error("no fs.read");
@@ -203,11 +203,35 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", file("~/Work/plan.ics"));
     expect(params("perm.request")).toEqual([
       {
-        permission: { permission: "fs:read", paths: ["~/Work/**"] },
+        permission: { permission: "fs:read", paths: ["~/Work/plan.ics"] },
         reason: "To open ~/Work/plan.ics in Calendar",
       },
     ]);
     expect(view.last.calendar?.path).toBe("~/Work/plan.ics");
+  });
+
+  it("uses the exact file write grant carried by a person's Save", async () => {
+    const outside = file("~/Work/plan.ics");
+    const files = { [outside.path]: TEAM };
+    const handlers = disk(files);
+    const write = handlers["fs.write"];
+    if (!write) throw new Error("no fs.write");
+    const { host, params } = await mount({
+      handlers: {
+        ...handlers,
+        "fs.write": (request, caller) => {
+          if (request.scope.paths.length !== 1 || request.scope.paths[0] !== outside.path)
+            throw denied("fs:write");
+          return write(request, caller);
+        },
+      },
+    });
+    await host.command("desk.files.visit", outside);
+    await host.command("desk.files.save", outside);
+    expect(params("fs.write")).toMatchObject([
+      { path: outside.path, scope: { permission: "fs:write", paths: [outside.path] } },
+    ]);
+    expect(params("perm.request")).toEqual([]);
   });
 
   it("closing the buffer forgets the calendar", async () => {
