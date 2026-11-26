@@ -18,8 +18,10 @@ const strings = (/** @type {unknown} */ value) =>
 /**
  * @param {PluginCommands} commands
  * @param {Terminals} app
+ * @param {() => unknown} [showFind]
+ * @param {(id: string) => import("./agent.js").Scrollback | undefined} [scrollback]
  */
-export function wireCommands(commands, app) {
+export function wireCommands(commands, app, showFind = () => {}, scrollback = () => undefined) {
   const sessionOf = (/** @type {unknown} */ args) => {
     const { session } = /** @type {{ session?: unknown }} */ (args ?? {});
     return typeof session === "string" && app.ids().includes(session) ? session : null;
@@ -74,7 +76,15 @@ export function wireCommands(commands, app) {
     app.rename(id, title.slice(0, 200));
     return id;
   });
-  commands.on("endue.terminal.close", (args) => app.close(current(args)));
+  const lifecycle =
+    (/** @type {(id: string, force: boolean) => unknown} */ act) =>
+    (/** @type {unknown} */ args) => {
+      const { session, force } = /** @type {{ session?: unknown, force?: unknown }} */ (args ?? {});
+      if (session !== undefined && (typeof session !== "string" || !app.ids().includes(session)))
+        throw new Error(`No terminal ${String(session)}.`);
+      return act(current(args), force === true);
+    };
+  commands.on("endue.terminal.close", lifecycle(app.close));
   // Split panes (issue 315): a shell beside the pane named, else the one in use, in its folder.
   commands.on("endue.terminal.split", async (args) => {
     const { direction } = /** @type {{ direction?: unknown }} */ (args ?? {});
@@ -95,7 +105,7 @@ export function wireCommands(commands, app) {
   commands.on("endue.terminal.previous", () => step(-1));
   commands.on("endue.terminal.clear", (args) => app.clear(current(args)));
   commands.on("endue.terminal.interrupt", (args) => app.signal(current(args), "int"));
-  commands.on("endue.terminal.restart", (args) => app.restart(current(args)));
+  commands.on("endue.terminal.restart", lifecycle(app.restart));
 
   // A program of its own, without a shell. A shell with arguments would run anything under the
   // shell's grant without the person hearing of it, so it is refused: run the program itself.
@@ -129,7 +139,7 @@ export function wireCommands(commands, app) {
     return { session: session.id, procId: session.procId };
   });
 
-  wireAgent(commands, app);
+  wireAgent(commands, app, showFind, scrollback);
   // The palette's Terminals group: a pick runs endue.terminal.focus above.
   commands.on("endue.terminal.tabs", (args) => findTerminals(args, app));
 

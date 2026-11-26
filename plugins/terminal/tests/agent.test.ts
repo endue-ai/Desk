@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { plainText } from "../ui/agent.js";
+import { plainText, scrollbackLines } from "../ui/agent.js";
 import { mount, scope } from "./harness";
 
 const manifest = () =>
@@ -104,5 +104,30 @@ describe("the terminal for agents (ADR 0088)", () => {
 
   it("keeps a line as its last carriage return left it", () => {
     expect(plainText([{ data: "50%\r100%\r\nok\r\n", encoding: "utf8" }])).toBe("100%\nok\n");
+  });
+
+  it("keeps the first row and content of a wrapped scrollback line", () => {
+    const rows = [
+      { text: "abc ", isWrapped: false },
+      { text: "def ", isWrapped: true },
+      { text: "next", isWrapped: false },
+    ];
+    expect([
+      ...scrollbackLines({
+        length: rows.length,
+        getLine: (at) => {
+          const row = rows[at];
+          return (
+            row && {
+              isWrapped: row.isWrapped,
+              translateToString: (trim) => (trim ? row.text.trimEnd() : row.text),
+            }
+          );
+        },
+      }),
+    ]).toEqual([
+      { line: 1, text: "abc def" },
+      { line: 3, text: "next" },
+    ]);
   });
 });

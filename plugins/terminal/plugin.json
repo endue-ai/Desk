@@ -75,7 +75,7 @@
         "id": "endue.terminal.close",
         "title": "Close the terminal",
         "keywords": ["exit"],
-        "description": "Close a terminal and end its program.",
+        "description": "Close a terminal and end its program. A running program is protected; force asks before ending it.",
         "args": {
           "type": "object",
           "properties": {
@@ -83,6 +83,10 @@
               "type": "string",
               "minLength": 1,
               "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Ask before ending a running program."
             }
           }
         },
@@ -125,15 +129,30 @@
           },
           "required": ["direction"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.next",
-        "title": "Next terminal"
+        "title": "Next terminal",
+        "agent": true,
+        "description": "Focus the next terminal tab and the pane in use there.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.previous",
-        "title": "Previous terminal"
+        "title": "Previous terminal",
+        "agent": true,
+        "description": "Focus the previous terminal tab and the pane in use there.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.clear",
@@ -174,7 +193,7 @@
         "id": "endue.terminal.restart",
         "title": "Start the terminal's shell again",
         "keywords": ["relaunch", "respawn"],
-        "description": "End what runs in a terminal and start its shell again in the same folder. session is its id, as endue.terminal.sessions lists it; the one on screen without it.",
+        "description": "End what runs in a terminal and start its shell again in the same folder. session is its id, as endue.terminal.sessions lists it; the one on screen without it. A running program is protected; force asks before ending it.",
         "args": {
           "type": "object",
           "properties": {
@@ -182,6 +201,10 @@
               "type": "string",
               "minLength": 1,
               "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Ask before ending a running program."
             }
           },
           "additionalProperties": false
@@ -191,7 +214,25 @@
       {
         "id": "endue.terminal.find",
         "title": "Find in the terminal",
-        "keywords": ["search", "scrollback", "grep"]
+        "keywords": ["search", "scrollback", "grep"],
+        "agent": true,
+        "readOnly": true,
+        "description": "Search the kept output of the named or current terminal. An empty person invocation opens the search bar.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.tabs",
@@ -259,7 +300,7 @@
         "id": "endue.terminal.sessions",
         "title": "List the terminals",
         "keywords": ["sessions", "tabs"],
-        "description": "The open terminals: session id, title, the program with its args and folder, whether it still runs, how it ended, and which one is on screen.",
+        "description": "List open terminals, what they run, their current folders and which is on screen.",
         "args": {
           "type": "object",
           "properties": {},

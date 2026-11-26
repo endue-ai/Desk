@@ -383,7 +383,7 @@ export function createView(doc, actions, options, deps) {
     move: (/** @type {string} */ id, /** @type {number} */ index) => tabs.move(id, index),
 
     find,
-
+    scrollback: (/** @type {string} */ id) => items.get(id)?.term.buffer.active,
     /** The settings or the theme changed: every terminal takes the new options. */
     theme(/** @type {Options & { copyOnSelect?: boolean }} */ next) {
       current = next;

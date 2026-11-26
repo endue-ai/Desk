@@ -17,6 +17,7 @@ import { codeOf, scopeOf, spawnProgram } from "./spawn.js";
  *   byProc: Map<string, string>, sessions: Map<string, Session>, settings(): Settings,
  *   held(id: string): Session,
  *   retitle(id: string, title: string): void, say(text: string): void, changed(): void,
+ *   started(session: Session): void,
  * }} deps
  */
 export function createLaunch(deps) {
@@ -46,6 +47,7 @@ export function createLaunch(deps) {
         ended(session, null);
         byProc.set(procId, session.id);
         retitle(session.id, programName(program, sessions.values(), session.id));
+        deps.started(session);
         changed();
         return;
       } catch (error) {
