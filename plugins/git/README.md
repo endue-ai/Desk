@@ -6,12 +6,12 @@ do the work (`s` stage, `u` unstage, `k` discard, `c` commit, `l` log, `d` diff,
 fetch/pull/push, `b` switch), `?` lists them all, `q` goes back. In a diff `s`, `u` and `k` take the hunk
 under the cursor or the lines `v` marked; the patch goes to `git apply -` on stdin (ADR 0248). A start
 reopens the last repository. Every operation is a command (`endue.git.*`, `Mod+Shift+G` the status), so
-the palette, Eris and agents run the same ones; agents also get `endue.git.state` (ADR 0088), and push
-and discard wait for the person. Design: `docs/ko/git-plugin-requirements.md`.
+the palette, Eris and agents run the same ones. Eris can read state, commits, branches and diff text,
+stage patches, and work with stashes. Design: `docs/ko/git-plugin-requirements.md`.
 
 Git runs through `proc.spawn` without a shell, `--` before every path, `GIT_TERMINAL_PROMPT=0` so a
 missing credential fails at once. A discard or force push asks first through `desk.palette.pick`, on
-"Keep everything as it is"; a discarded hunk or lines go back with the desk's undo. Failures are said in
+"Keep everything as it is"; Undo restores hunks or kept file changes in their repository (ADR 0383). Failures are said in
 git's own words on a status line and in the desk's notice.
 
 In the palette (`Mod+K`) the Branches group (`endue.git.branches`) lists the open repository's branches
@@ -21,7 +21,7 @@ refuses to overwrite uncommitted changes, and nothing is forced.
 | Permission | Why |
 | --- | --- |
 | `proc:spawn` (`git`) | Run the git program, and only it, in the repository |
-| `cmd:invoke` (`desk.files.open`, `desk.palette.pick`, `desk.buffers.open`, `desk.buffers.update`, `endue.git.discard-patch`) | Open a file, ask the person to pick or confirm, be a buffer for the log and diff views, discard part of a file so the desk's undo puts it back |
+| `cmd:invoke` (open, pick, buffers, Git discard) | Open files, ask the person, manage log and diff buffers, and register reversible discards |
 
 | File | Purpose |
 | --- | --- |
