@@ -19,6 +19,7 @@ defineUiPlugin({
     let session = { phase: "idle" };
     let sessionId = null;
     let busy = false;
+    let inventory = [];
     let tools, discovery;
     const targets = new Map();
     const report = (text) => {
@@ -112,7 +113,9 @@ defineUiPlugin({
       if (controller.signal.aborted) return;
       const running = document.createElement("optgroup");
       running.label = "Running emulators";
+      const listed = [];
       for (const d of devices) {
+        listed.push({ id: d.serial, ...d });
         const option = new Option(`${d.avd || d.serial} · ${d.avd ? d.serial : d.state}`, d.serial);
         option.disabled = d.state !== "device";
         running.append(option);
@@ -122,10 +125,12 @@ defineUiPlugin({
       installed.label = "Available virtual devices";
       for (const avd of avds.filter((a) => !devices.some((d) => d.avd === a))) {
         const id = `avd:${avd}`;
+        listed.push({ id, avd });
         installed.append(new Option(avd, id));
         targets.set(id, { avd });
       }
       picker.replaceChildren();
+      inventory = listed;
       if (running.children.length) picker.append(running);
       if (installed.children.length) picker.append(installed);
       if (targets.size)
@@ -148,7 +153,7 @@ defineUiPlugin({
       state: () => ({
         phase: session.phase,
         discovering: Boolean(discovery),
-        devices: [...targets].map(([id, device]) => ({ id, ...device })),
+        devices: inventory,
         picked: picker.value || null,
         session: sessionId ? { id: sessionId, serial: session.serial, label: session.label } : null,
         preview: display.state(),

@@ -23,7 +23,15 @@ test("open the emulator, use its screen and replay device conditions", async ({ 
   expect(idle).toMatchObject({ phase: "idle", devices: [], session: null });
   expect(await page.evaluate(() => window.__desk.commands)).toEqual([]);
   await frame.getByRole("button", { name: "Refresh devices" }).click();
-  await expect(frame.locator("#device option")).toHaveCount(2);
+  await expect(frame.locator("#device option")).toHaveCount(3);
+  await expect(frame.locator('#device option[value="emulator-5556"]')).toBeDisabled();
+  await expect(
+    page.evaluate(() => window.__desk.runtime.commands.run("endue.android-emulator.state", {})),
+  ).resolves.toMatchObject({
+    devices: expect.arrayContaining([
+      expect.objectContaining({ id: "emulator-5556", state: "offline" }),
+    ]),
+  });
   await frame.getByRole("button", { name: "Connect", exact: true }).click();
   const screen = frame.locator("#display");
   await expect(screen).toBeVisible();
