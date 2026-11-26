@@ -24,6 +24,9 @@ export interface CommandSpec {
   run: CommandHandler;
   /** What agents read of the command when it is one of their tools (ADR 0088). */
   agent?: AgentSpec;
+  description?: string;
+  argsSchema?: Record<string, unknown>;
+  resultSchema?: Record<string, unknown>;
   /** Marks an irreversible command independently of whether it is offered to agents. */
   irreversible?: boolean;
   /**
@@ -90,7 +93,7 @@ type Waiter = { resolve(data: CmdAnsweredData): void };
 export class Commands {
   readonly #bridge: BridgeClient;
   readonly #builtIn = new Map<string, CommandSpec>();
-  /** Built-ins the core holds for the desk now, by id, with the title they were registered with. */
+  /** Registration payloads the core holds for the desk, by id. */
   readonly #registered = new Map<string, string>();
   #active: ReadonlySet<string> = new Set([DESK]);
   /** The core's registry as last listed. */
@@ -98,6 +101,7 @@ export class Commands {
   readonly #waiting = new Map<string, Waiter>();
   /** Answers that arrived before cmd.invoke's own answer named their invocation. */
   readonly #early = new Map<string, CmdAnsweredData>();
+  readonly #forwarding = new Map<string, number>();
   readonly #listeners = new Set<(run: CommandRun) => void>();
   readonly #watchers = new Set<RunWatcher>();
   readonly #changes = new Set<() => void>();
@@ -168,11 +172,11 @@ export class Commands {
     } while (chain !== this.#chain || this.#queued);
   }
 
-  /** Run a command as the desk, whoever provides it, and resolve with its answer. */
-  async run(id: string, args?: unknown): Promise<unknown> {
+  /** Run a command and await its answer. An alias can forward its authenticated agent caller. */
+  async run(id: string, args?: unknown, caller?: string): Promise<unknown> {
     let ok = false;
     try {
-      const answer = await this.#invoke(id, args);
+      const answer = await this.#invoke(id, args, caller);
       if (!answer.ok) {
         const code = answer.error?.code === "cancelled" ? "cancelled" : "failed";
         throw new CommandError(code, `${id}: ${answer.error?.message ?? "failed"}`);
@@ -200,29 +204,49 @@ export class Commands {
     this.#off();
   }
 
-  async #invoke(id: string, args: unknown): Promise<CmdAnsweredData> {
+  async stack(method: "cmd.undo" | "cmd.redo") {
+    const result = await this.#bridge.call(method, { scope: ALL });
+    if (result.invocationId) {
+      const answer = await this.#answerFor(result.invocationId);
+      if (!answer.ok) throw new CommandError("failed", answer.error?.message ?? "Undo failed");
+    }
+    return result.undone;
+  }
+
+  async #invoke(id: string, args: unknown, caller?: string): Promise<CmdAnsweredData> {
     const objectArgs =
       typeof args === "object" && args !== null && !Array.isArray(args)
         ? { args: args as Record<string, unknown> }
         : {};
-    let invocationId: string;
+    const key = caller ? `${caller}/${id}` : "";
+    if (key) this.#forwarding.set(key, (this.#forwarding.get(key) ?? 0) + 1);
     try {
-      ({ invocationId } = await this.#bridge.call("cmd.invoke", {
-        id,
-        ...objectArgs,
-        scope: { permission: "cmd:invoke", ids: [id] },
-      }));
+      const { invocationId } = await this.#bridge.call(
+        "cmd.invoke",
+        { id, ...objectArgs, scope: { permission: "cmd:invoke", ids: [id] } },
+        caller ? { caller } : {},
+      );
+      return this.#answerFor(invocationId);
     } catch (error) {
       const code = (error as { code?: string }).code;
       throw new CommandError(
         code === "not_found" || code === "unsupported" ? "unknown_command" : "failed",
         error instanceof Error ? error.message : String(error),
       );
+    } finally {
+      if (key) {
+        const pending = (this.#forwarding.get(key) ?? 1) - 1;
+        if (pending > 0) this.#forwarding.set(key, pending);
+        else this.#forwarding.delete(key);
+      }
     }
+  }
+
+  #answerFor(invocationId: string): Promise<CmdAnsweredData> {
     const early = this.#early.get(invocationId);
     if (early) {
       this.#early.delete(invocationId);
-      return early;
+      return Promise.resolve(early);
     }
     return new Promise((resolve) => this.#waiting.set(invocationId, { resolve }));
   }
@@ -247,12 +271,14 @@ export class Commands {
         break;
       }
       case "cmd.answered": {
-        if (event.data.caller !== DESK) break;
         const waiter = this.#waiting.get(event.data.invocationId);
         if (waiter) {
           this.#waiting.delete(event.data.invocationId);
           waiter.resolve(event.data);
-        } else {
+        } else if (
+          event.data.caller === DESK ||
+          this.#forwarding.has(`${event.data.caller}/${event.data.id}`)
+        ) {
           this.#early.set(event.data.invocationId, event.data);
         }
         break;
@@ -308,31 +334,33 @@ export class Commands {
     await Promise.all(
       gone.map((id) => this.#bridge.call("cmd.unregister", { id }).catch(() => {})),
     );
-    // cmd.register updates a command the desk already registered: a new title goes out again.
-    const due = [...this.#builtIn].filter(
-      ([id, spec]) => this.#active.has(spec.owner) && this.#registered.get(id) !== titleOf(spec),
-    );
+    const due = [...this.#builtIn].filter(([, spec]) => this.#active.has(spec.owner));
     await Promise.all(
       due.map(async ([id, spec]) => {
         const agent = spec.agent;
-        const title = titleOf(spec);
+        const description = agent?.description ?? spec.description;
+        const argsSchema = agent?.args ?? spec.argsSchema;
+        const resultSchema = agent?.result ?? spec.resultSchema;
         const params = {
           id,
-          title,
+          title: titleOf(spec),
           ...(spec.keywords ? { keywords: spec.keywords } : {}),
-          ...(agent ? { agent: true, description: agent.description } : {}),
-          ...(agent?.args ? { argsSchema: agent.args } : {}),
-          ...(agent?.result ? { resultSchema: agent.result } : {}),
+          ...(agent ? { agent: true } : {}),
+          ...(description ? { description } : {}),
+          ...(argsSchema ? { argsSchema } : {}),
+          ...(resultSchema ? { resultSchema } : {}),
           ...(agent?.readOnly ? { readOnly: true } : {}),
           ...(spec.irreversible || agent?.irreversible ? { irreversible: true } : {}),
           ...(spec.undo ? { undo: spec.undo } : {}),
         };
+        const signature = JSON.stringify(params);
+        if (this.#registered.get(id) === signature) return;
         // A core without cmd.* (an older one, a bare stub) leaves the command unregistered.
         const ok = await this.#bridge.call("cmd.register", params).then(
           () => true,
           () => false,
         );
-        if (ok) this.#registered.set(id, title);
+        if (ok) this.#registered.set(id, signature);
       }),
     );
     const listed = await this.#bridge.call("cmd.list", { scope: ALL }).catch(() => undefined);

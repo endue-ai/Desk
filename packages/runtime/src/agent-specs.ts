@@ -114,3 +114,83 @@ export const PROFILE_TOOLS = {
     irreversible: true,
   },
 } satisfies Record<string, AgentSpec>;
+
+const desktopArg = { oneOf: [NAME, { type: "integer", minimum: 1 }] };
+export const WORKSPACE_TOOLS = {
+  desktops: {
+    description: "List the desktop IDs and names, with the active desktop ID.",
+    args: objectArgs(),
+    readOnly: true,
+  },
+  desktopNew: {
+    description: "Add a desktop and go to it. A name is optional. Returns the new desktop ID.",
+    args: objectArgs({ name: NAME }),
+  },
+  desktopGo: {
+    description: "Switch to an existing desktop by ID or its position starting at one.",
+    args: objectArgs({ desktop: desktopArg }),
+  },
+  desktopRename: {
+    description: "Rename the named desktop. Give the desktop ID and a name.",
+    args: objectArgs({ desktop: desktopArg, name: NAME }),
+  },
+  desktopRemove: {
+    description: "Remove the named desktop and move its windows to a neighboring desktop.",
+    args: objectArgs({ desktop: desktopArg, windows: { type: "string", enum: ["move", "close"] } }),
+  },
+  bufferSwitch: {
+    description: "Switch to the open buffer with the given ID from desk.buffers.list.",
+    args: objectArgs({ id: NAME }),
+  },
+  bufferClose: {
+    description:
+      "Close the open buffer with the given ID. Unsaved changes require the person's decision.",
+    args: objectArgs({ id: NAME }),
+  },
+  filesRecent: {
+    description: "List recently opened files and the plugins that opened them.",
+    readOnly: true,
+  },
+  fileSave: {
+    description: "Save the open file buffer with the given ID from desk.buffers.list.",
+    args: objectArgs({ buffer: NAME }),
+  },
+  sessionSave: {
+    description: "Save the current desk session.",
+    args: objectArgs(),
+  },
+  snapshot: {
+    description:
+      "Capture the selected windows, or the whole desk when nothing is selected, and return the snapshot description.",
+    args: objectArgs(),
+  },
+  search: {
+    description:
+      "Search the palette's providers. Optionally name groups by title or provider command ID. The limit counts all matches.",
+    args: objectArgs(
+      {
+        query: { type: "string", minLength: 2, maxLength: 500 },
+        groups: { type: "array", items: NAME },
+        limit: { type: "integer", minimum: 1, maximum: 50 },
+      },
+      ["query"],
+    ),
+    readOnly: true,
+  },
+  undo: {
+    description: "Undo the latest action on the desk's undo stack.",
+    args: objectArgs(),
+  },
+  redo: {
+    description: "Redo the latest action from the desk's redo stack.",
+    args: objectArgs(),
+  },
+  runs: {
+    description:
+      "List up to 100 recent runs from Eris, local agents and MCP. Filter by run state if given.",
+    args: objectArgs({
+      state: { type: "string", enum: ["waiting", "running", "done", "failed", "cancelled"] },
+    }),
+    readOnly: true,
+  },
+} satisfies Record<string, AgentSpec>;

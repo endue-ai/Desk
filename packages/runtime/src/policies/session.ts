@@ -5,6 +5,8 @@
  * plugins have mounted. The grid layout older records keep is read as nothing (ADR 0160). A record that cannot be put back is kept as
  * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
  */
+import { WORKSPACE_TOOLS } from "../agent-specs";
+import type { AgentSpec, CommandHandler } from "../commands";
 import type { Notice } from "../notify";
 import { now, phase } from "../timing";
 import type { BuffersPolicy } from "./buffers";
@@ -114,8 +116,11 @@ export function installSession(
   const save = async () => {
     if (timer !== undefined) win.clearTimeout(timer);
     timer = undefined;
-    if (!on() || !restored || !settings.get("desk.session.save", true)) return;
-    await bridge.call("store.set", { key: SESSION_KEY, value: snapshot() }).catch(() => {});
+    if (!on() || !restored || !settings.get("desk.session.save", true)) return false;
+    return bridge.call("store.set", { key: SESSION_KEY, value: snapshot() }).then(
+      () => true,
+      () => false,
+    );
   };
   const changed = () => {
     if (timer !== undefined || !restored) return;
@@ -204,8 +209,8 @@ export function installSession(
   const define = (
     id: string,
     title: string,
-    run: () => unknown,
-    options: { irreversible?: boolean } = {},
+    run: CommandHandler,
+    options: { irreversible?: boolean; agent?: AgentSpec } = {},
   ) =>
     offs.add(
       commands.define(id, {
@@ -216,10 +221,15 @@ export function installSession(
         ...options,
       }),
     );
-  define("desk.session.save", "Save the session now", async () => {
-    await save();
-    return snapshot();
-  });
+  define(
+    "desk.session.save",
+    "Save the session now",
+    async (_args, { caller }) => {
+      const saved = await save();
+      return caller?.startsWith("agent:") ? { saved } : snapshot();
+    },
+    { agent: WORKSPACE_TOOLS.sessionSave },
+  );
   define("desk.session.restore", "Put the saved session back", () => restore());
   define(
     "desk.session.forget",
@@ -239,5 +249,14 @@ export function installSession(
     };
   };
 
-  return { changed, restore, shows, save, keep, dispose: offs.dispose };
+  return {
+    changed,
+    restore,
+    shows,
+    keep,
+    dispose: offs.dispose,
+    save: async () => {
+      await save();
+    },
+  };
 }

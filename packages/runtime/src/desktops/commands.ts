@@ -3,7 +3,8 @@
  * `move-to-desktop-1` to `-9` follow the list: one for each of its first nine desktops, so a key
  * whose desktop is not there passes on. The others take arguments, and ask when they lack them.
  */
-import type { CommandSpec } from "../commands";
+import { WORKSPACE_TOOLS } from "../agent-specs";
+import { type AgentSpec, CommandError, type CommandHandler, type CommandSpec } from "../commands";
 import type { DesktopRef } from "../modes/types";
 import { desktopId, desktopsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
@@ -28,7 +29,8 @@ export type Define = (
   id: string,
   title: CommandSpec["title"],
   keywords: string[],
-  run: (args: unknown) => unknown,
+  run: CommandHandler,
+  agent?: AgentSpec,
 ) => () => void;
 
 type Args = {
@@ -69,7 +71,20 @@ async function pick(ctx: ShellCtx, title: string): Promise<string | undefined> {
 export function defineDesktopCommands(ctx: ShellCtx, define: Define): () => void {
   const ui = () => uiOf(ctx.store);
   const target = (args: unknown) => refOf(argsOf(args).desktop) ?? ctx.store.get().desktop;
+  const named = (args: unknown) => {
+    const ref = refOf(argsOf(args).desktop);
+    const id = ref === undefined ? undefined : idAt(desktopsOf(ctx.store.get()), ref);
+    if (!id) throw new CommandError("failed", "Give a desktop ID from desk.shell.desktops-list");
+    return id;
+  };
   const offs = [
+    define(
+      "desktops-list",
+      "List desktops",
+      WORDS,
+      () => ({ active: ctx.store.get().desktop, desktops: desktopsOf(ctx.store.get()) }),
+      WORKSPACE_TOOLS.desktops,
+    ),
     define(
       "desktop-new",
       () => tx(ctx, "cmdNew"),
@@ -78,6 +93,7 @@ export function defineDesktopCommands(ctx: ShellCtx, define: Define): () => void
         const { name } = argsOf(args);
         return newDesktop(ctx, typeof name === "string" ? name : undefined);
       },
+      WORKSPACE_TOOLS.desktopNew,
     ),
     define(
       "desktop-next",
@@ -95,32 +111,44 @@ export function defineDesktopCommands(ctx: ShellCtx, define: Define): () => void
       "desktop-go",
       () => tx(ctx, "cmdGo"),
       [...WORDS, "go", "switch", "이동"],
-      async (args) => {
-        const ref = refOf(argsOf(args).desktop) ?? (await pick(ctx, tx(ctx, "pickDesktop")));
-        if (ref !== undefined) switchTo(ctx, ref);
+      async (args, { caller }) => {
+        const ref = caller?.startsWith("agent:")
+          ? named(args)
+          : (refOf(argsOf(args).desktop) ?? (await pick(ctx, tx(ctx, "pickDesktop"))));
+        if (ref !== undefined) await switchTo(ctx, ref);
+        return ref;
       },
+      WORKSPACE_TOOLS.desktopGo,
     ),
     define(
       "desktop-rename",
       () => tx(ctx, "cmdRename"),
       [...WORDS, "rename", "name", "이름"],
-      (args) => {
+      async (args, { caller }) => {
         const { name } = argsOf(args);
-        const id = desktopId(ctx.store.get(), target(args));
-        if (typeof name === "string") rename(ctx, id, name);
-        else ui().rename(id);
+        const agent = caller?.startsWith("agent:");
+        const id = agent ? named(args) : desktopId(ctx.store.get(), target(args));
+        if (typeof name === "string") {
+          await rename(ctx, id, name);
+          return id;
+        }
+        if (agent) throw new CommandError("failed", "Give the new desktop name");
+        ui().rename(id);
       },
+      WORKSPACE_TOOLS.desktopRename,
     ),
     define(
       "desktop-remove",
       () => tx(ctx, "cmdRemove"),
       [...WORDS, "remove", "delete", "지우기"],
-      (args) => {
+      (args, { caller }) => {
+        if (caller?.startsWith("agent:")) return remove(ctx, named(args), "move");
         const { windows } = argsOf(args);
         const id = desktopId(ctx.store.get(), target(args));
         if (windows === "move" || windows === "close") return remove(ctx, id, windows);
         ui().remove(id);
       },
+      WORKSPACE_TOOLS.desktopRemove,
     ),
     define(
       "desktop-move-left",

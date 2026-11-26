@@ -4,9 +4,9 @@ use std::path::Path;
 
 use desk_bridge::{
     AccountManagePermission, AgentsManagePermission, BrainAskPermission, BrainConversePermission,
-    CmdInvokePermission, ConnectorManagePermission, FsReadPermission, FsWritePermission,
-    MemoryReadPermission, MemoryWritePermission, PermManagePermission, Permission,
-    PluginManagePermission, ShellOpenPermission, ShellScheme, StudioManagePermission,
+    CmdInvokePermission, ConnectorManagePermission, DataReadPermission, FsReadPermission,
+    FsWritePermission, ItemKind, MemoryReadPermission, MemoryWritePermission, PermManagePermission,
+    Permission, PluginManagePermission, ShellOpenPermission, ShellScheme, StudioManagePermission,
     ThemeManagePermission, UiSurfacePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::Core;
@@ -64,6 +64,14 @@ pub fn grant_runtime(core: &Core, data: &Path, home: &Path) {
         RUNTIME_CALLER,
         Permission::MemoryWrite(MemoryWritePermission {
             permission: Default::default(),
+        }),
+    );
+    core.grant(
+        RUNTIME_CALLER,
+        Permission::DataRead(DataReadPermission {
+            permission: Default::default(),
+            kinds: Some(vec![ItemKind::Run]),
+            sources: None,
         }),
     );
     // The runtime connects the person's connectors and keeps their views (ADR 0036).
