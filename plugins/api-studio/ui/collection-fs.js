@@ -156,37 +156,65 @@ export const text = (value) => `${JSON.stringify(value, null, 2)}\n`;
 export function createFiles(bridge) {
   /** @type {Map<string, Promise<{ granted?: boolean }>>} */
   const pending = new Map();
+  /** @type {Set<string>} */
+  const declined = new Set();
   /** @param {"fs:read" | "fs:write"} permission @param {string} root */
   const scope = (permission, root) => ({
     permission,
     paths: [root, `${root.replace(/\/+$/, "")}/**`],
   });
+  /** @param {"fs:read" | "fs:write"} permission @param {string} root */
+  const ask = (permission, root, again = false) => {
+    const key = `${permission} ${root}`;
+    const waiting = pending.get(key);
+    if (waiting) return waiting;
+    const request = bridge
+      .call("perm.request", {
+        permission: scope(permission, root),
+        reason: `To keep the collection in ${root}`,
+        ...(again ? { again: true } : {}),
+      })
+      .then(
+        (answer) => {
+          if (answer.granted || (answer.reason && answer.reason !== "refused-earlier"))
+            declined.delete(key);
+          else declined.add(key);
+          return answer;
+        },
+        () => ({ granted: false }),
+      )
+      .finally(() => pending.delete(key));
+    pending.set(key, request);
+    return request;
+  };
   /** @param {string} method @param {any} params @param {"fs:read" | "fs:write"} permission @param {string} root */
   const call = async (method, params, permission, root) => {
     const withScope = { ...params, scope: scope(permission, root) };
     try {
-      return await bridge.call(method, withScope);
+      const answer = await bridge.call(method, withScope);
+      declined.delete(`${permission} ${root}`);
+      return answer;
     } catch (error) {
       const code = /** @type {any} */ (error)?.code;
-      const key = `${permission} ${root}`;
       if (code !== "permission_denied") throw error;
-      let ask = pending.get(key);
-      if (!ask) {
-        ask = bridge
-          .call("perm.request", {
-            permission: scope(permission, root),
-            reason: `To keep the collection in ${root}`,
-          })
-          .catch(() => ({ granted: false }))
-          .finally(() => pending.delete(key));
-        pending.set(key, ask);
-      }
-      const decision = await ask;
+      const decision = await ask(permission, root);
       if (!decision?.granted) throw error;
       return bridge.call(method, withScope);
     }
   };
   return {
+    /** @param {string} root */
+    retryPermissions: (root) =>
+      /** @type {const} */ (["fs:read", "fs:write"]).filter((permission) =>
+        declined.has(`${permission} ${root}`),
+      ),
+    /** Only the window's explicit Allow action uses this. @param {string} root @param {"fs:read" | "fs:write"} permission */
+    async retry(root, permission) {
+      return (
+        declined.has(`${permission} ${root}`) &&
+        (await ask(permission, root, true)).granted === true
+      );
+    },
     /** @param {string} path @param {string} root */
     read: async (path, root) =>
       String((await call("fs.read", { path, encoding: "utf8" }, "fs:read", root))?.content ?? ""),
