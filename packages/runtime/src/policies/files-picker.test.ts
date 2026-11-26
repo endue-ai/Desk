@@ -18,6 +18,13 @@ async function desk(pickFile?: () => Promise<string | null>) {
       entry: "ui/index.html",
       contributes: { files: [{ pattern: "*.md", plugin: "test.notes" }] },
     },
+    {
+      id: "endue.calendar",
+      kind: "ui",
+      version: "0.1.0",
+      entry: "ui/index.html",
+      contributes: { files: [{ pattern: "*.ics", plugin: "endue.calendar" }] },
+    },
   ];
   const core = browserCore({ manifests });
   const hub = new PolicyHub(core.client);
@@ -38,10 +45,11 @@ async function desk(pickFile?: () => Promise<string | null>) {
   const files = installFiles(ctx, buffers, notify, pickFile);
   const palette = vi.fn(async () => "/from/palette.md");
   hub.commands.define("desk.palette.pick", { title: "Pick", owner: "desk", run: palette });
-  hub.apply(core.plugins);
+  hub.apply(core.plugins.map((p) => (p.id === "endue.calendar" ? { ...p, builtIn: true } : p)));
   await hub.commands.settled();
   return {
     core,
+    hub,
     run: (args?: unknown) => hub.commands.run("desk.files.open", args),
     palette,
     request,
@@ -106,4 +114,20 @@ it("returns recent file names without a picker and saves a named buffer", async 
     buffer,
     path: "/fixture/notes.md",
   });
+});
+
+it("sends agent Calendar saves to the reviewed Calendar command and keeps the person's Save", async () => {
+  const d = await desk();
+  const path = "/fixture/team.ics";
+  const buffer = await d.run({ path });
+  await expect(invokeAsEris(d.core.client, "desk.files.save", { buffer })).rejects.toThrow(
+    /endue\.calendar\.save/,
+  );
+  expect(d.request).not.toHaveBeenCalledWith(
+    "endue.calendar",
+    "desk.files.save",
+    expect.anything(),
+  );
+  await expect(d.hub.commands.run("desk.files.save", { buffer })).resolves.toBe(buffer);
+  expect(d.request).toHaveBeenCalledWith("endue.calendar", "desk.files.save", { buffer, path });
 });

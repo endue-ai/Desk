@@ -107,7 +107,57 @@
       {
         "id": "endue.calendar.new",
         "title": "Calendar: new event",
-        "keywords": ["calendar", "add", "create", "meeting"]
+        "keywords": ["calendar", "add", "create", "meeting"],
+        "description": "Open a new event in the editor for review. Optional fields prefill it without changing or saving the calendar.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "end": {
+                  "type": "string",
+                  "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30); the default length after start when absent"
+                },
+                "allDay": {
+                  "type": "boolean"
+                },
+                "timeZone": {
+                  "type": "string",
+                  "description": "An IANA zone for local times; the person's zone when absent"
+                },
+                "location": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 100000
+                },
+                "rrule": {
+                  "type": "string",
+                  "description": "An RFC 5545 RRULE value, FREQ=WEEKLY;BYDAY=MO; empty to stop repeating"
+                },
+                "reminder": {
+                  "type": "integer",
+                  "description": "Minutes before the start"
+                },
+                "start": {
+                  "type": "string",
+                  "description": "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30)"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.calendar.goto",
@@ -120,10 +170,44 @@
         "keywords": ["calendar", "system", "macos", "layer", "hide", "show"]
       },
       {
+        "id": "endue.calendar.show",
+        "title": "Calendar: show a date or view",
+        "keywords": ["calendar", "view", "date"],
+        "description": "Show a date or a Calendar view. An omitted date or view keeps the current one.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "A date in YYYY-MM-DD or a day such as today"
+            },
+            "view": {
+              "type": "string",
+              "enum": ["month", "week", "day", "agenda"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.calendar.current",
+        "title": "Calendar: read the current view",
+        "keywords": ["calendar", "current", "view"],
+        "description": "Read the open calendar, view, date span and event in the editor. The span's to date is exclusive.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
         "id": "endue.calendar.events",
         "title": "Calendar: list events",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "The events between from and to in the open calendars (or the default calendar file), as specs/item/v0 event items, earliest first: id, title, start, end, allDay, location, body, recurrence and raw.uid. text narrows to events whose title, place or notes hold it.",
+        "description": "Read events between from and to in the open calendars (or the default file) and visible system calendars as event items. File events give raw.path for editing. System events are read-only. text narrows their titles, places or notes.",
         "args": {
           "type": "object",
           "properties": {
@@ -160,7 +244,7 @@
         "id": "endue.calendar.conflicts",
         "title": "Calendar: find overlapping events",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "Pairs of busy events between from and to that overlap, with when the overlap starts and ends and for how many minutes.",
+        "description": "Find overlaps between busy events in open calendars and visible system calendars. Answers the events and when and for how long they overlap.",
         "args": {
           "type": "object",
           "properties": {
@@ -193,7 +277,7 @@
         "id": "endue.calendar.add",
         "title": "Calendar: add an event",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "Add an event to the calendar on screen (or the default calendar file) and answer it as an item. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "description": "Add an event to the named open calendar, or the open or default calendar without a name. The change is unsaved until the person saves or endue.calendar.save runs.",
         "args": {
           "type": "object",
           "properties": {
@@ -232,6 +316,12 @@
             "reminder": {
               "type": "integer",
               "description": "Minutes before the start"
+            },
+            "calendar": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "An open calendar's file path or buffer ID"
             }
           },
           "required": ["title", "start"],
@@ -251,7 +341,7 @@
         "id": "endue.calendar.update",
         "title": "Calendar: change an event",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "Change an event of the calendar on screen: the fields given take the place of its own, the rest stay; newStart moves it. A repeating event changes as scope says. Answers it as an item. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "description": "Change the named event in an open file. Give calendar if several files match. Given fields replace their old values, and newStart moves the event. Scope selects instances of a repeat. The change is unsaved until the person saves or endue.calendar.save runs.",
         "args": {
           "type": "object",
           "properties": {
@@ -264,6 +354,12 @@
             "start": {
               "type": "string",
               "description": "The event item's start, as events answered it"
+            },
+            "calendar": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "An open calendar's file path or buffer ID"
             },
             "scope": {
               "enum": ["one", "following", "all"],
@@ -323,7 +419,7 @@
         "id": "endue.calendar.delete",
         "title": "Calendar: delete an event",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "Delete an event of the calendar on screen, after the person says yes; a repeating event as scope says. The change is unsaved until the person saves or endue.calendar.save runs.",
+        "description": "Remove the named event from an open calendar buffer. Give calendar if several files match. Scope selects instances of a repeat. The change is unsaved until the person saves or endue.calendar.save runs.",
         "args": {
           "type": "object",
           "properties": {
@@ -336,6 +432,12 @@
             "start": {
               "type": "string",
               "description": "The event item's start, as events answered it"
+            },
+            "calendar": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "An open calendar's file path or buffer ID"
             },
             "scope": {
               "enum": ["one", "following", "all"],
@@ -353,17 +455,23 @@
             }
           }
         },
-        "irreversible": true,
         "agent": true
       },
       {
         "id": "endue.calendar.save",
         "title": "Calendar: save the calendar",
         "keywords": ["calendar", "agenda", "event"],
-        "description": "Save the calendar on screen to its file, as the person's save does; the desk keeps what it replaced as a version. Answers the path, or null when nothing was unsaved.",
+        "description": "Save pending edits to the named calendar after review. Agents give its path or buffer ID and need write access. The desk keeps the previous file version. Answers the path or null when there are no edits.",
         "args": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "calendar": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "An open calendar's file path or buffer ID"
+            }
+          },
           "additionalProperties": false
         },
         "result": {
@@ -374,6 +482,7 @@
             }
           }
         },
+        "irreversible": true,
         "agent": true
       }
     ],

@@ -1,8 +1,9 @@
 // The calendar plugin's files: the desk's file and buffer requests (desk.files.visit, .save, .revert,
 // desk.buffers.show, .closed) for the iCalendar files it holds, fs.read and fs.write under the
-// plugin's grants (asking once with perm.request for a folder they do not cover), a watch on each
+// plugin's grants (asking for the exact file when needed), a watch on each
 // open file, and the unsaved mark the desk shows. Like the notes plugin, a save of an unchanged
 // calendar writes the file exactly as it was read; a changed one keeps a file's bare LF line ends.
+import { emptyDocument } from "./calendar/edit.js";
 import { formatComponent } from "./ical/component.js";
 import { lineEndsOf } from "./ical/lines.js";
 
@@ -25,14 +26,14 @@ import { lineEndsOf } from "./ical/lines.js";
  */
 
 export const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) =>
-  path.slice(0, Math.max(0, path.lastIndexOf("/"))) || path;
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 const scopeOf = (/** @type {FsPermission} */ permission, /** @type {string} */ path) => ({
   permission,
-  paths: [`${folderOf(path)}/**`],
+  paths: [path],
 });
+const library = /^(?:~|\$\{home\})\/Calendar\//;
+const literal = (/** @type {string} */ path) => !/[\\*?\0]/u.test(path);
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -51,6 +52,8 @@ export function createFiles({ bridge, commands }, core) {
   const { calendars } = core;
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
   const watches = new Map();
+  /** @type {Map<string, string>} */
+  const agentSaves = new Map();
 
   const held = (/** @type {string} */ buffer) => {
     const cal = calendars.get(buffer);
@@ -59,17 +62,18 @@ export function createFiles({ bridge, commands }, core) {
   };
 
   /**
-   * One fs call; when the grants do not cover the file, ask once for its folder and try again.
+   * One fs call. Ask for the exact file unless this was already a reviewed agent save.
    * Every failure is an Error whose message is the sentence the person reads.
    * @template T
    * @param {FsPermission} permission
    * @param {string} path
    * @param {(scope: { permission: FsPermission, paths: string[] }) => Promise<T>} call
+   * @param {{ ask?: boolean, scope?: string }} [options]
    * @returns {Promise<T>}
    */
-  const withGrant = async (permission, path, call) => {
+  const withGrant = async (permission, path, call, { ask = true, scope: pattern = path } = {}) => {
     const verb = permission === "fs:read" ? "read" : "write";
-    const scope = scopeOf(permission, path);
+    const scope = scopeOf(permission, pattern);
     const refused = new Error(`Not allowed to ${verb} ${path}.`);
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
@@ -78,7 +82,7 @@ export function createFiles({ bridge, commands }, core) {
     try {
       return await call(scope);
     } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw failed(error);
+      if (!ask || !literal(path) || codeOf(error) !== "permission_denied") throw failed(error);
     }
     const reason = verb === "read" ? `To open ${path} in Calendar` : `To save ${path}`;
     // perm.request answers a refusal as a result; a failed ask counts as one.
@@ -101,16 +105,53 @@ export function createFiles({ bridge, commands }, core) {
       )
     ).content;
 
-  const write = (/** @type {string} */ path, /** @type {string} */ content, createDirs = false) =>
-    withGrant("fs:write", path, (scope) =>
-      bridge.call("fs.write", {
-        path,
-        content,
-        encoding: "utf8",
-        ...(createDirs ? { createDirs } : {}),
-        scope: /** @type {never} */ (scope),
-      }),
+  const write = (
+    /** @type {string} */ path,
+    /** @type {string} */ content,
+    { createDirs = false, ask = true } = {},
+  ) =>
+    withGrant(
+      "fs:write",
+      path,
+      (scope) =>
+        bridge.call("fs.write", {
+          path,
+          content,
+          encoding: "utf8",
+          ...(createDirs ? { createDirs } : {}),
+          scope: /** @type {never} */ (scope),
+        }),
+      { ask: ask && !createDirs, ...(createDirs ? { scope: "~/Calendar/**" } : {}) },
     );
+
+  /** Open the default file, creating a blank calendar when the system layer cannot stand in. */
+  const open = async (
+    /** @type {string} */ path,
+    /** @type {() => Promise<boolean>} */ showLayer,
+  ) => {
+    try {
+      await read(path);
+    } catch (error) {
+      if (!(error instanceof Error) || !/: not_found\.$/.test(error.message)) throw error;
+      if (await showLayer()) return null;
+      const blank = emptyDocument("Calendar").calendars.map(formatComponent).join("");
+      await write(path, blank, {
+        createDirs: library.test(path) && !path.split("/").includes(".."),
+      });
+    }
+    return commands.run("desk.files.open", { path });
+  };
+
+  /** A reviewed save reuses a grant without starting a new permission question. */
+  const save = async (/** @type {Cal} */ cal, byAgent = false) => {
+    if (agentSaves.has(cal.buffer)) throw new Error("This calendar is already being saved.");
+    if (byAgent) agentSaves.set(cal.buffer, cal.path);
+    try {
+      return await commands.run("desk.files.save", { buffer: cal.buffer });
+    } finally {
+      if (byAgent) agentSaves.delete(cal.buffer);
+    }
+  };
 
   /** Follow the file on disk. Without a watch the calendar still works; changes go unnoticed. */
   const watch = async (/** @type {Cal} */ cal) => {
@@ -159,7 +200,7 @@ export function createFiles({ bridge, commands }, core) {
     const content = cal.modified
       ? lineEndsOf(cal.text, doc.calendars.map(formatComponent).join(""))
       : cal.text;
-    await write(path, content);
+    await write(path, content, { ask: agentSaves.get(buffer) !== path });
     cal.text = content;
     cal.reported = false;
     // A change made while the file was written stays unsaved, and the desk hears so again.
@@ -200,5 +241,5 @@ export function createFiles({ bridge, commands }, core) {
     if (cal) commands.run("desk.files.changed", { path: cal.path }).catch(() => {});
   });
 
-  return { read, write, report };
+  return { read, open, save, report };
 }

@@ -40,13 +40,13 @@ export function createEditing(host) {
   };
 
   /** Open the editor on a new event: at a time on a day, or all day. */
-  const compose = (/** @type {{ day?: number, minute?: number, allDay?: boolean }} */ at = {}) => {
+  const compose = (/** @type {import("./calendar.js").At} */ at = {}) => {
     const cal = host.current();
     if (!cal) throw new Error("Open a calendar first.");
     host.writable(cal);
     const display = host.display();
     const day = at.day ?? host.defaultDay();
-    const allDay = at.allDay ?? false;
+    const allDay = at.fields?.allDay ?? at.allDay ?? false;
     const nowWall = host.now() + display.offset(host.now());
     // Today the next whole hour; another day 09:00.
     const minute =
@@ -67,6 +67,7 @@ export function createEditing(host) {
         rrule: null,
         reminder: allDay ? null : Number(host.setting("reminder-minutes", 10)),
         free: allDay,
+        ...at.fields,
       },
       recurring: false,
       zone: display.id,
@@ -122,6 +123,11 @@ export function createEditing(host) {
     save,
     remove,
     close,
+    selected() {
+      const cal = editing && host.calendars.get(editing.buffer);
+      const occ = editing?.occurrence;
+      return cal && occ ? { cal, occ } : undefined;
+    },
     /** A buffer closed: an editor open on it closes too. */
     closed(/** @type {string} */ buffer) {
       if (editing?.buffer === buffer) close();

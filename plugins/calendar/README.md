@@ -11,10 +11,10 @@ and UTC times; VALARM reminders. A save writes back everything it read: an uncha
 an edit only the properties it changed (bare LF line ends stay LF), plus a VTIMEZONE for each TZID it
 writes. A series asks whether a change or a deletion is for this event, this and following ones, or all.
 
-It answers the desk's `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, as
-`plugins/notes` does, with the same one ask on a refused read or write. Its commands for agents take an
-argument schema: `endue.calendar.events` and `.conflicts` answer `specs/item/v0` event items and the busy
-events that overlap; `.add`, `.update { id, start, scope }` and `.delete` (irreversible) change the calendar on screen, unsaved until the person saves or `.save` runs `desk.files.save`. The manifest declares them as `ui/agent-specs.js` does.
+It answers the desk's file and buffer requests with exact file scopes. `endue.calendar.events` and
+`.conflicts` include the visible system calendars. `.show` and `.current` navigate and read the view.
+`.new` preloads the editor for review. `.add`, `.update` and `.delete` change an open calendar buffer.
+`.save { calendar }` waits for approval and saves the batch under existing write access (ADR 0388).
 
 | Permission | Why |
 | --- | --- |
