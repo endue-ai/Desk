@@ -78,9 +78,11 @@ describe("commands", () => {
       action: "restart",
       containers: ["shop-web-1"],
     });
-    expect(act.container).toHaveBeenCalledWith("restart", [
-      expect.objectContaining({ name: "shop-web-1" }),
-    ]);
+    expect(act.container).toHaveBeenCalledWith(
+      "restart",
+      [expect.objectContaining({ name: "shop-web-1" })],
+      false,
+    );
     await expect(
       handlers.get("endue.docker-studio.act")?.({ action: "restart", containers: ["--all"] }),
     ).rejects.toThrow();

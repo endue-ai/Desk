@@ -15,12 +15,12 @@ export function createImageActions(app) {
     app.toast(String(/** @type {any} */ (error)?.message ?? error), "danger");
 
   /** Remove images; one used by a container (even a stopped one) is said, not forced. */
-  const removeImages = async (/** @type {Image[]} */ list) => {
+  const removeImages = async (/** @type {Image[]} */ list, reviewed = false) => {
     if (list.length === 0) return false;
     const use = imageUse(app.store.state.containers);
     const used = list.filter((i) => (use.get(i.id) ?? 0) > 0);
     const total = list.reduce((s, i) => s + i.size, 0);
-    if (app.settings.confirm) {
+    if (!reviewed && app.settings.confirm) {
       const yes = await app.overlay.confirm({
         title:
           list.length === 1

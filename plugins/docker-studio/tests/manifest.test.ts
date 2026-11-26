@@ -4,6 +4,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { wireCommands } from "../ui/commands.js";
+import { CONTAINER_OPERATIONS, PRUNE_ARGS } from "../ui/schemas.js";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/docker-studio");
@@ -27,7 +29,13 @@ type Manifest = {
   id: string;
   permissions: { permission: string; commands?: string[]; paths?: string[] }[];
   contributes: {
-    commands: { id: string; agent?: boolean; readOnly?: boolean; irreversible?: boolean }[];
+    commands: {
+      id: string;
+      agent?: boolean;
+      readOnly?: boolean;
+      irreversible?: boolean;
+      args?: { properties?: Record<string, { enum?: string[]; items?: { enum?: string[] } }> };
+    }[];
   };
 };
 const manifest = readJson(join(folder, "plugin.json")) as Manifest;
@@ -54,16 +62,19 @@ describe("plugin.json", () => {
   });
 
   it("answers every command it declares", () => {
-    const sources = readdirSync(join(folder, "ui"))
-      .filter((f) => f.endsWith(".js"))
-      .map((f) => readFileSync(join(folder, "ui", f), "utf8"))
-      .join("\n");
-    for (const { id } of manifest.contributes.commands) {
-      expect(id.startsWith("endue.docker-studio.")).toBe(true);
-      // commands.js registers on("<name>", …) under the plugin's prefix; studio.js the full id.
-      const name = id.slice("endue.docker-studio.".length);
-      const answered = sources.includes(`"${id}"`) || sources.includes(`on("${name}",`);
-      expect(answered, id).toBe(true);
+    const registered: string[] = [];
+    wireCommands({ commands: { on: (id: string) => registered.push(id) } }, {} as never);
+    expect(registered.sort()).toEqual(manifest.contributes.commands.map(({ id }) => id).sort());
+  });
+
+  it("keeps command values in step with the runtime", () => {
+    const properties = (name: string) =>
+      manifest.contributes.commands.find(({ id }) => id === `endue.docker-studio.${name}`)?.args
+        ?.properties;
+    expect(properties("prune")?.kinds?.items?.enum).toEqual(Object.keys(PRUNE_ARGS));
+    expect(properties("act")?.action?.enum).toEqual(CONTAINER_OPERATIONS);
+    for (const op of CONTAINER_OPERATIONS) {
+      expect(properties(op)).toHaveProperty("containers");
     }
   });
 

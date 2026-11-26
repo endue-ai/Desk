@@ -83,17 +83,18 @@ export function createActions(deps) {
   };
 
   /** @param {Args} [args] */
-  const kill = async (args = {}) => {
+  const kill = async (args = {}, reviewed = false) => {
     const targets = many(args, "container", "containers", fromItem);
     const run = async (/** @type {Target} */ t) => {
       deps.expect(t.ref);
       await docker(["kill", "--", t.ref]);
     };
     if (targets) {
-      await ensure(
-        `Kill ${targets.length} containers: ${names(targets.map((t) => t.name))}? Their processes end at once, without a chance to clean up.`,
-        `Kill ${targets.length} containers`,
-      );
+      if (!reviewed)
+        await ensure(
+          `Kill ${targets.length} containers: ${names(targets.map((t) => t.name))}? Their processes end at once, without a chance to clean up.`,
+          `Kill ${targets.length} containers`,
+        );
       return bulk(
         targets,
         { past: "Killed", verb: "kill" },
@@ -103,16 +104,17 @@ export function createActions(deps) {
       );
     }
     const one = single(args);
-    await ensure(
-      `Kill ${one.name}? Its processes end at once, without a chance to clean up.`,
-      `Kill ${one.name}`,
-    );
+    if (!reviewed)
+      await ensure(
+        `Kill ${one.name}? Its processes end at once, without a chance to clean up.`,
+        `Kill ${one.name}`,
+      );
     await run(one);
     return done(`Killed ${one.name}.`);
   };
 
   /** @param {Args} [args] `volumes: true` also removes their anonymous volumes. */
-  const remove = async (args = {}) => {
+  const remove = async (args = {}, reviewed = false) => {
     const volumes = args.volumes === true;
     const also = volumes ? " Their anonymous volumes go with them." : "";
     const isLive = (/** @type {string} */ state) =>
@@ -133,10 +135,11 @@ export function createActions(deps) {
           : live === 1
             ? " The running one is stopped first."
             : " The running ones are stopped first.";
-      await ensure(
-        `Remove ${targets.length} containers: ${names(targets.map((t) => t.name))}?${stopped}${also}`,
-        `Remove ${targets.length} containers`,
-      );
+      if (!reviewed)
+        await ensure(
+          `Remove ${targets.length} containers: ${names(targets.map((t) => t.name))}?${stopped}${also}`,
+          `Remove ${targets.length} containers`,
+        );
       return bulk(
         targets,
         { past: "Removed", verb: "remove" },
@@ -147,12 +150,13 @@ export function createActions(deps) {
     }
     const one = single(args);
     const itsAlso = volumes ? " Its anonymous volumes go with it." : "";
-    await ensure(
-      isLive(one.state)
-        ? `Remove ${one.name}? It is ${one.state}: it is stopped first.${itsAlso}`
-        : `Remove ${one.name}?${itsAlso}`,
-      `Remove ${one.name}`,
-    );
+    if (!reviewed)
+      await ensure(
+        isLive(one.state)
+          ? `Remove ${one.name}? It is ${one.state}: it is stopped first.${itsAlso}`
+          : `Remove ${one.name}?${itsAlso}`,
+        `Remove ${one.name}`,
+      );
     await run(one);
     return done(`Removed ${one.name}.`);
   };
@@ -207,7 +211,7 @@ export function createActions(deps) {
   };
 
   /** @param {Args} [args] */
-  const removeImage = async (args = {}) => {
+  const removeImage = async (args = {}, reviewed = false) => {
     const marked = args.image === undefined ? deps.marked().filter((i) => i.kind === "image") : [];
     if (marked.length > 1) {
       const items = /** @type {Array<Extract<Item, { kind: "image" }>>} */ (marked);
@@ -217,10 +221,11 @@ export function createActions(deps) {
         state: "",
         item: i,
       }));
-      await ensure(
-        `Remove ${targets.length} images: ${names(targets.map((t) => t.name))}?`,
-        `Remove ${targets.length} images`,
-      );
+      if (!reviewed)
+        await ensure(
+          `Remove ${targets.length} images: ${names(targets.map((t) => t.name))}?`,
+          `Remove ${targets.length} images`,
+        );
       return bulk(
         targets,
         { past: "Removed", verb: "remove" },
@@ -234,24 +239,26 @@ export function createActions(deps) {
       throw new Error(
         `${label} is used by ${used} container${used === 1 ? "" : "s"}: remove ${used === 1 ? "it" : "them"} first.`,
       );
-    await ensure(`Remove the image ${label}?`, `Remove ${label}`);
+    if (!reviewed) await ensure(`Remove the image ${label}?`, `Remove ${label}`);
     await docker(["image", "rm", "--", ref]);
     return done(`Removed the image ${label}.`);
   };
 
   /** @param {Args} [args] `all: true` removes every image no container uses, not only dangling ones. */
-  const pruneImages = async (args = {}) => {
+  const pruneImages = async (args = {}, reviewed = false) => {
     const all = args.all === true;
-    const preview = deps.settings().confirm
-      ? await previewImages(docker, all).catch(() => undefined)
-      : undefined;
-    await ensure(
-      all
-        ? "Remove every image no container uses? They are pulled or built again when needed."
-        : "Remove every dangling image (untagged layers left by builds and pulls)?",
-      "Remove them",
-      preview,
-    );
+    const preview =
+      !reviewed && deps.settings().confirm
+        ? await previewImages(docker, all).catch(() => undefined)
+        : undefined;
+    if (!reviewed)
+      await ensure(
+        all
+          ? "Remove every image no container uses? They are pulled or built again when needed."
+          : "Remove every dangling image (untagged layers left by builds and pulls)?",
+        "Remove them",
+        preview,
+      );
     const { stdout } = await docker(["image", "prune", "-f", ...(all ? ["-a"] : [])], {
       timeoutMs: 0,
     });

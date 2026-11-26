@@ -14,6 +14,7 @@ import { globalFlags } from "./run.js";
  * @typedef {ReturnType<typeof import("./docker.js").createDocker>} App
  * @typedef {import("./docker.js").ListName} ListName
  * @typedef {Record<string, unknown>} Args
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
  */
 
 const CONTEXT_DEFAULT = "@cli";
@@ -23,7 +24,7 @@ const OPEN_ALIASES = /** @type {Record<string, ListName>} */ ({ system: "overvie
 /**
  * @param {{ commands: PluginCommands, bridge: Pick<PluginBridge, "call"> }} ctx
  * @param {App} app
- * @param {unknown} _view The view; what the commands act on comes from the controller (app.selection).
+ * @param {unknown} _view
  * @returns {Record<string, (...args: unknown[]) => unknown>} The actions the view's keys run.
  */
 export function wireCommands({ commands, bridge }, app, _view) {
@@ -43,7 +44,7 @@ export function wireCommands({ commands, bridge }, app, _view) {
   };
 
   /** Open a terminal running a shell, or the command asked for, inside a running container. */
-  const shell = async (/** @type {Args} */ args = {}) => {
+  const shell = async (/** @type {Args} */ args = {}, person = false) => {
     const { ref, name } = containerTarget(args, app.selection(), app.shown());
     const command = args.command === undefined ? [app.settings().shell] : args.command;
     if (
@@ -57,6 +58,7 @@ export function wireCommands({ commands, bridge }, app, _view) {
         command: "docker",
         args: [...globalFlags(app.context()), "exec", "-it", "--", ref, ...command],
         title: `${name}: ${command[0]}`,
+        ...(person && args.command === undefined ? { dockerShell: true } : {}),
       });
     } catch (error) {
       if (codeOf(error) === "unknown_command" || codeOf(error) === "permission_denied")
@@ -127,18 +129,25 @@ export function wireCommands({ commands, bridge }, app, _view) {
    * Answer a command. A failure goes to the status line and ends the command with the same words,
    * which the desk shows in its own notice.
    * @param {string} name
-   * @param {(args: Args) => unknown} handler
+   * @param {(args: Args, invocation?: Invocation) => unknown} handler
    */
   const answer = (name, handler) =>
-    commands.on(name, async (args) => {
+    commands.on(name, async (args, invocation) => {
       try {
-        return await handler(/** @type {Args} */ (args ?? {}));
+        return await handler(/** @type {Args} */ (args ?? {}), invocation);
       } catch (error) {
         if (!codeOf(error)) app.say(error instanceof Error ? error.message : String(error));
         throw error;
       }
     });
 
+  /** @param {(args: Args, reviewed?: boolean) => unknown} action */
+  const reviewed =
+    (action) =>
+    (/** @type {Args} */ args, /** @type {Invocation | undefined} */ invocation = undefined) =>
+      action(args, invocation?.approved === true);
+
+  answer("endue.docker.view", () => app.viewState());
   answer("endue.docker.open", async ({ view: name }) => {
     const wanted = typeof name === "string" ? (OPEN_ALIASES[name] ?? name) : undefined;
     const target =
@@ -163,29 +172,29 @@ export function wireCommands({ commands, bridge }, app, _view) {
   answer("endue.docker.restart", actions.restart);
   answer("endue.docker.pause", actions.pause);
   answer("endue.docker.unpause", actions.unpause);
-  answer("endue.docker.kill", actions.kill);
-  answer("endue.docker.remove", actions.remove);
+  answer("endue.docker.kill", reviewed(actions.kill));
+  answer("endue.docker.remove", reviewed(actions.remove));
   answer("endue.docker.logs", app.openLogs);
   answer("endue.docker.tail", app.tail);
   answer("endue.docker.inspect", (args) => app.inspect(args));
   answer("endue.docker.stats", async () => [...(await app.sample()).values()]);
-  answer("endue.docker.shell", shell);
+  answer("endue.docker.shell", (args, invocation) => shell(args, invocation?.caller === "desk"));
   answer("endue.docker.run", actions.run);
   answer("endue.docker.pull", actions.pull);
-  answer("endue.docker.remove-image", actions.removeImage);
-  answer("endue.docker.prune-images", actions.pruneImages);
-  answer("endue.docker.remove-volume", actions.removeVolume);
-  answer("endue.docker.prune-volumes", actions.pruneVolumes);
-  answer("endue.docker.remove-network", actions.removeNetwork);
-  answer("endue.docker.prune-networks", actions.pruneNetworks);
+  answer("endue.docker.remove-image", reviewed(actions.removeImage));
+  answer("endue.docker.prune-images", reviewed(actions.pruneImages));
+  answer("endue.docker.remove-volume", reviewed(actions.removeVolume));
+  answer("endue.docker.prune-volumes", reviewed(actions.pruneVolumes));
+  answer("endue.docker.remove-network", reviewed(actions.removeNetwork));
+  answer("endue.docker.prune-networks", reviewed(actions.pruneNetworks));
   answer("endue.docker.up", actions.up);
-  answer("endue.docker.down", actions.down);
+  answer("endue.docker.down", reviewed(actions.down));
   answer("endue.docker.compose-start", actions.composeStart);
   answer("endue.docker.compose-stop", actions.composeStop);
   answer("endue.docker.compose-restart", actions.composeRestart);
   answer("endue.docker.compose-pull", actions.composePull);
   answer("endue.docker.open-file", openFile);
-  answer("endue.docker.prune", actions.pruneSystem);
+  answer("endue.docker.prune", reviewed(actions.pruneSystem));
   answer("endue.docker.context", switchContext);
   answer("endue.docker.cancel", () => actions.cancel());
   const more = wireMore({ bridge }, app, answer);
@@ -212,7 +221,7 @@ export function wireCommands({ commands, bridge }, app, _view) {
     toggleAll: g(() => app.toggleAll()),
     logs: g(() => app.openLogs()),
     inspect: g(() => app.inspect()),
-    shell: g(() => shell()),
+    shell: g(() => shell({}, true)),
     openFile: g(() => openFile()),
     switchContext: g(() => switchContext()),
     toggleFollow: g(toggleFollow),
