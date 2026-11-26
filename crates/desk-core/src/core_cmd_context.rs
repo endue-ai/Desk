@@ -3,11 +3,19 @@
 use desk_bridge::{BridgeError, CommandInfo, ErrorCode, WebAction};
 use serde_json::{Map, Value};
 
-use super::{Core, ProviderApproval, error};
+use super::{Core, Kind, ProviderApproval, error};
 use crate::approval_provider::{DOCKER, DOCKER_STUDIO};
 
 const BROWSER: &str = "endue.browser";
 const DATABASE: &str = "endue.database";
+const SHEETS: &str = "endue.sheets";
+const SHEETS_SAVE: &str = "endue.sheets.save";
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum DelegatedOperation {
+    BrowserAction,
+    SheetsSave,
+}
 
 #[derive(Clone)]
 pub(crate) struct AgentInvocation {
@@ -87,7 +95,18 @@ impl Core {
         ))
     }
 
-    pub(crate) fn delegates_web_act(&self, info: &CommandInfo) -> bool {
+    pub(super) fn delegation(&self, kind: Kind, info: &CommandInfo) -> Option<DelegatedOperation> {
+        if kind != Kind::Command {
+            return None;
+        }
+        if info.id == SHEETS_SAVE && self.trusted_builtin(&info.provider, SHEETS) {
+            return Some(DelegatedOperation::SheetsSave);
+        }
+        self.delegates_web_act(info)
+            .then_some(DelegatedOperation::BrowserAction)
+    }
+
+    fn delegates_web_act(&self, info: &CommandInfo) -> bool {
         matches!(
             info.id.as_str(),
             "endue.browser.click"
@@ -144,12 +163,42 @@ impl Core {
             .get_mut(id)
             .filter(|i| {
                 i.provider == provider
-                    && i.browser_act
+                    && i.delegation == Some(DelegatedOperation::BrowserAction)
                     && (i.id == command || (i.id == "endue.browser.navigate-key" && navigation_key))
             })
             .ok_or_else(invalid)?;
         let agent = pending.agent.clone().ok_or_else(invalid)?;
-        pending.browser_act = false;
+        pending.delegation = None;
+        Ok(agent)
+    }
+
+    pub(crate) fn claim_sheets_save(
+        &self,
+        provider: &str,
+        id: &str,
+        path: &str,
+    ) -> Result<AgentInvocation, BridgeError> {
+        if !self.trusted_builtin(provider, SHEETS) {
+            return Err(invalid());
+        }
+        let mut commands = self.commands();
+        let pending = commands
+            .pending
+            .get_mut(id)
+            .filter(|invocation| {
+                invocation.provider == provider
+                    && invocation.id == SHEETS_SAVE
+                    && invocation.delegation == Some(DelegatedOperation::SheetsSave)
+                    && invocation
+                        .args
+                        .as_ref()
+                        .and_then(|args| args.get("path"))
+                        .and_then(Value::as_str)
+                        == Some(path)
+            })
+            .ok_or_else(invalid)?;
+        let agent = pending.agent.clone().ok_or_else(invalid)?;
+        pending.delegation = None;
         Ok(agent)
     }
 }

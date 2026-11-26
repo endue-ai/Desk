@@ -50,7 +50,7 @@ export function slideAnswer(/** @type {Slide} */ slide) {
 
 /**
  * @param {{ on(name: string, handler: (args: unknown) => unknown): unknown }} commands
- * @param {{ open(): Open[], shown(): string | null }} deps
+ * @param {{ open(): Open[], shown(): string | null, view: import("./slides.js").View }} deps
  */
 export function answerAgents(commands, deps) {
   commands.on("endue.slides.read", (raw) => {
@@ -85,13 +85,51 @@ export function answerAgents(commands, deps) {
     const count =
       Number.isInteger(asked_) && asked_ > 0 ? Math.min(asked_, SLIDES.most) : SLIDES.usual;
     const slides = all.slice(from - 1, from - 1 + count).map(slideAnswer);
+    const current = file.buffer === deps.shown() ? deps.view.slideOf?.(file.buffer) : undefined;
     return {
       path: file.path,
       format: opened.format,
       decks,
       total: all.length,
+      ...(current === undefined ? {} : { slide: current + 1 }),
       slides,
       more: from - 1 + count < all.length,
     };
+  });
+
+  const currentDeck = () => {
+    const file = deps.open().find((entry) => entry.buffer === deps.shown());
+    if (file?.opened.kind !== "deck" || !file.opened.deck.slides.length)
+      throw new Error("No deck is open in Slides.");
+    return { file, length: file.opened.deck.slides.length };
+  };
+  const index = (/** @type {unknown} */ slide, /** @type {number} */ length) => {
+    if (typeof slide !== "number" || !Number.isSafeInteger(slide) || slide < 1 || slide > length)
+      throw new Error("That slide is outside the open deck.");
+    return slide - 1;
+  };
+  const answer = (/** @type {Open} */ file) => ({
+    path: file.path,
+    slide: (deps.view.slideOf?.(file.buffer) ?? 0) + 1,
+  });
+  commands.on("endue.slides.show", (raw) => {
+    const { file, length } = currentDeck();
+    if (!deps.view.showSlide) throw new Error("Slides has no deck to move.");
+    deps.view.showSlide(index(/** @type {{ slide: number }} */ (raw).slide, length));
+    return answer(file);
+  });
+  commands.on("endue.slides.play", (raw) => {
+    const { file, length } = currentDeck();
+    if (!deps.view.play) throw new Error("Slides has no deck to play.");
+    const from = /** @type {{ from?: number } | undefined} */ (raw)?.from;
+    deps.view.play(
+      from === undefined ? (deps.view.slideOf?.(file.buffer) ?? 0) : index(from, length),
+    );
+    return answer(file);
+  });
+  commands.on("endue.slides.stop", () => {
+    const { file } = currentDeck();
+    deps.view.stop?.();
+    return answer(file);
   });
 }

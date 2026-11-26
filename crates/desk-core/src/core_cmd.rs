@@ -49,7 +49,7 @@ struct Invocation {
     kind: Kind,
     approval: Option<ProviderApproval>,
     agent: Option<AgentInvocation>,
-    browser_act: bool,
+    delegation: Option<context::DelegatedOperation>,
 }
 
 /// Registered commands in registration order, and the invocations still waiting for an answer.
@@ -162,8 +162,8 @@ impl Core {
             check_args(schema, args.as_ref())?;
         }
         let operation_review = self.operation_reviewed(review, &info, args.as_ref())?;
-        let browser_act = kind == Kind::Command && self.delegates_web_act(&info);
-        let review = review && !browser_act;
+        let delegation = self.delegation(kind, &info);
+        let review = review && delegation.is_none();
         let invoke = Action::Invoke {
             id,
             args: args.as_ref(),
@@ -209,7 +209,7 @@ impl Core {
                         run: run.clone(),
                         turn: current_task(),
                     }),
-                    browser_act,
+                    delegation,
                 },
             );
             invocation_id

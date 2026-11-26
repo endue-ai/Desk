@@ -306,6 +306,10 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
       selection?.set(r, c);
       moved(false);
     },
+    select(/** @type {import("./agent.js").Range} */ { r0, c0, r1, c1 }) {
+      selection?.select({ r: r0, c: c0 }, { r: r1, c: c1 });
+      moved(true);
+    },
     /** Mod+= and Mod+- step through ZOOMS, Mod+0 goes back to 100 %; returns the zoom. */
     zoom(/** @type {number} */ by) {
       const at = ZOOMS.indexOf(zoom);

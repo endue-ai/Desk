@@ -176,6 +176,13 @@ export function createView(doc, actions = {}) {
   });
 
   return {
+    /** @param {number} slide */
+    showSlide(slide) {
+      if (player.isOpen()) player.go(slide);
+      else go(slide);
+    },
+    play: startPlay,
+    stop: player.close,
     /**
      * @param {Shown | null} model
      * @param {number} [slide] the slide to show it on (a sleep kept it); else where it was left
@@ -202,7 +209,8 @@ export function createView(doc, actions = {}) {
       if (deck) go(slide ?? positions.get(model?.buffer ?? "") ?? 0);
     },
     /** The slide the view last showed of `buffer`, if it showed it. */
-    slideOf: (/** @type {string} */ buffer) => positions.get(buffer),
+    slideOf: (/** @type {string} */ of) =>
+      (of === buffer ? player.current() : undefined) ?? positions.get(of),
     /** @param {string} text */
     status: say,
     progress: createProgress(doc),

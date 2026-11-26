@@ -2,7 +2,7 @@
 
 `endue.slides` ("Slides") opens every presentation in one viewer: a thumbnail rail, the slide scaled to
 fit as real, selectable HTML, its speaker notes under it, and play mode. It reads; it never edits. The
-community folder format on the public SDK only, like `plugins/notes`. Eris reads an open deck slide by slide, text and speaker notes, with `endue.slides.read { path?, from?, count? }` (ADR 0088, `ui/agent.js`).
+community folder format on the public SDK. Eris reads slide text, notes and the current slide with `endue.slides.read`, and uses `show`, `play` and `stop` to present the deck (ADR 0391).
 
 | Files | What it shows |
 | --- | --- |
