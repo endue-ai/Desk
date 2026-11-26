@@ -9,8 +9,8 @@ One click selects and opens a file or toggles a folder; rows never select their 
 Each change asks one question in the palette (the name, from the old one for Rename; Move to Trash every time, opening on "Keep it"), never overwrites, and is one `fs.write`, `fs.mkdir`, `fs.rename` or `fs.trash` (ADR 0125): the desk's undo takes back a rename or a new folder, the OS Trash keeps what is trashed. The explorer's own folders are never renamed or trashed.
 A drop on a folder moves there (`fs.rename`; Alt, the OS or another volume copy with `fs.copy`); a taken name asks to keep both, replace (the old one goes to the Trash) or skip; a container's file (`docker/file`) copies in through Docker's `endue.docker.copy-out`. Preview: 64 KiB of UTF-8 text, or images to 8 MiB.
 
-A listing outside its grants is refused: the explorer asks with `perm.request` for that folder (`<folder>/**`)
-and tries once more; a refusal or failure is said briefly on the row (`not allowed`, `not there`) and in a sentence on the status line (`Not allowed to list ~/Documents.`), which keeps what the last action did until the next one; drops ask the same way.
+The native root chooser grants read and write in the selected folder. System reveal uses that root's
+scope, and a physical drop uses the read and destination grants from the desk (ADR 0374).
 Expanded folders are watched (`fs.watch`, 64 at most) and listed again when they change; expanded folders and the selection live in the store, the rest in settings (`endue.explorer.*`).
 
 | Permission | Why |
@@ -23,7 +23,7 @@ Expanded folders are watched (`fs.watch`, 64 at most) and listed again when they
 | --- | --- | --- |
 | `endue.explorer.open` | `Mod+Shift+E` | Show the explorer and focus the selection |
 | `endue.explorer.reveal` | `Mod+Shift+R` | Expand down to the file in use, or to `{ path }` |
-| `.refresh` · `.toggle-hidden` · `.add-folder` · `.remove-folder` · `.new-file` · `.new-folder` | | List again; dotfiles; a root (`{ path }` or typed); a file or folder (`{ folder, name }` or asked) |
+| `.refresh` · `.toggle-hidden` · `.add-folder` · `.remove-folder` · `.new-file` · `.new-folder` | | List again; dotfiles; choose a root or name `{ path }`; add a file or folder by `{ folder, name }` |
 | `.open-selected` · `.copy-path` · `.terminal-here` · `.git-here` · `.show-in-file-manager` · `.rename` · `.trash` | menu; F2; Delete | Act on selection, or `{ path }` (and `{ name }` for Rename); terminal/Git use a file's parent. Missing providers and refused grants are reported |
 | `.folders` · `.list` · `.search` · `.read` · `.move` | | For Eris and agents (ADR 0088), by path with data back: the roots, a folder's entries, names found below a folder, a file's text (16 KiB, 256 KiB at most), a move or copy into `{ folder }` as a drop. Every path command above is an agent command too |
 | `.select-all` · `.copy` · `.cut` · `.paste` · `.find` · `.find-below` | Mod+A/C/X/V/F in the tree | The selected rows; paste into `{ folder }` or the selection's; filter by `{ query }`, or search below and answer the results |
