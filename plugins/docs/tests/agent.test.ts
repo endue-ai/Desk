@@ -38,6 +38,13 @@ describe("endue.docs.read", () => {
     );
   });
 
+  it("reports the page on screen for the active document", async () => {
+    const { host, view } = await mount({ handlers: disk({ [A.path]: rtf("Fixture") }) });
+    await host.command("desk.files.visit", A);
+    view.here = { at: { page: 0, down: 0.2, across: 0 }, zoom: 1.25 };
+    expect(await host.command("endue.docs.read")).toMatchObject({ page: 1, zoom: 1.25 });
+  });
+
   it("marks headings, list items, table rows, notes and comments", () => {
     const text = documentText({
       kind: "document",

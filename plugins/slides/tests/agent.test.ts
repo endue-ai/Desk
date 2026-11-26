@@ -41,6 +41,13 @@ describe("endue.slides.read", () => {
     expect(run.more).toBe(true);
   });
 
+  it("reports the slide on screen for the open deck", async () => {
+    const { host, view } = await mount({ handlers: disk({ [A.path]: deck }) });
+    await host.command("desk.files.visit", A);
+    view.at[A.buffer] = 1;
+    expect(await host.command("endue.slides.read")).toMatchObject({ slide: 2 });
+  });
+
   it("is offered to agents as a read", () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),

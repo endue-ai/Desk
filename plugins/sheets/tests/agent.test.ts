@@ -44,6 +44,24 @@ describe("endue.sheets.read", () => {
     expect(() => rangeOf("row 3")).toThrow(/not a range/);
   });
 
+  it("applies a complete range edit in the buffer and refuses an invalid range atomically", async () => {
+    const { host, params } = await mount({ handlers: disk({ [A.path]: csv }) });
+    await host.command("desk.files.visit", A);
+    await expect(
+      host.command("endue.sheets.edit", { range: "A2:C2", values: [["One", "2", "unsupported"]] }),
+    ).rejects.toThrow(/cell|range|format/i);
+    expect(await host.command("endue.sheets.read", { range: "A2:B2" })).toMatchObject({
+      values: [["Seoul", "9.4"]],
+      unsaved: false,
+    });
+    await host.command("endue.sheets.edit", { range: "A2:B2", values: [["Example, City", "20"]] });
+    expect(await host.command("endue.sheets.read", { range: "A2:B2" })).toMatchObject({
+      values: [["Example, City", "20"]],
+      unsaved: true,
+    });
+    expect(params("fs.write")).toEqual([]);
+  });
+
   it("is offered to agents as a read", () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),

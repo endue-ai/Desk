@@ -38,6 +38,24 @@ const kept = (store: Record<string, unknown>) =>
 describe("the reader's view", () => {
   beforeEach(() => loadPage(document));
 
+  it("moves through the book and reads its current position and notes through commands", async () => {
+    const store: Record<string, unknown> = {};
+    const { host, settle } = await open(store);
+    await host.command("desk.files.visit", BOOK);
+    await host.command("endue.reader.go", { at: 2 });
+    expect(await host.command("endue.reader.read", { count: 1 })).toMatchObject({ at: 2 });
+    await host.command("endue.reader.zoom", { level: 1.4 });
+    expect(byId("zoom").textContent).toBe("140%");
+    await host.command("endue.reader.bookmark", { label: "Fixture mark" });
+    await host.command("endue.reader.note", { at: 2, text: "Fixture note" });
+    await settle();
+    expect(await host.command("endue.reader.marks")).toMatchObject({
+      bookmarks: [{ at: 2, label: "Fixture mark" }],
+      notes: [{ at: 2, text: "Fixture note" }],
+    });
+    expect(kept(store)?.[1]).toMatchObject({ unit: 1 });
+  });
+
   it("go-to-page moves the counter and the position is kept", async () => {
     const store: Record<string, unknown> = {};
     const { host, settle } = await open(store);
