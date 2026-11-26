@@ -13,8 +13,10 @@ import {
   type MarketListing,
   type Permission,
 } from "@endue-ai/bridge";
+import { CommandError } from "../commands";
 import { permissionWords } from "../describe/words";
 import { type KeyOf, moduleText } from "../i18n/messages";
+import type { MarketChoice } from "../policies/plugin-tools";
 import { h, render } from "../shell/dom";
 import type { SettingsLanguage } from "./copy";
 import en from "./messages/en.json";
@@ -91,6 +93,7 @@ export function mountMarket(options: MarketOptions): {
   el: HTMLElement;
   ready: Promise<void>;
   idle(): Promise<void>;
+  requestInstall(choice: MarketChoice): Promise<{ id: string; installed: boolean }>;
   dispose(): void;
 } {
   const { bridge, language, commands, settings } = options;
@@ -99,9 +102,16 @@ export function mountMarket(options: MarketOptions): {
   let entries: MarketListing[] = [];
   /** The entry whose question is open: to install it, or to remove it. */
   let asking: { id: string; remove: boolean } | undefined;
+  let review:
+    | { resolve(result: { id: string; installed: boolean }): void; reject(error: unknown): void }
+    | undefined;
   const alerts = new Map<string, string>();
   let pending: Promise<void> = Promise.resolve();
   let disposed = false;
+  const cancelReview = () => {
+    review?.reject(new CommandError("cancelled", "Market installation was cancelled"));
+    review = undefined;
+  };
 
   async function load() {
     if (disposed) return;
@@ -142,16 +152,25 @@ export function mountMarket(options: MarketOptions): {
     );
   };
   const install = (listing: MarketListing) => {
+    if (asking?.id !== listing.entry.id || asking.remove) return;
+    const waiting = review;
+    review = undefined;
     asking = undefined;
     const accept = listing.entry.permissions ?? listing.added;
-    void queue(listing.entry.id, () =>
-      bridge.call("plugin.install", {
-        id: listing.entry.id,
-        market: listing.market,
-        accept,
-        scope: SCOPE,
-      }),
-    );
+    void queue(listing.entry.id, async () => {
+      try {
+        const { plugin } = await bridge.call("plugin.install", {
+          id: listing.entry.id,
+          market: listing.market,
+          accept,
+          scope: SCOPE,
+        });
+        waiting?.resolve({ id: plugin.id, installed: true });
+      } catch (error) {
+        waiting?.reject(error);
+        throw error;
+      }
+    });
   };
   const remove = (listing: MarketListing) => {
     asking = undefined;
@@ -166,6 +185,7 @@ export function mountMarket(options: MarketOptions): {
     });
   };
   const askFor = (listing: MarketListing, removing: boolean) => {
+    cancelReview();
     asking = { id: listing.entry.id, remove: removing };
     draw();
   };
@@ -252,6 +272,7 @@ export function mountMarket(options: MarketOptions): {
             type: "button",
             class: "btn btn-xs btn-outline",
             onClick: () => {
+              cancelReview();
               asking = undefined;
               draw();
             },
@@ -318,8 +339,27 @@ export function mountMarket(options: MarketOptions): {
     el,
     ready,
     idle: () => pending,
+    async requestInstall({ kind, id }) {
+      await pending;
+      if (disposed) throw new CommandError("cancelled", "Market installation was cancelled");
+      if (asking) throw new CommandError("failed", "Finish the current market review first");
+      const listing = entries.find(({ entry }) => entry.id === id && entry.kind === kind);
+      if (!listing) throw new CommandError("failed", `${id} was not found in the ${kind} market`);
+      if (listing.state === "installed") return { id, installed: true };
+      if (kind === "plugin" && !listing.verified)
+        throw new CommandError("failed", "Code installs only from the verified endue market");
+      return new Promise((resolve, reject) => {
+        asking = { id, remove: false };
+        review = { resolve, reject };
+        draw();
+        const question = el.querySelector<HTMLElement>(".market-ask");
+        question?.scrollIntoView?.({ block: "nearest" });
+        question?.querySelector<HTMLButtonElement>("button:last-child")?.focus();
+      });
+    },
     dispose: () => {
       disposed = true;
+      cancelReview();
       el.remove();
     },
   };

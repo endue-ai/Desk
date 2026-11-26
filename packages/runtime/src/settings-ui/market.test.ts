@@ -105,6 +105,55 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+it("waits for the person's market review and installs the exact requested listing", async () => {
+  const { panel, calls } = mount();
+  await panel.ready;
+  const requested = { kind: "view", id: "acme.board" } as const;
+  const install = panel.requestInstall(requested);
+  const board = () => card(panel.el, requested.id);
+  await expect
+    .poll(() => board().querySelector("[role=alertdialog]")?.textContent)
+    .toContain("Read your tasks");
+  expect(board().textContent).toContain("Not verified: it comes from market.acme.test");
+  expect(calls).toEqual([]);
+  button(board(), "Allow and install")?.click();
+  await expect(install).resolves.toMatchObject({ id: requested.id, installed: true });
+  expect(calls).toEqual([
+    {
+      method: "plugin.install",
+      params: {
+        id: requested.id,
+        market: ACME,
+        accept: [READ],
+        scope: { permission: "plugin:manage" },
+      },
+    },
+  ]);
+  panel.dispose();
+});
+
+it("does not install after cancelling, closing the review, or requesting unverified code", async () => {
+  const { panel, calls } = mount();
+  await panel.ready;
+  const request = () => panel.requestInstall({ kind: "view", id: "acme.board" });
+  const cancelled = expect(request()).rejects.toThrow(/cancel/i);
+  const board = () => card(panel.el, "acme.board");
+  await expect.poll(() => button(board(), "Cancel") !== undefined).toBe(true);
+  button(board(), "Cancel")?.click();
+  await cancelled;
+  await expect(panel.requestInstall({ kind: "plugin", id: "acme.tracker" })).rejects.toThrow(
+    /verified/i,
+  );
+  await expect(panel.requestInstall({ kind: "theme", id: "acme.board" })).rejects.toThrow(
+    /not found/i,
+  );
+  const closed = expect(request()).rejects.toThrow(/cancel/i);
+  await expect.poll(() => button(board(), "Cancel") !== undefined).toBe(true);
+  panel.dispose();
+  await closed;
+  expect(calls).toEqual([]);
+});
+
 describe("Settings, Market", () => {
   it("lists every kind in its group, verified or not", async () => {
     const { panel } = mount();

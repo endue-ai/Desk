@@ -26,6 +26,7 @@ import { installKeysFile } from "./policies/keys-file";
 import { installLanguage } from "./policies/language";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
+import { installPluginTools } from "./policies/plugin-tools";
 import { installProfiles } from "./policies/profiles";
 import { installSession } from "./policies/session";
 import { installSettingCommands } from "./policies/settings-commands";
@@ -88,7 +89,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const win = doc.defaultView ?? window;
   root.classList.add("desk");
   root.replaceChildren();
-  // The built-in tokens until desk.theme applies the theme in force, where it will apply it.
   applyTheme(options.themeRoot ?? root);
 
   const container = doc.createElement("main");
@@ -120,7 +120,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const offKeys = listenForShortcuts(win, shortcuts);
 
-  // Built before the policies so they can share messages with plugins and ask them things.
   let pluginHost: PluginHost | undefined;
   const ctx: DeskContext = {
     hub,
@@ -145,7 +144,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       else if (pluginHost) pluginHost.unmount(plugin);
       else closeSurface(plugin);
     },
-    // A plugin's several windows (ADR 0212); without a plugin host, none opens.
     instances: (plugin) => pluginHost?.instances(plugin) ?? [],
     another: (plugin) => pluginHost?.another(plugin) ?? plugin,
     inUse: (plugin) => pluginHost?.inUse(plugin),
@@ -164,7 +162,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const focusing = surfaceFocus({ root, shortcuts, surfaces, show, moved });
   const { focus: focusSurface, follow: followSurface } = focusing;
   const { views, windows } = options;
-  // Set once desk.buffers is installed: which ids are the host's views.
   let routing: ViewRouting = { owns: () => false, dispose: () => {} };
   const focusAny = (id: string | null) => {
     if (!id || !routing.owns(id)) return focusSurface(id);
@@ -182,9 +179,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   // Windows out of sight are unloaded, their state kept (ADR 0070); every frame is watched (#39).
   const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: speech.current() });
   focusMoved = (id) => frames.focused(id);
-  // A host's view is a buffer only while in sight; a surface is when shown and on the page.
   const inSight = (id: string) => surfaces.get(id) === undefined || surfaces.visible(id);
   const buffers = installBuffers(ctx, { focus: focusAny, inSight });
+  const pluginTools = installPluginTools(ctx, {
+    opened: (id) => ctx.mounted(id) || surfaces.get(id) !== undefined || routing.owns(id),
+    confirmClose: buffers.confirmPluginClose,
+  });
   routing = connectViews(views, buffers);
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
   const files = installFiles(
@@ -274,7 +274,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   }
 
   let plugins: RuntimePlugins | undefined;
-  // Without plugins there is no desk.session to restore; saving may start at once.
   if (!options.plugins) void ready.then(() => keysFile.start()).then(() => session.restore());
   if (options.plugins) {
     const host = new PluginHost(
@@ -370,6 +369,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     followSurface,
     status: () => notify.text(),
     dispose() {
+      pluginTools.dispose();
       settingsWindow.dispose();
       preferences.dispose();
       frames.dispose();
