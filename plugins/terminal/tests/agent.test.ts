@@ -44,6 +44,25 @@ describe("the terminal for agents (ADR 0088)", () => {
     );
   });
 
+  it("searches a named session and reports its current folder", async () => {
+    const { host, app, settle } = await mount();
+    app.osc("t-1", 7, "file://localhost/sample/project");
+    host.emit(output("\x1b[32mConnected\x1b[0m to the worker\r\nWaiting\r\nconnected again\r\n"));
+    await settle();
+    await expect(host.command("endue.terminal.sessions")).resolves.toMatchObject([
+      { cwd: "/sample/project" },
+    ]);
+    await expect(
+      host.command("endue.terminal.find", { session: "t-1", text: "connected" }),
+    ).resolves.toMatchObject({
+      session: "t-1",
+      matches: [
+        { line: 1, text: "Connected to the worker" },
+        { line: 3, text: "connected again" },
+      ],
+    });
+  });
+
   it("types text into the program under the shell's scope, Enter unless asked not to", async () => {
     const { host, params, settle } = await mount();
     await host.command("endue.terminal.send", { text: "git status" });
@@ -68,6 +87,10 @@ describe("the terminal for agents (ADR 0088)", () => {
       "endue.terminal.focus": "acts",
       "endue.terminal.close": "acts",
       "endue.terminal.split": "acts",
+      "endue.terminal.focus-pane": "acts",
+      "endue.terminal.next": "acts",
+      "endue.terminal.previous": "acts",
+      "endue.terminal.find": "reads",
       "endue.terminal.clear": "acts",
       "endue.terminal.interrupt": "acts",
       "endue.terminal.restart": "acts",

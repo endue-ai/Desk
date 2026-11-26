@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import manifest from "../plugin.json";
 import { COMMANDS } from "../ui/schemas.js";
 import { CLAUDE_STREAM, CODEX_STREAM } from "./fixtures";
 import { computer, mount } from "./harness";
@@ -41,6 +42,61 @@ describe("compare", () => {
 });
 
 describe("the commands", () => {
+  it("offers status, board, activity and transcripts as reads and keeps card actions person-facing", async () => {
+    const specs = manifest.contributes.commands;
+    for (const name of ["detect", "board", "activity", "transcript"]) {
+      expect(specs.find(({ id }) => id.endsWith(`.${name}`))).toMatchObject({
+        agent: true,
+        readOnly: true,
+      });
+    }
+    expect(specs.find(({ id }) => id.endsWith(".stop"))).toMatchObject({ agent: true });
+    for (const name of ["run-card", "move-card"]) {
+      expect(specs.find(({ id }) => id.endsWith(`.${name}`))).not.toHaveProperty("agent", true);
+    }
+    const m = await mount();
+    await m.host.invoke("endue.local-agents.chat", {
+      agent: "codex",
+      prompt: "Describe the files",
+    });
+    await expect(
+      m.host.invoke("endue.local-agents.transcript", { agent: "codex" }),
+    ).resolves.toMatchObject({
+      agent: "codex",
+      messages: [{ text: "Describe the files" }, { text: "Three files." }],
+    });
+  });
+
+  it("lets an agent stop only its own named work run", async () => {
+    const m = await mount({ script: computer({ claude: { hang: true }, codex: { hang: true } }) });
+    const dispatch = (
+      name: string,
+      invocationId: string,
+      caller: string,
+      args: Record<string, unknown>,
+    ) =>
+      m.host.emit({
+        event: "cmd.invoked",
+        data: { id: `endue.local-agents.${name}`, invocationId, args, caller },
+      });
+    dispatch("work", "work-a", "agent:eris", { agent: "claude", prompt: "Own work" });
+    dispatch("work", "work-b", "agent:other", { agent: "codex", prompt: "Other work" });
+    await m.settle();
+    const owned = m.app.runs.running().find((r) => r.prompt === "Own work")?.id;
+    const other = m.app.runs.running().find((r) => r.prompt === "Other work")?.id;
+    expect(owned).toBeDefined();
+    expect(other).toBeDefined();
+    dispatch("stop", "stop-all", "agent:eris", {});
+    dispatch("stop", "stop-other", "agent:eris", { run: other });
+    await m.settle();
+    expect(m.app.runs.running()).toHaveLength(2);
+    dispatch("stop", "stop-own", "agent:eris", { run: owned });
+    await m.settle();
+    expect(m.app.runs.running().map(({ id }) => id)).toEqual([other]);
+    m.app.runs.stopAll();
+    await m.settle();
+  });
+
   it("register every command again with its description and argument schema", async () => {
     const m = await mount();
     const registered = m.host.calls.filter((c) => c.method === "cmd.register").map((c) => c.params);
