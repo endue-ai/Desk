@@ -55,8 +55,7 @@ describe("plugin.json", () => {
       "proc:spawn",
       "ui:notify",
     ]);
-    // A device's ports are asked for each time: `*` holds no host (ADR 0260). Its log's entries
-    // run its own devices command.
+    // Explicit device scopes are reviewed separately from the declaration. Log entries run the devices command.
     expect(manifest.permissions).toContainEqual({ permission: "net:connect", hosts: ["*"] });
     expect(manifest.permissions).toContainEqual({
       permission: "cmd:invoke",
@@ -68,7 +67,7 @@ describe("plugin.json", () => {
     expect(everything).not.toMatch(/\bnmap\b|npcap|\/bin\/sh|\bbash\b/i);
   });
 
-  it("contributes the seven commands under its own id, the readers marked read-only for agents", () => {
+  it("contributes network commands and distinguishes reads from port checks", () => {
     const commands = manifest.contributes.commands;
     expect(commands.map((c: any) => c.id)).toEqual([
       "endue.network.open",
@@ -76,6 +75,7 @@ describe("plugin.json", () => {
       "endue.network.devices",
       "endue.network.name",
       "endue.network.checkup",
+      "endue.network.check-ports",
       "endue.network.channels",
       "endue.network.log",
     ]);
@@ -86,6 +86,7 @@ describe("plugin.json", () => {
     const readOnly = commands.filter((c: any) => c.readOnly).map((c: any) => c.id);
     expect(readOnly).toEqual([
       "endue.network.devices",
+      "endue.network.checkup",
       "endue.network.channels",
       "endue.network.log",
     ]);

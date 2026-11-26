@@ -217,16 +217,7 @@ export function createApp(deps) {
       render();
     },
     check: ({ mac }) => net.checkDevice(mac),
-    "check-all": async () => {
-      // Each device is asked for in turn; one the person declines is skipped, not the rest.
-      for (const d of state.devices.filter((x) => x.online && !x.self && x.open === null)) {
-        try {
-          await net.checkDevice(d.mac);
-        } catch (error) {
-          if (/** @type {{ code?: string }} */ (error)?.code !== "ports-denied") throw error;
-        }
-      }
-    },
+    "check-all": () => net.checkAllDevices(),
     "admin-yes": () => net.answerAdmin(true),
     "admin-no": () => net.answerAdmin(false),
     "explain-device": ({ mac }) => {

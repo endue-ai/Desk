@@ -143,6 +143,7 @@
   "explain.device": "{device}: {kind} made by {vendor}, ping {ping}. {ports}",
   "explain.devicePorts": "Open ports: {ports}.",
   "explain.reason": "To explain the checkup in plain words: only the devices' kinds, manufacturers and open ports and the score's items are sent, never their names or the Wi-Fi networks around.",
+  "ports.batchReason": "Check the common ports of these devices on your network: {addresses}. Connections close immediately and send no data.",
   "ports.reason": "To check which common ports of {device} ({ip}) are open: each one is connected to and closed at once, and nothing is sent.",
   "channels.title": "Wi-Fi channels around",
   "channels.band": "{band} GHz",
