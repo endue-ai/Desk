@@ -10,9 +10,7 @@
       "invocationId": "i-13",
       "scope": {
         "permission": "fs:write",
-        "paths": [
-          "~/Documents/fixture.csv"
-        ]
+        "paths": ["~/Documents/fixture.csv"]
       }
     }
   }
