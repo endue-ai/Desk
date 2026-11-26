@@ -12834,7 +12834,7 @@ pub struct WebScrolled {
     pub page_height: u64,
 }
 
-/// Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are.
+/// Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WebActRequest {
@@ -12870,6 +12870,10 @@ pub enum WebAction {
     WebType(WebType),
     WebKey(WebKey),
     WebChoose(WebChoose),
+    WebFollow(WebFollow),
+    WebFind(WebFind),
+    WebZoom(WebZoom),
+    WebHistory(WebHistory),
 }
 
 /// Scroll the page, or the part of it that scrolls when the page itself does not.
@@ -12985,6 +12989,38 @@ pub struct WebChoose {
     pub r#ref: WebRef,
     /// The option, by the words it shows or by its value.
     pub option: String,
+}
+
+/// Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebFollow {
+    pub r#do: WebFollowDo,
+    pub r#ref: WebRef,
+}
+
+/// Find text in the current page. Asking again for the same text moves to the next match.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebFind {
+    pub r#do: WebFindDo,
+    pub text: String,
+}
+
+/// Set the page magnification, where 1 is the usual size.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebZoom {
+    pub r#do: WebZoomDo,
+    pub level: f64,
+}
+
+/// Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebHistory {
+    pub r#do: WebHistoryDo,
+    pub to: WebStep,
 }
 
 /// Result of web.act: the act was done. What the page made of it is read with web.read.
@@ -15312,6 +15348,38 @@ pub enum WebChooseDo {
     #[default]
     #[serde(rename = "choose")]
     Choose,
+}
+
+/// The `do` of [`WebFollow`]: always `"follow"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebFollowDo {
+    #[default]
+    #[serde(rename = "follow")]
+    Follow,
+}
+
+/// The `do` of [`WebFind`]: always `"find"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebFindDo {
+    #[default]
+    #[serde(rename = "find")]
+    Find,
+}
+
+/// The `do` of [`WebZoom`]: always `"zoom"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebZoomDo {
+    #[default]
+    #[serde(rename = "zoom")]
+    Zoom,
+}
+
+/// The `do` of [`WebHistory`]: always `"history"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum WebHistoryDo {
+    #[default]
+    #[serde(rename = "history")]
+    History,
 }
 
 /// The `event` of [`WebChangedEvent`]: always `"web.changed"`.

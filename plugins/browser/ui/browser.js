@@ -46,6 +46,8 @@ export function createBrowser(desk, view) {
   let placed = "";
   /** Whether the page loads now, and who waits for it to rest (`settled`). */
   let loading = false;
+  let canGoBack = false;
+  let canGoForward = false;
   /** @type {Set<() => void>} */
   const waiting = new Set();
   const loads = (now) => {
@@ -132,13 +134,16 @@ export function createBrowser(desk, view) {
     if (shown.closed) {
       viewId = undefined;
       placed = "";
+      canGoBack = canGoForward = false;
       view.shows({ ...idle, url });
       loads(false);
       return;
     }
-    loads(shown.loading);
     title = shown.title;
     if (shown.url !== "") url = shown.url;
+    canGoBack = shown.canGoBack;
+    canGoForward = shown.canGoForward;
+    loads(shown.loading);
     view.shows({ ...shown, url });
     if (shown.refused) view.note(`The Browser may not go to ${shown.refused}.`);
   }
@@ -177,6 +182,7 @@ export function createBrowser(desk, view) {
     view: () => viewId,
     /** The page the window shows, by its address and title. */
     shown: () => ({ url, title }),
+    status: () => ({ loading, canGoBack, canGoForward }),
     /**
      * Once the page rests: no load for `quiet` ms, or after `most` ms at the latest. What follows
      * an act (a link that loads, a form that is sent) has begun by then, or does not come.

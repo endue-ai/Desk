@@ -1,6 +1,5 @@
 // Links out of the desk: http, https and mailto go to the system's browser or mail app with
-// shell.open, under one shell:open scope. shell.open asks the person by itself the first time; a
-// refusal is final for that click: no second ask, no retry. Every other scheme opens nothing.
+// shell.open, under the shell:open scope granted at install. Every other scheme opens nothing.
 
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 const SCOPE = { permission: "shell:open", schemes: ["http", "https", "mailto"] };

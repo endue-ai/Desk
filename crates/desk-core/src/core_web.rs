@@ -13,14 +13,18 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use desk_bridge::{
-    BridgeEvent, ErrorCode, Permission, WebActResult, WebAction, WebChangedData, WebChangedEvent,
-    WebCloseParams, WebCloseResult, WebFocusParams, WebFocusResult, WebGoParams, WebGoResult,
-    WebLoadParams, WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult,
-    WebReadResult, WebStep,
+    BridgeEvent, ErrorCode, Permission, WebChangedData, WebChangedEvent, WebCloseParams,
+    WebCloseResult, WebFocusParams, WebFocusResult, WebGoParams, WebGoResult, WebLoadParams,
+    WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult,
 };
 
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::{Target, scope_allows};
+
+#[path = "core_web_views.rs"]
+mod views;
+
+pub use views::{WebError, WebHistoryTarget, WebViews};
 
 /// How many web views one caller holds at once.
 pub const MAX_WEB_VIEWS: usize = 16;
@@ -61,39 +65,6 @@ pub struct WebState {
     pub closed: bool,
 }
 
-/// Why the shell could not do what a call asked.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WebError {
-    /// The view, or the surface it was to open in, is not on the desk.
-    NotFound(String),
-    /// No view can show there: the window is out of the canvas.
-    Unsupported(String),
-    /// The page cannot take what was asked: text into a button, an option a list does not have.
-    Invalid(String),
-    Failed(String),
-}
-
-/// What shows web views: the shell's compositor and its web host. Called on the bridge's own
-/// threads, never on the shell's event loop.
-pub trait WebViews: Send + Sync {
-    /// Open view `view` in the window whose surface host is `surface`, hidden, on `url` if any.
-    fn open(&self, surface: &str, view: &str, url: Option<&str>) -> Result<(), WebError>;
-    fn place(&self, view: &str, place: WebPlace) -> Result<(), WebError>;
-    fn load(&self, view: &str, url: &str) -> Result<(), WebError>;
-    fn go(&self, view: &str, step: WebStep) -> Result<(), WebError>;
-    /// Give the view's page the keys.
-    fn focus(&self, view: &str) -> Result<(), WebError>;
-    /// Read the page of view `view`: the part of its text from character `from` on, `max`
-    /// characters at most. `at` is the address the core allowed the read at: a page of another
-    /// origin by now is not read (`NotFound`).
-    fn read(&self, view: &str, at: &str, from: u64, max: u64) -> Result<WebReadResult, WebError>;
-    /// Do `action` in the page of view `view` as a person's input would, without giving the view
-    /// the keys. `at` as for `read`.
-    fn act(&self, view: &str, at: &str, action: &WebAction) -> Result<WebActResult, WebError>;
-    /// Close the view; one that is gone already is no error.
-    fn close(&self, view: &str);
-}
-
 struct Entry {
     caller: String,
     scope: Permission,
@@ -119,6 +90,7 @@ pub(crate) fn failed(why: WebError) -> desk_bridge::BridgeError {
         WebError::NotFound(message) => error(ErrorCode::NotFound, message),
         WebError::Unsupported(message) => error(ErrorCode::Unsupported, message),
         WebError::Invalid(message) => error(ErrorCode::InvalidValue, message),
+        WebError::Changed(message) => error(ErrorCode::Cancelled, message),
         WebError::Failed(message) => error(ErrorCode::Internal, message),
     }
 }

@@ -43,6 +43,7 @@ pub(crate) enum Action<'a> {
         view: &'a str,
         site: &'a str,
         summary: &'a str,
+        once: bool,
     },
     /// An act on the computer (ADR 0123): its method, the app it reaches (`app`, its bundle id when
     /// known; `label`, its name in words) and what it does in words.
@@ -71,7 +72,10 @@ impl<'a> Action<'a> {
                     id: TERMINAL_RUN,
                     ..
                 }
-        ) && !matches!(self, Self::Web { site: "", .. })
+        ) && !matches!(
+            self,
+            Self::Web { site: "", .. } | Self::Web { once: true, .. }
+        )
     }
 
     pub(crate) fn page(&self) -> Option<(&'a str, &'a str)> {

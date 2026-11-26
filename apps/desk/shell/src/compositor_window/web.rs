@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use desk_bridge::{WebActResult, WebAction, WebReadResult, WebStep};
 use desk_compositor::input::Out;
-use desk_core::{WebError, WebPlace, WebViews};
+use desk_core::{WebError, WebHistoryTarget, WebPlace, WebViews};
 use desk_surface::generated::CompositorMessage;
 
 use super::CompositorWindow;
@@ -33,10 +33,10 @@ impl Web {
     }
 
     /// Run `job` with the compositor window on the event loop and wait for what it answers.
-    pub(super) fn ask(
+    pub(super) fn ask<T: Send + 'static>(
         &self,
-        job: impl FnOnce(&mut CompositorWindow) -> Result<(), WebError> + Send + 'static,
-    ) -> Result<(), WebError> {
+        job: impl FnOnce(&mut CompositorWindow) -> Result<T, WebError> + Send + 'static,
+    ) -> Result<T, WebError> {
         let (sent, answered) = mpsc::channel();
         self.pump.run(move |shell, _| {
             let answer = match shell.compositor.as_mut() {
@@ -75,6 +75,25 @@ impl WebViews for Web {
     fn go(&self, view: &str, step: WebStep) -> Result<(), WebError> {
         let view = view.to_owned();
         self.ask(move |c| c.host.web_go(&view, step))
+    }
+
+    fn history_target(
+        &self,
+        view: &str,
+        at: &str,
+        step: WebStep,
+    ) -> Result<Option<WebHistoryTarget>, WebError> {
+        self.inspect_history(view, at, step)
+    }
+
+    fn go_history(
+        &self,
+        view: &str,
+        at: &str,
+        step: WebStep,
+        expected: &WebHistoryTarget,
+    ) -> Result<(), WebError> {
+        self.go_history_entry(view, at, step, expected)
     }
 
     fn focus(&self, view: &str) -> Result<(), WebError> {

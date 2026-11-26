@@ -16,8 +16,6 @@ own cookies). This page holds the toolbar and asks for addresses.
 | A window out of the canvas | says the page shows in the desk only |
 | The assistant in the page | `web.read` and `web.act` (ADR 0272): the page as text with its elements named by a ref, then acts on a ref; each command answers the page as it reads once it rests, 4000 characters a part (`more` reads on) |
 
-Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission prompts, frames read.
-
 | Permission | Why |
 | --- | --- |
 | `web:browse` | Show web pages in its view; asked once (`perm.request`) when it does not hold it |
@@ -26,10 +24,10 @@ Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission pr
 | Command | What it does |
 | --- | --- |
 | `endue.browser.open` | Opens the Browser (`desk.plugins.open`) |
-| `go { url }`, `reload`, `back`, `forward` | Shows an address or searches, loads again, steps through the history; agent tools. `stop` stops a load |
-| `read { from?, chars? }` | The page's address, title, scroll and text; agent tool, read only |
-| `scroll { to?, pages?, ref? }` | A step, an end, or an element into view; agent tool |
-| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Act in the page. A task approval covers later actions in the same view and site for the turn (ADR 0375) |
+| `go { url }`, `follow { ref }`, `reload`, `back`, `forward`, `stop` | Load, follow a link's address, traverse history or stop. Each history step that may resend a form needs approval (ADR 0390) |
+| `read { from?, chars? }` | Address, title, loading and history state, scroll and text |
+| `scroll { to?, pages?, ref? }`, `navigate-key { key, ref? }`, `find { text }`, `zoom { level }` | Move around or change magnification |
+| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Click, submit and editing keys use the view and site approval (ADR 0375). Selecting and ordinary typing use the site's grant |
 
 `ui/address.js`: what was typed. `ui/browser.js`: the view (open, place, load, steps, when a page
 rests). `ui/agent.js`: the assistant's commands. `ui/view.js`, `ui/main.js`: the toolbar, the SDK.

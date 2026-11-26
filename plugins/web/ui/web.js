@@ -7,6 +7,7 @@
 // file the desk lists and the frame lost (it slept, or its page loaded again) opens again, where it
 // was when a sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a
 // view, so the SDK's test host runs it.
+import { readEntry, readSaved } from "./agent.js";
 import { createExternal } from "./external.js";
 import { placeOf, readPlace } from "./keep.js";
 import { codeOf, folderOf, loadFile, readers, scopeOf } from "./reading.js";
@@ -324,6 +325,26 @@ export function createWeb({ bridge, commands, surface }, view, options) {
   });
 
   void render();
+
+  const current = () => {
+    if (shown === null) throw new Error("Web has no open file.");
+    return held(shown);
+  };
+  commands.on("endue.web.read", async (args) => {
+    const range = /** @type {{ path?: string, from?: number, chars?: number }} */ (args ?? {});
+    const file = range.path
+      ? await loadFile({ bridge, readBytes, startWorker, workerOver }, "", range.path, {
+          signal: new AbortController().signal,
+          report: () => {},
+          ask: false,
+          scope: { permission: "fs:read", paths: [range.path] },
+        })
+      : current();
+    return readSaved(file.model, range);
+  });
+  commands.on("endue.web.entry", (args) =>
+    readEntry(current().model, /** @type {{ index: number }} */ (args).index),
+  );
 
   // Back from a sleep, the file that was on screen opens again where it was; the others open when
   // shown. A show of another file meanwhile goes first, and this one gives way quietly.

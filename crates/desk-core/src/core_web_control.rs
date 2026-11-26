@@ -6,12 +6,14 @@
 //! the core allowed the call at: a page that went to another origin meanwhile is left alone.
 
 use desk_bridge::{
-    ErrorCode, Permission, RunState, WebActParams, WebControlPermission, WebReadParams,
+    ErrorCode, Permission, RunState, WebActParams, WebActResult, WebAction, WebControlPermission,
+    WebKeyName, WebReadParams, WebStep,
 };
 
 use crate::account_client::origin_of;
 use crate::agent_runs::RUNS;
 use crate::approvals::{Action, in_task};
+use crate::core_cmd::AgentInvocation;
 use crate::core_web::failed;
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
@@ -25,6 +27,31 @@ fn target(at: &str) -> Target<'_> {
         Target::None
     } else {
         Target::Url(at)
+    }
+}
+
+pub(crate) fn navigation_key(key: WebKeyName) -> bool {
+    use WebKeyName::*;
+    matches!(
+        key,
+        Tab | Escape
+            | ArrowUp
+            | ArrowDown
+            | ArrowLeft
+            | ArrowRight
+            | PageUp
+            | PageDown
+            | Home
+            | End
+    )
+}
+
+fn reviewed(action: &WebAction) -> bool {
+    match action {
+        WebAction::WebPress(_) => true,
+        WebAction::WebType(typed) => typed.submit == Some(true),
+        WebAction::WebKey(key) => !navigation_key(key.key),
+        _ => false,
     }
 }
 
@@ -45,14 +72,69 @@ impl Core {
         let (views, at) = self.web_page(caller, &params.view_id)?;
         let scope = Permission::WebControl(params.scope);
         self.check(caller, &scope, &target(&at))?;
-        if let Some(invocation) = &params.invocation_id {
-            self.approve_web_act(caller, invocation, &params.view_id, &at, &params.action)?;
+        let agent = params
+            .invocation_id
+            .as_deref()
+            .map(|invocation| {
+                self.claim_browser_act(caller, invocation, &params.action)
+                    .map(|agent| (invocation, agent))
+            })
+            .transpose()?;
+        if let WebAction::WebHistory(history) = &params.action {
+            let step = history.to;
+            if step == WebStep::Stop {
+                views.go(&params.view_id, step).map_err(failed)?;
+                return json(WebActResult { moved: None });
+            }
+            let Some(entry) = views
+                .history_target(&params.view_id, &at, step)
+                .map_err(failed)?
+            else {
+                return json(WebActResult { moved: None });
+            };
+            if !self.web_allows(&params.view_id, &entry.url) {
+                return Err(error(
+                    ErrorCode::InvalidValue,
+                    "the Browser may not load that history entry".into(),
+                ));
+            }
+            if entry.has_post_data {
+                let Some(review) = agent.as_ref() else {
+                    return Err(error(
+                        ErrorCode::InvalidParams,
+                        "this history step can resend a form and needs a reviewed Browser command"
+                            .into(),
+                    ));
+                };
+                let summary =
+                    serde_json::json!({ "to": step, "url": entry.url, "mayResendForm": true });
+                self.approve_web_act(
+                    caller,
+                    review,
+                    &params.view_id,
+                    &entry.url,
+                    &summary.to_string(),
+                    true,
+                )?;
+                self.check(caller, &scope, &target(&at))?;
+            }
+            views
+                .go_history(&params.view_id, &at, step, &entry)
+                .map_err(failed)?;
+            return json(WebActResult { moved: None });
+        }
+        if let Some(review) = agent.as_ref()
+            && reviewed(&params.action)
+        {
+            let summary = serde_json::to_string(&params.action).unwrap_or_default();
+            self.approve_web_act(caller, review, &params.view_id, &at, &summary, false)?;
             if self.web_page(caller, &params.view_id)?.1 != at {
                 return Err(error(
                     ErrorCode::Cancelled,
                     "the page changed while awaiting approval".to_owned(),
                 ));
             }
+            self.check(caller, &scope, &target(&at))?;
         }
         let done = views.act(&params.view_id, &at, &params.action);
         json(done.map_err(failed)?)
@@ -61,22 +143,22 @@ impl Core {
     fn approve_web_act(
         &self,
         provider: &str,
-        invocation: &str,
+        (invocation, agent): &(&str, AgentInvocation),
         view: &str,
         at: &str,
-        act: &desk_bridge::WebAction,
+        summary: &str,
+        once: bool,
     ) -> Result<(), desk_bridge::BridgeError> {
-        let agent = self.claim_browser_act(provider, invocation, act)?;
         let scope = Permission::WebControl(WebControlPermission {
             permission: Default::default(),
             hosts: desk_sys::net::exact_host(at).map(|host| vec![host]),
         });
         let site = origin_of(at).unwrap_or_default();
-        let summary = serde_json::to_string(act).unwrap_or_default();
         let action = Action::Web {
             view,
             site: &site,
-            summary: &summary,
+            summary,
+            once,
         };
         let hold = || {
             self.check_approval_scope(&agent.caller, &scope, &target(at))?;

@@ -8193,7 +8193,7 @@ export interface WebScrolled {
   pageHeight: number;
 }
 
-/** Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are. */
+/** Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are. */
 export interface WebActRequest {
   id: RequestId;
   method: "web.act";
@@ -8210,7 +8210,17 @@ export interface WebActParams {
 }
 
 /** What web.act does, named by do. */
-export type WebAction = WebScroll | WebShow | WebPress | WebType | WebKey | WebChoose;
+export type WebAction =
+  | WebScroll
+  | WebShow
+  | WebPress
+  | WebType
+  | WebKey
+  | WebChoose
+  | WebFollow
+  | WebFind
+  | WebZoom
+  | WebHistory;
 
 /** Scroll the page, or the part of it that scrolls when the page itself does not. */
 export interface WebScroll {
@@ -8278,6 +8288,30 @@ export interface WebChoose {
   ref: WebRef;
   /** The option, by the words it shows or by its value. */
   option: string;
+}
+
+/** Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link. */
+export interface WebFollow {
+  do: "follow";
+  ref: WebRef;
+}
+
+/** Find text in the current page. Asking again for the same text moves to the next match. */
+export interface WebFind {
+  do: "find";
+  text: string;
+}
+
+/** Set the page magnification, where 1 is the usual size. */
+export interface WebZoom {
+  do: "zoom";
+  level: number;
+}
+
+/** Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation. */
+export interface WebHistory {
+  do: "history";
+  to: WebStep;
 }
 
 /** Result of web.act: the act was done. What the page made of it is read with web.read. */
