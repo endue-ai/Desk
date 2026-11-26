@@ -10,7 +10,7 @@
  * the OS's notifications while endue is out of sight (#306). The notification centre holds the
  * history (#307): a control right after the line opens it, as desk.notify.history does.
  */
-import type { NotifyLevel } from "@endue-ai/bridge";
+import type { ApprovalChange, NotifyLevel } from "@endue-ai/bridge";
 import { type GestureDesk, runGesture } from "../gesture";
 import {
   DEFAULT_NOTIFY,
@@ -34,6 +34,12 @@ export interface NotifyPolicy extends Installed, RuntimeNotices {
 
 const UNDO_APPROVAL = "desk.approvals.undo";
 const LEVELS: NotifyLevel[] = ["info", "success", "warning", "error"];
+const CHANGE_TITLES: Record<ApprovalChange, string> = {
+  "file-saved": "File saved",
+  "file-created": "File created",
+  "fact-remembered": "Fact remembered",
+  "fact-edited": "Fact updated",
+};
 
 export function installNotify(ctx: DeskContext, statusLine: HTMLElement): NotifyPolicy {
   const { hub, bridge, clock } = ctx;
@@ -165,11 +171,12 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   offs.add(
     bridge.onEvent((event) => {
       if (event.event === "perm.approval.done" && event.data.ok && event.data.undoable) {
-        const { approvalId } = event.data;
+        const { approvalId, change, path } = event.data;
         notifications.push({
           caller: "desk",
-          title: "File saved",
+          title: CHANGE_TITLES[change ?? "file-saved"],
           level: "success",
+          ...(path ? { body: path } : {}),
           actions: [{ label: "Undo", command: UNDO_APPROVAL, args: { approvalId } }],
         });
         return;
@@ -182,12 +189,12 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
 
   offs.add(
     commands.define(UNDO_APPROVAL, {
-      title: "Undo an approved file write",
+      title: "Undo a recent change",
       owner: "desk",
       run: (args, { caller }) => {
         const approvalId = (args as { approvalId?: unknown } | undefined)?.approvalId;
         if ((caller && caller !== "desk") || typeof approvalId !== "string")
-          throw new Error("Use Undo on the file write's notice");
+          throw new Error("Use Undo on the change notice");
         return bridge.call("perm.undoApproval", {
           approvalId,
           scope: { permission: "perm:manage" },

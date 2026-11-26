@@ -98,7 +98,9 @@ fn a_versioned_overwrite_uses_any_grant_duration() {
 #[test]
 fn a_new_file_receipt_removes_its_file_and_empty_parents_but_not_later_edits() {
     let root = home("undo-new-file");
-    let core = Core::new(roots(&root)).with_prompter(NeverAsk);
+    let core = Core::new(roots(&root))
+        .with_prompter(NeverAsk)
+        .with_trash(|path| fs::remove_file(path));
     grant(&core, "desk", manage());
     set_grant(&core, folder_write(), "session");
     let events = core.events().subscribe_addressed();

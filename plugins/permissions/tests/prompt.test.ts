@@ -37,6 +37,7 @@ describe("the prompt", () => {
       title: "Notes asks for permission",
       caller: { id: "example.notes", name: "Notes", kind: "UI plugin" },
       permission: "Read files",
+      permissionKind: "fs:read",
       scope: "~/Notes/**",
       reason: "To index your notes",
       duration: "This session",

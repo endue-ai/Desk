@@ -12,7 +12,7 @@ import { broadWarning, describeCaller, describePermission, durationLabel } from 
  * @typedef {{ caller: Caller, grants: GrantItem[] }} GrantGroup
  * @typedef {{ summary: string, groups: GrantGroup[], agents: GrantGroup[] }} GrantList
  * @typedef {{ scope: string, folder: string, label: string }} ParentOffer
- * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, scope: string,
+ * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, permissionKind: string, scope: string,
  *   reason: string, duration: string, warning: string | null, parent: ParentOffer | null,
  *   preferPersistent: boolean, waiting: number }} PromptModel
  */
@@ -85,6 +85,7 @@ export function promptModel(prompt, plugins, waiting) {
     title: `${caller.name} asks for permission`,
     caller,
     permission: label,
+    permissionKind: prompt.permission.permission,
     scope,
     reason: prompt.reason ?? "",
     duration: durationLabel(prompt.duration),

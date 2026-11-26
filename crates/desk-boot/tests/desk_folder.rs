@@ -92,7 +92,18 @@ fn an_agent_holds_no_grant_on_the_desk_folder() {
     let scope = [PROFILE, "~/.desk/profiles"];
     let (code, message) = write(&core, "agent:helper", PROFILE, &scope, true).unwrap_err();
     assert_eq!(code, ErrorCode::PermissionDenied);
-    // An agent's call meets init.yaml's allowlist first (ADR 0086), which names no desk folder.
-    assert!(message.contains("did not allow agent:helper"), "{message}");
+    // The runtime's grants do not cover this caller. With nobody to approve it, it is refused.
+    assert!(
+        message.contains("did not approve agent:helper"),
+        "{message}"
+    );
+    assert!(!home.join(".desk/profiles/quiet.yaml").exists());
+
+    let init = home.join("init.yaml");
+    fs::write(&init, "agents:\n  helper:\n    allow:\n      - { permission: fs:write, paths: [\"~/Documents/**\"] }\n").unwrap();
+    let core = core.with_init_file(init);
+    let (code, message) = write(&core, "agent:helper", PROFILE, &scope, true).unwrap_err();
+    assert_eq!(code, ErrorCode::PermissionDenied);
+    assert!(message.contains("outside its allowlist"), "{message}");
     assert!(!home.join(".desk/profiles/quiet.yaml").exists());
 }

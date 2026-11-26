@@ -13,8 +13,9 @@ use desk_bridge::{
     MemoryRememberResult, MemorySearchParams, MemorySearchResult, MemoryWritePermission,
     Permission,
 };
-use desk_memory::{Memory, MemoryEpisode, MemoryError, MemoryStep};
+use desk_memory::{Memory, MemoryEpisode, MemoryError, MemoryFact, MemoryStep};
 
+use crate::approval_versions::AgentChange;
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
@@ -95,20 +96,47 @@ impl Core {
     pub(crate) fn memory_remember(&self, caller: &str, params: MemoryRememberParams) -> Answer {
         let scope = Permission::MemoryWrite(params.scope);
         let memory = self.memory_or_unsupported()?;
-        self.authorize_action(caller, &scope, Action::Remember { text: &params.text })?;
-        let (fact, change) = match &params.id {
-            Some(id) => (
-                memory.edit(id, &params.text, params.tags),
-                MemoryChange::Edited,
-            ),
-            None => (
-                memory.remember(&params.text, params.tags, &writer(caller)),
-                MemoryChange::Remembered,
-            ),
+        let action = Action::Remember { text: &params.text };
+        if !self.use_action_grant(caller, &scope, &action)? {
+            self.authorize_action(caller, &scope, action)?;
+        }
+        let (previous, fact, change) = match &params.id {
+            Some(id) => {
+                let (previous, fact) = memory
+                    .edit_with_previous(id, &params.text, params.tags)
+                    .map_err(failed)?;
+                (Some(Box::new(previous)), fact, MemoryChange::Edited)
+            }
+            None => {
+                let fact = memory
+                    .remember(&params.text, params.tags, &writer(caller))
+                    .map_err(failed)?;
+                (None, fact, MemoryChange::Remembered)
+            }
         };
-        let fact = fact.map_err(failed)?;
         self.memory_changed(change, vec![fact.id.clone()], Some(MemoryKind::Fact));
+        self.reversible_change(caller, || AgentChange::Fact {
+            previous,
+            saved: Box::new(fact.clone()),
+        });
         json(MemoryRememberResult { fact })
+    }
+
+    pub(crate) fn undo_fact_change(
+        &self,
+        saved: &MemoryFact,
+        previous: Option<&MemoryFact>,
+    ) -> Result<(), BridgeError> {
+        self.memory_or_unsupported()?
+            .undo_fact(saved, previous)
+            .map_err(failed)?;
+        let change = if previous.is_some() {
+            MemoryChange::Edited
+        } else {
+            MemoryChange::Forgotten
+        };
+        self.memory_changed(change, vec![saved.id.clone()], Some(MemoryKind::Fact));
+        Ok(())
     }
 
     pub(crate) fn memory_forget(&self, caller: &str, params: MemoryForgetParams) -> Answer {
