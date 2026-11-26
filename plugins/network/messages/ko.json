@@ -138,6 +138,7 @@
   "explain.device": "{device}: 제조사 {vendor} 의 {kind}, 핑 {ping}. {ports}",
   "explain.devicePorts": "열린 포트: {ports}.",
   "explain.reason": "점검 결과를 쉬운 말로 설명하려고요. 기기 종류 · 제조사 · 열린 포트와 점수 항목만 보내고, 이름이나 주변 Wi-Fi 는 보내지 않아요.",
+  "ports.batchReason": "현재 네트워크의 이 주소에서 자주 쓰는 포트를 확인해요: {addresses}. 연결하자마자 닫으며 데이터는 보내지 않아요.",
   "ports.reason": "{device}({ip}) 의 자주 쓰는 포트가 열려 있는지 점검하려고요. 포트마다 연결하자마자 닫고, 아무것도 보내지 않아요.",
   "channels.title": "주변 Wi-Fi 채널",
   "channels.band": "{band} GHz",

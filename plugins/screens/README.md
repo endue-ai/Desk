@@ -11,13 +11,14 @@ password" a VNC password works too (type 2). Passwords are asked each time and n
 
 | Permission | Why |
 | --- | --- |
-| `net:connect` (`host:port`, asked per computer) | The TCP connection to the other computer's VNC server; `perm.request` at its first connection |
+| `net:connect` (`host:port`, asked per computer) | A lasting grant at the computer's first connection, revoked when that address is removed (ADR 0382) |
 
 | Command | What it does |
 | --- | --- |
 | `endue.screens.open` | Show the computers (`desk.plugins.open`) |
-| `endue.screens.connect { host?, port?, name?, username? }` | Show that computer's screen (`vnc://user@host:port` works); without `host`, the form opens filled with the rest |
+| `endue.screens.connect { id?, host?, port?, name?, username? }` | Show a saved computer by id or address for an agent. The person's form can add a computer; sign-in always stays with the person |
 | `endue.screens.disconnect` | End the connection on screen |
+| `endue.screens.computers`, `.state`, `.view-only`, `.fit` | Read saved computers and the session, or set the display controls |
 
 While the screen has the focus, every key goes to the other computer, the desk's chords too; View
 only gives them back. Fit to window scales the screen; off, it shows at 1:1 and scrolls.

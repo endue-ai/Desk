@@ -138,7 +138,11 @@ describe("the port check", () => {
     expect(PORTS.length).toBeGreaterThanOrEqual(30);
     expect(PORTS.length).toBeLessThanOrEqual(50);
     const ask = bridge.calls.find((c) => c.method === "perm.request");
-    expect(ask?.params).toEqual({ permission: scopeFor("192.168.0.23"), reason: "why" });
+    expect(ask?.params).toEqual({
+      permission: scopeFor("192.168.0.23"),
+      reason: "why",
+      duration: "always",
+    });
     const connects = bridge.calls.filter((c) => c.method === "net.connect");
     expect(connects).toHaveLength(PORTS.length);
     expect(

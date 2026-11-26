@@ -80,15 +80,36 @@ describe("the commands", () => {
       kind: "camera",
     });
     expect(named).toMatchObject({ name: "Living room camera", kind: "camera", status: "known" });
-    await expect(run("endue.network.checkup", { mac: "00:bc:99:12:34:56" })).rejects.toThrow(
+    await expect(run("endue.network.check-ports", { mac: "00:bc:99:12:34:56" })).rejects.toThrow(
       "Say whether you run this network before any port is checked.",
     );
     await app.net.answerAdmin(true);
     bridge.calls.length = 0;
-    const result = await run("endue.network.checkup", { mac: "00:bc:99:12:34:56" });
+    await run("endue.network.check-ports", { mac: "00:bc:99:12:34:56" });
+    const result = await run("endue.network.checkup");
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.items.map((i: any) => i.id)).toEqual(["unknown", "ports", "wifi"]);
     expect(bridge.calls.some((c) => c.method === "perm.request")).toBe(true);
+  });
+
+  it("makes checkup read-only and batches known devices into one exact grant", async () => {
+    const { run, app, bridge } = await wired();
+    await run("endue.network.scan");
+    await app.net.answerAdmin(true);
+    bridge.calls.length = 0;
+    await run("endue.network.checkup", { mac: "00:bc:99:12:34:56" });
+    expect(bridge.calls.some(({ method }) => method === "perm.request")).toBe(false);
+    await app.net.checkAllDevices();
+    const asks = bridge.calls.filter(({ method }) => method === "perm.request");
+    expect(asks).toHaveLength(1);
+    expect(asks[0]?.params).toMatchObject({
+      duration: "always",
+      permission: {
+        permission: "net:connect",
+        hosts: expect.arrayContaining(["192.168.0.21:22", "192.168.0.23:22"]),
+      },
+    });
+    expect(bridge.calls.filter(({ method }) => method === "net.connect").length).toBeGreaterThan(2);
   });
 
   it("answer the channels without any SSID, and the log newest first", async () => {
