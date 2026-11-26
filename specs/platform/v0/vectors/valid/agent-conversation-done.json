@@ -1,0 +1,9 @@
+{
+  "target": "AgentConversationDone",
+  "description": "A completed assistant message with additive server metadata",
+  "instance": {
+    "run_id": "run_fixture",
+    "stop_reason": "final",
+    "message": { "role": "assistant", "content": "The outline is ready.", "metadata": {} }
+  }
+}

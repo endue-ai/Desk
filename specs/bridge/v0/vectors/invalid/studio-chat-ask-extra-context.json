@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "A question has no attachment or implicit local context field",
+  "instance": {
+    "id": 3,
+    "method": "studio.chat.ask",
+    "params": {
+      "agentId": "ag_fixture",
+      "question": "What is ready for review?",
+      "attachments": ["fixture"],
+      "scope": { "permission": "studio:manage" }
+    }
+  }
+}
