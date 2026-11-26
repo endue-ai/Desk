@@ -86,6 +86,83 @@ describe("an agent's mail commands", () => {
     const item = index.items.get(`${CONNECTOR}/work/m-build`) as { raw: Record<string, unknown> };
     expect(item.raw).toMatchObject({ flagged: true, mailbox: "archive" });
   });
+
+  it("opens a named reply or forward for review and preserves the previous draft", async () => {
+    const { host, app, store, view, ran, settle } = await mount();
+    const before = await host.command("endue.mail.compose", { subject: "Existing draft" });
+    app.writing.edit({ body: "Unflushed typing" });
+    const original = { source: SOURCE, id: "m-lunch" };
+    await host.command("endue.mail.compose", {
+      replyTo: original,
+      all: true,
+      body: "I can make it",
+    });
+    expect(view.draft()).toMatchObject({
+      subject: "Re: Lunch today?",
+      replyTo: original,
+      body: expect.stringContaining("I can make it"),
+    });
+    await host.command("endue.mail.compose", { forward: original });
+    expect(view.draft()).toMatchObject({ subject: "Fwd: Lunch today?", to: "" });
+    expect(view.draft()?.body).toContain("Still on for 12:30");
+    await settle();
+    expect(store.drafts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: before, body: "Unflushed typing" })]),
+    );
+    expect(ran(`${CONNECTOR}.mail.send`)).toEqual([]);
+  });
+
+  it("reads and edits the current composer without sending it", async () => {
+    const { host, view, ran } = await mount();
+    expect(await host.command("endue.mail.draft")).toBeNull();
+    const id = await host.command("endue.mail.compose", { subject: "First", body: "Keep this" });
+    const fields = { to: "reviewer@example.test", cc: "", subject: "Second" };
+    await host.command("endue.mail.edit-draft", fields);
+    expect(await host.command("endue.mail.draft")).toMatchObject({
+      ...fields,
+      id,
+      body: "Keep this",
+    });
+    expect(view.draft()).toMatchObject({ ...fields, body: "Keep this" });
+    expect(ran(`${CONNECTOR}.mail.send`)).toEqual([]);
+  });
+
+  it("forwards through the existing send action and leaves the composer untouched", async () => {
+    const { host, view, ran } = await mount();
+    const id = await host.command("endue.mail.compose", { subject: "Still writing" });
+    const original = { source: SOURCE, id: "m-lunch" };
+    await host.command("endue.mail.send-message", {
+      forward: original,
+      to: "reviewer@example.test",
+      body: "For your reference.",
+    });
+    expect(ran(`${CONNECTOR}.mail.send`)).toMatchObject([
+      {
+        instance: "work",
+        subject: "Fwd: Lunch today?",
+        body: expect.stringMatching(/^For your reference\.[\s\S]*Forwarded message/),
+      },
+    ]);
+    expect(view.draft()).toMatchObject({ id, subject: "Still writing" });
+    await expect(
+      host.command("endue.mail.send-message", { replyTo: original, forward: original }),
+    ).rejects.toThrow(/reply.*forward/i);
+  });
+
+  it.each(["archive", "trash"])("moves a named message back to Inbox from %s", async (mailbox) => {
+    const { host, ran, index } = await mount();
+    const original = { source: SOURCE, id: "m-build" };
+    await host.command(`endue.mail.${mailbox}`, original);
+    await host.command("endue.mail.move", { ...original, mailbox: "inbox" });
+    expect(ran(`${CONNECTOR}.mail.move`)).toMatchObject([
+      { id: "m-build", mailbox },
+      { id: "m-build", mailbox: "inbox" },
+    ]);
+    expect(index.items.get(`${ACCOUNT}/m-build`)).toMatchObject({ raw: { mailbox: "inbox" } });
+    await expect(
+      host.command("endue.mail.move", { ...original, mailbox: "flagged" }),
+    ).rejects.toThrow(/mailbox/i);
+  });
 });
 
 describe("the manifest offers them to agents", () => {
@@ -96,11 +173,20 @@ describe("the manifest offers them to agents", () => {
     manifest.contributes?.commands?.find((c) => c.id === `endue.mail.${id}`);
 
   it("marks reads read-only, sending and answering invitations irreversible", () => {
-    for (const id of ["latest", "find", "read"])
+    for (const id of ["latest", "find", "read", "draft"])
       expect(byId(id), id).toMatchObject({ agent: true, readOnly: true });
     for (const id of ["send-message", "rsvp"])
       expect(byId(id), id).toMatchObject({ agent: true, irreversible: true });
-    for (const id of ["show", "archive", "trash", "flag", "toggle-unread", "compose"])
+    for (const id of [
+      "show",
+      "archive",
+      "trash",
+      "flag",
+      "toggle-unread",
+      "compose",
+      "edit-draft",
+      "move",
+    ])
       expect(byId(id), id).toMatchObject({ agent: true, args: { additionalProperties: false } });
     // The person answers from the open message, with no args from the palette.
     expect(byId("rsvp")?.args?.required).toBeUndefined();
