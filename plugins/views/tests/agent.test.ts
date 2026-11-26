@@ -66,13 +66,46 @@ it("remembers only the person's saved-view account selections across openings", 
   expect(m.params("store.set")).toHaveLength(1);
 });
 
+it("recovers a saved account when the view engine starts again", async () => {
+  const data = new Map<string, unknown>();
+  const pick = vi.fn(() => `${FIXTURE_CONNECTOR}/work`);
+  const open = async () => {
+    const m = await mount({
+      views: [today],
+      commands: { "desk.palette.pick": pick },
+      handlers: {
+        "store.get": ({ key }) => (data.has(key) ? { value: data.get(key) } : {}),
+        "store.set": ({ key, value }) => {
+          data.set(key, structuredClone(value));
+          return {};
+        },
+      },
+    });
+    await m.host.call("connector.connect", {
+      connector: FIXTURE_CONNECTOR,
+      instance: "work",
+      title: "Work",
+      scope: CONNECTORS,
+    });
+    await m.open({ id: today.id });
+    return m;
+  };
+  await open();
+  const next = await open();
+  expect(pick).toHaveBeenCalledTimes(2);
+  expect(next.params("data.query")).toMatchObject([
+    { query: { sources: [`${FIXTURE_CONNECTOR}/work`] } },
+    { query: { sources: [`${FIXTURE_CONNECTOR}/work`] } },
+  ]);
+});
+
 it("reads only item-source sections of a Universal page with the view's parameters", async () => {
   const run = vi.fn(() => ({ entries: [{ title: "Never load this source" }] }));
   const m = await mount({ commands: { "example.source.read": run } });
   const saved: UniversalPage = {
     id: "example.item-page",
     title: "Tasks",
-    params: { status: { type: "string", default: "done" } },
+    params: { status: { kind: "string", default: "done" } },
     sections: [
       {
         title: "Selected tasks",
@@ -105,4 +138,26 @@ it("reads only item-source sections of a Universal page with the view's paramete
   ]);
   expect(run).not.toHaveBeenCalled();
   expect(m.host.visible).toBeUndefined();
+});
+
+it("reads bound data without copying a connector's raw fields", async () => {
+  const m = await mount({ views: [today] });
+  m.host.upsert({
+    kind: "task",
+    id: "visible-task",
+    source: { connector: FIXTURE_CONNECTOR, instance: "default" },
+    title: "Visible task",
+    status: "open",
+    due: "2026-10-30T18:00:00+09:00",
+    updatedAt: "2026-10-30T08:59:00+09:00",
+    raw: { internal: "Only in the connector record" },
+  });
+  const read = (await m.host.command("desk.views.read", { id: today.id })) as {
+    sections: Array<{ entries: Array<Record<string, unknown>> }>;
+  };
+  const entry = read.sections
+    .flatMap(({ entries }) => entries)
+    .find(({ id }) => id === "visible-task");
+  expect(entry).toMatchObject({ title: "Visible task" });
+  expect(entry).not.toHaveProperty("raw");
 });

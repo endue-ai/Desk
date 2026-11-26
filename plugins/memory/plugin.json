@@ -27,12 +27,44 @@
         "id": "endue.memory.open",
         "title": "Memory: What Eris knows",
         "keywords": ["memory", "remember", "forget", "facts", "eris"],
+        "description": "Open the Memory window so the person can review what Eris keeps.",
+        "agent": true,
         "runs": {
           "command": "desk.plugins.open",
           "args": {
             "plugin": "endue.memory"
           }
         }
+      },
+      {
+        "id": "endue.memory.find",
+        "title": "Find entries in Memory",
+        "keywords": ["memory", "fact", "conversation", "find"],
+        "description": "Find remembered facts or conversations by query and optional kind. Omit the query to list recent entries.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "maxLength": 4000 },
+            "kind": { "type": "string", "enum": ["all", "fact", "episode"] }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.memory.forget",
+        "title": "Forget a named Memory entry",
+        "keywords": ["memory", "forget", "remove"],
+        "description": "Forget one entry by its exact id from endue.memory.find after the person approves it. Answers how many entries were removed.",
+        "args": {
+          "type": "object",
+          "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 512 } },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
       }
     ]
   }

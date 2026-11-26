@@ -93,6 +93,13 @@ export function scopeOf(source) {
     return {
       permission: "data:read",
       ...(source.items.kinds ? { kinds: [...source.items.kinds] } : {}),
+      ...(source.items.sources
+        ? {
+            sources: [
+              ...new Set(source.items.sources.map((value) => value.split("/")[0] ?? value)),
+            ],
+          }
+        : {}),
     };
   return undefined;
 }

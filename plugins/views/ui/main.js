@@ -2,7 +2,12 @@
 // (@endue-ai/ui), live over the item index, and previews a view Eris proposes (desk.views.preview).
 // It uses only the public SDK, as a community plugin would.
 import "@endue-ai/ui";
-import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import {
+  defineUiPlugin,
+  entriesFromItems,
+  universalItems,
+  universalParams,
+} from "@endue-ai/plugin-sdk";
 import { createEngine } from "./engine.js";
 import { createPreview } from "./preview.js";
 import { closeOnEscape, createScreen } from "./render.js";
@@ -18,7 +23,9 @@ defineUiPlugin({
       () => engine,
       () => preview,
     );
-    engine = createEngine(ctx, screen);
+    engine = createEngine(ctx, screen, {
+      readTools: { entriesFromItems, universalItems, universalParams },
+    });
     preview = createPreview(ctx, engine);
     closeOnEscape(document, () => engine);
   },
