@@ -298,7 +298,7 @@ fn a_brain_ask_turn_hands_its_tool_call_back_and_runs_no_agent_tool() {
     });
     let (core, deliveries) = core_on(brain.clone(), &home);
     // Were the ask's call run, mira's grant would let it write without asking.
-    grant(
+    let grant_id = grant(
         &core,
         "agent:mira",
         json!({ "permission": "fs:write", "paths": ["~/Notes/**"] }),
@@ -340,6 +340,13 @@ fn a_brain_ask_turn_hands_its_tool_call_back_and_runs_no_agent_tool() {
 
     // The desk's conversation still runs mira's tool calls as mira, once the person approves the
     // write (ADR 0078).
+    call(
+        &core,
+        "agent:mira",
+        "perm.revoke",
+        json!({ "grantId": grant_id }),
+    )
+    .unwrap();
     let turn = say(
         &core,
         &write_call(Some("mira"), "~/Notes/today.md", "~/Notes/**"),

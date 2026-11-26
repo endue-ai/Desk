@@ -1,5 +1,5 @@
 //! Approvals (ADR 0078) beyond writes: an agent's spawn shows its command line and a fetch its URL,
-//! an `always` grant lets writes and fetches through, a command its manifest marks `irreversible`
+//! a fetch waits even with an `always` grant, a command its manifest marks `irreversible`
 //! waits while others do not, and a person's own calls never wait.
 
 mod support;
@@ -124,10 +124,13 @@ fn a_spawn_shows_its_command_line_and_a_fetch_its_url() {
         json!({ "kind": "url", "text": format!("POST {url}") })
     );
 
-    // A host and a folder an always grant covers are allowed already: nothing waits.
+    // A lasting grant covers the program's scope, but a fetch still waits for the reviewed act.
     call(&core, MIRA, "perm.revoke", json!({ "grantId": session })).unwrap();
     granted_for(&core, &deliveries, MIRA, hosts.clone());
-    assert_eq!(fetch().unwrap()["status"], 200);
+    assert_eq!(
+        approved_once(&core, &deliveries, fetch).unwrap()["status"],
+        200
+    );
     granted_for(&core, &deliveries, MIRA, fs_write(&["~/Notes/**"]));
     write(&core, MIRA, "~/Notes/b.md", "kept\n").unwrap();
     assert!(named(&deliveries, "perm.approval").is_empty());

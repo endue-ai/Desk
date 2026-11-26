@@ -144,6 +144,22 @@ describe("the question's arming delay (PG-01g)", () => {
     expect(note?.hidden).toBe(true);
   });
 
+  it("explains what each answer permits for an agent's write scope", () => {
+    const t = opened();
+    t.view.prompt({
+      ...model,
+      promptId: "p-agent",
+      caller: { kind: "Agent", id: "agent:eris" },
+      permissionKind: "fs:write",
+    } as never);
+    const effects = document.getElementById("prompt-effects");
+    expect(effects?.hidden).toBe(false);
+    expect(effects?.textContent).toMatch(/once.*one reversible write/i);
+    expect(effects?.textContent).toMatch(/session.*reversible writes.*until.*session ends/i);
+    expect(effects?.textContent).toMatch(/always.*until.*revoke/i);
+    expect(effects?.textContent).toMatch(/non-reversible writes still ask/i);
+  });
+
   it("a click a key makes in the delay answers nothing", () => {
     const t = opened();
     const refuse = document.querySelector<HTMLButtonElement>("#prompt [data-answer=refuse]");

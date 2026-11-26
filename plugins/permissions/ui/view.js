@@ -268,6 +268,18 @@ export function createView(doc, actions, options = {}) {
         model.reason ? el("q", {}, model.reason) : "none given",
       );
       byId("prompt-asked").textContent = `Asked for: ${model.duration}`;
+      const effects = byId("prompt-effects");
+      const agent = model.caller.kind === "Agent";
+      const files = agent && model.permissionKind === "fs:write";
+      const facts = agent && model.permissionKind === "memory:write";
+      effects.hidden = !files && !facts;
+      if (files) {
+        effects.textContent =
+          "Allow once permits one reversible write. Allow this session permits reversible writes in this scope until the session ends. Always allow lasts until you revoke it. Non-reversible writes still ask.";
+      } else if (facts) {
+        effects.textContent =
+          "Allow once permits one fact to be saved. Allow this session permits saving facts until the session ends. Always allow lasts until you revoke it.";
+      }
       byId("prompt-revoke").hidden = !model.preferPersistent;
       if (always.classList.contains("desk-btn-primary") !== model.preferPersistent) {
         const focused = doc.activeElement;

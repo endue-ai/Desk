@@ -7,9 +7,11 @@
 
 mod moves;
 mod ops;
+mod reversible;
 mod trash;
 mod undo;
 
+pub(crate) use reversible::FileChange;
 pub(crate) use trash::{TrashFn, system_trash};
 pub(crate) use undo::is_fs_op;
 
@@ -28,6 +30,7 @@ use desk_bridge::{
 use desk_plugin_host::rfc3339;
 use desk_sys::fs as sysfs;
 
+use crate::approval_versions::AgentChange;
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, denied, error, io_error, json};
 use crate::paths::normalize;
@@ -78,9 +81,28 @@ impl Core {
             file: &path,
             bytes: &bytes,
         };
-        self.authorize_action(caller, &scope, write)?;
-        if params.append == Some(true) {
+        let append_only = params.append == Some(true);
+        if !append_only && self.use_action_grant(caller, &scope, &write)? {
+            if let Some((bytes_written, change)) =
+                self.write_reversibly(caller, &scope, &params.path, &path, &bytes, create_dirs)?
+            {
+                let version = change.version.clone();
+                if let Some(version) = &version {
+                    self.push_write(caller, "fs.write", &params.path, version.clone());
+                }
+                self.reversible_change(caller, || AgentChange::File(change));
+                return json(FsWriteResult {
+                    bytes_written,
+                    version,
+                });
+            }
+            self.hold(caller, &scope, write)?;
+        } else {
+            self.authorize_action(caller, &scope, write)?;
+        }
+        if append_only {
             // A chunk at the end, in place: it replaces nothing, so nothing is kept (ADR 0356).
+            let _history = self.history();
             let bytes_written = append(&path, &bytes).map_err(io_error)?;
             return json(FsWriteResult {
                 bytes_written,
@@ -92,7 +114,15 @@ impl Core {
         if let Some(version) = &version {
             // Undoable by restoring the version (ADR 0077).
             self.push_write(caller, "fs.write", &params.path, version.clone());
-            self.approval_write(&params.path, version);
+            self.reversible_change(caller, || {
+                AgentChange::File(FileChange::new(
+                    &params.path,
+                    &path,
+                    &bytes,
+                    Some(version.clone()),
+                    Vec::new(),
+                ))
+            });
         }
         json(FsWriteResult {
             bytes_written,

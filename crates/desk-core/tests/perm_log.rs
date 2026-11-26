@@ -39,9 +39,8 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
         "agents:\n  mira:\n    allow:\n      - { permission: fs:write, paths: [\"~/Notes/**\"] }\n",
     )
     .unwrap();
-    // Nobody holds perm:manage, so the Prompter approves the agent's write (ADR 0078).
     let core = Core::new(roots(&home))
-        .with_prompter(SayYes)
+        .with_prompter(NeverAsk)
         .with_init_file(file);
     grant(&core, "desk", json!({ "permission": "log:read" }));
     let notes = json!({ "permission": "fs:write", "paths": ["~/Notes/**"] });
@@ -75,15 +74,12 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
         "the host's own start-up grants are not"
     );
 
-    assert!(with_decision(&entries, "allowed").is_empty());
-
-    // The write waited for an approval; with nobody to ask, the Prompter gave it once (ADR 0078).
-    let approved = with_decision(&entries, "approved");
-    assert_eq!(approved.len(), 1, "{approved:?}");
-    assert_eq!(approved[0]["fields"]["caller"], MIRA);
-    assert_eq!(approved[0]["fields"]["scope"], notes);
-    assert_eq!(approved[0]["fields"]["approval"], "once");
-    assert_eq!(approved[0]["fields"]["target"], "~/Notes/a.md");
+    let allowed = with_decision(&entries, "allowed");
+    assert_eq!(allowed.len(), 1, "{allowed:?}");
+    assert_eq!(allowed[0]["fields"]["caller"], MIRA);
+    assert_eq!(allowed[0]["fields"]["scope"], notes);
+    assert_eq!(allowed[0]["fields"]["target"], "~/Notes/a.md");
+    assert!(with_decision(&entries, "approved").is_empty());
 
     let refused = with_decision(&entries, "refused");
     assert_eq!(refused.len(), 1, "{refused:?}");

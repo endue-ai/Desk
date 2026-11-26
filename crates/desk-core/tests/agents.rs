@@ -86,11 +86,9 @@ fn an_agent_is_refused_outside_its_allowlist_even_with_a_grant() {
         named(&deliveries, "perm.prompt").is_empty(),
         "nobody is asked"
     );
-    // Inside the allowlist the grant it holds still counts (and the write waits for approval).
-    approved_once(&core, &deliveries, || {
-        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
-    })
-    .unwrap();
+    // Inside the allowlist the grant it holds lets it create the file.
+    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
+    assert!(named(&deliveries, "perm.approval").is_empty());
 }
 
 #[test]
@@ -214,10 +212,7 @@ fn an_edit_to_the_allowlist_applies_to_the_next_call() {
     let home = home("agent-edit");
     let (core, deliveries) = core_with(&home, NOTES_ONLY);
     grant(&core, MIRA, fs_write(&["~/Notes/**"]));
-    approved_once(&core, &deliveries, || {
-        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
-    })
-    .unwrap();
+    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
     fs::write(
         home.join("init.yaml"),
         NOTES_ONLY.replace("~/Notes/**", "~/Other/**"),

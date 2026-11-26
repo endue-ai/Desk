@@ -6117,38 +6117,44 @@ export type ApprovalAnswer = "once" | "task" | "deny";
 /** Result of perm.approve. */
 export type PermApproveResult = Record<string, never>;
 
-/** Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice. */
+/** Undo the exact reversible change named by a completion receipt. The desk calls this from its Undo notice. */
 export interface PermUndoApprovalRequest {
   id: RequestId;
   method: "perm.undoApproval";
   params: PermUndoApprovalParams;
 }
 
-/** The completed write to undo, as named by its approval receipt. */
+/** The completed change to undo, as named by its receipt. */
 export interface PermUndoApprovalParams {
   approvalId: string;
   scope: PermManagePermission;
 }
 
-/** An empty result once the retained version was restored. */
+/** An empty result once the change was undone. */
 export type PermUndoApprovalResult = Record<string, unknown>;
 
-/** An approved call ran: what came of it. Sent to callers that hold perm:manage. */
+/** An approved call ran or a granted reversible change completed. Sent to callers that hold perm:manage. */
 export interface PermApprovalDoneEvent {
   event: "perm.approval.done";
   data: PermApprovalDoneData;
 }
 
-/** Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo. */
+/** Payload of perm.approval.done. Each reversible change has a unique completion id for Undo. */
 export interface PermApprovalDoneData {
   approvalId: string;
   ok: boolean;
   /** fs.write: the bytes it wrote. */
   bytesWritten?: number;
   error?: BridgeError;
-  /** True when perm.undoApproval can restore the file version kept by this write. */
+  /** True when perm.undoApproval can undo this change. */
   undoable?: boolean;
+  change?: ApprovalChange;
+  /** The affected path for a file change. Memory notices carry no fact text. */
+  path?: string;
 }
+
+/** The single change that Undo can reverse. */
+export type ApprovalChange = "file-saved" | "file-created" | "fact-remembered" | "fact-edited";
 
 /** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait. */
 export interface PermPendingRequest {

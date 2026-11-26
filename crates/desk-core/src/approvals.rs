@@ -1,6 +1,6 @@
 //! Approvals (ADR 0078): an agent's irreversible call waits for the person even when a grant covers
-//! it. Irreversible: `fs.write` to a path and `net.fetch` to a host no `always` grant of the agent
-//! allows, `proc.spawn`, `cmd.invoke` of a command its provider's manifest marks `irreversible`, and
+//! it. Irreversible: a write that cannot retain history, `net.fetch`, `proc.spawn`, `cmd.invoke`
+//! of a command its provider marks `irreversible`, and
 //! every act on the computer (`computer.*`, ADR 0123). The core holds the call after the cap and the permission check, sends `perm.approval` (with a
 //! preview, `approval_preview`) to the `perm:manage` holders and waits for `perm.approve`: `once`,
 //! `task` (this call and the agent's later calls of the same action the approved scope covers, until
@@ -15,15 +15,15 @@ use std::sync::MutexGuard;
 use std::sync::mpsc::{self, Sender};
 
 use desk_bridge::{
-    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, GrantDuration, PendingKind,
-    PermApprovalData, PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent,
-    PermApproveParams, PermApproveResult, Permission,
+    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, PendingKind, PermApprovalData,
+    PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent, PermApproveParams,
+    PermApproveResult, Permission,
 };
 use serde_json::Value;
 
 use crate::agents::agent_of;
 pub(crate) use crate::approval_action::Action;
-use crate::approval_versions::{UndoVersions, WrittenVersion};
+use crate::approval_versions::{AgentChange, UndoChanges};
 use crate::core_perm::perm_manage;
 use crate::handler::{Answer, Core, denied, error, json as answer};
 use crate::perm::{Denied, Target, scope_allows};
@@ -61,7 +61,7 @@ pub(crate) struct Approvals {
     tasks: Vec<ForTask>,
     /// Each agent's turn its latest call came in, while it lasts (ADR 0123).
     turns: BTreeMap<String, String>,
-    pub(crate) undo: UndoVersions,
+    pub(crate) undo: UndoChanges,
 }
 
 /// The thread's call: the task it belongs to, the approval it ran under, and whether one was denied.
@@ -69,7 +69,7 @@ pub(crate) struct Approvals {
 struct Call {
     task: Option<String>,
     approved: Option<String>,
-    written_version: Option<WrittenVersion>,
+    change: Option<AgentChange>,
     denied: bool,
 }
 
@@ -120,7 +120,7 @@ impl Core {
         }
         if let Some(earlier) = task
             .as_deref()
-            .and_then(|t| self.approved_for(caller, t, &action))
+            .and_then(|t| self.approved_for(caller, t, scope, &action))
         {
             let given = Some(ApprovalAnswer::Task);
             self.log_approval(caller, scope, &action, &earlier, task.as_deref(), given);
@@ -208,21 +208,25 @@ impl Core {
         waiting.is_some_and(|w| w.reply.send(Verdict::Deny).is_ok())
     }
 
-    /// The call on this thread ended with `result`: when it ran under an approval the person gave
-    /// on a card, the perm:manage holders hear `perm.approval.done`.
+    /// Report a completed approval or the receipt for an undoable change to perm:manage holders.
     pub(crate) fn report_approved(&self, result: &Answer) {
-        let (approval, version) = CALL.with(|c| {
+        let (approval, change) = CALL.with(|c| {
             let mut call = c.borrow_mut();
-            (call.approved.take(), call.written_version.take())
+            (call.approved.take(), call.change.take())
         });
-        let Some(approval_id) = approval else {
+        let change = change.filter(|_| result.is_ok());
+        if approval.is_none() && change.is_none() {
             return;
-        };
-        let version = version.filter(|_| result.is_ok());
-        let undoable = version.is_some().then_some(true);
-        if let Some(version) = version {
-            self.approvals().undo.insert(approval_id.clone(), version);
         }
+        let approval_id = approval.unwrap_or_else(|| format!("a-{}", self.next_approval()));
+        let undoable = change.is_some().then_some(true);
+        let (kind, path) = if let Some(change) = change {
+            let (kind, path) = change.notice();
+            self.approvals().undo.insert(approval_id.clone(), change);
+            (Some(kind), path)
+        } else {
+            (None, None)
+        };
         let data = PermApprovalDoneData {
             approval_id,
             ok: result.is_ok(),
@@ -233,6 +237,8 @@ impl Core {
                 .and_then(Value::as_u64),
             error: result.as_ref().err().cloned(),
             undoable,
+            change: kind,
+            path,
         };
         let holders = self.holders(&perm_manage());
         let event = BridgeEvent::PermApprovalDone(PermApprovalDoneEvent {
@@ -242,16 +248,10 @@ impl Core {
         self.events().route(holders, event);
     }
 
-    pub(crate) fn approval_write(&self, path: &str, version: &str) {
-        CALL.with(|c| {
-            let mut call = c.borrow_mut();
-            if call.approved.is_some() {
-                call.written_version = Some(WrittenVersion {
-                    path: path.to_owned(),
-                    version: version.to_owned(),
-                });
-            }
-        });
+    pub(crate) fn reversible_change(&self, caller: &str, change: impl FnOnce() -> AgentChange) {
+        if agent_of(caller).is_some() {
+            CALL.with(|call| call.borrow_mut().change = Some(change()));
+        }
     }
 
     /// The desk's turn `task` ended: what was approved for it ends too.
@@ -286,35 +286,37 @@ impl Core {
     }
 
     pub(crate) fn requires_approval(&self, caller: &str, action: &Action<'_>) -> bool {
-        agent_of(caller).is_some() && self.irreversible(caller, action)
+        agent_of(caller).is_some() && self.irreversible(action)
     }
 
-    /// Whether `action` waits for the person: a write or a fetch no `always` grant of the caller
-    /// allows, any spawn, a command marked irreversible.
-    fn irreversible(&self, caller: &str, action: &Action<'_>) -> bool {
+    /// Reversible writes and memories with a grant take their own path before this check.
+    fn irreversible(&self, action: &Action<'_>) -> bool {
         match action {
-            // An always grant lets an agent write files, fetch and remember freely (ADR 0096).
-            Action::Write { .. } | Action::Fetch { .. } | Action::Remember { .. } => {
-                let target = action.target();
-                !self.permissions().grants(caller).iter().any(|grant| {
-                    grant.duration == GrantDuration::Always
-                        && scope_allows(&grant.permission, &target)
-                })
-            }
-            Action::Spawn { .. } | Action::Computer { .. } => true,
             Action::Invoke { id, .. } => self
                 .command(id)
                 .is_some_and(|info| info.irreversible == Some(true)),
+            _ => true,
         }
     }
 
     /// The approval the person gave `caller` for the rest of `task` that covers `action`.
-    fn approved_for(&self, caller: &str, task: &str, action: &Action<'_>) -> Option<String> {
+    fn approved_for(
+        &self,
+        caller: &str,
+        task: &str,
+        scope: &Permission,
+        action: &Action<'_>,
+    ) -> Option<String> {
         let target = action.target();
         self.approvals()
             .tasks
             .iter()
-            .find(|a| a.caller == caller && a.task == task && scope_allows(&a.scope, &target))
+            .find(|a| {
+                a.caller == caller
+                    && a.task == task
+                    && std::mem::discriminant(&a.scope) == std::mem::discriminant(scope)
+                    && scope_allows(&a.scope, &target)
+            })
             .map(|a| a.approval_id.clone())
     }
 

@@ -400,7 +400,7 @@
       "additionalProperties": false
     },
     "PermUndoApprovalRequest": {
-      "description": "Restore the exact filesystem version kept by an approved write. The desk calls this from its Undo notice.",
+      "description": "Undo the exact reversible change named by a completion receipt. The desk calls this from its Undo notice.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -411,7 +411,7 @@
       "additionalProperties": false
     },
     "PermUndoApprovalParams": {
-      "description": "The completed write to undo, as named by its approval receipt.",
+      "description": "The completed change to undo, as named by its receipt.",
       "type": "object",
       "properties": {
         "approvalId": { "type": "string", "minLength": 1 },
@@ -421,12 +421,12 @@
       "additionalProperties": false
     },
     "PermUndoApprovalResult": {
-      "description": "An empty result once the retained version was restored.",
+      "description": "An empty result once the change was undone.",
       "type": "object",
       "additionalProperties": false
     },
     "PermApprovalDoneEvent": {
-      "description": "An approved call ran: what came of it. Sent to callers that hold perm:manage.",
+      "description": "An approved call ran or a granted reversible change completed. Sent to callers that hold perm:manage.",
       "type": "object",
       "properties": {
         "event": { "const": "perm.approval.done" },
@@ -436,7 +436,7 @@
       "additionalProperties": false
     },
     "PermApprovalDoneData": {
-      "description": "Payload of perm.approval.done. Each versioned write under a task approval has its own completion id for Undo.",
+      "description": "Payload of perm.approval.done. Each reversible change has a unique completion id for Undo.",
       "type": "object",
       "properties": {
         "approvalId": { "type": "string", "minLength": 1 },
@@ -448,12 +448,23 @@
         },
         "error": { "$ref": "bridge.schema.json#/$defs/BridgeError" },
         "undoable": {
-          "description": "True when perm.undoApproval can restore the file version kept by this write.",
+          "description": "True when perm.undoApproval can undo this change.",
           "type": "boolean"
+        },
+        "change": { "$ref": "#/$defs/ApprovalChange" },
+        "path": {
+          "description": "The affected path for a file change. Memory notices carry no fact text.",
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": ["approvalId", "ok"],
       "additionalProperties": false
+    },
+    "ApprovalChange": {
+      "description": "The single change that Undo can reverse.",
+      "type": "string",
+      "enum": ["file-saved", "file-created", "fact-remembered", "fact-edited"]
     },
     "PermPendingRequest": {
       "description": "What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait.",
