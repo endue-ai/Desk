@@ -31,8 +31,8 @@ export interface UniversalOpenOptions {
   now?(): number;
   /** The zone they are read in; the system's when absent. */
   zone?: string;
-  /** A load or a command failed; the view already says so where it can. */
-  onError?(error: unknown): void;
+  /** A load or command failed. A load includes its source and a retry of that section only. */
+  onError?(error: unknown, source?: UniversalSource, retry?: () => Promise<void>): void;
 }
 
 /** An open universal view. */
@@ -100,6 +100,21 @@ export function fillArgs(value: unknown, scope: Record<string, unknown>): unknow
   return value;
 }
 
+/** Fill a Universal view's item source using the same clock and params as its display. */
+export function universalItems(
+  view: Pick<UniversalView, "source" | "params">,
+  options: Pick<UniversalOpenOptions, "now" | "zone" | "params"> = {},
+): Extract<UniversalSource, { items: unknown }> | undefined {
+  if (!("items" in view.source)) return undefined;
+  return {
+    items: fillQuery(view.source.items, {
+      now: options.now?.() ?? Date.now(),
+      ...(options.zone ? { zone: options.zone } : {}),
+      params: universalParams(view.params, options.params),
+    }),
+  };
+}
+
 const refused = (error: unknown) =>
   (error as Partial<BridgeCallError> | null)?.code === "permission_denied";
 
@@ -129,20 +144,13 @@ export function universalFor(host: UniversalHost): PluginUniversal {
       // Only the latest load draws: one that answers after a newer one began is dropped.
       let loads = 0;
       // An items query reads the clock and the params when it loads (ADR 0103).
-      const filled = (): UniversalSource =>
-        "items" in source
-          ? {
-              items: fillQuery(source.items, {
-                now: options.now?.() ?? Date.now(),
-                ...(options.zone ? { zone: options.zone } : {}),
-                params: paramsOf(view.params, options.params),
-              }),
-            }
-          : source;
+      const filled = (): UniversalSource => universalItems(view, options) ?? source;
       const reload = async () => {
         const mine = ++loads;
+        let input = source;
         try {
-          const loaded = await universal.load(filled());
+          input = filled();
+          const loaded = await universal.load(input);
           if (!open || mine !== loads) return;
           data = loaded;
           element.data = loaded;
@@ -153,7 +161,7 @@ export function universalFor(host: UniversalHost): PluginUniversal {
           element.setAttribute("state", refused(error) ? "denied" : "error");
           if (!refused(error) && error instanceof Error)
             element.setAttribute("message", error.message);
-          fail(error);
+          options.onError?.(error, input, reload);
         }
       };
       element.addEventListener("desk-select", (event) => {
@@ -247,7 +255,7 @@ function openPage(
     grid.append(heading);
   }
   target.append(grid);
-  const params = paramsOf(page.params, options.params);
+  const params = universalParams(page.params, options.params);
   const handles = page.sections.map((section) => open(grid, section, { ...options, params }));
   return {
     element: grid,
@@ -265,7 +273,7 @@ function openPage(
 }
 
 /** The params a view reads: each declared one's default, then what the opener gave. */
-function paramsOf(
+export function universalParams(
   declared: UniversalView["params"],
   given: Record<string, unknown> | undefined,
 ): Record<string, unknown> {

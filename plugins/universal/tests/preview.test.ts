@@ -16,8 +16,12 @@ const BOARD = {
   source: { data: { entries: [{ id: "a", title: "One", group: "open" }] } },
 };
 
-async function mount() {
-  const host = createTestHost({ pluginId: "desk.universal" });
+async function mount(handlers?: Parameters<typeof createTestHost>[0]["handlers"]) {
+  const host = createTestHost({
+    pluginId: "desk.universal",
+    files: { "~/boards/launch.yaml": "entries: [{ id: draft, title: Preview data }]" },
+    handlers,
+  });
   const ctx = await defineUiPlugin({ mount() {} }, host.transport);
   const ran = vi.spyOn(ctx.commands, "run").mockResolvedValue({});
   const page = document.createElement("main");
@@ -38,6 +42,73 @@ async function mount() {
 describe("desk.universal's preview", () => {
   beforeEach(() => {
     document.body.replaceChildren();
+  });
+
+  it("asks as soon as a requested preview needs permission and retries only that source", async () => {
+    const m = await mount();
+    const preview = m.screen.preview(
+      { ...BOARD, source: { file: "~/boards/launch.yaml" } },
+      "Requested preview",
+    );
+    await m.settle();
+    expect(m.host.calls.filter((call) => call.method === "perm.request")).toMatchObject([
+      { params: { permission: { permission: "fs:read", paths: ["~/boards/launch.yaml"] } } },
+    ]);
+    expect(m.screen.handle?.element.getAttribute("state")).toBe("ready");
+    expect(m.screen.handle?.data?.entries).toEqual([expect.objectContaining({ id: "draft" })]);
+    expect(m.page.querySelector<HTMLElement>(".notice")?.hidden).toBe(true);
+    m.button("Discard")?.click();
+    expect(await preview).toEqual({ choice: "discard" });
+  });
+
+  it("retries the refused section of a page and leaves its other source alone", async () => {
+    const m = await mount();
+    m.ran.mockResolvedValue({ entries: [{ id: "other", title: "Other source" }] });
+    void m.screen.preview(
+      {
+        id: "example.permission-page",
+        sections: [
+          { type: "list", source: { file: "~/boards/launch.yaml" } },
+          { type: "list", source: { command: "example.read" } },
+        ],
+      },
+      "Requested page",
+    );
+    await m.settle();
+    const sections = [...m.page.querySelectorAll(".desk-universal-page > desk-universal-view")];
+    expect(sections.map((node) => node.getAttribute("state"))).toEqual(["ready", "ready"]);
+    expect(m.ran).toHaveBeenCalledExactlyOnceWith("example.read", undefined);
+    m.button("Discard")?.click();
+  });
+
+  it("does not retry a view displaced while its permission request was open", async () => {
+    let start!: () => void;
+    let respond!: (answer: { granted: boolean; duration: "session" }) => void;
+    const asked = new Promise<void>((resolve) => {
+      start = resolve;
+    });
+    const response = new Promise<{ granted: boolean; duration: "session" }>((resolve) => {
+      respond = resolve;
+    });
+    const m = await mount({
+      "perm.request": () => {
+        start();
+        return response;
+      },
+    });
+    const abandoned = m.screen.preview(
+      { ...BOARD, source: { file: "~/boards/launch.yaml" } },
+      "Old preview",
+    );
+    await asked;
+    const current = m.screen.preview(BOARD, "Next preview");
+    expect(await abandoned).toEqual({ choice: "discard" });
+    respond({ granted: true, duration: "session" });
+    await m.settle();
+    expect(m.host.calls.filter((call) => call.method === "fs.read")).toHaveLength(1);
+    expect(m.screen.handle?.data?.entries).toEqual([expect.objectContaining({ id: "a" })]);
+    m.button("Discard")?.click();
+    expect(await current).toEqual({ choice: "discard" });
   });
 
   it("shows the drafting state with a ghost at once, then the preview's choices over the drawn view", async () => {

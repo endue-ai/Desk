@@ -17,7 +17,7 @@ export const PAGE = 200;
  */
 
 /**
- * @param {{ bridge: Bridge }} ctx
+ * @param {{ bridge: Bridge, commands?: import("@endue-ai/plugin-sdk").PluginCommands }} ctx
  * @param {View} view
  * @param {(question: import("./ask.js").Question) => Promise<boolean>} ask  the page's dialog (ask.js)
  */
@@ -33,36 +33,40 @@ export function createMemory(ctx, view, ask) {
   let more = false;
   let generation = 0;
 
-  const kind = () => (filter === "all" ? {} : { kind: filter });
+  const kind = (/** @type {Filter} */ value) => (value === "all" ? {} : { kind: value });
 
   const draw = () =>
     view.show({ rows: shown, filter, query, editing, empty: emptyText(filter, query), more });
+
+  const read = async (
+    /** @type {Filter} */ filter,
+    /** @type {string} */ query,
+    /** @type {number} */ limit,
+  ) => {
+    const scope = { ...kind(filter), limit, scope: READ };
+    if (!query) {
+      const page = await bridge.call("memory.list", scope);
+      return { entries: rows(page.entries), more: page.next !== undefined };
+    }
+    const { hits } = await bridge.call("memory.search", { ...scope, query });
+    const snippets = new Map(hits.map((hit) => [hit.entry.id, hit.snippet]));
+    return {
+      entries: rows(
+        hits.map((hit) => hit.entry),
+        snippets,
+      ),
+      more: false,
+    };
+  };
 
   /** Read the list (or the search) again, dropping answers a later load overtook. */
   const load = async () => {
     const mine = ++generation;
     try {
-      let next = [];
-      if (query) {
-        const { hits } = await bridge.call("memory.search", {
-          query,
-          ...kind(),
-          limit: 100,
-          scope: READ,
-        });
-        const snippets = new Map(hits.map((hit) => [hit.entry.id, hit.snippet]));
-        next = rows(
-          hits.map((hit) => hit.entry),
-          snippets,
-        );
-        more = false;
-      } else {
-        const page = await bridge.call("memory.list", { ...kind(), limit: PAGE, scope: READ });
-        next = rows(page.entries);
-        more = page.next !== undefined;
-      }
+      const page = await read(filter, query, query ? 100 : PAGE);
       if (mine !== generation) return;
-      shown = next;
+      shown = page.entries;
+      more = page.more;
       if (editing && !shown.some((row) => row.id === editing)) editing = null;
       draw();
     } catch (error) {
@@ -83,6 +87,24 @@ export function createMemory(ctx, view, ask) {
 
   const off = bridge.onEvent((event) => {
     if (event.event === "memory.changed") void load();
+  });
+  const stopFind = ctx.commands?.on("endue.memory.find", async (raw) => {
+    const { query: input, kind: requested } = /** @type {{ query?: unknown, kind?: unknown }} */ (
+      raw ?? {}
+    );
+    if (
+      requested !== undefined &&
+      requested !== "all" &&
+      requested !== "fact" &&
+      requested !== "episode"
+    )
+      throw new Error("Choose the memory kind: all, fact or episode.");
+    return read(requested ?? "all", typeof input === "string" ? input.trim() : "", 50);
+  });
+  const stopForget = ctx.commands?.on("endue.memory.forget", (raw) => {
+    const { id } = /** @type {{ id?: unknown }} */ (raw ?? {});
+    if (typeof id !== "string" || !id.trim()) throw new Error("Give the id of one memory entry.");
+    return bridge.call("memory.forget", { id, scope: WRITE });
   });
 
   return {
@@ -125,11 +147,15 @@ export function createMemory(ctx, view, ask) {
     async forgetAll() {
       // The kind the question named, whatever the list shows by the time the person answers.
       const asked = filter;
-      const params = { all: true, ...kind() };
+      const params = { all: true, ...kind(filter) };
       if (!(await ask(forgetAllQuestion({ filter, count: shown.length, more, query })))) return;
       await write("memory.forget", params, (answer) => forgotText(asked, answer.forgotten));
     },
-    dispose: off,
+    dispose() {
+      off();
+      stopFind?.();
+      stopForget?.();
+    },
   };
 }
 

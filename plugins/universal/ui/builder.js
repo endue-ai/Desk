@@ -4,6 +4,7 @@
 // Apply writes. The preview is loaded once per source: a shape or a field only redraws it. The name
 // and Save stay in sight below the steps, whatever the height. Controls are the design system's kit
 // classes (ADR 0090); a source that fails says why in words (words.js).
+import { missingAccess } from "./access.js";
 import {
   fieldsOf,
   idFor,
@@ -15,7 +16,6 @@ import {
   suggestMap,
   viewOf,
 } from "./build-model.js";
-import { scopeOf } from "./open.js";
 import { failureText } from "./words.js";
 
 /**
@@ -98,9 +98,7 @@ export function createBuilder(host, ctx, hooks) {
   }
   const load = el("button", { class: "desk-btn", type: "button" }, "Load");
   const status = el("p", { class: "build-status", role: "status" });
-  const allow = el("button", { class: "desk-btn", type: "button" }, "Allow");
-  allow.hidden = true;
-  source.append(tabs, input, args, kinds, load, status, allow);
+  source.append(tabs, input, args, kinds, load, status);
 
   // Shape, fields, name, save.
   const shape = section("Shape");
@@ -125,6 +123,7 @@ export function createBuilder(host, ctx, hooks) {
   /** @type {{ kind: SourceKind, id?: string, type: UniversalType, map: Record<string, string>,
    *   source?: import("./open.js").UniversalView["source"], data: UniversalData | null }} */
   const state = { kind: "file", type: "list", map: {}, data: null };
+  let loadTurn = 0;
 
   const drawTabs = () => {
     tabs.replaceChildren(
@@ -228,6 +227,7 @@ export function createBuilder(host, ctx, hooks) {
     },
     /** Start over, or edit `view` (its source loaded, its shape and fields shown). */
     async start(/** @type {UniversalView | undefined} */ view) {
+      loadTurn++;
       Object.assign(state, { kind: "file", type: "list", map: {}, data: null });
       delete state.id;
       delete state.source;
@@ -252,25 +252,50 @@ export function createBuilder(host, ctx, hooks) {
       drawShapes();
       drawRoles();
       save.toggleAttribute("disabled", true);
-      if (view) await builder.load();
+      if (view) await builder.load(false);
       else input.focus();
     },
     /** @param {SourceKind} kind */
     pick(kind) {
+      loadTurn++;
       state.kind = kind;
       drawTabs();
       (kind === "items" ? kinds.querySelector("input") : input)?.focus();
     },
     /** Read the source the inputs name and show what it holds. */
-    async load() {
+    async load(ask = true) {
+      const turn = ++loadTurn;
       const named = sourceOf(inputFor(state.kind));
       if ("problem" in named) return say(named.problem, true);
-      allow.hidden = true;
+      const selected = JSON.stringify(named.source);
+      const active = () => {
+        const current = sourceOf(inputFor(state.kind));
+        return (
+          loadTurn === turn && "source" in current && JSON.stringify(current.source) === selected
+        );
+      };
       preview.removeAttribute("message");
       preview.setAttribute("state", "loading");
       say("Loading…");
       try {
-        const data = await ctx.universal.load(named.source);
+        let data;
+        try {
+          data = await ctx.universal.load(named.source);
+        } catch (error) {
+          const permission = missingAccess(error, named.source);
+          if (!ask || !permission || !active()) throw error;
+          const reply = await ctx.bridge
+            .call("perm.request", {
+              permission,
+              again: true,
+              reason: "Show this source in the view builder",
+            })
+            .catch(() => ({ granted: false }));
+          if (!active()) return;
+          if (!reply.granted) throw error;
+          data = await ctx.universal.load(named.source);
+        }
+        if (!active()) return;
         const changed = JSON.stringify(named.source) !== JSON.stringify(state.source);
         state.source = named.source;
         state.data = data;
@@ -285,14 +310,17 @@ export function createBuilder(host, ctx, hooks) {
         drawRoles();
         redraw();
       } catch (error) {
+        if (!active()) return;
         const refused = /** @type {{ code?: string } | undefined} */ (error)?.code;
         const why = failureText(error, named.source);
         preview.setAttribute("state", refused === "permission_denied" ? "denied" : "error");
         // The preview says the same as the status, not "The source did not answer."
         if (refused !== "permission_denied") preview.setAttribute("message", why);
-        allow.hidden = refused !== "permission_denied";
         say(why, true);
       }
+    },
+    cancelLoad() {
+      loadTurn++;
     },
     /** @param {UniversalType} type */
     shape(type) {
@@ -347,16 +375,12 @@ export function createBuilder(host, ctx, hooks) {
   input.addEventListener("keydown", (event) => {
     if (/** @type {KeyboardEvent} */ (event).key === "Enter") void builder.load();
   });
-  allow.addEventListener("click", async () => {
-    const named = sourceOf(inputFor(state.kind));
-    const permission = "source" in named ? scopeOf(named.source) : undefined;
-    if (!permission) return;
-    const answer = await ctx.perm.request(permission, "Show this source in the view builder");
-    if (answer.granted) await builder.load();
-  });
   title.addEventListener("input", redraw);
   save.addEventListener("click", () => void builder.save());
-  cancel.addEventListener("click", () => hooks.cancelled());
+  cancel.addEventListener("click", () => {
+    builder.cancelLoad();
+    hooks.cancelled();
+  });
   host.append(root);
   return builder;
 }

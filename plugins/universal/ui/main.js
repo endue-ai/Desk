@@ -21,6 +21,7 @@ defineUiPlugin({
     const screen = createScreen(root, ctx);
     /** @param {boolean} building */
     const mode = (building) => {
+      if (!building) builder.cancelLoad();
       root.toggleAttribute("data-building", building);
       builder.element.hidden = !building;
     };

@@ -44,6 +44,23 @@ describe("the memory inspector", () => {
     expect(methods().at(-1)).toBe("memory.list");
   });
 
+  it("finds entries for an agent without moving the inspector and forgets only a named id", async () => {
+    const entries = fixture();
+    const { host, last, methods, asked } = await mount(entries);
+    const before = last();
+    expect(await host.command("endue.memory.find", { query: "pnpm", kind: "fact" })).toMatchObject({
+      entries: [expect.objectContaining({ id: "fact_0003", kind: "fact" })],
+    });
+    expect(last()).toBe(before);
+    expect(methods()).toEqual(["memory.list", "memory.search"]);
+    await expect(host.command("endue.memory.forget", { all: true })).rejects.toThrow(/id/i);
+    expect(await host.command("endue.memory.forget", { id: "fact_0003" })).toEqual({
+      forgotten: 1,
+    });
+    expect(entries.map((entry) => entry.id)).toEqual(["fact_0001", "ep_0002"]);
+    expect(asked).toEqual([]);
+  });
+
   it("edits a fact in place, and keeps a new one in the person's words", async () => {
     const entries = fixture();
     const { app, last, host, statuses } = await mount(entries);

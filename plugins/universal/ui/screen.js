@@ -1,9 +1,10 @@
 // desk.universal's page: one universal view at a time, drawn by ctx.universal.open, under the bar
 // (bar.js) that shows what Eris is drafting, the preview's choices and the notice after Apply, with
-// a notice that asks for the permission its source needs when the desk refused to read it. A view
+// permission for a requested preview and a retry for the view already on screen. A view
 // opened again by the id it is drawn under keeps its element and data: Apply never redraws. A source
 // that fails says why in words (words.js); a calendar paged to another day moves the clock its
 // queries read (clock.js).
+import { missingAccess } from "./access.js";
 import { createBar } from "./bar.js";
 import { createClock, readsClock } from "./clock.js";
 import { scopeOf } from "./open.js";
@@ -16,12 +17,15 @@ import { failureText } from "./words.js";
  * @typedef {import("./bar.js").Notice} Notice
  * @typedef {import("../../../packages/plugin-sdk/src/index").PluginContext} PluginContext
  * @typedef {import("../../../packages/plugin-sdk/src/index").UniversalHandle} UniversalHandle
+ * @typedef {import("@endue-ai/bridge").UniversalSource} UniversalSource
+ * @typedef {import("@endue-ai/bridge").Permission} Permission
+ * @typedef {() => Promise<void>} Retry
  * @typedef {{ readonly handle: UniversalHandle | undefined,
  *   readonly view: UniversalView | UniversalPage | undefined,
  *   readonly bar: ReturnType<typeof createBar>,
  *   open(view: UniversalView | UniversalPage,
- *     options?: { notice?: Notice, params?: Record<string, unknown> }): UniversalHandle,
- *   drafting(note: string): void, preview(view: UniversalView, note: string): Promise<Choice>,
+ *     options?: { notice?: Notice, params?: Record<string, unknown>, ask?: boolean }): UniversalHandle,
+ *   drafting(note: string): void, preview(view: UniversalView | UniversalPage, note: string): Promise<Choice>,
  *   allow(): Promise<{ granted: boolean }>, close(id?: string): boolean }} Screen
  */
 
@@ -74,13 +78,21 @@ export function createScreen(host, ctx, options = {}) {
   host.append(notice, bar.element, ghost);
   /** @type {UniversalHandle | undefined} */
   let handle;
-  /** @type {UniversalView | undefined} */
+  /** @type {UniversalView | UniversalPage | undefined} */
   let view;
-  /** @type {import("../../../packages/bridge/src/index").Permission | undefined} */
+  /** @type {Permission | undefined} */
   let needed;
+  /** @type {Retry | undefined} */
+  let retryNeeded;
+  let generation = 0;
+  let ask = false;
+  /** @type {Map<string, Set<Retry> | null>} */
+  const attempts = new Map();
+  let requests = Promise.resolve();
   /** The params the drawn view was opened with. @type {Record<string, unknown>} */
   let params = {};
   const clock = createClock(options.now);
+  const mainSource = () => (view && !("sections" in view) ? view.source : undefined);
 
   /** The drawn views, each with the source it reads: the view, or a page's sections in order. */
   const drawn = () => {
@@ -90,8 +102,35 @@ export function createScreen(host, ctx, options = {}) {
     const elements = [...handle.element.querySelectorAll(":scope > desk-universal-view")];
     return elements.map((element, i) => ({ element, source: sections[i]?.source }));
   };
-  /** @param {unknown} error */
-  const failed = (error) => {
+  const requestPreview = (/** @type {Permission} */ permission, /** @type {Retry} */ retry) => {
+    const key = canonical(permission);
+    if (attempts.has(key)) {
+      attempts.get(key)?.add(retry);
+      return;
+    }
+    const waiting = new Set([retry]);
+    attempts.set(key, waiting);
+    const mine = generation;
+    requests = requests
+      .then(async () => {
+        if (generation !== mine) return;
+        const answer = await ctx.perm
+          .request(permission, "Show the entries of this universal view")
+          .catch(() => ({ granted: false }));
+        if (generation !== mine) return;
+        attempts.set(key, null);
+        if (answer.granted) {
+          if (needed && canonical(needed) === key) {
+            needed = undefined;
+            retryNeeded = undefined;
+          }
+          await Promise.all([...waiting].map((run) => run()));
+        }
+      })
+      .catch(() => {});
+  };
+  /** @param {unknown} error @param {UniversalSource} [source] @param {Retry} [retry] */
+  const failed = (error, source, retry) => {
     const refused = /** @type {{ code?: string, permission?: typeof needed }} */ (error ?? {});
     if (refused.code !== "permission_denied") {
       // The view shows the load's own message: say it in words instead.
@@ -101,7 +140,14 @@ export function createScreen(host, ctx, options = {}) {
           element.setAttribute("message", failureText(error, source));
       return;
     }
-    needed = refused.permission ?? scopeOf(view?.source);
+    const permission = missingAccess(error, source ?? mainSource());
+    if (!permission) return;
+    needed = permission;
+    retryNeeded = retry;
+    if (ask && retry) {
+      requestPreview(permission, retry);
+      return;
+    }
     text.textContent = "endue needs your permission to read this view's source.";
     notice.hidden = false;
   };
@@ -126,17 +172,32 @@ export function createScreen(host, ctx, options = {}) {
         (next === view || canonical(next) === canonical(view)) &&
         canonical(options.params ?? {}) === canonical(params);
       if (handle && same) {
+        ask = options.ask === true;
+        if (ask && needed && retryNeeded) {
+          notice.hidden = true;
+          requestPreview(needed, retryNeeded);
+        }
         if (options.notice) bar.notice(options.notice);
         else bar.hide();
         return handle;
       }
       handle?.close();
+      const mine = ++generation;
+      ask = options.ask === true;
+      attempts.clear();
       view = next;
       params = options.params ?? {};
       needed = undefined;
+      retryNeeded = undefined;
       notice.hidden = true;
       clock.reset();
-      handle = ctx.universal.open(host, next, { onError: failed, params, now: clock.now });
+      handle = ctx.universal.open(host, next, {
+        onError(error, source, retry) {
+          if (mine === generation) failed(error, source, retry);
+        },
+        params,
+        now: clock.now,
+      });
       if (options.notice) bar.notice(options.notice);
       else bar.hide();
       return handle;
@@ -147,23 +208,28 @@ export function createScreen(host, ctx, options = {}) {
       bar.drafting(note);
     },
     preview(next, note) {
-      screen.open(next);
+      screen.open(next, { ask: true });
       return bar.preview(note);
     },
     async allow() {
-      const permission = needed ?? scopeOf(view?.source);
+      const permission = needed ?? scopeOf(mainSource());
       if (!permission) return { granted: false };
+      const mine = generation;
+      const retry = retryNeeded ?? handle?.reload;
       const answer = await ctx.perm.request(permission, "Show the entries of this universal view");
-      if (answer.granted) {
+      if (answer.granted && mine === generation) {
         notice.hidden = true;
         needed = undefined;
-        await handle?.reload();
+        retryNeeded = undefined;
+        await retry?.();
       }
       return { granted: answer.granted };
     },
     close(id) {
       if (id !== undefined && view?.id !== id) return false;
       settled();
+      generation++;
+      attempts.clear();
       handle?.close();
       handle = undefined;
       view = undefined;
