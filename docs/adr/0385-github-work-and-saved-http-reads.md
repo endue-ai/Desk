@@ -38,11 +38,14 @@ commands return redacted request, response and code data without running a reque
 
 An agent can save a draft to an open collection using its existing save and secret prompts.
 Imports and new collections choose a writable destination through the desk. Calls waiting for
-the same folder grant share the prompt, and a later retry can ask again.
+the same folder grant share the prompt. After a refusal, the collection menu gives the person
+an Allow action for the same scope. That action asks again; routine file calls keep the refusal.
+Allowing a read refreshes the collection. Allowing a write leaves the draft ready for Save.
 
 ## More Information
 
 - Issue #734, GitHub and API Studio tools.
 - ADR 0106, HTTP connectors.
 - ADR 0264, API Studio.
+- ADR 0335, explicit retry after refusal.
 - ADR 0374, dialog grants for selected files and folders.

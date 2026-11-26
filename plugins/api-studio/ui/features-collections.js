@@ -179,6 +179,21 @@ export function installCollections(S) {
     "-",
     { label: "Settings", icon: "settings", run: () => collections.openGroup(coll, coll.path) },
     { label: "Run collection", icon: "runner", run: () => S.runGroup?.(coll, coll.path) },
+    ...collections.files.retryPermissions(coll.path).map((permission) => ({
+      label:
+        permission === "fs:read"
+          ? "Allow reading this collection"
+          : "Allow writing this collection",
+      icon: "refresh",
+      run: async () => {
+        if (!(await collections.files.retry(coll.path, permission))) {
+          S.app.toast("Collection access is still unavailable.", "error");
+          return;
+        }
+        if (permission === "fs:read") await collections.reload(coll.path);
+        else S.app.toast("Writing is allowed. Save again to use it.", "ok");
+      },
+    })),
     { label: "Reload from disk", icon: "refresh", run: () => collections.reload(coll.path) },
     "-",
     { label: "Close collection", icon: "close", run: () => collections.close(coll.path) },
