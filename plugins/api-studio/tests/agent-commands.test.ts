@@ -137,6 +137,9 @@ describe("API Studio agent commands", () => {
     expect(f.S.send).toHaveBeenCalledWith(expect.objectContaining({ ref: f.tab.ref }), {
       readOnly: true,
     });
+    f.S.collections.list.push({ ...f.coll, path: "~/overlap" });
+    await expect(f.invoke("send-read", { request: SAVED })).rejects.toThrow(/overlapping/i);
+    expect(f.S.send).toHaveBeenCalledOnce();
   });
 
   it("checks the effective method again before a safe request reaches curl", async () => {
@@ -201,6 +204,7 @@ it("reads a selected description under an exact file scope and asks for a writab
     importFile(path: string, kind: string): Promise<unknown>;
   };
   await expect(studio.importFile(path, "openapi")).resolves.toMatchObject({ cancelled: true });
+  await expect(studio.importFile("/outside/docs/*.json", "openapi")).rejects.toThrow(/exact/i);
   expect(call).toHaveBeenCalledWith("fs.read", {
     path,
     encoding: "utf8",
@@ -213,6 +217,7 @@ it("reads a selected description under an exact file scope and asks for a writab
       intent: "destination",
     }),
   );
+  expect(call).toHaveBeenCalledTimes(2);
 });
 
 it("shares one folder permission prompt and can retry after a denial", async () => {

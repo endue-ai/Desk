@@ -36,8 +36,10 @@ function everyRequest(S) {
 function findRequest(S, ref, exact = false) {
   const want = ref.trim().toLowerCase();
   const all = everyRequest(S);
-  const direct = all.find((x) => x.item.path === ref);
-  if (direct) return direct;
+  const direct = all.filter((x) => x.item.path === ref);
+  if (exact && direct.length > 1)
+    throw new Error("Close the overlapping collection before using this request.");
+  if (direct[0]) return direct[0];
   const byFolder = all.filter(
     (x) => `${x.item.folder ? `${x.item.folder} / ` : ""}${x.item.name}`.toLowerCase() === want,
   );

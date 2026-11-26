@@ -111,8 +111,8 @@ export async function writeImport(S, parent, imp) {
 /** @param {Studio} S */
 export function installImport(S) {
   const readPath = async (/** @type {string} */ path) => {
-    if (typeof path !== "string" || !path.trim() || path.includes("\0"))
-      throw new Error("Choose an API description file.");
+    if (typeof path !== "string" || !path.trim() || /[?*]/u.test(path) || path.includes("\0"))
+      throw new Error("Choose an exact API description file path.");
     const scope = { permission: "fs:read", paths: [path] };
     const read = () => S.ctx.bridge.call("fs.read", { path, encoding: "utf8", scope });
     try {
