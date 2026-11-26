@@ -152,10 +152,10 @@ export function envFile(env) {
 /** JSON as written to disk. @param {unknown} value */
 export const text = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
-/** The fs calls a collection needs, each under a scope for its folder; a refusal asks once. @param {Bridge} bridge */
+/** The fs calls a collection needs, sharing a scope and any pending ask for its folder. @param {Bridge} bridge */
 export function createFiles(bridge) {
-  /** @type {Set<string>} */
-  const asked = new Set();
+  /** @type {Map<string, Promise<{ granted?: boolean }>>} */
+  const pending = new Map();
   /** @param {"fs:read" | "fs:write"} permission @param {string} root */
   const scope = (permission, root) => ({
     permission,
@@ -169,14 +169,19 @@ export function createFiles(bridge) {
     } catch (error) {
       const code = /** @type {any} */ (error)?.code;
       const key = `${permission} ${root}`;
-      if (code !== "permission_denied" || asked.has(key)) throw error;
-      asked.add(key);
-      const decision = await bridge
-        .call("perm.request", {
-          permission: scope(permission, root),
-          reason: `To keep the collection in ${root}`,
-        })
-        .catch(() => ({ granted: false }));
+      if (code !== "permission_denied") throw error;
+      let ask = pending.get(key);
+      if (!ask) {
+        ask = bridge
+          .call("perm.request", {
+            permission: scope(permission, root),
+            reason: `To keep the collection in ${root}`,
+          })
+          .catch(() => ({ granted: false }))
+          .finally(() => pending.delete(key));
+        pending.set(key, ask);
+      }
+      const decision = await ask;
       if (!decision?.granted) throw error;
       return bridge.call(method, withScope);
     }

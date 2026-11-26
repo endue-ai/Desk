@@ -1,26 +1,29 @@
 // The studio's commands for the palette and agents: reads answer with plain data (what is open,
-// the requests of a collection); sending a request and running a collection go through the same
-// send as the window (scripts, checks and tests included) and are marked irreversible in the
-// manifest, so an agent's call waits for the person. Secrets never appear in what they return:
+// the requests of a collection); sends and runs share the Studio's request pipeline.
+// The manifest reviews sends and runs, with a separate command for saved HTTP reads.
+// Secrets never appear in what the commands return:
 // secret headers, query pairs and JSON fields are hidden, and so is every secret's value. A
 // request the agent writes itself (a url rather than a saved request's name) gets no secret
 // variables filled in and no cookies from the jar: it could name any host.
 
+import { responseData } from "./command-data.js";
+import { registerEdits } from "./commands-edit.js";
+import { registerReads } from "./commands-read.js";
 import { clone, newRequest, pair } from "./model.js";
+import { READ_METHODS, READ_ONLY_ERROR } from "./read-method.js";
 import { requestsOf, startRun, summarize } from "./runner.js";
-import {
-  HIDDEN,
-  hideFailure,
-  hideText,
-  hideUrl,
-  hideValues,
-  isSecretName,
-  secretValues,
-} from "./secret-names.js";
-import { bodyText } from "./send.js";
+import { hideFailure, hideText, hideUrl, secretValues } from "./secret-names.js";
 import { paramsFromUrl } from "./url.js";
 
 /** @typedef {import("./studio.js").Studio} Studio */
+/** @typedef {import("./app.js").Tab} Tab */
+/** @typedef {(name: string, handler: (args: any) => unknown) => void} Register */
+/**
+ * @typedef {{
+ *   S: Studio, saved(name: string, exact?: boolean): Tab, findTab(name?: string): Tab,
+ *   collection(name?: string): import("./collection-fs.js").Collection,
+ * }} CommandContext
+ */
 
 /** Every request of every open collection, with where it is. @param {Studio} S */
 function everyRequest(S) {
@@ -29,16 +32,20 @@ function everyRequest(S) {
   );
 }
 
-/** @param {Studio} S @param {string} ref a request's name, "Folder / Name", or file path */
-function findRequest(S, ref) {
+/** @param {Studio} S @param {string} ref a request's name, "Folder / Name", or file path @param {boolean} [exact] */
+function findRequest(S, ref, exact = false) {
   const want = ref.trim().toLowerCase();
   const all = everyRequest(S);
-  const hit =
-    all.find((x) => x.item.path === ref) ??
-    all.find(
-      (x) => `${x.item.folder ? `${x.item.folder} / ` : ""}${x.item.name}`.toLowerCase() === want,
-    ) ??
-    all.find((x) => x.item.name.toLowerCase() === want);
+  const direct = all.find((x) => x.item.path === ref);
+  if (direct) return direct;
+  const byFolder = all.filter(
+    (x) => `${x.item.folder ? `${x.item.folder} / ` : ""}${x.item.name}`.toLowerCase() === want,
+  );
+  const byShortName = all.filter((x) => x.item.name.toLowerCase() === want);
+  const byName = byFolder.length ? byFolder : byShortName;
+  if (exact && new Set([...byFolder, ...byShortName]).size > 1)
+    throw new Error("Name the request's full collection path.");
+  const hit = byName[0];
   if (!hit) throw new Error(`No open collection has a request called ${ref}.`);
   return hit;
 }
@@ -58,8 +65,40 @@ function findCollection(S, name) {
 
 /** @param {any} ctx @param {Studio} S */
 export function wireCommands(ctx, S) {
-  const on = (/** @type {string} */ name, /** @type {(args: any) => unknown} */ fn) =>
+  /** @type {Register} */
+  const on = (name, fn) =>
     ctx.commands?.on?.(`endue.api-studio.${name}`, (/** @type {any} */ args) => fn(args ?? {}));
+  /** @type {CommandContext["saved"]} */
+  const saved = (name, exact) => {
+    if (typeof name !== "string" || !name.trim()) throw new Error("Name a saved request.");
+    const { coll, item } = findRequest(S, name, exact);
+    return {
+      id: `cmd-${Date.now()}`,
+      req: clone(item.req),
+      saved: null,
+      ref: { collection: coll.path, path: item.path },
+      reqTab: "params",
+      resTab: "body",
+    };
+  };
+  /** @type {CommandContext["findTab"]} */
+  const findTab = (name) => {
+    const tabs = S.app.state.tabs.filter((tab) => !tab.kind);
+    const match =
+      name === undefined
+        ? tabs.filter((tab) => tab.id === S.app.state.active)
+        : tabs.filter((tab) => tab.id === name || tab.ref?.path === name || tab.req.name === name);
+    if (match.length !== 1) throw new Error("Name one open API request tab.");
+    return /** @type {Tab} */ (match[0]);
+  };
+  const context = {
+    S,
+    saved,
+    findTab,
+    collection: (/** @type {string | undefined} */ name) => findCollection(S, name),
+  };
+  registerReads(on, context);
+  registerEdits(on, context);
 
   on("open", (args) => {
     ctx.surface?.show?.();
@@ -73,7 +112,7 @@ export function wireCommands(ctx, S) {
   on("new-request", (args) => {
     ctx.surface?.show?.();
     const req = newRequest({
-      name: "Untitled request",
+      name: String(args.name ?? "Untitled request"),
       method: String(args.method ?? "GET").toUpperCase(),
       url: String(args.url ?? ""),
     });
@@ -114,15 +153,7 @@ export function wireCommands(ctx, S) {
     /** @type {import("./app.js").Tab} */
     let tab;
     if (args.request) {
-      const { coll, item } = findRequest(S, String(args.request));
-      tab = {
-        id: `cmd-${Date.now()}`,
-        req: clone(item.req),
-        saved: null,
-        ref: { collection: coll.path, path: item.path },
-        reqTab: "params",
-        resTab: "body",
-      };
+      tab = saved(String(args.request));
     } else if (args.url) {
       const req = newRequest({
         name: "Command request",
@@ -148,50 +179,17 @@ export function wireCommands(ctx, S) {
       };
     } else throw new Error("Name a request, or give a url.");
     await S.send(tab);
-    const res = tab.response;
-    if (!res) throw new Error("The request did not run.");
-    const r = tab.results;
-    const scopes = S.scopes(tab);
-    const values = [...secretValues(scopes), ...(tab.sentSecrets ?? [])];
-    const held = tab.agent
-      ? res.missing.filter((name) => scopes.some((s) => s.secret?.has(name)))
-      : [];
-    return {
-      status: res.status,
-      reason: res.reason,
-      error: res.error ? hideValues(res.error, values) : null,
-      ...(held.length
-        ? {
-            secretsNotFilled: held,
-            note: "Secret variables are not filled in for a request given as a url. Send a saved request by name to use them.",
-          }
-        : {}),
-      timeMs: Math.round(res.timings.total),
-      size: res.size,
-      headers: Object.fromEntries(
-        res.headers.map(([k, v]) => [
-          k,
-          isSecretName(k)
-            ? HIDDEN
-            : /^location$/i.test(k)
-              ? hideUrl(v, values)
-              : hideValues(v, values),
-        ]),
-      ),
-      body: hideText(bodyText(res).slice(0, 20_000), values),
-      tests: r
-        ? {
-            passed: [...r.tests, ...r.asserts].filter((t) => t.ok).length,
-            failed: [
-              ...r.tests.filter((t) => !t.ok).map((t) => hideText(`${t.name}: ${t.error}`, values)),
-              ...r.asserts
-                .filter((a) => !a.ok)
-                .map((a) => hideFailure(a.target, `${a.target}: ${a.message}`, values)),
-              ...r.errors.map((e) => hideText(`${e.from}: ${e.text}`, values)),
-            ],
-          }
-        : null,
-    };
+    const answer = responseData(S, tab);
+    if (!answer) throw new Error("The request did not run.");
+    return answer;
+  });
+  on("send-read", async ({ request }) => {
+    const tab = saved(request, true);
+    if (!READ_METHODS.includes(tab.req.method)) throw new Error(READ_ONLY_ERROR);
+    await S.send(tab, { readOnly: true });
+    const answer = responseData(S, tab);
+    if (!answer) throw new Error("The request did not run.");
+    return answer;
   });
   on("run", async (args) => {
     const coll = findCollection(S, args.collection);

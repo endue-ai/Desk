@@ -16,6 +16,8 @@
         "id": "desk.pack-github.board",
         "title": "GitHub board",
         "keywords": ["github", "board", "issues", "pull requests", "kanban"],
+        "description": "Open the board of synced GitHub issues and pull requests.",
+        "agent": true,
         "runs": {
           "command": "desk.universal.open",
           "args": {
@@ -43,6 +45,8 @@
         "id": "desk.pack-github.timeline",
         "title": "GitHub timeline",
         "keywords": ["github", "timeline", "issues", "pull requests"],
+        "description": "Open the timeline of synced GitHub issues and pull requests.",
+        "agent": true,
         "runs": {
           "command": "desk.universal.open",
           "args": {

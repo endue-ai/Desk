@@ -53,7 +53,8 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.api-studio.new-request",
@@ -63,15 +64,13 @@
         "args": {
           "type": "object",
           "properties": {
-            "method": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
+            "method": { "type": "string" },
+            "url": { "type": "string" },
+            "name": { "type": "string", "minLength": 1, "maxLength": 160 }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.api-studio.state",
@@ -171,15 +170,11 @@
         "description": "Open a curl command as a request.",
         "args": {
           "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
+          "properties": { "command": { "type": "string", "minLength": 1 } },
           "required": ["command"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.api-studio.ask",
@@ -195,6 +190,135 @@
           },
           "additionalProperties": false
         }
+      },
+      {
+        "id": "endue.api-studio.tab",
+        "title": "API Studio: read open request",
+        "description": "Read an open request and its last response with secrets hidden. Omit the name to use the current request tab.",
+        "args": {
+          "type": "object",
+          "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.api-studio.request",
+        "title": "API Studio: read saved request",
+        "description": "Read the parameters, headers and body of a saved request with secrets hidden. Accepts the request's name or collection file path.",
+        "args": {
+          "type": "object",
+          "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.api-studio.codegen",
+        "title": "API Studio: generate request code",
+        "description": "Generate code from a saved request with secrets hidden. This reads the request without sending it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "request": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "lang": {
+              "type": "string",
+              "enum": [
+                "curl",
+                "httpie",
+                "fetch",
+                "python",
+                "go",
+                "java",
+                "csharp",
+                "rust",
+                "swift",
+                "kotlin",
+                "powershell"
+              ]
+            }
+          },
+          "required": ["request", "lang"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.api-studio.send-read",
+        "title": "API Studio: send a saved HTTP read",
+        "description": "Send a saved GET, HEAD or OPTIONS request without a body or a method override. Name the request or its collection file path. Returns a response with secrets hidden.",
+        "args": {
+          "type": "object",
+          "properties": { "request": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["request"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.api-studio.save-request",
+        "title": "API Studio: save request",
+        "description": "Save the named or current request tab. For a new request, name an open collection and optionally a folder path in it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "collection": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "folder": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.api-studio.use-environment",
+        "title": "API Studio: select environment",
+        "description": "Select a named environment for an open collection. Omit the name to clear the selection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "collection": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 160 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.api-studio.set-variable",
+        "title": "API Studio: set a non-secret variable",
+        "description": "Set a non-secret text variable in a named or active environment of an open collection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "collection": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "environment": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "key": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "value": { "type": "string", "maxLength": 8000 }
+          },
+          "required": ["key", "value"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.api-studio.import",
+        "title": "API Studio: import local API description",
+        "description": "Import a local OpenAPI, Swagger or HAR file. The person chooses where to keep the new collection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "kind": { "type": "string", "enum": ["openapi", "swagger", "har"] }
+          },
+          "required": ["path", "kind"],
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ],
     "keys": [

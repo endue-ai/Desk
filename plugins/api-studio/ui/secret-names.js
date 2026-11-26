@@ -129,7 +129,7 @@ export function hideJson(value) {
     return Object.fromEntries(
       Object.entries(value).map(([k, v]) => [
         k,
-        isSecretName(k) && v !== null && typeof v !== "object" && !isReference(String(v))
+        isSecretName(k) && v !== null && (typeof v === "object" || !isReference(String(v)))
           ? HIDDEN
           : hideJson(v),
       ]),

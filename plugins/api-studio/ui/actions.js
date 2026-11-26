@@ -7,6 +7,7 @@ import { copyText, h } from "./dom.js";
 import { EngineError } from "./engine.js";
 import { ask, confirm } from "./menu.js";
 import { clone, newRequest } from "./model.js";
+import { isReadRequest, READ_ONLY_ERROR } from "./read-method.js";
 import { followsItself, sendFollowing } from "./redirects.js";
 import { markSecrets, prepare, readResponse } from "./send.js";
 
@@ -14,7 +15,7 @@ import { markSecrets, prepare, readResponse } from "./send.js";
  * @typedef {import("./studio.js").Studio} Studio
  * @typedef {import("./app.js").Tab} Tab
  * @typedef {import("./send.js").Response} Response
- * @typedef {{ before?(S: Studio, tab: Tab): Promise<void> | void,
+ * @typedef {{ before?(S: Studio, tab: Tab, options: { readOnly: boolean }): Promise<void> | void,
  *   prepared?(S: Studio, tab: Tab, prep: import("./curl-config.js").Prepared): Promise<void> | void,
  *   after?(S: Studio, tab: Tab, res: Response): Promise<void> | void }} SendHook
  */
@@ -66,7 +67,7 @@ export function createActions(S) {
   const { app } = S;
 
   /** @param {Tab} tab */
-  const send = async (tab) => {
+  const send = async (tab, { readOnly = false } = {}) => {
     if (tab.running) return;
     if (!tab.req.url.trim()) {
       app.toast("Type a URL first.", "error");
@@ -80,10 +81,11 @@ export function createActions(S) {
     /** @type {Response} */
     let res;
     try {
-      for (const hook of SEND_HOOKS) await hook.before?.(S, tab);
+      for (const hook of SEND_HOOKS) await hook.before?.(S, tab, { readOnly });
       const context = sendContext(S, tab);
       const { prep, missing, bodyText } = prepare(tab.req, context);
       for (const hook of SEND_HOOKS) await hook.prepared?.(S, tab, prep);
+      if (readOnly && !isReadRequest(prep)) throw new Refused(READ_ONLY_ERROR);
       markSecrets(prep);
       tab.sentSecrets = prep.secrets ?? [];
       if (!/^https?:\/\//i.test(prep.url))

@@ -21,6 +21,7 @@ import { keepLooks } from "./policies/design";
 import { deskFolder } from "./policies/desk-folder";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
+import { installGithubWork } from "./policies/github-work";
 import { installKeys } from "./policies/keys";
 import { installKeysFile } from "./policies/keys-file";
 import { installLanguage } from "./policies/language";
@@ -157,6 +158,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const aliases = installAliases(ctx);
   const palette = installPalette(ctx);
   installWorkspaceTools(commands, bridge);
+  installGithubWork(commands, bridge);
   const show = (id: string) => options.windows?.show?.(id) ?? undefined;
   const moved = (id: string | null) => focusMoved(id);
   const focusing = surfaceFocus({ root, shortcuts, surfaces, show, moved });

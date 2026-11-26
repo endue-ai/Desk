@@ -2,7 +2,8 @@
 // before a send when they run out), the cookie jar, a pasted curl command turned into the request,
 // and the Settings dialog with curl's path, the history and the jar.
 
-import { SEND_HOOKS } from "./actions.js";
+import { Refused, SEND_HOOKS } from "./actions.js";
+import { effectiveAuth } from "./auth.js";
 import { createJar } from "./cookies.js";
 import { fromCurl } from "./curl-import.js";
 import { button, h, icon } from "./dom.js";
@@ -46,7 +47,13 @@ export function installAuth(S) {
   };
 
   SEND_HOOKS.unshift({
-    async before(_S, tab) {
+    async before(_S, tab, { readOnly }) {
+      if (readOnly) {
+        const { auth } = effectiveAuth(tab.req.auth, S.parentAuth(tab));
+        if (auth.type === "oauth2" && !auth.oauth2?.token?.trim() && !tokens.lookup(tab)(auth))
+          throw new Refused("Use the reviewed send to refresh this OAuth token first.");
+        return;
+      }
       try {
         await tokens.ensure(tab);
       } catch (error) {

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createActions, failure, SEND_HOOKS } from "../ui/actions.js";
 import { createFiles } from "../ui/collection-fs.js";
 import { wireCommands } from "../ui/commands.js";
+import { installAuth } from "../ui/features-auth.js";
+import { installImport } from "../ui/features-import.js";
 import { newRequest, pair } from "../ui/model.js";
 import { scope } from "../ui/vars.js";
 
@@ -18,7 +20,7 @@ function fixture() {
   const post = newRequest({ name: "Write things", method: "POST", url: "https://sample.test/x" });
   const env = {
     name: "Desk",
-    vars: [pair({ key: "token", value: PRIVATE, secret: true })],
+    vars: [{ ...pair({ key: "token", value: PRIVATE }), secret: true }],
   };
   const coll = {
     name: "Shop",
@@ -132,6 +134,9 @@ describe("API Studio agent commands", () => {
     await expect(f.invoke("send-read", { url: "https://sample.test" })).rejects.toThrow(/saved/i);
     await expect(f.invoke("send-read", { request: SAVED })).resolves.toMatchObject({ status: 200 });
     expect(f.S.send).toHaveBeenCalledOnce();
+    expect(f.S.send).toHaveBeenCalledWith(expect.objectContaining({ ref: f.tab.ref }), {
+      readOnly: true,
+    });
   });
 
   it("checks the effective method again before a safe request reaches curl", async () => {
@@ -140,7 +145,8 @@ describe("API Studio agent commands", () => {
     const S = { ...f.S, app: { emit: vi.fn(), remember: vi.fn() }, engine };
     const tab = { ...f.tab, response: undefined };
     const hook = {
-      prepared: (_studio: unknown, prep: { method: string }) => (prep.method = "POST"),
+      prepared: (_studio: unknown, _tab: unknown, prep: { method: string }) =>
+        (prep.method = "POST"),
     };
     SEND_HOOKS.push(hook as never);
     try {
@@ -151,6 +157,62 @@ describe("API Studio agent commands", () => {
     expect(engine.send).not.toHaveBeenCalled();
     expect(tab.response).toMatchObject({ error: expect.stringMatching(/GET.*HEAD.*OPTIONS/) });
   });
+
+  it("holds an OAuth renewal for the reviewed send", async () => {
+    const f = fixture();
+    const engine = { send: vi.fn() };
+    const S = {
+      ...f.S,
+      app: { emit: vi.fn(), remember: vi.fn() },
+      ctx: { bridge: { call: vi.fn(async () => ({})) } },
+      engine,
+      settings: {},
+    };
+    const tab = {
+      ...f.tab,
+      req: {
+        ...f.req,
+        auth: { type: "oauth2", oauth2: { tokenUrl: "https://sample.test/oauth" } },
+      },
+      response: undefined,
+    };
+    installAuth(S as never);
+    try {
+      await createActions(S as never).send(tab as never, { readOnly: true });
+    } finally {
+      SEND_HOOKS.shift();
+    }
+    expect(engine.send).not.toHaveBeenCalled();
+    expect(tab.response).toMatchObject({ error: expect.stringMatching(/reviewed send.*OAuth/) });
+  });
+});
+
+it("reads a selected description under an exact file scope and asks for a writable destination", async () => {
+  const path = "/outside/docs/api.json";
+  const call = vi.fn(async (method: string) => {
+    if (method === "fs.read")
+      return { content: '{"openapi":"3.1.0","info":{"title":"Sample"},"paths":{}}' };
+    if (method === "dialog.open") return { cancelled: true };
+    throw new Error(`Unexpected bridge call ${method}`);
+  });
+  const fixture = { ctx: { bridge: { call } }, homeActions: () => [] };
+  installImport(fixture as never);
+  const studio = fixture as typeof fixture & {
+    importFile(path: string, kind: string): Promise<unknown>;
+  };
+  await expect(studio.importFile(path, "openapi")).resolves.toMatchObject({ cancelled: true });
+  expect(call).toHaveBeenCalledWith("fs.read", {
+    path,
+    encoding: "utf8",
+    scope: { permission: "fs:read", paths: [path] },
+  });
+  expect(call).toHaveBeenCalledWith(
+    "dialog.open",
+    expect.objectContaining({
+      kind: "folders",
+      intent: "destination",
+    }),
+  );
 });
 
 it("shares one folder permission prompt and can retry after a denial", async () => {

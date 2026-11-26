@@ -29,11 +29,15 @@ import { bodyText, prepare, readResponse } from "./send.js";
  * @typedef {import("./openapi.js").Imported} Imported
  */
 
-/** What a text holds: an API description, a HAR file, or nothing known. @param {string} raw */
-export function understand(raw) {
+/** What a text holds: an API description, a HAR file, or nothing known. @param {string} raw @param {"openapi" | "swagger" | "har"} [kind] */
+export function understand(raw, kind) {
   const doc = readSpec(raw);
-  if (isSpec(doc)) return fromSpec(doc);
-  if (doc?.log?.entries) return fromHar(doc);
+  if (
+    isSpec(doc) &&
+    (!kind || (kind === "openapi" && doc.openapi) || (kind === "swagger" && doc.swagger))
+  )
+    return fromSpec(doc);
+  if ((!kind || kind === "har") && Array.isArray(doc?.log?.entries)) return fromHar(doc);
   throw new Error("Not an OpenAPI or Swagger description, nor a HAR file.");
 }
 
@@ -106,6 +110,61 @@ export async function writeImport(S, parent, imp) {
 
 /** @param {Studio} S */
 export function installImport(S) {
+  const readPath = async (/** @type {string} */ path) => {
+    if (typeof path !== "string" || !path.trim() || path.includes("\0"))
+      throw new Error("Choose an API description file.");
+    const scope = { permission: "fs:read", paths: [path] };
+    const read = () => S.ctx.bridge.call("fs.read", { path, encoding: "utf8", scope });
+    try {
+      return String((await read())?.content ?? "");
+    } catch (error) {
+      if (/** @type {{ code?: string }} */ (error)?.code !== "permission_denied") throw error;
+      const answer = await S.ctx.bridge.call("perm.request", {
+        permission: scope,
+        reason: "Read the API description to import it.",
+      });
+      if (!answer?.granted) throw error;
+      return String((await read())?.content ?? "");
+    }
+  };
+
+  const keepImport = async (/** @type {Imported} */ imp) => {
+    const count = imp.requests.length + imp.folders.reduce((n, f) => n + f.requests.length, 0);
+    const picked = await S.ctx.bridge.call("dialog.open", {
+      kind: "folders",
+      intent: "destination",
+      title: `Where to keep “${imp.name.slice(0, 140)}” (${count} requests)`,
+    });
+    const parent = picked?.cancelled ? undefined : picked?.paths?.[0];
+    if (!parent) return { imported: 0, cancelled: true };
+    const coll = await writeImport(S, parent, imp);
+    if (coll) {
+      // Secret values go to the desk's store; the environment files hold only their names.
+      for (const made of imp.envs) {
+        const env = coll.envs.find((e) => e.name === made.name);
+        if (env && made.vars.some((v) => v.secret && v.value))
+          await S.envs?.save(
+            coll,
+            env,
+            env.vars.map((v) => ({
+              ...v,
+              value: made.vars.find((m) => m.key === v.key)?.value ?? v.value,
+            })),
+          );
+      }
+      S.collections.openGroup(coll, coll.path);
+      if (coll.envs[0]) await S.envs?.use(coll, coll.envs[0].name);
+    }
+    S.app.layout({ rail: "collections", side: true });
+    S.app.toast(`Imported ${count} requests into ${imp.name}`, "ok");
+    return { imported: count };
+  };
+
+  S.importFile = async (
+    /** @type {string} */ path,
+    /** @type {"openapi" | "swagger" | "har" | undefined} */ kind,
+  ) => keepImport(understand(await readPath(path), kind));
+
   /** Ask for a description and where to keep it, then write and open the collection. @param {"file" | "url" | "paste"} how */
   S.importSpec = async (how = "file") => {
     let raw = "";
@@ -118,15 +177,15 @@ export function installImport(S) {
         .catch(() => undefined);
       const path = chosen?.cancelled ? undefined : chosen?.paths?.[0];
       if (!path) return;
-      raw = String(
-        (
-          await S.ctx.bridge.call("fs.read", {
-            path,
-            encoding: "utf8",
-            scope: { permission: "fs:read", paths: [path] },
-          })
-        )?.content ?? "",
-      );
+      try {
+        raw = await readPath(path);
+      } catch (error) {
+        S.app.toast(
+          `Could not read it: ${String(/** @type {Error} */ (error)?.message ?? error)}`,
+          "error",
+        );
+        return;
+      }
     } else {
       const area = /** @type {HTMLTextAreaElement} */ (
         h("textarea.desk-field.as-paste", {
@@ -188,36 +247,8 @@ export function installImport(S) {
       );
       return;
     }
-    const count = imp.requests.length + imp.folders.reduce((n, f) => n + f.requests.length, 0);
-    const picked = await S.ctx.bridge
-      .call("dialog.open", {
-        kind: "folders",
-        title: `Where to keep “${imp.name}” (${count} requests)`,
-      })
-      .catch(() => ({ cancelled: true }));
-    const parent = picked?.cancelled ? undefined : picked?.paths?.[0];
-    if (!parent) return;
     try {
-      const coll = await writeImport(S, parent, imp);
-      if (coll) {
-        // Secret values go to the desk's store; the environment files hold only their names.
-        for (const made of imp.envs) {
-          const env = coll.envs.find((e) => e.name === made.name);
-          if (env && made.vars.some((v) => v.secret && v.value))
-            await S.envs?.save(
-              coll,
-              env,
-              env.vars.map((v) => ({
-                ...v,
-                value: made.vars.find((m) => m.key === v.key)?.value ?? v.value,
-              })),
-            );
-        }
-        S.collections.openGroup(coll, coll.path);
-        if (coll.envs[0]) await S.envs?.use(coll, coll.envs[0].name);
-      }
-      S.app.layout({ rail: "collections", side: true });
-      S.app.toast(`Imported ${count} requests into ${imp.name}`, "ok");
+      await keepImport(imp);
     } catch (error) {
       S.app.toast(
         `Could not write the collection: ${String(/** @type {any} */ (error)?.message ?? error)}`,
