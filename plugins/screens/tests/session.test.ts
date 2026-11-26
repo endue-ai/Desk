@@ -81,6 +81,8 @@ describe("startSession", () => {
       {
         permission: { permission: "net:connect", hosts: ["studio.local:5900"] },
         reason: "To show Studio's screen",
+        duration: "always",
+        again: true,
       },
     ]);
     expect(FakeRfb.last?.options).toEqual({ shared: true });

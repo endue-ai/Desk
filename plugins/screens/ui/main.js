@@ -21,12 +21,12 @@ defineUiPlugin({
     });
     const sockets = createSockets(ctx.bridge);
     app = createScreens({ bridge: ctx.bridge, sockets, RFB, view });
-    app.wire(ctx.commands);
     // The frame going away ends its connections; the core would close them with the plugin anyway.
     window.addEventListener("pagehide", () => {
       app?.disconnect();
       sockets.dispose();
     });
     await app.start();
+    app.wire(ctx.commands);
   },
 });
