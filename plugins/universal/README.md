@@ -19,7 +19,7 @@ plugin would. The desk, Eris, agents and the palette use it by command instead o
 | `cmd:invoke` (`*`) | A `command` source, the view's actions, `move`, `send` and the notice's action. A view an agent passes inline takes no `command` source, and a view Eris proposes reads only a read-only one (ADR 0367) |
 | `view:manage` | Saved views: `{ id }` and the builder's Save |
 
-A `url` source asks for `net:fetch` on its host when it opens (the notice), so no host is granted ahead.
+A requested preview and the builder's Load ask directly for a refused source and retry it after a grant (ADR 0389). A saved view's ordinary open can show the access action.
 The overlay covers the desk, so Close (top right, "Esc") and a press beside the view leave it; a
 source that fails is said in words; a calendar paged to another day reads `{today}` as that day.
 
