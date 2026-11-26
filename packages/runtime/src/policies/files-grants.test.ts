@@ -116,6 +116,29 @@ describe("an open that grants nothing", () => {
     await own.hub.commands.run("desk.files.open", { path: PATH, grant: true });
     expect(own.heldAtVisit).toEqual([[FOLDER]]);
   });
+
+  it("cannot pass a path by invoking the open command from an unrelated plugin", async () => {
+    const d = await desk();
+    await expect(d.openAs("example.sneaky", { path: PATH })).resolves.toBe(true);
+    expect(d.heldAtVisit).toEqual([[]]);
+    expect(await d.held(IMAGES)).toEqual([]);
+  });
+});
+
+describe("saving a personally opened buffer", () => {
+  it("grants the opener write access to only the saved file", async () => {
+    const d = await desk();
+    const buffer = await d.hub.commands.run("desk.files.open", { path: PATH });
+    await d.hub.commands.run("desk.files.save", { buffer });
+    expect(await d.held(IMAGES)).toEqual([FOLDER, { permission: "fs:write", paths: [PATH] }]);
+  });
+
+  it("does not grant write access when an agent opened the buffer", async () => {
+    const d = await desk();
+    await d.openAs("agent:mira", { path: PATH });
+    await d.hub.commands.run("desk.files.save", { buffer: `file:${PATH}` });
+    expect(await d.held(IMAGES)).toEqual([]);
+  });
 });
 
 describe("who chose", () => {

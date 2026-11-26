@@ -150,6 +150,62 @@ fn open_of_a_folder_grants_what_lies_inside() {
 }
 
 #[test]
+fn a_destination_is_writable_inside_and_cancellation_grants_nothing() {
+    let (core, person, home) = desk("dialog-destination");
+    let params = json!({ "kind": "folders", "intent": "destination" });
+    person.cancel();
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", params.clone()).unwrap()["cancelled"],
+        true
+    );
+    denied(write(&core, NOTES, "~/Documents/new.md"));
+    person.choose(&[home.join("Documents")]);
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", params).unwrap()["paths"],
+        json!(["~/Documents"])
+    );
+    assert!(read(&core, NOTES, "~/Documents/hello.md").is_ok());
+    write(&core, NOTES, "~/Documents/new.md").unwrap();
+    denied(write(&core, NOTES, "~/Calendar/today.ics"));
+    let asked = person.asked().len();
+    let file = json!({ "kind": "files", "intent": "destination" });
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", file).unwrap_err().code,
+        ErrorCode::InvalidParams
+    );
+    assert_eq!(person.asked().len(), asked);
+}
+
+#[test]
+fn staged_save_can_write_and_rename_only_its_exact_temporary_sibling() {
+    let (core, person, home) = desk("dialog-staged-save");
+    let path = "~/Documents/export.csv";
+    let partial = "~/Documents/.export.csv.partial";
+    person.choose(&[home.join("Documents/export.csv")]);
+    call(
+        &core,
+        NOTES,
+        "dialog.save",
+        json!({ "temporarySibling": true }),
+    )
+    .unwrap();
+    write(&core, NOTES, partial).unwrap();
+    denied(read(&core, NOTES, partial));
+    denied(write(&core, NOTES, "~/Documents/.unrelated.csv.partial"));
+    let from_scope = json!({ "permission": "fs:write", "paths": [partial] });
+    let scope = json!({ "permission": "fs:write", "paths": [path] });
+    call(
+        &core,
+        NOTES,
+        "fs.rename",
+        json!({ "from": partial, "to": path, "scope": scope, "fromScope": from_scope }),
+    )
+    .unwrap();
+    assert!(!home.join("Documents/.export.csv.partial").exists());
+    assert_eq!(read(&core, NOTES, path).unwrap()["content"], "# Saved");
+}
+
+#[test]
 fn save_grants_the_chosen_path_to_write() {
     let (core, person, home) = desk("dialog-save");
     person.choose(&[home.join("Documents/saved.md")]);

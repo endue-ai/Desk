@@ -213,6 +213,7 @@ impl Core {
                     args,
                     caller: caller.to_owned(),
                     approved,
+                    file_open_granted: None,
                 },
             }),
         );
