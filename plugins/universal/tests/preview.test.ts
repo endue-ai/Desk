@@ -17,7 +17,10 @@ const BOARD = {
 };
 
 async function mount() {
-  const host = createTestHost({ pluginId: "desk.universal" });
+  const host = createTestHost({
+    pluginId: "desk.universal",
+    files: { "~/boards/launch.yaml": "entries: [{ id: draft, title: Preview data }]" },
+  });
   const ctx = await defineUiPlugin({ mount() {} }, host.transport);
   const ran = vi.spyOn(ctx.commands, "run").mockResolvedValue({});
   const page = document.createElement("main");
@@ -38,6 +41,23 @@ async function mount() {
 describe("desk.universal's preview", () => {
   beforeEach(() => {
     document.body.replaceChildren();
+  });
+
+  it("asks as soon as a requested preview needs permission and retries only that source", async () => {
+    const m = await mount();
+    const preview = m.screen.preview(
+      { ...BOARD, source: { file: "~/boards/launch.yaml" } },
+      "Requested preview",
+    );
+    await m.settle();
+    expect(m.host.calls.filter((call) => call.method === "perm.request")).toMatchObject([
+      { params: { permission: { permission: "fs:read", paths: ["~/boards/launch.yaml"] } } },
+    ]);
+    expect(m.screen.handle?.element.getAttribute("state")).toBe("ready");
+    expect(m.screen.handle?.data?.entries).toEqual([expect.objectContaining({ id: "draft" })]);
+    expect(m.page.querySelector<HTMLElement>(".notice")?.hidden).toBe(true);
+    m.button("Discard")?.click();
+    expect(await preview).toEqual({ choice: "discard" });
   });
 
   it("shows the drafting state with a ghost at once, then the preview's choices over the drawn view", async () => {
