@@ -27,6 +27,7 @@ import { defineSweepCommands } from "../sweep/commands";
 import { mountSweep } from "../sweep/Sweep";
 import { loadDirectory } from "../system/agents";
 import { loadEndue, watchEndue } from "../system/endue";
+import { defineEndueCommands } from "../system/endue-commands";
 import { mountSystemLayer } from "../system/layer";
 import { defineLocalAgentCommands } from "../system/local-agent-commands";
 import { loadLocalAgents, watchLocalAgents } from "../system/local-agents";
@@ -224,6 +225,7 @@ export function mountDesk(options: DeskOptions): Desk {
     // desk.agents.* commands are Eris's tools.
     defineLocalAgentCommands(ctx),
     watchLocalAgents(ctx),
+    defineEndueCommands(ctx),
     // Signing in or out swaps the agent bar between endue's agents and the directory (ADR 0129).
     watchEndue(ctx),
     // desk.propose: Eris makes views, profiles and key bindings from a sentence and says what she

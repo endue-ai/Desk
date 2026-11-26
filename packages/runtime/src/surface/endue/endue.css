@@ -7,6 +7,24 @@
   overflow: hidden;
 }
 
+.endue-question,
+.endue-question label {
+  display: grid;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+.endue-question .desk-field {
+  width: 100%;
+  min-height: var(--desk-control-lg);
+  resize: vertical;
+}
+.endue-question .btn { justify-self: start; }
+.endue-reply {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* The card is the window's size; a face longer than it scrolls inside, its head and foot in place. */
 .endue-flip { height: 100%; perspective: 1400px; }
 .endue-flip-inner {

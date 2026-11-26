@@ -26,7 +26,7 @@ use crate::handler::{Answer, Core, error, json};
 const LISTED: usize = 5;
 
 /// An id the bridge's patterns take: a letter or digit, then up to 127 of those, `_` or `-`.
-fn id_of(text: &str) -> Option<String> {
+pub(super) fn id_of(text: &str) -> Option<String> {
     let mut chars = text.chars();
     let first = chars.next()?;
     let rest_ok = chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');

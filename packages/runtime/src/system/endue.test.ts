@@ -141,7 +141,7 @@ describe("the person's endue agents and spaces in the shell (ADR 0129)", () => {
 
   it("opens only endue.ai's pages, with ids as one path segment", async () => {
     const { ctx, bridge } = testDesk();
-    expect(agentPage("ag/../x")).toBe("https://endue.ai/agent/ag%2F..%2Fx/studio");
+    expect(agentPage("ag/../x")).toBe("https://endue.ai/agents/ag%2F..%2Fx/studio");
     expect(spacePage("sp_1")).toBe("https://endue.ai/spaces/sp_1");
     await openOnWeb(ctx, spacePage("sp_1"));
     await expect(openOnWeb(ctx, "https://endue.ai.example/x")).rejects.toThrow(/endue.ai/);

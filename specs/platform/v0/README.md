@@ -13,8 +13,8 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 | Studio facets | `getAgentIdentity`, `getAgentSettings`, `updateAgentSettings`, `getAgentPrompt`, `saveAgentPrompt`, `listPromptRevisions`, `restorePromptRevision`, `listAgentSkills`, `listAgentConnectors`, `listAgentTraits` |
 | Studio's board (ADR 0232) | `listChannelPairings`, `listAgentOsDevices`, `listAgentWorkspaces`, `getAgentTheme`, `listAgentMemories` (counted), `listApiKeys` (the agent's own), `listArtifacts` (counted) |
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
-| Conversations | `listConversations` (the Home board) |
-| Spaces (read only) | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms` |
+| Conversations | `listConversations` (the Home board), `createAgentConversation`, `runAgentConversation` |
+| Spaces | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms`, `ensureSpaceConversation` |
 | Account | `getMe`, `updateMe`, `getMyPreferences`, `updateMyPreferences` (language, time zone), `getNotificationPreferences`, `updateNotificationPreferences` |
 
 ## Base, token and envelopes
@@ -22,8 +22,8 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 - The base is `https://platform.endue.ai`; `https://platform.dev.endue.ai` is endue AI's development
   platform, and `DESK_ENDUE_PLATFORM_URL` overrides both.
 - Every call carries `Authorization: Bearer <endue ID access token>` from the core's account. endue
-  sends no `Origin` header (no browser session), waits 15 s at most (30 s for `useCatalogAgent`), and
-  after a 401 refreshes the token once and tries once more.
+  uses its own HTTP client. It waits 15 s for most calls, 30 s for `useCatalogAgent` and up to
+  90 s for a run. A 401 can renew the token once and retry the same body.
 - agent-service answers the bare body for agents, identity, prompt, skills, connectors and traits, and
   `{ data, meta }` for settings. The catalog answers `{ data, meta }`; ai-agent-service (`/api/v1/ai`)
   answers `{ success: true, data }`. user-service answers the bare body; notification-service answers
@@ -49,6 +49,14 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 | 400, 422 | `invalid_params` |
 | 409 on set status (it already has it) | none: the call succeeds |
 | anything else | `io_error` |
+
+## Questions
+
+One agent question opens a conversation with the agent and requests the `ask` approval level.
+A space question uses the server's existing Front Desk conversation and its bound agent. The
+Desk checks the binding before sending. Each text run carries one `client_message_id` across an
+auth retry. The completed `done` event supplies the final assistant message. Partial events,
+interactive stops and transport failures produce a status and a conversation reference.
 
 ## Vectors
 

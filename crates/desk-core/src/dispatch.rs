@@ -174,6 +174,7 @@ impl Core {
             R::StudioConversationsList(r) => {
                 (r.id, self.studio_conversations_list(caller, r.params))
             }
+            R::StudioChatAsk(r) => (r.id, self.studio_chat_ask(caller, r.params)),
             R::StudioSpacesList(r) => (r.id, self.studio_spaces_list(caller, r.params)),
             R::StudioSpacesGet(r) => (r.id, self.studio_spaces_get(caller, r.params)),
             r @ (R::ComputerPermissionsStatus(_)

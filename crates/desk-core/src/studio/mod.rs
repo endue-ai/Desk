@@ -9,6 +9,7 @@ use desk_platform::{Platform, Tokens};
 
 use crate::account::Account;
 
+mod chat;
 pub(crate) mod map;
 pub(crate) mod map_catalog;
 mod picture;

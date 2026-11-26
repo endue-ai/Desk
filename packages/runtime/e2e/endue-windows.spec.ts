@@ -22,8 +22,45 @@ test.describe("endue agents and spaces as windows", () => {
       await view.getByRole("textbox", { name: "Question" }).fill("What is ready for review?");
       await view.getByRole("button", { name: "Send question" }).click();
       await expect(view.getByRole("status")).toContainText("The outline is ready.");
-      await expect(view.getByRole("button", { name: "Open conversation on endue.ai" })).toBeVisible();
+      await view.getByRole("button", { name: "Open conversation on endue.ai" }).click();
+      await expect
+        .poll(() => page.evaluate(() => window.__shell.bridge.fake.opened.at(-1)))
+        .toBe(
+          space
+            ? "https://endue.ai/spaces/sp_sample001/admin"
+            : `https://endue.ai/agents/${MISO}/conversations/cnv_fixture_1`,
+        );
     }
+  });
+
+  test("the question fits a narrow window in both schemes with high contrast", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    const settings = encodeURIComponent(
+      JSON.stringify({ "desk.theme.contrast": "high", "desk.theme.motion": "reduce" }),
+    );
+    await openShell(page, `?lang=en&endue=signed-in&init=${settings}`);
+    await page.locator(`.sidebar [data-endue-agent="${MISO}"]`).click();
+    const view = page.locator(`[data-endue-agent-view="${MISO}"]`);
+    const windowId = await view.evaluate((el) =>
+      el.closest("section.surface")?.getAttribute("data-surface"),
+    );
+    if (!windowId) throw new Error("The agent window is unavailable.");
+    await page.evaluate((id) => window.__shell.wm.fill(id, "full"), windowId);
+    await step(page, 600);
+    await view.getByRole("button", { name: "Ask agent" }).click();
+    const field = view.getByRole("textbox", { name: "Question" });
+    for (const scheme of ["dark", "light"]) {
+      await page.evaluate(
+        (mode) => window.__shell.desk.runtime.commands.run(`desk.theme.${mode}`),
+        scheme,
+      );
+      await expect(field).toBeVisible();
+      expect(await field.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThan(361);
+    }
+    await field.fill("What is ready for review?");
+    await view.getByRole("button", { name: "Send question" }).click();
+    await expect(view.getByRole("status")).toContainText("The outline is ready.");
   });
 
   test("appear in the agent bar once the desk signs in", async ({ page }) => {

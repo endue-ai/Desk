@@ -18,6 +18,8 @@ import type {
   StudioAgent,
   StudioAgentsFacetsResult,
   StudioAgentsPictureResult,
+  StudioChatAskParams,
+  StudioChatAskResult,
   StudioConversation,
   StudioSpace,
   StudioSpacesGetResult,
@@ -195,6 +197,8 @@ export interface LocalAgentsBridge {
  * The person's endue AI agents and spaces as the agent bar and their windows read them, once the
  * desk is signed in (studio.*, ADR 0122 and ADR 0129). The token stays in the core.
  */
+export type StudioQuestion = Omit<StudioChatAskParams, "scope">;
+
 export interface StudioShellBridge {
   /** Every agent of the person's that is not deleted, the newest first. */
   agents(): Promise<StudioAgent[]>;
@@ -208,6 +212,8 @@ export interface StudioShellBridge {
   spaces(): Promise<StudioSpace[]>;
   /** What one space is doing. */
   space(spaceId: string): Promise<StudioSpacesGetResult>;
+  /** Ask one agent or the selected space's Front Desk through the runtime. */
+  ask?(question: StudioQuestion): Promise<StudioChatAskResult>;
   /** Open one of endue.ai's pages (an https URL) in the system browser. */
   open(url: string): Promise<void>;
 }

@@ -16,6 +16,7 @@ import { studioBoard } from "./board-model";
 import { flipCard } from "./flip";
 import { agentFront, dotOf } from "./model";
 import { actions, avatar, flipButton, notice, type Page, readLine, text } from "./parts";
+import { cardQuestion } from "./question";
 
 export { dotOf } from "./model";
 
@@ -27,6 +28,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   let was: boolean | undefined;
   /** The row of the board that is unfolded: this window's own, gone with it. */
   let expanded: string | null = null;
+  const question = cardQuestion(ctx, () => draw());
   const draw = () => {
     const s = ctx.store.get();
     const agent = s.endue.agents.find((a) => a.id === id);
@@ -97,6 +99,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
               )
             : null,
           actions(ctx, "front", pages, again),
+          question.view(agent.status === "active" ? { agentId: id } : undefined),
         ],
         back: [
           h(
@@ -144,6 +147,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   const off = () => {
     unwatch();
     lines.dispose();
+    question.dispose();
   };
   return { el, off };
 }

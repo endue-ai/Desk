@@ -47,6 +47,10 @@ pub struct State {
     pub agents: Vec<FakeAgent>,
     pub catalog: Vec<Value>,
     pub conversations: Vec<Value>,
+    /// Conversation IDs and their bound agent for the fake run endpoints.
+    pub chat_conversations: BTreeMap<String, String>,
+    /// What the next conversation run streams.
+    pub chat_stream: String,
     /// The spaces, in the order the list answers them.
     pub spaces: Vec<FakeSpace>,
     /// The signed-in person's account, preferences and notification channels.
@@ -73,6 +77,13 @@ impl State {
             agents: Vec::new(),
             catalog: vec![catalog_agent()],
             conversations: Vec::new(),
+            chat_conversations: BTreeMap::new(),
+            chat_stream: concat!(
+                "event: delta\ndata: {\"run_id\":\"run_fixture\",\"content\":\"Partial\"}\n\n",
+                "event: done\ndata: {\"run_id\":\"run_fixture\",\"stop_reason\":\"final\",",
+                "\"message\":{\"role\":\"assistant\",\"content\":\"The outline is ready.\"}}\n\n"
+            )
+            .to_owned(),
             spaces: Vec::new(),
             account: FakeAccount::default(),
             fail_next: None,

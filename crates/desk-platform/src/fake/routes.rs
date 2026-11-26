@@ -45,6 +45,9 @@ pub(super) fn answer(state: &mut State, seen: &Seen) -> Answer {
     if let Some(answer) = super::board::answer(state, seen, &parts) {
         return answer;
     }
+    if let Some(answer) = super::chat::answer(state, seen, &parts) {
+        return answer;
+    }
     match (seen.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "agents"]) => list(state, seen),
         ("POST", ["api", "v1", "agents"]) => create(state, &seen.body, None),

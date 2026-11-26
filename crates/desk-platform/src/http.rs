@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use desk_sys::net::{Method, Request, fetch};
+use desk_sys::net::{MAX_BODY_BYTES, Method, Request, Response, fetch_at_most};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -114,52 +114,75 @@ impl Platform {
         body: Option<&Value>,
         timeout: Duration,
     ) -> Result<Vec<u8>> {
-        let token = self.tokens.token().ok_or_else(PlatformError::signed_out)?;
-        let (mut status, mut bytes) = self.once(method, path, body, &token, timeout)?;
-        if status == 401 {
-            let fresh = self.tokens.refresh(&token).filter(|t| *t != token);
-            let Some(fresh) = fresh else {
-                return Err(PlatformError::from_response(status, &bytes));
-            };
-            (status, bytes) = self.once(method, path, body, &fresh, timeout)?;
-        }
-        if (200..300).contains(&status) {
-            Ok(bytes)
-        } else {
-            Err(PlatformError::from_response(status, &bytes))
-        }
+        let request = self.request(method, path, body, timeout, "application/json");
+        self.authenticated(request, MAX_BODY_BYTES)
+            .map(|reply| reply.body)
     }
 
-    fn once(
+    pub(crate) fn event_response(
+        &self,
+        path: &str,
+        body: &Value,
+        timeout: Duration,
+        max: u64,
+    ) -> Result<Response> {
+        let request = self.request(Method::Post, path, Some(body), timeout, "text/event-stream");
+        self.authenticated(request, max)
+    }
+
+    fn request(
         &self,
         method: Method,
         path: &str,
         body: Option<&Value>,
-        token: &str,
         timeout: Duration,
-    ) -> Result<(u16, Vec<u8>)> {
+        accept: &str,
+    ) -> Request {
         let mut headers = BTreeMap::from([
-            ("accept".to_owned(), "application/json".to_owned()),
-            ("authorization".to_owned(), format!("Bearer {token}")),
+            ("accept".to_owned(), accept.to_owned()),
             ("user-agent".to_owned(), USER_AGENT.to_owned()),
         ]);
         if body.is_some() {
             headers.insert("content-type".to_owned(), "application/json".to_owned());
         }
-        let request = Request {
+        Request {
             url: format!("{}{path}", self.base),
             method,
             headers,
             body: body.map(|b| b.to_string().into_bytes()),
             timeout: Some(timeout),
             allowed_hosts: vec![self.host.clone()],
-        };
-        let response = fetch(&request).map_err(|e| {
+        }
+    }
+
+    fn authenticated(&self, mut request: Request, max: u64) -> Result<Response> {
+        let token = self.tokens.token().ok_or_else(PlatformError::signed_out)?;
+        let mut reply = Self::once(&mut request, &token, max)?;
+        if reply.status == 401
+            && let Some(fresh) = self.tokens.refresh(&token).filter(|t| *t != token)
+        {
+            reply = Self::once(&mut request, &fresh, max)?;
+        }
+        if (200..300).contains(&reply.status) {
+            Ok(reply)
+        } else {
+            Err(PlatformError::from_response(reply.status, &reply.body))
+        }
+    }
+
+    fn once(request: &mut Request, token: &str, max: u64) -> Result<Response> {
+        request
+            .headers
+            .insert("authorization".to_owned(), format!("Bearer {token}"));
+        fetch_at_most(request, max).map_err(|e| {
             use desk_sys::ErrorCode as Code;
             match e.code {
                 Code::Timeout => PlatformError::new(
                     ErrorKind::Offline,
-                    format!("endue AI did not answer within {} s", timeout.as_secs()),
+                    format!(
+                        "endue AI did not answer within {} s",
+                        request.timeout.unwrap_or_default().as_secs()
+                    ),
                 ),
                 Code::IoError | Code::NotFound => PlatformError::new(
                     ErrorKind::Offline,
@@ -167,8 +190,7 @@ impl Platform {
                 ),
                 _ => PlatformError::new(ErrorKind::Failed, e.message),
             }
-        })?;
-        Ok((response.status, response.body))
+        })
     }
 }
 
