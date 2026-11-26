@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "the destination intent is only for folder selection",
+  "instance": {
+    "id": 46,
+    "method": "dialog.open",
+    "params": { "kind": "files", "intent": "destination" }
+  }
+}

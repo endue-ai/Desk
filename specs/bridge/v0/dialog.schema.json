@@ -35,6 +35,11 @@
       "type": "string",
       "enum": ["files", "folders"]
     },
+    "DialogOpenIntent": {
+      "description": "A destination folder is chosen for writing. The dialog tells the person and grants read and write in the folder.",
+      "type": "string",
+      "enum": ["destination"]
+    },
     "DialogOpenRequest": {
       "description": "Ask the person for files or folders to open.",
       "type": "object",
@@ -51,6 +56,7 @@
       "type": "object",
       "properties": {
         "kind": { "$ref": "#/$defs/DialogOpenKind" },
+        "intent": { "$ref": "#/$defs/DialogOpenIntent" },
         "multiple": {
           "description": "Whether the person may pick several; false by default.",
           "type": "boolean"
@@ -62,7 +68,13 @@
         },
         "filters": { "$ref": "#/$defs/DialogFilters" }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentSchemas": {
+        "intent": {
+          "properties": { "kind": { "const": "folders" } },
+          "required": ["kind"]
+        }
+      }
     },
     "DialogOpenResult": {
       "description": "Result of dialog.open: the paths the person chose (from ~ under the home folder), now readable by the caller, or cancelled with none.",
@@ -107,6 +119,10 @@
           "minLength": 1,
           "maxLength": 255,
           "pattern": "^[^/\\\\\\u0000]+$"
+        },
+        "temporarySibling": {
+          "description": "Also grant write access to the exact .<name>.partial sibling used to stage this save before renaming it.",
+          "type": "boolean"
         },
         "startIn": {
           "description": "The folder the dialog starts in.",

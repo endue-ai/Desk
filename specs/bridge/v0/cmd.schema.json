@@ -585,6 +585,10 @@
         "approved": {
           "description": "True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request.",
           "type": "boolean"
+        },
+        "fileOpenGranted": {
+          "description": "Set by the core when a person's turn lets Eris pass its readable file to the desk-selected opener. The caller cannot set it.",
+          "type": "boolean"
         }
       },
       "required": ["invocationId", "id", "caller"],

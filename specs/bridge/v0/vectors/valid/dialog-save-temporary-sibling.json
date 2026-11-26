@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "staging a save permits the exact partial sibling of the chosen name",
+  "instance": {
+    "id": 47,
+    "method": "dialog.save",
+    "params": { "suggestedName": "data.csv", "temporarySibling": true }
+  }
+}
