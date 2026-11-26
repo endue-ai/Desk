@@ -142,7 +142,9 @@ test("Explorer previews a 7.1 MiB image and the shell keeps its frames", async (
       )
       .toBe(true);
   // The first large image the engine draws costs it once, whoever reads it: not measured.
-  await item.click();
+  // A plain click opens the Images window. Select the row while keeping focus in Explorer.
+  await item.click({ modifiers: ["Shift"] });
+  await expect(item).toHaveAttribute("aria-selected", "true");
   await item.press(" ");
   await shown();
   await item.press("Escape");
