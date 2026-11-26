@@ -155,7 +155,7 @@ export function createApp(ctx, options = {}) {
     async act(
       /** @type {string} */ label,
       /** @type {() => Promise<unknown>} */ work,
-      { quiet = false } = {},
+      { quiet = false, propagate = false } = {},
     ) {
       try {
         const result = await work();
@@ -163,6 +163,7 @@ export function createApp(ctx, options = {}) {
         return result;
       } catch (error) {
         say(messageOf(error), "danger");
+        if (propagate) throw error;
         return undefined;
       } finally {
         await refresh();

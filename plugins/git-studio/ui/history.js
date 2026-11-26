@@ -23,6 +23,7 @@ export async function fileHistory(
 ) {
   const { stdout } = await git.run(
     [
+      "--literal-pathspecs",
       "log",
       "--follow",
       "-M",
@@ -75,9 +76,12 @@ export async function blame(
   /** @type {string} */ path,
   /** @type {string | null} */ rev = null,
 ) {
-  const { stdout } = await git.run(["blame", "--porcelain", ...(rev ? [rev] : []), "--", path], {
-    cwd: root,
-  });
+  const { stdout } = await git.run(
+    ["blame", "--porcelain", "--no-textconv", ...(rev ? [rev] : []), "--", path],
+    {
+      cwd: root,
+    },
+  );
   return parseBlame(stdout);
 }
 

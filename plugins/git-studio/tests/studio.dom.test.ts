@@ -4,8 +4,8 @@
 // commands are checked end to end.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Invocation } from "@endue-ai/plugin-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Invocation } from "../../../packages/plugin-sdk/src/index";
 import { installFeatures } from "../ui/features.js";
 import { createStudio } from "../ui/studio.js";
 import { gitOutput, realGit, tempRepo } from "./real-git";
@@ -271,6 +271,16 @@ describe("the window on a real repository", () => {
     await expect(agent("reset", { sha, mode: "hard" })).rejects.toThrow(/hard reset/i);
     expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("changed\n");
     await expect(agent("reset-hard", { root, sha })).resolves.toMatchObject({ ok: true });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("one\n");
+    repo.write("a.txt", "throw away\n");
+    repo.write("scratch.txt", "untracked\n");
+    await expect(
+      agent("discard", { root, paths: ["a.txt", "scratch.txt"] }),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("one\n");
+    expect((await repo.git("status", "--porcelain")).stdout).toBe("");
     const stash = (await repo.git("rev-parse", "refs/stash")).stdout.trim();
     await expect(agent("drop-stash", { root, index: 0, sha })).rejects.toThrow(/stash changed/i);
     await expect(agent("drop-stash", { root, index: 0, sha: stash })).resolves.toMatchObject({
@@ -292,5 +302,43 @@ describe("the window on a real repository", () => {
     await repo.git("commit", "-q", "--allow-empty", "-m", "Undo me");
     await expect(agent("undo")).resolves.toMatchObject({ head: sha });
     expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("changed\n");
+    await expect(agent("redo")).resolves.toMatchObject({ head: expect.not.stringMatching(sha) });
+    expect((await repo.git("log", "-1", "--format=%s")).stdout.trim()).toBe("Undo me");
+  });
+
+  it("keeps staged content when a history move would replace its index entry", async () => {
+    const { agent } = await mount();
+    await repo.git("add", "a.txt");
+    repo.write("a.txt", "unsaved after stage\n");
+    await expect(agent("undo")).rejects.toThrow(/staged changes/i);
+    await expect(agent("reset", { sha: "HEAD^", mode: "mixed" })).rejects.toThrow(
+      /staged changes/i,
+    );
+    expect((await repo.git("show", ":a.txt")).stdout).toBe("changed\n");
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("unsaved after stage\n");
+  });
+
+  it("reports a conflicted merge and aborts only the named operation", async () => {
+    await repo.git("restore", "a.txt");
+    await repo.git("switch", "-q", "-c", "conflicting");
+    repo.write("a.txt", "other side\n");
+    await repo.git("commit", "-q", "-am", "Other side");
+    await repo.git("switch", "-q", "main");
+    repo.write("a.txt", "our side\n");
+    await repo.git("commit", "-q", "-am", "Our side");
+    const { studio, agent } = await mount();
+    const root = studio.app.get().repo;
+    await expect(agent("merge", { ref: "conflicting" })).rejects.toThrow(/conflict/i);
+    expect(await agent("state")).toMatchObject({ operation: "merge" });
+    await expect(agent("proceed", { root, operation: "rebase", how: "abort" })).rejects.toThrow(
+      /operation changed/i,
+    );
+    await expect(
+      agent("proceed", { root, operation: "merge", how: "abort" }),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(await agent("state")).toMatchObject({ operation: null });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("our side\n");
   });
 });

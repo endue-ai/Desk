@@ -1,9 +1,10 @@
 // Git Studio's commands (endue.git-studio.*): the palette, Eris, agents and the CLI reach the same
 // operations as the window's buttons. Each answer is plain data; a failure is an Error in words.
-// Operations that throw work away (discard, force push, hard reset) are not commands: they stay
-// with the person, behind the window's own questions.
 
 import { WIP } from "./app.js";
+import { registerNetwork } from "./commands-network.js";
+import { registerReads } from "./commands-read.js";
+import { registerWrites } from "./commands-write.js";
 import { findCommits } from "./history.js";
 import { changeCount } from "./parse-status.js";
 
@@ -32,8 +33,13 @@ export function registerCommands(studio, commands) {
     return s;
   };
 
-  /** @param {string} id @param {(args: any) => unknown} handler */
-  const on = (id, handler) => commands.on(`endue.git-studio.${id}`, (args) => handler(args ?? {}));
+  /** @type {import("./command-input.js").Register} */
+  const on = (id, handler) =>
+    commands.on(`endue.git-studio.${id}`, (args, invocation) => handler(args ?? {}, invocation));
+
+  registerReads(on, app, need);
+  registerNetwork(on, studio, need);
+  registerWrites(on, studio, need);
 
   on("state", () => {
     const s = snap();
@@ -56,7 +62,7 @@ export function registerCommands(studio, commands) {
       staged: s.status.staged.slice(0, STATE_FILES).map(file),
       unstaged: s.status.unstaged.slice(0, STATE_FILES).map(file),
       conflicts: s.status.conflicts.map((c) => ({ path: c.path, label: c.label })),
-      stashes: s.stashes.map((x) => ({ index: x.index, message: x.message })),
+      stashes: s.stashes.map((x) => ({ index: x.index, sha: x.sha, message: x.message })),
       branchCount: heads.length,
       // The current branch first: it is the one a question is most often about.
       branches: [...heads.filter((r) => r.current), ...heads.filter((r) => !r.current)]
@@ -86,16 +92,6 @@ export function registerCommands(studio, commands) {
   on("fetch", async () => {
     need();
     await actions.fetch();
-    return { ok: true };
-  });
-  on("pull", async () => {
-    need();
-    await actions.pull();
-    return { ok: true };
-  });
-  on("push", async () => {
-    need();
-    await actions.push();
     return { ok: true };
   });
 
