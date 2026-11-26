@@ -33,6 +33,7 @@ export function blankSession(
     relaunch: false,
     cwd: null,
     named: false,
+    working: false,
   };
   return session;
 }
@@ -45,9 +46,10 @@ export function snapshotOf(
   /** @type {Array<{ id: string, layout: import("./layout.js").Layout, focused: string }>} */ tabs = [],
 ) {
   const saved = [...sessions].map(
-    ({ id, title, program, procId, buffer, exit, ended, cwd, named, chunks }) => ({
+    ({ id, title, program, procId, buffer, exit, ended, cwd, named, chunks, working }) => ({
       ...{ id, title, program, procId, buffer, exit, ended, cwd, named },
       tail: chunks,
+      ...(working ? { working: true } : {}),
     }),
   );
   const kept = tabs.map(({ id, layout, focused }) => ({ id, layout, focused }));
@@ -62,6 +64,7 @@ export function restoredSession(/** @type {Saved} */ kept, /** @type {Program[]}
     ended: null,
     cwd: null,
     named: false,
+    working: false,
     ...rest,
     programs,
     ...FALLBACK_SIZE,

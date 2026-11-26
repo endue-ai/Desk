@@ -195,9 +195,9 @@ export function createTalk(app) {
    * shows it. `ask` is read-only whatever the access setting; `work` runs with agent access, so
    * the program may act (an agent's call of it waits for the person's approval, ADR 0078).
    * @param {boolean} readOnly
-   * @returns {(text: unknown, agentId?: unknown, model?: unknown, folder?: unknown) => Promise<Answer>}
+   * @returns {(text: unknown, agentId?: unknown, model?: unknown, folder?: unknown, owner?: string) => Promise<Answer>}
    */
-  const once = (readOnly) => async (text, agentId, model, folder) => {
+  const once = (readOnly) => async (text, agentId, model, folder, owner) => {
     const prompt = promptOf(text);
     const agent = await app.usable(agentId === undefined ? chatAgentOf(undefined) : agentId);
     if (model !== undefined && !isValue(model)) throw new Error("model is a name with no spaces.");
@@ -205,6 +205,7 @@ export function createTalk(app) {
     const { run, done } = runs.start(
       app.question(agent, prompt, folder === undefined ? extra : { ...extra, folder }),
       "command",
+      readOnly ? undefined : owner,
     );
     ui.run = run.id;
     const result = await done;

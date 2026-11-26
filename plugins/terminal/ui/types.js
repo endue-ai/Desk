@@ -7,9 +7,9 @@
  * @typedef {{
  *   id: string, title: string, programs: Program[], program: Program | null, procId: string | null,
  *   buffer: string | null, cols: number, rows: number, exit: string | null, ended: string | null,
- *   chunks: Chunk[], kept: number, relaunch: boolean, cwd: string | null, named: boolean,
+ *   chunks: Chunk[], kept: number, relaunch: boolean, cwd: string | null, named: boolean, working: boolean,
  * }} Session
- * @typedef {Pick<Session, "id" | "title" | "program" | "procId" | "buffer" | "exit" | "ended" | "cwd" | "named"> & { tail: Chunk[] }} Saved
+ * @typedef {Pick<Session, "id" | "title" | "program" | "procId" | "buffer" | "exit" | "ended" | "cwd" | "named"> & { tail: Chunk[], working?: boolean }} Saved
  * @typedef {{ id: string, layout: import("./layout.js").Layout, focused: string }} SavedTab
  * @typedef {{ next: number, shown: string | null, sessions: Saved[], tabs?: SavedTab[] }} Snapshot
  *   `tabs` is absent in a snapshot from before split panes (issue 315): each session is a tab then.

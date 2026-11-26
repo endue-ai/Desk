@@ -109,6 +109,19 @@ describe("closing the window that shows a buffer with unsaved changes", () => {
     d.add("a.md", NOTES, true);
     await expect(d.list.mayGo("close", { plugins: [NOTES] })).resolves.toBe(false);
   });
+
+  it("reviews a running Terminal session even with the unsaved file setting off", async () => {
+    const d = await desk(["cancel", "discard"]);
+    d.hub.settings.set("desk.buffers.confirm-unsaved", false);
+    d.add("shell", "endue.terminal", true);
+    await expect(d.hub.commands.run("desk.buffers.close", { id: "shell" })).resolves.toBe(false);
+    expect(d.list.get("shell")).toBeDefined();
+    expect(d.asked[0]?.title).toMatch(/terminal session.*running/i);
+    expect(labels(d.asked[0])).toEqual(["End the program and close", "Keep it open"]);
+    await expect(d.hub.commands.run("desk.buffers.close", { id: "shell" })).resolves.toBe(true);
+    expect(d.list.get("shell")).toBeUndefined();
+    expect(d.saved).toEqual([]);
+  });
 });
 
 describe("quitting the desk with unsaved changes", () => {

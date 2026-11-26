@@ -80,13 +80,18 @@ describe("plugin.json", () => {
     expect(contributes?.keys).toEqual([{ key: "Mod+Shift+A", command: "endue.local-agents.open" }]);
   });
 
-  it("offers agents list, ask, work and add-card", () => {
+  it("offers agent reads, owned run controls and card preparation", () => {
     const offered = (manifest().contributes?.commands ?? []).filter((c) => c.agent);
     expect(offered.map((c) => [c.id, c.readOnly ?? false, c.irreversible ?? false])).toEqual([
+      ["endue.local-agents.detect", true, false],
       ["endue.local-agents.list", true, false],
       ["endue.local-agents.ask", true, false],
       ["endue.local-agents.work", false, true],
+      ["endue.local-agents.board", true, false],
       ["endue.local-agents.add-card", false, false],
+      ["endue.local-agents.activity", true, false],
+      ["endue.local-agents.stop", false, false],
+      ["endue.local-agents.transcript", true, false],
     ]);
     for (const command of offered) expect(command.description?.length).toBeGreaterThan(40);
     const props = (id: string) =>

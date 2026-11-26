@@ -126,14 +126,25 @@ export function installBuffers(
     { buffers: going, leaving, asking }: Going,
     force = false,
   ): Promise<boolean> => {
-    if (!force && !settings.get("desk.buffers.confirm-unsaved", true)) return true;
+    const askFiles = force || settings.get("desk.buffers.confirm-unsaved", true);
     for (const { id } of going) {
       const buffer = buffers.get(id);
       if (!buffer?.modified) continue;
-      if (!commands.has("desk.palette.pick")) return leaving === "quit";
+      const terminal = buffer.plugin === "endue.terminal" && !buffer.surface;
+      if (!terminal && !askFiles) continue;
+      if (!commands.has("desk.palette.pick")) {
+        if (leaving === "quit" && !terminal) continue;
+        return false;
+      }
       asking();
       if (inUse()?.id !== id) await show(id).catch(() => {});
-      const choice = await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
+      const choice = terminal
+        ? await pick(`Terminal session ${buffer.name} has a running program`, [
+            { id: "discard", label: `End the program and ${leaving}` },
+            { id: "cancel", label: "Keep it open" },
+          ])
+        : await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
+      if (terminal && choice !== "discard") return false;
       if (choice === undefined || choice === "cancel") return false;
       if (choice === "save") await commands.run("desk.files.save", { buffer: id });
     }

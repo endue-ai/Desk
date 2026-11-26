@@ -8,12 +8,17 @@ import { decode } from "./output.js";
  * @typedef {import("@endue-ai/plugin-sdk").PluginCommands} PluginCommands
  * @typedef {ReturnType<typeof import("./sessions.js").createTerminals>} Terminals
  * @typedef {import("./output.js").Chunk} Chunk
+ * @typedef {{ isWrapped: boolean, translateToString(trimRight?: boolean): string }} ScrollbackLine
+ * @typedef {{ length: number, getLine(index: number): ScrollbackLine | undefined }} Scrollback
  */
 
 /** How much text endue.terminal.output answers unless asked for less. */
 export const OUTPUT_CHARS = 4000;
 /** The most one send types. */
 const SEND_MAX = 4096;
+const MATCH_LIMIT = 100;
+const QUERY_LIMIT = 200;
+const LINE_LIMIT = 512;
 
 /** CSI and OSC sequences, and the other two-character escapes. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: terminal output is made of them
@@ -35,11 +40,28 @@ export function plainText(/** @type {Chunk[]} */ chunks) {
     .join("\n");
 }
 
+/** Join cells that wrap onto another row while keeping the first row number. @param {Scrollback} buffer */
+export function* scrollbackLines(buffer) {
+  let first = 0;
+  let text = "";
+  for (let at = 0; at < buffer.length; at++) {
+    const line = buffer.getLine(at);
+    const next = buffer.getLine(at + 1);
+    text += line?.translateToString(!next?.isWrapped) ?? "";
+    if (next?.isWrapped) continue;
+    yield { line: first + 1, text };
+    first = at + 1;
+    text = "";
+  }
+}
+
 /**
  * @param {PluginCommands} commands
  * @param {Terminals} app
+ * @param {() => unknown} showFind
+ * @param {(id: string) => Scrollback | undefined} scrollback
  */
-export function wireAgent(commands, app) {
+export function wireAgent(commands, app, showFind, scrollback) {
   /** The session named, else the one on screen. */
   const sessionOf = (/** @type {unknown} */ args) => {
     const { session } = /** @type {{ session?: unknown }} */ (args ?? {});
@@ -53,14 +75,46 @@ export function wireAgent(commands, app) {
     app.sessions().map((s) => ({
       session: s.id,
       title: s.title,
-      ...(s.program
-        ? { command: s.program.command, args: s.program.args, cwd: s.program.cwd }
-        : {}),
+      ...(s.program ? { command: s.program.command, args: s.program.args } : {}),
+      cwd: s.cwd ?? s.program?.cwd ?? null,
       running: s.procId !== null,
       ...(s.exit ? { exit: s.exit } : {}),
       shown: s.id === app.shown(),
     })),
   );
+
+  commands.on("endue.terminal.find", (args, invocation) => {
+    const { text } = /** @type {{ text?: unknown }} */ (args ?? {});
+    if (text === undefined && !invocation?.caller.startsWith("agent:")) return showFind();
+    if (
+      typeof text !== "string" ||
+      !text.trim() ||
+      text.length > QUERY_LIMIT ||
+      /[\r\n]/u.test(text)
+    )
+      throw new Error(`Give search text on one line, at most ${QUERY_LIMIT} characters.`);
+    const session = sessionOf(args);
+    const buffer = scrollback(session.id);
+    const lines = buffer
+      ? scrollbackLines(buffer)
+      : plainText(session.chunks)
+          .split("\n")
+          .map((line, at) => ({ line: at + 1, text: line }));
+    const needle = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "iu");
+    const matches = [];
+    for (const row of lines) {
+      const match = needle.exec(row.text);
+      if (!match) continue;
+      if (matches.length === MATCH_LIMIT) return { session: session.id, matches, truncated: true };
+      const left = Math.max(0, match.index - Math.floor((LINE_LIMIT - text.length) / 2));
+      matches.push({
+        line: row.line,
+        column: match.index + 1,
+        text: row.text.slice(left, left + LINE_LIMIT),
+      });
+    }
+    return { session: session.id, matches, truncated: false };
+  });
 
   commands.on("endue.terminal.output", (args) => {
     const session = sessionOf(args);
