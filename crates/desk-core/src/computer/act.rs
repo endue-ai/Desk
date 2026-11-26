@@ -16,10 +16,10 @@ use desk_computer::{Action, Computer, Done, Point};
 
 use super::{app_at, app_of, frontmost, label, map, run};
 use crate::agent_runs::RUNS;
-use crate::agents::{agent_caller, agent_of};
+use crate::agents::agent_of;
 use crate::approvals::{Action as Approval, in_task};
-use crate::handler::{Answer, Core, denied, error, json};
-use crate::perm::{Denied, Target};
+use crate::handler::{Answer, Core, error, json, sys_error};
+use crate::perm::Target;
 
 /// How to find the app an act reaches.
 pub(crate) enum Reach {
@@ -29,6 +29,8 @@ pub(crate) enum Reach {
     Drag(Point, Point),
     /// The frontmost app (the keyboard, and a scroll where the pointer is).
     Frontmost,
+    /// The frontmost window at the live pointer (a scroll without coordinates).
+    Pointer,
     /// A running app by pid.
     Pid(i32),
     /// An app by bundle id, running or not.
@@ -53,6 +55,7 @@ pub(super) struct Acting {
     pub(super) agent: String,
     pub(super) run: Option<String>,
     pub(super) delegated: bool,
+    turn: Option<String>,
 }
 
 impl Core {
@@ -71,10 +74,13 @@ impl Core {
             }
         };
         check(bundle.as_deref())?;
-        if let Some(end) = &end {
-            check(end.as_ref().and_then(|app| app.bundle_id.as_deref()))?;
+        let end_bundle = end
+            .as_ref()
+            .map(|app| app.as_ref().and_then(|app| app.bundle_id.as_deref()));
+        if let Some(end_bundle) = end_bundle {
+            check(end_bundle)?;
         }
-        let acting = self.acting(caller, act.invocation.as_deref(), &act, bundle.as_deref())?;
+        let acting = self.acting(caller, &act, bundle.as_deref(), end_bundle)?;
         // The desk's own windows hold the person's cards and settings: no agent operates them.
         let desk = std::process::id() as i32;
         let ends_in_desk = matches!(&end, Some(Some(app)) if app.pid == desk);
@@ -93,19 +99,62 @@ impl Core {
             .map(Action::describe)
             .collect::<Vec<_>>()
             .join(", then ");
+        let start_label = label(app.as_ref());
+        let spans_apps = end_bundle.is_some_and(|end| end.is_none() || end != bundle.as_deref());
+        let label = if spans_apps {
+            let end_label = label(end.as_ref().and_then(Option::as_ref));
+            format!("{start_label} to {end_label}")
+        } else {
+            start_label
+        };
         let summary = match &app {
-            Some(app) => format!("{what} in {}", app.name),
+            Some(app) if !spans_apps => format!("{what} in {}", app.name),
+            Some(_) => format!("{what} from {label}"),
             None => what.clone(),
         };
-        let label = label(app.as_ref());
         if let Some(acting) = &acting {
-            let approval = Approval::Computer {
-                method: act.method,
-                app: bundle.as_deref(),
-                label: &label,
-                summary: &summary,
+            let fresh = || self.approvals().apps.generation();
+            let epoch = fresh();
+            if self.computer_stopped() {
+                let stopped = error(ErrorCode::Cancelled, "computer use is stopped".to_owned());
+                self.act_ended(acting, &summary, &label, Err(&stopped));
+                return Err(stopped);
+            }
+            let harmless = matches!(
+                act.method,
+                ApprovalAction::ComputerInputMove | ApprovalAction::ComputerInputScroll
+            );
+            if !harmless {
+                let approval = Approval::Computer {
+                    method: act.method,
+                    app: bundle.as_deref().filter(|_| !spans_apps),
+                    name: app.as_ref().map(|app| app.name.as_str()),
+                    label: &label,
+                    summary: &summary,
+                };
+                self.approve_act(acting, &scope, approval)?;
+            }
+            let check = || {
+                if let Some(invocation) = &act.invocation {
+                    self.cmd_agent(caller, invocation, None)?;
+                }
+                let (now, to) = reach(computer.as_ref(), &act.reach)?;
+                if epoch != fresh()
+                    || identity(now.as_ref()) != identity(app.as_ref())
+                    || to.as_ref().map(|app| identity(app.as_ref()))
+                        != end.as_ref().map(|app| identity(app.as_ref()))
+                {
+                    return Err(error(
+                        ErrorCode::Cancelled,
+                        "the app or computer approval changed before input".to_owned(),
+                    ));
+                }
+                Ok(())
             };
-            self.approve_act(acting, &scope, approval)?;
+            if let Err(failed) = check() {
+                self.act_ended(acting, &summary, &label, Err(&failed));
+                return Err(failed);
+            }
         }
         let agent = acting.as_ref().and_then(|a| agent_of(&a.agent));
         let run_id = acting.as_ref().and_then(|a| a.run.clone());
@@ -152,9 +201,9 @@ impl Core {
     fn acting(
         &self,
         caller: &str,
-        invocation: Option<&str>,
         act: &Act,
         app: Option<&str>,
+        end: Option<Option<&str>>,
     ) -> Result<Option<Acting>, BridgeError> {
         if agent_of(caller).is_some() {
             let run = self.run_started(caller, super::runs::method_name(act.method), None);
@@ -162,64 +211,28 @@ impl Core {
                 agent: caller.to_owned(),
                 run,
                 delegated: false,
+                turn: None,
             }));
         }
-        let Some((agent, run)) = invocation
-            .map(|i| self.invoked_run(caller, i))
-            .transpose()?
-        else {
+        let Some(id) = act.invocation.as_deref() else {
             return Ok(None);
         };
-        let Some((agent, run)) = agent.zip(run) else {
+        let Some(agent) = self.cmd_agent(caller, id, None)? else {
             return Ok(None);
         };
-        let narrowed = Permission::ComputerControl(ComputerControlPermission {
-            permission: Default::default(),
-            apps: app.map(|app| vec![app.to_owned()]),
-        });
-        if let Some(reason) = self.capped(&agent, &narrowed) {
-            let target = Target::App(app);
-            self.refused(&agent, &narrowed, Some(&target), Some(reason));
-            let why = format!(
-                "{agent}'s allowlist does not let it operate {}",
-                app.unwrap_or("the screen")
-            );
-            return Err(denied(Denied {
-                permission: narrowed,
-                reason: why,
-            }));
+        for app in std::iter::once(app).chain(end) {
+            let narrowed = Permission::ComputerControl(ComputerControlPermission {
+                permission: Default::default(),
+                apps: app.map(|app| vec![app.to_owned()]),
+            });
+            self.check_approval_scope(&agent.caller, &narrowed, &Target::App(app))?;
         }
         Ok(Some(Acting {
-            agent,
-            run: Some(run),
+            agent: agent.caller,
+            run: Some(agent.run),
             delegated: true,
+            turn: agent.turn,
         }))
-    }
-
-    /// The agent and the run of `invocation`, an agent's call of a command `caller` provides that is
-    /// still going; `(None, None)` for an invocation no agent made. Another provider's invocation
-    /// is `invalid_params`.
-    fn invoked_run(
-        &self,
-        caller: &str,
-        invocation: &str,
-    ) -> Result<(Option<String>, Option<String>), BridgeError> {
-        let found = self.runs().by_key.values().find_map(|run| {
-            let going = matches!(run.item.state, RunState::Running | RunState::Waiting);
-            (run.item.source.connector == RUNS
-                && going
-                && run.invocation.as_deref() == Some(invocation))
-            .then(|| run.item.clone())
-        });
-        let Some(item) = found else {
-            return Ok((None, None));
-        };
-        let provider = item.command.as_deref().and_then(|id| self.command(id));
-        if provider.is_none_or(|info| info.provider != caller) {
-            let theirs = format!("invocation {invocation} is not one of {caller}'s commands");
-            return Err(error(ErrorCode::InvalidParams, theirs));
-        }
-        Ok((agent_caller(&item.agent), Some(item.id)))
     }
 
     /// Hold the act for the person as its agent's, within the agent's turn; its run waits on the
@@ -235,12 +248,8 @@ impl Core {
                 self.hold(&acting.agent, scope, approval)
             })
         };
-        let turn = acting
-            .delegated
-            .then(|| self.turn_of(&acting.agent))
-            .flatten();
-        let held = match turn {
-            Some(turn) => in_task(&turn, hold).0,
+        let held = match &acting.turn {
+            Some(turn) => in_task(turn, hold).0,
             None => hold(),
         };
         if let Some(run) = &acting.run {
@@ -259,6 +268,10 @@ impl Core {
     }
 }
 
+fn identity(app: Option<&App>) -> Option<(i32, Option<&str>)> {
+    app.map(|app| (app.pid, app.bundle_id.as_deref()))
+}
+
 /// The app an act reaches (`None`: the screen) and, for a drag, the one it ends on.
 type Reached = (Option<App>, Option<Option<App>>);
 
@@ -267,6 +280,10 @@ fn reach(computer: &dyn Computer, reach: &Reach) -> Result<Reached, BridgeError>
         Reach::Point(point) => (app_at(computer, *point)?, None),
         Reach::Drag(from, to) => (app_at(computer, *from)?, Some(app_at(computer, *to)?)),
         Reach::Frontmost => (frontmost(computer)?, None),
+        Reach::Pointer => (
+            app_at(computer, computer.pointer_position().map_err(sys_error)?)?,
+            None,
+        ),
         Reach::Pid(pid) => (app_of(computer, *pid)?, None),
         Reach::Bundle(id) => {
             let apps = computer.apps().map_err(crate::handler::sys_error)?;

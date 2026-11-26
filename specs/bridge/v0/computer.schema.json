@@ -155,9 +155,19 @@
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
         "method": { "const": "computer.permissions.status" },
-        "params": { "$ref": "#/$defs/ComputerSeeParams" }
+        "params": { "$ref": "#/$defs/ComputerStatusParams" }
       },
       "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerStatusParams": {
+      "description": "The computer status call, optionally for the agent that invoked the built-in Computer status command.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" },
+        "invocationId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["scope"],
       "additionalProperties": false
     },
     "ComputerPermissionsStatusResult": {
@@ -167,7 +177,13 @@
         "accessibility": { "type": "boolean" },
         "screenRecording": { "type": "boolean" },
         "bundleId": { "type": "string" },
-        "stopped": { "type": "boolean" }
+        "stopped": { "type": "boolean" },
+        "allowedApps": {
+          "description": "Bundle IDs the agent can act in until computer use stops or the conversation changes.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
       },
       "required": ["accessibility", "screenRecording", "stopped"],
       "additionalProperties": false

@@ -74,8 +74,11 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
   }
 
   /** Do `action` in the page, let it settle, and answer the page as it reads now. */
-  async function act(action) {
-    const done = await allowed("web.act", { viewId: viewId(), action, scope: SCOPE });
+  async function act(action, invocation) {
+    const call = invocation?.caller.startsWith("agent:")
+      ? { invocationId: invocation.invocationId }
+      : {};
+    const done = await allowed("web.act", { viewId: viewId(), action, ...call, scope: SCOPE });
     await settled();
     const page = await read();
     return done?.moved === undefined ? page : { ...page, moved: done.moved };
@@ -110,7 +113,7 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
       await browser.go(args?.url);
       return arrived();
     },
-    read,
+    read: (args) => read(args),
     back: () => step(browser.back),
     forward: () => step(browser.forward),
     reload: () => step(browser.reload),
@@ -120,14 +123,19 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
           ? { do: "show", ref: args.ref }
           : { do: "scroll", to: args?.to ?? "down", ...named(args, ["pages"]) },
       ),
-    click: (args) => act({ do: "press", ref: args?.ref }),
-    type: (args) =>
-      act({
-        do: "type",
-        text: String(args?.text ?? ""),
-        ...named(args, ["ref", "replace", "submit"]),
-      }),
-    key: (args) => act({ do: "key", key: args?.key, ...named(args, ["ref"]) }),
-    select: (args) => act({ do: "choose", ref: args?.ref, option: args?.option }),
+    click: (args, invocation) => act({ do: "press", ref: args?.ref }, invocation),
+    type: (args, invocation) =>
+      act(
+        {
+          do: "type",
+          text: String(args?.text ?? ""),
+          ...named(args, ["ref", "replace", "submit"]),
+        },
+        invocation,
+      ),
+    key: (args, invocation) =>
+      act({ do: "key", key: args?.key, ...named(args, ["ref"]) }, invocation),
+    select: (args, invocation) =>
+      act({ do: "choose", ref: args?.ref, option: args?.option }, invocation),
   };
 }

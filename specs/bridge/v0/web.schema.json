@@ -301,6 +301,11 @@
       "properties": {
         "viewId": { "$ref": "#/$defs/WebViewId" },
         "action": { "$ref": "#/$defs/WebAction" },
+        "invocationId": {
+          "description": "For a built-in Browser action on an agent command, the pending invocation that authorizes the action.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebControlPermission" }
       },
       "required": ["viewId", "action", "scope"],

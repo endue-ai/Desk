@@ -9,21 +9,23 @@
 //! never held. The turn a call belongs to, and what became of its approval, ride with the thread
 //! that makes the call (`in_task`, `Core::handle`).
 
+#[path = "approval_events.rs"]
+mod events;
+
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::MutexGuard;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::Sender;
 
 use desk_bridge::{
-    ApprovalAnswer, BridgeError, BridgeEvent, ErrorCode, PendingKind, PermApprovalData,
-    PermApprovalDoneData, PermApprovalDoneEvent, PermApprovalEvent, PermApproveParams,
+    ApprovalAnswer, BridgeError, ErrorCode, PendingKind, PermApprovalData, PermApproveParams,
     PermApproveResult, Permission,
 };
-use serde_json::Value;
 
 use crate::agents::agent_of;
 pub(crate) use crate::approval_action::Action;
 use crate::approval_versions::{AgentChange, UndoChanges};
+use crate::computer::AppApprovals;
 use crate::core_perm::perm_manage;
 use crate::handler::{Answer, Core, denied, error, json as answer};
 use crate::perm::{Denied, Target, scope_allows};
@@ -33,12 +35,19 @@ use crate::perm::{Denied, Target, scope_allows};
 enum Verdict {
     Once,
     Task,
+    App,
     Deny,
+    Stopped,
     Unheard,
 }
 
+struct Choices<'a> {
+    task: Option<&'a str>,
+    app: Option<&'a str>,
+    computer_epoch: Option<u64>,
+}
+
 struct Waiting {
-    task: Option<String>,
     reply: Sender<Verdict>,
     /// What its perm.approval said, for perm.pending, and its place in the order they came.
     seq: u64,
@@ -51,6 +60,7 @@ struct ForTask {
     task: String,
     scope: Permission,
     approval_id: String,
+    page: Option<(String, String)>,
 }
 
 /// The approvals waiting for an answer, by id, and what the person approved for a task.
@@ -59,9 +69,8 @@ pub(crate) struct Approvals {
     next: u64,
     waiting: BTreeMap<String, Waiting>,
     tasks: Vec<ForTask>,
-    /// Each agent's turn its latest call came in, while it lasts (ADR 0123).
-    turns: BTreeMap<String, String>,
     pub(crate) undo: UndoChanges,
+    pub(crate) apps: AppApprovals,
 }
 
 /// The thread's call: the task it belongs to, the approval it ran under, and whether one was denied.
@@ -90,6 +99,10 @@ pub(crate) fn in_task<T>(task: &str, call: impl FnOnce() -> T) -> (T, bool) {
     (out, after.denied)
 }
 
+pub(crate) fn current_task() -> Option<String> {
+    CALL.with(|c| c.borrow().task.clone())
+}
+
 impl Core {
     /// Hold `caller`'s call until the person approves it, when the caller is an agent and the call
     /// is irreversible; any other call passes at once. A denial is `permission_denied` for `scope`.
@@ -110,16 +123,31 @@ impl Core {
         action: Action<'_>,
         held: bool,
     ) -> Result<(), BridgeError> {
-        let task = CALL.with(|c| c.borrow().task.clone());
-        if let (Some(task), Some(_)) = (&task, agent_of(caller)) {
-            let mut approvals = self.approvals();
-            approvals.turns.insert(caller.to_owned(), task.clone());
-        }
+        let task = current_task();
         if !held {
+            return Ok(());
+        }
+        let epoch =
+            matches!(action, Action::Computer { .. }).then(|| self.approvals().apps.generation());
+        let app = action.allowance_app().and_then(|(app, name)| {
+            let approvals = self.approvals();
+            let generation = approvals.apps.offer(task.as_deref())?;
+            Some((app, name, generation, approvals.apps.approved(caller, app)))
+        });
+        if let Some((_, _, _, Some(id))) = &app {
+            self.log_approval(
+                caller,
+                scope,
+                &action,
+                id,
+                task.as_deref(),
+                Some(ApprovalAnswer::App),
+            );
             return Ok(());
         }
         if let Some(earlier) = task
             .as_deref()
+            .filter(|_| action.narrows())
             .and_then(|t| self.approved_for(caller, t, scope, &action))
         {
             let given = Some(ApprovalAnswer::Task);
@@ -134,7 +162,16 @@ impl Core {
         // A task answer is offered only for an act it can be narrowed to, and perm.approve takes
         // none for an approval that offers none (ADR 0367).
         let offered = task.as_deref().filter(|_| action.narrows());
-        let (id, verdict) = self.ask_approval(caller, scope, &action, offered);
+        let (id, verdict) = self.ask_approval(
+            caller,
+            scope,
+            &action,
+            Choices {
+                task: offered,
+                app: app.as_ref().map(|(_, name, _, _)| *name),
+                computer_epoch: epoch,
+            },
+        );
         let given = match verdict {
             Verdict::Once => Some(ApprovalAnswer::Once),
             Verdict::Task => {
@@ -143,12 +180,30 @@ impl Core {
                     task: task.clone().unwrap_or_default(),
                     scope: action.task_scope(scope),
                     approval_id: id.clone(),
+                    page: action.page().map(|(v, s)| (v.to_owned(), s.to_owned())),
                 };
-                self.approvals().tasks.push(approved);
-                Some(ApprovalAnswer::Task)
+                let mut approvals = self.approvals();
+                if epoch.is_some_and(|epoch| epoch != approvals.apps.generation()) {
+                    None
+                } else {
+                    approvals.tasks.push(approved);
+                    Some(ApprovalAnswer::Task)
+                }
             }
+            Verdict::App => app.and_then(|(app, _, generation, _)| {
+                self.approvals()
+                    .apps
+                    .grant(generation, caller, app, &id)
+                    .then_some(ApprovalAnswer::App)
+            }),
             Verdict::Unheard if self.prompter.ask(caller, scope, &prompter_reason(&action)) => {
                 Some(ApprovalAnswer::Once)
+            }
+            Verdict::Stopped => {
+                return Err(error(
+                    ErrorCode::Cancelled,
+                    "computer use is stopped".to_owned(),
+                ));
             }
             Verdict::Unheard | Verdict::Deny => None,
         };
@@ -181,10 +236,12 @@ impl Core {
                 let missing = format!("no approval {id} is waiting");
                 return Err(error(ErrorCode::NotFound, missing));
             };
-            if params.answer == ApprovalAnswer::Task && waiting.task.is_none() {
+            if (params.answer == ApprovalAnswer::Task && waiting.data.task.is_none())
+                || (params.answer == ApprovalAnswer::App && waiting.data.until_stop_app.is_none())
+            {
                 // The approval keeps waiting for an answer it can take.
                 approvals.waiting.insert(id.clone(), waiting);
-                let none = format!("approval {id} belongs to no task");
+                let none = format!("approval {id} does not offer this answer");
                 return Err(error(ErrorCode::InvalidParams, none));
             }
             waiting
@@ -193,6 +250,7 @@ impl Core {
         let _ = waiting.reply.send(match params.answer {
             ApprovalAnswer::Once => Verdict::Once,
             ApprovalAnswer::Task => Verdict::Task,
+            ApprovalAnswer::App => Verdict::App,
             ApprovalAnswer::Deny => Verdict::Deny,
         });
         answer(PermApproveResult {})
@@ -201,70 +259,22 @@ impl Core {
     /// Deny the waiting approval `id`, as a person's `deny` would (agent.cancel of a waiting run).
     /// False when nothing waits under that id.
     pub(crate) fn deny_approval(&self, id: &str) -> bool {
+        self.cancel_approval(id, Verdict::Deny)
+    }
+
+    fn cancel_approval(&self, id: &str, verdict: Verdict) -> bool {
         let waiting = self.approvals().waiting.remove(id);
         if waiting.is_some() {
             self.settled(PendingKind::Approval, id);
         }
-        waiting.is_some_and(|w| w.reply.send(Verdict::Deny).is_ok())
-    }
-
-    /// Report a completed approval or the receipt for an undoable change to perm:manage holders.
-    pub(crate) fn report_approved(&self, result: &Answer) {
-        let (approval, change) = CALL.with(|c| {
-            let mut call = c.borrow_mut();
-            (call.approved.take(), call.change.take())
-        });
-        let change = change.filter(|_| result.is_ok());
-        if approval.is_none() && change.is_none() {
-            return;
-        }
-        let approval_id = approval.unwrap_or_else(|| format!("a-{}", self.next_approval()));
-        let undoable = change.is_some().then_some(true);
-        let (kind, path) = if let Some(change) = change {
-            let (kind, path) = change.notice();
-            self.approvals().undo.insert(approval_id.clone(), change);
-            (Some(kind), path)
-        } else {
-            (None, None)
-        };
-        let data = PermApprovalDoneData {
-            approval_id,
-            ok: result.is_ok(),
-            bytes_written: result
-                .as_ref()
-                .ok()
-                .and_then(|r| r.get("bytesWritten"))
-                .and_then(Value::as_u64),
-            error: result.as_ref().err().cloned(),
-            undoable,
-            change: kind,
-            path,
-        };
-        let holders = self.holders(&perm_manage());
-        let event = BridgeEvent::PermApprovalDone(PermApprovalDoneEvent {
-            event: Default::default(),
-            data,
-        });
-        self.events().route(holders, event);
-    }
-
-    pub(crate) fn reversible_change(&self, caller: &str, change: impl FnOnce() -> AgentChange) {
-        if agent_of(caller).is_some() {
-            CALL.with(|call| call.borrow_mut().change = Some(change()));
-        }
+        waiting.is_some_and(|w| w.reply.send(verdict).is_ok())
     }
 
     /// The desk's turn `task` ended: what was approved for it ends too.
     pub(crate) fn end_task(&self, task: &str) {
         let mut approvals = self.approvals();
         approvals.tasks.retain(|approved| approved.task != task);
-        approvals.turns.retain(|_, turn| turn != task);
-    }
-
-    /// The desk's turn `caller`'s latest call came in, while it lasts: a plugin's computer act on
-    /// that agent's invocation belongs to it too (ADR 0123).
-    pub(crate) fn turn_of(&self, caller: &str) -> Option<String> {
-        self.approvals().turns.get(caller).cloned()
+        approvals.apps.end_turn(task);
     }
 
     /// The approvals waiting for the person, oldest first, as their perm.approval said them.
@@ -312,49 +322,14 @@ impl Core {
             .tasks
             .iter()
             .find(|a| {
+                let page = a.page.as_ref().map(|(v, s)| (v.as_str(), s.as_str()));
                 a.caller == caller
                     && a.task == task
+                    && page == action.page()
                     && std::mem::discriminant(&a.scope) == std::mem::discriminant(scope)
                     && scope_allows(&a.scope, &target)
             })
             .map(|a| a.approval_id.clone())
-    }
-
-    /// Send `perm.approval` to the perm:manage holders and wait for the first answer.
-    fn ask_approval(
-        &self,
-        caller: &str,
-        scope: &Permission,
-        action: &Action<'_>,
-        task: Option<&str>,
-    ) -> (String, Verdict) {
-        let holders = self.holders(&perm_manage());
-        let seq = self.next_approval();
-        let id = format!("a-{seq}");
-        if holders.is_empty() || !self.events().has_router() {
-            return (id, Verdict::Unheard);
-        }
-        // The preview may read a file: made before the approval waits, outside the lock.
-        let data = action.data(caller, scope, &id, task);
-        let (reply, answered) = mpsc::channel();
-        let waiting = Waiting {
-            task: task.map(str::to_owned),
-            reply,
-            seq,
-            data: data.clone(),
-        };
-        self.approvals().waiting.insert(id.clone(), waiting);
-        self.run_waits(&id);
-        let event = BridgeEvent::PermApproval(PermApprovalEvent {
-            event: Default::default(),
-            data,
-        });
-        if self.events().route(holders, event) == 0 {
-            self.approvals().waiting.remove(&id);
-            return (id, Verdict::Unheard);
-        }
-        let verdict = answered.recv().unwrap_or(Verdict::Unheard);
-        (id, verdict)
     }
 
     fn next_approval(&self) -> u64 {

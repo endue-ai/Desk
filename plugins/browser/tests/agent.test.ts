@@ -78,6 +78,16 @@ describe("the assistant in the Browser", () => {
     expect(desk.of("web.read")).toHaveLength(5);
   });
 
+  it("hands the core the agent's invocation only for reviewed page actions", async () => {
+    const { desk, agent } = await started();
+    const invocation = { caller: "agent:eris", invocationId: "i-7" };
+    await agent.click({ ref: "e1" }, invocation);
+    await agent.click({ ref: "e1" }, { ...invocation, caller: "desk" });
+    await agent.scroll({ to: "bottom" });
+    expect(desk.of("web.act").map((p) => p.invocationId)).toEqual(["i-7", undefined, undefined]);
+    expect(desk.of("web.read").every((p) => p.invocationId === undefined)).toBe(true);
+  });
+
   it("waits for the page an act loads before it reads", async () => {
     const { desk, agent } = await started();
     let read = false;

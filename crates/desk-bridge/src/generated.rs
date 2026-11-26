@@ -6194,7 +6194,20 @@ pub struct ComputerSeeParams {
 pub struct ComputerPermissionsStatusRequest {
     pub id: RequestId,
     pub method: ComputerPermissionsStatusRequestMethod,
-    pub params: ComputerSeeParams,
+    pub params: ComputerStatusParams,
+}
+
+/// The computer status call, optionally for the agent that invoked the built-in Computer status command.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ComputerStatusParams {
+    pub scope: ComputerSeePermission,
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
 }
 
 /// Result of computer.permissions.status. bundleId is the app the OS asks about; absent under just dev, where it asks about the launching terminal (ADR 0120). stopped: computer.stop was raised and acts are refused until it is resumed.
@@ -6207,6 +6220,13 @@ pub struct ComputerPermissionsStatusResult {
     #[serde(rename = "bundleId", default, skip_serializing_if = "Option::is_none")]
     pub bundle_id: Option<String>,
     pub stopped: bool,
+    /// Bundle IDs the agent can act in until computer use stops or the conversation changes.
+    #[serde(
+        rename = "allowedApps",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allowed_apps: Option<Vec<String>>,
 }
 
 /// Parameters of computer.permissions.request and computer.permissions.open.
@@ -9445,7 +9465,7 @@ pub struct PermApprovalData {
     pub action: ApprovalAction,
     /// The scope the call carries, which a grant of the agent's covers.
     pub permission: Permission,
-    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*.
+    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*, and the site for web.act.
     pub target: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview: Option<ApprovalPreview>,
@@ -9455,6 +9475,13 @@ pub struct PermApprovalData {
     /// The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task: Option<String>,
+    /// The app whose use the person may allow until computer use stops or the conversation changes. Present only when the approval can take an app answer.
+    #[serde(
+        rename = "untilStopApp",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub until_stop_app: Option<String>,
 }
 
 /// The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096). computer.* is an agent's act on the computer: its target is the app it goes to (ADR 0123).
@@ -9468,6 +9495,8 @@ pub enum ApprovalAction {
     NetFetch,
     #[serde(rename = "cmd.invoke")]
     CmdInvoke,
+    #[serde(rename = "web.act")]
+    WebAct,
     #[serde(rename = "memory.remember")]
     MemoryRemember,
     #[serde(rename = "computer.input.click")]
@@ -9538,13 +9567,15 @@ pub struct PermApproveParams {
     pub scope: PermManagePermission,
 }
 
-/// once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.
+/// once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). app: this call runs and the agent may act in the named app until computer use stops or the conversation changes (invalid_params without untilStopApp). deny: this call is refused with permission_denied; the next one asks again.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ApprovalAnswer {
     #[serde(rename = "once")]
     Once,
     #[serde(rename = "task")]
     Task,
+    #[serde(rename = "app")]
+    App,
     #[serde(rename = "deny")]
     Deny,
 }
@@ -12819,6 +12850,13 @@ pub struct WebActParams {
     #[serde(rename = "viewId")]
     pub view_id: WebViewId,
     pub action: WebAction,
+    /// For a built-in Browser action on an agent command, the pending invocation that authorizes the action.
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
     pub scope: WebControlPermission,
 }
 

@@ -5,10 +5,15 @@
 //! shell does the work in the page (`WebViews::read`, `WebViews::act`) and is told the address
 //! the core allowed the call at: a page that went to another origin meanwhile is left alone.
 
-use desk_bridge::{Permission, WebActParams, WebReadParams};
+use desk_bridge::{
+    ErrorCode, Permission, RunState, WebActParams, WebControlPermission, WebReadParams,
+};
 
+use crate::account_client::origin_of;
+use crate::agent_runs::RUNS;
+use crate::approvals::{Action, in_task};
 use crate::core_web::failed;
-use crate::handler::{Answer, Core, json};
+use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 
 /// How many characters `web.read` answers when the call names no `max`.
@@ -40,7 +45,54 @@ impl Core {
         let (views, at) = self.web_page(caller, &params.view_id)?;
         let scope = Permission::WebControl(params.scope);
         self.check(caller, &scope, &target(&at))?;
+        if let Some(invocation) = &params.invocation_id {
+            self.approve_web_act(caller, invocation, &params.view_id, &at, &params.action)?;
+            if self.web_page(caller, &params.view_id)?.1 != at {
+                return Err(error(
+                    ErrorCode::Cancelled,
+                    "the page changed while awaiting approval".to_owned(),
+                ));
+            }
+        }
         let done = views.act(&params.view_id, &at, &params.action);
         json(done.map_err(failed)?)
+    }
+
+    fn approve_web_act(
+        &self,
+        provider: &str,
+        invocation: &str,
+        view: &str,
+        at: &str,
+        act: &desk_bridge::WebAction,
+    ) -> Result<(), desk_bridge::BridgeError> {
+        let agent = self.claim_browser_act(provider, invocation, act)?;
+        let scope = Permission::WebControl(WebControlPermission {
+            permission: Default::default(),
+            hosts: desk_sys::net::exact_host(at).map(|host| vec![host]),
+        });
+        let site = origin_of(at).unwrap_or_default();
+        let summary = serde_json::to_string(act).unwrap_or_default();
+        let action = Action::Web {
+            view,
+            site: &site,
+            summary: &summary,
+        };
+        let hold = || {
+            self.check_approval_scope(&agent.caller, &scope, &target(at))?;
+            self.held_as(Some(&agent.run), || {
+                self.hold(&agent.caller, &scope, action)
+            })
+        };
+        let result = match &agent.turn {
+            Some(turn) => in_task(turn, hold).0,
+            None => hold(),
+        };
+        self.cmd_agent(provider, invocation, None)?;
+        self.change_run(RUNS, &agent.run, |item| {
+            item.state = RunState::Running;
+            item.approval = None;
+        });
+        result.map_err(|e| error(ErrorCode::Cancelled, e.message))
     }
 }

@@ -6,6 +6,7 @@
     "method": "web.act",
     "params": {
       "viewId": "w-1",
+      "invocationId": "i-3",
       "action": {
         "do": "press",
         "ref": "e3"

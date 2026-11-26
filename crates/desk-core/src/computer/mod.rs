@@ -5,6 +5,7 @@
 //! bridge's shapes.
 
 mod act;
+mod allowances;
 pub(crate) mod map;
 mod read;
 mod runs;
@@ -20,6 +21,7 @@ use desk_computer::screen::WindowScope;
 use desk_computer::{Action, Computer, Control, Done, Guard, Point, StopFlag, Verdict};
 
 pub(crate) use act::{Act, Reach};
+pub(crate) use allowances::AppApprovals;
 
 use crate::handler::{error, sys_error};
 

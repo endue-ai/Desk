@@ -4,7 +4,10 @@
 //! last reported; another caller's view is `not_found`; the shell is told the address the call
 //! was allowed at, and what it cannot do comes back as `not_found` or `invalid_value`.
 
+mod common;
 mod support;
+#[path = "web_control/task_approvals.rs"]
+mod task_approvals;
 
 use std::sync::{Arc, Mutex};
 

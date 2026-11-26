@@ -317,7 +317,7 @@ export function createView(doc, actions, options = {}) {
       pick("#approval-who").textContent = `${model.caller.kind} · ${model.caller.id}`;
       const what = pick("#approval-what");
       what.replaceChildren(`${model.action}: `, el("code", {}, model.target));
-      const { preview, size, task } = model;
+      const { preview, size, task, app } = model;
       const pre = pick("#approval-preview");
       pre.hidden = !preview;
       pre.replaceChildren(...(preview ? previewLines(preview) : []));
@@ -325,6 +325,9 @@ export function createView(doc, actions, options = {}) {
       pick("#approval-size").textContent = size ? `Size: ${size}` : "";
       pick("#approval-task").textContent = task ?? "";
       pick("[data-answer=task]").hidden = !task;
+      const appButton = pick("[data-answer=app]");
+      appButton.hidden = !app;
+      appButton.textContent = app ?? "";
       const more =
         model.waiting === 1 ? "1 more request waiting" : `${model.waiting} more requests waiting`;
       pick("#approval-waiting").textContent = model.waiting > 0 ? more : "";

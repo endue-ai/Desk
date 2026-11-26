@@ -6,6 +6,7 @@ use desk_brain::{ToolCall, ToolDefinition, TurnContext};
 use desk_bridge::{BrainDesk, BrainTurnTool, MemoryStep};
 use serde_json::Value;
 
+use crate::conversation::BrainMode;
 use crate::desk_context;
 
 /// What runs the tools the brain asks for: the core, once it routes them (CORE-14, ADR 0088), and
@@ -17,6 +18,8 @@ pub(crate) trait Tools: Send + Sync {
     }
     /// The tool's output, and whether it failed. `turn` is the desk's turn the call belongs to.
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
+    fn session(&self, _turn: &str, _mode: &BrainMode, _session: &str) {}
+    fn session_closed(&self) {}
     /// The desk's turn `turn` ended.
     fn ended(&self, _turn: &str) {}
     /// The tools a turn offers the brain, those of the plugins on `desk` first; `None` offers none.

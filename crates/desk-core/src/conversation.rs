@@ -1,9 +1,5 @@
-//! Conversations with the brain for brain.say. The core opens the desk's session, holds its lease,
-//! streams each turn back as brain.turn events and runs the tools the brain asks for, through the
-//! core once it routes them (`Tools`, `agent_tools`), else echo alone. Once routed, each turn offers
-//! the desk's tools (ADR 0088). While the brain is unreachable the turn waits with the offline line,
-//! and it resumes on reconnection. A turn that ends in words says completed once Eris's episode
-//! of it is kept (ADR 0096, `held`).
+//! The leased brain.say session, streamed turns and their desk tools (ADR 0088).
+//! Turns wait while the brain is offline and report completion after memory (ADR 0096).
 
 mod held;
 
@@ -76,7 +72,6 @@ impl Conversation {
         Self::counted(brain, events, options, Arc::default(), Arc::default())
     }
 
-    /// A conversation numbering its turns and asks with `turns` and `asks`.
     pub(crate) fn counted(
         brain: Arc<dyn Brain>,
         events: EventBus,
@@ -146,6 +141,9 @@ impl Conversation {
         let mut state = self.lock();
         if state.store.session_id() != Some(session_id) {
             state.store.set_session(Some(session_id.to_owned()));
+            if let Some(tools) = self.tools.get().and_then(Weak::upgrade) {
+                tools.session_closed();
+            }
         }
         state.lease.acquire(session_id, true)?;
         state.opened = true;
@@ -156,7 +154,6 @@ impl Conversation {
         self.lock().store.session_id().map(str::to_owned)
     }
 
-    /// The brain itself, for calls outside the session (the agent directory). They need no lock.
     pub(crate) fn brain(&self) -> &Arc<dyn Brain> {
         &self.brain
     }
@@ -300,6 +297,9 @@ impl Conversation {
         sink.reached();
 
         let routed = self.tools.get().and_then(Weak::upgrade);
+        if let Some(tools) = &routed {
+            tools.session(sink.turn, &self.options.mode, &session);
+        }
         let said = line.desk.map(|desk| match &routed {
             Some(tools) => tools.describe(desk),
             None => desk_context::render(desk, &|_| Vec::new()),

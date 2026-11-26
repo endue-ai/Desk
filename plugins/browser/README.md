@@ -29,7 +29,7 @@ Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission pr
 | `go { url }`, `reload`, `back`, `forward` | Shows an address or searches, loads again, steps through the history; agent tools. `stop` stops a load |
 | `read { from?, chars? }` | The page's address, title, scroll and text; agent tool, read only |
 | `scroll { to?, pages?, ref? }` | A step, an end, or an element into view; agent tool |
-| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Act in the page; agent tools an agent's call waits for approval on (`irreversible`, ADR 0078) |
+| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Act in the page. A task approval covers later actions in the same view and site for the turn (ADR 0375) |
 
 `ui/address.js`: what was typed. `ui/browser.js`: the view (open, place, load, steps, when a page
 rests). `ui/agent.js`: the assistant's commands. `ui/view.js`, `ui/main.js`: the toolbar, the SDK.

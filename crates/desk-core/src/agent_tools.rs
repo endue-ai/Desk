@@ -22,7 +22,7 @@ use serde_json::{Map, Value, json};
 
 use crate::agents::agent_caller;
 use crate::approvals::in_task;
-use crate::conversation::Tools;
+use crate::conversation::{BrainMode, Tools};
 use crate::core_tools::{DESK_RUN, DESK_TOOLS};
 use crate::eris_context::{DESK_REMEMBER, remember_request};
 use crate::handler::{Core, error};
@@ -206,6 +206,14 @@ impl Tools for Core {
 
     fn ended(&self, turn: &str) {
         self.end_task(turn);
+    }
+
+    fn session(&self, turn: &str, mode: &BrainMode, session: &str) {
+        self.approvals().apps.enter(turn, mode, session);
+    }
+
+    fn session_closed(&self) {
+        self.approvals().apps.close();
     }
 
     fn offer(&self, desk: Option<&BrainDesk>) -> Option<Vec<ToolDefinition>> {

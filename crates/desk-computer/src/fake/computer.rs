@@ -86,6 +86,10 @@ fn bring_forward(apps: &mut [App], pid: i32) -> Option<App> {
 }
 
 impl Computer for FakeComputer {
+    fn pointer_position(&self) -> Result<crate::Point, Error> {
+        Ok(self.pointer())
+    }
+
     fn permissions(&self) -> Result<Permissions, Error> {
         let state = self.record(Call::Permissions);
         Ok(Permissions {
