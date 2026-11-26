@@ -14,7 +14,7 @@ function wait(ms, signal) {
 }
 
 export const transportLost = (message) =>
-  /device (?:'[^']+' )?(?:not found|offline|disconnected)|no devices\/emulators found/i.test(
+  /(?:device|transport) (?:'[^']+' |id \d+ )?(?:not found|offline|disconnected|disappeared)|no devices\/emulators found/i.test(
     message,
   );
 
@@ -46,7 +46,12 @@ export function createConnection(android, changed) {
         const row = rows.find((d) =>
           target.serial ? d.serial === target.serial : d.avd === target.avd,
         );
-        if (target.serial && target.avd && row?.avd && row.avd !== target.avd)
+        if (
+          target.serial &&
+          row &&
+          ((target.avd && row.avd && row.avd !== target.avd) ||
+            (target.transportId && row.transportId !== target.transportId))
+        )
           throw new Error(
             "Another emulator is using this serial. Refresh the devices before connecting.",
           );
@@ -65,6 +70,7 @@ export function createConnection(android, changed) {
             phase: "connected",
             serial: row.serial,
             label: session.label,
+            transportId: row.transportId,
             signal,
             message: `Connected to ${session.label} · ${row.serial}`,
           });

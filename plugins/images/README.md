@@ -1,8 +1,8 @@
 # plugins/images
 
 `endue.images` opens still images in per-file windows (ADR 0212) through the public SDK. It reads
-files without writing them. Agents use `details`, `zoom`, `turn`, `step` and `compare` on the current
-pane or on the exact `panes[].view` named by `desk.windows.list` (ADR 0392).
+files without writing them. Agents use `details`, `zoom`, `turn`, `pan`, `show-details`, `slice`,
+`step` and `compare` on the current pane or exact `panes[].view` (ADR 0392, ADR 0394).
 
 - This build's engine (Chromium, ADR 0143) decodes PNG, APNG, JPEG, GIF, WebP, AVIF, JPEG XL, BMP,
   ICO, CUR and SVG (SVGZ is gunzipped first; SVG goes into an `<img>`, so its scripts never run).

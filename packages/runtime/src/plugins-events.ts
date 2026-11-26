@@ -36,7 +36,9 @@ export interface EventRoutes {
 
 const IMAGES = "endue.images";
 const IMAGE_COMMANDS = new Set(
-  ["details", "zoom", "turn", "step", "compare"].map((name) => `${IMAGES}.${name}`),
+  ["details", "zoom", "turn", "step", "compare", "pan", "show-details", "slice"].map(
+    (name) => `${IMAGES}.${name}`,
+  ),
 );
 
 /** Route a core event to the windows it is for. False for plugin.changed, which the host acts on. */

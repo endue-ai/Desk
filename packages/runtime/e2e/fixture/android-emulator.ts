@@ -26,8 +26,8 @@ const core = browserCore({
       let data = "OK\r\n";
       if (binary) data = frame;
       else if (line === "-list-avds") data = "Pixel_Test\nTablet\n";
-      else if (line.endsWith(" devices"))
-        data = "List of devices attached\nusb-id\tdevice\nemulator-5554\tdevice\n";
+      else if (line.endsWith(" devices -l"))
+        data = "List of devices attached\nusb-id\tdevice\nemulator-5554\tdevice transport_id:12\n";
       else if (line.endsWith("emu avd name")) data = "Pixel_Test\r\nOK\r\n";
       else if (line.endsWith("sys.boot_completed")) data = "1\n";
       else if (line.endsWith("pm list packages -3")) data = "package:demo.notes\n";

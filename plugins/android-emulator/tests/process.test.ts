@@ -79,3 +79,22 @@ it("finds an SDK outside the app's PATH and reuses its location", async () => {
   ]);
   h.procs.dispose();
 });
+
+it("a reviewed operation or background preview does not request a missing SDK grant", async () => {
+  const call = vi.fn(async (method: string) => {
+    if (method === "proc.spawn")
+      throw Object.assign(new Error("SDK denied"), { code: "permission_denied" });
+    return { granted: false };
+  });
+  const h = harness(call);
+  const signal = h.procs.withoutPrompt(new AbortController().signal);
+  await expect(h.procs.run("adb", ["devices"], { signal })).rejects.toThrow("SDK denied");
+  expect(call.mock.calls.map(([method]) => method)).toEqual(["proc.spawn"]);
+  await expect(h.procs.run("adb", ["devices"], {})).rejects.toThrow("Allow adb");
+  expect(call.mock.calls.map(([method]) => method)).toEqual([
+    "proc.spawn",
+    "proc.spawn",
+    "perm.request",
+  ]);
+  h.procs.dispose();
+});

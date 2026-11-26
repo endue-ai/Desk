@@ -67,26 +67,29 @@ export async function wireTools(doc, bridge, android, { operate, report, disconn
     if (!packages.length) select.add(new Option("No user apps installed", ""));
     if (packages.includes(previous)) select.value = previous;
     if (select.value !== previous) el("app-output").textContent = "";
+    return packages;
   }
+  const choices = (id) => [...el(id).options].map((option) => option.value).filter(Boolean);
+  const inspect = async ({ serial, signal }, id, action) => {
+    const text = await android.inspectApp(serial, id, action, signal);
+    if (!signal.aborted) el("app-output").textContent = text;
+    return text;
+  };
   for (const button of doc.querySelectorAll("[data-inspect]")) {
     button.addEventListener(
       "click",
       () =>
-        void operate(async ({ serial, signal }) => {
-          const text = await android.inspectApp(
-            serial,
-            el("packages").value,
-            button.dataset.inspect,
-            signal,
-          );
-          if (!signal.aborted) el("app-output").textContent = text;
+        void operate(async (session) => {
+          await inspect(session, el("packages").value, button.dataset.inspect);
         }),
     );
   }
   el("packages").addEventListener("change", () => {
     el("app-output").textContent = "";
   });
-  click("list-apps", loadApps);
+  click("list-apps", async (session) => {
+    await loadApps(session);
+  });
   for (const button of doc.querySelectorAll("[data-panel]")) {
     button.addEventListener("click", () => {
       for (const tab of doc.querySelectorAll("[data-panel]")) {
@@ -94,7 +97,10 @@ export async function wireTools(doc, bridge, android, { operate, report, disconn
         tab.setAttribute("aria-pressed", String(selected));
         el(tab.dataset.panel).hidden = !selected;
       }
-      if (button.dataset.panel === "apps") void operate(loadApps);
+      if (button.dataset.panel === "apps")
+        void operate(async (session) => {
+          await loadApps(session);
+        });
       if (button.dataset.panel === "tools")
         void operate(async (session) => {
           await loadSnapshots(session);
@@ -248,6 +254,15 @@ export async function wireTools(doc, bridge, android, { operate, report, disconn
     }
   });
   return {
+    state: () => ({
+      apps: choices("packages"),
+      snapshots: choices("snapshots"),
+      presets: all().map(({ name, values }) => ({ name, values })),
+      conditions: values(),
+    }),
+    inspect,
+    loadApps,
+    loadSnapshots,
     reset() {
       if (dialog.open) dialog.close("cancel");
       snapshotList([]);
@@ -258,7 +273,10 @@ export async function wireTools(doc, bridge, android, { operate, report, disconn
       report("");
     },
     opened(session) {
-      if (!el("apps").hidden) void operate(loadApps);
+      if (!el("apps").hidden)
+        void operate(async (selected) => {
+          await loadApps(selected);
+        });
       if (!el("tools").hidden)
         void operate(async () => {
           await loadSnapshots(session);

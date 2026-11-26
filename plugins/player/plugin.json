@@ -16,9 +16,39 @@
   "contributes": {
     "commands": [
       {
+        "id": "endue.player.view",
+        "title": "Player: Set loop and theatre mode",
+        "description": "Set loop, theatre mode for a video, or both, using the existing transport controls.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "loop": { "type": "boolean" }, "theatre": { "type": "boolean" } },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.player.chapter",
+        "title": "Player: Show a chapter",
+        "description": "Seek to the one-based chapter of the current item. The state tool lists chapters.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "at": { "type": "integer", "minimum": 1 } },
+          "required": ["at"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.player.retry",
+        "title": "Player: Retry the current media",
+        "description": "Retry the current item at its kept position with the existing file read grant.",
+        "agent": true,
+        "args": { "type": "object", "properties": {}, "additionalProperties": false }
+      },
+      {
         "id": "endue.player.state",
         "title": "Player: Read the current player",
-        "description": "Read the current item, playback position, duration, playing state, tags, subtitle tracks and playlist entry.",
+        "description": "Read the current item, playback position, duration, playing state, tags, subtitle tracks, loop, theatre mode, chapters and playlist entry.",
         "args": {
           "type": "object",
           "properties": {},

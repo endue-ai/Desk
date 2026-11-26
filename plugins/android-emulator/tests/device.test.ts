@@ -65,6 +65,33 @@ describe("local Android devices", () => {
     expect(run).toHaveBeenCalledTimes(1);
   });
 
+  it("pins guest input and refuses port-based commands after the transport changes", async () => {
+    const run = vi
+      .fn()
+      .mockResolvedValueOnce("OK\n")
+      .mockResolvedValueOnce("emulator-5556\tdevice transport_id:17\n");
+    const android = createAndroid({ run });
+    const signal = android.bindTransport(new AbortController().signal, "12");
+    await android.key("emulator-5556", "Back", signal);
+    expect(run.mock.calls[0]?.[1]).toEqual([
+      "-H",
+      "localhost",
+      "-P",
+      "5037",
+      "-t",
+      "12",
+      "shell",
+      "input",
+      "keyevent",
+      "4",
+    ]);
+    await expect(android.powerOff("emulator-5556", signal)).rejects.toThrow(
+      "emulator transport disappeared",
+    );
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run.mock.lastCall?.[1].slice(-2)).toEqual(["devices", "-l"]);
+  });
+
   it("reads snapshot tags, including the emulator's nonnumeric disk ID", () => {
     expect(
       snapshotNames(

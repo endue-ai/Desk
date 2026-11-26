@@ -3,6 +3,7 @@
 Open **Android Emulator** from the Desk launcher. Choose a running emulator and select **Connect**,
 or choose an Android Virtual Device (AVD) and select **Start device** to boot it without a separate
 window. Create AVDs in Android Studio's Device Manager. The SDK needs Android Emulator and Platform-Tools.
+Select **Refresh devices** to discover them when you want to connect.
 
 The plugin finds `adb` and `emulator` on PATH and in the standard Android Studio SDK locations on
 macOS, Linux and Windows. For another installation, enter its absolute path under **SDK directory**.
@@ -24,6 +25,9 @@ macOS, Linux and Windows. For another installation, enter its absolute path unde
 pauses when hidden. Disconnect releases the preview and input. An externally started emulator keeps
 running. Desk owns the process it launches and ends it when the plugin unloads.
 The open and save dialogs grant access to the selected paths. Presets stay in the plugin's store.
+Agents use `state` for the visible device, cached choices and exact session ID, `pause-preview` or
+`disconnect` for local controls, and `operate` for one reviewed action on the connected emulator.
+The existing SDK grant must still cover the action (ADR 0394).
 The underlying commands are documented in the [ADB guide](https://developer.android.com/tools/adb)
 and the [emulator console reference](https://developer.android.com/studio/run/emulator-console).
 
