@@ -8,6 +8,7 @@
 mod moves;
 mod ops;
 mod reversible;
+mod sheets_save;
 mod trash;
 mod undo;
 
@@ -51,7 +52,14 @@ pub(crate) struct Watches {
 }
 
 impl Core {
-    pub(crate) fn fs_write(&self, caller: &str, params: FsWriteParams) -> Answer {
+    pub(crate) fn fs_write(&self, caller: &str, mut params: FsWriteParams) -> Answer {
+        match params.invocation_id.take() {
+            Some(id) => self.sheets_save(caller, &id, params),
+            None => self.write_file(caller, params),
+        }
+    }
+
+    fn write_file(&self, caller: &str, params: FsWriteParams) -> Answer {
         let scope = Permission::FsWrite(params.scope);
         let path = self.resolve(&params.path)?;
         let create_dirs = params.create_dirs.unwrap_or(false);

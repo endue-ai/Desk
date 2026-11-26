@@ -77,6 +77,7 @@ export function createPlayer(doc, actions) {
 
   return {
     isOpen: () => deck !== null,
+    current: () => (deck ? index : undefined),
     /** @param {Deck} which @param {number} at */
     open(which, at) {
       deck = which;
@@ -88,6 +89,7 @@ export function createPlayer(doc, actions) {
       player.focus();
       actions.say(`Playing from slide ${index + 1}. Escape leaves.`);
     },
+    go,
     close,
     /** Handle a key in play mode; true when it was play mode's. @param {KeyboardEvent} event */
     key(event) {

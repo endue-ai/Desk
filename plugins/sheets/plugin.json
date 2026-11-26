@@ -132,10 +132,101 @@
     },
     "commands": [
       {
+        "id": "endue.sheets.select",
+        "title": "Sheets: Select a range",
+        "description": "Select an A1 range in the active worksheet or in a named worksheet of the open file.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "sheet": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "range": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          "additionalProperties": false,
+          "required": ["range"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.sheets.find",
+        "title": "Sheets: Find cells",
+        "description": "Find a cell in the current worksheet and move the active cell to it. Repeat the same text to advance to its next match.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false,
+          "required": ["text"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.sheets.edit",
+        "title": "Sheets: Edit cells",
+        "description": "Set a rectangular A1 range in the current worksheet using exact cell text. Every value must fit the range and the file format. The edits stay unsaved until Save.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "range": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 500,
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 50,
+                "items": {
+                  "type": "string",
+                  "maxLength": 20000
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": ["range", "values"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.sheets.save",
+        "title": "Sheets: Save edits",
+        "description": "Save the edits in the open worksheet at its exact path from endue.sheets.read. The desk uses the file's write grant and version history to decide whether review is needed.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "additionalProperties": false,
+          "required": ["path"]
+        },
+        "agent": true
+      },
+      {
         "id": "endue.sheets.read",
         "title": "Sheets: a range of the open spreadsheet as data",
         "keywords": ["sheets", "spreadsheet", "excel", "csv", "cells", "read", "range"],
-        "description": "Cells of the spreadsheet on screen in Sheets, or the open one named by path, as the text each shows: range is A1 or A1:D20 (without it, the filled part from A1 up to 50 rows and 26 columns), on sheet (the first without it), at most 500 rows and 50 columns a read; more says the sheet goes on. formulas true adds each formula by address. Answers values row by row, the range read, every sheet with how many rows and columns it fills, the files Sheets has open and whether this one has unsaved edits. It leaves the screen as it is. Sheets reads only what the desk opened in it: open a file with desk.files.open first.",
+        "description": "Read cell text in the open workbook, defaulting to the worksheet on screen. Give sheet to read another worksheet, path for another open workbook, or range for an A1 range. The answer includes selection, active cell, unsaved changes and available sheets. Use formulas true to include formulas by address.",
         "args": {
           "type": "object",
           "properties": {

@@ -92,10 +92,108 @@
     ],
     "commands": [
       {
+        "id": "endue.reader.go",
+        "title": "Reader: Go to a page or chapter",
+        "description": "Move to the one-based page or chapter of the book open in Reader.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["at"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.zoom",
+        "title": "Reader: Set book zoom",
+        "description": "Set the magnification of the open book, where 1 is 100%. Fit fits a page or resets reflowed text to its natural size.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 5
+                },
+                {
+                  "const": "fit"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["level"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.marks",
+        "title": "Reader: Read bookmarks and notes",
+        "description": "List bookmarks and notes in the open book, with their one-based page or chapter numbers.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.reader.bookmark",
+        "title": "Reader: Add a bookmark",
+        "description": "Add a bookmark to the named one-based page or chapter. Omitting at bookmarks the current reading position.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false,
+          "required": ["label"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.note",
+        "title": "Reader: Add a note",
+        "description": "Keep a note at the named one-based page or chapter of the open book.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "additionalProperties": false,
+          "required": ["at", "text"]
+        },
+        "agent": true
+      },
+      {
         "id": "endue.reader.read",
         "title": "Reader: the open book as text",
         "keywords": ["reader", "pdf", "epub", "book", "read", "pages", "chapters"],
-        "description": "The text of the book on screen in Reader, or the open one named by path: count pages (PDF, XPS, DjVu, comics) or chapters (EPUB, MOBI, FB2) from from (1 is the first; 5 by default, at most 50, 100000 characters at most), each with its number and a chapter its title. From the first one it adds the contents (title, where it starts, depth). more says the book goes on; books lists every book Reader has open. It leaves the screen and the reading place as they are. A locked book waits for the person to type its password. Reader reads only what the desk opened in it: open a file with desk.files.open first.",
+        "description": "Read the open book's pages or chapters and its current one-based reading position in at. Give path for another open book. Use from and count to read a run of pages or chapters. From the first one the answer includes its contents. A locked book waits for the person to type its password.",
         "args": {
           "type": "object",
           "properties": {

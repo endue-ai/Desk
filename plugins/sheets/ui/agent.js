@@ -2,11 +2,12 @@
 // another one Sheets has open, as the text each cell shows (and its formula, when asked), with the
 // sheets and how far each is filled. It leaves the screen as it is. Sheets opens a file only through
 // the desk (desk.files.open), so an agent opens one there first.
-import { columnName } from "./model.js";
+import { addressOf, columnName } from "./model.js";
 
 /**
  * @typedef {{ buffer: string, path: string, name: string, book: import("./book.js").Book,
  *   modified?: boolean }} Open
+ * @typedef {{ r0: number, c0: number, r1: number, c1: number }} Range
  */
 
 /** The most rows and columns one read answers, and the range it reads without one. */
@@ -19,7 +20,7 @@ const columnOf = (/** @type {string} */ letters) =>
 
 /**
  * A1 or A1:D20 as rows and columns from 0, the end included; a bare A1 is one cell.
- * @returns {{ r0: number, c0: number, r1: number, c1: number }}
+ * @returns {Range}
  */
 export function rangeOf(/** @type {string} */ text) {
   const m = /^\s*([A-Za-z]{1,3})(\d{1,7})(?::([A-Za-z]{1,3})(\d{1,7}))?\s*$/.exec(text);
@@ -30,9 +31,22 @@ export function rangeOf(/** @type {string} */ text) {
   return { r0: Math.min(r0, r1), c0: Math.min(c0, c1), r1: Math.max(r0, r1), c1: Math.max(c0, c1) };
 }
 
+/** @param {import("./grid.js").Place | undefined} place */
+function selected(place) {
+  if (!place) return {};
+  const { active, end } = place;
+  const first = addressOf(Math.min(active.r, end.r), Math.min(active.c, end.c));
+  const last = addressOf(Math.max(active.r, end.r), Math.max(active.c, end.c));
+  return {
+    activeCell: addressOf(active.r, active.c),
+    selection: first === last ? first : `${first}:${last}`,
+  };
+}
+
 /**
  * @param {{ on(name: string, handler: (args: unknown) => unknown): unknown }} commands
- * @param {{ open(): Open[], shown(): string | null }} deps
+ * @param {{ open(): Open[], shown(): string | null, view: import("./sheets.js").View,
+ *   edit(span: Range, values: string[][]): boolean }} deps
  */
 export function answerAgents(commands, deps) {
   commands.on("endue.sheets.read", (raw) => {
@@ -65,8 +79,12 @@ export function answerAgents(commands, deps) {
       rows: s.lastRow + 1,
       cols: s.lastCol + 1,
     }));
-    const named =
-      typeof a.sheet === "string" ? book.sheets.find((s) => s.name === a.sheet) : book.sheets[0];
+    const where = deps.view.where?.(file.buffer);
+    const index =
+      typeof a.sheet === "string"
+        ? book.sheets.findIndex((s) => s.name === a.sheet)
+        : (where?.sheet ?? 0);
+    const named = book.sheets[index];
     if (!named) throw new Error(`${String(a.sheet)} is not a sheet of ${file.name}.`);
     const last = { r: named.lastRow, c: named.lastCol };
     const span =
@@ -104,6 +122,7 @@ export function answerAgents(commands, deps) {
       files,
       sheets,
       sheet: named.name,
+      ...selected(where?.places.find(([sheet]) => sheet === index)?.[1]),
       range: shownRange,
       values,
       ...(a.formulas === true ? { formulas } : {}),
@@ -113,6 +132,69 @@ export function answerAgents(commands, deps) {
         c1 < Math.min(span.c1, last.c) ||
         (typeof a.range !== "string" && (last.r > r1 || last.c > c1)),
       unsaved: file.modified === true,
+    };
+  });
+
+  const current = () => {
+    const file = deps.open().find((f) => f.buffer === deps.shown());
+    if (file?.book.kind !== "sheets") throw new Error("No worksheet is open in Sheets.");
+    return { file, book: file.book, where: deps.view.where?.(file.buffer) };
+  };
+  commands.on("endue.sheets.select", (raw) => {
+    const { file, book, where } = current();
+    const { sheet, range } = /** @type {{ sheet?: string, range: string }} */ (raw);
+    const index =
+      sheet === undefined ? (where?.sheet ?? 0) : book.sheets.findIndex((s) => s.name === sheet);
+    const listed = book.sheets[index];
+    if (!listed) throw new Error("That worksheet is not in the open file.");
+    const span = rangeOf(range);
+    if (
+      span.r1 >= listed.rows ||
+      span.c1 >= listed.cols ||
+      listed.hiddenRow?.(span.r0) ||
+      listed.hiddenRow?.(span.r1) ||
+      listed.hiddenCol?.(span.c0) ||
+      listed.hiddenCol?.(span.c1)
+    )
+      throw new Error("The range is outside the visible worksheet.");
+    if (!deps.view.select) throw new Error("The worksheet grid is not visible.");
+    deps.view.select(index, span);
+    return {
+      sheet: listed.name,
+      ...selected(deps.view.where?.(file.buffer)?.places.find(([sheet]) => sheet === index)?.[1]),
+    };
+  });
+  commands.on("endue.sheets.find", (raw) => {
+    const { book, where } = current();
+    const text = /** @type {{ text: string }} */ (raw).text.trim();
+    if (!text) throw new Error("Give the worksheet text to find.");
+    if (!deps.view.find) throw new Error("The worksheet grid is not visible.");
+    return { sheet: book.sheets[where?.sheet ?? 0]?.name, cell: deps.view.find(text) ?? null };
+  });
+  commands.on("endue.sheets.edit", (raw) => {
+    const { file, book, where } = current();
+    const { range, values } = /** @type {{ range: string, values: string[][] }} */ (raw);
+    const span = rangeOf(range);
+    const rows = span.r1 - span.r0 + 1;
+    const cols = span.c1 - span.c0 + 1;
+    if (
+      rows > MOST.rows ||
+      cols > MOST.cols ||
+      !Array.isArray(values) ||
+      values.length !== rows ||
+      values.some(
+        (row) =>
+          !Array.isArray(row) ||
+          row.length !== cols ||
+          row.some((value) => typeof value !== "string"),
+      )
+    )
+      throw new Error("Values must fill the exact rectangular range.");
+    return {
+      path: file.path,
+      sheet: book.sheets[where?.sheet ?? 0]?.name,
+      range,
+      unsaved: deps.edit(span, values),
     };
   });
 }

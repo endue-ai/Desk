@@ -69,7 +69,9 @@ export function documentText(/** @type {DocModel} */ doc) {
 
 /**
  * @param {{ on(name: string, handler: (args: unknown) => unknown): unknown }} commands
- * @param {{ open(): Shown[], shown(): string | null }} deps
+ * @param {{ open(): Shown[], shown(): string | null,
+ *   position(): object, navigate?: import("./view/view.js").DocControls["navigate"],
+ *   zoom?: import("./view/view.js").DocControls["zoom"] }} deps
  */
 export function answerAgents(commands, deps) {
   commands.on("endue.docs.read", (raw) => {
@@ -106,11 +108,20 @@ export function answerAgents(commands, deps) {
       title: doc.doc.title || doc.name,
       format: doc.doc.formatName,
       documents,
+      ...(doc.buffer === deps.shown() ? deps.position() : {}),
       text: text.slice(from, from + chars),
       from,
       length: text.length,
       more: from + chars < text.length,
       comments: doc.doc.comments.length,
     };
+  });
+  commands.on("endue.docs.show", (args) => {
+    if (!deps.navigate) throw new Error("Docs has no document to move in.");
+    return deps.navigate(/** @type {import("./view/view.js").DocTarget} */ (args));
+  });
+  commands.on("endue.docs.zoom", (args) => {
+    if (!deps.zoom) throw new Error("Docs has no document to zoom.");
+    return deps.zoom(/** @type {{ level: number | "fit" }} */ (args).level);
   });
 }

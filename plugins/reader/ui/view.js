@@ -244,6 +244,12 @@ export function createView(doc, actions) {
 
   return {
     progress: (value) => progress.set(value),
+    go: goTo,
+    /** @param {number | "fit"} level */
+    zoom(level) {
+      setZoom(level === "fit" ? (reflowed() ? 1 : pages.fit("page")) : level);
+      return zoom;
+    },
     /** @param {ShownModel | null} next */
     show(next) {
       generation++;

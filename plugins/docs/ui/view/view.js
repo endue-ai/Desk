@@ -9,6 +9,11 @@ import { renderDetails } from "./details.js";
 import { createDraw } from "./draw.js";
 import { createFind } from "./find.js";
 import { createPanels, headingsOf, renderComments, renderOutline } from "./panels.js";
+
+/** @typedef {{ heading?: string, text?: string, page?: number }} DocTarget */
+/** @typedef {{ page: number | null, pageText: string, heading: string | null, selection: string, zoom: number }} DocPosition */
+/** @typedef {{ position(): DocPosition, navigate(target: DocTarget): Promise<DocPosition>,
+ *   zoom(level: number | "fit"): DocPosition }} DocControls */
 import { goTo as scrollTo, whereIn } from "./place.js";
 import { createProgress } from "./progress.js";
 
@@ -88,7 +93,7 @@ export function createView(doc, actions = {}) {
     const pad = Number.parseFloat(doc.defaultView?.getComputedStyle(sheet).paddingLeft ?? "") || 24;
     return (desk.clientWidth - 2 * pad) / (widest * PX);
   };
-  const fit = () => {
+  const fitWidth = () => {
     zoomed = true;
     const value = fitZoom();
     if (value) setZoom(value);
@@ -182,7 +187,7 @@ export function createView(doc, actions = {}) {
   byId("find-open").addEventListener("click", openFind);
   byId("zoom-in").addEventListener("click", () => zoomBy(1));
   byId("zoom-out").addEventListener("click", () => zoomBy(-1));
-  byId("zoom-fit").addEventListener("click", fit);
+  byId("zoom-fit").addEventListener("click", fitWidth);
   sheet.addEventListener("click", (event) => {
     const target = /** @type {HTMLElement} */ (event.target);
     const link = target.closest?.("a");
@@ -221,7 +226,82 @@ export function createView(doc, actions = {}) {
     event.preventDefault();
   });
 
+  const position = () => {
+    const at = model && !layout.hidden ? whereIn(desk, sheet) : null;
+    const edge = desk.getBoundingClientRect().top;
+    const page = at && sheet.children[at.page];
+    const heading =
+      page &&
+      [...page.querySelectorAll("[id^=docs-h]")].find((el) => {
+        const box = el.getBoundingClientRect();
+        return box.bottom >= edge && box.top < edge + desk.clientHeight;
+      });
+    const chosen = doc.getSelection();
+    const selection =
+      chosen && sheet.contains(chosen.anchorNode) && sheet.contains(chosen.focusNode)
+        ? chosen.toString().slice(0, 20000)
+        : "";
+    return {
+      page: at ? at.page + 1 : null,
+      pageText: Array.from(
+        page?.querySelector(".page-body")?.children ?? [],
+        (block) => block.textContent ?? "",
+      )
+        .join("\n")
+        .slice(0, 12000),
+      heading: heading?.textContent?.replace(/\s+/g, " ").trim().slice(0, 160) ?? null,
+      selection,
+      zoom,
+    };
+  };
+
   return {
+    position,
+    /** @param {DocTarget} target */
+    async navigate({ heading, text, page } = {}) {
+      const current = model;
+      if (!current) throw new Error("Docs has no open document.");
+      await drawn;
+      if (current !== model || layout.hidden) throw new Error("The document changed.");
+      if ([heading, text, page].filter((value) => value !== undefined).length !== 1)
+        throw new Error("Give exactly one heading, text or page.");
+      if (heading !== undefined) {
+        const name = heading.trim().toLocaleLowerCase();
+        const found = headingsOf(current).list.filter(
+          (entry) => entry.id === heading || entry.text.trim().toLocaleLowerCase() === name,
+        );
+        if (found.length !== 1)
+          throw new Error("Choose one document heading by its exact name or ID.");
+        await goTo(found[0].id);
+      } else if (text !== undefined) {
+        const query = text.trim();
+        if (!query || !find.search(query))
+          throw new Error("The document has no match for that text.");
+        panels.fold();
+        findBar.hidden = false;
+        findText.value = query;
+        find.first();
+        showCount();
+      } else {
+        if (!Number.isSafeInteger(page) || page < 1 || page > sheet.childElementCount)
+          throw new Error("That page is outside the document.");
+        panels.fold();
+        scrollTo(desk, sheet, { page: page - 1, down: 0, across: 0 });
+      }
+      if (current !== model) throw new Error("The document changed.");
+      return position();
+    },
+    /** @param {number | "fit"} level */
+    zoom(level) {
+      if (!model || layout.hidden) throw new Error("Docs has no open document.");
+      if (level === "fit") fitWidth();
+      else {
+        if (!(level >= 0.25 && level <= 4)) throw new Error("Zoom needs a level from 0.25 to 4.");
+        zoomed = true;
+        setZoom(level);
+      }
+      return position();
+    },
     /**
      * @param {Shown | null} shown
      * @param {Where} [where] where to put the view: its place (null: the first page) and the zoom

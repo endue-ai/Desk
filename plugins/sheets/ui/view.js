@@ -172,6 +172,11 @@ export function createView(doc, actions = { edit: () => false }) {
     found = undefined;
     findCount.textContent = "";
   };
+  const chooseSheet = (/** @type {number} */ index, focusTab = false) => {
+    wanted = undefined;
+    keep();
+    showSheet(index, focusTab);
+  };
 
   const renderTabs = (/** @type {string[]} */ names) => {
     tabs.replaceChildren(
@@ -182,11 +187,7 @@ export function createView(doc, actions = { edit: () => false }) {
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-controls", "grid");
         tab.textContent = label;
-        tab.addEventListener("click", () => {
-          wanted = undefined;
-          keep();
-          showSheet(i);
-        });
+        tab.addEventListener("click", () => chooseSheet(i));
         return tab;
       }),
     );
@@ -203,9 +204,7 @@ export function createView(doc, actions = { edit: () => false }) {
     })[event.key];
     if (to === undefined || event.metaKey || event.ctrlKey || event.altKey) return;
     event.preventDefault();
-    wanted = undefined;
-    keep();
-    showSheet((to + count) % count, true);
+    chooseSheet((to + count) % count, true);
   });
 
   /** Find the next (or previous) match of the words in the find field. */
@@ -228,6 +227,7 @@ export function createView(doc, actions = { edit: () => false }) {
     grid.go(matches.rows[at] ?? 0, matches.cols[at] ?? 0);
     const total = matches.capped ? `${number(MATCH_LIMIT)}+` : number(matches.length);
     findCount.textContent = `${number(at + 1)} of ${total}`;
+    return addressOf(matches.rows[at] ?? 0, matches.cols[at] ?? 0);
   };
   const openFind = () => {
     if (!book()) return;
@@ -273,6 +273,15 @@ export function createView(doc, actions = { edit: () => false }) {
   });
 
   return {
+    select(/** @type {number} */ index, /** @type {import("./agent.js").Range} */ span) {
+      if (index !== current) chooseSheet(index);
+      grid.select(span);
+    },
+    find(/** @type {string} */ text) {
+      findForm.hidden = false;
+      input.value = text;
+      return next();
+    },
     /** @param {import("./sheets.js").Progress | null} value */
     progress(value) {
       if (!progress) return;

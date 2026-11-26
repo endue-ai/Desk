@@ -88,6 +88,50 @@
     ],
     "commands": [
       {
+        "id": "endue.slides.show",
+        "title": "Slides: Show a slide",
+        "description": "Show a slide of the open deck by its one-based number, including while it is playing.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "slide": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["slide"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.slides.play",
+        "title": "Slides: Play the deck",
+        "description": "Start presentation mode at the one-based slide number or the slide currently on screen.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.slides.stop",
+        "title": "Slides: Stop playing",
+        "description": "Leave presentation mode and keep the slide last shown.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
         "id": "endue.slides.read",
         "title": "Slides: the open deck as text",
         "keywords": [
@@ -100,7 +144,7 @@
           "read",
           "notes"
         ],
-        "description": "The deck on screen in Slides, or the open one named by path, slide by slide: each with its number, title, whether it is hidden, the text of its shapes and tables in drawing order (bullets marked, table rows with | between cells) and its speaker notes. count slides from from (1 is the first; 20 by default, at most 200); total and more say how many there are. decks lists every deck Slides has open. It leaves the screen as it is. Slides reads only what the desk opened in it: open a file with desk.files.open first.",
+        "description": "Read the open deck slide by slide, including shape and table text, titles, speaker notes and hidden status. The active deck also reports the slide currently visible in browse or presentation mode. Give path for another open deck and from and count for a part of it.",
         "args": {
           "type": "object",
           "properties": {

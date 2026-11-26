@@ -7,7 +7,8 @@
 /**
  * @typedef {import("./open.js").Book} Book
  * @typedef {import("./formats/toc.js").Toc} Toc
- * @typedef {{ buffer: string, path: string, name: string, book: Book }} Open
+ * @typedef {import("./reader.js").Open} Open
+ * @typedef {import("./marks.js").At} At
  */
 
 /** Units one read answers by default and at most, and the characters it holds at most. */
@@ -25,7 +26,9 @@ const contentsOf = (/** @type {Toc[]} */ toc, depth = 0) =>
 
 /**
  * @param {{ on(name: string, handler: (args: unknown) => unknown): unknown }} commands
- * @param {{ open(): Open[], shown(): string | null }} deps
+ * @param {{ open(): Open[], shown(): string | null,
+ *   go?: (at: At) => Promise<unknown>, zoom?: (level: number | "fit") => number,
+ *   marking: ReturnType<typeof import("./marking.js").createMarking> }} deps
  */
 export function answerAgents(commands, deps) {
   /** The book a call names, or the one on screen, and every open one. */
@@ -79,6 +82,7 @@ export function answerAgents(commands, deps) {
       format: book.format,
       unit,
       units,
+      at: file.at.unit + 1,
       books,
       ...(from === 1 ? { contents: contentsOf(book.toc).slice(0, 200) } : {}),
       [unit === "page" ? "pages" : "chapters"]: read,
@@ -104,5 +108,51 @@ export function answerAgents(commands, deps) {
       found.push({ at: i + 1, snippet });
     }
     return { path: file.path, query, unit, found, more: found.length >= FOUND };
+  });
+
+  const place = (/** @type {unknown} */ at, /** @type {number} */ units) => {
+    if (typeof at !== "number" || !Number.isSafeInteger(at) || at < 1 || at > units)
+      throw new Error("That page or chapter is outside the open book.");
+    return { unit: at - 1, offset: 0 };
+  };
+  commands.on("endue.reader.go", async (raw) => {
+    const { file, units } = bookOf({});
+    if (!deps.go) throw new Error("Reader has no page to move.");
+    await deps.go(place(args(raw).at, units));
+    if (file.buffer !== deps.shown()) throw new Error("The book changed.");
+    return { path: file.path, at: file.at.unit + 1 };
+  });
+  commands.on("endue.reader.zoom", (raw) => {
+    const { file } = bookOf({});
+    const { level } = args(raw);
+    if (level !== "fit" && (typeof level !== "number" || !(level >= 0.25 && level <= 5)))
+      throw new Error("Zoom needs fit or a level from 0.25 to 5.");
+    if (!deps.zoom) throw new Error("Reader has no page to zoom.");
+    return { path: file.path, zoom: deps.zoom(level) };
+  });
+  commands.on("endue.reader.marks", () => {
+    const { file } = bookOf({});
+    return {
+      path: file.path,
+      bookmarks: file.bookmarks.map(({ unit, ...mark }) => ({ at: unit + 1, ...mark })),
+      notes: file.notes.map(({ unit, ...note }) => ({ at: unit + 1, ...note })),
+    };
+  });
+  commands.on("endue.reader.bookmark", async (raw) => {
+    const { file, units } = bookOf({});
+    const { at, label } = args(raw);
+    if (typeof label !== "string" || !label.trim()) throw new Error("Give the bookmark a label.");
+    const where = at === undefined ? file.at : place(at, units);
+    if (!(await deps.marking.bookmark(where, label.trim())))
+      throw new Error("Reader could not keep the bookmark.");
+    return { path: file.path, at: where.unit + 1, label: label.trim() };
+  });
+  commands.on("endue.reader.note", async (raw) => {
+    const { file, units } = bookOf({});
+    const { at, text } = args(raw);
+    const where = place(at, units);
+    if (typeof text !== "string" || !text.trim()) throw new Error("Give the note some text.");
+    if (!(await deps.marking.note(where, text))) throw new Error("Reader could not keep the note.");
+    return { path: file.path, at: where.unit + 1 };
   });
 }

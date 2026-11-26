@@ -3,7 +3,7 @@
 `endue.docs` ("Docs"): every word-processor document in one page view, in the community folder
 format and on the public SDK only. Word, Pages, OpenDocument, RTF, Hangul, AbiWord, WordPerfect and
 Works files become one document model (`ui/model.js`) that one renderer draws. It reads; it does not
-edit: `desk.files.save` is refused with "Docs opens files read-only." Eris reads an open document as text with `endue.docs.read { path?, from?, chars? }` (ADR 0088, `ui/agent.js`).
+edit: `desk.files.save` is refused with "Docs opens files read-only." Eris reads text and the current page, heading and selection with `endue.docs.read`, moves with `show`, and zooms with `zoom` (ADR 0391).
 
 | Formats | Read as |
 | --- | --- |

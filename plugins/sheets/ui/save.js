@@ -81,12 +81,21 @@ const codeOf = (/** @type {unknown} */ error) =>
  * @param {Bridge} bridge
  * @param {string} path
  * @param {Uint8Array} bytes
+ * @param {string} [invocationId] an agent's trusted Sheets save
  */
-export async function writeFile(bridge, path, bytes) {
+export async function writeFile(bridge, path, bytes, invocationId) {
+  const content = base64Of(bytes);
+  if (invocationId)
+    return bridge.call("fs.write", {
+      path,
+      content,
+      encoding: "base64",
+      invocationId,
+      scope: { permission: "fs:write", paths: [path] },
+    });
   const slash = path.lastIndexOf("/");
   const folder = slash < 0 ? path : path.slice(0, slash);
   const scope = { permission: "fs:write", paths: [`${folder}/**`] };
-  const content = base64Of(bytes);
   const call = () => bridge.call("fs.write", { path, content, encoding: "base64", scope });
   const refused = new Error(`Not allowed to write ${path}.`);
   const failed = (/** @type {unknown} */ error) =>
