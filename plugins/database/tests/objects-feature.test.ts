@@ -5,56 +5,10 @@
 // a source edited in a console and applied in one transaction with an error's line selected, and
 // generated SQL, over the scripted shop (pg-catalog.ts, objects-fixture.ts).
 import { describe, expect, it } from "vitest";
-import type { Connection } from "../ui/engines/common.js";
 import type { Node } from "../ui/explorer.js";
 import type { OperationModel } from "../ui/features/objects/models.js";
-import { fixtureScript } from "./fixtures";
-import { type Mounted, mount, SAVED } from "./harness";
-import { objectsServer } from "./objects-fixture";
-import { catalogScript, type PgCatalog, shop } from "./pg-catalog";
-
-const [NOTES, SHOP] = SAVED as [Connection, Connection];
-const DEV: Connection = { ...SHOP, id: "c-dev", name: "Dev", tag: "none" };
-const LOCKED: Connection = { ...SHOP, id: "c-locked", name: "Locked", tag: "none", readOnly: true };
-
-/** Run with what the dialog shows: its fields' values and the choices on. */
-const asShown = (model: OperationModel) => ({
-  values: Object.fromEntries(model.fields.map((f) => [f.name, f.value])),
-  choices: model.choices.filter((c) => c.checked).map((c) => c.name),
-});
-
-type Asked = { title: string; items: Array<{ id: string; label: string; detail?: string }> };
-
-/** The shop with a materialized view in sales, and the plugin over it. */
-async function mounted(answer: (model: OperationModel) => unknown = asShown) {
-  const model: PgCatalog = shop();
-  model.sales?.tables?.push({
-    name: "daily",
-    kind: "m",
-    columns: [
-      ["person", "integer"],
-      ["total", "numeric"],
-    ],
-  });
-  const server = objectsServer(catalogScript(() => model, fixtureScript));
-  const state = { menu: "", confirm: "yes" };
-  const m = await mount({
-    store: { connections: [DEV, SHOP, LOCKED, NOTES] },
-    script: (sql, env) => {
-      if (/^ALTER TABLE "public"\."people" RENAME TO "persons"$/u.test(sql.trim())) {
-        const people = model.public?.tables?.find((t) => t.name === "people");
-        if (people) people.name = "persons";
-        (model.public as { mark: string }).mark = "10.4:400";
-      }
-      return server.script(sql, env);
-    },
-    pick: (asked: Asked) => (asked.title.startsWith("Run ") ? state.confirm : state.menu),
-    dialog: (_type, given) => answer(given as OperationModel),
-  });
-  const selected: Array<[number, number]> = [];
-  m.view.select = (start, end) => void selected.push([start, end]);
-  return { m, server, model, state, selected };
-}
+import type { Mounted } from "./harness";
+import { type Asked, mounted, NOTES } from "./objects-harness";
 
 const row = (m: Mounted, label: string, kind?: string, connection?: string) =>
   m.view.trees
@@ -345,35 +299,6 @@ describe("the objects feature", () => {
       name: "refund",
     });
     expect(m.view.inserted.at(-1)).toBe('CALL "public"."refund"(:order_id, :done);\n');
-  });
-
-  it("uses one review for a direct truncate and reuses a matching core approval", async () => {
-    const args = { connection: "Shop", schema: "public", name: "orders" };
-    const person = await mounted();
-    await person.m.host.command("endue.database.truncate-table", args);
-    expect(dialogs(person.m).map(({ op }) => op)).toEqual(["truncate"]);
-    expect(person.m.picks.filter(({ title }) => title.startsWith("Run "))).toEqual([]);
-    expect(person.server.ran).toEqual(['TRUNCATE TABLE "public"."orders"']);
-
-    const agent = await mounted(() => undefined);
-    await agent.m.host.call(
-      "perm.request",
-      { permission: { permission: "db:connect", hosts: ["db.example:5432"] } },
-      "endue.database",
-    );
-    agent.m.host.emit({
-      event: "cmd.invoked",
-      data: {
-        invocationId: "reviewed-truncate",
-        id: "endue.database.truncate-table",
-        caller: "agent:eris",
-        args,
-        approved: true,
-      },
-    });
-    await expect.poll(() => agent.server.ran).toEqual(['TRUNCATE TABLE "public"."orders"']);
-    expect(agent.m.view.dialogs).toEqual([]);
-    expect(agent.m.picks).toEqual([]);
   });
 
   it("edits a source in a console and applies it in one transaction, an error selecting its line", async () => {
