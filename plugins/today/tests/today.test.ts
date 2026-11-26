@@ -97,6 +97,9 @@ describe("desk.today", () => {
       {
         id: "desk.today.open",
         title: "Open today",
+        description: "Open the Today view for the person's agenda.",
+        args: { type: "object" },
+        agent: true,
         keywords: ["today", "agenda", "day", "morning"],
         runs: { command: "desk.views.open", args: { id: "desk.today" } },
       },

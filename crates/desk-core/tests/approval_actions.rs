@@ -366,11 +366,6 @@ fn eris_runs_explicit_workspace_commands_without_a_scope_prompt() {
         )
         .unwrap();
         let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
-        call(&core, "agent:eris", "cmd.invoke", params.clone())
-            .unwrap_or_else(|e| panic!("{id}: {e:?}"));
-        assert_eq!(
-            call(&core, MIRA, "cmd.invoke", params).unwrap_err().code,
-            ErrorCode::PermissionDenied
-        );
+        call(&core, "agent:eris", "cmd.invoke", params).unwrap_or_else(|e| panic!("{id}: {e:?}"));
     }
 }

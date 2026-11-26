@@ -182,3 +182,36 @@ it("does not register an alias cycle", async () => {
   expect(hub.commands.has("example.board.one")).toBe(false);
   expect(hub.commands.has("example.board.two")).toBe(false);
 });
+
+it("keeps a built-in autoload alias available until the plugin is turned off", async () => {
+  const { hub, client } = await setup();
+  const dormant = {
+    ...plugin(
+      "endue.agents",
+      "ui",
+      {
+        commands: [
+          {
+            id: "endue.agents.open",
+            title: "Open Agents",
+            description: "Open the Agents home",
+            agent: true,
+            runs: { command: "desk.plugins.open", args: { plugin: "endue.agents" } },
+          },
+        ],
+      },
+      false,
+    ),
+    builtIn: true,
+    autoStart: true,
+  };
+  hub.apply([dormant]);
+  await hub.commands.settled();
+  const { commands } = await client.call("cmd.list", {
+    scope: { permission: "cmd:invoke", ids: ["endue.agents.open"] },
+  });
+  expect(commands).toMatchObject([{ id: "endue.agents.open", agent: true }]);
+  hub.apply([{ ...dormant, autoStart: false }]);
+  await hub.commands.settled();
+  expect(hub.commands.has("endue.agents.open")).toBe(false);
+});

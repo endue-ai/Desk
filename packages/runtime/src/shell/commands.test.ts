@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import type { CommandCaller, CommandInfo, CommandSpec } from "../commands";
 import { DEFAULT_KEYS } from "../core/keys";
 import { resolveKeymap } from "../keymap";
+import { defineSweepCommands } from "../sweep/commands";
 import { testWindowManager } from "../wm/testing";
 import { takeDesk } from "../wm/view";
 import { desktopsOf, layoutOf } from "./actions";
@@ -212,5 +213,12 @@ test("agent desktop commands use named targets and move rather than close window
   expect(
     desktopsOf(c.store.get()).flatMap((desktop) => layoutOf(c.store.get(), desktop.id).surfaces),
   ).toContainEqual(expect.objectContaining({ id: "notes" }));
+  dispose();
+});
+
+test("the workspace snapshot is advertised as an agent tool", () => {
+  const c = fakeShell();
+  const dispose = defineSweepCommands({} as HTMLElement, c.ctx);
+  expect(c.tool("desk.sweep.snapshot")).toBeDefined();
   dispose();
 });
