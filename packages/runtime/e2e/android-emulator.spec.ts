@@ -16,10 +16,21 @@ test("open the emulator, use its screen and replay device conditions", async ({ 
   });
   const iframe = surface.locator("iframe");
   const frame = iframe.contentFrame();
+  await expect(frame.getByRole("button", { name: "Refresh devices" })).toBeVisible();
+  const idle = await page.evaluate(() =>
+    window.__desk.runtime.commands.run("endue.android-emulator.state", {}),
+  );
+  expect(idle).toMatchObject({ phase: "idle", devices: [], session: null });
+  expect(await page.evaluate(() => window.__desk.commands)).toEqual([]);
+  await frame.getByRole("button", { name: "Refresh devices" }).click();
   await expect(frame.locator("#device option")).toHaveCount(2);
   await frame.getByRole("button", { name: "Connect", exact: true }).click();
   const screen = frame.locator("#display");
   await expect(screen).toBeVisible();
+  const current = await page.evaluate(() =>
+    window.__desk.runtime.commands.run("endue.android-emulator.state", {}),
+  );
+  expect(current).toMatchObject({ phase: "connected", preview: { drawn: true, paused: false } });
   const center = await screen.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return { x: Math.floor(r.width / 2), y: Math.floor(r.height / 2) };

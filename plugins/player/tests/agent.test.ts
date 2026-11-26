@@ -10,6 +10,20 @@ const FILES = {
   [SUBTITLE]: "1\n00:00:01,000 --> 00:00:04,000\nExample caption.\n",
 };
 
+it("shares the loop and theatre controls with the view", async () => {
+  const { host, press, video, byId } = await mountPage({ files: FILES, grants: ["~/Movies/**"] });
+  await host.command("desk.files.visit", VIDEO);
+  await host.command("endue.player.view", { loop: true, theatre: true });
+  expect(video.element.loop).toBe(true);
+  expect(byId("loop").getAttribute("aria-pressed")).toBe("true");
+  expect(document.body.classList.contains("theatre")).toBe(true);
+  press("t");
+  await expect(host.command("endue.player.state", {})).resolves.toMatchObject({
+    loop: true,
+    theatre: false,
+  });
+});
+
 it("the agent and keys drive the same live transport and current media state", async () => {
   const { host, press, video } = await mountPage({ files: FILES, grants: ["~/Movies/**"] });
   await host.command("desk.files.visit", VIDEO);
