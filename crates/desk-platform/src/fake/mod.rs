@@ -15,6 +15,7 @@ use serde_json::Value;
 
 mod account;
 mod board;
+mod chat;
 mod routes;
 mod spaces;
 mod state;
@@ -93,17 +94,23 @@ fn serve(stream: TcpStream, state: &Mutex<State>) {
     let (delay, picture, (status, body)) = {
         let mut state = state.lock().unwrap_or_else(|p| p.into_inner());
         state.seen.push(seen.clone());
-        let picture = state.pictures.get(&seen.path).cloned();
-        let answer = match picture {
+        let mut bytes = state.pictures.get(&seen.path).cloned();
+        let answer = match bytes {
             Some(_) => (200, None),
             None => routes::answer(&mut state, &seen),
         };
-        (state.delay, picture, answer)
+        if answer.0 == 200 && chat::is_run(&seen) {
+            bytes = Some((
+                "text/event-stream".to_owned(),
+                state.chat_stream.as_bytes().to_vec(),
+            ));
+        }
+        (state.delay, bytes, answer)
     };
     if let Some(delay) = delay {
         thread::sleep(delay);
     }
-    // A picture is its bytes under its own media type; everything else is JSON.
+    // A picture or run stream uses its own media type; the other answers are JSON.
     let (kind, payload) = match picture {
         Some((kind, bytes)) => (kind, bytes),
         None => (

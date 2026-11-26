@@ -172,6 +172,7 @@
         { "$ref": "studio.schema.json#/$defs/StudioCatalogRecommendRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioCatalogUseRequest" },
         { "$ref": "studio.schema.json#/$defs/StudioConversationsListRequest" },
+        { "$ref": "studio-chat.schema.json#/$defs/StudioChatAskRequest" },
         { "$ref": "studio-spaces.schema.json#/$defs/StudioSpacesListRequest" },
         { "$ref": "studio-spaces.schema.json#/$defs/StudioSpacesGetRequest" },
         { "$ref": "computer.schema.json#/$defs/ComputerPermissionsStatusRequest" },

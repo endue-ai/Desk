@@ -15,6 +15,7 @@ import {
   type StudioConversation,
   type StudioPrompt,
 } from "@endue-ai/bridge";
+import { chatHandler } from "./studio-chat";
 import {
   DEFAULT_PERSONALITY,
   EMPTY_ROWS,
@@ -304,6 +305,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
         hasMore: at + size < matching.length,
       };
     },
+    "studio.chat.ask": chatHandler(records, spaces, gate),
     ...spaceHandlers(spaces, gate),
   };
 

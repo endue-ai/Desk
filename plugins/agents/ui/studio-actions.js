@@ -176,7 +176,7 @@ export function createStudioActions({ ctx, studio, confirm, redraw, say, gone })
     /** An endue conversation on endue.ai: chatting with endue agents in the desk comes later. */
     openConversation: (/** @type {string} */ agentId, /** @type {string} */ conversationId) =>
       open(
-        `https://endue.ai/agent/${encodeURIComponent(agentId)}/space/room/${encodeURIComponent(conversationId)}`,
+        `https://endue.ai/agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`,
       ),
     /** Start signing in to endue ID, as the account menu does. */
     async signIn() {

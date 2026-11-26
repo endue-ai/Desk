@@ -79,9 +79,12 @@ export function enduePresence(
 /** endue.ai, the only origin the shell opens pages on. */
 export const WEB = "https://endue.ai";
 /** An agent's Studio on endue.ai, and the agent's own page (its rooms). */
-export const agentPage = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}/studio`;
-export const agentHome = (id: string) => `${WEB}/agent/${encodeURIComponent(id)}`;
+export const agentHome = (id: string) => `${WEB}/agents/${encodeURIComponent(id)}`;
+export const agentPage = (id: string) => `${agentHome(id)}/studio`;
 export const spacePage = (id: string) => `${WEB}/spaces/${encodeURIComponent(id)}`;
+export const agentConversationPage = (agentId: string, conversationId: string) =>
+  `${agentHome(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
+export const spaceConversationPage = (spaceId: string) => `${spacePage(spaceId)}/admin`;
 
 /** A face that may go into an image: a base64 data: URL of an image, as the core hands one over. */
 export const facePicture = (picture: string | undefined) =>

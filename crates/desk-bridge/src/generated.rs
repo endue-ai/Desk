@@ -5329,6 +5329,7 @@ pub enum BridgeRequest {
     StudioCatalogRecommend(StudioCatalogRecommendRequest),
     StudioCatalogUse(StudioCatalogUseRequest),
     StudioConversationsList(StudioConversationsListRequest),
+    StudioChatAsk(StudioChatAskRequest),
     StudioSpacesList(StudioSpacesListRequest),
     StudioSpacesGet(StudioSpacesGetRequest),
     ComputerPermissionsStatus(ComputerPermissionsStatusRequest),
@@ -10454,6 +10455,53 @@ pub struct StoreSetParams {
 #[serde(deny_unknown_fields)]
 pub struct StoreSetResult {}
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioChatAskRequest {
+    pub id: RequestId,
+    pub method: StudioChatAskRequestMethod,
+    pub params: StudioChatAskParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioChatAskParams {
+    #[serde(rename = "agentId")]
+    pub agent_id: StudioAgentId,
+    #[serde(rename = "spaceId", default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<StudioSpaceId>,
+    pub question: String,
+    pub scope: StudioManagePermission,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioChatState {
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "needsInput")]
+    NeedsInput,
+    #[serde(rename = "interrupted")]
+    Interrupted,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioChatAskResult {
+    #[serde(rename = "agentId")]
+    pub agent_id: StudioAgentId,
+    #[serde(rename = "spaceId", default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<StudioSpaceId>,
+    #[serde(rename = "conversationId")]
+    pub conversation_id: StudioAgentId,
+    #[serde(rename = "runId", default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<StudioAgentId>,
+    pub state: StudioChatState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
+
 /// A space's id on endue AI.
 pub type StudioSpaceId = String;
 
@@ -14923,6 +14971,14 @@ pub enum StoreSetRequestMethod {
     StoreSet,
 }
 
+/// The `method` of [`StudioChatAskRequest`]: always `"studio.chat.ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StudioChatAskRequestMethod {
+    #[default]
+    #[serde(rename = "studio.chat.ask")]
+    StudioChatAsk,
+}
+
 /// The `method` of [`StudioSpacesListRequest`]: always `"studio.spaces.list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum StudioSpacesListRequestMethod {
@@ -15641,6 +15697,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",
         include_str!("../../../specs/bridge/v0/store.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/studio-chat.schema.json",
+        include_str!("../../../specs/bridge/v0/studio-chat.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/studio-spaces.schema.json",

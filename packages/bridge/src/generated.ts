@@ -3348,6 +3348,7 @@ export type BridgeRequest =
   | StudioCatalogRecommendRequest
   | StudioCatalogUseRequest
   | StudioConversationsListRequest
+  | StudioChatAskRequest
   | StudioSpacesListRequest
   | StudioSpacesGetRequest
   | ComputerPermissionsStatusRequest
@@ -6690,6 +6691,30 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
+export interface StudioChatAskRequest {
+  id: RequestId;
+  method: "studio.chat.ask";
+  params: StudioChatAskParams;
+}
+
+export interface StudioChatAskParams {
+  agentId: StudioAgentId;
+  spaceId?: StudioSpaceId;
+  question: string;
+  scope: StudioManagePermission;
+}
+
+export type StudioChatState = "done" | "needsInput" | "interrupted" | "failed";
+
+export interface StudioChatAskResult {
+  agentId: StudioAgentId;
+  spaceId?: StudioSpaceId;
+  conversationId: StudioAgentId;
+  runId?: StudioAgentId;
+  state: StudioChatState;
+  text?: string;
+}
+
 /** A space's id on endue AI. */
 export type StudioSpaceId = string;
 
@@ -8507,6 +8532,7 @@ export interface BridgeMethodMap {
     params: StudioConversationsListParams;
     result: StudioConversationsListResult;
   };
+  "studio.chat.ask": { params: StudioChatAskParams; result: StudioChatAskResult };
   "studio.spaces.list": { params: StudioSpacesListParams; result: StudioSpacesListResult };
   "studio.spaces.get": { params: StudioSpaceParams; result: StudioSpacesGetResult };
   "computer.permissions.status": {
@@ -8697,6 +8723,7 @@ export const BRIDGE_METHODS = [
   "studio.catalog.recommend",
   "studio.catalog.use",
   "studio.conversations.list",
+  "studio.chat.ask",
   "studio.spaces.list",
   "studio.spaces.get",
   "computer.permissions.status",

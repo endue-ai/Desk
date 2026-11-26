@@ -764,6 +764,12 @@ overview and its open rooms at once: the space must answer, and a part that does
 work going on and five newest results, and the rooms with their unread messages. Read only. The bridge
 carries no room member, no person's id, no attention reason and no remote picture.
 
+**studio.chat.ask** (`studio-chat.schema.json`, ADR 0395) lets the runtime send one text question
+to an active agent or a space's exact Front Desk agent under `studio:manage`. Eris calls the
+irreversible `desk.endue.ask` command, and the core holds it for review. The answer carries
+the target, conversation, run when known, and state. A completed answer carries up to 12,000
+characters of assistant text. The question body is the text the caller supplied for review.
+
 **computer.permissions.status**, **.request** and **.open**, **computer.screenshot**,
 **computer.windows**, **computer.apps.list**, **computer.ax.tree** and **computer.ax.find** see the
 computer under `computer:see`; **computer.input.click**, **.move**, **.drag**, **.scroll**, **.type** and

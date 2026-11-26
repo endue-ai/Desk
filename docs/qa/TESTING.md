@@ -18,6 +18,13 @@ refusal and shared preview controls. Android unit tests cover review, preview bo
 grant refusal. Images checks shared view changes and competing slice requests, and Player
 checks loop, theatre and chapter navigation through the real transport with fake media.
 
+Cloud questions follow [ADR 0395](../adr/0395-desk-asks-endue-ai.md).
+`crates/desk-platform/tests/chat.rs` verifies the two conversation paths and terminal SSE handling.
+`crates/desk-core/tests/studio/chat.rs` verifies a changed target, a denied question, and the
+approved cloud reply reaching the same Eris turn. `just test-e2e endue-windows.spec.ts` covers
+the native agent and Front Desk question forms with a fake platform, and
+`endue-commands.test.ts` checks their tools and current web links.
+
 | Layer | What it checks | Tool and location | When | Status |
 | --- | --- | --- | --- | --- |
 | Static | fmt, clippy `-D warnings`, biome, tsc strict, actionlint, spec lint (Ajv strict compile of every schema, spectral for the OpenAPI), theme conformance (`scripts/ui-lint.mjs` ratchet), design system conformance (`scripts/ds-lint.mjs` ratchet) | `just check` | every PR (`ci`) | active |

@@ -539,6 +539,50 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ConversationListEnvelope" }
         default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createAgentConversation
+      tags: [conversations]
+      summary: Open a new conversation with the selected agent
+      description: Opens an agent conversation for the signed-in account at the ask approval level.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentConversationInput" }
+      responses:
+        "201":
+          description: The new conversation and the agent bound to it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentConversationEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/ai/conversations/{conversation_id}/runs:
+    post:
+      operationId: runAgentConversation
+      tags: [conversations]
+      summary: Send a text turn and read its server-sent events
+      description: >-
+        The terminal events are done and error. The assistant message in done is authoritative.
+        interaction describes a pending input. Fields and events outside this subset are additive.
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/ConversationIdentifier" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentConversationTurn" }
+      responses:
+        "200":
+          description: A sequence of Server-Sent Event frames.
+          content:
+            text/event-stream:
+              schema: { type: string }
+              x-sse-events:
+                done: { $ref: "#/components/schemas/AgentConversationDone" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/spaces:
     get:
       operationId: listSpaces
@@ -576,6 +620,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SpaceGetResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces/{space_id}/conversation:
+    post:
+      operationId: ensureSpaceConversation
+      tags: [spaces]
+      summary: Resolve the space's Front Desk conversation
+      description: A space has one Front Desk conversation with a server-bound agent.
+      parameters:
+        - $ref: "#/components/parameters/SpaceId"
+      responses:
+        "200":
+          description: The conversation and the exact agent bound to it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceConversationEnvelope" }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/spaces/{space_id}/overview:
     parameters:
@@ -745,6 +804,59 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   schemas:
+    ConversationIdentifier:
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+    AgentConversationInput:
+      type: object
+      properties:
+        agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        title: { type: string, maxLength: 60 }
+        approval_level: { const: ask }
+      required: [agent_id, approval_level]
+      additionalProperties: false
+    AgentConversationEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { $ref: "#/components/schemas/ConversationIdentifier" }
+            agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+          required: [id, agent_id]
+      required: [data]
+    SpaceConversationEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            conversation_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+            agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+          required: [conversation_id, agent_id]
+      required: [data]
+    AgentConversationTurn:
+      type: object
+      properties:
+        agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        content: { type: string, minLength: 1, maxLength: 8000 }
+        client_message_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        stream: { const: true }
+      required: [agent_id, content, client_message_id, stream]
+      additionalProperties: false
+    AgentConversationDone:
+      description: JSON data of the done event.
+      type: object
+      properties:
+        run_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        stop_reason: { type: ["string", "null"] }
+        message:
+          type: object
+          properties:
+            role: { const: assistant }
+            content: { type: ["string", "null"] }
+          required: [role, content]
+      required: [run_id, stop_reason, message]
     ErrorEnvelope:
       description: Every error of the platform. endue reads the status first (401 signed out, 403 forbidden, 404 and 410 not found, 400 and 422 invalid), then the code.
       type: object
