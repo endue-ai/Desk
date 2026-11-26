@@ -3937,7 +3937,13 @@ export interface ComputerSeeParams {
 export interface ComputerPermissionsStatusRequest {
   id: RequestId;
   method: "computer.permissions.status";
-  params: ComputerSeeParams;
+  params: ComputerStatusParams;
+}
+
+/** The computer status call, optionally for the agent that invoked the built-in Computer status command. */
+export interface ComputerStatusParams {
+  scope: ComputerSeePermission;
+  invocationId?: string;
 }
 
 /** Result of computer.permissions.status. bundleId is the app the OS asks about; absent under just dev, where it asks about the launching terminal (ADR 0120). stopped: computer.stop was raised and acts are refused until it is resumed. */
@@ -3946,6 +3952,8 @@ export interface ComputerPermissionsStatusResult {
   screenRecording: boolean;
   bundleId?: string;
   stopped: boolean;
+  /** Bundle IDs the agent can act in until computer use stops or the conversation changes. */
+  allowedApps?: string[];
 }
 
 /** Parameters of computer.permissions.request and computer.permissions.open. */
@@ -6068,13 +6076,15 @@ export interface PermApprovalData {
   action: ApprovalAction;
   /** The scope the call carries, which a grant of the agent's covers. */
   permission: Permission;
-  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*. */
+  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*, and the site for web.act. */
   target: string;
   preview?: ApprovalPreview;
   /** fs.write: the bytes it would write. */
   size?: number;
   /** The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task. */
   task?: string;
+  /** The app whose use the person may allow until computer use stops or the conversation changes. Present only when the approval can take an app answer. */
+  untilStopApp?: string;
 }
 
 /** The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096). computer.* is an agent's act on the computer: its target is the app it goes to (ADR 0123). */
@@ -6083,6 +6093,7 @@ export type ApprovalAction =
   | "proc.spawn"
   | "net.fetch"
   | "cmd.invoke"
+  | "web.act"
   | "memory.remember"
   | "computer.input.click"
   | "computer.input.move"
@@ -6119,8 +6130,8 @@ export interface PermApproveParams {
   scope: PermManagePermission;
 }
 
-/** once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again. */
-export type ApprovalAnswer = "once" | "task" | "deny";
+/** once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). app: this call runs and the agent may act in the named app until computer use stops or the conversation changes (invalid_params without untilStopApp). deny: this call is refused with permission_denied; the next one asks again. */
+export type ApprovalAnswer = "once" | "task" | "app" | "deny";
 
 /** Result of perm.approve. */
 export type PermApproveResult = Record<string, never>;
@@ -8193,6 +8204,8 @@ export interface WebActRequest {
 export interface WebActParams {
   viewId: WebViewId;
   action: WebAction;
+  /** For a built-in Browser action on an agent command, the pending invocation that authorizes the action. */
+  invocationId?: string;
   scope: WebControlPermission;
 }
 
@@ -8457,7 +8470,7 @@ export interface BridgeMethodMap {
   "studio.spaces.list": { params: StudioSpacesListParams; result: StudioSpacesListResult };
   "studio.spaces.get": { params: StudioSpaceParams; result: StudioSpacesGetResult };
   "computer.permissions.status": {
-    params: ComputerSeeParams;
+    params: ComputerStatusParams;
     result: ComputerPermissionsStatusResult;
   };
   "computer.permissions.request": {

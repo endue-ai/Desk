@@ -308,7 +308,7 @@
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
         },
         "target": {
-          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*.",
+          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*, and the site for web.act.",
           "type": "string",
           "minLength": 1
         },
@@ -320,6 +320,11 @@
         },
         "task": {
           "description": "The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.",
+          "type": "string",
+          "minLength": 1
+        },
+        "untilStopApp": {
+          "description": "The app whose use the person may allow until computer use stops or the conversation changes. Present only when the approval can take an app answer.",
           "type": "string",
           "minLength": 1
         }
@@ -335,6 +340,7 @@
         "proc.spawn",
         "net.fetch",
         "cmd.invoke",
+        "web.act",
         "memory.remember",
         "computer.input.click",
         "computer.input.move",
@@ -389,9 +395,9 @@
       "additionalProperties": false
     },
     "ApprovalAnswer": {
-      "description": "once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.",
+      "description": "once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). app: this call runs and the agent may act in the named app until computer use stops or the conversation changes (invalid_params without untilStopApp). deny: this call is refused with permission_denied; the next one asks again.",
       "type": "string",
-      "enum": ["once", "task", "deny"]
+      "enum": ["once", "task", "app", "deny"]
     },
     "PermApproveResult": {
       "description": "Result of perm.approve.",
