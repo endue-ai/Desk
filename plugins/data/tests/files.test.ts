@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
 import { plainOf } from "../ui/tree.js";
-import { denied, disk, file, folderRead, mount } from "./harness";
+import { denied, disk, file, fileRead, mount } from "./harness";
 import { rootOf } from "./nodes";
 
 const A = file("~/data/a.json");
 const B = file("~/data/b.yaml");
-const READ = folderRead(A.path);
+const READ = fileRead(A.path);
 
 describe("the desk's file requests", () => {
   it("visit uses bounded base64 fallback ranges, shows its tree and watches it", async () => {
@@ -87,9 +87,9 @@ describe("the desk's file requests", () => {
 
 describe("files outside the grants", () => {
   const X = file("~/Documents/x.toml");
-  const DOCS = folderRead(X.path);
+  const DOCS = fileRead(X.path);
 
-  it("a refused read asks once for the file's folder and reports a refusal in words", async () => {
+  it("a refused read asks once for the exact file and reports a refusal in words", async () => {
     const { host, view, params } = await mount({
       handlers: {
         "fs.read": () => {

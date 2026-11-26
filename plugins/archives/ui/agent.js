@@ -1,13 +1,15 @@
 // What an agent reads through Archives (ADR 0088): the entries of the archive on screen, or of
-// another one Archives has open, and the text of one entry, bounded. It leaves the screen as it is
-// and writes nothing: extracting stays the person's, through the palette, where they pick the folder.
+// another one Archives has open, and the text of one entry, bounded. Selection and extraction use
+// the same paths as the window.
 // An encrypted entry is refused, so a password is never asked of an agent. Archives opens a file
 // only through the desk (desk.files.open), so an agent opens one there first.
+
+import { folderOf } from "./files.js";
 
 /**
  * @typedef {import("./formats/archive.js").Entry} Entry
  * @typedef {import("./formats/archive.js").Archive} Archive
- * @typedef {{ buffer: string, path: string, name: string, levels: Array<{ archive?: Archive, format: string }> }} Held
+ * @typedef {import("./archives.js").Held} Held
  */
 
 /** Entries one list answers by default and at most; bytes one read answers by default and at most. */
@@ -27,12 +29,13 @@ const textOf = (/** @type {Uint8Array} */ bytes) => {
 
 /**
  * @param {{ on(name: string, handler: (args: unknown) => unknown): unknown }} commands
- * @param {{ open(): Held[], shown(): string | null }} deps
+ * @param {{ open(): Held[], shown(): string | null, show(file: Held, entry: string): Promise<void>,
+ *   extract: ReturnType<typeof import("./extract.js").createExtractor>["extract"] }} deps
  */
 export function answerAgents(commands, deps) {
   const args = (/** @type {unknown} */ raw) =>
     /** @type {Record<string, unknown>} */ (raw && typeof raw === "object" ? raw : {});
-  const archiveOf = (/** @type {Record<string, unknown>} */ a) => {
+  const archiveOf = (/** @type {Record<string, unknown>} */ a, active = false) => {
     const open = deps.open();
     const asked = typeof a.path === "string" && a.path !== "" ? a.path : undefined;
     const file = asked
@@ -43,11 +46,57 @@ export function answerAgents(commands, deps) {
         throw new Error(`Archives has no ${asked} open; open it with desk.files.open first.`);
       throw new Error("No archive is open in Archives; open one with desk.files.open first.");
     }
-    const archive = file.levels[0]?.archive;
+    const archive = (active ? file.levels.at(-1) : file.levels[0])?.archive;
     if (!archive) throw new Error(`${file.name} is not an archive Archives reads.`);
     if (archive.refusal) throw new Error(archive.refusal);
     return { file, archive };
   };
+
+  commands.on("endue.archives.show", async (raw) => {
+    const a = args(raw);
+    const { file, archive } = archiveOf(a, true);
+    const entry = archive.entries.find((entry) => entry.path === a.entry);
+    if (!entry) throw new Error("Name an entry in the open archive.");
+    if (entry.encrypted) throw new Error("Encrypted entries are opened by the person.");
+    await deps.show(file, entry.path);
+    return { path: file.path, entry: entry.path };
+  });
+
+  commands.on("endue.archives.extract", async (raw) => {
+    const a = args(raw);
+    const { file, archive } = archiveOf(a, a.path === undefined);
+    if (typeof a.to !== "string" || !a.to.trim() || !/^(?:~?\/|[a-z]:\/)/iu.test(a.to))
+      throw new Error("Name an absolute destination folder.");
+    const names = a.entries;
+    if (
+      names !== undefined &&
+      (!Array.isArray(names) ||
+        !names.length ||
+        names.some(
+          (name) =>
+            typeof name !== "string" ||
+            !archive.entries.some(
+              (entry) => entry.path === name || entry.path.startsWith(`${name}/`),
+            ),
+        ))
+    )
+      throw new Error("Name entries in the open archive.");
+    const selected = /** @type {string[] | undefined} */ (names);
+    const chosen = archive.entries.filter(
+      (entry) =>
+        entry.kind !== "folder" &&
+        (!selected ||
+          selected.some((name) => entry.path === name || entry.path.startsWith(`${name}/`))),
+    );
+    if (!chosen.length) throw new Error("Nothing to extract.");
+    const result = await deps.extract(archive, chosen, {
+      name: file.name,
+      beside: folderOf(file.path),
+      to: a.to,
+    });
+    if (!result) throw new Error("Nothing was extracted.");
+    return result;
+  });
 
   commands.on("endue.archives.list", (raw) => {
     const a = args(raw);

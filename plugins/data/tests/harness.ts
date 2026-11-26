@@ -186,9 +186,8 @@ export const denied = (what: string) =>
 /** A file's buffer and path, as the desk sends them in every request. */
 export const file = (path: string) => ({ buffer: `file:${path}`, path });
 
-/** The fs:read scope the plugin asks for and reads with: the file's folder. */
-export const folderRead = (path: string) =>
-  ({ permission: "fs:read", paths: [`${path.slice(0, path.lastIndexOf("/"))}/**`] }) as const;
+/** The exact file scope for a read or watch. */
+export const fileRead = (path: string) => ({ permission: "fs:read", paths: [path] }) as const;
 
 /** Where `needle` first starts in `text`, 1-based, as the parsers count lines and columns. */
 export function at(text: string, needle: string, from = 0) {

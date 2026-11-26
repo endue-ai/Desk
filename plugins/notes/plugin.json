@@ -234,6 +234,45 @@
           "additionalProperties": false
         },
         "agent": true
+      },
+      {
+        "id": "endue.notes.show",
+        "title": "Show a note",
+        "description": "Open a note in the Notes library or show an already open note by its exact path.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.rename",
+        "title": "Rename a note",
+        "description": "Rename a note in its own folder. A note with unsaved edits must be saved first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 255 }
+          },
+          "required": ["path", "name"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.trash",
+        "title": "Move a note to the Trash",
+        "description": "Move a saved note to the system Trash.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ],
     "keys": [

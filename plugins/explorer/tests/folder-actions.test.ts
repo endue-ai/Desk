@@ -7,10 +7,10 @@ describe("adding a folder the plugin may not list", () => {
     const { app, params, view } = await mount({
       handlers: {
         ...disk({ ...sample(), [path]: [] }),
-        "dialog.open": () => ({ paths: [path] }),
+        "dialog.open": () => ({ paths: [path], cancelled: false }),
       },
     });
-    await expect(app.addFolder()).resolves.toBe(path);
+    await expect(app.addFolder(undefined)).resolves.toBe(path);
     expect(params("dialog.open")).toMatchObject([{ kind: "folders", intent: "destination" }]);
     expect(params("perm.request")).toEqual([]);
     expect(view.headers.at(-1)?.folders).toContain(path);

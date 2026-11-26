@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseJson } from "../ui/parse/json.js";
 import { parseYaml } from "../ui/parse/yaml.js";
 import { validate } from "../ui/schema.js";
-import { disk, file, mount } from "./harness";
+import { denied, disk, file, mount } from "./harness";
 import { rootOf } from "./nodes";
 
 const check = (text: string, schema: unknown, files: Record<string, unknown> = {}) => {
@@ -248,5 +248,31 @@ describe("finding the schema", () => {
     await host.command("desk.files.visit", e);
     await settle();
     expect(last(view)).toMatchObject({ state: "invalid", how: "picked" });
+  });
+
+  it("asks for only a named outside schema and leaves masked values out of agent problems", async () => {
+    const outside = "/outside/config.schema.json";
+    const input = file("~/data/checked.json");
+    const { host, app, params } = await mount({
+      handlers: {
+        ...disk({
+          [input.path]: '{"count":"wrong","token":"private-fixture"}',
+          [outside]: '{"properties":{"count":{"type":"number"},"token":{"type":"number"}}}',
+        }),
+        "fs.stat": () => {
+          throw denied("schema is outside the grants");
+        },
+        "perm.request": () => ({ granted: true }),
+      },
+      commands: { "desk.palette.pick": () => outside },
+    });
+    await host.command("desk.files.visit", input);
+    await app.validateWith();
+    expect(params("perm.request")).toEqual([
+      { permission: { permission: "fs:read", paths: [outside] }, reason: expect.any(String) },
+    ]);
+    const answer = await host.command("endue.data.problems");
+    expect(answer).toMatchObject({ state: "invalid", problems: [{ pointer: "/count" }] });
+    expect(JSON.stringify(answer)).not.toContain("private-fixture");
   });
 });

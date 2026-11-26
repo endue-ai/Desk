@@ -56,6 +56,10 @@ describe("an agent's archives commands", () => {
     const { host, params } = await mount({
       files: { [PATH]: ZIP },
       grants: [READ("~/Downloads"), WRITE(dest)],
+      handlers: {
+        "fs.list": () => ({ entries: [] }),
+        "fs.write": ({ content }) => ({ bytesWritten: content.length }),
+      },
     });
     await host.command("desk.files.visit", file(PATH));
     await expect(
@@ -65,6 +69,24 @@ describe("an agent's archives commands", () => {
       host.command("endue.archives.extract", { path: PATH, entries: ["docs/plan.md"], to: dest }),
     ).resolves.toMatchObject({ written: 1, to: dest });
     expect(params("fs.write")).toMatchObject([{ path: `${dest}/docs/plan.md` }]);
+    expect(params("perm.request")).toEqual([]);
+  });
+
+  it("uses one writable destination choice for the window's extraction", async () => {
+    const dest = "/outside/unpacked";
+    const { app, host, params } = await mount({
+      files: { [PATH]: ZIP },
+      grants: [READ("~/Downloads")],
+      handlers: {
+        "dialog.open": () => ({ paths: [dest], cancelled: false }),
+        "fs.list": () => ({ entries: [] }),
+        "fs.write": ({ content }) => ({ bytesWritten: content.length }),
+      },
+    });
+    await host.command("desk.files.visit", file(PATH));
+    await app.extract("all");
+    expect(params("dialog.open")).toMatchObject([{ kind: "folders", intent: "destination" }]);
+    expect(params("fs.write")).toHaveLength(2);
     expect(params("perm.request")).toEqual([]);
   });
 
