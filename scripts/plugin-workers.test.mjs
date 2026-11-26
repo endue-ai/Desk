@@ -108,6 +108,23 @@ describe("plugin-workers", () => {
     });
   });
 
+  it("records JSON data as a dependency without scanning its strings as imports", () => {
+    const root = fixturePlugin({
+      "ui/main.js": 'start(new URL("./worker.js", import.meta.url));',
+      "ui/worker.js": 'import copy from "./en.json" with { type: "json" }; postMessage(copy);',
+      "ui/en.json": JSON.stringify({ help: "Use import 'a-package' in the file." }),
+    });
+    try {
+      const { workers, rel } = pluginGraphs("p", root);
+      const worker = workers.get("ui/worker.js");
+      assert.ok(worker);
+      assert.deepEqual([...worker.modules].map(rel).sort(), ["ui/en.json", "ui/worker.js"]);
+      assert.deepEqual(worker.bares, []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("names a parser the main thread loads, through any module, and passes once it moves", () => {
     const worker =
       'import { parse } from "./parse.js";\nonmessage = (e) => postMessage(parse(e.data));';
