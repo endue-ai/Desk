@@ -8,13 +8,19 @@ describe("Show in Finder", () => {
     expect(revealLabel("Linux x86_64")).toBe("Show in the file manager");
   });
 
-  it("asks shell.open to reveal exactly the one file", async () => {
+  it("asks once for the folder's immediate children and reveals only the target file", async () => {
     const call = vi.fn().mockResolvedValue({ opened: true });
     await reveal({ call }, "~/Movies/clip.mp4");
     expect(call).toHaveBeenCalledExactlyOnceWith("shell.open", {
       target: "~/Movies/clip.mp4",
       reveal: true,
-      scope: { permission: "shell:open", paths: ["~/Movies/clip.mp4"] },
+      scope: { permission: "shell:open", paths: ["~/Movies/*"] },
+    });
+    await reveal({ call }, "/clip.mp4");
+    expect(call).toHaveBeenLastCalledWith("shell.open", {
+      target: "/clip.mp4",
+      reveal: true,
+      scope: { permission: "shell:open", paths: ["/clip.mp4"] },
     });
   });
 
