@@ -86,6 +86,7 @@ describe("Screen Sharing agent commands", () => {
     expect(bridge.params("perm.request")).toMatchObject([
       { duration: "always", permission: grant.permission },
     ]);
+    expect(bridge.params("perm.request")[0]).not.toHaveProperty("again");
     await app.remove(studio.id);
     expect(bridge.params("perm.revoke")).toEqual([{ grantId: grant.grantId }]);
   });

@@ -53,8 +53,9 @@ export function createScreens({ bridge, sockets, RFB, view }) {
   /**
    * Show a computer's screen: kept in the list (by its address), any other session ended first.
    * @param {Parameters<typeof normalize>[0]} raw
+   * @param {boolean} [retryPermission]
    */
-  const connect = async (raw) => {
+  const connect = async (raw, retryPermission = true) => {
     /** @type {Computer} */
     let computer;
     try {
@@ -85,6 +86,7 @@ export function createScreens({ bridge, sockets, RFB, view }) {
       RFB,
       target: view.screen,
       computer,
+      retryPermission,
       onGrant(grant) {
         const address = endpoint(computer);
         const departing = removing.get(address);
@@ -175,7 +177,8 @@ export function createScreens({ bridge, sockets, RFB, view }) {
           username: text(raw.username),
           ...(port === undefined ? {} : { port }),
         };
-        if (typeof raw.id === "string" || invocation?.caller.startsWith("agent:")) {
+        const agent = invocation?.caller.startsWith("agent:") === true;
+        if (typeof raw.id === "string" || agent) {
           const parsed = given.host ? parseAddress(given.host) : null;
           const matches =
             typeof raw.id === "string"
@@ -188,7 +191,7 @@ export function createScreens({ bridge, sockets, RFB, view }) {
           const saved = matches[0];
           if (!saved || matches.length !== 1)
             throw new Error("Give the id or exact address of one saved computer.");
-          const computer = await connect(saved);
+          const computer = await connect(saved, !agent);
           return { computer: computer.id, name: computer.name };
         }
         // No address: the form, filled with what was given, waits for the person.

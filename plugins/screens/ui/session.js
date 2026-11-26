@@ -21,6 +21,7 @@ import { addressOf } from "./computers.js";
  * @typedef {{
  *   bridge: { call(method: string, params: unknown): Promise<any> },
  *   onGrant?(grant: unknown): void,
+ *   retryPermission?: boolean,
  *   sockets: { connect(target: { host: string, port: number }): Promise<{ close(): void }> },
  *   RFB: RfbClass,
  *   target: Element,
@@ -63,7 +64,10 @@ export async function fingerprintOf(key) {
  * Open the socket, asking once for the grant when the plugin's grants do not cover the address.
  * @param {Options} options
  */
-async function open({ bridge, sockets, computer, onGrant }, /** @type {() => boolean} */ active) {
+async function open(
+  { bridge, sockets, computer, onGrant, retryPermission },
+  /** @type {() => boolean} */ active,
+) {
   const target = { host: computer.host, port: computer.port };
   try {
     return await sockets.connect(target);
@@ -76,7 +80,7 @@ async function open({ bridge, sockets, computer, onGrant }, /** @type {() => boo
       permission: scopeOf(computer.host, computer.port),
       reason: `To show ${computer.name}'s screen`,
       duration: "always",
-      again: true,
+      ...(retryPermission === false ? {} : { again: true }),
     })
     .catch(() => ({ granted: false }));
   if (!asked.granted) throw Object.assign(new Error("refused"), { code: "permission_denied" });

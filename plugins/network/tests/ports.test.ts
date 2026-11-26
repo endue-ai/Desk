@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { networkOf, parseIp } from "../ui/ipv4.js";
-import { allowPorts, scopeFor } from "../ui/ports.js";
+import { allowPorts, checkPorts, scopeFor } from "../ui/ports.js";
 import { fakeBridge } from "./harness";
 
 const first = "192.168.0.21";
@@ -36,6 +36,22 @@ describe("batch port consent", () => {
     await expect(
       allowPorts(bridge, [first, "192.168.1.21"], network, "Known devices"),
     ).rejects.toMatchObject({ code: "other-range" });
+    expect(bridge.calls).toEqual([]);
+  });
+
+  it("checks the attached network again before using a previously approved scope", async () => {
+    const bridge = fakeBridge();
+    const network = networkOf(parseIp(first) as number, 24);
+    await expect(
+      checkPorts(bridge, {
+        ip: first,
+        network,
+        allowed: true,
+        guard() {
+          throw new Error("The network changed");
+        },
+      }),
+    ).rejects.toThrow("The network changed");
     expect(bridge.calls).toEqual([]);
   });
 });

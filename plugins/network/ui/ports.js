@@ -79,8 +79,9 @@ const codeOf = (/** @type {unknown} */ e) => /** @type {{ code?: string }} */ (e
  * Ask once for the existing fixed check on these local addresses.
  * @param {Bridge} bridge @param {string[]} ips
  * @param {import("./ipv4.js").Network | null} network @param {string} reason
+ * @param {boolean} [again] the person explicitly retried the check
  */
-export async function allowPorts(bridge, ips, network, reason) {
+export async function allowPorts(bridge, ips, network, reason, again = false) {
   const valid = ips.map((ip) => {
     const refusal = targetRefusal(ip, network);
     if (refusal) throw new NetworkRefusal(refusal, { ip });
@@ -92,6 +93,7 @@ export async function allowPorts(bridge, ips, network, reason) {
       permission: { permission: "net:connect", hosts },
       duration: "always",
       reason,
+      ...(again ? { again: true } : {}),
     })
     .catch(() => ({ granted: false }));
   if (!asked.granted) throw new NetworkRefusal("ports-denied", { ip: valid.join(", ") });
@@ -100,8 +102,8 @@ export async function allowPorts(bridge, ips, network, reason) {
 /**
  * Check one device's ports.
  * @param {Bridge} bridge
- * @param {{ ip: string, network: import("./ipv4.js").Network | null, reason: string,
- *   now?: () => string, ports?: readonly PortInfo[], allowed?: boolean }} options
+ * @param {{ ip: string, network: import("./ipv4.js").Network | null, reason?: string,
+ *   now?: () => string, ports?: readonly PortInfo[], allowed?: boolean, guard?: () => void }} options
  * @returns {Promise<PortResult>}
  */
 export async function checkPorts(bridge, options) {
@@ -109,7 +111,7 @@ export async function checkPorts(bridge, options) {
   if (refusal) throw new NetworkRefusal(refusal, { ip: options.ip });
   const ip = ipText(/** @type {number} */ (parseIp(options.ip)));
   const ports = options.ports ?? PORTS;
-  if (!options.allowed) await allowPorts(bridge, [ip], options.network, options.reason);
+  if (!options.allowed) await allowPorts(bridge, [ip], options.network, options.reason ?? "");
   const scope = scopeFor(ip);
   /** @type {number[]} */
   const open = [];
@@ -118,6 +120,7 @@ export async function checkPorts(bridge, options) {
   let next = 0;
   const worker = async () => {
     while (next < ports.length) {
+      options.guard?.();
       const { port } = ports[next++];
       try {
         const { socketId } = await bridge.call("net.connect", {

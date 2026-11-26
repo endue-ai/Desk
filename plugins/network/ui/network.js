@@ -226,29 +226,39 @@ export function createNetwork(deps) {
   };
 
   /** @param {Device} d @param {Here} here */
-  const recordPorts = async (d, here, allowed = false) => {
-    if (state.here?.id !== here.id || state.admin !== true) throw new NetworkRefusal("no-network");
-    if (deviceOf(d.mac).ip !== d.ip) throw new NetworkRefusal("unknown-device", { mac: d.mac });
+  const recordPorts = async (d, here) => {
+    const guard = () => {
+      if (state.here?.id !== here.id || state.admin !== true)
+        throw new NetworkRefusal("no-network");
+      if (deviceOf(d.mac).ip !== d.ip) throw new NetworkRefusal("unknown-device", { mac: d.mac });
+    };
     const result = await checkPorts(deps.bridge, {
       ip: d.ip,
       network: here.network,
-      reason: deps.t("ports.reason", { device: cardLabel(deps.t, d), ip: d.ip }),
-      allowed,
+      allowed: true,
+      guard,
       now,
     });
-    if (state.here?.id !== here.id) throw new NetworkRefusal("no-network");
+    guard();
     ports = { ...ports, [d.mac]: result };
     await deps.store.savePorts(here.id, ports);
     derive();
     return /** @type {Device} */ (state.devices.find((x) => x.mac === d.mac));
   };
 
-  /** Check one known device's ports, after the person's yes to the grant. @param {string} mac */
-  const checkDevice = async (mac) => {
+  /** Check a known device after the person's review. @param {string} mac @param {boolean} [again] */
+  const checkDevice = async (mac, again = false) => {
     const here = portNetwork();
     const d = deviceOf(mac);
     const job = startJob("ports");
     try {
+      await allowPorts(
+        deps.bridge,
+        [d.ip],
+        here.network,
+        deps.t("ports.reason", { device: cardLabel(deps.t, d), ip: d.ip }),
+        again,
+      );
       return await recordPorts(d, here);
     } finally {
       job.end();
@@ -268,10 +278,11 @@ export function createNetwork(deps) {
         ips,
         here.network,
         deps.t("ports.batchReason", { addresses: ips.join(", ") }),
+        true,
       );
       const results = [];
       for (const [at, device] of devices.entries()) {
-        results.push(await recordPorts(device, here, true));
+        results.push(await recordPorts(device, here));
         job.update("ports", at + 1, devices.length);
       }
       return results;

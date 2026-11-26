@@ -216,7 +216,7 @@ export function createApp(deps) {
       ui.who = false;
       render();
     },
-    check: ({ mac }) => net.checkDevice(mac),
+    check: ({ mac }) => net.checkDevice(mac, true),
     "check-all": () => net.checkAllDevices(),
     "admin-yes": () => net.answerAdmin(true),
     "admin-no": () => net.answerAdmin(false),
