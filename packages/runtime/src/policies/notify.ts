@@ -11,6 +11,8 @@
  * history (#307): a control right after the line opens it, as desk.notify.history does.
  */
 import type { ApprovalChange, NotifyLevel } from "@endue-ai/bridge";
+import { NOTIFY_TOOLS } from "../agent-specs";
+import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import { type GestureDesk, runGesture } from "../gesture";
 import {
   DEFAULT_NOTIFY,
@@ -120,11 +122,11 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   offs.add(() => notifications.dispose());
 
   const dnd = () => notifications.settings.dnd;
-  const toggleDnd = () => {
-    const next = !dnd();
-    settings.set("desk.notify.dnd", next);
-    return next;
+  const setDnd = (on: boolean) => {
+    settings.set("desk.notify.dnd", on);
+    return on;
   };
+  const toggleDnd = () => setDnd(!dnd());
   // The centre's control goes beside the line on its page; a line on no page (a test's) has none.
   const centre: NotifyCentre | undefined = statusLine.parentElement
     ? installCentre(statusLine, {
@@ -206,9 +208,9 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   const define = (
     id: string,
     title: string,
-    run: (args: unknown) => unknown,
-    keywords: string[] = [],
-    options: { irreversible?: boolean } = {},
+    run: CommandHandler,
+    keywords: string[],
+    agent: AgentSpec,
   ) =>
     offs.add(
       commands.define(id, {
@@ -216,31 +218,53 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
         keywords: ["notifications", ...keywords],
         owner: "desk.notify",
         run,
-        ...options,
+        agent,
       }),
     );
-  define("desk.notify.dismiss", "Dismiss the notification", () => notifications.dismiss());
-  define("desk.notify.dnd", "Turn do not disturb on or off", toggleDnd, [
-    "do not disturb",
-    "focus",
-    "quiet",
-  ]);
+  define(
+    "desk.notify.dismiss",
+    "Dismiss the notification",
+    (args, { caller }) => {
+      const id = (args as { id?: string } | undefined)?.id;
+      if (id !== undefined) return { dismissed: notifications.dismiss(id) };
+      if (caller?.startsWith("agent:"))
+        throw new CommandError("failed", "Give the notification ID");
+      notifications.dismiss();
+    },
+    [],
+    NOTIFY_TOOLS.dismiss,
+  );
+  define(
+    "desk.notify.dnd",
+    "Turn do not disturb on or off",
+    (args, { caller }) => {
+      const on = (args as { on?: boolean } | undefined)?.on;
+      if (typeof on === "boolean") return setDnd(on);
+      if (caller?.startsWith("agent:")) throw new CommandError("failed", "Set on to true or false");
+      return toggleDnd();
+    },
+    ["do not disturb", "focus", "quiet"],
+    NOTIFY_TOOLS.dnd,
+  );
   define(
     "desk.notify.history",
     "Show past notifications",
-    (args) => {
-      // The centre opens (or closes) for the person; `{ show: false }` only reads the history.
+    (args, { caller }) => {
+      const notices = notifications.history();
+      if (caller?.startsWith("agent:"))
+        return notices.map(({ actions: _actions, ...notice }) => notice);
       if ((args as { show?: boolean } | undefined)?.show !== false) centre?.toggle();
-      return notifications.history();
+      return notices;
     },
     ["messages", "history", "notification centre"],
+    NOTIFY_TOOLS.history,
   );
   define(
     "desk.notify.clear",
     "Clear past notifications",
     () => notifications.clear(),
     ["history"],
-    { irreversible: true },
+    NOTIFY_TOOLS.clear,
   );
 
   const activate = async (id: string, action: boolean) => {

@@ -37,6 +37,13 @@ const ERIS_DESK_COMMANDS: &[&str] = &[
     "desk.frames.wait",
     "desk.frames.reload",
     "desk.design.use",
+    "desk.settings.set",
+    "desk.theme.use",
+    "desk.theme.set",
+    "desk.notify.dnd",
+    "desk.notify.dismiss",
+    "desk.profiles.switch",
+    "desk.profiles.save",
 ];
 
 /// The longest agent id, so that `agent:<id>` stays within the 128 characters of a caller id.

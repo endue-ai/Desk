@@ -29,7 +29,7 @@ export interface ProfileFiles {
   load(): Promise<void>;
   /** The valid profiles, by file name. */
   saved(): ProfileContribution[];
-  save(profile: ProfileContribution): Promise<void>;
+  save(profile: ProfileContribution, newOnly?: boolean): Promise<void>;
   /**
    * Drop a saved profile: its file goes to the Trash, from which it can come back (#158). Where
    * there is no Trash the file stays, but is not read until it is edited.
@@ -121,13 +121,14 @@ export function profileFiles(
       });
     },
     saved: () => [...profiles.values()],
-    save: async (profile) => {
+    save: async (profile, newOnly) => {
+      if (newOnly && texts.has(profile.id)) throw new Error(`Profile ${profile.id} already exists`);
       const text = deskYaml(toFile(profile), HEADER);
       // Known before the write, so the write's own fs.changed reads as no change.
       const before = texts.get(profile.id);
       texts.set(profile.id, text);
       try {
-        await folder.write(pathOf(profile.id), text);
+        await folder.write(pathOf(profile.id), text, newOnly);
       } catch (error) {
         // A write the core refuses leaves the list, and what was removed, as they were (#102).
         if (before === undefined) texts.delete(profile.id);

@@ -11,6 +11,8 @@ import type {
   ThemeMarketListResult,
   ThemePackage,
 } from "@endue-ai/bridge";
+import { THEME_TOOLS } from "../agent-specs";
+import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import {
   applyThemeState,
   DEFAULT_THEME_SETTINGS,
@@ -25,6 +27,7 @@ import { tokenPublisher } from "../theme/tokens";
 import { applyThemeFonts, fontHost } from "../theme-fonts";
 import { type DeskContext, disposer, type Installed } from "./context";
 import { installDesign, type RuntimeDesigns } from "./design";
+import { installThemePreferences } from "./theme-preferences";
 
 export interface ThemePolicy extends Installed, RuntimeThemes {
   /** The design systems (ADR 0090): their component tokens go over the theme's, in one apply. */
@@ -173,11 +176,18 @@ export function installTheme(
   const define = (
     id: string,
     title: string,
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     keywords: string[] = [],
+    agent?: AgentSpec,
   ) =>
     offs.add(
-      commands.define(id, { title, keywords: ["theme", ...keywords], owner: "desk.theme", run }),
+      commands.define(id, {
+        title,
+        keywords: ["theme", ...keywords],
+        owner: "desk.theme",
+        run,
+        agent,
+      }),
     );
   define(
     "desk.theme.toggle",
@@ -205,15 +215,24 @@ export function installTheme(
   define(
     "desk.theme.use",
     "Use a theme",
-    (args: unknown) => {
+    (args, { caller }) => {
       const id = (args as { id?: unknown } | undefined)?.id;
+      if (
+        caller?.startsWith("agent:") &&
+        id !== "" &&
+        !installed().some((theme) => theme.id === id)
+      )
+        throw new CommandError("failed", "Give an installed theme ID from desk.theme.list");
       const next = typeof id === "string" && known(id) ? id : "";
       previewed = undefined;
-      settings.set("desk.theme.active", next);
+      if (next === (read().active ?? "")) apply();
+      else settings.set("desk.theme.active", next);
       return next;
     },
     ["appearance", "look"],
+    THEME_TOOLS.use,
   );
+  offs.add(installThemePreferences(hub, installed, read));
   define("desk.theme.default", "Use the endue theme", () => settings.set("desk.theme.active", ""), [
     "appearance",
     "endue",

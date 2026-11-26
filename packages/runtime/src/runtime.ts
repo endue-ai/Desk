@@ -1,6 +1,5 @@
 import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
-import { Preferences } from "./core/preferences";
 import { installDescribe } from "./describe/install";
 import { Edges, edgeOf } from "./edges";
 import { surfaceFocus } from "./focus-surface";
@@ -29,6 +28,7 @@ import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
 import { installSession } from "./policies/session";
+import { installSettingCommands } from "./policies/settings-commands";
 import { installTheme } from "./policies/theme";
 import { chosenOf, mayMount, ROLES_SETTING } from "./roles";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
@@ -154,7 +154,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const notify = installNotify(ctx, statusLine);
   const speech = installLanguage(ctx, options.language);
   const keys = installKeys(ctx, speech.current(), notify.notify);
-  const preferences = new Preferences(hub.settings, bridge);
+  const preferences = installSettingCommands(hub, bridge);
   const settingsWindow = installLiveSettingsWindow(ctx, keys, preferences, speech);
   // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
   const aliases = installAliases(ctx);
