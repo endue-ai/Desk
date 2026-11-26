@@ -1,7 +1,8 @@
 // The plugin's commands (contributes.commands in plugin.json), answered by name: the palette, keys,
 // Eris, agents and the plugin's own buttons all arrive here. A failure goes to the status line and
 // ends the command with the same words, which the desk shows in its notice.
-import { asArgs, asString } from "./state.js";
+import { draftFields, originalFor } from "./compose.js";
+import { asArgs, asString, messageTarget } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -24,6 +25,7 @@ import { asArgs, asString } from "./state.js";
  */
 
 const NAME = "the mail plugin";
+const MOVE_ROLES = new Set(["inbox", "archive", "trash", "junk"]);
 
 /** @param {Deps} deps */
 export function registerCommands({ commands, surface, view, say, app, writing }) {
@@ -76,13 +78,25 @@ export function registerCommands({ commands, surface, view, say, app, writing })
   answer("endue.mail.refresh", () => app.refresh());
   // Eris's tool (ADR 0089): data for the brain, and the screen left as it is.
   answer("endue.mail.latest", (a) => app.latest(a));
-  answer("endue.mail.compose", (a) => composing(writing.compose(a)));
+  answer("endue.mail.compose", async (a) =>
+    composing(writing.compose(a, await originalFor(a, app.named))),
+  );
+  answer("endue.mail.edit-draft", ({ to, cc, subject, body }) =>
+    writing.editDraft(draftFields({ to, cc, subject, body })),
+  );
   answer("endue.mail.reply", (a) => composing(writing.reply(a.all === true)));
   answer("endue.mail.forward", () => composing(writing.forward()));
   answer("endue.mail.send", () => writing.send());
   answer("endue.mail.discard", () => writing.discard());
   answer("endue.mail.archive", async (a) => app.moveTo(await app.named(a), "archive"));
   answer("endue.mail.trash", async (a) => app.moveTo(await app.named(a), "trash"));
+  answer("endue.mail.move", async (a) => {
+    const mailbox = asString(a.mailbox);
+    if (!mailbox || !MOVE_ROLES.has(mailbox))
+      throw new Error("Name a mailbox: inbox, archive, trash or junk.");
+    await app.moveTo(await app.named(messageTarget(a)), mailbox);
+    return mailbox;
+  });
   answer("endue.mail.flag", async (a) => {
     const message = await app.named(a);
     const flagged = typeof a.flagged === "boolean" ? a.flagged : !message.flagged;

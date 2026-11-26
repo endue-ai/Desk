@@ -1,9 +1,8 @@
 // What an agent reads and sends through the mail plugin (ADR 0088): messages found by words, one
-// message with its thread, and a message sent straight from the account. Each reads the index and
-// leaves the screen as it is, like endue.mail.latest; a message is named by the `{ source, id }` the
+// message with its thread, the open draft and the reviewed send. A message is named by the `{ source, id }` the
 // answers carry. send-message never touches the composer, so a draft the person is writing stays
 // theirs; it is irreversible in the manifest, so the desk asks the person before each one (ADR 0078).
-import { newDraft, problemsOf, replyDraft, sendArgs } from "./compose.js";
+import { composeDraft, originalFor, problemsOf, sendArgs } from "./compose.js";
 import { latestOf, MAX_LATEST } from "./latest.js";
 import { mailboxOf, queryFor, threadQuery } from "./model.js";
 import { asString } from "./state.js";
@@ -11,6 +10,7 @@ import { asString } from "./state.js";
 /**
  * @typedef {import("@endue-ai/bridge").MessageItem} MessageItem
  * @typedef {import("./model.js").Message} Message
+ * @typedef {import("./compose.js").Draft} Draft
  * @typedef {import("@endue-ai/bridge").PersonRef} PersonRef
  */
 
@@ -50,6 +50,7 @@ export function messageAnswer(/** @type {Message} */ m) {
  *   accounts(): Promise<string[]>,
  *   run(connector: string, action: string, args: Record<string, unknown>): Promise<unknown> },
  *   named(a: Record<string, unknown>): Promise<Message>, messageOf(item: MessageItem): Message,
+ *   draft(): Draft | null,
  *   account(): string | undefined, conf(): { signature: string, addresses: string[] },
  *   say(text: string): void, now(): number }} deps
  */
@@ -97,37 +98,30 @@ export function answerAgents(answer, deps) {
     };
   });
 
+  answer("endue.mail.draft", () => {
+    const draft = deps.draft();
+    if (!draft) return null;
+    const { id, account, to, cc, bcc, subject, body, replyTo } = draft;
+    return {
+      id,
+      account,
+      to,
+      cc,
+      bcc,
+      subject,
+      replyTo,
+      body: body.slice(0, BODY_MAX),
+      truncated: body.length > BODY_MAX,
+    };
+  });
+
   answer("endue.mail.send-message", async (a) => {
-    const text = (/** @type {unknown} */ v) => (typeof v === "string" ? v : undefined);
-    const now = new Date(deps.now()).toISOString();
-    const { signature, addresses } = deps.conf();
-    let draft;
-    if (a.replyTo !== undefined) {
-      const original = await deps.named(/** @type {Record<string, unknown>} */ (a.replyTo));
-      const reply = replyDraft(original, { all: a.all === true, addresses, now });
-      const typed = text(a.body) ?? "";
-      draft = {
-        ...reply,
-        ...(text(a.to) !== undefined ? { to: /** @type {string} */ (text(a.to)) } : {}),
-        ...(text(a.cc) !== undefined ? { cc: /** @type {string} */ (text(a.cc)) } : {}),
-        ...(text(a.subject) !== undefined
-          ? { subject: /** @type {string} */ (text(a.subject)) }
-          : {}),
-        body: `${typed}${signature ? `\n\n${signature}` : ""}${reply.body}`,
-      };
-    } else {
-      const account = text(a.account) ?? deps.account();
-      draft = newDraft({
-        to: text(a.to),
-        cc: text(a.cc),
-        bcc: text(a.bcc),
-        subject: text(a.subject),
-        body: text(a.body),
-        ...(account ? { account } : {}),
-        signature,
-        now,
-      });
-    }
+    const original = await originalFor(a, deps.named);
+    const draft = composeDraft(
+      a,
+      { ...deps.conf(), account: deps.account(), now: new Date(deps.now()).toISOString() },
+      original,
+    );
     const problems = problemsOf(draft, await actions.accounts());
     if (problems.length > 0) throw new Error(problems.join(" "));
     const [connector = ""] = (draft.account ?? "").split("/");

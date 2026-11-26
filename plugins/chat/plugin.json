@@ -117,22 +117,54 @@
       {
         "id": "endue.chat.layout",
         "title": "Switch the chat layout",
-        "keywords": ["chat", "view", "layout", "inbox", "timeline", "columns"]
+        "keywords": ["chat", "view", "layout", "inbox", "timeline", "columns"],
+        "description": "Show the conversation, inbox, timeline or columns layout. Omit layout to cycle.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "layout": { "type": "string", "enum": ["conversation", "inbox", "timeline", "columns"] }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.filter",
         "title": "Filter chats",
-        "keywords": ["chat", "unread", "mentions", "direct", "saved"]
+        "keywords": ["chat", "unread", "mentions", "direct", "saved"],
+        "description": "Show all chats, unread, mentions, direct messages or saved messages.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "filter": { "type": "string", "enum": ["all", "unread", "mentions", "direct", "saved"] }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.platform",
         "title": "Show one chat service",
-        "keywords": ["chat", "slack", "discord", "teams", "service"]
+        "keywords": ["chat", "slack", "discord", "teams", "service"],
+        "description": "Show a chat service by id, such as slack or discord. Use all to clear the service filter.",
+        "args": {
+          "type": "object",
+          "properties": { "platform": { "type": "string", "maxLength": 100 } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.search",
         "title": "Search every chat",
-        "keywords": ["chat", "find", "search"]
+        "keywords": ["chat", "find", "search"],
+        "description": "Show matching chats in the timeline. Pass empty text to clear the search.",
+        "args": {
+          "type": "object",
+          "properties": { "text": { "type": "string", "maxLength": 500 } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.refresh",
@@ -149,7 +181,33 @@
       {
         "id": "endue.chat.next-unread",
         "title": "Go to the next unread conversation",
-        "keywords": ["chat", "unread", "next"]
+        "keywords": ["chat", "unread", "next"],
+        "description": "Open the next unread conversation in the current chat view, wrapping at the end.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true
+      },
+      {
+        "id": "endue.chat.draft",
+        "title": "Prepare a chat draft",
+        "keywords": ["chat", "draft", "write", "composer"],
+        "description": "Prepare text in the named conversation's composer for the person to review and send. Name source and channel as conversations answers them, and optionally a thread root id in that conversation. An existing draft with different text stays in the composer.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": { "connector": { "type": "string" }, "instance": { "type": "string" } },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "channel": { "type": "string", "minLength": 1, "maxLength": 1000 },
+            "thread": { "type": "string", "minLength": 1, "maxLength": 1000 },
+            "text": { "type": "string", "minLength": 1, "maxLength": 40000 }
+          },
+          "required": ["source", "channel", "text"],
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.send",
@@ -207,7 +265,8 @@
         "id": "endue.chat.react",
         "title": "React to the selected message",
         "keywords": ["chat", "react", "emoji", "reaction"],
-        "description": "React to a message with emoji (the character, or :name:). The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "description": "React to the message { source, id } with emoji (the character or :name:). Set on true to add the reaction or false to remove it. Omit on to toggle. Answers whether the reaction is present.",
+        "irreversible": true,
         "args": {
           "type": "object",
           "properties": {
@@ -233,7 +292,8 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 100
-            }
+            },
+            "on": { "type": "boolean" }
           },
           "additionalProperties": false
         },
@@ -243,6 +303,7 @@
         "id": "endue.chat.edit",
         "title": "Edit your chat message",
         "keywords": ["chat", "edit", "change"],
+        "irreversible": true,
         "description": "Change the text of one of the person's own messages to text. The message is { source, id } as endue.chat.messages and find-messages answer them.",
         "args": {
           "type": "object",
@@ -280,7 +341,7 @@
         "title": "Delete your chat message",
         "keywords": ["chat", "delete", "remove"],
         "irreversible": true,
-        "description": "Delete one of the person's own messages, after the person says yes; pass confirmed true so the plugin does not ask again. The message is { source, id } as endue.chat.messages and find-messages answer them.",
+        "description": "Delete one of the person's own messages after the desk asks for approval. Name the message by { source, id } as endue.chat.messages and find-messages answer them.",
         "args": {
           "type": "object",
           "properties": {
@@ -349,7 +410,14 @@
       {
         "id": "endue.chat.mark-all-read",
         "title": "Mark every chat read",
-        "keywords": ["chat", "read", "all", "clear"]
+        "keywords": ["chat", "read", "all", "clear"],
+        "description": "Mark every unread conversation in the current view read. Give a platform id to cover that service, or all to cover every service. Answers how many messages changed.",
+        "args": {
+          "type": "object",
+          "properties": { "platform": { "type": "string", "maxLength": 100 } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.chat.save",
@@ -468,10 +536,19 @@
         "readOnly": true
       },
       {
+        "id": "endue.chat.current",
+        "title": "Chat: read the open view",
+        "keywords": ["chat", "current", "layout", "selection", "thread"],
+        "description": "Read the layout, filter, platform, search, open conversation, thread root and message selection. Unset targets are null.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true,
+        "readOnly": true
+      },
+      {
         "id": "endue.chat.messages",
         "title": "Chat: a conversation's messages as data",
         "keywords": ["chat", "messages", "read", "history", "thread"],
-        "description": "A conversation's newest messages, oldest first, as data, leaving the screen as it is and marking nothing read: each with source and id, author, self (the person's own), at, text (to 4000 characters), unread, thread, isReply, replyCount, reactions and attachments. thread, a root message's id, answers that thread's root and its replies instead. The conversation is { source, channel } as endue.chat.conversations answers them. Up to limit (20, at most 100).",
+        "description": "A conversation's newest messages, oldest first, as data, leaving the screen as it is and marking nothing read: each with source and id, author, self (the person's own), at, text (to 4000 characters), unread, thread, isReply, replyCount, reactions and attachments. thread, a root message's id, answers that thread's root and its replies instead. Use { source, channel } as endue.chat.conversations answers them, or omit the target for the open conversation. Up to limit (20, at most 100).",
         "args": {
           "type": "object",
           "properties": {
@@ -574,10 +651,11 @@
         "id": "endue.chat.find-messages",
         "title": "Chat: find messages as data",
         "keywords": ["chat", "find", "search", "messages"],
-        "description": "Chat messages of every account whose text holds text, newest first, as data, leaving the screen as it is, each as endue.chat.messages answers it, up to limit (20, at most 100).",
+        "description": "Find chat messages by text across accounts, newest first, as data, up to limit (20, at most 100). Use saved true for the person's saved messages, with optional text to filter them. Leaves the screen as it is.",
         "args": {
           "type": "object",
           "properties": {
+            "saved": { "type": "boolean" },
             "text": {
               "type": "string",
               "minLength": 1,
@@ -589,7 +667,6 @@
               "maximum": 100
             }
           },
-          "required": ["text"],
           "additionalProperties": false
         },
         "result": {

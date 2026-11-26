@@ -3,12 +3,14 @@
 // ends the command with the same words, which the desk shows in its notice. Agents name what they
 // act on: `{ source, channel }` a conversation, `{ source, id }` a message.
 import { QUICK_REACTIONS } from "./emoji.js";
-import { conversationKey } from "./model.js";
+import { conversationKey, messageKey } from "./model.js";
 import { LAYOUTS } from "./query.js";
-import { asArgs, asString, conversationTarget, threadTarget } from "./state.js";
+import { asArgs, asSource, asString, conversationTarget, threadTarget } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
+ * @typedef {(args: Record<string, unknown>, invocation?: Invocation) => unknown} Handler
  * @typedef {import("./model.js").ChatMessage} ChatMessage
  * @typedef {import("./model.js").Conversation} Conversation
  * @typedef {{
@@ -18,11 +20,12 @@ import { asArgs, asString, conversationTarget, threadTarget } from "./state.js";
  *   pick: ReturnType<typeof import("./actions.js").createActions>["pick"],
  *   writing: ReturnType<typeof import("./writing.js").createWriting>,
  *   app: {
- *     layout(): string, current(): string | null, conversations(): Conversation[],
+ *     layout(): string, current(): string | null, conversations(platform?: string): Conversation[],
  *     message(key: string | null): Promise<ChatMessage>,
  *     lastOwn(target?: string): ChatMessage | undefined,
  *     openConversation(key: string, select?: string): Promise<string>,
  *     openThread(root: ChatMessage): Promise<void>,
+ *     draft(key: string, root: ChatMessage | undefined, text: string): Promise<string>,
  *     setLayout(id: string): Promise<string>, setFilter(id: string): Promise<string>,
  *     setPlatform(id: string | null): Promise<string>, setSearch(text: string): Promise<string>,
  *     refresh(): Promise<void>, nextUnread(): Promise<string>,
@@ -33,43 +36,45 @@ import { asArgs, asString, conversationTarget, threadTarget } from "./state.js";
  */
 
 const NAME = "the chat plugin";
+const fromAgent = (/** @type {Invocation | undefined} */ invocation) =>
+  invocation?.caller.startsWith("agent:") === true;
 
 /** @param {Deps} deps */
 export function registerCommands({ commands, surface, view, say, pick, writing, app }) {
-  /** @type {Map<string, (args: Record<string, unknown>) => unknown>} */
+  /** @type {Map<string, Handler>} */
   const own = new Map();
 
-  /** Run one of the plugin's commands. @param {string} name @param {unknown} raw */
-  const command = async (name, raw) => {
+  /** @param {string} name @param {unknown} raw @param {Invocation} [invocation] */
+  const command = async (name, raw, invocation) => {
     const handler = own.get(name);
     if (!handler) throw new Error(`${NAME} has no command ${name}.`);
     try {
-      return await handler(asArgs(raw));
+      return await handler(asArgs(raw), invocation);
     } catch (error) {
       say(error instanceof Error ? error.message : String(error));
       throw error;
     }
   };
-  /** @type {(name: string, handler: (a: Record<string, unknown>) => unknown) => void} */
+  /** @type {(name: string, handler: Handler) => void} */
   const answer = (name, handler) => {
     own.set(name, handler);
-    commands.on(name, (raw) => command(name, raw));
+    commands.on(name, (raw, invocation) => command(name, raw, invocation));
   };
 
   /** The conversation a command names, or the open one. */
   const conversationOf = (/** @type {Record<string, unknown>} */ a) => {
-    const source = /** @type {{ connector?: unknown, instance?: unknown }} */ (a.source ?? {});
+    const source = asSource(a.source);
     const channel = asString(a.channel);
-    if (channel && typeof source.connector === "string" && typeof source.instance === "string")
-      return conversationKey({ connector: source.connector, instance: source.instance }, channel);
+    if (source && channel) return conversationKey(source, channel);
     const key = asString(a.conversation) ?? app.current();
     if (!key) throw new Error("Open a conversation first.");
     return key;
   };
   /** The message a command names, or the selected one. */
-  const messageOf = (/** @type {Record<string, unknown>} */ a) => {
-    const key = writing.named(a);
-    if (!key) throw new Error("Select a message first.");
+  const messageOf = (/** @type {Record<string, unknown>} */ a, named = false) => {
+    const key = writing.named(a, !named);
+    if (!key)
+      throw new Error(named ? "Name the message by its source and id." : "Select a message first.");
     return app.message(key);
   };
   const shown = (/** @type {string} */ where) => {
@@ -122,7 +127,9 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     const id = asString(a.platform);
     return app.setPlatform(id === undefined || id === "all" ? null : id);
   });
-  answer("endue.chat.search", async (a) => {
+  answer("endue.chat.search", async (a, invocation) => {
+    if (fromAgent(invocation) && typeof a.text !== "string")
+      throw new Error("Give the search text.");
     const text =
       typeof a.text === "string"
         ? a.text
@@ -137,6 +144,21 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     const key = await app.nextUnread();
     shown("messages");
     return key;
+  });
+  answer("endue.chat.draft", async (a) => {
+    const source = asSource(a.source);
+    const channel = asString(a.channel);
+    const text = asString(a.text);
+    if (!source || !channel || !text?.trim())
+      throw new Error("Name a conversation and draft text.");
+    const key = conversationKey(source, channel);
+    const thread = asString(a.thread);
+    const root = thread ? await app.message(messageKey(source, thread)) : undefined;
+    if (root && (root.conversation !== key || root.isReply))
+      throw new Error("That thread is not a root in the named conversation.");
+    const target = await app.draft(key, root, text);
+    shown(root ? "thread" : "composer");
+    return target;
   });
   answer("endue.chat.send", async (a) => {
     const text = asString(a.text);
@@ -161,8 +183,10 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     shown("thread");
     return root.key;
   });
-  answer("endue.chat.react", async (a) => {
-    const message = await messageOf(a);
+  answer("endue.chat.react", async (a, invocation) => {
+    const agent = fromAgent(invocation);
+    const message = await messageOf(a, agent);
+    if (agent && !asString(a.emoji)) throw new Error("Give the reaction's emoji.");
     const emoji =
       asString(a.emoji) ??
       (await pick({
@@ -172,12 +196,15 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
         items: QUICK_REACTIONS.map((e) => ({ id: e, label: e })),
       }));
     if (!emoji) return undefined;
-    return writing.react(message, emoji);
+    return writing.react(message, emoji, typeof a.on === "boolean" ? a.on : undefined);
   });
-  answer("endue.chat.edit", async (a) => {
+  answer("endue.chat.edit", async (a, invocation) => {
     const text = asString(a.text);
+    const agent = fromAgent(invocation);
+    if (agent && !text?.trim()) throw new Error("Give the new message text.");
     // `{ last: true, target }` is the empty composer's ArrowUp: the person's newest message there.
-    const key = a.last === true ? null : writing.named(a);
+    const key = !agent && a.last === true ? null : writing.named(a, !agent);
+    if (agent && !key) throw new Error("Name the message by its source and id.");
     const message = key ? await app.message(key) : app.lastOwn(asString(a.target));
     if (!message) throw new Error("You have no message here to edit.");
     if (text !== undefined) {
@@ -189,10 +216,11 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     shown(message.isReply ? "thread" : "composer");
     return message.key;
   });
-  answer("endue.chat.delete", async (a) => {
-    const message = await messageOf(a);
+  answer("endue.chat.delete", async (a, invocation) => {
+    const agent = fromAgent(invocation);
+    const message = await messageOf(a, agent);
     if (!message.self) throw new Error("Only your own messages can be deleted.");
-    if (a.confirmed !== true) {
+    if (!agent && a.confirmed !== true) {
       const sure = await pick({
         title: "Delete this message?",
         items: [
@@ -210,9 +238,9 @@ export function registerCommands({ commands, surface, view, say, pick, writing, 
     return true;
   });
   answer("endue.chat.mark-read", (a) => writing.markRead(conversationOf(a)));
-  answer("endue.chat.mark-all-read", async () => {
+  answer("endue.chat.mark-all-read", async (a) => {
     let n = 0;
-    for (const c of app.conversations().filter((x) => x.unread > 0))
+    for (const c of app.conversations(asString(a.platform)).filter((x) => x.unread > 0))
       n += await writing.markRead(c.key);
     say(n ? `Marked ${n} ${n === 1 ? "message" : "messages"} read.` : "Nothing unread.");
     return n;

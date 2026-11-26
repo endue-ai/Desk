@@ -1,11 +1,18 @@
 // What an agent reads through the chat plugin (ADR 0088): the conversations with their unread
 // counts, one conversation's or thread's messages, and messages found by words, each as data, from
-// the desk's index, leaving the screen as it is. A conversation is named by `{ source, channel }` and
-// a message by `{ source, id }`, as the answers carry them; send, react, edit and delete take the
-// same names (commands.js), and send and delete are irreversible, so the desk asks the person first.
-import { chatOf, conversationRef, isChat, oldestFirst } from "./model.js";
-import { conversationQuery, threadQuery, timelineQuery } from "./query.js";
-import { asString } from "./state.js";
+// the desk's index, leaving the screen as it is. A conversation is named by `{ source, channel }`
+// and a message by `{ source, id }`, as the answers carry them.
+import {
+  chatOf,
+  conversationKey,
+  conversationRef,
+  isChat,
+  messageKey,
+  messageRef,
+  oldestFirst,
+} from "./model.js";
+import { conversationQuery, says, threadQuery, timelineQuery } from "./query.js";
+import { asSource, asString } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/bridge").MessageItem} MessageItem
@@ -62,11 +69,14 @@ export function conversationAnswer(/** @type {Conversation} */ c) {
 
 /**
  * @param {(name: string, handler: (a: Record<string, unknown>) => unknown) => void} answer
- * @param {{ conversations(): Conversation[],
+ * @param {{ state: import("./state.js").State, saved(): Promise<ChatMessage[]>,
  *   query(q: ItemQuery): Promise<{ items: unknown[] }>,
  *   message(key: string): Promise<ChatMessage> }} deps
  */
 export function answerAgents(answer, deps) {
+  const s = deps.state;
+  const current = () =>
+    s.layout === "conversation" && s.current ? conversationRef(s.current) : undefined;
   const chats = async (/** @type {ItemQuery} */ query) =>
     (await deps.query(query)).items
       .filter((i) => isChat(/** @type {{ kind?: string, raw?: unknown }} */ (i)))
@@ -74,21 +84,32 @@ export function answerAgents(answer, deps) {
 
   /** The conversation `{ source, channel }` or `{ conversation }` names. */
   const named = (/** @type {Record<string, unknown>} */ a) => {
-    const source = /** @type {{ connector?: unknown, instance?: unknown }} */ (a.source ?? {});
+    const source = asSource(a.source);
     const channel = asString(a.channel);
-    if (channel && typeof source.connector === "string" && typeof source.instance === "string")
-      return { source: { connector: source.connector, instance: source.instance }, channel };
-    const ref = conversationRef(asString(a.conversation) ?? "");
+    if (source && channel) return { source, channel };
+    const explicit =
+      a.source !== undefined || a.channel !== undefined || a.conversation !== undefined;
+    const ref = explicit ? conversationRef(asString(a.conversation) ?? "") : current();
     if (!ref)
       throw new Error("Name the conversation: { source, channel }, as conversations answers.");
     return ref;
   };
 
+  answer("endue.chat.current", () => ({
+    layout: s.layout,
+    filter: s.filter,
+    platform: s.platform,
+    search: s.search,
+    conversation: current() ?? null,
+    thread:
+      s.layout === "conversation" && s.thread ? (messageRef(s.thread.root.key) ?? null) : null,
+    selection: s.selected ? (messageRef(s.selected) ?? null) : null,
+  }));
+
   answer("endue.chat.conversations", (a) => {
     const platform = asString(a.platform)?.toLowerCase();
     const words = (asString(a.query) ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-    const all = deps
-      .conversations()
+    const all = s.conversations
       .filter(
         (c) =>
           !platform || c.platform.id === platform || c.platform.name.toLowerCase() === platform,
@@ -111,9 +132,12 @@ export function answerAgents(answer, deps) {
     const limit = limitOf(a.limit, MESSAGES);
     const thread = asString(a.thread);
     if (thread) {
-      const root = await deps.message(
-        `${conversation.source.connector}/${conversation.source.instance}#${thread}`,
-      );
+      const root = await deps.message(messageKey(conversation.source, thread));
+      if (
+        root.conversation !== conversationKey(conversation.source, conversation.channel) ||
+        root.isReply
+      )
+        throw new Error("That thread is not a root in the named conversation.");
       const replies = (await chats(threadQuery(root))).filter((m) => m.id !== root.id);
       return {
         ...conversation,
@@ -128,10 +152,13 @@ export function answerAgents(answer, deps) {
 
   answer("endue.chat.find-messages", async (a) => {
     const text = asString(a.text)?.trim();
+    const limit = limitOf(a.limit, MESSAGES);
+    if (a.saved === true) {
+      const found = (await deps.saved()).filter((m) => !text || says(m, text));
+      return { saved: true, text: text ?? "", messages: found.slice(0, limit).map(messageAnswer) };
+    }
     if (!text) throw new Error("Say which words to find: text is empty.");
-    const found = await chats(
-      timelineQuery({ filter: "all", text, page: limitOf(a.limit, MESSAGES) }),
-    );
+    const found = await chats(timelineQuery({ filter: "all", text, page: limit }));
     return { text, messages: found.map(messageAnswer) };
   });
 }

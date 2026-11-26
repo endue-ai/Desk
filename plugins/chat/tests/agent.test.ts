@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { SLACK } from "./chat-fixtures";
+import { DISCORD, SLACK } from "./chat-fixtures";
 import { mount } from "./harness";
 
 type Msg = { id: string; author: string; text: string; self: boolean };
@@ -69,6 +69,90 @@ describe("an agent's chat commands", () => {
     expect(found.messages.map((m) => m.id)).toEqual(["s-7"]);
     await expect(host.command("endue.chat.find-messages", { text: " " })).rejects.toThrow(/empty/);
   });
+
+  it("reads the open conversation and selection without changing the view", async () => {
+    const { app, host, ran, view } = await mount({ settings: { "mark-read": "never" } });
+    await app.openConversation("acme.slack/work@C1");
+    await app.activate("acme.slack/work#s-3");
+    const before = view.shown();
+    expect(await host.command("endue.chat.current")).toMatchObject({
+      layout: "conversation",
+      filter: "all",
+      platform: null,
+      search: "",
+      conversation: { source: SLACK, channel: "C1" },
+      thread: { source: SLACK, id: "s-3" },
+      selection: { source: SLACK, id: "s-3" },
+    });
+    expect(await host.command("endue.chat.messages")).toMatchObject({
+      source: SLACK,
+      channel: "C1",
+      messages: expect.arrayContaining([expect.objectContaining({ id: "s-1" })]),
+    });
+    expect(view.shown()).toEqual(before);
+    expect(ran("acme.slack.chat.read")).toEqual([]);
+    await expect(host.command("endue.chat.messages", { channel: "C2" })).rejects.toThrow(
+      /Name the conversation/,
+    );
+  });
+
+  it("prepares a threaded draft without sending, marking read or replacing a person's draft", async () => {
+    const { app, host, ran, view } = await mount();
+    const destination = { source: SLACK, channel: "C1", thread: "s-3" };
+    await host.command("endue.chat.draft", { ...destination, text: "Ready for review" });
+    expect(view.threads.at(-1)?.composer.text).toBe("Ready for review");
+    expect(view.focused.at(-1)).toBe("thread");
+    expect(ran("acme.slack.chat.send")).toEqual([]);
+    expect(ran("acme.slack.chat.read")).toEqual([]);
+    app.type("thread:acme.slack/work#s-3", "A person's unsent words");
+    await expect(
+      host.command("endue.chat.draft", { ...destination, text: "A replacement" }),
+    ).rejects.toThrow(/draft/i);
+    await expect(
+      host.command("endue.chat.draft", { ...destination, channel: "C2", text: "Wrong thread" }),
+    ).rejects.toThrow(/thread/i);
+    await expect(
+      host.command("endue.chat.draft", { source: SLACK, channel: "absent", text: "Wrong channel" }),
+    ).rejects.toThrow(/conversation/i);
+    expect(app.state().drafts["thread:acme.slack/work#s-3"]).toBe("A person's unsent words");
+  });
+
+  it("finds saved messages and marks only the named platform read", async () => {
+    const { host, ran } = await mount();
+    await host.command("endue.chat.save", { source: SLACK, id: "s-7" });
+    expect(await host.command("endue.chat.find-messages", { saved: true })).toMatchObject({
+      messages: [expect.objectContaining({ id: "s-7" })],
+    });
+    await host.command("endue.chat.mark-all-read", { platform: "discord" });
+    expect(ran("acme.discord.chat.read")).toHaveLength(1);
+    expect(ran("acme.slack.chat.read")).toEqual([]);
+  });
+
+  it("sets reaction state idempotently and leaves a toggle when on is omitted", async () => {
+    const { host, ran } = await mount();
+    const reaction = { source: DISCORD, id: "d-1", emoji: "👍" };
+    expect(await host.command("endue.chat.react", { ...reaction, on: true })).toBe(true);
+    expect(ran("acme.discord.chat.react")).toEqual([]);
+    expect(await host.command("endue.chat.react", { ...reaction, on: false })).toBe(false);
+    expect(await host.command("endue.chat.react", reaction)).toBe(true);
+    expect(ran("acme.discord.chat.react")).toMatchObject([{ on: false }, { on: true }]);
+  });
+
+  it("uses the core's delivered agent invocation without opening a second delete palette", async () => {
+    const { host, ran, settle } = await mount();
+    host.emit({
+      event: "cmd.invoked",
+      data: {
+        id: "endue.chat.delete",
+        invocationId: "reviewed-delete",
+        caller: "agent:eris",
+        args: { source: SLACK, id: "s-5" },
+      },
+    });
+    await settle();
+    expect(ran("desk.palette.pick")).toEqual([]);
+    expect(ran("acme.slack.chat.delete")).toMatchObject([{ id: "s-5" }]);
+  });
 });
 
 describe("the manifest offers them to agents", () => {
@@ -79,9 +163,9 @@ describe("the manifest offers them to agents", () => {
     manifest.contributes?.commands?.find((c) => c.id === `endue.chat.${id}`);
 
   it("marks the reads read-only, send and delete irreversible, and names every target", () => {
-    for (const id of ["conversations", "messages", "find-messages"])
+    for (const id of ["conversations", "current", "messages", "find-messages"])
       expect(byId(id), id).toMatchObject({ agent: true, readOnly: true });
-    for (const id of ["send", "delete"])
+    for (const id of ["send", "edit", "delete", "react"])
       expect(byId(id), id).toMatchObject({ agent: true, irreversible: true });
     for (const id of ["show", "conversation", "react", "edit", "mark-read", "save", "pin"])
       expect(byId(id), id).toMatchObject({ agent: true, args: { additionalProperties: false } });
@@ -89,5 +173,19 @@ describe("the manifest offers them to agents", () => {
     // core checks every caller's args, so none of them requires one.
     for (const id of ["send", "react", "edit"])
       expect(byId(id)?.args?.required, id).toBeUndefined();
+    for (const id of [
+      "draft",
+      "layout",
+      "filter",
+      "platform",
+      "search",
+      "next-unread",
+      "mark-all-read",
+    ])
+      expect(byId(id), id).toMatchObject({
+        agent: true,
+        description: expect.any(String),
+        args: { additionalProperties: false },
+      });
   });
 });
