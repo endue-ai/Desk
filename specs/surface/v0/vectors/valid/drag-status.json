@@ -4,6 +4,7 @@
   "instance": {
     "type": "drag.status",
     "surface": "s-7",
-    "effect": "copy"
+    "effect": "copy",
+    "destination": { "path": "~/Inbox", "kind": "folder" }
   }
 }

@@ -133,7 +133,13 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
 
   /** @type {import("./load.js").Deps} */
   const deps = { access, caps: capsOf(view), options, show: refresh };
-  const { choose, load, play, playEntry } = createPlaying({ deps, resume, say });
+  const { choose, load, play, playEntry } = createPlaying({
+    deps,
+    resume,
+    say,
+    grantEntries: (entry, paths) =>
+      commands.run("desk.files.playlist-entries", { buffer: entry.buffer, paths }),
+  });
 
   /**
    * Answer one of the desk's requests. A failure goes to the status line and ends the request with

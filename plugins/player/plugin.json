@@ -7,7 +7,7 @@
   "autoload": true,
   "description": "Plays video and audio files in one player: one transport, subtitles drawn over the video, playlists and CUE chapters, and each file's tags and cover. What the desk's engine cannot play itself is remuxed for Media Source Extensions or decoded by FFmpeg in WebAssembly; a codec neither decodes, and damaged and protected files, open as their details, which say why and show the file in the file manager for another app. It never writes a file.",
   "permissions": [
-    { "permission": "cmd:invoke", "ids": ["desk.files.changed"] },
+    { "permission": "cmd:invoke", "ids": ["desk.files.changed", "desk.files.playlist-entries"] },
     { "permission": "shell:open", "paths": ["${home}/**"] },
     { "permission": "fs:read", "paths": ["/**"] },
     { "permission": "shell:open", "paths": ["/**"] }

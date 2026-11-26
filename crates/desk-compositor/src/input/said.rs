@@ -43,11 +43,7 @@ impl InputRouter {
                 out.extend(dnd_outs(dnd));
             }
             SurfaceMessage::SurfaceDragStatus(s) => {
-                out.extend(dnd_outs(self.broker.status(
-                    &self.targets,
-                    &s.surface,
-                    s.effect,
-                )));
+                out.extend(dnd_outs(self.broker.status(&self.targets, s)));
             }
             SurfaceMessage::SurfaceDragDone(d) => {
                 out.extend(dnd_outs(self.broker.done(&d.surface, d.effect)));

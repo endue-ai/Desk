@@ -71,11 +71,23 @@ pub(crate) fn open_options(
     home: &std::path::Path,
     language: Language,
 ) -> Options {
-    let open = text(language, "desk.dialog.open");
+    let destination = params.intent == Some(desk_bridge::DialogOpenIntent::Destination);
+    let open = text(
+        language,
+        if destination {
+            "desk.dialog.save"
+        } else {
+            "desk.dialog.open"
+        },
+    );
     Options {
         multiple: params.multiple == Some(true),
         directory: params.kind == Some(DialogOpenKind::Folders),
-        title: Some(titled(asker, params.title.as_deref(), &open)),
+        title: Some(titled(
+            asker,
+            params.title.as_deref().filter(|_| !destination),
+            &open,
+        )),
         default_path: (params.start_in.as_deref()).map(|p| local(p, home).to_string_lossy().into()),
         filters: filters(params.filters.as_ref()),
     }

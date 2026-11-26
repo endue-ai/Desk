@@ -39,9 +39,9 @@ function* walk(
 
 /**
  * @param {{ deps: import("./load.js").Deps, resume: ReturnType<typeof import("./resume.js").createResume>,
- *   say(words: string): void }} parts
+ *   say(words: string): void, grantEntries?(entry: Entry, paths: string[]): Promise<unknown> }} parts
  */
-export function createPlaying({ deps, resume, say }) {
+export function createPlaying({ deps, resume, say, grantEntries }) {
   const { access } = deps;
 
   /** Show the chosen subtitles ("" for none). */
@@ -137,6 +137,10 @@ export function createPlaying({ deps, resume, say }) {
     if (found.family === "subtitles") return openCues(entry, all);
     if (found.family === "playlist") {
       openPlaylist(entry, all);
+      const local = entry.playlist?.entries.flatMap((item) =>
+        !item.remote && item.path ? [item.path] : [],
+      );
+      if (local?.length) await grantEntries?.(entry, local).catch(() => undefined);
       // Back from a sleep it goes on with the entry it was playing, else from the first.
       const start = how.place?.entry ?? 0;
       const played =

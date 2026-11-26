@@ -118,12 +118,14 @@ impl Conversation {
         text: &str,
         desk: Option<BrainDesk>,
         fallback: Option<Fallback>,
+        person: bool,
     ) -> String {
         let turn = format!("t{}", self.turns.fetch_add(1, Ordering::Relaxed) + 1);
         let (this, id, text) = (Arc::clone(self), turn.clone(), text.to_owned());
         let spawned = thread::Builder::new()
             .name("desk-brain-turn".to_owned())
             .spawn(move || {
+                crate::core_files_gesture::PERSON_TURN.set(person);
                 let line = Line {
                     text: &text,
                     desk: desk.as_ref(),

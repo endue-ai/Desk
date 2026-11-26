@@ -1,9 +1,7 @@
-// File context is opt-in for one message. Use the existing bridge permission flow, an exact path
+// File context is opt-in for one message. The desk's picker grants an exact path
 // scope and a bounded range; content is never inferred from whichever surface happens to be open.
 const BYTES = 16384;
 const CHARS = 3000;
-const TEXT =
-  /\.(txt|md|markdown|csv|tsv|json|jsonl|yaml|yml|xml|html|css|js|ts|jsx|tsx|rs|py|sh|toml|ini|cfg|sql|log|c|h|cpp|java|go|rb|php|svelte|vue)$/i;
 
 export function createContext(doc, bridge, commands) {
   const box = doc.getElementById("attachment");
@@ -27,44 +25,18 @@ export function createContext(doc, bridge, commands) {
     pending = true;
     notice.textContent = "";
     try {
-      const listed = await commands.run("desk.buffers.list");
-      const files = Array.isArray(listed)
-        ? listed.filter(
-            (f) => typeof f.path === "string" && TEXT.test(f.path) && !/[*?]/.test(f.path),
-          )
-        : [];
-      if (!files.length) throw new Error("Open a text file first, then attach it here.");
-      const path = await commands
-        .run("desk.palette.pick", {
-          title: "Attach the saved text of an open file",
-          items: files.map((f) => ({
-            id: f.path,
-            label: f.name ?? f.path.split("/").at(-1),
-            detail: f.path + (f.modified ? " · unsaved changes are excluded" : ""),
-          })),
-        })
-        .catch(() => undefined);
-      if (mine !== generation || path === undefined || path === null) return;
-      const selected = files.find((f) => f.path === path);
-      if (!selected) throw new Error("Choose one of the open text files.");
+      const selected = await commands.run("desk.files.attach");
+      if (mine !== generation || !selected || typeof selected.path !== "string") return;
+      const { path } = selected;
       const scope = { permission: "fs:read", paths: [path] };
-      const read = () =>
-        bridge.call("fs.read", { path, encoding: "base64", offset: 0, length: BYTES, scope });
       notice.textContent = "Reading the selected file…";
-      let result;
-      try {
-        result = await read();
-      } catch (error) {
-        if (error?.code !== "permission_denied") throw error;
-        if (mine !== generation) return;
-        const decision = await bridge.call("perm.request", {
-          permission: scope,
-          reason: `To attach ${path} to your next message to Eris`,
-        });
-        if (mine !== generation) return;
-        if (!decision.granted) throw new Error("The file was not attached: reading was declined.");
-        result = await read();
-      }
+      const result = await bridge.call("fs.read", {
+        path,
+        encoding: "base64",
+        offset: 0,
+        length: BYTES,
+        scope,
+      });
       if (mine !== generation) return;
       const bytes =
         result.encoding === "base64"

@@ -7,7 +7,7 @@
   "description": "Eris, the secretary: her status poses, a conversation typed to her, and the soul text and orb other plugins reuse.",
   "permissions": [
     { "permission": "brain:converse" },
-    { "permission": "cmd:invoke", "ids": ["desk.buffers.list", "desk.palette.pick"] },
+    { "permission": "cmd:invoke", "ids": ["desk.files.attach"] },
     { "permission": "fs:read", "paths": ["${home}/**"] },
     { "permission": "fs:read", "paths": ["/**"] }
   ],

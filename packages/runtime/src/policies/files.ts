@@ -15,7 +15,8 @@ import type { NoticeInput } from "../notify";
 import { autoloads } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
-import { folderRead, OPEN_FOR_AGENTS, onePath, opener, openers, personChose } from "./files-open";
+import { installFileChoices, pickFileChoice } from "./files-choices";
+import { OPEN_FOR_AGENTS, onePath, opener, openers, personChose } from "./files-open";
 import { fileWindows } from "./files-windows";
 
 export { folderRead, opener, personChose } from "./files-open";
@@ -62,6 +63,8 @@ export function installFiles(
   const { commands, settings } = hub;
   const list = buffers.buffers;
   const offs = disposer();
+  const choices = installFileChoices(ctx, list);
+  offs.add(choices.dispose);
   let recent: RecentFile[] = [];
   /** When the desk last had each path saved, so the plugin's own write is not reported as a change. */
   const savedAt = new Map<string, number>();
@@ -81,14 +84,6 @@ export function installFiles(
     const max = settings.get("desk.files.recent-max", 20);
     recent = [file, ...recent.filter((r) => r.path !== file.path)].slice(0, Math.max(0, max));
     void bridge.call("store.set", { key: RECENT_KEY, value: recent }).catch(() => {});
-  };
-
-  const pick = async (title: string, items: unknown[], free = false) => {
-    if (!commands.has("desk.palette.pick")) return undefined;
-    const answer = await commands
-      .run("desk.palette.pick", { title, items, free, placeholder: free ? "~/path/to/file" : "" })
-      .catch(() => undefined);
-    return typeof answer === "string" ? answer : undefined;
   };
 
   /** Turn the opener on when it is off, and wait until it can answer. */
@@ -130,6 +125,7 @@ export function installFiles(
   offs.add(
     buffers.onClosed((buffer) => {
       if (buffer.path) unshown.delete(buffer.path);
+      choices.close(buffer.id);
       windows.closed(buffer);
       release(buffer.plugin);
     }),
@@ -171,27 +167,20 @@ export function installFiles(
   ): Promise<string> => {
     const path = await named(given);
     const going = visiting.get(path);
-    if (going) return show && !going.show ? going.opening.then(reveal) : going.opening;
     const existing = list.byPath(path);
-    if (existing) return show ? reveal(existing.id) : Promise.resolve(existing.id);
+    if (going || existing) {
+      const id = going ? await going.opening : existing?.id;
+      const buffer = id && list.get(id);
+      if (!buffer) throw new CommandError("failed", "the file was closed");
+      if (chosen) await choices.read(buffer.plugin, path, buffer.id);
+      return show && !going?.show ? reveal(buffer.id) : buffer.id;
+    }
     const opening = visit(path, by, show, chosen, caller).finally(() => {
       if (visiting.get(path)?.opening === opening) visiting.delete(path);
     });
     visiting.set(path, { opening, show });
     return opening;
   };
-
-  /** The person chose the file: its opener may read the folder without asking (ADR 0131). */
-  const allowRead = (plugin: string, path: string) =>
-    bridge
-      .call("perm.grant", {
-        caller: plugin,
-        permission: folderRead(path),
-        reason: `The person opened ${path}`,
-        scope: { permission: "perm:manage" },
-      })
-      // Without it the opener asks as before.
-      .catch(() => undefined);
 
   /** The plugins that may open `path`, in turn: the one named, its rule's, or the fallbacks. */
   const openersOf = (path: string, by: string | undefined) => {
@@ -216,13 +205,14 @@ export function installFiles(
     const id = `file:${path}`;
     for (const [at, plugin] of plugins.entries()) {
       const { key, opened } = await windows.place(plugin, caller, () => ready(plugin));
-      if (chosen) await allowRead(plugin, path);
+      if (chosen) await choices.read(plugin, path, id);
       const file = { id, name: baseName(path), plugin, path, modified: false, surface: false };
       list.add(key === plugin ? file : { ...file, instance: key });
       windows.placed(key, opened);
       try {
         await ctx.request(key, "desk.files.visit", { buffer: id, path });
       } catch (error) {
+        choices.close(id);
         list.remove(id);
         windows.placed(key, opened);
         release(plugin);
@@ -292,7 +282,8 @@ export function installFiles(
         path ??
         (pickFile
           ? await pickFile()
-          : await pick(
+          : await pickFileChoice(
+              commands,
               "Open a file",
               recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
               true,
@@ -308,7 +299,8 @@ export function installFiles(
     "desk.files.recent",
     "Open a recent file",
     async () => {
-      const path = await pick(
+      const path = await pickFileChoice(
+        commands,
         "Recent files",
         recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
       );
@@ -319,8 +311,9 @@ export function installFiles(
   define(
     "desk.files.save",
     "Save the file",
-    async (args) => {
+    async (args, { caller }) => {
       const buffer = fileBuffer(args);
+      await choices.save(buffer, caller);
       await ctx.request(windowOf(buffer), "desk.files.save", {
         buffer: buffer.id,
         path: buffer.path,
@@ -354,7 +347,7 @@ export function installFiles(
         return "reloaded";
       }
       notify({ caller: "desk", title: `${buffer.name} changed on disk`, level: "warning" });
-      const choice = await pick(`${buffer.name} changed on disk`, [
+      const choice = await pickFileChoice(commands, `${buffer.name} changed on disk`, [
         {
           id: "reload",
           label: "Reload it from disk",
