@@ -4,6 +4,7 @@
 // what is open. Chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented, so the desk gets them.
 
 import { createEngines } from "./engines.js";
+import { titleOf } from "./model.js";
 import { clock } from "./time.js";
 import { createMedia } from "./view-media.js";
 import { createPanels } from "./view-panels.js";
@@ -59,8 +60,7 @@ export function createView(doc, act, deps = {}) {
         title.textContent = "No file open";
         detail.textContent = "";
       } else {
-        const tags = next.info?.tags;
-        title.textContent = (next.mode === "media" && tags?.title) || next.item?.name || next.name;
+        title.textContent = titleOf(next);
         detail.textContent = detailOf(next);
       }
       const playing = next?.mode === "media" || next?.mode === "loading";
@@ -91,6 +91,7 @@ export function createView(doc, act, deps = {}) {
     },
 
     loadVolume: media.loadVolume,
+    transport: media.transport,
     /** What the webview says about a media type: "", "maybe" or "probably". */
     canPlay: (/** @type {string} */ type) => media.canPlay(type),
     /** Whether Media Source Extensions decode a type. */

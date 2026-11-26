@@ -297,14 +297,16 @@ export async function readText(/** @type {Deps} */ deps, /** @type {string} */ p
 export async function showSubtitles(deps, entry, id) {
   const subs = entry.subs;
   if (!subs) return;
-  if (id === "") {
-    subs.selected = "";
-    subs.cues = [];
-    return;
-  }
-  subs.cues = await subtitleCues(deps, id);
+  const request = {};
+  subtitleRequests.set(subs, request);
+  const cues = id === "" ? [] : await subtitleCues(deps, id);
+  if (entry.subs !== subs || subtitleRequests.get(subs) !== request)
+    throw new Error("The subtitle choice changed while the track was opening.");
+  subs.cues = cues;
   subs.selected = id;
 }
+
+const subtitleRequests = new WeakMap();
 
 /** Read and parse the chosen subtitles: a path, with #CLASS for one of a SAMI file's languages. */
 export async function subtitleCues(/** @type {Deps} */ deps, /** @type {string} */ id) {

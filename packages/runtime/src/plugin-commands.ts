@@ -36,6 +36,7 @@ export class PluginCommands {
   readonly #declared = new Map<string, Set<string>>();
   /** Eligible off plugins with manifest tools in the registry. */
   readonly #reserved = new Map<string, { revision: number; ids: Set<string> }>();
+  readonly #builtIn = new Set<string>();
   readonly #reads = new Set<string>();
 
   constructor(bridge: BridgeClient, reopen?: Reopen) {
@@ -55,7 +56,7 @@ export class PluginCommands {
     this.#reserved.delete(info.id);
     const own = this.#own(info);
     this.#declared.set(info.id, new Set(own.map((c) => c.id)));
-    void this.#register(info.id, own);
+    void this.#register(info, own);
   }
 
   /** Keep only the manifest's agent tools registered for a ready, dormant autoload plugin. */
@@ -78,7 +79,7 @@ export class PluginCommands {
       this.#reserved.set(info.id, { revision: info.revision, ids });
       for (const [id, provider] of this.#provides)
         if (provider === info.id && !ids.has(id)) this.#withdraw(id);
-      registering.push(this.#register(info.id, own));
+      registering.push(this.#register(info, own));
     }
     await Promise.all(registering);
   }
@@ -98,7 +99,10 @@ export class PluginCommands {
     );
   }
 
-  async #register(provider: string, commands: CommandContribution[]): Promise<void> {
+  async #register(info: PluginInfo, commands: CommandContribution[]): Promise<void> {
+    const provider = info.id;
+    if (info.builtIn) this.#builtIn.add(provider);
+    else this.#builtIn.delete(provider);
     await Promise.all(
       commands.map((command) => {
         const params = {
@@ -125,6 +129,7 @@ export class PluginCommands {
   /** A plugin went (turned off, removed, taken away): its commands go too. */
   unmounted(plugin: string): void {
     this.#live.delete(plugin);
+    this.#builtIn.delete(plugin);
     this.#closed.delete(plugin);
     this.#reserved.delete(plugin);
     this.#declared.delete(plugin);
@@ -156,14 +161,24 @@ export class PluginCommands {
 
   /**
    * The mounted plugin a cmd.* event is for, or undefined when it is not a cmd event for one. An
-   * invocation whose provider is not mounted is answered here.
+   * invocation whose provider is not mounted is answered here. A named built-in pane must still
+   * exist for its invocation, so it cannot reopen a closed provider.
    */
-  route(event: BridgeEvent, mounted: { has(id: string): boolean }): string | undefined {
+  route(
+    event: BridgeEvent,
+    mounted: { has(id: string): boolean },
+    reopenBuiltIn = true,
+  ): string | undefined {
     let plugin: string | undefined;
     if (event.event === "cmd.invoked") plugin = this.#provides.get(event.data.id);
     if (event.event === "cmd.answered") plugin = event.data.caller;
     if (plugin === undefined || mounted.has(plugin)) return plugin;
-    if (event.event === "cmd.invoked" && this.#reopen && this.#kept(event.data.id, plugin))
+    if (
+      event.event === "cmd.invoked" &&
+      (reopenBuiltIn || !this.#builtIn.has(plugin)) &&
+      this.#reopen &&
+      this.#kept(event.data.id, plugin)
+    )
       this.#opens(plugin, event, this.#reopen);
     else this.refuse({ event }, plugin, `${plugin} is not running`);
     return undefined;

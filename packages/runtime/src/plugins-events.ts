@@ -34,6 +34,11 @@ export interface EventRoutes {
   bridge: BridgeClient;
 }
 
+const IMAGES = "endue.images";
+const IMAGE_COMMANDS = new Set(
+  ["details", "zoom", "turn", "step", "compare"].map((name) => `${IMAGES}.${name}`),
+);
+
 /** Route a core event to the windows it is for. False for plugin.changed, which the host acts on. */
 export function routeEvent(event: BridgeEvent, routes: EventRoutes): boolean {
   const { owners, commands, instances, mounted } = routes;
@@ -57,8 +62,20 @@ export function routeEvent(event: BridgeEvent, routes: EventRoutes): boolean {
   }
   if (event.event === "cmd.invoked" || event.event === "cmd.answered") {
     // The provider hears its invocations; a caller hears its answers. The desk's own go nowhere.
-    const plugin = commands.route(event, mounted);
+    const target =
+      event.event === "cmd.invoked" && IMAGE_COMMANDS.has(event.data.id)
+        ? (event.data.args as { window?: unknown } | undefined)?.window
+        : undefined;
+    const plugin = commands.route(event, mounted, target === undefined);
     if (plugin === undefined) return true;
+    if (target !== undefined && plugin === IMAGES && mounted.get(plugin)?.builtIn) {
+      // A pane's view in desk.windows.list names the plugin instance, even in a tabbed window.
+      const pane =
+        typeof target === "string" && target.startsWith("plugin:") ? target.slice(7) : "";
+      if (pluginOf(pane) === plugin && instances.has(pane)) deliver(pane);
+      else commands.refuse({ event }, plugin, "The requested Images pane is not open");
+      return true;
+    }
     deliver(
       event.event === "cmd.answered"
         ? instances.answered(event.data.invocationId, plugin)

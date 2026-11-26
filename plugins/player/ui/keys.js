@@ -71,3 +71,21 @@ export function actionFor(press, focus) {
     return null;
   return action;
 }
+
+/**
+ * @param {Document} doc
+ * @param {() => boolean} active
+ * @param {Record<Action, () => unknown>} actions
+ */
+export function bindTransportKeys(doc, active, actions) {
+  doc.addEventListener("keydown", (event) => {
+    if (!active()) return;
+    const target = /** @type {HTMLElement} */ (event.target ?? doc.body);
+    const action = actionFor(event, {
+      tag: target.tagName ?? "",
+      type: /** @type {HTMLInputElement} */ (target).type,
+      id: target.id,
+    });
+    if (action && actions[action]() !== false) event.preventDefault();
+  });
+}

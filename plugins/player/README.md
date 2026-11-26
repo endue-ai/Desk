@@ -1,8 +1,7 @@
 # plugins/player
 
-`endue.player`: video and audio in one `center` surface (one transport, subtitles drawn over the
-video, the playlist and chapters, a song's cover and tags), on the public SDK only. It never writes.
-
+`endue.player` plays video and audio with subtitles, playlists, chapters, cover art and tags.
+Eris reads `state` and uses `play`, `pause`, `seek`, `volume`, `speed`, `subtitles` and `entry`.
 The readers (`ui/probe/`) read the container, codecs, tags and cover from `fs.read` ranges, and
 `ui/route.js` picks the engines, in order (ADR 0050): the engine's `<video>`/`<audio>` on the `fs.url`
 URL; the remuxer (`ui/remux/`), which rewrites MKV, WebM, AVI, FLV, Ogg, MXF and MPEG-TS into
@@ -20,7 +19,8 @@ Subtitles (SRT, WebVTT, ASS/SSA, SBV, TTML/DFXP, SAMI) named after the video are
 with a 0.1 s offset; M3U, PLS, XSPF and CUE play their local entries. Keys: Space or K, Left and
 Right 5 s, J and L 10 s, Up and Down, M, Home, End, Page Up and Down, T for theatre, `<` `>` speed,
 `[` `]` offset; chords are never taken. Long files offer to resume (`endue.player.resume`). It answers
-`desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed` and asks once for a file's folder.
+`desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`. A picked playlist gives access to its
+local entries through the desk's file-choice grant (ADR 0392).
 Asleep out of sight (ADR 0070, ADR 0176), the SDK's `keepFiles` keeps each file's position, playlist
 entry, subtitles and watch; back, the one on screen opens there paused without asking or taking the
 focus, the others when shown. A small window keeps the picture first (`ui/small.css`).
@@ -28,13 +28,12 @@ focus, the others when shown. A small window keeps the picture first (`ui/small.
 | Permission | Why |
 | --- | --- |
 | `cmd:invoke` (`desk.files.changed`) | Tell the desk a file changed on disk (`fs.watch`) |
-| `shell:open` (`${home}/**`) | Show in Finder (`ui/reveal.js`); elsewhere the core asks first |
+| `shell:open` (`${home}/**`) | Reveal the exact file in the file manager. Away from home, group the question by its immediate folder |
 
 Files: `ui/player.js`, `playing.js`, `keep.js`, `load.js`, `model.js`, `access.js` (requests,
 sleep, fs); `route.js`, `codecs.js`, `format.js`, `ui/probe/` (engines); `ui/remux/`, `engines.js`
 (MSE); `ui/software/`, `wasm/`, `ui/vendor/ffmpeg/` (LGPL 2.1); `ui/view*.js`, `keys.js` (DOM).
 
 ```bash
-pnpm exec vitest run plugins/player   # tests/make-*fixtures.sh remake the ffmpeg fixtures
-scripts/vendor-ffmpeg.sh              # rebuilds ui/vendor/ffmpeg in Docker (Emscripten)
+pnpm exec vitest run plugins/player   # fixture scripts in tests/, FFmpeg in scripts/vendor-ffmpeg.sh
 ```

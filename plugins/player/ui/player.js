@@ -3,6 +3,8 @@
 // across a sleep (keep.js), and says what happened. It only talks to ctx.commands, ctx.bridge,
 // ctx.surface and a view, so the SDK's test host runs it with a recording view.
 import { createAccess, nameOf } from "./access.js";
+import { installAgentCommands } from "./agent.js";
+import { createPlayerControls } from "./controls.js";
 import { placeOf, readPlace } from "./keep.js";
 import { modelOf } from "./model.js";
 import { cancel, capsOf, fallBack, SAYINGS } from "./outcome.js";
@@ -43,7 +45,8 @@ import { reveal as showInFolder } from "./reveal.js";
  * }} Model
  * @typedef {{ show(model: Model | null): void, status(text: string): void, focus(): void,
  *   canPlay(type: string): string, canRemux?(type: string): boolean, software?: boolean,
- *   loadVolume?(bridge: PluginContext["bridge"]): Promise<void> }} PlayerView
+ *   loadVolume?(bridge: PluginContext["bridge"]): Promise<void>,
+ *   transport?: ReturnType<typeof import("./view-media.js").createMedia>["transport"] }} PlayerView
  *   canRemux: MSE's isTypeSupported; software: whether the decoder worker can run.
  * @typedef {{
  *   objectUrl(bytes: Uint8Array, type: string): string,
@@ -307,12 +310,14 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
     const name = current()?.item?.name;
     if (name) say(words(name));
   };
-  const move = (/** @type {number} */ step) =>
-    act(async (entry) => {
-      const list = entry.playlist;
-      if (!list || (await playEntry(entry, list.index + step, step)) === null) return;
-      say(step > 0 ? "That was the last entry." : "This is the first entry.");
-    });
+  const controls = createPlayerControls({ playEntry, choose, refresh, say });
+  installAgentCommands(commands, {
+    current,
+    controls,
+    transport: view.transport,
+    ready: () => waking?.done,
+  });
+  const move = (/** @type {"next" | "previous"} */ to) => act((entry) => controls.entry(entry, to));
 
   return {
     /** The engine failed (an element's error, the remuxer's or the decoder's words): the next one. */
@@ -332,7 +337,7 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
     retry: () =>
       act(async (entry) => {
         if (!entry.item) return;
-        await play(entry, entry.item.path);
+        await play(entry, entry.item.path, { ask: !entry.playlist });
         say("");
       }),
     /** Where the element is: kept per buffer, and for long files in the store. */
@@ -348,34 +353,20 @@ export function createPlayer({ bridge, commands, surface }, view, options) {
       if (!entry?.item) return;
       resume.clear(entry.item.path);
       entry.position = 0;
-      if (entry.playlist) move(1);
+      if (entry.playlist) move("next");
     },
     /** The person answered the resume offer. */
     resumed: () => {
       const entry = current();
       if (entry) entry.resume = null;
     },
-    next: () => move(1),
-    previous: () => move(-1),
+    next: () => move("next"),
+    previous: () => move("previous"),
     /** Play one playlist entry, by its index; one that cannot be read leaves the last, and says why. */
-    pick: (/** @type {number} */ index) =>
-      act(async (entry) => {
-        const why = entry.playlist ? await playEntry(entry, index, 0) : null;
-        if (why) say(why);
-      }),
+    pick: (/** @type {number} */ index) => act((entry) => controls.entry(entry, index + 1)),
     /** Choose subtitles by id; "" turns them off. */
-    subtitle: (/** @type {string} */ id) => act((entry) => choose(entry, id)),
+    subtitle: (/** @type {string} */ id) => act((entry) => controls.subtitle(entry, id)),
     /** Move the subtitles later (positive) or earlier, in steps of a tenth of a second. */
-    offset: (/** @type {number} */ delta) =>
-      act((entry) => {
-        if (!entry.subs) return;
-        const value = Math.round((entry.subs.offset + delta) * 10) / 10;
-        entry.subs.offset = value;
-        say(
-          value === 0
-            ? "Subtitles in time."
-            : `Subtitles ${Math.abs(value).toFixed(1)} s ${value > 0 ? "later" : "earlier"}.`,
-        );
-      }),
+    offset: (/** @type {number} */ delta) => act((entry) => controls.offset(entry, delta)),
   };
 }

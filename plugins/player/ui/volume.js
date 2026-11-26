@@ -49,6 +49,8 @@ export function createVolume(doc, current) {
 
   return {
     apply,
+    setVolume,
+    setMuted,
     louder: () => setVolume(state().volume + 0.1),
     quieter: () => setVolume(state().volume - 0.1),
     toggleMute: () => setMuted(!state().muted),

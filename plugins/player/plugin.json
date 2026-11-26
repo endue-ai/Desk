@@ -14,6 +14,118 @@
   ],
   "surfaces": [{ "id": "main", "title": "Player", "placement": "center" }],
   "contributes": {
+    "commands": [
+      {
+        "id": "endue.player.state",
+        "title": "Player: Read the current player",
+        "description": "Read the current item, playback position, duration, playing state, tags, subtitle tracks and playlist entry.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
+        "id": "endue.player.play",
+        "title": "Player: Play the current item",
+        "description": "Start or continue the current item.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.pause",
+        "title": "Player: Pause the current item",
+        "description": "Pause the current item at its current position.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.seek",
+        "title": "Player: Seek in the current item",
+        "description": "Seek to an absolute time or relative to the current position, in seconds. Give exactly one of to or by.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "number" },
+            "by": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.volume",
+        "title": "Player: Set volume or mute",
+        "description": "Set the volume from 0 to 1 or set mute explicitly. Give exactly one of level or mute.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "number", "minimum": 0, "maximum": 1 },
+            "mute": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.speed",
+        "title": "Player: Set playback speed",
+        "description": "Set the transport's playback rate.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "rate": { "enum": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] }
+          },
+          "required": ["rate"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.subtitles",
+        "title": "Player: Choose subtitles",
+        "description": "Choose a track id from state, on for the first available track, or off. An optional offset is in seconds, positive for later.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "track": { "type": "string" },
+            "offset": { "type": "number" }
+          },
+          "required": ["track"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.entry",
+        "title": "Player: Choose a playlist entry",
+        "description": "Open the one-based playlist entry, or move next, previous, first or last among readable local entries.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "anyOf": [
+                { "type": "integer", "minimum": 1 },
+                { "enum": ["next", "previous", "first", "last"] }
+              ]
+            }
+          },
+          "required": ["to"],
+          "additionalProperties": false
+        },
+        "agent": true
+      }
+    ],
     "files": [
       { "pattern": "*.mp4", "plugin": "endue.player" },
       { "pattern": "*.m4v", "plugin": "endue.player" },

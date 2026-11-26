@@ -61,3 +61,37 @@ export function createChooser(doc, { act, comparing, stage }) {
     },
   };
 }
+
+/** @typedef {import("./images.js").Entry} Entry */
+
+/**
+ * The comparison loaded for this pane. A later choice, or another primary image, wins the load.
+ * @param {{ current(): Entry | undefined, held(path: string): Entry | undefined,
+ *   load(buffer: string, path: string, ask: boolean): Promise<Entry>,
+ *   render(): void, drop(entry: Entry | null): void, say(words: string): void }} parts
+ */
+export function createComparison({ current, held, load, render, drop, say }) {
+  /** @type {Entry | null} */
+  let partner = null;
+  let request = 0;
+  return {
+    current: () => partner,
+    async show(/** @type {string | null} */ path, ask = true) {
+      const ticket = ++request;
+      const before = partner;
+      const base = current();
+      if (path && (!base || path === base.path))
+        throw new Error("Choose another image to compare.");
+      const next = path ? (held(path) ?? (await load("", path, ask))) : null;
+      if (ticket !== request || current() !== base) {
+        drop(next);
+        throw new Error("The comparison changed while the image was opening.");
+      }
+      partner = next;
+      render();
+      drop(before);
+      if (next) say(`Comparing with ${next.name}.`);
+      return { path: next?.path ?? null };
+    },
+  };
+}
