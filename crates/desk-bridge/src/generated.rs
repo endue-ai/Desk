@@ -8251,6 +8251,13 @@ pub struct FsWriteParams {
     /// Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append: Option<bool>,
+    /// The pending built-in Sheets save command that delegates one whole-file write to the initiating agent. Its named path and exact write scope must match. It cannot append or create parent directories.
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
     pub scope: FsWritePermission,
 }
 

@@ -121,6 +121,11 @@
           "description": "Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.",
           "type": "boolean"
         },
+        "invocationId": {
+          "description": "The pending built-in Sheets save command that delegates one whole-file write to the initiating agent. Its named path and exact write scope must match. It cannot append or create parent directories.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
       },
       "required": ["path", "content", "scope"],

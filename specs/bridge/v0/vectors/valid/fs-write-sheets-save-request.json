@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "a built-in Sheets save delegates one exact file write to the initiating agent",
+  "instance": {
+    "id": 160,
+    "method": "fs.write",
+    "params": {
+      "path": "~/Documents/fixture.csv",
+      "content": "Name,Count\nExample,2\n",
+      "invocationId": "i-13",
+      "scope": {
+        "permission": "fs:write",
+        "paths": [
+          "~/Documents/fixture.csv"
+        ]
+      }
+    }
+  }
+}
