@@ -4,7 +4,7 @@
 // resume offer, the progress while an engine starts or buffers, and the keys. A stalled element (the
 // position stands still or no frame is drawn while playing, as when a URL's grant was revoked:
 // stall.js) is reported with a Try again button, never left frozen.
-import { actionFor } from "./keys.js";
+import { bindTransportKeys } from "./keys.js";
 import { createStallWatch } from "./stall.js";
 import { activeAt } from "./subtitles.js";
 import { clock } from "./time.js";
@@ -131,14 +131,18 @@ export function createMedia(doc, act, engines) {
     if (media && loaded) act("progress", { time: media.currentTime, duration: duration(), paused });
   };
 
-  const toggle = () => {
-    if (!media || !loaded) return;
-    if (media.paused) {
+  const setPlaying = async (/** @type {boolean} */ on) => {
+    if (!media || !loaded || on === !media.paused) return;
+    if (on) {
       const started = media.play();
-      if (started && typeof started.catch === "function") started.catch(() => {});
-    } else media.pause();
+      drawPlay();
+      await started;
+      return;
+    }
+    media.pause();
     drawPlay();
   };
+  const toggle = () => void setPlaying(media?.paused === true).catch(() => {});
   const seekTo = (/** @type {number} */ to) => {
     if (!media || !loaded) return;
     const total = duration();
@@ -153,8 +157,9 @@ export function createMedia(doc, act, engines) {
       element.playbackRate = rate;
     }
   };
+  const speeds = () => [...speed.options].map((option) => Number(option.value));
   const stepSpeed = (/** @type {number} */ step) => {
-    const values = [...speed.options].map((o) => Number(o.value));
+    const values = speeds();
     const at = values.indexOf(Number(speed.value));
     const next = values[Math.max(0, Math.min(values.length - 1, at + step))];
     if (next !== undefined) setSpeed(next);
@@ -249,44 +254,6 @@ export function createMedia(doc, act, engines) {
     act("resumed");
   });
 
-  /** @type {Record<string, () => void>} */
-  const actions = {
-    toggle,
-    back5: () => seekTo((media?.currentTime ?? 0) - 5),
-    forward5: () => seekTo((media?.currentTime ?? 0) + 5),
-    back10: () => seekTo((media?.currentTime ?? 0) - 10),
-    forward10: () => seekTo((media?.currentTime ?? 0) + 10),
-    louder: volume.louder,
-    quieter: volume.quieter,
-    mute: volume.toggleMute,
-    start: () => seekTo(0),
-    end: () => seekTo(duration()),
-    theatre: () => setTheatre(!doc.body.classList.contains("theatre")),
-    slower: () => stepSpeed(-1),
-    faster: () => stepSpeed(1),
-    earlier: () => model?.subtitles && act("offset", -0.1),
-    later: () => model?.subtitles && act("offset", 0.1),
-  };
-
-  doc.addEventListener("keydown", (event) => {
-    if (model?.mode !== "media" || !loaded) return;
-    const target = /** @type {HTMLElement} */ (event.target ?? doc.body);
-    const focus = {
-      tag: target.tagName ?? "",
-      type: /** @type {HTMLInputElement} */ (target).type,
-      id: target.id,
-    };
-    const action = actionFor(event, focus);
-    if (!action) return;
-    if (action === "leave") {
-      if (!doc.body.classList.contains("theatre")) return;
-      setTheatre(false);
-    } else if (action === "previous" || action === "next") {
-      if (!navigate(action === "next" ? 1 : -1)) return;
-    } else actions[action]?.();
-    event.preventDefault();
-  });
-
   /** Next or previous: the playlist's entry, else the chapter; false when there is neither. */
   const navigate = (/** @type {number} */ step) => {
     if ((model?.playlist?.rows.length ?? 0) > 1) {
@@ -304,6 +271,29 @@ export function createMedia(doc, act, engines) {
     if (target) seekTo(target.start);
     return true;
   };
+  bindTransportKeys(doc, () => model?.mode === "media" && loaded !== "", {
+    toggle,
+    back5: () => seekTo((media?.currentTime ?? 0) - 5),
+    forward5: () => seekTo((media?.currentTime ?? 0) + 5),
+    back10: () => seekTo((media?.currentTime ?? 0) - 10),
+    forward10: () => seekTo((media?.currentTime ?? 0) + 10),
+    louder: volume.louder,
+    quieter: volume.quieter,
+    mute: volume.toggleMute,
+    start: () => seekTo(0),
+    end: () => seekTo(duration()),
+    theatre: () => setTheatre(!doc.body.classList.contains("theatre")),
+    leave: () => {
+      if (!doc.body.classList.contains("theatre")) return false;
+      setTheatre(false);
+    },
+    previous: () => navigate(-1),
+    next: () => navigate(1),
+    slower: () => stepSpeed(-1),
+    faster: () => stepSpeed(1),
+    earlier: () => model?.subtitles && act("offset", -0.1),
+    later: () => model?.subtitles && act("offset", 0.1),
+  });
 
   const api = {
     /** Show the model's media; a new source starts where the model says. */
@@ -373,6 +363,25 @@ export function createMedia(doc, act, engines) {
       setTheatre(false);
     },
     seekTo,
+    transport: {
+      state: () =>
+        loaded && media
+          ? {
+              position: media.currentTime,
+              duration: duration(),
+              playing: !media.paused && !media.ended,
+              volume: media.volume,
+              muted: media.muted,
+              rate: media.playbackRate,
+            }
+          : null,
+      setPlaying,
+      seekTo,
+      setSpeed,
+      speeds,
+      setVolume: volume.setVolume,
+      setMuted: volume.setMuted,
+    },
     loadVolume: volume.load,
     /** Hear the position, for the chapter list. */
     onTime(/** @type {(time: number) => void} */ listener) {

@@ -10,6 +10,11 @@ import { clock } from "./time.js";
  * @typedef {import("./player.js").Row} Row
  */
 
+/** The current item's displayed title. */
+export function titleOf(/** @type {Pick<Model, "mode" | "info" | "item" | "name">} */ model) {
+  return (model.mode === "media" && model.info?.tags?.title) || model.item?.name || model.name;
+}
+
 /** A playlist's rows: each entry's title, what is said about it, and its state. */
 export function rowsOf(/** @type {NonNullable<Entry["playlist"]>} */ list) {
   return list.entries.map((e, i) => {

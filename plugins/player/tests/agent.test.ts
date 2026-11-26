@@ -24,7 +24,8 @@ it("the agent and keys drive the same live transport and current media state", a
   await host.command("endue.player.speed", { rate: 1.5 });
   await host.command("endue.player.subtitles", { track: SUBTITLE, offset: 0.5 });
   await expect(host.command("endue.player.state", {})).resolves.toMatchObject({
-    title: "clip.mp4",
+    title: "Test Tone",
+    tags: { title: "Test Tone" },
     position: 30,
     duration: 100,
     playing: true,

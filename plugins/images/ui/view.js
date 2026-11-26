@@ -197,19 +197,27 @@ export function createView(doc, act, options = {}) {
     viewer.step(direction, primaryFit());
     changed();
   };
-  const actual = () => {
-    viewer.set(1, primaryFit());
+  const setZoom = (/** @type {number | "fit"} */ level) => {
+    if (level === "fit") viewer.fit();
+    else viewer.set(level, primaryFit());
     changed();
   };
-  const fitAll = () => {
-    viewer.fit();
+  const actual = () => setZoom(1);
+  const fitAll = () => setZoom("fit");
+  const turn = (/** @type {number | undefined} */ degrees, flip = viewer.flipped) => {
+    if (degrees !== undefined) {
+      viewer.rotate(degrees);
+      viewer.fit();
+    }
+    if (viewer.flipped !== flip) viewer.flip();
     changed();
-  };
-  const rotate = (/** @type {number} */ degrees) => {
-    viewer.rotate(degrees);
-    viewer.fit();
-    changed();
-    say(`Turned to ${viewer.rotation}°.`);
+    say(
+      degrees === undefined
+        ? viewer.flipped
+          ? "Flipped."
+          : "Not flipped."
+        : `Turned to ${viewer.rotation}°.`,
+    );
   };
 
   const buttons = /** @type {Record<string, () => unknown>} */ ({
@@ -219,13 +227,9 @@ export function createView(doc, act, options = {}) {
     "zoom-in": () => zoom(1),
     "zoom-fit": fitAll,
     "zoom-actual": actual,
-    "rotate-left": () => rotate(-90),
-    "rotate-right": () => rotate(90),
-    flip: () => {
-      viewer.flip();
-      changed();
-      say(viewer.flipped ? "Flipped." : "Not flipped.");
-    },
+    "rotate-left": () => turn(-90),
+    "rotate-right": () => turn(90),
+    flip: () => turn(undefined, !viewer.flipped),
     "details-toggle": () => {
       details.hidden = !details.hidden;
       byId("details-toggle").setAttribute("aria-expanded", String(!details.hidden));
@@ -351,6 +355,8 @@ export function createView(doc, act, options = {}) {
       changed();
     },
     status: say,
+    setZoom,
+    turn,
     /** @param {import("./opening.js").Progress | null} value */
     progress(value) {
       if (!progress) return;

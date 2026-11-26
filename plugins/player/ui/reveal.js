@@ -27,9 +27,15 @@ const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") 
  */
 export async function reveal(bridge, path) {
   const name = nameOf(path);
-  // A path scope is a pattern: a name with * or ? would ask for more than this one file.
+  // A path scope is a pattern. Wildcards in the name would change the folder or target it names.
   if (/[*?]/.test(path)) throw new Error(`${name} cannot be shown: its path holds * or ?.`);
-  const scope = { permission: /** @type {const} */ ("shell:open"), paths: [path] };
+  const folder = path.slice(0, path.lastIndexOf("/"));
+  // A grant reaches other direct children of this folder, without sweeping in subfolders or roots.
+  const grouped = folder && !/^[A-Za-z]:$/.test(folder) && !path.split("/").includes("..");
+  const scope = {
+    permission: /** @type {const} */ ("shell:open"),
+    paths: [grouped ? `${folder}/*` : path],
+  };
   try {
     await bridge.call("shell.open", { target: path, reveal: true, scope });
   } catch (error) {
