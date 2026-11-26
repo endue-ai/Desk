@@ -76,6 +76,14 @@ export function createHunkActions(deps) {
     await deps.done(`Unstaged ${what}.`);
   };
 
+  const applyIndex = async (/** @type {unknown} */ supplied, /** @type {boolean} */ reverse) => {
+    const patch = patchText(supplied);
+    await deps.git([...APPLY, "--cached", ...(reverse ? ["--reverse"] : []), "-"], {
+      input: patch,
+    });
+    await deps.done(reverse ? "Unstaged the patch." : "Staged the patch.");
+  };
+
   /** The key: build the patch, then run it as a command the desk can undo. */
   const discard = async (/** @type {Part} */ part) => {
     await deps.invoke("endue.git.discard-patch", patchOf(part, "discard"));
@@ -102,14 +110,27 @@ export function createHunkActions(deps) {
     await deps.done(`Put back ${what}.`);
   };
 
-  return { stage, unstage, discard, discardPatch, restorePatch };
+  return { stage, unstage, applyIndex, discard, discardPatch, restorePatch };
 }
 
 /** @param {Partial<DiscardArgs>} args @returns {DiscardArgs} */
 function checked(args) {
   const { path, patch } = args;
   if (typeof path !== "string" || path === "") throw new Error("A path is empty.");
-  if (typeof patch !== "string" || !patch.startsWith("diff --git "))
-    throw new Error("The patch is not a diff.");
-  return { path, patch, what: typeof args.what === "string" ? args.what : `the change to ${path}` };
+  return {
+    path,
+    patch: patchText(patch),
+    what: typeof args.what === "string" ? args.what : `the change to ${path}`,
+  };
+}
+
+function patchText(/** @type {unknown} */ patch) {
+  if (
+    typeof patch !== "string" ||
+    !patch.startsWith("diff --git ") ||
+    patch.length > 1_048_576 ||
+    patch.includes("\0")
+  )
+    throw new Error("Give a Git diff patch of at most 1 MiB.");
+  return patch;
 }

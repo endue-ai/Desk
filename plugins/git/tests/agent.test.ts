@@ -56,21 +56,35 @@ describe("endue.git.state, for agents (ADR 0088)", () => {
     const commands = manifest().contributes?.commands ?? [];
     const agent = commands.filter((c) => c.agent).map((c) => c.id.replace("endue.git.", ""));
     expect(agent).toEqual([
+      "status",
       "state",
       "stage",
       "unstage",
       "discard",
+      "discard-patch",
       "commit",
       "fetch",
       "pull",
       "push",
       "checkout",
+      "branches",
+      "commits",
+      "diff-text",
+      "stash",
+      "stash-pop",
+      "stash-drop",
     ]);
     const marked = (flag: "readOnly" | "irreversible") =>
       commands.filter((c) => c[flag]).map((c) => c.id);
-    expect(marked("readOnly")).toEqual(["endue.git.state"]);
-    expect(marked("irreversible")).toEqual(["endue.git.discard", "endue.git.push"]);
-    // A person runs them bare from the palette: no args are ever required.
-    for (const c of commands) expect(c.args?.required, c.id).toBeUndefined();
+    expect(marked("readOnly")).toEqual([
+      "endue.git.state",
+      "endue.git.branches",
+      "endue.git.commits",
+      "endue.git.diff-text",
+    ]);
+    expect(marked("irreversible")).toEqual(["endue.git.push", "endue.git.stash-drop"]);
+    expect(commands.find(({ id }) => id === "endue.git.stash-drop")?.args?.required).toEqual([
+      "ref",
+    ]);
   });
 });
