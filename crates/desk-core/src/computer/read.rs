@@ -8,14 +8,15 @@ use desk_bridge::{
     ComputerAxTreeParams, ComputerAxTreeResult, ComputerPermissionParams,
     ComputerPermissionsOpenResult, ComputerPermissionsRequestResult,
     ComputerPermissionsStatusResult, ComputerScreenshotParams, ComputerScreenshotResult,
-    ComputerSeeParams, ComputerSeePermission, ComputerWindowsParams, ComputerWindowsResult,
-    ErrorCode, Permission,
+    ComputerSeeParams, ComputerSeePermission, ComputerStatusParams, ComputerWindowsParams,
+    ComputerWindowsResult, ErrorCode, Permission,
 };
 use desk_computer::ax::{Budget, ElementRef, Query};
 use desk_computer::screen::{Capture, Target as Shot, WindowScope};
 use desk_computer::{Computer, Focus};
 
 use super::{app_of, map};
+use crate::agents::agent_of;
 use crate::handler::{Answer, Core, error, json, sys_error};
 use crate::perm::Target;
 
@@ -41,14 +42,33 @@ impl Core {
         Ok(computer)
     }
 
-    pub(crate) fn computer_status(&self, caller: &str, params: ComputerSeeParams) -> Answer {
+    pub(crate) fn computer_status(&self, caller: &str, params: ComputerStatusParams) -> Answer {
         let computer = self.seeing(caller, &params.scope, Target::None)?;
         let now = computer.permissions().map_err(sys_error)?;
+        let agent = match params.invocation_id {
+            Some(id) if self.trusted_builtin(caller, "endue.computer") => self
+                .cmd_agent(caller, &id, Some("endue.computer.status"))?
+                .map(|agent| agent.caller),
+            Some(_) => {
+                return Err(error(
+                    ErrorCode::InvalidParams,
+                    "only the Computer status tool can name an invocation".to_owned(),
+                ));
+            }
+            None if agent_of(caller).is_some() => Some(caller.to_owned()),
+            None => None,
+        };
+        let allowed_apps = agent.map(|agent| {
+            let mut apps = self.approvals().apps.apps(&agent);
+            apps.retain(|app| holds(&params.scope, Some(app)));
+            apps
+        });
         json(ComputerPermissionsStatusResult {
             accessibility: now.accessibility,
             screen_recording: now.screen_recording,
             bundle_id: now.bundle_id,
             stopped: self.computer.stop_flag().is_raised(),
+            allowed_apps,
         })
     }
 

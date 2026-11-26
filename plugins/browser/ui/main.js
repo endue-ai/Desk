@@ -39,7 +39,7 @@ defineUiPlugin({
       app,
     );
     for (const name of Object.keys(agent))
-      ctx.commands.on(`endue.browser.${name}`, (args) => agent[name](args));
+      ctx.commands.on(`endue.browser.${name}`, (args, invocation) => agent[name](args, invocation));
     ctx.commands.on("endue.browser.stop", () => app?.stop());
     // The frame going away ends its view; the desk would close it with the window anyway.
     window.addEventListener("pagehide", () => app?.close());

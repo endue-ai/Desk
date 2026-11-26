@@ -9,7 +9,8 @@ import { describeCaller, describePermission } from "./describe.js";
  * @typedef {{ text: string, change: Change }} PreviewLine
  * @typedef {{ kind: string, lines: PreviewLine[], truncated: boolean }} Preview
  * @typedef {{ kind: "approval", approvalId: string, title: string, caller: Caller, action: string,
- *   target: string, preview: Preview | null, size: string, task: string | null, waiting: number }}
+ *   target: string, preview: Preview | null, size: string, task: string | null, app: string | null,
+ *   waiting: number }}
  *   ApprovalModel
  * @typedef {ApprovalModel} CardModel
  */
@@ -20,6 +21,7 @@ const ACTIONS = {
   "proc.spawn": { verb: "run a program", label: "Run a program" },
   "net.fetch": { verb: "send a web request", label: "Send a web request" },
   "cmd.invoke": { verb: "run a command", label: "Run a command" },
+  "web.act": { verb: "operate a web page", label: "Operate the page at" },
   // Eris keeping a fact in the person's memory (ADR 0096): the card asks before she remembers.
   "memory.remember": { verb: "remember this", label: "Remember" },
   // An agent operating the computer (ADR 0123): the target is the app, the preview the act.
@@ -86,6 +88,7 @@ function taskLabel(data) {
     "fs.write": `its other writes in ${scope}`,
     "net.fetch": `its other requests to ${scope}`,
     "memory.remember": "the other facts it keeps",
+    "web.act": `its other actions in this view at ${data.target}`,
   }[data.action];
   // A computer act's task covers the same app: its other input to it.
   const app = data.action.startsWith("computer.") ? `its other input to ${data.target}` : null;
@@ -113,6 +116,7 @@ export function approvalModel(data, plugins, waiting) {
     preview: previewOf(data.preview),
     size: data.size === undefined ? "" : sizeLabel(data.size),
     task: taskLabel(data),
+    app: data.untilStopApp ? `Allow in ${data.untilStopApp} until I stop` : null,
     waiting,
   };
 }
@@ -120,7 +124,7 @@ export function approvalModel(data, plugins, waiting) {
 /**
  * What the status line says once the person answered.
  * @param {PermApprovalData} data
- * @param {"once" | "task" | "deny"} answer
+ * @param {import("@endue-ai/bridge").ApprovalAnswer} answer
  * @param {PluginInfo[]} plugins
  */
 export function answeredLabel(data, answer, plugins) {
@@ -128,5 +132,6 @@ export function answeredLabel(data, answer, plugins) {
   const what = `${actionOf(data.action).label} ${data.target}`;
   if (answer === "deny") return `Denied ${name}: ${what}.`;
   if (answer === "task") return `Allowed ${name} for this task: ${what}.`;
+  if (answer === "app") return `Allowed ${name} in ${data.untilStopApp} until you stop.`;
   return `Allowed ${name} once: ${what}.`;
 }

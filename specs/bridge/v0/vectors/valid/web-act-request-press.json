@@ -7,7 +7,7 @@
     "params": {
       "viewId": "w-1",
       "invocationId": "i-3",
-    "action": {
+      "action": {
         "do": "press",
         "ref": "e3"
       },

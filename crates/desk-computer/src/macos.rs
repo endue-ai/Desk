@@ -48,6 +48,10 @@ fn require(permission: Permission, what: &str) -> Result<(), Error> {
 }
 
 impl Computer for MacOs {
+    fn pointer_position(&self) -> Result<crate::Point, Error> {
+        events::pointer_position()
+    }
+
     fn permissions(&self) -> Result<Permissions, Error> {
         Ok(Permissions {
             accessibility: tcc::accessibility(false),

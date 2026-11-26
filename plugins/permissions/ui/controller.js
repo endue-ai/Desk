@@ -22,7 +22,7 @@ import { createRefusals, refusalItems } from "./refusals.js";
  * @typedef {{ grants(list: GrantList): void, refusals(items: RefusalItem[]): void,
  *   sheet(open: boolean): void, prompt(model: PromptModel | null): void,
  *   approval(model: CardModel | null): void, status(text: string): void }} View
- * @typedef {"once" | "session" | "always" | "parent" | "refuse" | "task" | "deny"}
+ * @typedef {"once" | "session" | "always" | "parent" | "refuse" | "task" | "app" | "deny"}
  *   Choice
  * @typedef {{ kind: "prompt", data: PermPromptData } | { kind: "approval", data: PermApprovalData }} Card
  * @typedef {Pick<PluginContext["surface"], "show" | "hide">} Surface
@@ -33,7 +33,7 @@ const MANAGE = { permission: "perm:manage" };
 const PLUGINS = { permission: "plugin:manage" };
 const CHANGES = { permission: "events:subscribe", names: ["perm.changed"] };
 const DURATIONS = new Set(["once", "session", "always"]);
-const APPROVALS = new Set(["once", "task", "deny"]);
+const APPROVALS = new Set(["once", "task", "app", "deny"]);
 /** How many answered cards are remembered, so one delivered again is not asked twice. */
 const SETTLED = 256;
 
@@ -275,8 +275,13 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
    * @param {Choice} choice
    */
   const approve = async (data, choice) => {
-    if (!APPROVALS.has(choice) || (choice === "task" && !data.task)) return;
-    const answer = /** @type {"once" | "task" | "deny"} */ (choice);
+    if (
+      !APPROVALS.has(choice) ||
+      (choice === "task" && !data.task) ||
+      (choice === "app" && !data.untilStopApp)
+    )
+      return;
+    const answer = /** @type {import("@endue-ai/bridge").ApprovalAnswer} */ (choice);
     answering = true;
     let said;
     try {

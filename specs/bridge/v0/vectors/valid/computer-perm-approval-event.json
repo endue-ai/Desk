@@ -1,6 +1,6 @@
 {
   "untilStopApp": "Safari",
-    "target": "BridgeEvent",
+  "target": "BridgeEvent",
   "description": "an agent's click waits for the person, with the app as its target",
   "instance": {
     "event": "perm.approval",
@@ -13,7 +13,7 @@
         "apps": ["com.apple.Safari"]
       },
       "untilStopApp": "Safari",
-    "target": "Safari (com.apple.Safari)",
+      "target": "Safari (com.apple.Safari)",
       "preview": {
         "kind": "input",
         "text": "double-click left at (120, 340) in Safari"

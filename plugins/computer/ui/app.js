@@ -15,6 +15,10 @@ const TITLES = {
   type: "Computer: Type",
   keys: "Computer: Press keys",
   scroll: "Computer: Scroll",
+  move: "Computer: Move the pointer",
+  drag: "Computer: Drag",
+  quit: "Computer: Quit an app",
+  status: "Computer: Check permissions",
   open: "Computer: Open an app",
   switch: "Computer: Switch to an app",
   apps: "Computer: Running apps",
@@ -31,7 +35,7 @@ const TITLES = {
 export function explain(/** @type {any} */ error) {
   const code = error?.code;
   const text = error instanceof Error ? error.message : String(error);
-  if (code === "cancelled") {
+  if (code === "cancelled" && /stopped/.test(text)) {
     return "The person stopped computer use. Tell them, and ask them to resume it on the Computer page.";
   }
   if (code === "permission_denied" && /did not approve/.test(text)) {

@@ -8,6 +8,11 @@
 //! from the manifest (`core_tools::described`), and commands marked `agent` are agents' tools
 //! (`core_tools`, ADR 0088).
 
+#[path = "core_cmd_context.rs"]
+mod context;
+
+pub(crate) use context::AgentInvocation;
+
 use std::collections::BTreeMap;
 use std::sync::MutexGuard;
 
@@ -21,7 +26,7 @@ use desk_bridge::{
 use serde_json::{Map, Value};
 
 use crate::approval_provider::ProviderApproval;
-use crate::approvals::Action;
+use crate::approvals::{Action, current_task};
 use crate::core_cmd_args::check_args;
 use crate::handler::{Answer, Core, error, json};
 use crate::paths::star_match;
@@ -44,6 +49,8 @@ struct Invocation {
     undo: Option<String>,
     kind: Kind,
     approval: Option<ProviderApproval>,
+    agent: Option<AgentInvocation>,
+    browser_act: bool,
 }
 
 /// Registered commands in registration order, and the invocations still waiting for an answer.
@@ -155,6 +162,8 @@ impl Core {
         if let Some(schema) = &info.args_schema {
             check_args(schema, args.as_ref())?;
         }
+        let browser_act = kind == Kind::Command && self.delegates_web_act(&info);
+        let review = review && !browser_act;
         let invoke = Action::Invoke {
             id,
             args: args.as_ref(),
@@ -195,6 +204,12 @@ impl Core {
                     undo: info.undo.clone(),
                     kind,
                     approval,
+                    agent: run.as_ref().map(|run| AgentInvocation {
+                        caller: caller.to_owned(),
+                        run: run.clone(),
+                        turn: current_task(),
+                    }),
+                    browser_act,
                 },
             );
             invocation_id
@@ -219,20 +234,6 @@ impl Core {
             }),
         );
         Ok(invocation_id)
-    }
-
-    pub(crate) fn with_provider_approval(
-        &self,
-        caller: &str,
-        id: &str,
-        check: impl FnOnce(&mut ProviderApproval) -> bool,
-    ) -> bool {
-        self.commands()
-            .pending
-            .get_mut(id)
-            .filter(|invocation| invocation.provider == caller)
-            .and_then(|invocation| invocation.approval.as_mut())
-            .is_some_and(check)
     }
 
     pub(crate) fn cmd_answer(&self, caller: &str, params: CmdAnswerParams) -> Answer {
