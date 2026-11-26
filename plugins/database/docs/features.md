@@ -381,9 +381,8 @@ Modules: `features/backup/`.
 - `.search-data` answers where a value is in a connection's tables, read-only under the panel's limits.
 - `.paste` pastes text into the grid on screen as pending changes, under the same refusals and type checks as
   the person's paste; nothing runs until the person submits.
-- `.activity` answers a connection's sessions and who waits for whom, and only reads; `.cancel-session` and
-  `.end-session` are irreversible: the core waits for the person's approval, then the plugin asks as it
-  asks the person (ADR 0290).
+- `.activity` reads sessions and locks. `.cancel-session` asks to stop a statement. `.end-session` uses
+  the core's approval for an exact agent target, and the panel's confirmation for a person's call.
 - `.maintenance` opens the form for a connection, schema, table or index and answers the statement, what it
   locks and the size; with `run` it runs after the person's yes and answers the output and the statistics
   before and after (ADR 0293). The server overview can open it with the same arguments.
@@ -393,7 +392,7 @@ Modules: `features/backup/`.
 - `.routine` opens a function's or procedure's form with its arguments (by name or in order) and answers
   the call and its arguments; with `run` it runs it as above, a write after the person's yes, and answers
   the result's first 50 rows and the notices.
-- `.backup` and `.restore` (irreversible) only fill their form: nothing runs until the person submits it.
+- `.backup` and `.restore` fill their form. The person submits it to run.
 - `.create-table` and `.change-table` open and fill the table form and answer its script; its run commands are
   not agents' tools, so the person runs it (ADR 0324).
 
