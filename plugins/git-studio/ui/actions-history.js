@@ -2,6 +2,7 @@
 // (a name, a mode, a yes for what rewrites or deletes), runs through app.act, and says what happens
 // next when git stops half way (conflicts) or refuses (a branch that is not merged).
 
+import { createUndoActions } from "./actions-undo.js";
 import { h } from "./dom.js";
 import { shortSha } from "./format.js";
 import { createHistoryOps } from "./ops-history.js";
@@ -19,8 +20,6 @@ export function createHistoryActions(app, layer) {
   const code = (/** @type {string} */ text) => h("code", null, text);
   const current = () => snap().status.branch;
   const messageOf = (/** @type {unknown} */ e) => (e instanceof Error ? e.message : String(e));
-  /** Redo's stack: where HEAD was before each undo. @type {string[]} */
-  const redo = [];
 
   /** Run an operation that may stop on conflicts; say so plainly when it does. */
   async function mayConflict(
@@ -326,48 +325,7 @@ export function createHistoryActions(app, layer) {
       );
     },
 
-    /** Take back the last move of HEAD (a commit, reset, merge, rebase, checkout) from the reflog. */
-    async undo() {
-      const log = await ops()
-        .reflog(2)
-        .catch(() => []);
-      const [now, before] = log;
-      if (!now || !before) return app.say("Nothing to undo.");
-      const moved = /^checkout: moving from (\S+) to (\S+)$/.exec(now.message);
-      if (moved) {
-        const back = moved[1] ?? "";
-        const ok = await confirm(layer, {
-          title: "Undo the switch?",
-          icon: "undo",
-          body: h("span", null, "Switch back to ", code(back), "."),
-          confirm: "Undo",
-        });
-        if (ok) await app.act(`Switched back to ${back}`, () => ops().switchTo(back));
-        return;
-      }
-      const ok = await confirm(layer, {
-        title: "Undo the last change?",
-        icon: "undo",
-        body: h(
-          "span",
-          null,
-          "Last: ",
-          code(now.message),
-          ". HEAD goes back to ",
-          code(shortSha(before.sha)),
-          "; uncommitted changes stay.",
-        ),
-        confirm: "Undo",
-      });
-      if (!ok) return;
-      redo.push(now.sha);
-      await app.act(`Undid “${now.message}”`, () => ops().reset(before.sha, "keep"));
-    },
-    async redo() {
-      const sha = redo.pop();
-      if (!sha) return app.say("Nothing to redo.");
-      await app.act(`Redid: HEAD is at ${shortSha(sha)} again`, () => ops().reset(sha, "keep"));
-    },
+    ...createUndoActions(app, layer),
   };
   return actions;
 }

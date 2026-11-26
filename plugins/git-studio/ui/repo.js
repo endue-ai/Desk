@@ -193,23 +193,27 @@ export async function loadCommit(
  * @typedef {{ context?: number, ignoreSpace?: boolean }} DiffOptions
  */
 
-/** The unified diff of one file: in the working copy, the index, or a commit against its parent. */
+/** The unified diff in the working copy, the index, or a commit against its parent. */
 export async function loadDiff(
   /** @type {Runner} */ git,
   /** @type {string} */ root,
-  /** @type {DiffTarget} */ target,
+  /** @type {Omit<DiffTarget, "path"> & { path?: string }} */ target,
   /** @type {DiffOptions} */ options = {},
 ) {
-  const flags = [`-U${options.context ?? 3}`, "--no-color", "--no-ext-diff", "-M"];
+  const flags = [`-U${options.context ?? 3}`, "--no-color", "--no-ext-diff", "--no-textconv", "-M"];
   if (options.ignoreSpace) flags.push("-w");
-  const paths = target.origPath ? [target.origPath, target.path] : [target.path];
+  const paths = target.path
+    ? target.origPath
+      ? [target.origPath, target.path]
+      : [target.path]
+    : [];
   /** @type {string[]} */
   let args;
-  if (target.kind === "unstaged" && target.untracked)
+  if (target.kind === "unstaged" && target.untracked && target.path)
     args = ["diff", ...flags, "--no-index", "--", "/dev/null", target.path];
   else if (target.kind === "unstaged") args = ["diff", ...flags, "--", ...paths];
   else if (target.kind === "staged") args = ["diff", "--cached", ...flags, "--", ...paths];
   else args = ["diff", ...flags, target.parent ?? EMPTY_TREE, target.sha ?? "HEAD", "--", ...paths];
-  const { stdout } = await git.run(args, { cwd: root, ok: [1] });
+  const { stdout } = await git.run(["--literal-pathspecs", ...args], { cwd: root, ok: [1] });
   return stdout;
 }
