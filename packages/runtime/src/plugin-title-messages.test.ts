@@ -1,5 +1,6 @@
 import { BridgeClient, browserStub, type PluginInfo } from "@endue-ai/bridge";
 import { afterEach, expect, it, vi } from "vitest";
+import { readTitleMessages } from "./plugin-title-messages";
 import { PluginHost } from "./plugins";
 
 const ID = "test.catalog";
@@ -36,6 +37,13 @@ const info = {
 } as PluginInfo;
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("keeps a list with literal titles on its existing synchronous path", () => {
+  const plugins = [{ ...info, manifest: { ...info.manifest, messages: undefined } } as PluginInfo];
+  const url = vi.fn();
+  expect(readTitleMessages(url, () => "en")(plugins)).toBe(plugins);
+  expect(url).not.toHaveBeenCalled();
+});
 
 it("registers catalog command titles and opens the surface before a plugin frame can greet the desk", async () => {
   const fetch = vi.fn(async (url: string) =>

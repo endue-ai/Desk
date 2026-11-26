@@ -7,6 +7,14 @@ import {
 } from "@endue-ai/bridge";
 import type { PluginHostOptions } from "./plugin-host-deps";
 
+function hasTitleMessages({ manifest }: PluginInfo): boolean {
+  return (
+    !!manifest?.messages &&
+    (manifest.surfaces?.some((surface) => surface.titleMessage) === true ||
+      manifest.contributes?.commands?.some((command) => command.titleMessage) === true)
+  );
+}
+
 /** Read manifest titles before the desk registers commands or opens a plugin surface. */
 export function readTitleMessages(url: PluginHostOptions["url"], language: () => Language) {
   const cache = new Map<string, Promise<MessageCatalog | undefined>>();
@@ -35,11 +43,7 @@ export function readTitleMessages(url: PluginHostOptions["url"], language: () =>
     const surfaces = manifest.surfaces;
     const contributes = manifest.contributes;
     const commands = contributes?.commands;
-    if (
-      !surfaces?.some((surface) => surface.titleMessage) &&
-      !commands?.some((command) => command.titleMessage)
-    )
-      return info;
+    if (!hasTitleMessages(info)) return info;
     const catalog = (lang: Language) =>
       read(url(info.id, `${folder}/${lang}.json`, info.revision, surfaces?.[0]?.id ?? "main"));
     const [en, local] = await Promise.all([
@@ -92,5 +96,7 @@ export function readTitleMessages(url: PluginHostOptions["url"], language: () =>
     const listed = await Promise.all(plugins.map((plugin) => localize(plugin, current)));
     return current === language() ? listed : inCurrentLanguage(plugins);
   }
-  return inCurrentLanguage;
+  // Preserve synchronous listing for manifests without message titles.
+  return (plugins: PluginInfo[]) =>
+    plugins.some(hasTitleMessages) ? inCurrentLanguage(plugins) : plugins;
 }
