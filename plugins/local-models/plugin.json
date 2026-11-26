@@ -30,10 +30,22 @@
       "permission": "shell:open",
       "schemes": ["http", "https"]
     },
-    { "permission": "proc:spawn", "commands": ["*"] },
-    { "permission": "net:connect", "hosts": ["*"] },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "fs:write", "paths": ["/**"] }
+    {
+      "permission": "proc:spawn",
+      "commands": ["*"]
+    },
+    {
+      "permission": "net:connect",
+      "hosts": ["*"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    }
   ],
   "surfaces": [
     {
@@ -70,6 +82,190 @@
           },
           "additionalProperties": false
         }
+      },
+      {
+        "id": "endue.local-models.models",
+        "title": "Local models: Read answering servers and models",
+        "description": "List known model servers and the models they answer.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-models.library",
+        "title": "Local models: Read the local model library",
+        "description": "Read local model files and the built-in engine instances.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-models.threads",
+        "title": "Local models: Read saved thread summaries",
+        "description": "List the saved conversation ids, names and models.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-models.thread",
+        "title": "Local models: Read a saved thread",
+        "description": "Read the bounded active branch of the saved thread.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-models.search",
+        "title": "Local models: Search the model catalog",
+        "description": "Search the GGUF model catalog by name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-models.ask",
+        "title": "Local models: Ask a named model",
+        "description": "Ask a named answering chat model and return its answer and saved thread id.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "required": ["model", "prompt"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.local-models.load",
+        "title": "Local models: Load a model",
+        "description": "Load a named model from the local library or an answering Ollama server.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": ["model"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.local-models.eject",
+        "title": "Local models: Eject a model",
+        "description": "Eject a loaded model by its library engine id or answering Ollama model key.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": ["model"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.local-models.download",
+        "title": "Local models: Download a model",
+        "description": "Queue an Ollama model (model and optional server), or a catalog GGUF variant (repo and quant).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "server": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "repo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "quant": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.local-models.delete-model",
+        "title": "Local models: Delete a model",
+        "description": "Move a named local model to the Trash or delete the named model from its Ollama library.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": ["model"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
       }
     ],
     "keys": [

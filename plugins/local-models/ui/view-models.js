@@ -134,6 +134,12 @@ export function modelsView(app) {
                 ),
                 server.version ? h("span.desk-badge", null, server.version) : null,
                 h("div.lm-head-spacer"),
+                server.added && server.status !== "online"
+                  ? iconButton("refresh", "Retry this server", async () => {
+                      if (await app.allowServer(server)) await app.scan();
+                      else app.toast("Permission to reach this server was declined.", "error");
+                    })
+                  : null,
                 server.added
                   ? iconButton(
                       "trash",
@@ -283,6 +289,7 @@ function addServerForm(app) {
       ...(kind.value ? { kind: /** @type {any} */ (kind.value) } : {}),
       ...(key.value ? { apiKey: key.value } : {}),
     };
+    const allowed = await app.allowServer(spec);
     const saved = /** @type {import("./servers.js").ServerSpec[]} */ (
       (await app.store.get("servers")) ?? []
     );
@@ -292,7 +299,10 @@ function addServerForm(app) {
     ]);
     address.value = "";
     key.value = "";
-    fill(note, "");
+    fill(
+      note,
+      allowed ? "" : "Permission was declined. Use Retry on the saved server to ask again.",
+    );
     await app.reloadServers();
   };
   return h(
