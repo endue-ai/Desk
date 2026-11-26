@@ -133,6 +133,30 @@ describe("the approval card (ADR 0078)", () => {
     expect(params("perm.approve")).toEqual([{ approvalId: "a-1", answer: "deny", scope: MANAGE }]);
   });
 
+  it("offers an app allowance when the core supplies the app name", async () => {
+    const safari: PermApprovalData = {
+      approvalId: "a-safari",
+      caller: "agent:eris",
+      action: "computer.input.click",
+      permission: { permission: "computer:control" },
+      target: "Safari (com.apple.Safari)",
+      untilStopApp: "Safari",
+    };
+    const { app, view, params, settle } = await held(core(), write("a-file"), safari);
+    expect(view.approvals.at(-1)).toMatchObject({ app: null });
+    await app.answer("app");
+    expect(params("perm.approve")).toEqual([]);
+    await app.answer("deny");
+    await settle();
+    expect(view.approvals.at(-1)).toMatchObject({ app: "Allow in Safari until I stop" });
+    await app.answer("app");
+    expect(params("perm.approve").at(-1)).toEqual({
+      approvalId: "a-safari",
+      answer: "app",
+      scope: MANAGE,
+    });
+  });
+
   it("shows a spawn's command line", async () => {
     const { view } = await held(core(), spawn);
     expect(view.approvals.at(-1)).toMatchObject({
