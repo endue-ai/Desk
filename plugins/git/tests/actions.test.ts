@@ -71,11 +71,20 @@ describe("stage and unstage", () => {
 });
 
 describe("discard", () => {
+  const patch =
+    "diff --git a/unstaged.js b/unstaged.js\n--- a/unstaged.js\n+++ b/unstaged.js\n@@ -1 +1 @@\n-old\n+new\n";
+  const discardRepo = () =>
+    repo(DIRTY, {
+      "--literal-pathspecs diff": { stdout: patch },
+      "--literal-pathspecs ls-files": { stdout: z("new.txt") },
+      "diff --no-index": { stdout: patch, code: 1 },
+    });
+
   it("asks first, then restores a tracked file or deletes an untracked one", async () => {
     const asked: unknown[] = [];
     let answer = "no";
     const { host, view, git } = await open({
-      script: repo(DIRTY),
+      script: discardRepo(),
       commands: {
         "desk.palette.pick": (args) => {
           asked.push(args);
@@ -93,22 +102,28 @@ describe("discard", () => {
         ],
       },
     ]);
-    expect(git.of("restore")).toEqual([]);
+    expect(git.of("apply")).toEqual([]);
 
     answer = "yes";
     await host.command("endue.git.discard", { path: "unstaged.js" });
-    expect(git.of("restore").at(-1)).toEqual(["restore", "--worktree", "--", "unstaged.js"]);
+    expect(git.of("apply").at(-1)).toEqual([
+      "apply",
+      "--binary",
+      "--whitespace=nowarn",
+      "--reverse",
+      "-",
+    ]);
     expect(view.said.at(-1)).toBe("Discarded the changes to unstaged.js.");
 
     await host.command("endue.git.discard", { path: "new.txt" });
     expect(asked.at(-1)).toMatchObject({ title: "Delete new.txt?" });
-    expect(git.of("clean").at(-1)).toEqual(["clean", "-fdq", "--", "new.txt"]);
+    expect(git.of("apply")).toHaveLength(2);
   });
 
   it("every question that cannot be undone comes up on keeping things as they are (#160)", async () => {
     const asked: Array<{ title: string; items: Array<{ id: string }> }> = [];
     const { host, view, git } = await open({
-      script: repo(DIRTY),
+      script: discardRepo(),
       commands: {
         "desk.palette.pick": (args) => {
           asked.push(args as (typeof asked)[number]);
@@ -132,17 +147,17 @@ describe("discard", () => {
       "Force-push main?",
     ]);
     for (const question of asked) expect(question.items[0]?.id, question.title).toBe("no");
-    expect([...git.of("restore"), ...git.of("clean"), ...git.of("push")]).toEqual([]);
+    expect([...git.of("apply"), ...git.of("push")]).toEqual([]);
   });
 
   it("with confirm off it does not ask; without the palette it refuses", async () => {
-    const quiet = await open({ script: repo(DIRTY), init: { "endue.git.confirm": false } });
+    const quiet = await open({ script: discardRepo(), init: { "endue.git.confirm": false } });
     await quiet.host.command("endue.git.discard", { path: "unstaged.js" });
     expect(quiet.ran("desk.palette.pick")).toEqual([]);
-    expect(quiet.git.of("restore")).toHaveLength(1);
+    expect(quiet.git.of("apply")).toHaveLength(1);
 
     const mute = await open({
-      script: repo(DIRTY),
+      script: discardRepo(),
       commands: {
         "desk.palette.pick": () => {
           throw new Error("off");
@@ -152,7 +167,7 @@ describe("discard", () => {
     await expect(mute.host.command("endue.git.discard", { path: "unstaged.js" })).rejects.toThrow(
       "Cannot ask: the palette is off.",
     );
-    expect(mute.git.of("restore")).toEqual([]);
+    expect(mute.git.of("apply")).toEqual([]);
   });
 });
 

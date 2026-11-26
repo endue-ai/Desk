@@ -16,21 +16,23 @@ afterEach(() => {
 
 async function opened(repo: TempRepo, pick: { answer: string }) {
   const real = realGit();
-  const entries: Array<{ args: unknown; result: unknown }> = [];
   const m = await mount({
     handlers: real.handlers,
     commands: {
       "desk.palette.pick": () => pick.answer,
-      "endue.git.discard-files": async (args) => {
-        const result = await m.host.command("endue.git.discard-files", args);
-        entries.push({ args, result });
-        return result;
-      },
     },
   });
   real.attach(m.host);
   await m.host.command("endue.git.status", { path: repo.root });
-  return { ...m, entries };
+  return {
+    ...m,
+    get entries() {
+      const args = m.ran("endue.git.discard-files").at(-1);
+      return (m.params("cmd.answer") as Array<{ result?: { token?: string } }>).flatMap(
+        ({ result }) => (result?.token ? [{ args, result }] : []),
+      );
+    },
+  };
 }
 
 describe("reversible whole-file discard", () => {
@@ -72,5 +74,20 @@ describe("reversible whole-file discard", () => {
     repo.git("clean", "-fq", "--", "sample.bin");
     await m.host.command("endue.git.restore-files", m.entries[0]);
     expect(readFileSync(path)).toEqual(original);
+  });
+
+  it("discards and restores a selected group of untracked files as one undo entry", async () => {
+    const repo = add();
+    repo.write("extra.txt", "spare text\n");
+    repo.write("another.txt", "other text\n");
+    const m = await opened(repo, { answer: "yes" });
+    m.view.selected = { kind: "section", section: "untracked" };
+    await m.host.command("endue.git.discard");
+    expect(repo.git("ls-files", "--others", "--exclude-standard")).toBe("");
+    expect(m.entries).toHaveLength(1);
+    expect(m.ran("desk.palette.pick")).toHaveLength(1);
+    await m.host.command("endue.git.restore-files", m.entries[0]);
+    expect(repo.read("extra.txt")).toBe("spare text\n");
+    expect(repo.read("another.txt")).toBe("other text\n");
   });
 });

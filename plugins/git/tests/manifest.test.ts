@@ -45,6 +45,13 @@ const COMMANDS = [
   "branches",
   "visit",
   "cancel",
+  "commits",
+  "diff-text",
+  "stash",
+  "stash-pop",
+  "stash-drop",
+  "discard-files",
+  "restore-files",
 ].map((name) => `endue.git.${name}`);
 
 describe("plugin.json", () => {
@@ -66,6 +73,7 @@ describe("plugin.json", () => {
           "desk.buffers.open",
           "desk.buffers.update",
           "endue.git.discard-patch",
+          "endue.git.discard-files",
         ],
       },
     ]);

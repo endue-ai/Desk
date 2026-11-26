@@ -1,9 +1,10 @@
 // Mounts the Git plugin on the SDK's test host with a scripted git behind `proc.spawn` and a view
 // that records what it was asked to show. The SDK is imported by its workspace path: plugin folders
 // are not workspace packages yet.
-import type { Signal } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import type { PluginManifest, Signal } from "../../../packages/bridge/src/index";
+import { CommandFailed, defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import manifest from "../plugin.json";
 import type { CommitEditor, Item } from "../ui/actions.js";
 import {
   createGit,
@@ -212,8 +213,11 @@ export async function mount(
   const git = fakeGit(options.script ?? repository());
   const store: Record<string, unknown> = { ...options.store };
   let buffers = 0;
-  const host = createTestHost({
+  const host: TestHost = createTestHost({
     pluginId: "endue.git",
+    manifestCommands: (manifest as PluginManifest).contributes?.commands?.filter(
+      ({ id }) => id === "endue.git.discard-files",
+    ),
     state: options.state,
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
@@ -222,6 +226,7 @@ export async function mount(
         return {};
       },
       "init.get": () => ({ profile: "default", settings: options.init ?? {} }),
+      "proc.write": () => ({}),
       ...git.handlers,
       ...options.handlers,
     },
@@ -239,7 +244,9 @@ export async function mount(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createGit(ctx, view);
+        app = createGit(ctx, view, {
+          cancelled: (message) => new CommandFailed("endue.git.discard", "cancelled", message),
+        });
       },
     },
     host.transport,

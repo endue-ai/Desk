@@ -14,7 +14,11 @@ afterEach(() => {
 
 async function opened(repo: TempRepo) {
   const git = realGit();
-  const m = await mount({ handlers: git.handlers, script: repository() });
+  const m = await mount({
+    handlers: git.handlers,
+    script: repository(),
+    commands: { "desk.palette.pick": () => "yes" },
+  });
   git.attach(m.host);
   await m.host.command("endue.git.status", { path: repo.root });
   return m;
