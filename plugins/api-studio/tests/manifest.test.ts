@@ -26,7 +26,9 @@ function validator() {
 type Manifest = {
   id: string;
   permissions: { permission: string; commands?: string[] }[];
-  contributes: { commands: { id: string }[] };
+  contributes: {
+    commands: { id: string; agent?: boolean; readOnly?: boolean; irreversible?: boolean }[];
+  };
 };
 const manifest = readJson(join(folder, "plugin.json")) as Manifest;
 
@@ -56,5 +58,26 @@ describe("plugin.json", () => {
       const answered = sources.includes(`"${id}"`) || sources.includes(`on("${name}",`);
       expect(answered, id).toBe(true);
     }
+  });
+
+  it("exposes only the narrow saved send without an irreversible approval", () => {
+    const command = (name: string) =>
+      manifest.contributes.commands.find((c) => c.id === `endue.api-studio.${name}`);
+    expect(command("send")).toMatchObject({ irreversible: true });
+    expect(command("run")).toMatchObject({ irreversible: true });
+    expect(command("send-read")).toMatchObject({ agent: true });
+    expect(command("send-read")).not.toHaveProperty("irreversible");
+    for (const name of ["tab", "request", "codegen"])
+      expect(command(name), name).toMatchObject({ agent: true, readOnly: true });
+    for (const name of [
+      "open",
+      "new-request",
+      "import-curl",
+      "save-request",
+      "use-environment",
+      "set-variable",
+      "import",
+    ])
+      expect(command(name), name).toMatchObject({ agent: true });
   });
 });
