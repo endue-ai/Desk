@@ -543,6 +543,7 @@ paths:
       operationId: createAgentConversation
       tags: [conversations]
       summary: Open a new conversation with the selected agent
+      description: Opens an agent conversation for the signed-in account at the ask approval level.
       requestBody:
         required: true
         content:
@@ -579,6 +580,8 @@ paths:
           content:
             text/event-stream:
               schema: { type: string }
+              x-sse-events:
+                done: { $ref: "#/components/schemas/AgentConversationDone" }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/spaces:
     get:
