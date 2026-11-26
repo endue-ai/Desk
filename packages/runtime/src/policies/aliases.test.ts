@@ -9,6 +9,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { PolicyHub } from "../hub";
 import { PluginCommands } from "../plugin-commands";
+import { invokeAsEris } from "./agent-tool-test";
 import { installAliases } from "./aliases";
 
 /** An installed plugin of a kind, on, with what it contributes. */
@@ -136,4 +137,48 @@ describe("aliases", () => {
     await hub.commands.settled();
     expect(hub.commands.has("example.board.open")).toBe(false);
   });
+});
+
+it("keeps alias metadata and forwards the agent without replacing preset arguments", async () => {
+  const { hub, client, opened } = await setup();
+  hub.apply([
+    plugin("example.board", "view", {
+      commands: [
+        {
+          id: "example.board.open",
+          title: "Open the board",
+          description: "Open its view",
+          agent: true,
+          args: { type: "object" },
+          runs: { command: "desk.views.open", args: { id: "example.board" } },
+        },
+      ],
+    }),
+  ]);
+  await hub.commands.settled();
+  const { commands } = await client.call("cmd.list", {
+    scope: { permission: "cmd:invoke", ids: ["example.board.open"] },
+  });
+  expect(commands).toMatchObject([
+    { description: "Open its view", agent: true, argsSchema: { type: "object" } },
+  ]);
+  expect(await invokeAsEris(client, "example.board.open", { id: "wrong", focus: true })).toEqual({
+    shown: true,
+  });
+  expect(opened).toEqual([{ args: { id: "example.board", focus: true }, caller: "agent:eris" }]);
+});
+
+it("does not register an alias cycle", async () => {
+  const { hub } = await setup();
+  hub.apply([
+    plugin("example.board", "view", {
+      commands: [
+        { id: "example.board.one", title: "One", runs: { command: "example.board.two" } },
+        { id: "example.board.two", title: "Two", runs: { command: "example.board.one" } },
+      ],
+    }),
+  ]);
+  await hub.commands.settled();
+  expect(hub.commands.has("example.board.one")).toBe(false);
+  expect(hub.commands.has("example.board.two")).toBe(false);
 });

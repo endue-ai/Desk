@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, test } from "vitest";
-import type { CommandInfo, CommandSpec } from "../commands";
+import type { CommandCaller, CommandInfo, CommandSpec } from "../commands";
 import { DEFAULT_KEYS } from "../core/keys";
 import { resolveKeymap } from "../keymap";
 import { testWindowManager } from "../wm/testing";
@@ -161,7 +161,8 @@ function fakeShell() {
       };
     },
     has: (id: string) => specs.has(id),
-    run: async (id: string, args?: unknown) => specs.get(id)?.run(args, {}),
+    run: async (id: string, args?: unknown, from: CommandCaller = {}) =>
+      specs.get(id)?.run(args, from),
   };
   const ctx = {
     store,
@@ -185,5 +186,31 @@ function fakeShell() {
     run: commands.run,
     defined: () => [...specs.keys()].filter(desktopCommand),
     title: (id: string) => specs.get(id)?.title,
+    tool: (id: string) => specs.get(id)?.agent,
   };
 }
+
+test("agent desktop commands use named targets and move rather than close windows", async () => {
+  const c = fakeShell();
+  const dispose = defineCommands(c.ctx);
+  const agent = { caller: "agent:eris" };
+  expect(c.tool("desk.shell.desktops-list")?.readOnly).toBe(true);
+  for (const id of ["new", "go", "rename", "remove"])
+    expect(c.tool(`desk.shell.desktop-${id}`)).toBeDefined();
+  const id = await c.run("desk.shell.desktop-new", { name: "Research" }, agent);
+  expect(id).toBe("5");
+  await c.run("desk.shell.desktop-go", { desktop: "5" }, agent);
+  await c.run("desk.shell.desktop-rename", { desktop: "5", name: "Notes" }, agent);
+  expect(await c.run("desk.shell.desktops-list", {}, agent)).toMatchObject({
+    active: "5",
+    desktops: expect.arrayContaining([{ id: "5", name: "Notes" }]),
+  });
+  await expect(c.run("desk.shell.desktop-remove", { desktop: "missing" }, agent)).rejects.toThrow();
+  await c.ctx.wm.edit([{ op: "place", desktop: "5", placement: notes }]);
+  await c.run("desk.shell.desktop-remove", { desktop: "5", windows: "close" }, agent);
+  expect(desktopsOf(c.store.get()).some((desktop) => desktop.id === "5")).toBe(false);
+  expect(
+    desktopsOf(c.store.get()).flatMap((desktop) => layoutOf(c.store.get(), desktop.id).surfaces),
+  ).toContainEqual(expect.objectContaining({ id: "notes" }));
+  dispose();
+});

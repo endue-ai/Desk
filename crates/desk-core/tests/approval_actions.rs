@@ -339,3 +339,38 @@ fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
         assert_eq!(denied.unwrap_err().code, ErrorCode::PermissionDenied);
     }
 }
+
+#[test]
+fn eris_runs_explicit_workspace_commands_without_a_scope_prompt() {
+    let home = home("eris-workspace-tool");
+    let core = Core::new(roots(&home)).with_prompter(NeverAsk);
+    for id in [
+        "desk.shell.desktop-new",
+        "desk.shell.desktop-go",
+        "desk.shell.desktop-rename",
+        "desk.shell.desktop-remove",
+        "desk.buffers.switch",
+        "desk.buffers.close",
+        "desk.files.save",
+        "desk.session.save",
+        "desk.undo",
+        "desk.redo",
+    ] {
+        call(
+            &core,
+            "desk",
+            "cmd.register",
+            json!({
+                "id": id, "title": id, "agent": true, "description": "Workspace command"
+            }),
+        )
+        .unwrap();
+        let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
+        call(&core, "agent:eris", "cmd.invoke", params.clone())
+            .unwrap_or_else(|e| panic!("{id}: {e:?}"));
+        assert_eq!(
+            call(&core, MIRA, "cmd.invoke", params).unwrap_err().code,
+            ErrorCode::PermissionDenied
+        );
+    }
+}

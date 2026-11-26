@@ -97,3 +97,48 @@ describe("desk.palette's policy", () => {
     policy.dispose();
   });
 });
+
+it("desk.search asks the selected palette providers and returns limited matches", async () => {
+  const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+  const stub = browserStub({ ...registry.handlers });
+  const hub = new PolicyHub(new BridgeClient(stub));
+  const asked: unknown[] = [];
+  let activated = false;
+  hub.apply([
+    plugin("desk.palette", {}),
+    plugin("example.files", {
+      paletteProviders: [{ command: "example.files.find", title: "Files" }],
+    }),
+  ]);
+  installPalette({ hub });
+  hub.commands.define("example.files.find", {
+    owner: "example.files",
+    title: "Find files",
+    run: (args) => {
+      asked.push(args);
+      return {
+        results: ["a", "b"].map((id) => ({
+          id,
+          title: id,
+          actions: [{ command: "example.files.open", title: "Open" }],
+        })),
+      };
+    },
+  });
+  hub.commands.define("example.files.open", {
+    owner: "example.files",
+    title: "Open a file",
+    run: () => {
+      activated = true;
+    },
+  });
+  await hub.commands.settled();
+  expect(hub.commands.readOnly("desk.search")).toBe(true);
+  expect(
+    await hub.commands.run("desk.search", { query: "  notes  ", groups: ["Files"], limit: 1 }),
+  ).toMatchObject({
+    groups: [{ provider: "example.files.find", title: "Files", results: [{ id: "a" }] }],
+  });
+  expect(asked).toEqual([{ query: "notes", limit: 1 }]);
+  expect(activated).toBe(false);
+});
