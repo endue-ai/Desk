@@ -13,7 +13,11 @@ import { registerSchemas } from "./schemas.js";
  * @typedef {import("./talk.js").Talk} Talk
  * @typedef {import("./tasks.js").Tasks} Tasks
  * @typedef {Record<string, unknown>} Args
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
  */
+
+const fromAgent = (/** @type {Invocation | undefined} */ invocation) =>
+  invocation?.caller.startsWith("agent:") ? invocation.caller : undefined;
 
 /**
  * @param {{ commands: PluginCommands, bridge: Pick<PluginBridge, "call"> }} ctx
@@ -73,12 +77,12 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
    * Answer a command. A failure goes to the status line and ends the command with the same words,
    * which the desk shows in its own notice.
    * @param {string} name
-   * @param {(args: Args) => unknown} handler
+   * @param {(args: Args, invocation?: Invocation) => unknown} handler
    */
   const answer = (name, handler) =>
-    commands.on(name, async (args) => {
+    commands.on(name, async (args, invocation) => {
       try {
-        return await handler(/** @type {Args} */ (args ?? {}));
+        return await handler(/** @type {Args} */ (args ?? {}), invocation);
       } catch (error) {
         if (/** @type {{ code?: string }} */ (error)?.code !== "cancelled")
           app.say(error instanceof Error ? error.message : String(error));
@@ -98,12 +102,13 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
   answer(`${p}.ask`, async ({ prompt, agent, model, folder }) =>
     talk.ask(await textOr(prompt, `Local agents: ask ${nameOf(agent)}`), agent, model, folder),
   );
-  answer(`${p}.work`, async ({ prompt, agent, model, folder }) =>
+  answer(`${p}.work`, async ({ prompt, agent, model, folder }, invocation) =>
     talk.work(
       await textOr(prompt, `Local agents: a task for ${nameOf(agent)}`),
       agent,
       model,
       folder,
+      fromAgent(invocation),
     ),
   );
   answer(`${p}.chat`, async ({ agent, prompt }) => {
@@ -123,8 +128,8 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
   answer(`${p}.compare`, async ({ prompt, agents }) =>
     talk.compare(await textOr(prompt, "Local agents: ask every agent"), agents),
   );
-  answer(`${p}.board`, () => {
-    app.show("board");
+  answer(`${p}.board`, (_args, invocation) => {
+    if (!fromAgent(invocation)) app.show("board");
     return tasks.cards();
   });
   // An agent may put a task on the board; running it stays the person's (ADR 0099).
@@ -139,14 +144,36 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
   answer(`${p}.move-card`, ({ card, column }) => tasks.moveCard(card, column));
   answer(`${p}.remove-card`, ({ card }) => tasks.removeCard(card));
   answer(`${p}.clear-done`, () => tasks.clearDone());
-  answer(`${p}.activity`, () => {
-    app.show("activity");
+  answer(`${p}.activity`, (_args, invocation) => {
+    if (!fromAgent(invocation)) app.show("activity");
     return app.runs.list().map(({ tools: _tools, ...run }) => run);
   });
-  answer(`${p}.stop`, ({ run }) => {
+  answer(`${p}.stop`, ({ run }, invocation) => {
+    const owner = fromAgent(invocation);
+    if (owner && (typeof run !== "string" || !run))
+      throw new Error("Give the id of a work run you started.");
     if (run === undefined) return app.runs.stopAll();
-    if (!app.runs.find(run)) throw new Error(`No run ${String(run)}.`);
-    return app.runs.stop(/** @type {string} */ (run)) ? 1 : 0;
+    const running = app.runs.find(run);
+    if (!running) throw new Error(`No run ${String(run)}.`);
+    if (owner && !app.runs.owns(running, owner))
+      throw new Error(`You did not start run ${running.id}.`);
+    return app.runs.stop(running.id) ? 1 : 0;
+  });
+  answer(`${p}.transcript`, async ({ agent }) => {
+    const selected = agentById(agent);
+    if (!selected) throw new Error("Name the agent whose conversation to read.");
+    const { messages } = await app.chats.open(selected.id);
+    const recent = messages.slice(-50);
+    return {
+      agent: selected.id,
+      messages: recent.map(({ role, text, at, status }) => ({
+        role,
+        text: text.slice(0, 2_000),
+        at,
+        ...(status ? { status } : {}),
+      })),
+      truncated: recent.length < messages.length || recent.some(({ text }) => text.length > 2_000),
+    };
   });
   registerSchemas(bridge);
 

@@ -65,6 +65,18 @@ describe("the commands", () => {
       agent: "codex",
       messages: [{ text: "Describe the files" }, { text: "Three files." }],
     });
+    for (const name of ["board", "activity"]) {
+      m.host.emit({
+        event: "cmd.invoked",
+        data: {
+          id: `endue.local-agents.${name}`,
+          invocationId: `read-${name}`,
+          caller: "agent:eris",
+        },
+      });
+      await m.settle();
+      expect(m.view.latest().view).toBe("chat");
+    }
   });
 
   it("lets an agent stop only its own named work run", async () => {
@@ -93,7 +105,7 @@ describe("the commands", () => {
     dispatch("stop", "stop-own", "agent:eris", { run: owned });
     await m.settle();
     expect(m.app.runs.running().map(({ id }) => id)).toEqual([other]);
-    m.app.runs.stopAll();
+    m.app.runs.stopAll(undefined);
     await m.settle();
   });
 

@@ -20,7 +20,9 @@
         "opencode"
       ]
     },
-    { "permission": "agents:manage" },
+    {
+      "permission": "agents:manage"
+    },
     {
       "permission": "cmd:invoke",
       "ids": ["desk.palette.pick"]
@@ -31,7 +33,12 @@
       "id": "main",
       "title": "Local agents",
       "placement": "center",
-      "window": { "size": { "width": 1120, "height": 720 } }
+      "window": {
+        "size": {
+          "width": 1120,
+          "height": 720
+        }
+      }
     }
   ],
   "contributes": {
@@ -44,14 +51,21 @@
       {
         "id": "endue.local-agents.detect",
         "title": "Local agents: look for agent programs",
-        "keywords": ["detect", "scan", "installed"]
+        "keywords": ["detect", "scan", "installed"],
+        "agent": true,
+        "readOnly": true,
+        "description": "Ask every known agent program (claude, codex, gemini, grok, qwen, copilot, cursor-agent, opencode) for its version, and return which are installed."
       },
       {
         "id": "endue.local-agents.list",
         "title": "Local agents: list the agents",
         "keywords": ["installed", "versions"],
         "description": "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
-        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
         "agent": true,
         "readOnly": true
       },
@@ -165,7 +179,10 @@
       {
         "id": "endue.local-agents.board",
         "title": "Local agents: board",
-        "keywords": ["kanban", "tasks", "cards"]
+        "keywords": ["kanban", "tasks", "cards"],
+        "agent": true,
+        "readOnly": true,
+        "description": "Read the board's cards and their columns."
       },
       {
         "id": "endue.local-agents.add-card",
@@ -224,12 +241,54 @@
       {
         "id": "endue.local-agents.activity",
         "title": "Local agents: activity",
-        "keywords": ["runs", "history", "log"]
+        "keywords": ["runs", "history", "log"],
+        "agent": true,
+        "readOnly": true,
+        "description": "Read this session's runs, newest first: agent, prompt, state, answer."
       },
       {
         "id": "endue.local-agents.stop",
         "title": "Local agents: stop",
-        "keywords": ["cancel", "abort", "kill"]
+        "keywords": ["cancel", "abort", "kill"],
+        "agent": true,
+        "description": "Stop a named work run you started. Without a run id, only the desk can stop all runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.local-agents.transcript",
+        "title": "Local agents: read a transcript",
+        "keywords": ["history", "chat", "conversation"],
+        "description": "Read the latest text messages in the named agent's saved conversation.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            }
+          },
+          "required": ["agent"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       }
     ],
     "keys": [
