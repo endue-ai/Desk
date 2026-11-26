@@ -10,6 +10,22 @@ const MISO = "ag_sample0000000000000000001";
 const SCOUT = "ag_sample0000000000000000003";
 
 test.describe("endue agents and spaces as windows", () => {
+  test("asks the selected agent and the space Front Desk from their windows", async ({ page }) => {
+    await openShell(page, "?lang=en&endue=signed-in");
+    for (const [entry, surface, space] of [
+      [`[data-endue-agent="${MISO}"]`, `[data-endue-agent-view="${MISO}"]`, false],
+      ['[data-endue-space="sp_sample001"]', '[data-endue-space-view="sp_sample001"]', true],
+    ] as const) {
+      await page.locator(`.sidebar ${entry}`).click();
+      const view = page.locator(surface);
+      await view.getByRole("button", { name: space ? "Ask Front Desk" : "Ask agent" }).click();
+      await view.getByRole("textbox", { name: "Question" }).fill("What is ready for review?");
+      await view.getByRole("button", { name: "Send question" }).click();
+      await expect(view.getByRole("status")).toContainText("The outline is ready.");
+      await expect(view.getByRole("button", { name: "Open conversation on endue.ai" })).toBeVisible();
+    }
+  });
+
   test("appear in the agent bar once the desk signs in", async ({ page }) => {
     await openShell(page, "?lang=en&endue=1");
     await expect(page.locator(".sidebar [data-endue-agent]")).toHaveCount(0);
