@@ -61,10 +61,11 @@ export function editOps(c) {
       if (S.beforeWrite && !(await S.beforeWrite(tab, chosen, "inherit"))) return false;
       const coll = byPath(chosen.path) ?? chosen;
       const path = await freeName(files, dir, tab.req.name, REQUEST_EXT, coll.path);
-      tab.req.seq = nextSeq(coll, dir);
-      tab.ref = { collection: coll.path, path };
+      const seq = nextSeq(coll, dir);
       wrote();
-      await files.write(path, text(requestFile(tab.req)), coll.path);
+      await files.write(path, text(requestFile({ ...tab.req, seq })), coll.path);
+      tab.req.seq = seq;
+      tab.ref = { collection: coll.path, path };
       tab.saved = JSON.stringify(tab.req);
       await reload(coll.path);
       S.app.emit("tabs");

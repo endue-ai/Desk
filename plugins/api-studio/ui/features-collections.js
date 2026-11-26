@@ -2,7 +2,7 @@
 // the home page and panel offer to make or open a collection, and the side panel's tree opens
 // requests and folders. A seeded example collection can be made in one click.
 
-import { join } from "./collection-fs.js";
+import { join, parentOf } from "./collection-fs.js";
 import { createCollections } from "./collections.js";
 import { h, icon, methodBadge } from "./dom.js";
 import { ask, dialog } from "./menu.js";
@@ -14,6 +14,7 @@ import "./view-collections.js";
  * @typedef {import("./app.js").Tab} Tab
  * @typedef {import("./collection-fs.js").Collection} Collection
  * @typedef {import("./collection-fs.js").Node} Node
+ * @typedef {{ collection: string, folder?: string }} SaveDestination
  */
 
 /** Every place a request can be saved: each collection and its folders, indented. @param {Collection[]} list */
@@ -93,9 +94,25 @@ export function installCollections(S) {
     return true;
   };
 
-  S.save = async (/** @type {Tab} */ tab) => {
+  S.save = async (
+    /** @type {Tab} */ tab,
+    /** @type {SaveDestination | undefined} */ destination,
+  ) => {
     try {
       if (tab.kind === "group") return await collections.saveGroup(tab);
+      if (destination) {
+        const chosen = destinations(collections.list).find(
+          (place) =>
+            place.coll.path === destination.collection &&
+            place.dir === (destination.folder ?? destination.collection),
+        );
+        if (!chosen) throw new Error("Choose a folder in the open collection.");
+        if (tab.ref?.collection !== chosen.coll.path || parentOf(tab.ref.path) !== chosen.dir) {
+          const saved = await collections.saveAs(tab, chosen.coll, chosen.dir);
+          if (saved) S.app.toast(`Saved to ${chosen.label}`, "ok");
+          return saved;
+        }
+      }
       if (tab.ref && collections.byPath(tab.ref.collection)) {
         const ok = await collections.saveRequest(tab);
         if (ok) S.app.toast("Saved", "ok");
@@ -122,7 +139,11 @@ export function installCollections(S) {
     const name = await ask("New collection", "Name", "", "Next");
     if (!name) return undefined;
     const picked = await S.ctx.bridge
-      .call("dialog.open", { kind: "folders", title: `Where to keep “${name}”` })
+      .call("dialog.open", {
+        kind: "folders",
+        intent: "destination",
+        title: `Where to keep “${name.slice(0, 160)}”`,
+      })
       .catch(() => ({ cancelled: true }));
     const parent = picked?.cancelled ? undefined : picked?.paths?.[0];
     if (!parent) return undefined;

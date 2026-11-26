@@ -13,8 +13,8 @@ eleven languages, an Assistant whose changes apply only on Apply, and commands f
 
 Every request is the curl program through `proc.spawn` without a shell, its whole request on curl's stdin
 (`curl -q -K -`), HTTP and HTTPS only; scripts run in a worker made from a blob (the desk allows no eval
-and no frames). A collection's scripts run once allowed, files outside it go out after a yes, typed
-secrets are offered a move into secret variables, and secrets never follow a redirect to another host.
+and no frames). The person allows scripts and outside files. Secrets stay on their host on redirects.
+Eris can prepare and save drafts, view redacted requests, responses and code, and use `send-read` (ADR 0385).
 
 | Permission | Why |
 | --- | --- |
@@ -30,7 +30,7 @@ secrets are offered a move into secret variables, and secrets never follow a red
 | `ui/collection-fs.js`, `collections*.js`, `environments.js`, `runner.js` | Files on disk, collection edits, environments and secrets, runs |
 | `ui/scripts.js`, `script-prelude.js`, `openapi.js`, `har.js`, `yaml.js`, `codegen.js` | Scripts in workers; imports; code |
 | `ui/guards.js`, `trust.js`, `file-guard.js`, `literal*.js`, `redirects.js`, `runtime.js`, `secret-names.js` | What a request may carry (ADR 0264) |
-| `ui/app.js`, `actions.js`, `studio.js`, `features-*.js`, `commands.js`, `ai-*.js` | State, sending, the window, features, commands, AI |
+| `ui/app.js`, `actions.js`, `studio.js`, `features-*.js`, `commands*.js`, `ai-*.js` | State, sending, the window, features, commands, AI |
 | `ui/view-*.js`, `section-*.js`, `res-*.js`, `*-pane.js`, `assistant.js` | Side panels, tabs, request sections, the response, other tabs |
 | `dev/` | The preview: `serve.mjs` (real curl, a made-up shop API, an example collection), the SDK shim, `shot.mjs` |
 

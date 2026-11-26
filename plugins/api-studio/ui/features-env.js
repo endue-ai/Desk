@@ -58,8 +58,11 @@ export function installEnvironments(S) {
   };
 
   const save = S.save;
-  S.save = async (/** @type {Tab} */ tab) => {
-    if (tab.kind !== "env") return save(tab);
+  S.save = async (
+    /** @type {Tab} */ tab,
+    /** @type {import("./features-collections.js").SaveDestination | undefined} */ destination,
+  ) => {
+    if (tab.kind !== "env") return save(tab, destination);
     try {
       const vars = tab.req.vars.pre
         .filter((v) => v.key)

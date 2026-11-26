@@ -114,7 +114,10 @@ export function installLiteralSecrets(S) {
     });
 
   const save = S.save;
-  S.save = async (/** @type {Tab} */ tab) => {
+  S.save = async (
+    /** @type {Tab} */ tab,
+    /** @type {import("./features-collections.js").SaveDestination | undefined} */ destination,
+  ) => {
     if (tab.kind === "env") {
       const loose =
         tab.ref?.path === "globals"
@@ -131,9 +134,9 @@ export function installLiteralSecrets(S) {
         if (answer === undefined || answer === "cancel") return false;
         if (answer === "move") for (const v of loose) /** @type {any} */ (v).secret = true;
       }
-      return save(tab);
+      return save(tab, destination);
     }
-    return save(tab);
+    return save(tab, destination);
   };
 
   S.beforeWrite = async (
