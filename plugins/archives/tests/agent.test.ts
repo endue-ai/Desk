@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
 import { zipOf } from "./fixtures";
-import { file, mount, READ } from "./harness";
+import { file, mount, READ, WRITE } from "./harness";
 
 const PATH = "~/Downloads/notes.zip";
 const ZIP = zipOf([
@@ -49,6 +49,23 @@ describe("an agent's archives commands", () => {
     await expect(host.command("endue.archives.read", { entry: "nope.txt" })).rejects.toThrow(
       /holds no nope.txt/,
     );
+  });
+
+  it("shows an entry and extracts only the named file to the explicit destination", async () => {
+    const dest = "~/Downloads/unpacked";
+    const { host, params } = await mount({
+      files: { [PATH]: ZIP },
+      grants: [READ("~/Downloads"), WRITE(dest)],
+    });
+    await host.command("desk.files.visit", file(PATH));
+    await expect(
+      host.command("endue.archives.show", { entry: "readme.txt" }),
+    ).resolves.toMatchObject({ entry: "readme.txt" });
+    await expect(
+      host.command("endue.archives.extract", { path: PATH, entries: ["docs/plan.md"], to: dest }),
+    ).resolves.toMatchObject({ written: 1, to: dest });
+    expect(params("fs.write")).toMatchObject([{ path: `${dest}/docs/plan.md` }]);
+    expect(params("perm.request")).toEqual([]);
   });
 
   it("are offered to agents as reads", () => {
