@@ -127,6 +127,32 @@ describe("an agent's mail commands", () => {
     expect(ran(`${CONNECTOR}.mail.send`)).toEqual([]);
   });
 
+  it("keeps a new composer when an earlier send finishes", async () => {
+    let start!: () => void;
+    const started = new Promise<void>((resolve) => {
+      start = resolve;
+    });
+    let deliver!: (result: Record<string, never>) => void;
+    const delivered = new Promise<Record<string, never>>((resolve) => {
+      deliver = resolve;
+    });
+    const { host, view } = await mount({
+      commands: {
+        [`${CONNECTOR}.mail.send`]: () => {
+          start();
+          return delivered;
+        },
+      },
+    });
+    await host.command("endue.mail.compose", { to: "reviewer@example.test", subject: "First" });
+    const sending = host.command("endue.mail.send");
+    await started;
+    const next = await host.command("endue.mail.compose", { subject: "Second" });
+    deliver({});
+    await sending;
+    expect(view.draft()).toMatchObject({ id: next, subject: "Second" });
+  });
+
   it("forwards through the existing send action and leaves the composer untouched", async () => {
     const { host, view, ran } = await mount();
     const id = await host.command("endue.mail.compose", { subject: "Still writing" });

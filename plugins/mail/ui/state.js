@@ -63,5 +63,14 @@ export const asString = (/** @type {unknown} */ value) =>
   typeof value === "string" && value !== "" ? value : undefined;
 export const asArgs = (/** @type {unknown} */ value) =>
   /** @type {Record<string, unknown>} */ (value && typeof value === "object" ? value : {});
+export function messageTarget(/** @type {unknown} */ value) {
+  const target = asArgs(value);
+  const source = asArgs(target.source);
+  const connector = asString(source.connector);
+  const instance = asString(source.instance);
+  const id = asString(target.id);
+  if (!connector || !instance || !id) throw new Error("Name the message by its source and id.");
+  return { source: { connector, instance }, id };
+}
 export const addressList = (/** @type {unknown} */ value) =>
   Array.isArray(value) ? value.filter((v) => typeof v === "string" && v.includes("@")) : [];

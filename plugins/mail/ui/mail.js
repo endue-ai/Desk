@@ -310,6 +310,7 @@ export function createMail({ bridge, commands, settings, surface }, view, option
   answerAgents(answer, {
     actions,
     named,
+    draft: writing.composing,
     messageOf,
     account: () => s.account ?? s.accounts[0],
     conf: () => ({ signature: s.conf.signature, addresses: s.conf.addresses }),

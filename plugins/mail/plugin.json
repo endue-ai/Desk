@@ -277,7 +277,7 @@
         "id": "endue.mail.send-message",
         "title": "Mail: send a message",
         "keywords": ["mail", "send", "email", "reply", "write"],
-        "description": "Send a message from a mail account now, without the person's composer, after the person says yes: to, cc and bcc are address lines (a comma between people), with subject and body (plain text; the signature is added). replyTo { source, id } sends a reply in that message's thread, to its sender (and everyone else with all true) unless to is given, from the account it came to, with Re: and the quoted message under body. account is connector/instance, the plugin's chosen account without it. Answers sent, account, to and subject.",
+        "description": "Send once the desk receives approval, leaving the composer as it is. Pass to, cc, bcc, subject and plain-text body. For a reply, give replyTo { source, id } and all true to reply to everyone. For a forward, give forward { source, id } and a recipient. Replies and forwards use the original account and quote the source below the body. New messages use account or the selected account. Answers sent, account, to and subject.",
         "args": {
           "type": "object",
           "properties": {
@@ -333,6 +333,23 @@
               "required": ["source", "id"],
               "additionalProperties": false
             },
+            "forward": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "connector": { "type": "string" },
+                    "instance": { "type": "string" }
+                  },
+                  "required": ["connector", "instance"],
+                  "additionalProperties": false
+                },
+                "id": { "type": "string", "minLength": 1, "maxLength": 1000 }
+              },
+              "required": ["source", "id"],
+              "additionalProperties": false
+            },
             "all": {
               "type": "boolean"
             }
@@ -363,7 +380,7 @@
         "id": "endue.mail.compose",
         "title": "New message",
         "keywords": ["mail", "write", "compose", "email", "send"],
-        "description": "Open a new message in the composer for the person to read and send themselves, filled from to, cc, bcc (address lines, comma between people), subject and body. To send without the person's composer use endue.mail.send-message.",
+        "description": "Prepare a new message for the person to review and send. Pass to, cc, bcc, subject and body. Use replyTo { source, id } with optional all for a reply, or forward { source, id } for a forward. Keeps the previous draft.",
         "args": {
           "type": "object",
           "properties": {
@@ -393,7 +410,68 @@
             "account": {
               "type": "string",
               "maxLength": 300
-            }
+            },
+            "replyTo": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "connector": { "type": "string" },
+                    "instance": { "type": "string" }
+                  },
+                  "required": ["connector", "instance"],
+                  "additionalProperties": false
+                },
+                "id": { "type": "string", "minLength": 1, "maxLength": 1000 }
+              },
+              "required": ["source", "id"],
+              "additionalProperties": false
+            },
+            "forward": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "connector": { "type": "string" },
+                    "instance": { "type": "string" }
+                  },
+                  "required": ["connector", "instance"],
+                  "additionalProperties": false
+                },
+                "id": { "type": "string", "minLength": 1, "maxLength": 1000 }
+              },
+              "required": ["source", "id"],
+              "additionalProperties": false
+            },
+            "all": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.mail.draft",
+        "title": "Mail: read the open draft",
+        "keywords": ["mail", "draft", "composer", "read"],
+        "description": "Read the open draft's id, account, recipients, subject and body. A body over 20,000 characters is truncated. Answers null if the composer is empty.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.mail.edit-draft",
+        "title": "Edit the open mail draft",
+        "keywords": ["mail", "draft", "composer", "edit"],
+        "description": "Change to, cc, subject or body in the open composer. Omitted fields are kept and the draft stays open for review.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string", "maxLength": 4000 },
+            "cc": { "type": "string", "maxLength": 4000 },
+            "subject": { "type": "string", "maxLength": 1000 },
+            "body": { "type": "string", "maxLength": 200000 }
           },
           "additionalProperties": false
         },
@@ -420,6 +498,28 @@
         "title": "Discard the message being written",
         "keywords": ["mail", "discard", "draft", "cancel"],
         "irreversible": true
+      },
+      {
+        "id": "endue.mail.move",
+        "title": "Move a message to a mailbox",
+        "keywords": ["mail", "move", "inbox", "archive", "trash", "junk"],
+        "description": "Move the message { source, id } to inbox, archive, trash or junk on its account. Use inbox to return a message from Archive or Trash.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": { "connector": { "type": "string" }, "instance": { "type": "string" } },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": { "type": "string", "minLength": 1, "maxLength": 1000 },
+            "mailbox": { "type": "string", "enum": ["inbox", "archive", "trash", "junk"] }
+          },
+          "required": ["source", "id", "mailbox"],
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.mail.archive",

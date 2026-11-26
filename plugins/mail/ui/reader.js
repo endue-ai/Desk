@@ -162,6 +162,15 @@ export function createReader(doc, root, actions) {
         tool(message.flagged ? "Unflag" : "Flag", "endue.mail.flag", "flag"),
         tool(message.unread ? "Mark read" : "Mark unread", "endue.mail.toggle-unread", "flag"),
       );
+      if (message.mailbox === "archive" || message.mailbox === "trash") {
+        tools.append(
+          tool("Move to Inbox", "endue.mail.move", "move", {
+            source: message.source,
+            id: message.id,
+            mailbox: "inbox",
+          }),
+        );
+      }
       if (message.deepLink) {
         const link = doc.createElement("a");
         link.href = message.deepLink;

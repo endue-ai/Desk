@@ -71,7 +71,7 @@ describe("an agent's chat commands", () => {
   });
 
   it("reads the open conversation and selection without changing the view", async () => {
-    const { app, host, ran, view } = await mount({ settings: { "mark-read": "manual" } });
+    const { app, host, ran, view } = await mount({ settings: { "mark-read": "never" } });
     await app.openConversation("acme.slack/work@C1");
     await app.activate("acme.slack/work#s-3");
     const before = view.shown();
@@ -111,6 +111,9 @@ describe("an agent's chat commands", () => {
     await expect(
       host.command("endue.chat.draft", { ...destination, channel: "C2", text: "Wrong thread" }),
     ).rejects.toThrow(/thread/i);
+    await expect(
+      host.command("endue.chat.draft", { source: SLACK, channel: "absent", text: "Wrong channel" }),
+    ).rejects.toThrow(/conversation/i);
     expect(app.state().drafts["thread:acme.slack/work#s-3"]).toBe("A person's unsent words");
   });
 
