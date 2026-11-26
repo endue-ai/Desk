@@ -294,3 +294,46 @@ fn a_persons_own_calls_are_never_held() {
         "mine\n"
     );
 }
+
+#[test]
+fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
+    let home = home("desk-preference-approval");
+    let core = Core::new(roots(&home)).with_prompter(NeverAsk);
+    let reversible = [
+        "desk.settings.set",
+        "desk.theme.use",
+        "desk.theme.set",
+        "desk.notify.dnd",
+        "desk.notify.dismiss",
+        "desk.profiles.switch",
+        "desk.profiles.save",
+    ];
+    let irreversible = ["desk.notify.clear", "desk.profiles.remove"];
+    for (ids, irreversible) in [(&reversible[..], false), (&irreversible[..], true)] {
+        for id in ids {
+            call(
+                &core,
+                "desk",
+                "cmd.register",
+                json!({
+                    "id": id, "title": id, "agent": true, "description": "Desk preference test",
+                    "irreversible": irreversible,
+                }),
+            )
+            .unwrap();
+        }
+    }
+    for id in reversible {
+        invoke(&core, "agent:eris", id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+    }
+
+    grant(&core, "desk", manage());
+    let deliveries = core.events().subscribe_addressed();
+    for id in irreversible {
+        let (approval, denied) = held(&core, &deliveries, "deny", || {
+            invoke(&core, "agent:eris", id)
+        });
+        assert_eq!(approval.data()["target"], id);
+        assert_eq!(denied.unwrap_err().code, ErrorCode::PermissionDenied);
+    }
+}
