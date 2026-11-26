@@ -26,6 +26,7 @@ const codeOf = (error) => (error && typeof error === "object" ? error.code : und
  * @typedef {{
  *   view(): string | undefined,
  *   shown(): { url: string, title: string },
+ *   status(): { loading: boolean, canGoBack: boolean, canGoForward: boolean },
  *   settled(quiet?: number, most?: number): Promise<void>,
  *   go(typed: string): Promise<void>,
  *   back(): void, forward(): void, reload(): void, stop(): void,
@@ -70,7 +71,7 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
     /** @type {Page & { more?: number, moved?: boolean }} */
     const page = await allowed("web.read", { viewId: viewId(), from, max, scope: SCOPE }, ask);
     const end = page.from + Array.from(page.text).length;
-    return end < page.length ? { ...page, more: end } : page;
+    return { ...page, ...browser.status(), ...(end < page.length ? { more: end } : {}) };
   }
 
   /** Do `action` in the page, let it settle, and answer the page as it reads now. */
@@ -103,10 +104,16 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
     to();
     return arrived();
   };
+  const history = (to) => (_args, invocation) =>
+    invocation?.caller.startsWith("agent:")
+      ? act({ do: "history", to }, invocation)
+      : step(browser[to]);
 
   /** Only what `args` names: an absent argument is left out, not sent as nothing. */
   const named = (args, keys) =>
     Object.fromEntries(keys.filter((k) => args?.[k] != null).map((k) => [k, args[k]]));
+  const key = (args, invocation) =>
+    act({ do: "key", key: args?.key, ...named(args, ["ref"]) }, invocation);
 
   return {
     async go(args) {
@@ -114,9 +121,10 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
       return arrived();
     },
     read: (args) => read(args),
-    back: () => step(browser.back),
-    forward: () => step(browser.forward),
-    reload: () => step(browser.reload),
+    back: history("back"),
+    forward: history("forward"),
+    reload: history("reload"),
+    stop: () => step(browser.stop),
     scroll: (args) =>
       act(
         args?.ref
@@ -133,9 +141,12 @@ export function createAgent(desk, browser, rest = { quiet: 500, most: 10000 }) {
         },
         invocation,
       ),
-    key: (args, invocation) =>
-      act({ do: "key", key: args?.key, ...named(args, ["ref"]) }, invocation),
+    key,
+    "navigate-key": key,
     select: (args, invocation) =>
       act({ do: "choose", ref: args?.ref, option: args?.option }, invocation),
+    follow: (args) => act({ do: "follow", ref: args?.ref }),
+    find: (args) => act({ do: "find", text: args?.text }),
+    zoom: (args) => act({ do: "zoom", level: args?.level }),
   };
 }

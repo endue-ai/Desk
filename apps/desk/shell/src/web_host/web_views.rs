@@ -29,6 +29,7 @@ pub(super) struct WebView {
     /// gave them, a press on the plugin's own surface takes them back.
     pub(super) keys: bool,
     pub(super) state: WebState,
+    pub(super) last_find: Option<(String, i64)>,
     /// Where it was sent before its browser was made.
     pending: Option<String>,
     /// What is asked of its page, and who waits for the answers (`web_page.rs`).
@@ -129,6 +130,7 @@ impl WebHost {
             let mut inner = self.inner();
             inner.records.insert(surface.clone(), record);
             let web = WebView {
+                last_find: None,
                 id: view.to_owned(),
                 place,
                 keys: false,

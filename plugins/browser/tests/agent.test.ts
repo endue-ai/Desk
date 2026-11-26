@@ -90,7 +90,13 @@ describe("the assistant in the Browser", () => {
     await agent.select({ ref: "e7", option: "한국어" }, invocation);
     await agent.reload({}, invocation);
     expect(desk.of("web.act").map((p) => p.invocationId)).toEqual([
-      "i-7", undefined, undefined, "i-7", "i-7", "i-7", "i-7",
+      "i-7",
+      undefined,
+      undefined,
+      "i-7",
+      "i-7",
+      "i-7",
+      "i-7",
     ]);
     expect(desk.of("web.read").every((p) => p.invocationId === undefined)).toBe(true);
   });

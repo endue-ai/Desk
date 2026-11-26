@@ -8,8 +8,8 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use desk_bridge::{WebActResult, WebAction, WebReadResult};
-use desk_core::WebError;
+use desk_bridge::{WebActResult, WebAction, WebReadResult, WebStep};
+use desk_core::{WebError, WebHistoryTarget};
 use serde_json::{Value, json};
 
 use super::web::Web;
@@ -111,6 +111,72 @@ impl Web {
             .map_err(|why| WebError::Failed(format!("the page read as no page: {why}")))
     }
 
+    pub(super) fn inspect_history(
+        &self,
+        view: &str,
+        at: &str,
+        step: WebStep,
+    ) -> Result<Option<WebHistoryTarget>, WebError> {
+        let (name, at) = (view.to_owned(), at.to_owned());
+        let Some(mut target) = self.ask(move |c| c.host.web_history_target(&name, &at, step))?
+        else {
+            return Ok(None);
+        };
+        // Chromium's toolbar can skip entries. Selecting the inspected entry by id keeps the
+        // traversal bound to the target and POST flag the core checked.
+        if matches!(step, WebStep::Back | WebStep::Forward) {
+            let history = self.devtools(view, "Page.getNavigationHistory", json!({}))?;
+            let entry = &history["entries"][target.index as usize];
+            if history["currentIndex"].as_i64() != Some(i64::from(target.current))
+                || entry["url"].as_str() != Some(&target.url)
+            {
+                return Err(WebError::Changed(
+                    "the Browser history changed; read it again".into(),
+                ));
+            }
+            let id = entry["id"]
+                .as_i64()
+                .ok_or_else(|| WebError::Changed("the history entry has no id".into()))?;
+            target.entry_id = Some(id);
+        }
+        Ok(Some(target))
+    }
+
+    pub(super) fn go_history_entry(
+        &self,
+        view: &str,
+        at: &str,
+        step: WebStep,
+        expected: &WebHistoryTarget,
+    ) -> Result<(), WebError> {
+        let (view, at, expected) = (view.to_owned(), at.to_owned(), expected.clone());
+        let answer = self.ask(move |c| {
+            c.host.web_check_history(&view, &at, step, &expected)?;
+            if let Some(id) = expected.entry_id {
+                return c
+                    .host
+                    .web_call(
+                        &view,
+                        "Page.navigateToHistoryEntry",
+                        json!({ "entryId": id }),
+                    )
+                    .map(Some);
+            }
+            if step != WebStep::Reload {
+                return Err(WebError::Changed("the history entry has no id".into()));
+            }
+            c.host.web_go(&view, WebStep::Reload)?;
+            Ok(None)
+        })?;
+        if let Some(answer) = answer {
+            answer
+                .recv_timeout(WAIT)
+                .map_err(|_| WebError::Failed("the browser did not navigate in time".into()))?
+                .map_err(WebError::Failed)?;
+        }
+        Ok(())
+    }
+
     pub(super) fn act_in(
         &self,
         view: &str,
@@ -169,6 +235,29 @@ impl Web {
                 self.ask_page(view, at, ask)?;
                 Ok(DONE)
             }
+            WebAction::WebFollow(follow) => {
+                let link =
+                    self.ask_page(view, at, json!({ "do": "follow", "ref": follow.r#ref }))?;
+                let (Some(url), Some(at)) = (link["url"].as_str(), link["at"].as_str()) else {
+                    return Err(WebError::Invalid("the link has no address".into()));
+                };
+                let (view, at, url) = (view.to_owned(), at.to_owned(), url.to_owned());
+                self.ask(move |c| c.host.web_follow_ref(&view, &at, &url))?;
+                Ok(DONE)
+            }
+            WebAction::WebFind(find) => {
+                let (view, at, text) = (view.to_owned(), at.to_owned(), find.text.clone());
+                self.ask(move |c| c.host.web_find(&view, &at, &text))?;
+                Ok(DONE)
+            }
+            WebAction::WebZoom(zoom) => {
+                let (view, at, level) = (view.to_owned(), at.to_owned(), zoom.level);
+                self.ask(move |c| c.host.web_zoom(&view, &at, level))?;
+                Ok(DONE)
+            }
+            WebAction::WebHistory(_) => Err(WebError::Invalid(
+                "history needs a native target check".into(),
+            )),
         }
     }
 

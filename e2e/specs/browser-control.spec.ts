@@ -6,10 +6,11 @@
 // press of the pointer the page trusts, a choice, a link followed and the way back.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { expect } from "@wdio/globals";
+import { $, browser, expect } from "@wdio/globals";
+import { serve } from "../../examples/brain-echo/server.mjs";
 import { inputState } from "../support/compositor";
-import { shellReady } from "../support/desk";
-import { run, windowUntil } from "../support/windows";
+import { MODE, press, shellReady, waitForData } from "../support/desk";
+import { call, run, windowUntil } from "../support/windows";
 
 const BROWSER = "endue.browser";
 
@@ -35,6 +36,9 @@ count.addEventListener("click", (e) => {
 });
 </script>`,
   "/b": `<!doctype html><title>Page B</title><body><p>B</p><a href="/">home</a>`,
+  "/form": `<!doctype html><title>Fixture form</title>
+    <form method="post" action="/posted"><button>Send fixture</button></form>`,
+  "/posted": `<!doctype html><title>Fixture posted</title><p>The form was sent.</p>`,
 };
 
 interface Page {
@@ -45,6 +49,9 @@ interface Page {
   length: number;
   more?: number;
   moved?: boolean;
+  loading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
   scroll: { x: number; y: number; width: number; height: number; pageHeight: number };
 }
 
@@ -61,13 +68,21 @@ function ref(page: Page, what: string): string {
 
 describe("the Browser, read and operated by the desk's assistant (ADR 0272)", () => {
   let server: Server;
+  let echo: Server;
+  let posts = 0;
   let origin = "";
   let page: Page;
 
   before(async () => {
     server = createServer((req, res) => {
-      const body = PAGES[new URL(req.url ?? "/", "http://x").pathname];
-      res.writeHead(body ? 200 : 404, { "content-type": "text/html; charset=utf-8" });
+      const path = new URL(req.url ?? "/", "http://x").pathname;
+      if (path === "/posted" && req.method === "POST") posts++;
+      req.resume();
+      const body = PAGES[path];
+      res.writeHead(body ? 200 : 404, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      });
       res.end(body ?? "");
     });
     await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -79,6 +94,7 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
 
   after(() => {
     server?.close();
+    echo?.close();
   });
 
   it("goes to an address and answers the page as text, its elements named", async () => {
@@ -160,5 +176,95 @@ describe("the Browser, read and operated by the desk's assistant (ADR 0272)", ()
     const back = await does("back");
     expect(back).toMatchObject({ url: `${origin}/`, title: "Shop" });
     expect(back.text).toContain('button "Press"]');
+  });
+
+  it("moves, finds and zooms, and follows a link's address without a click", async () => {
+    const from = await does("read");
+    const found = await does("find", { text: "The end" });
+    expect(found.scroll.y).toBeGreaterThan(from.scroll.y);
+    const zoomed = await does("zoom", { level: 1.25 });
+    expect(zoomed.scroll.width).toBeLessThan(found.scroll.width);
+    await does("zoom", { level: 1 });
+    await does("navigate-key", { key: "Tab" });
+    const there = await does("follow", { ref: ref(from, 'link "to B"') });
+    expect(there).toMatchObject({
+      url: `${origin}/b`,
+      loading: false,
+      canGoBack: true,
+      canGoForward: false,
+    });
+    expect(await does("stop")).toMatchObject({ url: there.url, loading: false });
+  });
+
+  it("holds native reload and history steps that can resend a submitted form", async () => {
+    echo = await serve({ port: 18788, delayMs: 0 });
+    const brains = `${MODE} [data-popover=brain]`;
+    if (!(await $(brains).isExisting())) await press(`${MODE} [data-key=rail-brain]`);
+    await press(`${brains} [data-key=brain-echo]`);
+    await waitForData(
+      "settings.json",
+      (value) => (value as { desk?: Record<string, unknown> })?.desk?.["brain.use"] === "echo",
+      "the echo brain is selected",
+    );
+    if (await $(brains).isExisting()) await press(`${MODE} [data-key=rail-brain]`);
+    const scope = { permission: "perm:manage" };
+    const pending = async () => {
+      const { approvals } = (await call("perm.pending", { scope })) as {
+        approvals: Array<{
+          action: string;
+          approvalId: string;
+          task?: string;
+          preview?: { text: string };
+        }>;
+      };
+      return approvals.find((card) => card.action === "web.act");
+    };
+    const held = async (step: string, copies: number) => {
+      const sent = await browser.execute((line) => {
+        const input = document.querySelector<HTMLInputElement>("#composer-input");
+        if (!input) return false;
+        input.focus();
+        input.value = line;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        for (const key of ["ArrowUp", "Enter"])
+          input.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+        return true;
+      }, `tool endue_browser_${step} as mira: {}`);
+      expect(sent).toBe(true);
+      await browser.waitUntil(async () => Boolean(await pending()), {
+        timeout: 10_000,
+        timeoutMsg: `${step} did not ask to resend the form`,
+      });
+      const card = await pending();
+      expect(JSON.parse(card?.preview?.text ?? "{}")).toMatchObject({
+        to: step,
+        url: `${origin}/posted`,
+        mayResendForm: true,
+      });
+      expect(card?.task).toBeUndefined();
+      expect(posts).toBe(copies);
+      await call("perm.approve", { scope, approvalId: card?.approvalId, answer: "deny" });
+      await browser.waitUntil(
+        async () =>
+          !(await pending()) &&
+          (await browser.execute(
+            () => document.querySelector<HTMLElement>(".eris")?.dataset.state,
+          )) !== "thinking",
+        { timeout: 10_000 },
+      );
+      expect(posts).toBe(copies);
+    };
+    const post = async () => {
+      const form = await does("go", { url: `${origin}/form` });
+      const posted = await does("click", { ref: ref(form, 'button "Send fixture"') });
+      expect(posted.title).toBe("Fixture posted");
+    };
+    await post();
+    await held("reload", 1);
+    expect((await does("back")).title).toBe("Fixture form");
+    await held("forward", 1);
+    await post();
+    await does("go", { url: `${origin}/b` });
+    await held("back", 2);
   });
 });

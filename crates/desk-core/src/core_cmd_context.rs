@@ -93,7 +93,11 @@ impl Core {
             "endue.browser.click"
                 | "endue.browser.type"
                 | "endue.browser.key"
+                | "endue.browser.navigate-key"
                 | "endue.browser.select"
+                | "endue.browser.back"
+                | "endue.browser.forward"
+                | "endue.browser.reload"
         ) && self.trusted_builtin(&info.provider, BROWSER)
     }
 
@@ -125,13 +129,24 @@ impl Core {
             WebAction::WebType(_) => "endue.browser.type",
             WebAction::WebKey(_) => "endue.browser.key",
             WebAction::WebChoose(_) => "endue.browser.select",
+            WebAction::WebHistory(history) => match history.to {
+                desk_bridge::WebStep::Back => "endue.browser.back",
+                desk_bridge::WebStep::Forward => "endue.browser.forward",
+                desk_bridge::WebStep::Reload => "endue.browser.reload",
+                desk_bridge::WebStep::Stop => return Err(invalid()),
+            },
             _ => return Err(invalid()),
         };
+        let navigation_key = matches!(action, WebAction::WebKey(key) if crate::core_web_control::navigation_key(key.key));
         let mut commands = self.commands();
         let pending = commands
             .pending
             .get_mut(id)
-            .filter(|i| i.provider == provider && i.id == command && i.browser_act)
+            .filter(|i| {
+                i.provider == provider
+                    && i.browser_act
+                    && (i.id == command || (i.id == "endue.browser.navigate-key" && navigation_key))
+            })
             .ok_or_else(invalid)?;
         let agent = pending.agent.clone().ok_or_else(invalid)?;
         pending.browser_act = false;

@@ -227,6 +227,16 @@ globalThis.__deskPage = (request) => {
         });
       case "point":
         return on(point);
+      case "follow":
+        return on((el) => {
+          const href = el.matches("a[href],area[href]") && el.getAttribute("href");
+          if (href === false || href === null)
+            return fail("invalid", "the ref has no link address");
+          const address = new URL(href, document.baseURI);
+          if (!["http:", "https:"].includes(address.protocol))
+            return fail("invalid", "the link address must be HTTP or HTTPS");
+          return { ok: { url: address.href, at: location.href } };
+        });
       case "click":
         return on((el) => {
           el.click();

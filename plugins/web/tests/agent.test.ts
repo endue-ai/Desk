@@ -41,9 +41,10 @@ describe("reading saved web files through commands", () => {
     const { host, view, params } = await mount({
       handlers: {
         ...reads,
-        "fs.read": (input) => {
-          if (input.path === PAGE.path) throw denied("saved file");
-          return reads["fs.read"]!(input);
+        "fs.read": (input, caller) => {
+          const read = reads["fs.read"];
+          if (input.path === PAGE.path || !read) throw denied("saved file");
+          return read(input, caller);
         },
       },
     });
@@ -65,7 +66,10 @@ describe("reading saved web files through commands", () => {
     expect(await host.command("endue.web.read")).toMatchObject({
       source: "saved-web-content",
       kind: "entries",
-      entries: [{ index: 0, title: "One", link: "https://example.com/one" }, { index: 1, title: "Two" }],
+      entries: [
+        { index: 0, title: "One", link: "https://example.com/one" },
+        { index: 1, title: "Two" },
+      ],
     });
     expect(await host.command("endue.web.entry", { index: 1 })).toMatchObject({
       source: "saved-web-content",

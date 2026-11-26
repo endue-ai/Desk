@@ -110,6 +110,22 @@ describe("a web view's page, read", () => {
 });
 
 describe("a web view's page, acted in", () => {
+  it("resolves a live HTTP link without pressing it", () => {
+    page(
+      '<a id="link" href="/page">Next</a> <a href="javascript:void(0)">Script</a> <button>Submit</button>',
+    );
+    text();
+    const clicked = vi.fn();
+    byId("link").addEventListener("click", clicked);
+    expect(ask({ do: "follow", ref: "e1" })).toEqual({
+      ok: { url: new URL("/page", location.href).href, at: location.href },
+    });
+    expect(clicked).not.toHaveBeenCalled();
+    expect(ask({ do: "follow", ref: "e2" }).error?.code).toBe("invalid");
+    expect(ask({ do: "follow", ref: "e3" }).error?.code).toBe("invalid");
+    byId("link").remove();
+    expect(ask({ do: "follow", ref: "e1" }).error?.code).toBe("not_found");
+  });
   it("finds an element by its ref while it is in the page", () => {
     page(`<button id="go">Go</button>`);
     text();

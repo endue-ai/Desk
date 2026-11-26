@@ -147,7 +147,7 @@ pub use core_snapshots::{ShotError, SurfaceShot, SurfaceSnapshots};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
 pub use core_tools::mcp_caller;
-pub use core_web::{MAX_WEB_VIEWS, WebError, WebPlace, WebState, WebViews};
+pub use core_web::{MAX_WEB_VIEWS, WebError, WebHistoryTarget, WebPlace, WebState, WebViews};
 pub use core_web_control::WEB_READ_CHARS;
 pub use desk_files::{
     DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,

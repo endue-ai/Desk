@@ -64,7 +64,16 @@ fn a_task_covers_different_browser_acts_only_in_the_reviewed_view_and_site() {
     set_enabled(&core, BROWSER, true);
     grant(&core, "desk", manage());
     grant(&core, "desk", json!({ "permission": "brain:converse" }));
-    for name in ["click", "type", "key"] {
+    for name in [
+        "click",
+        "type",
+        "key",
+        "navigate-key",
+        "select",
+        "reload",
+        "back",
+        "forward",
+    ] {
         call(
             &core,
             BROWSER,
@@ -93,7 +102,7 @@ fn a_task_covers_different_browser_acts_only_in_the_reviewed_view_and_site() {
         ("type", json!({ "text": "test" })),
         ("click", json!({ "ref": "e1" })),
         ("click", json!({ "ref": "e1" })),
-        ("key", json!({ "key": "Tab" })),
+        ("key", json!({ "key": "Enter" })),
     ];
     let turn = say(&core, &calls);
     let press = json!({ "do": "press", "ref": "e1" });
@@ -140,7 +149,7 @@ fn a_task_covers_different_browser_acts_only_in_the_reviewed_view_and_site() {
         run(&main, press.clone(), None);
         let new_site = expect_card(&deliveries, &turn, "https://example.org");
         approve_as_desk(&core, &new_site, "task");
-        run(second, json!({ "do": "key", "key": "Tab" }), None);
+        run(second, json!({ "do": "key", "key": "Enter" }), None);
         let other_view = expect_card(&deliveries, &turn, "https://example.org");
         approve_as_desk(&core, &other_view, "task");
         complete(&deliveries, &turn);
@@ -150,9 +159,89 @@ fn a_task_covers_different_browser_acts_only_in_the_reviewed_view_and_site() {
         let fresh = expect_card(&deliveries, &next, "https://example.org");
         approve_as_desk(&core, &fresh, "once");
         complete(&deliveries, &next);
+
+        let quiet = say(
+            &core,
+            &[
+                ("type", json!({ "text": "draft" })),
+                ("navigate-key", json!({ "key": "ArrowDown" })),
+                ("select", json!({ "ref": "e3", "option": "Small" })),
+            ],
+        );
+        run(&main, json!({ "do": "type", "text": "draft" }), None)
+            .join()
+            .unwrap();
+        run(&main, json!({ "do": "key", "key": "ArrowDown" }), None)
+            .join()
+            .unwrap();
+        run(
+            &main,
+            json!({ "do": "choose", "ref": "e3", "option": "Small" }),
+            None,
+        )
+        .join()
+        .unwrap();
+        complete(&deliveries, &quiet);
+
+        let submit = say(
+            &core,
+            &[("type", json!({ "text": "send", "submit": true }))],
+        );
+        run(
+            &main,
+            json!({ "do": "type", "text": "send", "submit": true }),
+            None,
+        );
+        let card = expect_card(&deliveries, &submit, "https://example.org");
+        approve_as_desk(&core, &card, "once");
+        complete(&deliveries, &submit);
+
+        let destination = WebHistoryTarget {
+            url: "https://example.com/form".into(),
+            current: 2,
+            index: 1,
+            completion: 1,
+            has_post_data: false,
+            entry_id: Some(22),
+        };
+        *pages.history.lock().unwrap() = Some(destination.clone());
+        let safe = say(&core, &[("back", json!({}))]);
+        run(&main, json!({ "do": "history", "to": "back" }), None)
+            .join()
+            .unwrap();
+        complete(&deliveries, &safe);
+
+        *pages.history.lock().unwrap() = Some(WebHistoryTarget {
+            has_post_data: true,
+            ..destination.clone()
+        });
+        assert_eq!(
+            act(&core, &main, json!({ "do": "history", "to": "reload" }))
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidParams
+        );
+        for step in ["reload", "back", "forward"] {
+            let replay = say(&core, &[(step, json!({}))]);
+            let result = if step == "forward" {
+                Some(ErrorCode::Cancelled)
+            } else {
+                None
+            };
+            run(&main, json!({ "do": "history", "to": step }), result);
+            let card = wait_for(&deliveries, "perm.approval");
+            assert_eq!(card.data()["action"], "web.act");
+            assert_eq!(card.data()["target"], "https://example.com");
+            assert!(card.data()["task"].is_null());
+            if step == "forward" {
+                pages.history.lock().unwrap().as_mut().unwrap().completion += 1;
+            }
+            approve_as_desk(&core, &card, "once");
+            complete(&deliveries, &replay);
+        }
     });
     let asked = pages.asked();
-    assert_eq!(asked.len(), 5, "{asked:?}");
+    assert_eq!(asked.len(), 12, "{asked:?}");
     assert!(asked[1].contains("https://example.com/second"), "{asked:?}");
     assert!(
         asked.iter().all(|act| !act.contains("example.net")),

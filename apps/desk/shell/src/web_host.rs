@@ -33,6 +33,7 @@ mod sink;
 pub mod stall;
 pub mod top;
 pub mod view;
+mod web_actions;
 mod web_client;
 mod web_keys;
 pub mod web_page;
