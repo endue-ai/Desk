@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { originApi, REQUEST_PAGE } from "../ui/origin-api.js";
-import { originLink, parseOrigin, readRequest, stackRequests } from "../ui/origin-model.js";
+import {
+  originLink,
+  parseOrigin,
+  readRelease,
+  readRequest,
+  stackRequests,
+} from "../ui/origin-model.js";
 
 const sha = "a".repeat(40);
 const github = parseOrigin("git@github.com:owner/repo.git");
@@ -179,5 +185,29 @@ describe("provider CLI calls", () => {
       program: "glab",
       input: JSON.stringify({ tag_name: "release/v1", name: "--title", description: "@notes.txt" }),
     });
+  });
+
+  it("addresses GitHub releases by ID and GitLab releases by the encoded tag", async () => {
+    const run = vi.fn().mockResolvedValue(outcome({}));
+    const item = { id: 42, tag_name: "release/v1" };
+    const fields = { title: "Release v1", notes: "Notes" };
+    const hub = originApi({ run }, github);
+    await hub.editRelease(readRelease(github, item), fields);
+    await hub.deleteRelease(readRelease(github, item));
+    const lab = originApi({ run }, gitlab);
+    await lab.editRelease(readRelease(gitlab, item), fields);
+    await lab.deleteRelease(readRelease(gitlab, item));
+    expect(run.mock.calls.map(([args]) => args.slice(4, 6))).toEqual([
+      ["PATCH", "repos/owner/repo/releases/42"],
+      ["DELETE", "repos/owner/repo/releases/42"],
+      ["PUT", "projects/group%2Fsub%2Frepo/releases/release%2Fv1"],
+      ["DELETE", "projects/group%2Fsub%2Frepo/releases/release%2Fv1"],
+    ]);
+    expect(run.mock.calls[0]?.[1].input).toBe(
+      JSON.stringify({ name: "Release v1", body: "Notes" }),
+    );
+    expect(run.mock.calls[2]?.[1].input).toBe(
+      JSON.stringify({ name: "Release v1", description: "Notes" }),
+    );
   });
 });

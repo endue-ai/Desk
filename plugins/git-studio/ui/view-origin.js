@@ -215,8 +215,8 @@ export function createOriginView(app, bridge, page, layer) {
         loadRequests(moreRequests),
       ),
       requestData.items.length
-        ? requestRows(requestData.items, github, link, (request, event) =>
-            controls.requestMenu(current, request, event),
+        ? requestRows(requestData.items, github, link, (request, children, event) =>
+            controls.requestMenu(current, request, children, event),
           )
         : null,
       moreRequests

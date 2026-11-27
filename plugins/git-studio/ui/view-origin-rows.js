@@ -20,7 +20,7 @@ export function originStatus(status) {
  * @param {import("./origin-model.js").Request[]} requests
  * @param {boolean} github
  * @param {Link} link
- * @param {(request: import("./origin-model.js").Request, event: MouseEvent) => void} manage
+ * @param {(request: import("./origin-model.js").Request, children: import("./origin-model.js").Stack[], event: MouseEvent) => void} manage
  */
 export function requestRows(requests, github, link, manage) {
   /** @param {import("./origin-model.js").Stack[]} stacks @param {number} depth @param {string} [parent] */
@@ -71,7 +71,7 @@ export function requestRows(requests, github, link, manage) {
               ),
             ),
             isOpen(request) || state === "Closed"
-              ? manageButton(`Manage request ${label}`, (event) => manage(request, event))
+              ? manageButton(`Manage request ${label}`, (event) => manage(request, children, event))
               : null,
           ),
           children.length
@@ -128,6 +128,7 @@ export function runRows(runs, link, getJobs) {
     ...runs.map((run) => {
       const detail = h("div.origin-jobs", { id: `origin-jobs-${run.id}`, hidden: true });
       let pinned = false;
+      let hovered = false;
       let loaded = false;
       let pending = false;
       /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -220,13 +221,24 @@ export function runRows(runs, link, getJobs) {
             toggle.focus();
           },
           onMouseenter: () => {
+            hovered = true;
             if (!pinned)
               timer = setTimeout(() => {
                 if (detail.isConnected) reveal(true);
               }, 250);
           },
           onMouseleave: () => {
-            if (!pinned) reveal(false);
+            hovered = false;
+            clearTimeout(timer);
+            if (!pinned && !detail.contains(detail.ownerDocument.activeElement)) reveal(false);
+          },
+          onFocusout: (/** @type {FocusEvent} */ event) => {
+            if (
+              !pinned &&
+              !hovered &&
+              !detail.contains(/** @type {Node | null} */ (event.relatedTarget))
+            )
+              reveal(false);
           },
         },
         h(

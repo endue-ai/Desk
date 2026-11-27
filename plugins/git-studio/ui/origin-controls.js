@@ -96,10 +96,12 @@ export function originControls(app, layer, selected, report, refresh) {
     requestMenu(
       /** @type {Target} */ target,
       /** @type {import("./origin-model.js").Request} */ request,
+      /** @type {import("./origin-model.js").Stack[]} */ children,
       /** @type {MouseEvent} */ event,
     ) {
       const github = target.origin.program === "gh";
-      const reference = `${github ? "#" : "!"}${request.number}`;
+      const prefix = github ? "#" : "!";
+      const reference = `${prefix}${request.number}`;
       const noun = github ? "pull request" : "merge request";
       const description = h(
         "div.origin-dialog-context",
@@ -118,7 +120,19 @@ export function originControls(app, layer, selected, report, refresh) {
             {
               title: `${label} ${reference}`,
               confirm: label,
-              body: description,
+              body:
+                action === "merge" && children.length
+                  ? h(
+                      "div.origin-dialog-context",
+                      null,
+                      description,
+                      h(
+                        "span",
+                        null,
+                        `Merge ${children.map(({ request }) => `${prefix}${request.number}`).join(", ")} first to include their changes.`,
+                      ),
+                    )
+                  : description,
               danger: action === "close",
               fields:
                 github && action === "merge"

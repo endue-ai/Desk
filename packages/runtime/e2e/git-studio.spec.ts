@@ -26,6 +26,8 @@ test("shows an origin merge stack, loads jobs on hover and sends a merge after c
   page,
 }) => {
   const { frame } = await openStudio(page);
+  await page.evaluate(() => window.__desk.runtime.commands.run("desk.theme.dark"));
+  await expect(frame.locator("html")).toHaveAttribute("data-scheme", "dark");
   await expect(frame.getByRole("heading", { name: "GitHub Actions" })).toBeVisible();
   await expect(frame.getByRole("link", { name: "November release" })).toBeVisible();
   await expect(
@@ -38,7 +40,19 @@ test("shows an origin merge stack, loads jobs on hover and sends a merge after c
     await page.evaluate(() => window.__desk.commands.some((call) => call.includes("/jobs"))),
   ).toBe(false);
   await frame.getByRole("link", { name: "Desktop CI" }).hover();
-  await expect(frame.getByRole("link", { name: "Compile packages" })).toBeVisible();
+  const job = frame.getByRole("link", { name: "Compile packages" });
+  await expect(job).toBeVisible();
+  await job.focus();
+  await frame.getByRole("heading", { name: "GitHub Actions" }).hover();
+  await expect(job).toBeFocused();
+  await frame.getByRole("link", { name: "Desktop CI" }).focus();
+  await expect(job).toBeHidden();
+
+  await frame.getByRole("button", { name: "Manage request #2" }).click();
+  await frame.getByText("Merge pull request", { exact: true }).click();
+  const integration = frame.getByRole("dialog", { name: "Merge pull request #2" });
+  await expect(integration.getByText("Merge #1 first to include their changes.")).toBeVisible();
+  await integration.getByRole("button", { name: "Cancel" }).click();
 
   await frame.getByRole("button", { name: "Manage request #1" }).click();
   await frame.getByText("Merge pull request", { exact: true }).click();
