@@ -1,4 +1,5 @@
 import type { BridgeEvent, BridgeRequest, BridgeResponse, Language } from "@endue-ai/bridge";
+import { type CustomState, customApplier, pageOutline } from "./custom";
 import {
   DND_HOST_TYPES,
   type DndHostMessage,
@@ -67,6 +68,8 @@ export type HostMessage =
   | { type: "desk:event"; event: BridgeEvent }
   | { type: "desk:command"; name: string; args?: unknown; call?: number }
   | { type: "desk:theme"; theme: ThemeState }
+  /** The person's own style and script for this plugin's page (desk.customize, ADR 0398). */
+  | { type: "desk:custom"; custom: CustomState }
   /** The desk's language, at start and on each change (desk.language, ADR 0250). */
   | { type: "desk:language"; language: Language }
   /** Whether the frame still takes messages: the SDK answers it by itself (`ping.ts`), never the plugin. */
@@ -93,6 +96,10 @@ export interface Transport {
   catalog?(pluginId: string, path: string): Promise<unknown>;
   /** Apply the desk's theme where the plugin runs (a frame's root element). */
   theme?(theme: ThemeState): void;
+  /** Apply the person's changes to the page; the script waits for `mounted` (ADR 0398). */
+  custom?(custom: CustomState, mounted: Promise<void>): void;
+  /** The page's elements as an outline, for writing the person's style (ADR 0398). */
+  outline?(): string;
   /** Follow the pointer and the keys while a drag from here lasts; returns the function that stops. */
   follow?(from: PointerLike | undefined, handlers: FollowHandlers): () => void;
   /** The element at a point where the plugin runs (`document.elementFromPoint`). */
@@ -121,6 +128,7 @@ const HOST_TYPES = new Set([
   "desk:event",
   "desk:command",
   "desk:theme",
+  "desk:custom",
   "desk:language",
   ...DND_HOST_TYPES,
 ]);
@@ -128,6 +136,7 @@ const HOST_TYPES = new Set([
 /** The frame transport: messages go to the parent window and only the parent is heard. */
 export function windowTransport(win: Window = window): Transport {
   let appliedVariables = new Set<string>();
+  let custom: ((state: CustomState) => void) | undefined;
   return {
     ...windowDnd(win),
     send: (message) => win.parent.postMessage(message, "*"),
@@ -154,6 +163,11 @@ export function windowTransport(win: Window = window): Transport {
     catalog: async (pluginId, path) => {
       const response = await win.fetch(new URL(`/${pluginId}/${path}`, win.location.href));
       return response.ok ? response.json() : undefined;
+    },
+    outline: () => pageOutline(win.document),
+    custom: (state, mounted) => {
+      custom ??= customApplier(win, mounted);
+      custom(state);
     },
     theme: (theme) => {
       const root = win.document.documentElement;

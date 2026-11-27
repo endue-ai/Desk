@@ -48,6 +48,7 @@ export type {
   PluginSettings,
   SurfaceOptions,
 } from "./context";
+export { CUSTOM_STYLE_ID, type CustomState } from "./custom";
 export { type PluginData, type PluginViews, readScope } from "./data";
 export type {
   DeskData,

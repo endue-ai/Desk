@@ -20,7 +20,7 @@ import {
   routeEvent,
 } from "./plugins-events";
 import { PluginGreetings } from "./plugins-greetings";
-import { initMessage } from "./plugins-init";
+import { greeting } from "./plugins-init";
 import {
   enableForLaunch,
   hasSurface,
@@ -28,6 +28,7 @@ import {
   MANAGE_PLUGINS,
 } from "./plugins-launch";
 import { WindowSearch } from "./plugins-search";
+import { type SharedMessage, SharedMessages } from "./plugins-shared";
 import { now, phase } from "./timing";
 
 export type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
@@ -43,7 +44,7 @@ export class PluginHost {
   /** Turns, watches, subscriptions, processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
   readonly #asks = new PluginAsks();
-  readonly #shared = new Map<string, unknown>();
+  readonly #shared = new SharedMessages();
   readonly #greetings = new PluginGreetings();
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
@@ -210,10 +211,8 @@ export class PluginHost {
     return this.#asks.busy(id, except);
   }
 
-  /**
-   * The runtime took a plugin's frame away (ADR 0070): `state` goes to its next init as `restored`,
-   * and what the gone frame was asked is cancelled. The plugin stays mounted.
-   */
+  /** The runtime took a plugin's frame away (ADR 0070): `state` goes to its next init as
+   * `restored`, what the gone frame was asked is cancelled; the plugin stays mounted. */
   unloaded(id: string, state: unknown): void {
     if (!this.#instances.has(id)) return;
     this.#greetings.forget(id);
@@ -221,10 +220,11 @@ export class PluginHost {
     this.#cancel(id, "was unloaded before it answered");
   }
 
-  /** Keep a message for every plugin, like the theme: sent now, and after each plugin's init. */
-  share(message: { type: string; [field: string]: unknown }): void {
-    this.#shared.set(message.type, message);
-    for (const key of this.#instances.keys()) this.#post(key, message);
+  /** Keep a message for every plugin (the theme) or one's windows (ADR 0398), sent now and at init. */
+  share(message: SharedMessage, plugin?: string, drop = false): void {
+    this.#shared.keep(message, plugin, drop);
+    const keys = plugin === undefined ? this.#instances.keys() : this.#instances.of(plugin);
+    for (const key of keys) this.#post(key, message);
   }
 
   stop(): void {
@@ -365,9 +365,8 @@ export class PluginHost {
         // A new page: what the one it replaced was asked and did not answer, it never will.
         this.#asks.cancel(id, `${id} reloaded before it answered`, "left");
         const { restored, waited } = this.#sleepers.woke(id);
-        this.#post(id, initMessage(id, this.#state.get(id), restored, this.#shared, this.#mounted));
-        for (const shared of this.#shared.values()) this.#post(id, shared);
-        for (const held of waited) this.#post(id, held);
+        const init = greeting(id, this.#state.get(id), restored, this.#shared, this.#mounted);
+        for (const sent of [...init, ...waited]) this.#post(id, sent);
         this.#greetings.hello(id, this.#deps.frame(id));
         break;
       }
