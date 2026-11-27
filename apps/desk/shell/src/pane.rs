@@ -1,5 +1,5 @@
 //! One of the shell's windows: a winit window holding a windowed CEF browser (Stage 1 of #32; the
-//! compositor replaces it in Stage 2). The palette, the island, the computer-use banner and the
+//! compositor replaces it in Stage 2). The palette, the computer-use banner and the
 //! windows popped out of the desk are each one.
 //!
 //! On macOS Chromium keeps a windowed browser's page visible whether its window is on screen or not:
@@ -23,22 +23,17 @@ pub struct Pane {
 }
 
 impl Pane {
-    /// Make a window with `attributes` and a browser in it at `url`, answered by `client`; with
-    /// `panel`, the window is made a non-activating panel (the island's, ADR 0204).
+    /// Make a window with `attributes` and a browser in it at `url`, answered by `client`.
     pub fn open(
         event_loop: &ActiveEventLoop,
-        panel: bool,
         attributes: WindowAttributes,
         url: &str,
         mut client: Client,
     ) -> Result<Self, String> {
-        let create = || event_loop.create_window(attributes);
-        let window = if panel {
-            crate::island::panel::made_as_panel(create)
-        } else {
-            create()
-        };
-        let window = Arc::new(window.map_err(|why| format!("no window ({why})"))?);
+        let window = event_loop
+            .create_window(attributes)
+            .map(Arc::new)
+            .map_err(|why| format!("no window ({why})"))?;
         let parent = parent_handle(&window)
             .ok_or("this windowing system cannot hold a CEF browser".to_owned())?;
         let info = WindowInfo::default().set_as_child(parent, &bounds(&window));
@@ -164,11 +159,21 @@ pub fn parent_handle(window: &Window) -> Option<sys::cef_window_handle_t> {
         #[cfg(target_os = "macos")]
         RawWindowHandle::AppKit(handle) => Some(handle.ns_view.as_ptr()),
         #[cfg(target_os = "windows")]
-        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as sys::cef_window_handle_t),
+        RawWindowHandle::Win32(handle) => Some(cef_hwnd(handle.hwnd)),
         #[cfg(target_os = "linux")]
         RawWindowHandle::Xlib(handle) => Some(handle.window as sys::cef_window_handle_t),
         _ => None,
     }
+}
+
+#[cfg(target_os = "windows")]
+fn cef_hwnd(native: std::num::NonZeroIsize) -> sys::cef_window_handle_t {
+    sys::HWND(native.get() as *mut _)
+}
+
+#[cfg(target_os = "windows")]
+fn win32_hwnd(child: sys::cef_window_handle_t) -> windows_sys::Win32::Foundation::HWND {
+    child.0.cast()
 }
 
 /// Destroy the browser's child HWND, as closing its top-level window would.
@@ -178,7 +183,7 @@ fn destroy_child(child: sys::cef_window_handle_t) {
     use windows_sys::Win32::UI::WindowsAndMessaging::DestroyWindow;
     // SAFETY: `child` is the browser's HWND, alive until this destroys it, on the UI thread.
     unsafe {
-        DestroyWindow(child as _);
+        DestroyWindow(win32_hwnd(child));
     }
 }
 
@@ -190,7 +195,7 @@ fn resize_child(child: sys::cef_window_handle_t, width: u32, height: u32) {
     // SAFETY: `child` is the browser's HWND, alive while the browser is.
     unsafe {
         SetWindowPos(
-            child as _,
+            win32_hwnd(child),
             std::ptr::null_mut(),
             0,
             0,
@@ -199,4 +204,11 @@ fn resize_child(child: sys::cef_window_handle_t, width: u32, height: u32) {
             SWP_NOZORDER | SWP_NOMOVE,
         );
     }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+#[test]
+fn the_cef_child_window_handle_preserves_the_native_address() {
+    let native = std::num::NonZeroIsize::new(0x1004).unwrap();
+    assert_eq!(win32_hwnd(cef_hwnd(native)) as isize, native.get());
 }

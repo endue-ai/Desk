@@ -26,10 +26,11 @@
 .eris:hover .eris-ring,
 .eris:focus-visible .eris-ring { opacity: 1; }
 
-.eris-body { position: absolute; inset: 0; }
-.eris-mesh { position: absolute; inset: 0; width: 128px; height: 138px; }
+.eris-body { isolation: isolate; position: absolute; inset: 0; }
+.eris-mesh { z-index: 100; position: absolute; inset: 0; width: 128px; height: 138px; }
 
 .eris-core {
+  z-index: 101;
   position: absolute;
   left: 50%;
   top: 67px;
@@ -54,33 +55,76 @@
   border-radius: var(--radius-full);
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--desk-eris) 28%, transparent) 0%,
+    color-mix(in srgb, var(--desk-eris-frost) 28%, transparent) 0%,
     transparent 70%
   );
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
-.eris-moon-box { position: absolute; width: 18px; height: 18px; }
-.eris-moon { width: 18px; height: 18px; }
-.eris-spark {
+.eris-moon-box { position: absolute; pointer-events: none; }
+.eris-moon { width: 100%; height: 100%; }
+
+/* The activity indicator inside the glass core while she works a line (mind.ts, ADR 0275), in the star's colour, the brand's mark of an
+   agent at work (docs/design-system.md): it turns while she reads a line or an answer that came
+   back, dims and loses its motes while her errands are out with the plugins, and is gone
+   otherwise. A ring closes into her core as something reaches her (`.eris-intake`, on the
+   ticker). Reduced motion keeps it still. */
+.eris-mind {
   position: absolute;
-  right: -6px;
-  top: 2px;
-  width: 2.6px;
-  height: 2.6px;
-  border-radius: var(--radius-full);
-  background: var(--desk-eris);
+  left: 50%;
+  top: 67px;
+  width: 36px;
+  height: 36px;
+  z-index: 102;
+  overflow: visible;
+  fill: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: opacity var(--motion-base) ease;
 }
-.eris-tail {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: var(--radius-full);
-  background: var(--desk-eris-shade);
+.eris[data-mind] .eris-mind { opacity: 1; }
+.eris[data-mind="waiting"] .eris-mind { opacity: 0.45; }
+.eris-mind-turn {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: eris-mind-turn calc(var(--motion-slow) * 6) linear infinite;
+  animation-play-state: paused;
 }
-.eris-tail-1 { left: 32%; top: 28%; opacity: 0.5; }
-.eris-tail-2 { left: 42%; top: 36%; opacity: 0.3; }
+.eris-mind-turn--back {
+  animation-name: eris-mind-turn-back;
+  animation-duration: calc(var(--motion-slow) * 9);
+}
+.eris[data-mind] .eris-mind-turn { animation-play-state: running; }
+.eris-mind-arc {
+  stroke: var(--desk-star);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.eris-mind-arc--inner { stroke-width: 1.25; opacity: 0.6; }
+.eris-mind-mote {
+  fill: var(--desk-star);
+  transition: opacity var(--motion-base) ease;
+}
+.eris[data-mind="waiting"] .eris-mind-mote { opacity: 0; }
+.eris-intake {
+  stroke: var(--desk-star);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+}
+.eris[data-motion="none"] .eris-mind-turn { animation: none; }
+@keyframes eris-mind-turn {
+  to { transform: rotate(1turn); }
+}
+@keyframes eris-mind-turn-back {
+  to { transform: rotate(-1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eris-mind-turn { animation: none; }
+}
 
 /* Her words (said.ts): a card under her that said.ts keeps inside the desk; one of the page's
    overlays, so it is drawn above every window. A long line is kept as text and scrolls. */
@@ -155,3 +199,22 @@
     visibility 0s linear var(--motion-base);
 }
 .shell .eris[data-motion="none"] { transition-duration: 0s; transition-delay: 0s; }
+
+/* The dots leave Eris with a cloud request, hold while it is pending, and run back on settlement. */
+.eris-signal {
+  position: absolute;
+  left: 90%;
+  top: 47%;
+  width: 48px;
+  height: 4px;
+  pointer-events: none;
+  color: var(--desk-eris-frost);
+  background: radial-gradient(circle, currentColor 1px, transparent 1.4px) left center / 8px 4px repeat-x;
+  animation: eris-transmit calc(var(--desk-motion-slow) * .8) linear infinite;
+}
+.eris-signal.is-left { left: auto; right: 90%; scale: -1 1; }
+.eris-signal[data-leg="there"] { opacity: .5; animation-play-state: paused; }
+.eris-signal[data-leg="back"] { animation-direction: reverse; }
+[data-motion="reduce"] .eris-signal, [data-motion="none"] .eris-signal { animation: none; }
+@keyframes eris-transmit { to { background-position-x: 8px; } }
+@media (prefers-reduced-motion: reduce) { .eris-signal { animation: none; } }

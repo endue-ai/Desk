@@ -26,11 +26,11 @@ watch; back, the one on screen opens without asking or taking the focus, the oth
 | Permission | Why |
 | --- | --- |
 | `cmd:invoke` (`desk.files.open`, `desk.files.changed`) | Open a page's local links; report changes on disk |
-| `fs:read` (asked per folder), `shell:open` (asked by `shell.open` once) | Read files; open http, https and mailto links |
+| `fs:read` (`/**`, asked per folder), `shell:open` (http, https, mailto) | Read files; open links |
 
 | File | Purpose |
 | --- | --- |
-| `ui/web.js`, `reading.js`, `keep.js`, `external.js` | The desk's requests, reads with one folder ask, jobs, sleep, links |
+| `endue.web.read { path?, from?, chars? }`, `endue.web.entry { index }` | Read saved source content or an entry by zero-based index. A named path uses existing read access |
 | `ui/formats.js`, `ui/detect.js`, `ui/worker.js`, `ui/remote.js` | Bytes to a model, in a worker when large |
 | `ui/archive.js`, `ui/warc.js`, `ui/mime.js`, `ui/plist.js`, `ui/zip.js`, `ui/inflate.js`, `ui/links.js`, `ui/lnk.js`, `ui/feeds.js` | Archives, link files, feeds |
 | `ui/page.js`, `ui/resources.js`, `ui/sanitize.js`, `ui/allow.js`, `ui/css*.js` | Drawing a page safely |

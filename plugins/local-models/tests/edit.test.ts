@@ -52,11 +52,11 @@ describe("editing a conversation", () => {
     const thread = app.S.get().thread;
     if (!thread) throw new Error("no thread");
     const [question] = path(thread);
-    await editQuestion(app, question.id, "Explain transformers");
+    await editQuestion(app, question!.id, "Explain transformers");
     const [edited, answer] = path(thread);
-    expect(edited.content).toBe("Explain transformers");
-    expect(branchOf(thread, edited)).toEqual({ index: 2, count: 2 });
-    expect(answer.content).toContain("transformer");
+    expect(edited!.content).toBe("Explain transformers");
+    expect(branchOf(thread, edited!)).toEqual({ index: 2, count: 2 });
+    expect(answer!.content).toContain("transformer");
     expect(Object.values(thread.nodes)).toHaveLength(4);
   });
 
@@ -66,9 +66,9 @@ describe("editing a conversation", () => {
     const thread = app.S.get().thread;
     if (!thread) throw new Error("no thread");
     const answer = path(thread)[1];
-    editAnswer(app, answer.id, "Corrected.");
+    editAnswer(app, answer!.id, "Corrected.");
     expect(answer).toMatchObject({ content: "Corrected.", edited: true });
-    expect(messagesFor(thread, answer.id).at(-1)).toEqual({
+    expect(messagesFor(thread, answer!.id).at(-1)).toEqual({
       role: "assistant",
       content: "Corrected.",
     });
@@ -80,13 +80,13 @@ describe("editing a conversation", () => {
     thread.params = { maxTokens: 6 };
     await app.send("Explain transformers");
     const answer = path(thread)[1];
-    expect(answer.stats).toMatchObject({ stopReason: "length", tokens: 6 });
-    const before = answer.content;
+    expect(answer!.stats).toMatchObject({ stopReason: "length", tokens: 6 });
+    const before = answer!.content;
     thread.params = {};
-    await continueAnswer(app, answer.id);
-    expect(answer.content.startsWith(before)).toBe(true);
-    expect(answer.content.length).toBeGreaterThan(before.length);
-    expect(answer.stats?.tokens).toBeGreaterThan(6);
+    await continueAnswer(app, answer!.id);
+    expect(answer!.content.startsWith(before)).toBe(true);
+    expect(answer!.content.length).toBeGreaterThan(before.length);
+    expect(answer!.stats?.tokens).toBeGreaterThan(6);
     expect(Object.values(thread.nodes)).toHaveLength(2);
   });
 
@@ -95,7 +95,7 @@ describe("editing a conversation", () => {
     await app.send("first question");
     const thread = app.S.get().thread;
     if (!thread) throw new Error("no thread");
-    const fresh = branchToNew(app, path(thread)[1].id);
+    const fresh = branchToNew(app, path(thread)[1]!.id);
     expect(fresh?.id).not.toBe(thread.id);
     expect(path(fresh as typeof thread).map((n) => n.role)).toEqual(["user", "assistant"]);
     expect(app.S.get().thread?.id).toBe(fresh?.id);

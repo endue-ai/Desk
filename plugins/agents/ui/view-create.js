@@ -64,7 +64,10 @@ export function createCreateView(doc, actions) {
       if (!go.disabled) build();
     });
   pick("create-signin-btn").addEventListener("click", () => actions.signIn());
-  pick("find-browse").addEventListener("click", () => actions.catalogPage());
+  pick("find-browse").addEventListener("click", () => {
+    query.value = "";
+    actions.catalogPage();
+  });
   pick("find-build").addEventListener("click", () => actions.mode("build"));
   pick("find-clear").addEventListener("click", () => {
     query.value = "";

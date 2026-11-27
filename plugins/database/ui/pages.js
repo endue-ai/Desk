@@ -1,13 +1,17 @@
 // Results a page at a time. A table's view pages through its rows under the filter and order the
-// person typed (WHERE, ORDER BY, LIMIT, OFFSET), counts them on request, and sorts on the server
-// when a column's header is picked. A console's single SELECT pages the same way when it has no
-// LIMIT, OFFSET, FETCH, FOR or INTO of its own: the next page runs it again with LIMIT and OFFSET.
+// person typed (WHERE, ORDER BY, LIMIT, OFFSET), counts them on request, and asks the server for the
+// grid's sort keys (its ORDER BY) and quick filters (after the typed WHERE, grid/filters.js). A
+// console's single SELECT pages the same way when it has no LIMIT, OFFSET, FETCH, FOR or INTO of its
+// own: the next page runs it again with LIMIT and OFFSET.
 
 import { tableSql } from "./catalog.js";
 import { engineOf } from "./engines/index.js";
 import { formatCount } from "./format.js";
-import { quoteName } from "./sql/quote.js";
+import { orderSql, whereWith } from "./grid/filters.js";
+import { createRowsControl, windowed } from "./rows/control.js";
 import { split } from "./sql/split.js";
+import { t } from "./strings/index.js";
+import { createNaturalOrder } from "./table-order.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -18,7 +22,9 @@ import { split } from "./sql/split.js";
  *   run(target: Console, conn: Connection, sql: string, options: { maxRows?: number, history?: boolean, statements?: Statement[] }): Promise<string>,
  *   execute: import("./catalog.js").Execute,
  *   render(): void,
+ *   sessions?: import("./rows/control.js").Deps["sessions"], say?(text: string): void,
  * }} Deps
+ *   `sessions` reads the rows of a console's read its cursor keeps (PG-22, rows/control.js).
  */
 
 const OWN_PAGING = new Set(["LIMIT", "OFFSET", "FETCH", "FOR", "INTO", "PROCEDURE", "TOP"]);
@@ -53,15 +59,27 @@ export function pagedSql(statement, dialect, size, offset) {
 
 /** @param {Deps} deps */
 export function createPages(deps) {
-  /** Load a table view's page under its filter and order. */
+  /** The WHERE a table view runs: what the person typed, then the grid's quick filters. */
+  const whereOf = (
+    /** @type {NonNullable<Console["table"]>} */ page,
+    /** @type {Connection} */ conn,
+  ) => whereWith(engineOf(conn.engine).dialect, page.where, page.filters ?? []);
+
+  const natural = createNaturalOrder(deps.execute);
+  const rows = createRowsControl(deps);
+
+  /**
+   * Load a table view's page under its filter and order; without an order of the person's, in the
+   * table's own (its primary key, table-order.js), so the rows keep their places when read again.
+   */
   const refresh = async (/** @type {Console} */ target, /** @type {Connection} */ conn) => {
     const page = /** @type {NonNullable<Console["table"]>} */ (target.table);
     const limit = deps.settings().maxRows;
     const sql = tableSql(conn, {
       schema: page.schema,
       table: page.name,
-      where: page.where,
-      order: page.order,
+      where: whereOf(page, conn),
+      order: page.order.trim() || (await natural(conn, page)),
       limit,
       offset: page.offset,
     });
@@ -69,21 +87,35 @@ export function createPages(deps) {
   };
 
   /**
-   * A table view's filter, order, sort by a column, page or count; a console's next or previous
-   * page. `delta` pages forward or back.
+   * A table view's filter, order, sort keys, quick filters, page or count; a console's next or
+   * previous page. `delta` pages forward or back. The grid's keys become the ORDER BY; an ORDER BY
+   * typed otherwise drops them.
    * @param {Console} target
    * @param {Connection} conn
-   * @param {{ where?: string, order?: string, delta?: number, count?: boolean, sort?: { column: string, direction: "asc" | "desc" } | null }} change
+   * A console's read its cursor keeps pages by `rows` (as the grid scrolls), counts every row,
+   * fetches every row (`all`), and takes the grid's keys and filters into the statement.
+   * @param {{
+   *   where?: string, order?: string, delta?: number, count?: boolean, all?: boolean,
+   *   rows?: import("./rows/window.js").Way,
+   *   sort?: import("./grid/filters.js").SortKey[] | null, filters?: import("./grid/filters.js").Filter[],
+   * }} change
    */
   const page = async (target, conn, change) => {
     const limit = deps.settings().maxRows;
+    if (target.kind === "console" && windowed(target)) {
+      if (change.rows) return rows.scroll(target, conn, change.rows);
+      if (change.delta) return rows.scroll(target, conn, change.delta > 0 ? "next" : "back");
+      if (change.count) return rows.count(target, conn);
+      if (change.all) return rows.all(target, conn);
+      if (change.sort !== undefined || change.filters !== undefined)
+        return rows.shape(target, conn, change);
+    }
     if (target.kind === "console") {
       const at = target.page;
-      if (!at || !change.delta)
-        throw new Error("Paging is for a table's view or a console's SELECT.");
+      if (!at || !change.delta) throw new Error(t("pages.pagingIsForATableS"));
       const offset = Math.max(0, at.offset + change.delta * limit);
       const statement = pagedSql(at.statement, engineOf(conn.engine).dialect, limit, offset);
-      if (!statement) throw new Error("This statement pages itself (LIMIT, OFFSET or FETCH).");
+      if (!statement) throw new Error(t("pages.thisStatementPagesItselfLimitOffset"));
       const said = await deps.run(target, conn, statement.text, {
         maxRows: limit,
         history: false,
@@ -94,16 +126,16 @@ export function createPages(deps) {
       return said;
     }
     const table = target.table;
-    if (!table) throw new Error("Paging is for a table's view.");
+    if (!table) throw new Error(t("pages.pagingIsForATableS2"));
     if (change.sort !== undefined) {
-      const { dialect } = engineOf(conn.engine);
-      change.order = change.sort
-        ? `${quoteName(dialect, change.sort.column)} ${change.sort.direction.toUpperCase()}`
-        : "";
-    }
+      table.sort = change.sort ?? [];
+      change.order = orderSql(engineOf(conn.engine).dialect, table.sort);
+    } else if (change.order !== undefined && change.order.trim() !== table.order.trim())
+      table.sort = [];
+    if (change.filters !== undefined) table.filters = change.filters;
     if (change.where !== undefined) table.where = change.where;
     if (change.order !== undefined) table.order = change.order;
-    if (change.where !== undefined || change.order !== undefined) {
+    if (change.where !== undefined || change.order !== undefined || change.filters !== undefined) {
       table.offset = 0;
       table.count = null;
     }
@@ -112,7 +144,7 @@ export function createPages(deps) {
       const sql = tableSql(conn, {
         schema: table.schema,
         table: table.name,
-        where: table.where,
+        where: whereOf(table, conn),
         order: "",
         limit,
         offset: 0,
@@ -128,5 +160,16 @@ export function createPages(deps) {
     return refresh(target, conn);
   };
 
-  return { refresh, page };
+  /** Pick a result tab; a map or chart of a read its cursor keeps reads every row first (PG-22). */
+  const pick = (
+    /** @type {Console} */ target,
+    /** @type {Connection | undefined} */ conn,
+    /** @type {number} */ index,
+  ) => {
+    if (!target.shown || index < 0 || index >= target.shown.tabs.length) return;
+    target.tab = index;
+    if (conn && target.kind === "console" && windowed(target)) void rows.drawn(target, conn);
+  };
+
+  return { refresh, page, pick };
 }

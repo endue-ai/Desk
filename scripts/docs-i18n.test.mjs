@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
@@ -23,6 +23,35 @@ const translated = (lang) => [
 describe("docs-i18n", () => {
   it("every user-facing document in the repository ships its five translations", () => {
     assert.deepEqual(check(), []);
+  });
+
+  it("offers the endue app and the Desk migration path in every README", () => {
+    for (const path of ["README.md", ...LANGS.map((lang) => translationPath("README.md", lang))]) {
+      const guide = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+      assert.match(guide, /^# endue$/mu, path);
+      for (const instruction of [
+        "github.com/endue-ai/endue/releases",
+        "v0.3.0",
+        "SHA256SUMS-macos",
+        "Install endue.command",
+        "--to",
+        "~/.desk",
+        "plugins.lock",
+        "`desk`",
+        "`endue`",
+      ]) {
+        assert.ok(guide.includes(instruction), `${path}: ${instruction}`);
+      }
+    }
+  });
+
+  it("documents the published standalone Linux CLI in all six READMEs", () => {
+    for (const path of ["README.md", ...LANGS.map((lang) => translationPath("README.md", lang))]) {
+      const guide = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+      assert.ok(guide.includes("https://github.com/endue-ai/endue/releases/tag/v0.4.0"), path);
+      assert.ok(guide.includes("endue-cli_0.4.0_linux-x86_64.tar.gz"), path);
+      assert.ok(guide.includes("sha256sum -c SHA256SUMS-cli"), path);
+    }
   });
 
   it("places translations under docs/i18n/<lang>/, without the docs/ prefix", () => {

@@ -10,6 +10,14 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https", "mailto"]
     }
   ],
   "surfaces": [
@@ -92,6 +100,124 @@
       {
         "pattern": "*.gdoc",
         "plugin": "endue.docs"
+      }
+    ],
+    "commands": [
+      {
+        "id": "endue.docs.show",
+        "title": "Docs: Show a part of the document",
+        "description": "Move in the open document by exactly one heading name, text to find or one-based page.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "required": ["heading"]
+            },
+            {
+              "required": ["text"]
+            },
+            {
+              "required": ["page"]
+            }
+          ]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docs.zoom",
+        "title": "Docs: Set document zoom",
+        "description": "Set the magnification of the open document, where 1 is 100%. Use fit to fit the page width.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 4
+                },
+                {
+                  "const": "fit"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["level"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docs.read",
+        "title": "Docs: the open document as text",
+        "keywords": ["docs", "document", "read", "word", "docx", "odt", "rtf", "text"],
+        "description": "Read the open document as text, with headings, list markers, tables, notes and comments. The document on screen also reports its page number and text, visible heading, selected text and zoom. Give path to read another open document. Use from and chars for a part of a long one. Open files with desk.files.open.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200000
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "text": {
+              "type": ["string", "null"]
+            },
+            "length": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            },
+            "documents": {
+              "type": "array"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
       }
     ]
   }

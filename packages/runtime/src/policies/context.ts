@@ -16,14 +16,17 @@ export interface DeskContext {
   bridge: BridgeClient;
   shortcuts: ShortcutRouter;
   surfaces: SurfaceHost;
-  /** Keep a message for every plugin: sent now and after each plugin's init (the theme, say). */
-  share(message: { type: string; [field: string]: unknown }): void;
+  /**
+   * Keep a message for every plugin: sent now and after each plugin's init (the theme, say). With
+   * `plugin`, for that plugin's windows only (ADR 0398); `drop` forgets it once it is sent.
+   */
+  share(message: { type: string; [field: string]: unknown }, plugin?: string, drop?: boolean): void;
   /** Ask a running plugin and wait for its answer; rejects when it is not running. */
   request(plugin: string, command: string, args?: unknown): Promise<unknown>;
   /** Whether a plugin's surface is mounted now. */
   mounted(plugin: string): boolean;
   /** Mount and reveal an installed UI plugin; its frame may still be connecting. */
-  launch(plugin: string): Promise<void>;
+  launch(plugin: string, automatic?: boolean): Promise<void>;
   /** Resolves once a mounted plugin has connected; rejects if it stops first or none is mounted. */
   whenReady(plugin: string): Promise<void>;
   /**

@@ -1,0 +1,35 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.open through an SSH tunnel, a key file the core reads, through a jump host signing in with the agent",
+  "instance": {
+    "id": 40,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.internal.example.test",
+      "port": 5432,
+      "database": "shop",
+      "user": "reader",
+      "ssh": {
+        "host": "bastion.example.test",
+        "port": 22,
+        "user": "deploy",
+        "keyFile": "~/.ssh/id_ed25519",
+        "hostKey": "SHA256:Ubaq9T2onfDuuwg1uOh25iUN5F+a4udq4a2mVJFwMuw",
+        "jump": {
+          "host": "gate.example.test",
+          "user": "deploy",
+          "agent": true
+        }
+      },
+      "scope": {
+        "permission": "db:connect",
+        "hosts": [
+          "db.internal.example.test:5432",
+          "bastion.example.test:22",
+          "gate.example.test:22"
+        ]
+      }
+    }
+  }
+}

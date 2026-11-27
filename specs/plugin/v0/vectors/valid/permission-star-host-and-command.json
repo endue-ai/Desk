@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a manifest declares that it may ask for any host it connects to and any program it runs, each named at run time",
+  "instance": {
+    "id": "example.remote-shell",
+    "version": "1.0.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "permissions": [
+      { "permission": "net:connect", "hosts": ["*"] },
+      { "permission": "net:fetch", "hosts": ["*"] },
+      { "permission": "proc:spawn", "commands": ["*"], "pty": true }
+    ],
+    "surfaces": [{ "id": "main", "placement": "center" }]
+  }
+}

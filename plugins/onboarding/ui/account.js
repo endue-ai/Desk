@@ -29,6 +29,7 @@ export function signIn(d, at) {
     patient: false,
     done: false,
     off: null,
+    networkWait: null,
   };
   d.timeline.at(yours.out + 1300, () => void begin(scene));
 }
@@ -86,10 +87,9 @@ function entry(scene) {
   title.id = "entry-title";
   title.append(element("span", "entry-accent", ENTRY.accent));
   const actions = element("div", "entry-actions");
-  actions.append(
-    button(ENTRY.signIn, true, () => open(scene, "sign-in")),
-    button(ENTRY.create, false, () => open(scene, "sign-up")),
-  );
+  const signIn = button(ENTRY.signIn, true, () => open(scene, "sign-in"));
+  const create = button(ENTRY.create, false, () => open(scene, "sign-up"));
+  actions.append(signIn, create);
   card.append(
     element("p", "entry-eyebrow", ENTRY.eyebrow),
     title,
@@ -100,9 +100,10 @@ function entry(scene) {
   );
   $("formslot").replaceChildren(card);
   $("edge").replaceChildren();
+  (scene.screen === "sign-up" ? create : signIn).focus();
 }
 
-/** Offline, the browser is not opened: Eris says so, and the entry comes back with the connection. */
+/** Offline, setup can continue locally or the entry comes back when the connection does. */
 function open(scene, screen) {
   const { d } = scene;
   const now = d.timeline.time;
@@ -110,8 +111,12 @@ function open(scene, screen) {
   scene.shown = "";
   $("formslot").replaceChildren();
   $("edge").replaceChildren();
-  if (!navigator.onLine) leave(scene, "line", now);
-  d.whenOnline(now, (at, waited) => (waited ? entry(scene) : void start(scene, at)));
+  if (navigator.onLine) return void start(scene, now);
+  leave(scene, "line", now);
+  const local = button(ENTRY.offline, true, () => stayLocal(scene));
+  $("formslot").replaceChildren(local);
+  local.focus();
+  scene.networkWait = d.waitForConnection(SAY.offline, () => entry(scene));
 }
 
 async function start(scene, at) {
@@ -135,6 +140,7 @@ function heard(scene, status) {
   const change = step(scene.state, status, scene.screen);
   scene.state = status.state;
   if (!change) return;
+  scene.networkWait?.abort();
   if (change.kind === "waiting") return waiting(scene, change);
   if (change.kind === "signed-in") return finish(scene, change.line);
   if (change.kind === "entry") {
@@ -221,6 +227,7 @@ function failed(scene, change) {
 
 function end(scene, now) {
   scene.done = true;
+  scene.networkWait?.abort();
   scene.off?.();
   rest(scene, now);
   $("formslot").replaceChildren();

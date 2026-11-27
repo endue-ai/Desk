@@ -10,6 +10,14 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed", "desk.palette.pick"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
     }
   ],
   "surfaces": [
@@ -232,6 +240,145 @@
       {
         "pattern": "*.torrent",
         "plugin": "endue.archives"
+      }
+    ],
+    "commands": [
+      {
+        "id": "endue.archives.list",
+        "title": "Archives: the open archive's entries as data",
+        "keywords": ["archives", "zip", "tar", "7z", "rar", "list", "contents"],
+        "description": "The entries of the archive on screen in Archives (zip, tar, 7z, rar, disk images and the other formats it reads), or the open one named by path: each with its path inside, kind (file, folder or link), size, packed size, date and whether it is encrypted. under narrows to one folder inside; up to limit (500, at most 5000), with total, more and the archive's details. It leaves the screen as it is and writes nothing. Archives reads only what the desk opened in it: open a file with desk.files.open first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "under": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "entries": {
+              "type": "array"
+            },
+            "total": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.archives.read",
+        "title": "Archives: an entry's text as data",
+        "keywords": ["archives", "zip", "read", "file", "inside"],
+        "description": "The text of one file inside the archive on screen in Archives (or the open one named by path), entry being its path inside as endue.archives.list answers it: up to maxBytes from its start (65536, at most 262144), with size, binary (text null) and truncated. An encrypted entry is refused: the person opens it in Archives. Nothing is extracted to disk.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 262144
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "entry": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            },
+            "binary": {
+              "type": "boolean"
+            },
+            "text": {
+              "type": ["string", "null"]
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.archives.show",
+        "title": "Show an archive entry",
+        "description": "Select and preview a named entry in the active archive.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "entry": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          "required": ["entry"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.archives.extract",
+        "title": "Extract archive entries",
+        "description": "Extract entries in an open archive to the named destination folder. Omit entries to extract all.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "entries": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "minItems": 1,
+              "maxItems": 5000,
+              "uniqueItems": true
+            },
+            "to": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          "required": ["to"],
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ]
   }

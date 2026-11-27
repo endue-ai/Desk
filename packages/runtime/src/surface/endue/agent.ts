@@ -7,7 +7,8 @@
  */
 import type { ShellCtx } from "../../shell/context";
 import { h, render } from "../../shell/dom";
-import { agentHome, agentPage, ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
+import { ENDUE_AGENT_VIEW, readFacets } from "../../system/endue";
+import { openAgentStudio } from "../../system/endue-studio";
 import type { Mounted } from "../views";
 import { lineSpecs, studioBoardView } from "./board";
 import { boardLines } from "./board-lines";
@@ -15,6 +16,7 @@ import { studioBoard } from "./board-model";
 import { flipCard } from "./flip";
 import { agentFront, dotOf } from "./model";
 import { actions, avatar, flipButton, notice, type Page, readLine, text } from "./parts";
+import { cardQuestion } from "./question";
 
 export { dotOf } from "./model";
 
@@ -26,6 +28,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   let was: boolean | undefined;
   /** The row of the board that is unfolded: this window's own, gone with it. */
   let expanded: string | null = null;
+  const question = cardQuestion(ctx, () => draw());
   const draw = () => {
     const s = ctx.store.get();
     const agent = s.endue.agents.find((a) => a.id === id);
@@ -42,10 +45,9 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
     was = flipped;
     const front = agentFront(s.lang, agent, read, s.endue.conversations);
     const board = studioBoard(s.lang, agent, read, s.endue.conversations);
-    // The agent's own page and its Studio, as endue.ai has them (ADR 0223).
+    // The agent's Studio in the Agents plugin, inside the desk: never endue.ai's pages.
     const pages: Page[] = [
-      ["open-agent", "agentPage", agentHome(id)],
-      ["open-web", "studioPage", agentPage(id)],
+      ["open-studio", "editInStudio", () => void openAgentStudio(ctx, id).catch(() => undefined)],
     ];
     render(el, () => [
       flipCard({
@@ -97,6 +99,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
               )
             : null,
           actions(ctx, "front", pages, again),
+          question.view(agent.status === "active" ? { agentId: id } : undefined),
         ],
         back: [
           h(
@@ -144,6 +147,7 @@ export function endueAgentBody(ctx: ShellCtx, id: string): Mounted {
   const off = () => {
     unwatch();
     lines.dispose();
+    question.dispose();
   };
   return { el, off };
 }

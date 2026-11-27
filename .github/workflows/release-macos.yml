@@ -1,35 +1,28 @@
 name: release-macos
 
-# A GitHub Release a person publishes builds the macOS app and attaches it (ADR 0229): the CEF desk
-# (release-build.yml) at the tag's commit, with the tag's version, for darwin-aarch64 and darwin-x86_64,
-# and each target's .dmg on the release under its canonical name, with SHA256SUMS-macos and a macOS
-# section in the notes. With the Apple secrets in the signing environment the app and the disk image
-# are signed with the Developer ID, notarised and stapled; without them the build is ad-hoc signed,
-# and the run and the notes say so. It needs no updater key and no R2 credentials: nothing goes to R2
-# and no channel lists the build. A final's release is release-final's (ADR 0092), made by the release
-# app: its build is on R2 already, so this builds nothing for it. By hand, with a tag, it builds an
-# existing release again and replaces what it attached.
+# Dispatch with an existing release tag to attach macOS installers and available signed updates.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
         description: The tag of an existing GitHub Release (vX.Y.Z)
         required: true
         type: string
+      min-from:
+        description: Oldest installed app version that can install this tag directly
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-macos-${{ github.event.release.tag_name || inputs.tag }}
+  group: release-macos-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   gate:
     name: gate
-    if: github.event_name != 'release' || github.event.release.author.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: signing
@@ -37,13 +30,17 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       commit: ${{ steps.version.outputs.commit }}
       signed: ${{ steps.apple.outputs.signed }}
+      updates: ${{ steps.version.outputs.updates }}
+      cli: ${{ steps.version.outputs.cli }}
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - id: version
         name: The tag's version and commit
+        env:
+          HAS_UPDATER_KEY: ${{ vars.DESK_UPDATER_PUBKEY != '' }}
         run: |
           version="$(node scripts/release-assets.mjs version "$TAG")"
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
@@ -53,6 +50,20 @@ jobs:
           git fetch --quiet --depth 1 origin "refs/tags/$TAG"
           commit="$(git rev-parse 'FETCH_HEAD^{commit}')"
           { echo "version=$version"; echo "commit=$commit"; } | tee -a "$GITHUB_OUTPUT"
+          # A manual rerun for a line final may attach DMGs, but its cross-platform path and
+          # staged rollout belong to release-final.
+          author="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.author.type')"
+          if [ "$author" = Bot ]; then HAS_UPDATER_KEY=false; fi
+          echo "updates=$HAS_UPDATER_KEY" >> "$GITHUB_OUTPUT"
+          cli=false
+          if [ "$author" != Bot ] && git cat-file -e "$commit:scripts/package-cli.py" 2>/dev/null; then
+            if [ "$HAS_UPDATER_KEY" != true ]; then
+              echo "::error::Configure the protected CLI signing key and DESK_UPDATER_PUBKEY before attaching downloads"
+              exit 1
+            fi
+            cli=true
+          fi
+          echo "cli=$cli" >> "$GITHUB_OUTPUT"
       - id: apple
         name: Is the build signed with the Developer ID?
         env:
@@ -74,39 +85,123 @@ jobs:
       version: ${{ needs.gate.outputs.version }}
       ref: ${{ needs.gate.outputs.commit }}
       targets: darwin
-      installers-only: true
+      installers-only: ${{ needs.gate.outputs.updates != 'true' }}
     secrets: inherit
+
+  cli:
+    name: Linux x86_64 CLI
+    needs: gate
+    if: needs.gate.outputs.cli == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    environment: signing
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.commit }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build just the public CLI at the app's tag
+        env:
+          DESK_VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          rustup toolchain install
+          source scripts/package-cli-build-env.sh
+          cargo build --locked -p desk-cli --bin endue --release --target x86_64-unknown-linux-gnu
+          python3 -B scripts/package-cli-licenses/test_archive.py
+          python3 -B scripts/package-cli.py target/x86_64-unknown-linux-gnu/release/endue "$VERSION" --out dist
+      - name: Sign the CLI archive
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      - name: Download and install on minimal Debian
+        env:
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/endue-cli_*.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: endue-linux-cli
+          path: dist/
+          if-no-files-found: error
 
   attach:
     name: attach
-    needs: [gate, build]
+    needs: [gate, build, cli]
+    if: always() && needs.gate.result == 'success' && needs.build.result == 'success' && (needs.cli.result == 'success' || needs.cli.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: signing
     permissions:
       contents: write
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.gate.outputs.version }}
       SIGNED: ${{ needs.gate.outputs.signed }}
+      CLI: ${{ needs.gate.outputs.cli }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-darwin-*
+          pattern: endue-app-darwin-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        if: needs.gate.outputs.cli == 'true'
+        with:
+          name: endue-linux-cli
+          path: dist
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Attach the disk images and their checksums
         run: |
-          (cd dist && sha256sum endue-desk_*.dmg > SHA256SUMS-macos)
-          files="$(node scripts/release-assets.mjs files dist --version "$VERSION")"
+          (cd dist && sha256sum "$DESKTOP_PREFIX"*.dmg > SHA256SUMS-macos)
+          cli=()
+          if [ "$CLI" = true ]; then cli+=(--cli); fi
+          files="$(node scripts/release-assets.mjs files dist --version "$VERSION" "${cli[@]}")"
           mapfile -t files <<<"$files"
           gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: pnpm/action-setup@v6
+        if: needs.gate.outputs.updates == 'true'
+      - uses: actions/setup-node@v7
+        if: needs.gate.outputs.updates == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: needs.gate.outputs.updates == 'true'
+      - name: Publish the signed upgrade path and packages
+        if: needs.gate.outputs.updates == 'true'
+        env:
+          COMMIT: ${{ needs.gate.outputs.commit }}
+          MIN_FROM: ${{ inputs.min-from || vars.DESK_UPDATE_MIN_FROM }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bash scripts/publish-upgrade-path.sh manual dist "$VERSION" "$COMMIT" "$MIN_FROM"
       - name: Say in the notes where they are and whether Apple knows the build
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md
+          cli=()
+          if [ "$CLI" = true ]; then cli+=(--cli); fi
           node scripts/release-assets.mjs notes body.md --repo "$GITHUB_REPOSITORY" --tag "$TAG" \
-            --version "$VERSION" --signed "$SIGNED" > notes.md
+            --version "$VERSION" --signed "$SIGNED" "${cli[@]}" > notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
           if [ "$SIGNED" = true ]; then state="signed with the Developer ID and notarised"; else state="ad-hoc signed, not notarised"; fi
           echo "::notice::$TAG carries the macOS app for Apple silicon and Intel ($state)"

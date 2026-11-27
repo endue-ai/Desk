@@ -26,8 +26,9 @@ impl Core {
         self
     }
 
-    /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares;
-    /// others ask with perm.request like anyone else. Plugins init.yaml disables start disabled.
+    /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares,
+    /// but those that only say what may be asked (`grant_installed`); others ask with perm.request
+    /// like anyone else. Plugins init.yaml disables start disabled.
     pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {
         let mut info = self.registry().install(dir, built_in);
         if self.init_disables(&info.id) {
@@ -41,9 +42,7 @@ impl Core {
                 .as_ref()
                 .and_then(|m| m.permissions.clone())
                 .unwrap_or_default();
-            for permission in permissions {
-                self.grant(&info.id, permission);
-            }
+            self.grant_installed(&info.id, permissions);
         }
         // A pack's nested plugins install with it (ADR 0108).
         info = self.install_pack(info, dir, built_in);
@@ -108,7 +107,15 @@ impl Core {
     ) -> Answer {
         self.authorize_manage(caller, params.scope)?;
         let missing = || error(ErrorCode::NotFound, format!("no plugin {}", params.plugin));
-        let before = self.registry().get(&params.plugin).ok_or_else(missing)?;
+        let mut registry = self.registry();
+        let before = registry.get(&params.plugin).ok_or_else(missing)?;
+        let automatic = params.automatic == Some(true);
+        if automatic && (caller != "desk" || before.auto_start != Some(true)) {
+            return Err(error(
+                ErrorCode::PermissionDenied,
+                "automatic activation is unavailable".to_owned(),
+            ));
+        }
         if is_library(&before) {
             // Plugins import a library's files at any time: it stays on, and nothing changes.
             if !params.enabled {
@@ -133,10 +140,13 @@ impl Core {
             }
             return json(PluginSetEnabledResult { plugin: before });
         }
-        let info = self
-            .registry()
-            .set_enabled(&params.plugin, params.enabled)
-            .ok_or_else(missing)?;
+        let info = if automatic {
+            registry.set_automatic(&params.plugin, params.enabled)
+        } else {
+            registry.set_enabled(&params.plugin, params.enabled)
+        }
+        .ok_or_else(missing)?;
+        drop(registry);
         let change = if params.enabled {
             PluginChange::Enabled
         } else {
@@ -159,7 +169,7 @@ impl Core {
     }
 
     /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
-    /// no processes, captures no audio, holds no sockets, shows no surfaces and serves no file URLs; if it was the last perm:manage
+    /// no processes, captures no audio, holds no sockets or database sessions, shows no surfaces and serves no file URLs; if it was the last perm:manage
     /// holder, the Prompter decides what waits.
     pub(crate) fn unloaded(&self, id: &str) {
         self.drop_provider(id);
@@ -169,6 +179,7 @@ impl Core {
         self.drop_processes(id);
         self.drop_captures(id);
         self.drop_sockets(id);
+        self.drop_databases(id);
         self.drop_web(id);
         self.drop_surfaces(id);
         self.drop_file_urls(id);

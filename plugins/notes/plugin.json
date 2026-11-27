@@ -16,7 +16,22 @@
     },
     {
       "permission": "cmd:invoke",
-      "ids": ["desk.files.changed", "desk.buffers.update", "desk.files.open", "desk.buffers.switch"]
+      "ids": [
+        "desk.files.changed",
+        "desk.buffers.update",
+        "desk.files.open",
+        "desk.buffers.switch",
+        "desk.buffers.close",
+        "endue.notes.new"
+      ]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
     }
   ],
   "surfaces": [
@@ -42,7 +57,27 @@
       {
         "id": "endue.notes.new",
         "title": "New note",
-        "keywords": ["note", "new", "create", "today", "daily", "markdown"]
+        "keywords": ["note", "new", "create", "today", "daily", "markdown"],
+        "description": "Make a new note in ~/Notes holding text and open it in Notes (open false leaves it closed). name is its file name (.md added when it has no .md or .txt); without one it is today's date, 2026-11-08.md. A name in use gets -2, -3 and so on, never written over. Answers path and length.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1000000
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "open": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.notes.find",
@@ -62,9 +97,195 @@
         "id": "endue.notes.save-as",
         "title": "Save the note as…",
         "keywords": ["note", "save", "as", "copy"]
+      },
+      {
+        "id": "endue.notes.list",
+        "title": "Notes: the notes in ~/Notes as data",
+        "keywords": ["notes", "list", "find", "memo"],
+        "description": "The notes in ~/Notes and the folders below it, newest first, as data: path, name, size, modifiedAt, firstLine and whether it is open in Notes. query narrows to notes whose name or text holds every word. Up to limit (30, at most 200), total and more. Agents read and write notes in ~/Notes only.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array"
+            },
+            "total": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.notes.read",
+        "title": "Notes: a note's text as data",
+        "keywords": ["notes", "read", "memo", "text"],
+        "description": "A note's text, as the person sees it when it is open in Notes (unsaved says it holds edits not on disk yet), else from disk; up to maxChars characters (20000, at most 200000), with length and truncated. Agents read and write notes in ~/Notes only.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "A note under ~/Notes: ~/Notes/a.md, or a.md and work/plan.md inside it."
+            },
+            "maxChars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200000
+            }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "length": {
+              "type": "integer"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "open": {
+              "type": "boolean"
+            },
+            "unsaved": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.notes.append",
+        "title": "Notes: add text to a note",
+        "keywords": ["notes", "append", "add", "memo"],
+        "description": "Add text at the end of a note, on a line of its own; a note that is not there yet is made. A note open in Notes with unsaved edits is refused, so the person's typing comes first. The desk keeps the text it replaced as a version. Agents read and write notes in ~/Notes only. Answers path and length.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "A note under ~/Notes: ~/Notes/a.md, or a.md and work/plan.md inside it."
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 1000000
+            }
+          },
+          "required": ["path", "text"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.replace",
+        "title": "Notes: put new text in a note",
+        "keywords": ["notes", "replace", "rewrite", "memo"],
+        "description": "Put text in place of a note's whole text. A note open in Notes with unsaved edits is refused. The desk keeps the text it replaced as a version (fs.history). Agents read and write notes in ~/Notes only. Answers path and length.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "A note under ~/Notes: ~/Notes/a.md, or a.md and work/plan.md inside it."
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 1000000
+            }
+          },
+          "required": ["path", "text"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.show",
+        "title": "Show a note",
+        "description": "Open a note in the Notes library or show an already open note by its exact path.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.rename",
+        "title": "Rename a note",
+        "description": "Rename a note in its own folder. A note with unsaved edits must be saved first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 255 }
+          },
+          "required": ["path", "name"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.notes.trash",
+        "title": "Move a note to the Trash",
+        "description": "Move a saved note to the system Trash.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true
       }
     ],
-    "keys": [{ "key": "Mod+Alt+N", "command": "endue.notes.new" }],
-    "paletteProviders": [{ "command": "endue.notes.find", "title": "Notes" }]
+    "keys": [
+      {
+        "key": "Mod+Alt+N",
+        "command": "endue.notes.new"
+      }
+    ],
+    "paletteProviders": [
+      {
+        "command": "endue.notes.find",
+        "title": "Notes"
+      }
+    ]
   }
 }

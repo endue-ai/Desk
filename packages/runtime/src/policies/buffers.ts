@@ -7,6 +7,7 @@
  * surface is one of its stops only while the plugin holds no buffer of its own (#162). A plugin with
  * several windows (ADR 0212) is all of this per window: each buffer names the window that shows it.
  */
+import { WORKSPACE_TOOLS } from "../agent-specs";
 import { type Buffer, Buffers, type Going, type Leaving, windowOf } from "../buffers";
 import { type AgentSpec, CommandError } from "../commands";
 import { pluginOf } from "../instances";
@@ -59,7 +60,7 @@ const CHOICES: Record<Leaving, Array<{ id: string; label: string }>> = {
 export function installBuffers(
   ctx: DeskContext,
   actions: BuffersActions,
-): BuffersPolicy & BufferEvents {
+): BuffersPolicy & BufferEvents & { confirmPluginClose(plugin: string): Promise<boolean> } {
   const { hub, surfaces } = ctx;
   const { commands, settings } = hub;
   const buffers = new Buffers();
@@ -121,15 +122,29 @@ export function installBuffers(
    * it, let it go, or keep them all (false). A desk that cannot ask (no palette) keeps them when
    * they close and lets them go when it quits, so that it can always quit.
    */
-  const ask = async ({ buffers: going, leaving, asking }: Going): Promise<boolean> => {
-    if (!settings.get("desk.buffers.confirm-unsaved", true)) return true;
+  const ask = async (
+    { buffers: going, leaving, asking }: Going,
+    force = false,
+  ): Promise<boolean> => {
+    const askFiles = force || settings.get("desk.buffers.confirm-unsaved", true);
     for (const { id } of going) {
       const buffer = buffers.get(id);
       if (!buffer?.modified) continue;
-      if (!commands.has("desk.palette.pick")) return leaving === "quit";
+      const terminal = buffer.plugin === "endue.terminal" && !buffer.surface;
+      if (!terminal && !askFiles) continue;
+      if (!commands.has("desk.palette.pick")) {
+        if (leaving === "quit" && !terminal) continue;
+        return false;
+      }
       asking();
       if (inUse()?.id !== id) await show(id).catch(() => {});
-      const choice = await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
+      const choice = terminal
+        ? await pick(`Terminal session ${buffer.name} has a running program`, [
+            { id: "discard", label: `End the program and ${leaving}` },
+            { id: "cancel", label: "Keep it open" },
+          ])
+        : await pick(`${buffer.name} has unsaved changes`, CHOICES[leaving]);
+      if (terminal && choice !== "discard") return false;
       if (choice === undefined || choice === "cancel") return false;
       if (choice === "save") await commands.run("desk.files.save", { buffer: id });
     }
@@ -138,11 +153,12 @@ export function installBuffers(
   offs.add(buffers.guard(ask));
 
   /** Close a buffer, asking first when it has unsaved changes and the person closes it. */
-  const close = async (buffer: Buffer, asks: boolean): Promise<boolean> => {
+  const close = async (buffer: Buffer, asks: boolean, force = false): Promise<boolean> => {
     // A plugin's own surface takes the other buffers its window shows with it.
     const window = windowOf(buffer);
     const going = buffer.surface ? buffers.ofWindow(window) : [buffer];
-    if (asks && !(await ask({ buffers: going, leaving: "close", asking: () => {} }))) return false;
+    if (asks && !(await ask({ buffers: going, leaving: "close", asking: () => {} }, force)))
+      return false;
     buffers.remove(buffer.id);
     if (buffer.surface) ctx.unmount(window);
     else await ctx.request(window, "desk.buffers.closed", { buffer: buffer.id }).catch(() => {});
@@ -181,7 +197,9 @@ export function installBuffers(
   define(
     "desk.buffers.switch",
     "Switch to a buffer",
-    async (args) => {
+    async (args, caller) => {
+      if (caller?.startsWith("agent:") && !idOf(args))
+        throw new CommandError("failed", "Give a buffer ID from desk.buffers.list");
       const id =
         idOf(args) ??
         (await pick(
@@ -196,6 +214,7 @@ export function installBuffers(
       return shown(buffers.get(id))?.id ?? id;
     },
     ["switch-to-buffer"],
+    WORKSPACE_TOOLS.bufferSwitch,
   );
   for (const [id, title, by] of [
     ["desk.buffers.next", "Next buffer", 1],
@@ -212,15 +231,19 @@ export function installBuffers(
     "Close the buffer",
     async (args, caller) => {
       const named = idOf(args);
+      const agent = caller?.startsWith("agent:") === true;
+      if (agent && !named)
+        throw new CommandError("failed", "Give a buffer ID from desk.buffers.list");
       // Mod+W closes what shows; a plugin's surface named by its id goes with the plugin's buffers.
       const buffer = named === undefined ? inUse() : buffers.get(named);
       if (!buffer) return false;
-      if (caller !== undefined && caller !== buffer.plugin && caller !== "desk.palette")
+      if (!agent && caller !== undefined && caller !== buffer.plugin && caller !== "desk.palette")
         throw new CommandError("failed", `${caller} may not close ${buffer.plugin}'s buffers`);
       // A plugin closing its own buffer has already decided; the person is asked.
-      return close(buffer, caller !== buffer.plugin);
+      return close(buffer, caller !== buffer.plugin, agent);
     },
     ["kill-buffer"],
+    WORKSPACE_TOOLS.bufferClose,
   );
   define("desk.buffers.open", "Open a buffer in a plugin", (args, caller) => {
     const { name, path } = (args ?? {}) as { name?: string; path?: string };
@@ -280,6 +303,8 @@ export function installBuffers(
       if (mine) buffers.touch(mine.id);
     },
     show,
+    confirmPluginClose: (plugin) =>
+      ask({ buffers: buffers.ofPlugin(plugin), leaving: "close", asking: () => {} }, true),
     onClosed: (listener) => {
       closedListeners.add(listener);
       return () => closedListeners.delete(listener);

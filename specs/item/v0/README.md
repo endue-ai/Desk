@@ -1,4 +1,4 @@
-# Desk item v0
+# endue item v0
 
 An item is the one shape connectors bring data in as, the core's index keeps and views show (ADR 0032).
 `item.schema.json` is the item: an envelope every kind shares plus the fields of its kind.

@@ -3,14 +3,14 @@
  * all run these ids. Pane commands belong to desk.display; desktops, views, profiles, agents and
  * Eris's settings to desk.shell. Profiles and agents come and go, so their commands follow them.
  */
-import type { CommandInfo, CommandSpec } from "../commands";
+import type { AgentSpec, CommandHandler, CommandInfo, CommandSpec } from "../commands";
 import { defineDesktopCommands, defineNumbered } from "../desktops/commands";
 import { selectAgent, spaceAgents } from "../system/agents";
 import { desktopsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import type { CopyKey } from "./copy";
 import { defineWindowCommands } from "./window-commands";
-import { closePane, newWindow, openView, splitPane } from "./windows";
+import { closeTab, newTab, newWindow, openView, stepTab } from "./windows";
 
 const VIEWS: [string, CopyKey, string[]][] = [
   ["calendar", "surfaceCalendar", ["calendar", "캘린더", "일정"]],
@@ -38,16 +38,20 @@ export function defineCommands(ctx: ShellCtx): () => void {
     owner: string,
     title: CommandSpec["title"],
     keywords: string[],
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     into = fixed,
+    agent?: AgentSpec,
   ) => {
     const off = commands.define(id, {
       title,
       keywords,
       owner,
-      run: async (args) => {
-        await run(args);
-      },
+      run: agent
+        ? run
+        : async (args, from) => {
+            await run(args, from);
+          },
+      ...(agent ? { agent } : {}),
     });
     into.push(off);
     return off;
@@ -56,9 +60,10 @@ export function defineCommands(ctx: ShellCtx): () => void {
     id: string,
     title: CommandSpec["title"],
     keywords: string[],
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     into = fixed,
-  ) => define(`desk.shell.${id}`, "desk.shell", title, keywords, run, into);
+    agent?: AgentSpec,
+  ) => define(`desk.shell.${id}`, "desk.shell", title, keywords, run, into, agent);
   const display = (
     id: string,
     title: CommandSpec["title"],
@@ -72,29 +77,38 @@ export function defineCommands(ctx: ShellCtx): () => void {
     ["new", "window", "surface", "새", "표면", "창"],
     () => newWindow(ctx),
   );
+  // Tabs (ADR 0270): another window of the plugin the focused window shows, in that window.
   display(
-    "split-right",
-    () => ctx.tr("cmdSplitRight"),
-    ["split", "right", "나누기", "오른쪽"],
-    () => splitPane(ctx, "row"),
+    "new-tab",
+    () => ctx.tr("cmdNewTab"),
+    ["new", "tab", "새", "탭"],
+    () => newTab(ctx),
   );
   display(
-    "split-down",
-    () => ctx.tr("cmdSplitDown"),
-    ["split", "down", "나누기", "아래"],
-    () => splitPane(ctx, "column"),
+    "close-tab",
+    () => ctx.tr("cmdCloseTab"),
+    ["close", "tab", "닫기", "탭"],
+    () => closeTab(ctx),
   );
   display(
-    "close-pane",
-    () => ctx.tr("cmdClosePane"),
-    ["close", "pane", "닫기", "칸"],
-    () => closePane(ctx),
+    "next-tab",
+    () => ctx.tr("cmdNextTab"),
+    ["next", "tab", "다음", "탭"],
+    () => stepTab(ctx, 1),
+  );
+  display(
+    "previous-tab",
+    () => ctx.tr("cmdPreviousTab"),
+    ["previous", "tab", "이전", "탭"],
+    () => stepTab(ctx, -1),
   );
   // Maximize, the eight snaps, and moving and resizing by a step (ADR 0128, ADR 0153).
   defineWindowCommands(ctx, display);
   // Desktops (ADR 0117): new, next, rename, remove, reorder, the overview, moving a window across.
   fixed.push(
-    defineDesktopCommands(ctx, (id, title, words, run) => shell(id, title, words, run, [])),
+    defineDesktopCommands(ctx, (id, title, words, run, agent) =>
+      shell(id, title, words, run, [], agent),
+    ),
   );
   for (const [id, key, words] of VIEWS) {
     const name = ctx.tr(key);

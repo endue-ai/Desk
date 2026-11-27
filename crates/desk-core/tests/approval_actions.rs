@@ -1,5 +1,5 @@
 //! Approvals (ADR 0078) beyond writes: an agent's spawn shows its command line and a fetch its URL,
-//! an `always` grant lets writes and fetches through, a command its manifest marks `irreversible`
+//! a fetch waits even with an `always` grant, a command its manifest marks `irreversible`
 //! waits while others do not, and a person's own calls never wait.
 
 mod support;
@@ -124,10 +124,13 @@ fn a_spawn_shows_its_command_line_and_a_fetch_its_url() {
         json!({ "kind": "url", "text": format!("POST {url}") })
     );
 
-    // A host and a folder an always grant covers are allowed already: nothing waits.
+    // A lasting grant covers the program's scope, but a fetch still waits for the reviewed act.
     call(&core, MIRA, "perm.revoke", json!({ "grantId": session })).unwrap();
     granted_for(&core, &deliveries, MIRA, hosts.clone());
-    assert_eq!(fetch().unwrap()["status"], 200);
+    assert_eq!(
+        approved_once(&core, &deliveries, fetch).unwrap()["status"],
+        200
+    );
     granted_for(&core, &deliveries, MIRA, fs_write(&["~/Notes/**"]));
     write(&core, MIRA, "~/Notes/b.md", "kept\n").unwrap();
     assert!(named(&deliveries, "perm.approval").is_empty());
@@ -185,6 +188,79 @@ fn an_irreversible_command_waits_and_other_commands_do_not() {
 }
 
 #[test]
+fn the_desk_can_mark_a_command_for_every_agent_invocation_to_wait() {
+    let (core, deliveries) = core_with(&home("approve-desk"));
+    let id = "desk.example.clear";
+    let scope = json!({ "permission": "cmd:invoke", "ids": [id] });
+    grant(&core, "desk", scope.clone());
+    grant(&core, MIRA, scope.clone());
+    call(
+        &core,
+        "desk",
+        "cmd.register",
+        json!({
+            "id": id, "title": "Clear examples", "description": "Clear example history.",
+            "agent": true, "irreversible": true
+        }),
+    )
+    .unwrap();
+    let list = call(&core, "desk", "cmd.list", json!({ "scope": scope })).unwrap();
+    assert_eq!(list["commands"][0]["irreversible"], true);
+    let tools = call(&core, MIRA, "cmd.tools", json!({})).unwrap();
+    assert_eq!(tools["tools"][0]["irreversible"], true);
+
+    let args = json!({ "group": "fixture" });
+    for _ in 0..2 {
+        let (approval, invoked) = held(&core, &deliveries, "once", || {
+            call(
+                &core,
+                MIRA,
+                "cmd.invoke",
+                json!({ "id": id, "args": args, "scope": scope }),
+            )
+        });
+        assert!(invoked.unwrap()["invocationId"].is_string());
+        assert_eq!(approval.data()["target"], id);
+        let preview = approval.data()["preview"]["text"].as_str().unwrap();
+        assert_eq!(serde_json::from_str::<Value>(preview).unwrap(), args);
+        assert_eq!(wait_for(&deliveries, "cmd.invoked").data()["id"], id);
+    }
+    let error = call(
+        &core,
+        "desk",
+        "cmd.register",
+        json!({
+            "id": id, "title": "Clear examples", "readOnly": true, "irreversible": true
+        }),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidParams);
+}
+
+#[test]
+fn a_plugin_registration_keeps_the_manifest_in_charge_of_irreversibility() {
+    let home = home("approve-plugin-marker");
+    let (core, _) = core_with(&home);
+    mail_plugin(&core, &home);
+    let scope = json!({ "permission": "cmd:invoke", "ids": ["example.mail.*"] });
+    grant(&core, "desk", scope.clone());
+    for (id, requested) in [("example.mail.send", false), ("example.mail.open", true)] {
+        call(
+            &core,
+            MAIL,
+            "cmd.register",
+            json!({
+                "id": id, "title": id, "irreversible": requested
+            }),
+        )
+        .unwrap();
+    }
+    let list = call(&core, "desk", "cmd.list", json!({ "scope": scope })).unwrap();
+    assert_eq!(list["commands"][0]["irreversible"], true);
+    assert!(list["commands"][1].get("irreversible").is_none());
+}
+
+#[test]
 fn a_persons_own_calls_are_never_held() {
     let home = home("approve-person");
     notes(&home);
@@ -217,4 +293,86 @@ fn a_persons_own_calls_are_never_held() {
         fs::read_to_string(home.join("Notes/a.md")).unwrap(),
         "mine\n"
     );
+}
+
+#[test]
+fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
+    let home = home("desk-preference-approval");
+    let core = Core::new(roots(&home)).with_prompter(NeverAsk);
+    let reversible = [
+        "desk.settings.set",
+        "desk.theme.use",
+        "desk.theme.set",
+        "desk.notify.dnd",
+        "desk.notify.dismiss",
+        "desk.profiles.switch",
+        "desk.profiles.save",
+        "desk.customize.style",
+        "desk.customize.clear",
+        "desk.customize.restore-style",
+    ];
+    let ask = |id: &str| {
+        let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
+        call(&core, "agent:eris", "cmd.invoke", params)
+    };
+    let irreversible = [
+        "desk.notify.clear",
+        "desk.profiles.remove",
+        "desk.customize.script",
+    ];
+    for (ids, irreversible) in [(&reversible[..], false), (&irreversible[..], true)] {
+        for id in ids {
+            call(
+                &core,
+                "desk",
+                "cmd.register",
+                json!({
+                    "id": id, "title": id, "agent": true, "description": "Desk preference test",
+                    "irreversible": irreversible,
+                }),
+            )
+            .unwrap();
+        }
+    }
+    for id in reversible {
+        ask(id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+    }
+
+    grant(&core, "desk", manage());
+    let deliveries = core.events().subscribe_addressed();
+    for id in irreversible {
+        let (approval, denied) = held(&core, &deliveries, "deny", || ask(id));
+        assert_eq!(approval.data()["target"], id);
+        assert_eq!(denied.unwrap_err().code, ErrorCode::PermissionDenied);
+    }
+}
+
+#[test]
+fn eris_runs_explicit_workspace_commands_without_a_scope_prompt() {
+    let home = home("eris-workspace-tool");
+    let core = Core::new(roots(&home)).with_prompter(NeverAsk);
+    for id in [
+        "desk.shell.desktop-new",
+        "desk.shell.desktop-go",
+        "desk.shell.desktop-rename",
+        "desk.shell.desktop-remove",
+        "desk.buffers.switch",
+        "desk.buffers.close",
+        "desk.files.save",
+        "desk.session.save",
+        "desk.undo",
+        "desk.redo",
+    ] {
+        call(
+            &core,
+            "desk",
+            "cmd.register",
+            json!({
+                "id": id, "title": id, "agent": true, "description": "Workspace command"
+            }),
+        )
+        .unwrap();
+        let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
+        call(&core, "agent:eris", "cmd.invoke", params).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+    }
 }

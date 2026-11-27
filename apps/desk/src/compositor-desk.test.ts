@@ -5,7 +5,7 @@
 // titles of the shell's own views; desk-wm holds the desk itself (#83), and the live set it sends
 // back is the seam's (compositor-wm.test.ts). A surface moved in the page is the same surface; one
 // released is not named.
-import type { RemoteSurface } from "@endue-ai/runtime";
+import { iconPath, type RemoteSurface } from "@endue-ai/runtime";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cardOf, type DeskReport, startCompositorDesk } from "./compositor-desk";
 
@@ -23,15 +23,31 @@ function runtime(adopted: string[]) {
     adopted: adopted.map((id, slot) => ({ id, title: id, slot })),
     drawer: [],
     wm: { here: "1", windows: { "1": [launcher] } },
+    erisWindows: [] as { id: string; glow: number }[],
   };
+  // The store's watch, as far as the reporter uses it: told of every change.
+  const watching = new Set<() => void>();
   const desk = {
-    store: { get: () => state, set: (s: Partial<typeof state>) => (state = { ...state, ...s }) },
+    store: {
+      get: () => state,
+      set: (s: Partial<typeof state>) => {
+        state = { ...state, ...s };
+        for (const told of watching) told();
+      },
+      watch: (_select: unknown, told: () => void) => {
+        watching.add(told);
+        return () => watching.delete(told);
+      },
+    },
     runtime: {
       frames: { state: (id: string) => states.get(id), asleep: (id: string) => asleep.has(id) },
       settings: { get: (key: string, fallback: unknown) => (key.endsWith("live") ? 4 : fallback) },
     },
   };
-  return { desk: desk as never, asleep, states, release: () => desk.store.set({ adopted: [] }) };
+  const release = () => desk.store.set({ adopted: [] });
+  /** Eris turns to these windows, or away from them all (`eris/visiting.ts`). */
+  const lit = (erisWindows: typeof state.erisWindows) => desk.store.set({ erisWindows });
+  return { desk: desk as never, asleep, states, release, lit, watching };
 }
 
 /** The runtime's surface pages, played by the test: each surface's place in its section. */
@@ -119,6 +135,28 @@ describe("the desk the page publishes", () => {
     expect(document.documentElement.classList.contains("desk-compositor")).toBe(false);
   });
 
+  it("names each view's icon and the width the person gave the map (ADR 0273)", () => {
+    const { win, tick } = frames();
+    const r = runtime(["endue.terminal"]);
+    const store = (r.desk as { store: { set(s: object): void; get(): { wm: object } } }).store;
+    const terminal = { id: "endue.terminal", plugin: "endue.terminal", panes: null };
+    const launcher = { id: "window-1", panes: { id: "p1", kind: "view", view: "launcher" } };
+    const windows = { "1": [terminal, launcher] };
+    store.set({ mapFolded: false, mapWidth: null, wm: { here: "1", windows } });
+    const reports: DeskReport[] = [];
+    const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
+    tick();
+    expect(reports[0]?.icons).toEqual({
+      "plugin:endue.terminal": iconPath("terminal"),
+      launcher: iconPath("plus"),
+    });
+    expect(reports[0]?.map).toEqual({ folded: false });
+    store.set({ mapWidth: 288 });
+    tick();
+    expect(reports[1]?.map).toEqual({ folded: false, width: 288 });
+    stop();
+  });
+
   it("stops looking every frame once the desk is still, and a change or the compositor's word starts it again", async () => {
     const { win, tick, pending } = frames();
     const r = runtime(["endue.notes"]);
@@ -139,6 +177,32 @@ describe("the desk the page publishes", () => {
     tick();
     expect(reports.at(-1)?.frames[0]).toMatchObject({ loads: 2 });
     desk();
+  });
+
+  it("names the windows Eris is at with how brightly each glows, and looks again as that changes", () => {
+    const { win, tick, pending } = frames();
+    const r = runtime([]);
+    const reports: DeskReport[] = [];
+    const stop = startCompositorDesk(win, r.desk, pages(), (report) => reports.push(report));
+    for (let i = 0; i < 40; i++) tick();
+    expect(reports[0]?.lit).toEqual([]);
+    expect(pending(), "the desk is still").toBe(0);
+    // A glow changes nothing in the page: the store's word starts the look.
+    r.lit([
+      { id: "endue.mail", glow: 0.6 },
+      { id: "window-1", glow: 1 },
+    ]);
+    expect(pending()).toBe(1);
+    tick();
+    expect(reports.at(-1)?.lit).toEqual([
+      { window: "endue.mail", level: 0.6 },
+      { window: "window-1", level: 1 },
+    ]);
+    r.lit([]);
+    tick();
+    expect(reports.at(-1)?.lit).toEqual([]);
+    stop();
+    expect(r.watching.size, "stopped, it no longer listens").toBe(0);
   });
 
   it("places a surface of its own system layer where the page lays it out, in its layer", () => {

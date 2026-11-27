@@ -14,7 +14,7 @@ import { isUnder, joinPath, nameOf, parentOf, patternOf } from "./tree.js";
  * @typedef {import("@endue-ai/plugin-sdk").DragOver} DragOver
  * @typedef {import("@endue-ai/plugin-sdk").DragKeys} DragKeys
  * @typedef {"copy" | "move"} Placing
- * @typedef {{ paths: Array<{ path: string }>, folder: string, effect: string, keys?: DragKeys, from?: string }} Placed
+ * @typedef {{ paths: Array<{ path: string }>, folder: string, effect: string, keys?: DragKeys, from?: string, physical?: boolean }} Placed
  * @typedef {{ dropTarget?: object, landing?(element: unknown): unknown }} DropView
  * @typedef {{ container: string, path: string, name: string }} ContainerFile
  */
@@ -81,9 +81,12 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
   const scopeOf = (
     /** @type {"fs:read" | "fs:write"} */ permission,
     /** @type {string} */ path,
+    exact = false,
   ) => ({
     permission,
-    paths: [patternOf(deps.rootOf(path) ?? parentOf(path) ?? path)],
+    paths: [
+      exact && !/[*?]/u.test(path) ? path : patternOf(deps.rootOf(path) ?? parentOf(path) ?? path),
+    ],
   });
 
   /** One call; refused, ask once for the scope the core named and try again. */
@@ -109,12 +112,13 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
     /** @type {string} */ from,
     /** @type {string} */ to,
     /** @type {string} */ group,
+    physical = false,
   ) =>
     bridge.call("fs.copy", {
       from,
       to,
-      scope: scopeOf("fs:write", to),
-      fromScope: scopeOf("fs:read", from),
+      scope: scopeOf("fs:write", to, physical),
+      fromScope: scopeOf("fs:read", from, physical),
       group,
     });
   /** fs.rename: within a volume or across (the core copies, then trashes the source). */
@@ -122,16 +126,17 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
     /** @type {string} */ from,
     /** @type {string} */ to,
     /** @type {string} */ group,
+    physical = false,
   ) =>
     bridge.call("fs.rename", {
       from,
       to,
-      scope: scopeOf("fs:write", to),
+      scope: scopeOf("fs:write", to, physical),
       fromScope: scopeOf("fs:write", from),
       group,
     });
-  const trash = (/** @type {string} */ path) =>
-    bridge.call("fs.trash", { path, scope: scopeOf("fs:write", path) });
+  const trash = (/** @type {string} */ path, physical = false) =>
+    bridge.call("fs.trash", { path, scope: scopeOf("fs:write", path, physical) });
 
   /** What to do with names already in the folder; null when the person cancelled. */
   const ask = async (/** @type {string[]} */ names, /** @type {string} */ folder) => {
@@ -164,7 +169,7 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
    * @param {Placed} drop
    * @returns {Promise<"copy" | "move" | "none">}
    */
-  const place = async ({ paths, folder, effect, keys, from }) => {
+  const place = async ({ paths, folder, effect, keys, from, physical }) => {
     const mod = keys?.meta || keys?.ctrl;
     const sources = [...new Set(paths.map((p) => p.path))].filter(
       (path) => !(effect === "move" && parentOf(path) === folder),
@@ -209,9 +214,10 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
       const verb = step.how === "copy" ? "copy" : "move";
       const reason = `To ${verb} ${nameOf(step.from)} to ${folder}`;
       try {
-        if (step.replace) await withGrant(reason, () => trash(step.to));
-        if (step.how === "copy") await withGrant(reason, () => copy(step.from, step.to, group));
-        else await withGrant(reason, () => move(step.from, step.to, group));
+        if (step.replace) await withGrant(reason, () => trash(step.to, physical));
+        if (step.how === "copy")
+          await withGrant(reason, () => copy(step.from, step.to, group, physical));
+        else await withGrant(reason, () => move(step.from, step.to, group, physical));
         done++;
         copied ||= step.how === "copy";
       } catch (error) {
@@ -316,11 +322,14 @@ export function createDrops({ bridge, commands, dnd }, view, deps) {
         effect: drop.effect,
         keys: drop.keys,
         from: drop.from,
+        physical: true,
       });
     },
     {
       accept: ["desk/paths", "desk/json:docker/file"],
       at: (element) => view.landing?.(element) ?? null,
+      destination: ({ element }) =>
+        /** @type {{ dataset?: { path?: string } }} */ (element)?.dataset?.path,
       // A container's file is copied: it has no path here to move from.
       effect: (over) =>
         over.types.includes("desk/paths")

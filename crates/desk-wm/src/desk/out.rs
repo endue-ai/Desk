@@ -18,7 +18,7 @@ impl Desk {
             .flat_map(|d| {
                 (self.layout_of(d.id.as_str()).surfaces.into_iter())
                     .filter(|p| p.out.is_some() && self.shows_something(p))
-                    .map(|p| (d.id.clone(), p))
+                    .map(|p| (d.id.clone(), self.with_live_tabs(p)))
             })
             .collect()
     }
@@ -53,7 +53,7 @@ impl Desk {
         if desktop != self.here() {
             self.set_desktop(desktop.as_str());
         }
-        self.focus_pane(id, None);
+        self.focus_tab(id, None);
         true
     }
 
@@ -66,12 +66,12 @@ impl Desk {
         self.edit_at(desktop.as_str(), |l| l.surfaces.retain(|p| p.id != id));
         if self.focused.as_deref() == Some(id) {
             self.focused = None;
-            self.pane = None;
+            self.tab = None;
         }
         plugins
     }
 
-    fn change_out(&mut self, id: &str, change: impl FnOnce(&mut Placement)) -> bool {
+    pub(super) fn change_out(&mut self, id: &str, change: impl FnOnce(&mut Placement)) -> bool {
         let Some((desktop, _)) = self.out_window(id) else {
             return false;
         };

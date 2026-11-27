@@ -219,7 +219,9 @@ test.describe("the desk shell", () => {
     expect(mid).toBeLessThan(1);
     await step(page, 720);
     await expect(page.locator(".absorb")).toHaveCount(0);
-    await step(page, 1000);
+    // In her, she reads it (0.48 s) and then answers (ADR 0275).
+    await step(page, 500);
+    await step(page, 500);
     await expect(page.locator(".soul-live")).toHaveText(
       'I\'ll look into "hello there" and tell you.',
     );

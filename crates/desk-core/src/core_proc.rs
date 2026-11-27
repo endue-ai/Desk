@@ -20,12 +20,13 @@ use desk_sys::proc::{self as sysproc, Event, Process, SpawnOptions, Stream};
 use crate::approvals::Action;
 use crate::events::EventBus;
 use crate::handler::{Answer, Core, denied, error, json, sys_error};
-use crate::perm::{Denied, Target};
+use crate::perm::{Denied, Target, scope_allows};
 
 struct ProcEntry {
     caller: String,
     scope: Permission,
     command: String,
+    approved: bool,
     process: Process,
 }
 
@@ -39,7 +40,7 @@ pub(crate) struct Processes {
 
 impl Core {
     pub(crate) fn proc_spawn(&self, caller: &str, params: ProcSpawnParams) -> Answer {
-        let scope = Permission::ProcSpawn(params.scope);
+        let scope = Permission::ProcSpawn(params.scope.clone());
         if params.pty.is_some()
             && !matches!(&scope, Permission::ProcSpawn(s) if s.pty == Some(true))
         {
@@ -48,13 +49,26 @@ impl Core {
                 reason: "the scope does not allow a pseudo-terminal".to_owned(),
             }));
         }
-        self.check(caller, &scope, &Target::Command(&params.command))?;
         let args = params.args.as_deref().unwrap_or_default();
         let spawn = Action::Spawn {
             command: &params.command,
             args,
         };
-        self.hold(caller, &scope, spawn)?;
+        let approved = if let Some(invocation) = &params.invocation_id {
+            if self.undeclared(caller, &scope)
+                || !self.with_provider_approval(caller, invocation, |approval| {
+                    approval.use_spawn(&scope, &params)
+                })
+            {
+                return Err(denied(Denied {
+                    permission: scope,
+                    reason: "The invocation does not approve this process".into(),
+                }));
+            }
+            true
+        } else {
+            self.authorize_action(caller, &scope, spawn)?
+        };
         let cwd = match &params.cwd {
             Some(path) => self.resolve(path)?,
             None => self.home().to_path_buf(),
@@ -85,6 +99,7 @@ impl Core {
                 caller: caller.to_owned(),
                 scope,
                 command: params.command,
+                approved,
                 process,
             },
         );
@@ -147,18 +162,18 @@ impl Core {
         act: impl FnOnce(&Process) -> Result<(), desk_sys::Error>,
     ) -> Result<(), BridgeError> {
         let missing = || error(ErrorCode::NotFound, format!("{caller} has no process {id}"));
-        let command = lock(&self.processes)
+        let (command, approved) = lock(&self.processes)
             .entries
             .get(id)
             .filter(|entry| entry.caller == caller)
-            .map(|entry| entry.command.clone())
+            .map(|entry| (entry.command.clone(), entry.approved))
             .ok_or_else(missing)?;
         // Not under the table's lock: a spent once grant prunes the table from inside the check.
-        self.check(
-            caller,
-            &Permission::ProcSpawn(scope),
-            &Target::Command(&command),
-        )?;
+        let scope = Permission::ProcSpawn(scope);
+        let target = Target::Command(&command);
+        if !approved || !scope_allows(&scope, &target) {
+            self.check(caller, &scope, &target)?;
+        }
         let processes = lock(&self.processes);
         let entry = processes
             .entries
@@ -181,6 +196,7 @@ impl Core {
             let permissions = self.permissions();
             take(&mut processes, |entry| {
                 entry.caller == caller
+                    && !entry.approved
                     && permissions
                         .authorize(caller, &entry.scope, &Target::Command(&entry.command))
                         .is_err()

@@ -1,12 +1,12 @@
-import { BridgeClient, browserStub } from "@endue-ai/bridge";
-import { describe, expect, it } from "vitest";
+import { BridgeClient, browserStub, type StubHandlers, stubCommands } from "@endue-ai/bridge";
+import { describe, expect, it, vi } from "vitest";
 import { framesText } from "../frames/copy";
 import { PolicyHub } from "../hub";
 import type { DeskContext } from "./context";
-import { followLanguage, installLanguage, LANGUAGE_SETTING } from "./language";
+import { CORE_LANGUAGE, followLanguage, installLanguage, LANGUAGE_SETTING } from "./language";
 
-function context(shared: unknown[] = []): DeskContext {
-  const bridge = new BridgeClient(browserStub({}));
+function context(shared: unknown[] = [], handlers: StubHandlers = {}): DeskContext {
+  const bridge = new BridgeClient(browserStub(handlers));
   const hub = new PolicyHub(bridge);
   return {
     hub,
@@ -49,5 +49,37 @@ describe("desk.language", () => {
     ctx.hub.settings.set(LANGUAGE_SETTING, "ko");
     expect(heard).toEqual(["ko", "en"]);
     expect(followed).toEqual(["en", "ko", "en"]);
+  });
+
+  it("the runtime tells the core the language chosen, so the shell follows it", async () => {
+    const core = () => stubCommands(() => undefined).handlers;
+    const ctx = context([], core());
+    const set = vi.spyOn(ctx.bridge, "call");
+    const inCore = async () =>
+      ((await ctx.bridge.call("settings.get", { key: CORE_LANGUAGE })) as { value?: unknown })
+        .value;
+    const writes = () => set.mock.calls.filter(([method]) => method === "settings.set");
+    const language = installLanguage(ctx, "en");
+    // While the settings load, nothing is written: the core keeps what the shell started with.
+    ctx.hub.settings.set(LANGUAGE_SETTING, "ko");
+    expect(writes()).toEqual([]);
+
+    await language.loaded();
+    expect(await inCore()).toBe("ko");
+    expect(writes()).toHaveLength(1);
+    ctx.hub.settings.set(LANGUAGE_SETTING, "system");
+    await vi.waitFor(async () => expect(await inCore()).toBe("system"));
+    ctx.hub.settings.set(LANGUAGE_SETTING, "en");
+    await vi.waitFor(async () => expect(await inCore()).toBe("en"));
+    expect(writes()).toHaveLength(3);
+
+    // A choice the core holds already is not written again.
+    const again = context([], core());
+    await again.bridge.call("settings.set", { key: CORE_LANGUAGE, value: "en" });
+    again.hub.settings.set(LANGUAGE_SETTING, "en");
+    const calls = vi.spyOn(again.bridge, "call");
+    await installLanguage(again, "en").loaded();
+    expect(calls.mock.calls.filter(([method]) => method === "settings.set")).toEqual([]);
+    language.dispose();
   });
 });

@@ -9,6 +9,9 @@
 //! only that surface's page has. Nothing loads again when the runtime moves a surface's place in its
 //! page (a split, the drawer, a desktop switch): there is no frame to load, so no hello to repeat.
 //!
+//! A command the palette runs for a surface's plugin, or its answer to the plugin's question, gives
+//! the surface's page the activation a press in it would (`clipboard.rs`, #504).
+//!
 //! Tab crosses here too (#123, #128): the runtime's page tells a surface that its Tab entered the
 //! surface's place (`desk:surface-enter`), and the surface's page focuses its first or last control
 //! (`shim.js`; a native plugin hears `focus.enter`). A surface's page that tabs past an end is its
@@ -108,21 +111,23 @@ impl Relay {
             }
             return;
         }
-        let (target, native) = {
+        let (browser, native) = {
             let mut tables = self.tables();
             tables.down += 1;
             let native = tables.natives.get(host).cloned();
-            (
-                tables.surfaces.get(host).and_then(|b| b.main_frame()),
-                native,
-            )
+            (tables.surfaces.get(host).cloned(), native)
         };
         if let Some(native) = native {
             native(text);
             return;
         }
+        let Some(browser) = browser else { return };
+        // The person's act in the palette for this plugin is an act in its page (#504).
+        if super::clipboard::palette_act(&text) {
+            super::clipboard::activate(&browser);
+        }
         // A page still loading misses it, as a frame's page did: the SDK's hello starts it over.
-        if let Some(target) = target {
+        if let Some(target) = browser.main_frame() {
             crate::host::send(target, text);
         }
     }

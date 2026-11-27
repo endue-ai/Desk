@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type Permission, StubError } from "../../../packages/bridge/src/index";
 import { stubFileTree } from "../../../packages/runtime/src/bridge/fs";
-import { DOCS, type Handlers, mount, READ, WRITE } from "./harness";
+import { DOCS, type Handlers, mount, WRITE } from "./harness";
 
 const WORK = `${DOCS}/Work`;
 const paths = (...list: string[]) => [
@@ -75,7 +75,7 @@ describe("dropping paths on an explorer folder", () => {
       {
         from: `${DOCS}/b.txt`,
         to: `${WORK}/deep/b.txt`,
-        scope: WRITE,
+        scope: { permission: "fs:write", paths: [`${WORK}/deep/b.txt`] },
         fromScope: WRITE,
         group: expect.any(String),
       },
@@ -95,8 +95,8 @@ describe("dropping paths on an explorer folder", () => {
       {
         from: `${DOCS}/b.txt`,
         to: `${WORK}/deep/b.txt`,
-        scope: WRITE,
-        fromScope: READ,
+        scope: { permission: "fs:write", paths: [`${WORK}/deep/b.txt`] },
+        fromScope: { permission: "fs:read", paths: [`${DOCS}/b.txt`] },
         group: expect.any(String),
       },
     ]);
@@ -174,7 +174,7 @@ describe("dropping paths on an explorer folder", () => {
 
   it("says why the rest did not go once what did go is listed again", async () => {
     const check: Check = (_caller, scope) => {
-      if (scope.paths.includes("/Volumes/USB/**"))
+      if (scope.paths.includes("/Volumes/USB/photo.jpg"))
         throw new StubError("permission_denied", "not granted");
     };
     const { drop, tree, view } = await explorer({ check });

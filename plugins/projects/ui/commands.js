@@ -6,6 +6,8 @@ import { asArgs, asString } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
+ * @typedef {(args: Record<string, unknown>, invocation?: Invocation) => unknown} Handler
  * @typedef {import("./adapters/common.js").Work} Work
  * @typedef {{
  *   commands: PluginContext["commands"], surface: PluginContext["surface"],
@@ -29,27 +31,36 @@ import { asArgs, asString } from "./state.js";
  */
 
 const NAME = "the projects plugin";
+const fromAgent = (/** @type {Invocation | undefined} */ invocation) =>
+  invocation?.caller.startsWith("agent:") === true;
+const hasTarget = (/** @type {Record<string, unknown>} */ a) =>
+  a.id !== undefined || a.source !== undefined;
+function requireTarget(/** @type {Record<string, unknown>} */ a) {
+  const source = asArgs(a.source);
+  if (!asString(source.connector) || !asString(source.instance) || !asString(a.id))
+    throw new Error("Name the task by its source and id.");
+}
 
 /** @param {Deps} deps */
 export function registerCommands({ commands, surface, view, say, app }) {
-  /** @type {Map<string, (args: Record<string, unknown>) => unknown>} */
+  /** @type {Map<string, Handler>} */
   const own = new Map();
 
-  /** Run one of the plugin's commands. @param {string} name @param {unknown} raw */
-  const command = async (name, raw) => {
+  /** @param {string} name @param {unknown} raw @param {Invocation} [invocation] */
+  const command = async (name, raw, invocation) => {
     const handler = own.get(name);
     if (!handler) throw new Error(`${NAME} has no command ${name}.`);
     try {
-      return await handler(asArgs(raw));
+      return await handler(asArgs(raw), invocation);
     } catch (error) {
       say(error instanceof Error ? error.message : String(error));
       throw error;
     }
   };
-  /** @type {(name: string, handler: (a: Record<string, unknown>) => unknown) => void} */
+  /** @type {(name: string, handler: Handler) => void} */
   const answer = (name, handler) => {
     own.set(name, handler);
-    commands.on(name, (raw) => command(name, raw));
+    commands.on(name, (raw, invocation) => command(name, raw, invocation));
   };
 
   answer("endue.projects.open", () => {
@@ -84,14 +95,19 @@ export function registerCommands({ commands, surface, view, say, app }) {
     surface.show();
     return app.open(work.key);
   });
-  answer("endue.projects.move", async (a) => {
+  answer("endue.projects.move", async (a, invocation) => {
+    const statusGiven = asString(a.status);
+    if (hasTarget(a) || fromAgent(invocation)) {
+      if (!statusGiven?.trim()) throw new Error("Give the task's new status.");
+      requireTarget(a);
+    }
     const work = await app.named(a);
-    const status =
-      asString(a.status) ?? (await app.pick(`Move ${work.ref || work.title} to`, "a status"));
+    const status = statusGiven ?? (await app.pick(`Move ${work.ref || work.title} to`, "a status"));
     if (status === undefined) return work.status;
     return app.move(work, status);
   });
-  answer("endue.projects.update", async (a) => {
+  answer("endue.projects.update", async (a, invocation) => {
+    if (hasTarget(a) || fromAgent(invocation)) requireTarget(a);
     const work = await app.named(a);
     const { source: _source, id: _id, ...fields } = a;
     return app.update(work, fields);
@@ -103,5 +119,5 @@ export function registerCommands({ commands, surface, view, say, app }) {
     return work.url;
   });
 
-  return { command, ids: () => [...own.keys()] };
+  return { command, answer, ids: () => [...own.keys()] };
 }

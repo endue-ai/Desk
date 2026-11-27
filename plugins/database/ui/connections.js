@@ -1,7 +1,13 @@
 // Connections: what one holds, checked before it is kept; connection URIs read and written
 // (postgres://, mysql://, mariadb://, sqlite:); and the list in the plugin's store. A password is
 // never part of a connection: the person types it when the client asks, it stays in memory for the
-// session, and a URI's password is handed back separately for that.
+// session, and a URI's password is handed back separately for that. Whether the desk keeps it in the
+// OS keychain is: `keychain: true`, on a PostgreSQL connection only (keychain.js, ADR 0311). A
+// PostgreSQL connection may name a client certificate and its key file (`sslcert`, `sslkey`, ADR
+// 0331): only the paths are kept, never a key's passphrase. Its session options (search path, role,
+// time zone, timeouts, application name, startup script) are engines/pg-options.js's; its password
+// command and "through a pooler" are auth/fields.js's (ADR 0354); its SSH tunnel tunnel/fields.js's
+// (ADR 0359), without a key, a passphrase or a password.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -10,6 +16,11 @@
  * @typedef {import("./engines/common.js").Tag} Tag
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
  */
+
+import { AUTH, authOf } from "./auth/fields.js";
+import { OPTIONS, optionsOf, readOptions, writeOptions } from "./engines/pg-options.js";
+import { t } from "./strings/index.js";
+import { TUNNEL, tunnelOf } from "./tunnel/fields.js";
 
 export const ENGINE_IDS = /** @type {const} */ (["postgresql", "mysql", "sqlite"]);
 export const TAGS = /** @type {const} */ (["none", "development", "staging", "production"]);
@@ -57,6 +68,8 @@ export function blank(/** @type {EngineId} */ engine = "postgresql") {
     user: "",
     ssl: "default",
     sslCa: "",
+    sslCert: "",
+    sslKey: "",
     file: "",
     tag: "none",
     readOnly: false,
@@ -74,7 +87,7 @@ export function blank(/** @type {EngineId} */ engine = "postgresql") {
 export function normalize(raw, others = []) {
   const engine = /** @type {EngineId} */ (raw.engine);
   if (!ENGINE_IDS.includes(engine))
-    throw new Error("Engine: pick PostgreSQL, MySQL / MariaDB or SQLite.");
+    throw new Error(t("connections.enginePickPostgresqlMysqlMariadbOr"));
   const base = blank(engine);
   // Only the known fields, so nothing else a store or an agent hands in is kept.
   const conn = /** @type {Connection} */ (
@@ -91,32 +104,50 @@ export function normalize(raw, others = []) {
   conn.user = text("User", conn.user, 255);
   conn.sslCa = path("CA file", text("CA file", conn.sslCa, 1024).trim(), false);
   conn.file = text("File", conn.file, 1024).trim();
-  if (/\s/u.test(conn.host)) throw new Error("Host: no spaces.");
+  clientCert(conn);
+  if (/\s/u.test(conn.host)) throw new Error(t("connections.hostNoSpaces"));
   if (conn.port !== null && conn.port !== undefined && `${conn.port}` !== "") {
     const port = Number(conn.port);
     if (!Number.isInteger(port) || port < 1 || port > 65535)
-      throw new Error("Port: a number from 1 to 65535.");
+      throw new Error(t("connections.portANumberFromTo"));
     conn.port = port;
   } else conn.port = null;
-  if (!SSL_MODES.includes(conn.ssl)) throw new Error("SSL: pick one of the modes.");
-  if (!TAGS.includes(conn.tag)) throw new Error("Environment: pick one of the tags.");
+  if (!SSL_MODES.includes(conn.ssl)) throw new Error(t("connections.sslPickOneOfTheModes"));
+  if (!TAGS.includes(conn.tag)) throw new Error(t("connections.environmentPickOneOfTheTags"));
   conn.readOnly = conn.readOnly === true;
+  // Only when on, so a connection that never chose it reads as before.
+  if (/** @type {{ keychain?: unknown }} */ (raw).keychain === true && engine === "postgresql")
+    /** @type {{ keychain?: boolean }} */ (conn).keychain = true;
   conn.group = text("Group", conn.group, 40).trim();
   if (!COLORS.includes(/** @type {never} */ (conn.color)))
-    throw new Error("Colour: pick one of the colours.");
+    throw new Error(t("connections.colourPickOneOfTheColours"));
   if (engine === "sqlite") {
-    if (!conn.file) throw new Error("File: the database file, like ~/data/app.db.");
+    if (!conn.file) throw new Error(t("connections.fileTheDatabaseFileLikeData"));
     if (conn.file !== ":memory:") conn.file = path("File", conn.file, true);
     conn.host = "";
     conn.port = null;
   }
   conn.name = text("Name", conn.name, 80).trim() || defaultName(conn);
+  Object.assign(conn, optionsOf(/** @type {Record<string, unknown>} */ (raw), conn));
+  Object.assign(conn, authOf(/** @type {Record<string, unknown>} */ (raw), conn));
+  Object.assign(conn, tunnelOf(/** @type {Record<string, unknown>} */ (raw), conn));
   const taken = others.find(
     (o) => o.id !== conn.id && o.name.toLowerCase() === conn.name.toLowerCase(),
   );
-  if (taken) throw new Error(`Name: "${conn.name}" is taken.`);
-  if (!/^[a-z0-9-]{1,40}$/u.test(conn.id)) throw new Error("The connection has no id.");
+  if (taken) throw new Error(t("connections.nameIsTaken", { name: String(conn.name) }));
+  if (!/^[a-z0-9-]{1,40}$/u.test(conn.id)) throw new Error(t("connections.theConnectionHasNoId"));
   return conn;
+}
+
+/** The client certificate and key files: PostgreSQL only, full paths, both or neither. */
+function clientCert(/** @type {Connection} */ conn) {
+  const cert = path("Certificate file", text("Certificate file", conn.sslCert, 1024).trim(), false);
+  const key = path("Key file", text("Key file", conn.sslKey, 1024).trim(), false);
+  const postgres = conn.engine === "postgresql";
+  if (postgres && cert && !key) throw new Error(t("connections.keyFileTheCertificateFileNeeds"));
+  if (postgres && key && !cert) throw new Error(t("connections.certificateFileTheKeyFileNeeds"));
+  conn.sslCert = postgres ? cert : "";
+  conn.sslKey = postgres ? key : "";
 }
 
 /** A field's text: a string without line breaks or NUL, at most `max` characters. */
@@ -126,9 +157,12 @@ function text(
   /** @type {number} */ max,
 ) {
   if (value === undefined || value === null) return "";
-  if (typeof value !== "string") throw new Error(`${field}: text expected.`);
-  if (/[\n\r\0]/u.test(value)) throw new Error(`${field}: one line, please.`);
-  if (value.length > max) throw new Error(`${field}: at most ${max} characters.`);
+  if (typeof value !== "string")
+    throw new Error(t("connections.textExpected", { field: String(field) }));
+  if (/[\n\r\0]/u.test(value))
+    throw new Error(t("connections.oneLinePlease", { field: String(field) }));
+  if (value.length > max)
+    throw new Error(t("connections.atMostCharacters", { field: String(field), max: String(max) }));
   return value;
 }
 
@@ -141,7 +175,7 @@ function path(
   if (!value && !required) return "";
   if (value.startsWith("/") || value.startsWith("~/") || /^[A-Za-z]:[\\/]/u.test(value))
     return value;
-  throw new Error(`${field}: a full path, starting with / or ~/.`);
+  throw new Error(t("connections.aFullPathStartingWithOr", { field: String(field) }));
 }
 
 /** user@host/db, or the file's name. */
@@ -160,7 +194,7 @@ export function parseUri(uri) {
   const trimmed = uri.trim();
   const scheme = /^([a-z0-9]+):/iu.exec(trimmed)?.[1]?.toLowerCase() ?? "";
   const engine = SCHEMES[scheme];
-  if (!engine) throw new Error("A URI starts with postgres://, mysql://, mariadb:// or sqlite:.");
+  if (!engine) throw new Error(t("connections.aUriStartsWithPostgresMysql"));
   if (engine === "sqlite") {
     let rest = trimmed.slice(scheme.length + 1).replace(/^\/\/(?=\/|~)/u, "");
     rest = decodeURIComponent(rest.split("?")[0] ?? "");
@@ -170,7 +204,7 @@ export function parseUri(uri) {
   try {
     url = new URL(trimmed);
   } catch {
-    throw new Error("That URI cannot be read.");
+    throw new Error(t("connections.thatUriCannotBeRead"));
   }
   const query = url.searchParams;
   const sslRaw = (
@@ -201,6 +235,10 @@ export function parseUri(uri) {
     ssl,
     sslCa: query.get("sslrootcert") ?? query.get("ssl-ca") ?? "",
   };
+  // A client certificate and its key, named only when the URI names them (ADR 0331).
+  if (engine === "postgresql" && query.has("sslcert")) fields.sslCert = query.get("sslcert") ?? "";
+  if (engine === "postgresql" && query.has("sslkey")) fields.sslKey = query.get("sslkey") ?? "";
+  if (engine === "postgresql") Object.assign(fields, readOptions(query));
   const password = url.password ? decodeURIComponent(url.password) : undefined;
   return password === undefined ? { fields } : { fields, password };
 }
@@ -217,6 +255,9 @@ export function formatUri(/** @type {Connection} */ conn) {
   if (conn.ssl !== "default")
     params.set(conn.engine === "postgresql" ? "sslmode" : "ssl-mode", conn.ssl);
   if (conn.sslCa) params.set(conn.engine === "postgresql" ? "sslrootcert" : "ssl-ca", conn.sslCa);
+  if (conn.engine === "postgresql" && conn.sslCert) params.set("sslcert", conn.sslCert);
+  if (conn.engine === "postgresql" && conn.sslKey) params.set("sslkey", conn.sslKey);
+  writeOptions(conn, params);
   const query = params.size ? `?${params}` : "";
   return `${scheme}://${user}${host}${port}${db}${query}`;
 }
@@ -254,6 +295,23 @@ export async function saveConnections(
   /** @type {Connection[]} */ list,
 ) {
   if (JSON.stringify(list).length > STORE_LIMIT)
-    throw new Error("Too many connections to keep: remove some first.");
+    throw new Error(t("connections.tooManyConnectionsToKeepRemove"));
   await bridge.call("store.set", { key: STORE_KEY, value: list });
 }
+
+/** The fields a session signs in with: a change to any closes the connection's sessions. */
+export const SIGN_IN = /** @type {const} */ ([
+  "engine",
+  "host",
+  "port",
+  "database",
+  "user",
+  "ssl",
+  "sslCa",
+  "sslCert",
+  "sslKey",
+  "readOnly",
+  ...OPTIONS,
+  ...AUTH,
+  ...TUNNEL,
+]);

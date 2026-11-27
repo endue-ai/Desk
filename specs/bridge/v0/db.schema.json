@@ -1,0 +1,1059 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/db.schema.json",
+  "title": "endue bridge v0: db",
+  "description": "Database sessions (ADR 0281): PostgreSQL sessions the core opens, scoped by db:connect hosts. A session belongs to the caller that opened it: its notices, notifications, parameter changes and end arrive as db.* events, to that caller alone.",
+  "$defs": {
+    "DbOpenRequest": {
+      "description": "Open a database session and sign in. The scope and the grant are checked before anything connects.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.open" },
+        "params": { "$ref": "#/$defs/DbOpenParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbOpenParams": {
+      "description": "Parameters of db.open.",
+      "type": "object",
+      "properties": {
+        "engine": {
+          "description": "The database engine; postgresql is the one the core speaks, any other is unsupported.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 32
+        },
+        "host": {
+          "description": "A host name or an IPv4 address, as net.connect takes it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "5432 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "database": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "user": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "password": {
+          "description": "Used once for the sign-in and dropped. Without it the core reads the person's password file.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
+        "tls": { "$ref": "#/$defs/DbTls" },
+        "settings": {
+          "description": "Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params.",
+          "type": "object",
+          "additionalProperties": { "type": "string", "maxLength": 4096 }
+        },
+        "readOnly": { "description": "Adds default_transaction_read_only=on.", "type": "boolean" },
+        "timeoutMs": {
+          "description": "How long the connection and the sign-in may take; 10000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120000
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DbConnectPermission" },
+        "ssh": { "$ref": "#/$defs/DbSsh" }
+      },
+      "required": ["engine", "host", "database", "user", "scope"],
+      "additionalProperties": false,
+      "not": {
+        "properties": { "password": true, "passwordRef": true },
+        "required": ["password", "passwordRef"]
+      }
+    },
+    "DbTls": {
+      "description": "How the session uses TLS.",
+      "type": "object",
+      "properties": {
+        "mode": { "$ref": "#/$defs/DbTlsMode" },
+        "ca": {
+          "description": "The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too.",
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "cert": {
+          "description": "The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key.",
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "key": {
+          "description": "The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert.",
+          "type": "string",
+          "maxLength": 65536
+        },
+        "keyPassword": {
+          "description": "The passphrase of an encrypted key: used once to decrypt it and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false,
+      "dependentRequired": { "cert": ["key"], "key": ["cert"], "keyPassword": ["key"] }
+    },
+    "DbSsh": {
+      "description": "An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "The SSH server, a host name or an IPv4 address.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "description": "Who signs in on the SSH server.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "keyFile": {
+          "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "keyPassword": {
+          "description": "The passphrase of an encrypted keyFile: used once to decrypt it and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "agent": {
+          "description": "Sign in with the keys the person's SSH agent holds.",
+          "const": true
+        },
+        "password": {
+          "description": "The SSH password: used once for the sign-in and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
+        "hostKey": { "$ref": "#/$defs/DbSshFingerprint" },
+        "jump": { "$ref": "#/$defs/DbSshHop" }
+      },
+      "required": ["host", "user"],
+      "additionalProperties": false,
+      "dependentRequired": { "keyPassword": ["keyFile"] }
+    },
+    "DbSshHop": {
+      "description": "A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "The SSH server, a host name or an IPv4 address.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "description": "Who signs in on the SSH server.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "keyFile": {
+          "description": "The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "keyPassword": {
+          "description": "The passphrase of an encrypted keyFile: used once to decrypt it and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "agent": {
+          "description": "Sign in with the keys the person's SSH agent holds.",
+          "const": true
+        },
+        "password": {
+          "description": "The SSH password: used once for the sign-in and dropped.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "passwordRef": { "$ref": "#/$defs/DbPasswordName" },
+        "hostKey": { "$ref": "#/$defs/DbSshFingerprint" }
+      },
+      "required": ["host", "user"],
+      "additionalProperties": false,
+      "dependentRequired": { "keyPassword": ["keyFile"] }
+    },
+    "DbSshFingerprint": {
+      "description": "An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens.",
+      "type": "string",
+      "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"
+    },
+    "DbSshAnswer": {
+      "description": "Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database).",
+      "type": "object",
+      "properties": {
+        "hop": { "$ref": "#/$defs/DbSshHopName" },
+        "stage": { "$ref": "#/$defs/DbSshStage" },
+        "message": { "description": "What failed, in words, naming the hop.", "type": "string" },
+        "hostKey": { "$ref": "#/$defs/DbSshHostKey" },
+        "keyPassword": { "$ref": "#/$defs/DbKeyPassword" },
+        "needsPassword": { "const": true }
+      },
+      "required": ["hop", "stage", "message"],
+      "additionalProperties": false
+    },
+    "DbSshHopName": {
+      "description": "Which hop: the jump host, or the SSH host the database is reached from.",
+      "type": "string",
+      "enum": ["jump", "host"]
+    },
+    "DbSshStage": {
+      "description": "Where the hop failed: connect, hostKey, auth or forward.",
+      "type": "string",
+      "enum": ["connect", "hostKey", "auth", "forward"]
+    },
+    "DbSshHostKeyStatus": {
+      "description": "unknown: not trusted yet. changed: differs from the trusted one.",
+      "type": "string",
+      "enum": ["unknown", "changed"]
+    },
+    "DbSshHostKey": {
+      "description": "The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one.",
+      "type": "object",
+      "properties": {
+        "status": { "$ref": "#/$defs/DbSshHostKeyStatus" },
+        "algorithm": {
+          "description": "ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ...",
+          "type": "string"
+        },
+        "fingerprint": { "$ref": "#/$defs/DbSshFingerprint" },
+        "known": { "$ref": "#/$defs/DbSshFingerprint" }
+      },
+      "required": ["status", "algorithm", "fingerprint"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteRequest": {
+      "description": "Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.hostKeys.delete" },
+        "params": { "$ref": "#/$defs/DbHostKeysDeleteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteParams": {
+      "description": "Parameters of db.hostKeys.delete.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "22 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": ["host"],
+      "additionalProperties": false
+    },
+    "DbHostKeysDeleteResult": {
+      "description": "Result of db.hostKeys.delete.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbTlsMode": {
+      "description": "disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name.",
+      "type": "string",
+      "enum": ["disable", "prefer", "require", "verify-ca", "verify-full"]
+    },
+    "DbOpenResult": {
+      "description": "Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "pid": { "description": "The server process of the session.", "type": "integer" },
+        "auth": { "$ref": "#/$defs/DbAuth" },
+        "tls": { "$ref": "#/$defs/DbTlsInfo" },
+        "parameters": {
+          "description": "Every ParameterStatus the server sent (server_version, TimeZone, IntervalStyle, ...).",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "error": { "$ref": "#/$defs/DbServerError" },
+        "needsPassword": { "const": true },
+        "keyPassword": { "$ref": "#/$defs/DbKeyPassword" },
+        "ssh": { "$ref": "#/$defs/DbSshAnswer" }
+      },
+      "additionalProperties": false
+    },
+    "DbKeyPassword": {
+      "description": "tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected.",
+      "type": "string",
+      "enum": ["needed", "wrong"]
+    },
+    "DbAuth": {
+      "description": "How the session signed in.",
+      "type": "string",
+      "enum": ["scram-sha-256", "scram-sha-256-plus", "md5", "password", "none"]
+    },
+    "DbTlsInfo": {
+      "description": "The TLS the session runs over.",
+      "type": "object",
+      "properties": {
+        "version": { "description": "TLSv1.2 or TLSv1.3.", "type": "string" },
+        "cipher": { "type": "string" }
+      },
+      "required": ["version", "cipher"],
+      "additionalProperties": false
+    },
+    "DbSessionId": {
+      "description": "A session db.open opened, unique for the core's life.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "DbRunRequest": {
+      "description": "Run one statement on a session and answer its first page. An earlier result with pages left is closed first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.run" },
+        "params": { "$ref": "#/$defs/DbRunParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbRunParams": {
+      "description": "Parameters of db.run.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "params": {
+          "description": "$1, $2, ... as text, or null.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbValue" },
+          "maxItems": 65535
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        },
+        "pageRows": {
+          "description": "Rows a page holds: 1000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "pageBytes": {
+          "description": "Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger.",
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 16777216
+        }
+      },
+      "required": ["sessionId", "sql"],
+      "additionalProperties": false
+    },
+    "DbRunResult": {
+      "description": "Result of db.run: the statement's first page.",
+      "$ref": "#/$defs/DbPage"
+    },
+    "DbScriptRequest": {
+      "description": "Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.script" },
+        "params": { "$ref": "#/$defs/DbScriptParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbScriptParams": {
+      "description": "Parameters of db.script.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "statements": {
+          "description": "The statements, in the order they run.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbScriptStatement" },
+          "minItems": 1,
+          "maxItems": 10000
+        },
+        "goOn": {
+          "description": "Run on past a statement's error instead of stopping there.",
+          "type": "boolean"
+        },
+        "pageRows": {
+          "description": "Rows each statement's first page holds: 1000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "pageBytes": {
+          "description": "Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger.",
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 16777216
+        }
+      },
+      "required": ["sessionId", "statements"],
+      "additionalProperties": false
+    },
+    "DbScriptStatement": {
+      "description": "One statement of db.script and its parameters, as db.run takes them.",
+      "type": "object",
+      "properties": {
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "params": {
+          "description": "$1, $2, ... as text, or null.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbValue" },
+          "maxItems": 65535
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        }
+      },
+      "required": ["sql"],
+      "additionalProperties": false
+    },
+    "DbScriptResult": {
+      "description": "Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page).",
+      "type": "object",
+      "properties": {
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/DbPage" } },
+        "cancelled": {
+          "description": "A db.cancel came while the script ran: no statement after the last page started.",
+          "type": "boolean"
+        },
+        "failure": {
+          "description": "What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error).",
+          "$ref": "bridge.schema.json#/$defs/BridgeError"
+        }
+      },
+      "required": ["pages"],
+      "additionalProperties": false
+    },
+    "DbDescribeRequest": {
+      "description": "Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.describe" },
+        "params": { "$ref": "#/$defs/DbDescribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbDescribeParams": {
+      "description": "Parameters of db.describe.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "sql": {
+          "description": "One statement; two are the server's 42601.",
+          "type": "string",
+          "maxLength": 16777216
+        },
+        "paramTypes": {
+          "description": "The parameters' type OIDs; 0, or a missing one, is the server's inference.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+          "maxItems": 65535
+        }
+      },
+      "required": ["sessionId", "sql"],
+      "additionalProperties": false
+    },
+    "DbDescribeResult": {
+      "description": "Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it.",
+      "type": "object",
+      "properties": {
+        "paramTypes": {
+          "description": "The type OID of $1, $2, ..., as the server infers them; empty with an error.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+        },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/DbColumn" } },
+        "transaction": { "$ref": "#/$defs/DbTransaction" },
+        "error": { "$ref": "#/$defs/DbServerError" },
+        "notices": {
+          "description": "The notices the server sent while this call ran.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbServerError" },
+          "maxItems": 10000
+        }
+      },
+      "required": ["paramTypes"],
+      "additionalProperties": false
+    },
+    "DbFetchRequest": {
+      "description": "The next page of the session's open result, or close it without reading on.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.fetch" },
+        "params": { "$ref": "#/$defs/DbFetchParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbFetchParams": {
+      "description": "Parameters of db.fetch.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "pageRows": {
+          "description": "Rows a page holds: 1000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "pageBytes": {
+          "description": "Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger.",
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 16777216
+        },
+        "close": { "description": "End the result without reading on.", "type": "boolean" }
+      },
+      "required": ["sessionId"],
+      "additionalProperties": false
+    },
+    "DbFetchResult": {
+      "description": "Result of db.fetch: the next page, or an empty last one after close.",
+      "$ref": "#/$defs/DbPage"
+    },
+    "DbCopyRequest": {
+      "description": "Send data to the session's COPY ... FROM STDIN, or end it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.copy" },
+        "params": { "$ref": "#/$defs/DbCopyParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbCopyParams": {
+      "description": "Parameters of db.copy: data, done and fail may come together; done or fail ends the COPY.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "data": { "description": "Up to 1 MiB of the COPY's bytes.", "type": "string" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "done": { "description": "End the COPY (CopyDone).", "type": "boolean" },
+        "fail": {
+          "description": "Fail the COPY with this message (CopyFail).",
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": ["sessionId"],
+      "additionalProperties": false
+    },
+    "DbCopyResult": {
+      "description": "Result of db.copy: more while the COPY waits for data, the statement's last page once it ends.",
+      "$ref": "#/$defs/DbPage"
+    },
+    "DbCancelRequest": {
+      "description": "Ask the server to cancel the statement the session runs; nothing when none runs. The statement's own answer then carries 57014.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.cancel" },
+        "params": { "$ref": "#/$defs/DbCancelParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbCancelParams": {
+      "description": "Parameters of db.cancel.",
+      "type": "object",
+      "properties": { "sessionId": { "$ref": "#/$defs/DbSessionId" } },
+      "required": ["sessionId"],
+      "additionalProperties": false
+    },
+    "DbCancelResult": {
+      "description": "Result of db.cancel: the request was sent.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbCloseRequest": {
+      "description": "End a session. Closing one that already ended is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.close" },
+        "params": { "$ref": "#/$defs/DbCloseParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbCloseParams": {
+      "description": "Parameters of db.close.",
+      "type": "object",
+      "properties": { "sessionId": { "$ref": "#/$defs/DbSessionId" } },
+      "required": ["sessionId"],
+      "additionalProperties": false
+    },
+    "DbCloseResult": {
+      "description": "Result of db.close.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbListRequest": {
+      "description": "The caller's sessions, as a frame that slept finds them again.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.list" },
+        "params": { "$ref": "#/$defs/DbListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbListParams": {
+      "description": "Parameters of db.list.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbListResult": {
+      "description": "Result of db.list.",
+      "type": "object",
+      "properties": {
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/DbSessionInfo" } }
+      },
+      "required": ["sessions"],
+      "additionalProperties": false
+    },
+    "DbSessionInfo": {
+      "description": "One of the caller's sessions.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "host": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "database": { "type": "string" },
+        "user": { "type": "string" },
+        "pid": { "type": "integer" },
+        "running": { "description": "A statement runs.", "type": "boolean" },
+        "more": {
+          "description": "A result has pages left, or a COPY FROM STDIN waits for data.",
+          "type": "boolean"
+        },
+        "transaction": { "$ref": "#/$defs/DbTransaction" }
+      },
+      "required": [
+        "sessionId",
+        "host",
+        "port",
+        "database",
+        "user",
+        "pid",
+        "running",
+        "more",
+        "transaction"
+      ],
+      "additionalProperties": false
+    },
+    "DbPasswordName": {
+      "description": "A password the caller kept with db.passwords.set, by the name it chose (ADR 0311). db.open's passwordRef names it: the core reads the OS keychain itself, after the password file, and only for the host, port and user it was kept for; a name that is not kept, or was kept for another server or user, is as if none was given. Not with password.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "DbPasswordsSetRequest": {
+      "description": "Keep a password in the OS keychain under a name, for one host, port and user; it is never answered back.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.set" },
+        "params": { "$ref": "#/$defs/DbPasswordsSetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsSetParams": {
+      "description": "Parameters of db.passwords.set. A name already kept is replaced. A plugin's manifest must declare db:connect for the host and port; no grant is needed, since using it is db.open's.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" },
+        "host": {
+          "description": "The host db.open names, as net.connect takes it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": {
+          "description": "5432 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "password": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      },
+      "required": ["name", "host", "user", "password"],
+      "additionalProperties": false
+    },
+    "DbPasswordsSetResult": {
+      "description": "Result of db.passwords.set: kept.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteRequest": {
+      "description": "Forget a password the caller kept: its keychain entry goes. Forgetting one that is not kept is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.delete" },
+        "params": { "$ref": "#/$defs/DbPasswordsDeleteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteParams": {
+      "description": "Parameters of db.passwords.delete.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "DbPasswordsDeleteResult": {
+      "description": "Result of db.passwords.delete.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsListRequest": {
+      "description": "The passwords the caller kept: what each is kept for, never the password.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "db.passwords.list" },
+        "params": { "$ref": "#/$defs/DbPasswordsListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DbPasswordsListParams": {
+      "description": "Parameters of db.passwords.list.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DbPasswordsListResult": {
+      "description": "Result of db.passwords.list, by name.",
+      "type": "object",
+      "properties": {
+        "passwords": { "type": "array", "items": { "$ref": "#/$defs/DbKeptPassword" } }
+      },
+      "required": ["passwords"],
+      "additionalProperties": false
+    },
+    "DbKeptPassword": {
+      "description": "A password the caller kept: its name and the host, port and user it is for.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/DbPasswordName" },
+        "host": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "user": { "type": "string" }
+      },
+      "required": ["name", "host", "port", "user"],
+      "additionalProperties": false
+    },
+    "DbPage": {
+      "description": "One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error.",
+      "type": "object",
+      "properties": {
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/DbColumn" } },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/DbRow" } },
+        "more": {
+          "description": "Exact: db.fetch has another page, or the COPY FROM STDIN waits for data.",
+          "type": "boolean"
+        },
+        "tag": { "description": "The command tag, counting every page.", "type": "string" },
+        "rowCount": {
+          "description": "Rows over all pages, or the tag's count.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "transaction": { "$ref": "#/$defs/DbTransaction" },
+        "error": { "$ref": "#/$defs/DbServerError" },
+        "copy": { "$ref": "#/$defs/DbCopy" },
+        "data": { "description": "A COPY ... TO STDOUT's bytes.", "type": "string" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "notices": {
+          "description": "The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event (each also came as a db.call.notice while the call ran). At most 10,000 a page.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DbServerError" },
+          "maxItems": 10000
+        },
+        "noticesSkipped": {
+          "description": "Notices past the 10,000 a page keeps, counted and left out.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "call": {
+          "description": "The session's number for the call this page answers, counting from 1: a db.call.notice with this number or a lower one is already on a page.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["rows", "more"],
+      "additionalProperties": false
+    },
+    "DbRow": {
+      "description": "One row: each value the server's text, or null.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/DbValue" }
+    },
+    "DbValue": {
+      "description": "A value as the server prints it, or null for NULL.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "DbColumn": {
+      "description": "One column, as RowDescription describes it.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "typeOid": { "type": "integer", "minimum": 0 },
+        "typeModifier": { "type": "integer" },
+        "typeSize": { "type": "integer" },
+        "tableOid": {
+          "description": "The table it comes from; 0 for an expression.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "columnNumber": {
+          "description": "Its attribute number in that table; 0 for an expression.",
+          "type": "integer"
+        }
+      },
+      "required": ["name", "typeOid", "typeModifier", "typeSize", "tableOid", "columnNumber"],
+      "additionalProperties": false
+    },
+    "DbTransaction": {
+      "description": "The transaction state ReadyForQuery reports.",
+      "type": "string",
+      "enum": ["idle", "open", "failed"]
+    },
+    "DbCopy": {
+      "description": "A COPY's direction, format and number of columns.",
+      "type": "object",
+      "properties": {
+        "direction": { "$ref": "#/$defs/DbCopyDirection" },
+        "format": { "$ref": "#/$defs/DbCopyFormat" },
+        "columns": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["direction", "format", "columns"],
+      "additionalProperties": false
+    },
+    "DbCopyDirection": {
+      "description": "in: FROM STDIN. out: TO STDOUT.",
+      "type": "string",
+      "enum": ["in", "out"]
+    },
+    "DbCopyFormat": {
+      "description": "text (text and CSV) or binary.",
+      "type": "string",
+      "enum": ["text", "binary"]
+    },
+    "DbServerError": {
+      "description": "An error or a notice the server sent, every field by name; positions are numbers.",
+      "type": "object",
+      "properties": {
+        "severity": {
+          "description": "V, never localized (S on a server that sends no V).",
+          "type": "string"
+        },
+        "localSeverity": { "description": "S.", "type": "string" },
+        "code": { "description": "C, the SQLSTATE.", "type": "string" },
+        "message": { "description": "M.", "type": "string" },
+        "detail": { "type": "string" },
+        "hint": { "type": "string" },
+        "position": { "description": "P, from 1, in characters.", "type": "integer", "minimum": 1 },
+        "internalPosition": { "type": "integer", "minimum": 1 },
+        "internalQuery": { "type": "string" },
+        "where": { "type": "string" },
+        "schema": { "type": "string" },
+        "table": { "type": "string" },
+        "column": { "type": "string" },
+        "dataType": { "type": "string" },
+        "constraint": { "type": "string" },
+        "file": { "type": "string" },
+        "line": { "type": "string" },
+        "routine": { "type": "string" },
+        "other": {
+          "description": "Fields a later server adds, by their code.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "required": ["severity", "localSeverity", "code", "message"],
+      "additionalProperties": false
+    },
+    "DbNoticeEvent": {
+      "description": "A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "db.notice" },
+        "data": { "$ref": "#/$defs/DbNoticeData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DbNoticeData": {
+      "description": "Payload of db.notice.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "notice": { "$ref": "#/$defs/DbServerError" }
+      },
+      "required": ["sessionId", "notice"],
+      "additionalProperties": false
+    },
+    "DbCallNoticeEvent": {
+      "description": "A notice the server sent while a call runs, sent as it arrives, so a long statement's progress can be shown before its answer. The call's page carries it too, and the page is the record (ADR 0334, ADR 0358): an event whose call is already answered is late. At most the 10,000 a page keeps.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "db.call.notice" },
+        "data": { "$ref": "#/$defs/DbCallNoticeData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DbCallNoticeData": {
+      "description": "Payload of db.call.notice.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "call": {
+          "description": "The number of the call that heard it, as that call's pages say (DbPage.call).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "notice": { "$ref": "#/$defs/DbServerError" }
+      },
+      "required": ["sessionId", "call", "notice"],
+      "additionalProperties": false
+    },
+    "DbNotificationEvent": {
+      "description": "A NOTIFY on a channel the session listens to, also while it is idle.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "db.notification" },
+        "data": { "$ref": "#/$defs/DbNotificationData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DbNotificationData": {
+      "description": "Payload of db.notification.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "pid": { "description": "The server process that notified.", "type": "integer" },
+        "channel": { "type": "string" },
+        "payload": { "type": "string" }
+      },
+      "required": ["sessionId", "pid", "channel", "payload"],
+      "additionalProperties": false
+    },
+    "DbParameterEvent": {
+      "description": "A run parameter the server reported changed (ParameterStatus).",
+      "type": "object",
+      "properties": {
+        "event": { "const": "db.parameter" },
+        "data": { "$ref": "#/$defs/DbParameterData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DbParameterData": {
+      "description": "Payload of db.parameter.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["sessionId", "name", "value"],
+      "additionalProperties": false
+    },
+    "DbClosedEvent": {
+      "description": "A session ended: the session's last event.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "db.closed" },
+        "data": { "$ref": "#/$defs/DbClosedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DbClosedData": {
+      "description": "Payload of db.closed.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/DbSessionId" },
+        "reason": { "$ref": "#/$defs/DbClosedReason" },
+        "message": {
+          "description": "Why, when the network or the encoding ended it.",
+          "type": "string"
+        },
+        "error": { "$ref": "#/$defs/DbServerError" }
+      },
+      "required": ["sessionId", "reason"],
+      "additionalProperties": false
+    },
+    "DbClosedReason": {
+      "description": "closed: db.close. server: the server ended it, with its FATAL error when it sent one. io: the network failed. encoding: the server's client_encoding stopped being UTF8. unloaded: its plugin stopped. revoked: the grant that covers it went. desk: the desk let it go.",
+      "type": "string",
+      "enum": ["closed", "server", "io", "encoding", "unloaded", "revoked", "desk"]
+    }
+  }
+}

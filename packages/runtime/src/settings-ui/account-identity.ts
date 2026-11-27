@@ -1,7 +1,7 @@
 /**
  * The identity at the top of the settings sidebar (ADR 0130): who is signed in to endue — their
  * picture, name and email — or an invitation to sign in, and either way the way to Settings, endue
- * account. A desk without an endue ID keeps the plain "endue Desk · Settings for this device".
+ * account. A desk without an endue ID keeps the plain "endue · Settings for this device".
  */
 import type { AccountStatus, BridgeClient } from "@endue-ai/bridge";
 import { h, render } from "../shell/dom";
@@ -31,12 +31,7 @@ export function mountAccountIdentity(
       if (!status)
         return [
           h("span", { class: "settings-identity-icon" }, settingsIcon("general", 24)),
-          h(
-            "div",
-            {},
-            h("strong", {}, "endue Desk"),
-            h("small", {}, settingsText(language, "device")),
-          ),
+          h("div", {}, h("strong", {}, "endue"), h("small", {}, settingsText(language, "device"))),
         ];
       const profile = status.state === "signed-in" ? status.profile : undefined;
       const name = profile?.displayName ?? profile?.email ?? accountText(language, "title");

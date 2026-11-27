@@ -56,7 +56,7 @@ export function deskPatch(published: Published): Partial<DeskState> {
     adopted: desk.adopted,
     drawer: desk.drawer,
     focused: desk.focused,
-    pane: desk.pane,
+    tab: desk.tab,
   };
 }
 

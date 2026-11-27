@@ -9,6 +9,9 @@
       {
         "id": "desk.fleet.open",
         "title": "Fleet: open the agents' board",
+        "description": "Open the Fleet board with agents' runs and approvals.",
+        "args": { "type": "object" },
+        "agent": true,
         "keywords": ["agents", "runs", "approvals", "control center", "fleet"],
         "runs": {
           "command": "desk.universal.open",

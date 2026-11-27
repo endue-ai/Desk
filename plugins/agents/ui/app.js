@@ -44,6 +44,8 @@ import { endueFacets, endueInspector } from "./studio-endue.js";
  * @typedef {object} StudioShown
  * @property {Card} card
  * @property {import("./local-api.js").LocalAgent} [agent]
+ * @property {import("./local-api.js").LocalAgentSession[]} [sessions]
+ * @property {number} [sessionTotal]
  * @property {import("./studio.js").Facet[]} facets
  * @property {string} [facet]
  * @property {import("./studio.js").Inspector} [inspector]
@@ -215,6 +217,8 @@ export function createApp(ctx, view, deps) {
       card,
       agent,
       facets: localFacets(agent, seen),
+      sessions: seen.sessions,
+      sessionTotal: seen.total,
       facet,
       inspector: facet === "chat" ? undefined : localInspector(agent, facet, seen),
       chat: { ...chat, runnable: card.runnable },
@@ -239,7 +243,12 @@ export function createApp(ctx, view, deps) {
     draw();
   };
 
-  const { readLocal, readSessions, readEndue } = createReaders({ local, studio, sides, draw });
+  const { readLocal, readSessions, moreSessions, readEndue } = createReaders({
+    local,
+    studio,
+    sides,
+    draw,
+  });
 
   const offLocal = local.onEvent((event) => {
     if (event.kind === "changed") {
@@ -266,6 +275,11 @@ export function createApp(ctx, view, deps) {
     },
     /** Read the endue side again: after signing in, say. */
     refreshEndue: () => readEndue(),
+    /** Read the Studio inventory without fetching conversations or starting any agent. */
+    async listAgents() {
+      const agents = await studio.agents();
+      return { agents: agents.map(({ id, name, slug, status }) => ({ id, name, slug, status })) };
+    },
     get sides() {
       return sides;
     },
@@ -299,6 +313,8 @@ export function createApp(ctx, view, deps) {
     signIn: () => actions.signIn().then(() => readEndue()),
     flow,
     studioActions: actions,
+    moreSessions: (agent) => moreSessions(agent).catch((err) => actions.say(String(err))),
+    preview: (agent, id) => local.transcript(agent, id),
     chat: (/** @type {string} */ agent) => chatFor(agent),
     /** Open a board row: a local session in its agent's chat, an endue conversation on endue.ai. */
     async openRow(/** @type {import("./home.js").Row} */ row) {
@@ -329,7 +345,7 @@ export function createApp(ctx, view, deps) {
       if (what === "new-session") chat.fresh();
       if (what === "open" && values.id) {
         const running = sides.local.runs.find(
-          (r) => r.sessionId === values.id && r.state === "running",
+          (r) => r.agent === agent && r.sessionId === values.id && r.state === "running",
         );
         void chat.open(values.id, running);
       }

@@ -67,4 +67,37 @@ describe("the ticker", () => {
     }
     expect(frames).toBe(4);
   });
+
+  it("an animation of no time finishes within its first tick and leaves no tick behind", async () => {
+    const { clock, asked } = counting();
+    const ticker = new Ticker(clock);
+    const seen: number[] = [];
+    // Reduced motion asks for 0 ms: it rejected, its tick calling what `add` had not answered yet.
+    await ticker.animate(
+      0,
+      (t) => t,
+      (t) => seen.push(t),
+    );
+    expect(seen).toEqual([1]);
+    clock.advance(16);
+    const resting = asked();
+    clock.advance(16);
+    expect(seen, "its tick is gone").toEqual([1]);
+    expect(asked(), "and the loop sleeps").toBe(resting);
+  });
+
+  it("an animation runs to its end over its time, then resolves", async () => {
+    const clock = new ManualClock();
+    const ticker = new Ticker(clock);
+    const seen: number[] = [];
+    const done = ticker.animate(
+      100,
+      (t) => t,
+      (t) => seen.push(t),
+    );
+    clock.advance(50);
+    clock.advance(50);
+    await done;
+    expect(seen).toEqual([0, 0.5, 1]);
+  });
 });

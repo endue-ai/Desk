@@ -1,8 +1,14 @@
 // What a statement does, from its words: read, write, ddl, transaction or session, whether it returns
 // rows, whether it is dangerous (DROP, TRUNCATE, UPDATE or DELETE without WHERE), and what no client
-// may run here (psql meta-commands, sqlite3 dot-commands, COPY through standard input or output).
-// Unknown statements count as writes, so a read-only connection refuses them.
+// may run here (psql meta-commands, sqlite3 dot-commands, a COPY through standard input or output
+// but alone from a console, which the executor lets through: copy/plan.js, PG-23). COPY ... TO STDOUT
+// reads unless its query writes, and COPY ... FROM STDIN writes.
+// Unknown statements count as writes, so a read-only connection refuses them, and so does a
+// PostgreSQL statement that signals a server session (pg_cancel_backend, pg_terminate_backend:
+// ADR 0328), which changes the server whatever its verb.
 
+import { copyOf, copyWrites } from "../copy/statement.js";
+import { t as messageText } from "../strings/index.js";
 import { wordsOf } from "./lexer.js";
 
 /**
@@ -66,6 +72,8 @@ const SESSION = new Set([
   "LOAD",
 ]);
 const MAIN_VERBS = new Set(["SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "VALUES", "TABLE"]);
+/** PostgreSQL's functions that cancel or end another session. */
+const SIGNALS = new Set(["PG_CANCEL_BACKEND", "PG_TERMINATE_BACKEND"]);
 const READ_ONLY_NAMES =
   /\b(?:transaction_read_only|default_transaction_read_only|read_only|tx_read_only)\b/iu;
 
@@ -77,7 +85,7 @@ const READ_ONLY_NAMES =
 export function classify(statement, dialect) {
   const significant = statement.tokens.filter((t) => t.type !== "space" && t.type !== "comment");
   const first = significant[0];
-  const refused = refusal(first?.text ?? "", statement, dialect);
+  const refused = refusal(statement, dialect);
   const words = wordsOf(statement.tokens);
   const top = wordsOf(statement.tokens, true);
   let verb = words[0] ?? (first?.text === "(" ? "SELECT" : "");
@@ -90,12 +98,16 @@ export function classify(statement, dialect) {
     verb = nested ?? top.find((w) => MAIN_VERBS.has(w)) ?? "SELECT";
     rest = nested ? words.slice(words.indexOf(nested)) : top.slice(top.indexOf(verb));
   }
-  if (verb === "EXPLAIN") return explained(words, top, dialect, refused);
+  const signals = dialect === "postgresql" && words.some((w) => SIGNALS.has(w));
+  if (verb === "EXPLAIN") return explained(words, top, dialect, refused, signals);
   // PRAGMA name = value sets something; PRAGMA name or name(arg) reads.
   const assigns = statement.tokens.some((t) => t.type === "op" && t.text === "=");
-  const kind = verb === "PRAGMA" ? (assigns ? "session" : "read") : kindOf(verb, rest, dialect);
+  const plain = verb === "PRAGMA" ? (assigns ? "session" : "read") : kindOf(verb, rest, dialect);
+  // COPY ... TO STDOUT reads, unless its query writes.
+  const out = dialect === "postgresql" && copyOf(statement) === "out" && !copyWrites(statement);
+  const kind = out ? "read" : plain;
   return {
-    kind,
+    kind: signals && kind === "read" ? "write" : kind,
     verb,
     rows: returnsRows(verb, rest, words, dialect),
     dangerous: danger(verb, rest, words),
@@ -104,18 +116,20 @@ export function classify(statement, dialect) {
   };
 }
 
-/** EXPLAIN reads, unless ANALYZE runs the statement it explains. */
+/** EXPLAIN reads, unless ANALYZE runs the statement it explains (a signal in it writes). */
 function explained(
   /** @type {string[]} */ words,
   /** @type {string[]} */ top,
   /** @type {Dialect} */ dialect,
   /** @type {string} */ refused,
+  /** @type {boolean} */ signals,
 ) {
   const at = words.findIndex((w, i) => i > 0 && (MAIN_VERBS.has(w) || WRITE.has(w)));
   const inner = words[at];
   const analyze = words.slice(1, at).some((w) => w === "ANALYZE" || w === "ANALYSE");
   const rest = inner ? top.slice(Math.max(0, top.indexOf(inner))) : top;
-  const kind = analyze && inner ? kindOf(inner, rest, dialect) : "read";
+  const ran = analyze && inner ? kindOf(inner, rest, dialect) : "read";
+  const kind = analyze && signals && ran === "read" ? "write" : ran;
   return { kind, verb: "EXPLAIN", rows: true, dangerous: "", refused, opensWrite: false };
 }
 
@@ -155,9 +169,9 @@ function danger(
   /** @type {string[]} */ words,
 ) {
   if (verb === "DROP") return `DROP ${top[1] ?? ""} removes it for good.`.replace("  ", " ");
-  if (verb === "TRUNCATE") return "TRUNCATE removes every row.";
+  if (verb === "TRUNCATE") return messageText("sql.classify.truncateRemovesEveryRow");
   if ((verb === "DELETE" || verb === "UPDATE") && !top.includes("WHERE"))
-    return `${verb} without WHERE changes every row.`;
+    return messageText("sql.classify.withoutWhereChangesEveryRow", { verb: String(verb) });
   if (verb === "ALTER" && words.includes("DROP"))
     return "ALTER ... DROP removes part of it for good.";
   return "";
@@ -175,22 +189,15 @@ function opensWrite(
 }
 
 /** What a client would do with this statement that it must not do here, or "". */
-function refusal(
-  /** @type {string} */ first,
-  /** @type {Statement} */ statement,
-  /** @type {Dialect} */ dialect,
-) {
+function refusal(/** @type {Statement} */ statement, /** @type {Dialect} */ dialect) {
   if (dialect === "postgresql" && statement.text.startsWith("\\"))
-    return "psql meta-commands (\\...) do not run here; use the terminal.";
+    return messageText("sql.classify.psqlMetaCommandsDoNotRun");
   if (dialect === "sqlite" && statement.text.startsWith("."))
-    return "sqlite3 dot-commands (.tables, .import ...) do not run here; use the terminal.";
-  if (dialect === "postgresql" && first.toUpperCase() === "COPY") {
-    const top = wordsOf(statement.tokens, true);
-    if (top.includes("STDIN") || top.includes("STDOUT"))
-      return "COPY through standard input or output needs psql's terminal; use the terminal.";
-  }
+    return messageText("sql.classify.sqlite3DotCommandsTablesImportDo");
+  if (dialect === "postgresql" && copyOf(statement))
+    return messageText("sql.classify.aCopyThroughStandardInputOr");
   if (dialect === "mysql" && statement.text.startsWith("\\"))
-    return "mysql client commands (\\...) do not run here; use the terminal.";
+    return messageText("sql.classify.mysqlClientCommandsDoNotRun");
   return "";
 }
 

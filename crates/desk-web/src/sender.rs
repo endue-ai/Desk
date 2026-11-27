@@ -1,11 +1,9 @@
 //! Who a frame is: the shell's runtime on `desk-app://app/`, one plugin on its surface host of
-//! `desk-plugin` (#36), the palette or the island, or nobody the desk knows. The CEF shell takes a
-//! bridge call's caller from this, never from the call (#43). The palette's and the island's pages
-//! load from the same `desk-app://app/` as the runtime, so
-//! their identity comes from the window the browser process made the frame's browser for
-//! ([`Role`]), which no page can claim (#45); the URL only says whether the frame is the desk's own
-//! page there. Those are the desk's system surfaces ([`System`], #55, ADR 0160), and the parts of
-//! the desk's page that the compositor places in its system layer have stable ids too ([`PARTS`]).
+//! `desk-plugin` (#36), the palette, or nobody the desk knows. The CEF shell takes a
+//! bridge call's caller from this, never from the call (#43). The palette's page loads from the
+//! same `desk-app://app/` as the runtime. The browser process sets the window's identity ([`Role`],
+//! #45), and the URL identifies the desk's own page within it. Those are the desk's system surfaces
+//! ([`System`], #55, ADR 0160). The compositor's system parts have stable ids too ([`PARTS`]).
 
 use crate::plugin_scheme::hosts::Host;
 
@@ -34,6 +32,8 @@ const MAIN_COMMANDS: &[&str] = &[
     // The answer to a quit the person asked for: asking about unsaved changes, quit or stay (#163).
     "desk_quit",
     "desk_login", // what desk.login.start is: the shell registers the desk to match (#237)
+    // A notice for the OS's notifications while endue is out of sight (#306).
+    "desk_notice_post",
     // Compositor mode (#52, #81): the desk the runtime keeps; captures and counts for checks in
     // development builds. Input (#56): the keymap's entries and the page's focus; events fed to the
     // window's input and where input goes, for checks in development builds.
@@ -50,6 +50,10 @@ const MAIN_COMMANDS: &[&str] = &[
     "compositor_wm",
     "compositor_edit",
     "compositor_snapshot",
+    // The desk's window commands on a window out of the canvas move its OS window (ADR 0294).
+    "app_window",
+    // A desk.edit.* command: the Edit menu's command where the keys are (ADR 0296).
+    "compositor_edit_command",
     // Accessibility (#57): the tree the platform adapter has, and a screen reader's request, for
     // checks in development builds.
     "compositor_a11y",
@@ -65,39 +69,15 @@ const PALETTE_COMMANDS: &[&str] = &[
     "palette_prepare_main",
     "palette_present",
 ];
-const ISLAND_COMMANDS: &[&str] = &[
-    "island_open",
-    "island_fit",
-    "island_drag",
-    "island_reveal_main",
-    "island_quit",
-    "island_state",
-];
-/// What the island may ask the core as the desk (ADR 0204): the agents and what they do, the runs of
-/// the agent programs on this computer, what waits for the person and the answers to it, the
-/// plugins' names for the callers that ask, and talking to Eris in the desk's one conversation.
-/// Notices add theirs as they land.
-const ISLAND_METHODS: &[&str] = &[
-    "agent.list",
-    "agents.runs",
-    "perm.pending",
-    "perm.answer",
-    "perm.approve",
-    "plugin.list",
-    "brain.say",
-];
-
 /// Which of the shell's windows a browser is, set by the browser process when it makes the browser.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Role {
     /// The desk itself: the runtime and its plugin frames.
     Main,
-    /// Search Desk over every app (`?view=palette`).
+    /// Search endue over every app (`?view=palette`).
     Palette,
     /// The computer-use banner (ADR 0120): a plugin page without the bridge.
     Banner,
-    /// The island over every app (`?view=island`, ADR 0204).
-    Island,
 }
 
 /// The origin a frame belongs to, as the bridge sees it.
@@ -107,8 +87,6 @@ pub enum Sender {
     Runtime,
     /// The palette window's page: it calls as `palette`.
     Palette,
-    /// The island's page: it calls as the desk, for what it shows only.
-    Island,
     /// A plugin's frame: it calls as itself, whatever it claims.
     Plugin(String),
     /// Anything else: no bridge.
@@ -136,38 +114,25 @@ impl Sender {
         }
     }
 
-    /// The sender of a frame at `url` in a browser of `role`: the desk's own page in the palette or
-    /// the island is that window, never the runtime; plugin frames are themselves anywhere.
+    /// The sender of a frame at `url` in a browser of `role`: the desk's own page in the palette
+    /// is that window, never the runtime; plugin frames are themselves anywhere.
     pub fn in_role(role: Role, url: &str) -> Self {
         match (role, Self::of(url)) {
             (Role::Main, sender) => sender,
             (Role::Palette, Self::Runtime) => Self::Palette,
-            (Role::Island, Self::Runtime) => Self::Island,
             (Role::Banner, Self::Runtime) => Self::Unknown,
             (_, sender) => sender,
         }
     }
 
     /// The caller a bridge call from this sender runs as, `named` being the caller the call names:
-    /// the runtime may call for a plugin it hosts; the palette, the island (as the desk) and a plugin
-    /// are always themselves; others are refused.
+    /// the runtime may call for a plugin it hosts. The palette and plugins use their own identities.
     pub fn caller(&self, named: Option<&str>) -> Option<String> {
         match self {
             Self::Runtime => Some(named.unwrap_or(RUNTIME).to_owned()),
             Self::Palette => Some(PALETTE.to_owned()),
-            Self::Island => Some(RUNTIME.to_owned()),
             Self::Plugin(id) => Some(id.clone()),
             Self::Unknown => None,
-        }
-    }
-
-    /// Whether this sender may ask the core for `method`: the island only asks for what it shows.
-    pub fn may_ask(&self, method: &str) -> Result<(), String> {
-        match self {
-            Self::Island if !ISLAND_METHODS.contains(&method) => Err(format!(
-                "the island asks only for what it shows, not {method}"
-            )),
-            _ => Ok(()),
         }
     }
 
@@ -176,7 +141,6 @@ impl Sender {
         let allowed = match self {
             Self::Runtime => MAIN_COMMANDS,
             Self::Palette => PALETTE_COMMANDS,
-            Self::Island => ISLAND_COMMANDS,
             Self::Plugin(_) | Self::Unknown => &[],
         };
         allowed.contains(&cmd)
@@ -225,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn the_palette_and_the_island_are_their_window_never_their_url() {
+    fn the_palette_is_its_window_never_its_url() {
         // The main window's page is the runtime whatever view its URL asks for.
         let url = "desk-app://app/index.html?view=palette";
         assert_eq!(Sender::in_role(Role::Main, url), Sender::Runtime);
@@ -239,7 +203,7 @@ mod tests {
         assert_eq!(eris, Sender::Runtime);
         // A plugin frame is itself in any window; other pages get nothing anywhere.
         let frame = "desk-plugin://main.endue-notes/endue.notes/ui/index.html";
-        for role in [Role::Main, Role::Palette, Role::Banner, Role::Island] {
+        for role in [Role::Main, Role::Palette, Role::Banner] {
             assert_eq!(
                 Sender::in_role(role, frame),
                 Sender::Plugin("endue.notes".to_owned()),
@@ -298,6 +262,8 @@ mod tests {
             "compositor_input_state",
             "compositor_grab",
             "compositor_wm",
+            "app_window",
+            "compositor_edit_command",
             "compositor_a11y",
             "compositor_clock",
             "compositor_window",
@@ -326,75 +292,13 @@ mod tests {
         // The floating Eris's commands went with her window (ADR 0204).
         for cmd in ["state", "dismiss", "expand", "drag", "reveal_main"] {
             let gone = format!("plugin:eris-window|{cmd}");
-            for sender in [Sender::Runtime, Sender::Palette, Sender::Island] {
+            for sender in [Sender::Runtime, Sender::Palette] {
                 assert!(!sender.may(&gone), "{gone}");
             }
         }
         for sender in [Sender::Plugin("endue.notes".to_owned()), Sender::Unknown] {
             assert!(!sender.may("desk_ready"));
             assert!(!sender.may("palette_hide"));
-        }
-    }
-
-    #[test]
-    fn the_island_is_its_window_and_asks_only_for_what_it_shows() {
-        let island = Sender::in_role(Role::Island, "desk-app://app/index.html?view=island");
-        assert_eq!(island, Sender::Island);
-        assert_eq!(island.caller(Some("endue.notes")).as_deref(), Some("desk"));
-        assert_eq!(island.caller(None).as_deref(), Some("desk"));
-        for method in [
-            "agent.list",
-            "agents.runs",
-            "perm.pending",
-            "perm.answer",
-            "perm.approve",
-            "plugin.list",
-            "brain.say",
-        ] {
-            assert!(island.may_ask(method).is_ok(), "{method}");
-        }
-        for method in [
-            "perm.grant",
-            "perm.revoke",
-            "fs.read",
-            "settings.set",
-            "cmd.invoke",
-            "brain.ask",
-        ] {
-            let refused = island.may_ask(method).unwrap_err();
-            assert!(refused.contains(method), "{refused}");
-        }
-        for cmd in [
-            "island_open",
-            "island_fit",
-            "island_drag",
-            "island_reveal_main",
-            "island_quit",
-            "island_state",
-        ] {
-            assert!(island.may(cmd), "{cmd}");
-            assert!(!Sender::Runtime.may(cmd), "{cmd}");
-            assert!(!Sender::Palette.may(cmd), "{cmd}");
-            assert!(!Sender::Plugin("endue.notes".into()).may(cmd), "{cmd}");
-        }
-        for cmd in [
-            "desk_ready",
-            "palette_hide",
-            "plugin:eris-window|drag",
-            "desk_quit",
-        ] {
-            assert!(!island.may(cmd), "{cmd}");
-        }
-    }
-
-    #[test]
-    fn everyone_but_the_island_is_checked_by_the_cores_permissions_alone() {
-        for sender in [
-            Sender::Runtime,
-            Sender::Palette,
-            Sender::Plugin("x.y".into()),
-        ] {
-            assert!(sender.may_ask("fs.read").is_ok());
         }
     }
 }

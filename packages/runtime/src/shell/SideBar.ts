@@ -261,7 +261,11 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
                 class: "popover agents-popover",
                 role: "dialog",
                 "aria-label": groups.moreLabel,
-                style: { top: `${el.offsetTop - el.offsetHeight / 2}px` },
+                // Level with the bar's top as drawn: a transform centres it, or holds it under
+                // the shortcut bar (system.css), which offsetTop leaves out.
+                style: {
+                  top: `${Math.round(el.getBoundingClientRect().top - root.getBoundingClientRect().top)}px`,
+                },
               },
               groups.more,
             ),

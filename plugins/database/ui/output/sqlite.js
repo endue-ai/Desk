@@ -4,6 +4,7 @@
 
 import { endedBy, failedRun, linesOf, notRun, resultSet } from "../engines/common.js";
 import { markOf } from "../engines/text.js";
+import { t } from "../strings/index.js";
 import { readQuoted } from "./readers.js";
 
 /**
@@ -87,7 +88,9 @@ export function readSqlite(outcome, invocation, timeoutMs) {
 export function sqliteError(stderr, text = "") {
   const lines = linesOf(stderr);
   const head =
-    lines.find((line) => /error/iu.test(line)) ?? lines[0] ?? "sqlite3 ended without saying why.";
+    lines.find((line) => /error/iu.test(line)) ??
+    lines[0] ??
+    t("output.sqlite.sqlite3EndedWithoutSayingWhy");
   const message = head
     .replace(/^(?:Error|Runtime error|Parse error)(?: near line \d+)?: /u, "")
     .replace(/^(?:in prepare|stepping), /u, "");

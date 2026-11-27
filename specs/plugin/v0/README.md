@@ -1,4 +1,4 @@
-# Desk plugin v0
+# endue plugin v0
 
 `plugin.schema.json` is the `plugin.json` manifest every plugin folder carries, built-in and community
 plugins alike. `permission.schema.json` is the permission vocabulary: plugin manifests declare these
@@ -15,7 +15,7 @@ block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index
 | `version` | Semantic version |
 | `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only), `theme` (a theme's values and files), `native` (a program per OS in a process of its own) |
 | `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library`, `view` and `theme` plugins have none |
-| `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none |
+| `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none. The core asks for, grants and allows nothing they do not cover (ADR 0260): a `*` host or program, or a `/**` path, covers any the person names at run time, and an install grants no declaration holding one |
 | `surfaces` | Surfaces a UI or native plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none. A file opener's first surface with `instances: "per-file"` opens a window of its own for each file (ADR 0212), and an app's with `instances: "many"` a further window each time `desk.plugins.open` runs with `another: true`; `--` in a surface id is reserved for those windows' hosts. The first surface's `window` says how its window opens on the canvas and in an OS window alike (ADR 0226): `size` and `minSize` (the plugin's page, `width` and `height` in CSS pixels, 240 × 160 to 4096), `resizable`, and `opens` (`canvas` or `out`); hints, which a saved place and the person's arranging override |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy`, refused for `library` |
 | `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false`; refused for `library` |
@@ -93,7 +93,7 @@ first one is `market/themes/index.json` in this repository, where publishing is 
 
 Every enabled plugin may contribute; a `policy` plugin does nothing else. The runtime layers them in this
 order, each layer over the one before: the built-in `desk.*` policy plugins, the other plugins in
-`plugin.list` order, `init.yaml` settings, the active profile, then changes made while Desk runs.
+`plugin.list` order, `init.yaml` settings, the active profile, then changes made while endue runs.
 
 | Section | Like (Emacs) | A later layer |
 | --- | --- | --- |
@@ -128,6 +128,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `proc:spawn` | `commands`, `pty` | `proc.spawn`, `proc.write`, `proc.resize`, `proc.kill` |
 | `net:fetch` | `hosts` | `net.fetch` |
 | `net:connect` | `hosts` | `net.connect`, `net.send`, `net.close` and their `net.data` and `net.closed` events; a host with a port covers that port only, one without every port |
+| `db:connect` | `hosts` | `db.open` to those hosts, and `db.run`, `db.script`, `db.describe`, `db.fetch`, `db.copy`, `db.cancel`, `db.close`, `db.list` and the `db.*` events on the caller's own sessions; a host with a port covers that port only, one without every port. Declared for a host and port, it lets a plugin keep a password for them with `db.passwords.set`, which `db.open` uses by `passwordRef` under the grant (ADR 0311). `net:connect` does not cover `db.*`, nor `db:connect` a socket; agents are refused (ADR 0281) |
 | `audio:capture` | `wakeWord` | `audio.capture.start`, `audio.capture.stop`, `audio.wake` events |
 | `ui:surface` | none | `ui.surface.open`, `ui.surface.close`, `ui.surface.snapshot` (its own surfaces) |
 | `ui:notify` | none | `ui.notify` |
@@ -147,6 +148,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `computer:see` | `apps` (optional) | Screenshots, displays, windows, running apps, accessibility trees and the OS permissions through `computer.*` (ADR 0123); `apps` limits it to those bundle ids' windows and trees |
 | `computer:control` | `apps` (optional) | Mouse and keyboard input, accessibility actions, launching, activating and quitting apps and the stop through `computer.*`; `apps` limits it to input to those apps. An agent's every act waits for approval (ADR 0078) |
 | `web:browse` | `hosts` (optional) | `web.open`, `web.place`, `web.load`, `web.go`, `web.focus`, `web.close` and `web.changed` events for the caller's own web views (ADR 0216); `hosts` limits a view's own page to those hosts, absent covers every http and https site |
+| `web:control` | `hosts` (optional) | `web.read` and `web.act` on the caller's own web views (ADR 0272): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it; `hosts` limits it to pages on those hosts, absent covers every page its views show |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. `shell:open` schemes are the three the core ever opens: a scope narrows them,

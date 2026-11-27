@@ -1,6 +1,6 @@
 {
   "target": "NotificationPreferencesEnvelope",
-  "description": "every kind's channels in notification-service's envelope, kinds Desk does not show among them",
+  "description": "every kind's channels in notification-service's envelope, kinds endue does not show among them",
   "instance": {
     "data": {
       "conversation_reply": { "in_app": true, "email": false, "push": false },

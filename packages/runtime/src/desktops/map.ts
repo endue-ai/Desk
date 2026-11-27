@@ -9,7 +9,7 @@ import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import { icon } from "../shell/icons";
 import type { DeskState } from "../shell/state";
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import { resolveView, viewOf } from "../surface/views";
 import { rectIn } from "../wm/view";
 
@@ -17,12 +17,12 @@ const percent = (n: number) => `${Math.round(n * 10000) / 100}%`;
 
 /** What a window is called in a map: what its title bar names. */
 export function windowTitle(ctx: ShellCtx, s: DeskState, p: SurfacePlacement): string {
-  const first = leaves(panesOf(p))[0];
+  const first = tabsOf(p)[0];
   return first ? viewOf(ctx, resolveView(s, p, first.view)).title : p.id;
 }
 
 function windowIcon(ctx: ShellCtx, s: DeskState, p: SurfacePlacement): string {
-  const first = leaves(panesOf(p))[0];
+  const first = tabsOf(p)[0];
   return first ? viewOf(ctx, resolveView(s, p, first.view)).icon : "box";
 }
 

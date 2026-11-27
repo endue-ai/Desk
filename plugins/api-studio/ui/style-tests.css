@@ -1,0 +1,216 @@
+/* Scripts, checks and their results: the two script editors, the Assert table, the Tests tab's
+   summary and rows, and the Console. */
+
+.as-scripts {
+  gap: 16px;
+}
+.as-script {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.as-script-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.as-script-head strong {
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+.as-snip-btn.desk-btn {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: var(--desk-text-xs);
+}
+.as-script .ce {
+  min-height: 180px;
+}
+
+/* ── the Assert table ───────────────────────────────────────────────── */
+.as-asserts {
+  overflow: hidden;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+}
+.as-assert {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1.2fr) minmax(130px, 0.8fr) minmax(0, 1fr) 30px 34px;
+  align-items: center;
+  min-height: 38px;
+  border-bottom: 1px solid var(--as-line-soft);
+}
+.as-assert:last-child {
+  border-bottom: 0;
+}
+.as-assert > .desk-check {
+  margin: auto;
+}
+.as-assert-head {
+  min-height: 30px;
+  background: var(--as-soft);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.as-assert-head span {
+  padding: 0 10px;
+}
+.as-assert.is-off > *:not(.desk-check) {
+  opacity: 0.45;
+}
+.as-assert-target.desk-field,
+.as-assert-op.desk-field {
+  min-height: 30px;
+  margin: 0 4px;
+  border-color: transparent;
+  background: transparent;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+}
+.as-assert-op.desk-field {
+  font-family: var(--desk-font-sans);
+}
+.as-assert-target.desk-field:focus-visible,
+.as-assert-op.desk-field:focus-visible {
+  border-color: var(--desk-field-focus-border);
+  outline: none;
+}
+.as-assert-value .vf-input.desk-field,
+.as-assert-value .vf-hl {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+}
+.as-assert-none {
+  padding: 0 12px;
+}
+.as-verdict {
+  display: grid;
+  place-items: center;
+}
+.as-verdict.is-ok {
+  color: var(--desk-success);
+}
+.as-verdict.is-bad {
+  color: var(--desk-danger);
+}
+.as-assert:hover .kv-remove.desk-icon-btn {
+  opacity: 1;
+}
+.as-assert-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.as-assert-add .desk-btn {
+  min-height: 28px;
+  font-size: var(--desk-text-xs);
+}
+
+/* ── the Tests tab ──────────────────────────────────────────────────── */
+.as-tests {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+}
+.as-tests-sum {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border-radius: var(--desk-radius-md);
+}
+.as-tests-sum.is-ok {
+  background: color-mix(in srgb, var(--desk-success) 12%, transparent);
+  color: var(--desk-success);
+}
+.as-tests-sum.is-bad {
+  background: color-mix(in srgb, var(--desk-danger) 12%, transparent);
+  color: var(--desk-danger);
+}
+.as-tests-sum strong {
+  color: var(--desk-text);
+}
+.as-tests-h {
+  margin: 10px 0 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.as-result {
+  display: grid;
+  grid-template-columns: 22px minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--desk-radius-sm);
+  font-size: var(--desk-text-xs);
+}
+.as-result:hover {
+  background: var(--desk-hover);
+}
+.as-result-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+.as-result.is-ok .as-result-icon {
+  background: color-mix(in srgb, var(--desk-success) 18%, transparent);
+  color: var(--desk-success);
+}
+.as-result.is-bad .as-result-icon {
+  background: color-mix(in srgb, var(--desk-danger) 18%, transparent);
+  color: var(--desk-danger);
+}
+.as-result-detail {
+  color: var(--desk-danger);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+}
+.as-result-from {
+  color: var(--as-faint);
+  font-size: var(--desk-text-2xs);
+}
+
+/* ── the Console ────────────────────────────────────────────────────── */
+.as-console {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+}
+.as-console-line {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--as-line-soft);
+}
+.as-console-from {
+  overflow: hidden;
+  color: var(--as-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-console-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.as-console-line.lv-warn .as-console-text {
+  color: var(--desk-warning);
+}
+.as-console-line.lv-error .as-console-text {
+  color: var(--desk-danger);
+}

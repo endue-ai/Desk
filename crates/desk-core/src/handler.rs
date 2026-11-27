@@ -24,6 +24,7 @@ use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
 use crate::core_connectors::Connectors;
 use crate::core_data::DataSubscriptions;
+use crate::core_db::Databases;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_fs_url::FileUrls;
@@ -102,6 +103,12 @@ pub struct Core {
     /// The microphones and the captures callers started (ADR 0245).
     pub(crate) audio: crate::core_audio::Audio,
     pub(crate) sockets: Arc<Mutex<Sockets>>,
+    /// The database sessions callers opened (ADR 0281).
+    pub(crate) databases: Arc<Mutex<Databases>>,
+    /// The passwords callers keep in the OS keychain for db.open (ADR 0311).
+    pub(crate) db_passwords: Mutex<crate::db_passwords::DbPasswords>,
+    /// The SSH host keys callers trust for db.open's tunnels (ADR 0359).
+    pub(crate) db_ssh_hosts: Mutex<crate::db_ssh_hosts::DbSshHosts>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
@@ -167,6 +174,9 @@ impl Core {
             processes: Arc::new(Mutex::new(Processes::default())),
             audio: Default::default(),
             sockets: Arc::new(Mutex::new(Sockets::default())),
+            databases: Arc::new(Mutex::new(Databases::default())),
+            db_passwords: Mutex::default(),
+            db_ssh_hosts: Mutex::default(),
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),

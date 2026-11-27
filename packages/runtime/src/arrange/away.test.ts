@@ -1,7 +1,8 @@
 // desk.windows.put-away (issue 280) on the bridge stub's core over desk-wm as WebAssembly: the
 // window in use, or the one named, goes into the drawer under the title its title bar shows and
 // comes back from there; a window that is not on the desktop in front is refused with the desk's
-// words. The title bar draws no tool for it (`surface/Surface.ts`): this command is the way.
+// words. The title bar draws no tool for it (`surface/title-bar.ts`): this command, which the window
+// menu's Put in drawer runs, is the way.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BridgeClient, browserStub, stubCommands } from "@endue-ai/bridge";
@@ -84,7 +85,7 @@ describe("desk.windows.put-away", () => {
     expect(away(store)).toEqual([]);
   });
 
-  it("puts a named window away with its panes, under the title of its first pane", async () => {
+  it("puts a named window away with its tabs, under the title of its first tab", async () => {
     const { commands, store } = await desk();
     expect(await commands.run(PUT_AWAY, { window: "window-1" })).toEqual({
       window: "window-1",
@@ -92,7 +93,8 @@ describe("desk.windows.put-away", () => {
     });
     expect(here(store)).toEqual(["endue.mail"]);
     const [item] = store.get().drawer;
-    expect(item?.placement?.panes).toMatchObject({ kind: "split" });
+    // Saved split inside, before tabs: its panes are its tabs.
+    expect(item?.placement?.tabs?.map((t) => t.view)).toEqual(["notes", "calendar"]);
   });
 
   it("refuses a window that is not on the desktop in front, and has nothing to put away on an empty one", async () => {
@@ -112,10 +114,10 @@ describe("desk.windows.put-away", () => {
   });
 
   it("is the way: a window's title bar draws no tool that puts it away", () => {
-    const surface = readFileSync(join(import.meta.dirname, "../surface/Surface.ts"), "utf8");
-    const tools = surface.slice(surface.indexOf('class: "surface-tools"'));
-    expect(tools.slice(0, tools.indexOf('h("div", { class: "surface-body" })'))).not.toMatch(
-      /stash|"drawer"/,
-    );
+    // Its three tools (#298): Put in drawer is a row of the window menu, which runs this command.
+    const bar = readFileSync(join(import.meta.dirname, "../surface/title-bar.ts"), "utf8");
+    const tools = bar.slice(bar.indexOf('class: "surface-tools"'));
+    expect(tools).toContain("surface-tools");
+    expect(tools).not.toMatch(/stash|"drawer"|PUT_AWAY|put-away/);
   });
 });

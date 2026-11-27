@@ -7,7 +7,7 @@
     "opacity": "1",
     "transform": "none",
     "filter": "none",
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
   },
   "children": [
     {
@@ -20,7 +20,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -32,7 +32,7 @@
             "opacity": "0.5",
             "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -47,7 +47,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
       }
     },
     {
@@ -59,7 +59,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -72,7 +72,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -84,7 +84,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Skip intro"
         }
@@ -101,7 +101,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -112,7 +112,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Hello."
         },
@@ -124,7 +124,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "I'm E. R. I. S."
         },
@@ -136,7 +136,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Endue's Ridiculously Impressive Secretary."
         },
@@ -148,7 +148,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Small, I know."
         },
@@ -160,7 +160,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "But I'll take care of your whole desk."
         },
@@ -172,7 +172,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "I'd rather talk than type."
         },
@@ -184,7 +184,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "May I use your microphone?"
         },
@@ -196,7 +196,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Thanks. I'm listening."
         },
@@ -208,7 +208,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "What should I call you?"
         },
@@ -220,7 +220,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Nice to meet you, Ada."
         },
@@ -232,7 +232,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Let's make this desk yours, Ada."
         },
@@ -244,7 +244,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Sign in, and I'll remember you on every desk."
         }
@@ -259,7 +259,7 @@
         "opacity": "1",
         "transform": "matrix(0.8, 0, 0, 0.8, 0, -26)",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -272,7 +272,7 @@
             "opacity": "1",
             "transform": "matrix(1, 0, 0, 1, 0, 0)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -284,9 +284,21 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, -4.323)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
+                {
+                  "tag": "img",
+                  "class": "body",
+                  "style": {
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
+                    "filter": "blur(0px)",
+                    "color": "rgb(243, 241, 236)"
+                  }
+                },
                 {
                   "tag": "div",
                   "class": "core-wrap",
@@ -296,7 +308,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, 0)",
                     "filter": "brightness(1)",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -308,22 +320,10 @@
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
                         "filter": "brightness(1.185)",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       }
                     }
                   ]
-                },
-                {
-                  "tag": "img",
-                  "class": "body",
-                  "style": {
-                    "display": "block",
-                    "visibility": "visible",
-                    "opacity": "1",
-                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
-                    "filter": "blur(0px)",
-                    "color": "rgb(242, 240, 245)"
-                  }
                 }
               ]
             },
@@ -336,7 +336,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -348,7 +348,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, -0.03)",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -362,19 +362,19 @@
                 "opacity": "0",
                 "transform": "matrix(1.3, 0, 0, 1.3, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
               "tag": "div",
-              "class": "glint",
+              "class": "warning-rim",
               "style": {
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             }
           ]
@@ -389,7 +389,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         },
         {
@@ -401,7 +401,7 @@
             "opacity": "1",
             "transform": "matrix(1.25, 0, 0, 1.25, 0, 0)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -414,7 +414,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -426,7 +426,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(176, 173, 183)"
+                    "color": "rgb(179, 175, 165)"
                   },
                   "text": "Finish in your browser"
                 },
@@ -439,7 +439,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(176, 173, 183)"
+                    "color": "rgb(179, 175, 165)"
                   },
                   "text": "Confirm this code on the endue ID page."
                 },
@@ -452,7 +452,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "text": "WDJB-MJHT"
                 },
@@ -465,7 +465,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(176, 173, 183)"
+                    "color": "rgb(179, 175, 165)"
                   },
                   "text": "auth.endue.ai/realms/endue/device"
                 },
@@ -478,7 +478,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -490,7 +490,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(30, 24, 51)"
+                        "color": "rgb(28, 26, 23)"
                       },
                       "text": "Open browser again"
                     },
@@ -503,7 +503,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "text": "Cancel"
                     }
@@ -524,7 +524,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     }
   ]

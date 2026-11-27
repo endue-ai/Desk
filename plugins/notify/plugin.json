@@ -40,6 +40,11 @@
         "kind": "integer",
         "default": 200,
         "description": "How many past notifications to keep."
+      },
+      "desk.notify.system": {
+        "kind": "string",
+        "default": "background",
+        "description": "When a notification also goes to the system's notifications: background (while endue is not in front), always or never."
       }
     }
   }

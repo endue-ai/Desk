@@ -55,6 +55,19 @@ async function overlay(): Promise<{ host: string; rect: number[] | null; shown: 
 const until = (what: string, check: () => Promise<boolean>) =>
   browser.waitUntil(check, { timeout: 15_000, timeoutMsg: what });
 
+/** Wait until the card in front takes keys: for a moment after it shows they answer nothing (ADR 0335). */
+const armed = () =>
+  until("the card never took keys", async () =>
+    inFrame(PERMISSIONS, () =>
+      browser.execute(
+        () =>
+          document.querySelector(
+            "#prompt:not([hidden])[data-armed], #approval:not([hidden])[data-armed]",
+          ) !== null,
+      ),
+    ),
+  );
+
 /** Every shown button of `panel` and the page's viewport, read in the overlay's page. */
 const buttonsOf = (panel: string) =>
   inFrame(PERMISSIONS, () =>
@@ -112,6 +125,7 @@ describe("a permission question always reaches the person", () => {
       async () => (await inputState()).focused === host,
     );
 
+    await armed();
     await feed(keyPress("Escape", "Escape"));
     expect(await asked).toMatchObject({ granted: false });
     await until("the overlay stayed up", async () => !(await overlay()).shown);
@@ -125,6 +139,7 @@ describe("a permission question always reaches the person", () => {
       "the question never took the keys",
       async () => (await inputState()).focused === host,
     );
+    await armed();
     await feed(keyPress("Tab", "Tab"));
     expect((await buttonsOf("#prompt")).focused).toBe("Allow once");
     await feed(keyPress("Enter", "Enter", "\r"));
@@ -176,6 +191,7 @@ async function card(host: string): Promise<{ answer: Promise<Answer> }> {
   await until(`${host}: its card is not drawn`, async () => (await overlay()).shown);
   const { host: surface } = await overlay();
   await until(`${host}: its card never had the keys`, async () => (await focused()) === surface);
+  await armed();
   return { answer };
 }
 
@@ -281,6 +297,7 @@ describe("every card answers, the first or the seventh, by pointer and by keys",
     await until("the sixth never showed", async () => (await asking()).includes("six.example"));
     const { host } = await overlay();
     await until("the sixth never had the keys", async () => (await focused()) === host);
+    await armed();
     await feed(keyPress("Escape", "Escape"));
     expect(await within(sixth, "Escape never answered")).toMatchObject({ granted: false });
     const { answer: seventh } = await card("seven.example");

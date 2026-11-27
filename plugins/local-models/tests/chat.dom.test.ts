@@ -25,7 +25,7 @@ beforeAll(async () => {
   });
   // jsdom has no layout: what the views ask of it, answered plainly.
   globalThis.requestAnimationFrame ??= ((fn: FrameRequestCallback) =>
-    setTimeout(() => fn(0), 0)) as typeof requestAnimationFrame;
+    setTimeout(() => fn(0), 0)) as unknown as typeof requestAnimationFrame;
   Element.prototype.scrollIntoView ??= () => {};
 });
 afterAll(async () => {
@@ -41,7 +41,10 @@ describe("the chat window", () => {
     const app = createApp(bridge, { storeDelayMs: 5, autoTitle: false });
     mountShell(app, document.body);
     await app.start();
-    expect(app.S.get().servers.map((s) => s.label)).toEqual(["Ollama :11434", "llama.cpp :8080"]);
+    expect(app.S.get().servers.map((s: { label: string }) => s.label)).toEqual([
+      "Ollama :11434",
+      "llama.cpp :8080",
+    ]);
     expect(app.S.get().selected).toBe("127.0.0.1:11434|qwen3:8b");
     expect($(".lm-model-pill").textContent).toContain("Qwen3 8B");
     expect($(".lm-empty-title").textContent).toBe("What can I help with?");
@@ -94,13 +97,15 @@ describe("the chat window", () => {
       () =>
         (app.S.get().thread &&
           Object.values(app.S.get().thread?.nodes ?? {}).some(
-            (n) => n.role === "assistant" && n.content.length > 40,
+            (n: any) => n.role === "assistant" && n.content.length > 40,
           )) ||
         false,
     );
     app.stop();
     await sending;
-    const node = Object.values(app.S.get().thread?.nodes ?? {}).find((n) => n.role === "assistant");
+    const node: any = Object.values(app.S.get().thread?.nodes ?? {}).find(
+      (n: any) => n.role === "assistant",
+    );
     expect(node?.stats?.stopReason).toBe("stopped");
     expect(node?.content.length).toBeGreaterThan(0);
     b.close();

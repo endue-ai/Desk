@@ -30,7 +30,7 @@ describe("the window manager's seam", () => {
     void seam.host.edit([{ op: "new-window" }]);
     seam.host.grab({ kind: "resize", window: "window-1", grip: "se" }, { x: 10, y: 20 });
     seam.host.run({ op: "snap", fill: "left" }, "window-1");
-    void seam.host.edit([{ op: "split", dir: "row" }, { op: "blur" }]);
+    void seam.host.edit([{ op: "step-tab", step: 1 }, { op: "blur" }]);
     seam.host.run({ op: "maximize" });
     void seam.host.snapshot({ titles: {}, frames: {} });
     // The shell applies the edits in order and holds each call until the edit it follows is in.
@@ -42,12 +42,33 @@ describe("the window manager's seam", () => {
         { gesture: { kind: "resize", window: "window-1", grip: "se" }, x: 10, y: 20, after: 1 },
       ],
       ["compositor_wm", { op: { op: "snap", fill: "left" }, window: "window-1", after: 1 }],
-      ["compositor_edit", { seq: 2, edits: [{ op: "split", dir: "row" }, { op: "blur" }] }],
+      ["compositor_edit", { seq: 2, edits: [{ op: "step-tab", step: 1 }, { op: "blur" }] }],
       ["compositor_wm", { op: { op: "maximize" }, after: 2 }],
     ]);
     expect(asked).toEqual([
       ["compositor_snapshot", { told: { titles: {}, frames: {} }, after: 2 }],
     ]);
+  });
+
+  it("asks the shell for an out window's OS window and answers what it says (ADR 0294)", async () => {
+    const asked: [string, unknown][] = [];
+    const frame = {
+      x: 80,
+      y: 60,
+      w: 720,
+      h: 450,
+      pinned: false,
+      screen: { x: 0, y: 25, w: 1512, h: 920 },
+    };
+    const seam = wmSeam(
+      () => undefined,
+      <T>(command: string, args: Record<string, unknown>) => {
+        asked.push([command, args]);
+        return Promise.resolve(frame as T);
+      },
+    );
+    await expect(seam.host.outWindow?.("notes", { op: "move", x: 80 })).resolves.toEqual(frame);
+    expect(asked).toEqual([["app_window", { window: "notes", ask: { op: "move", x: 80 } }]]);
   });
 
   it("takes every desk desk-wm publishes and settles an edit once the desk it made is in", async () => {
@@ -133,9 +154,10 @@ describe("the window manager's seam", () => {
     const win = window as Window & typeof globalThis;
     win.requestAnimationFrame = () => 1;
     win.cancelAnimationFrame = () => {};
-    const state = { lang: "en", adopted: [], drawer: [], wm: { here: "1", windows: {} } };
+    const wm = { here: "1", windows: {} };
+    const state = { lang: "en", adopted: [], drawer: [], wm, erisWindows: [] };
     const desk = {
-      store: { get: () => state },
+      store: { get: () => state, watch: () => () => {} },
       runtime: {
         frames: { state: () => undefined, asleep: () => false },
         settings: { get: (_: string, fallback: unknown) => fallback },

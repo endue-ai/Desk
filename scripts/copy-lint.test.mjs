@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { compare, count, scan } from "./copy-lint.mjs";
+import { BASELINE, compare, count, scan } from "./copy-lint.mjs";
 
 test("count finds each inline comparison with the Korean language", () => {
   assert.equal(count(`const a = lang === "ko" ? "예" : "yes";`), 1);
@@ -61,4 +61,11 @@ test("a file that dropped to zero must leave the baseline", () => {
   assert.equal(problems.length, 1);
   assert.match(problems[0], /gone\.ts/);
   assert.match(problems[0], /--update/);
+});
+
+test('no surface source holds an inline "ko" pair and the baseline names none (#361)', () => {
+  const surface = (files) =>
+    Object.keys(files).filter((file) => file.startsWith("packages/runtime/src/surface/"));
+  assert.deepEqual(surface(scan()), []);
+  assert.deepEqual(surface(JSON.parse(readFileSync(BASELINE, "utf8"))), []);
 });

@@ -1,0 +1,387 @@
+// PostgreSQL on the core's sessions (db.*, ADR 0281), no client program. A console's or a table
+// view's run goes to the session that owner keeps (PG-02, ADR 0320: session/keeper.js), opened at its
+// first run and kept, so what one run sets the next sees; any other run (the catalog, a feature's
+// read, an agent's query) opens a short session of its own and closes it. The statements run as
+// pg-script.js says. A session asks for db:connect on the connection's host and port once the grant
+// is missing (ADR 0260), takes its TLS from pg-tls.js (a CA file, a client certificate and key, ADR
+// 0331), hands over the password the person typed (else names the one the keychain keeps,
+// `passwordRef`, ADR 0311; the core reads the password file first), and starts read-only for a read-only connection. Cancel is
+// db.cancel, for the runs of the console on screen, or of one run its signal stops (a kept session
+// stays open); the statement timeout is the server's statement_timeout, which a kept session takes
+// again with SET when the setting changed. Every session signs in with the connection's session
+// options and runs its startup script first (pg-options.js, pg-startup.js, PG-12). A connection's
+// password command gives each new session its password, run again once when the server refuses it;
+// one through a pooler signs in with its application name alone and keeps nothing with SET (PG-14,
+// ADR 0354: auth/). A console's single read scrolls a cursor (pg-cursor.js, PG-22). Through an SSH
+// tunnel, db:connect covers every hop (tunnel/, ADR 0359). No DOM.
+
+import { commandFor } from "../auth/fields.js";
+import { pooled } from "../auth/pooler.js";
+import { keptPassword, signInWithCommand } from "../auth/sign-in.js";
+import { answering, hearEvents } from "../session/events.js";
+import { createKeeper } from "../session/keeper.js";
+import { createSlots, RUNS_AT_ONCE } from "../session/slots.js";
+import { t as messageText } from "../strings/index.js";
+import { createTunnel, scopeOf } from "../tunnel/open.js";
+import { failedRun } from "./common.js";
+import { createCursors, own as own_ } from "./pg-cursor.js";
+import { codeOf, openFailed, textOf } from "./pg-open-failed.js";
+import { refusedOf } from "./pg-result.js";
+import { cursorRows } from "./pg-rows.js";
+import { createScript } from "./pg-script.js";
+import { settingsOf, targetOf } from "./pg-session-setup.js";
+import { runStartup } from "./pg-startup.js";
+import { createTls } from "./pg-tls.js";
+
+/**
+ * @typedef {import("./common.js").Connection} Connection
+ * @typedef {import("./common.js").DbError} DbError
+ * @typedef {import("./common.js").RunResult} RunResult
+ * @typedef {import("./pg-script.js").Plan} Plan
+ * @typedef {import("./pg-script.js").Job} Job
+ * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call" | "onEvent">} Bridge
+ * @typedef {{ owner: string } | undefined} Scope
+ *   What Cancel stops: that owner's runs and the plugin's own short reads, else every run.
+ */
+
+/** Short runs holding a session at once (session/slots.js); the core allows a plugin 16. */
+export const MAX_SESSIONS = RUNS_AT_ONCE;
+export { BACKSTOP_MS, GRACE_MS } from "./pg-script.js";
+export { APPLICATION, settingsOf, targetOf } from "./pg-session-setup.js";
+
+const SIGN_IN_MS = 10_000;
+/** Kept sessions per connection when no setting says. */
+const PER_CONNECTION = 8;
+/** @returns {DbError} */
+const cancelled = () => ({
+  kind: "cancelled",
+  message: messageText("engines.pgSession.cancelled"),
+});
+/**
+ * @param {Bridge} bridge
+ * @param {{
+ *   onBusy?(running: number): void, now?(): number,
+ *   setTimer?(fn: () => void, ms: number): unknown, clearTimer?(timer: unknown): void,
+ *   onState?(owner: string): void, onLost?(owner: string, line: (label: string) => string): void,
+ *   idleMs?(): number, limit?(): number, kept?(conn: Connection): string | undefined,
+ *   passphrases?: import("./pg-tls.js").Passphrases, helper?: import("../auth/helper.js").Helper,
+ *   tunnel?: ReturnType<typeof createTunnel>,
+ *   holds?(owner: string): boolean, ended?(owner: string): void,
+ * } & import("../session/events.js").Hears} [options] `onState` hears an owner's session change (the header draws it), `onLost` one lost
+ *   with the status line's words for its label; `idleMs` closes a session no run used that long
+ *   (0 never), `limit` is the kept sessions a connection may hold; `kept` names the connection's
+ *   password the keychain keeps (manager.passwords.ref, ADR 0311); `passphrases` holds and asks for
+ *   key files' passphrases (ADR 0331); `helper` runs a connection's password command (ADR 0354);
+ *   `tunnel` asks what a connection's SSH tunnel needs (ADR 0359); `holds` keeps a session the
+ *   idle timer would close (one that listens), `ended` hears one go, `onRaised` and
+ *   `onNotification` what a kept session hears (session/events.js, ADR 0358).
+ */
+export function createSessions(bridge, options = {}) {
+  const onBusy = options.onBusy ?? (() => {});
+  const kept = options.kept ?? (() => undefined);
+  const tls = createTls(bridge, options.passphrases);
+  const tunnel = options.tunnel ?? createTunnel();
+  const now = options.now ?? (() => Date.now());
+  const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  const clearTimer =
+    options.clearTimer ??
+    ((timer) => clearTimeout(/** @type {ReturnType<typeof setTimeout>} */ (timer)));
+  /** @type {Set<Job>} */
+  const jobs = new Set();
+  /** Every session this frame opened, so a frame that wakes closes only another's. */
+  const own = new Set();
+  /** Each session's own notices (db.notice: raised outside any call, ADR 0334) not shown yet, by
+   * session id: a run on it shows them as the run's (pg-script.js). */
+  const sinks = /** @type {Map<string, string[]>} */ (new Map());
+  const slots = createSlots();
+
+  /** The last call each session answered, so a late db.call.notice is known (ADR 0358). */
+  const answered = /** @type {Map<string, number>} */ (new Map());
+  /** @type {(method: string, params: Record<string, unknown>) => Promise<any>} */
+  const call = answering(bridge, answered);
+
+  /** A call under the plugin's db:connect grant; refused, ask once for the server and call again. */
+  const granted = async (
+    /** @type {() => Promise<unknown>} */ open,
+    /** @type {{ permission: "db:connect", hosts: string[] }} */ scope,
+    /** @type {Connection} */ conn,
+    quiet = false,
+  ) => {
+    try {
+      return await open();
+    } catch (error) {
+      if (codeOf(error) !== "permission_denied" || quiet) throw error;
+    }
+    const reason = `To run SQL on ${conn.name}, a PostgreSQL server`;
+    const decision = await call("perm.request", { permission: scope, reason }).catch(() => ({
+      granted: false,
+    }));
+    if (!decision.granted)
+      throw Object.assign(new Error(messageText("engines.pgSession.refused")), {
+        code: "permission_denied",
+      });
+    return open();
+  };
+
+  /**
+   * Sign in; the session's id, or the error the run ends with.
+   * @param {Connection} conn @param {Exclude<ReturnType<typeof targetOf>, string>} target @param {Plan} plan
+   * @returns {Promise<import("../session/keeper.js").Opened>}
+   */
+  const open = async (conn, target, plan) => {
+    const where = `${target.host}:${target.port}`;
+    /** @type {import("./pg-tls.js").Tls | undefined} */
+    let secure;
+    try {
+      secure = await tls.of(conn);
+    } catch (error) {
+      return { error: { kind: "connect", message: textOf(error) } };
+    }
+    const scope = scopeOf(where, conn);
+    const helper = commandFor(conn) && plan.password === undefined ? options.helper : undefined;
+    const quiet = plan.agent === true || plan.permissionsReviewed === true;
+    const params = {
+      engine: "postgresql",
+      ...target,
+      ...(helper ? {} : keptPassword(plan.password, kept(conn), conn, target)),
+      settings: settingsOf(plan.timeoutMs, conn),
+      ...(conn.readOnly && !pooled(conn) ? { readOnly: true } : {}),
+      timeoutMs: SIGN_IN_MS,
+      scope,
+    };
+    try {
+      if (helper && quiet) {
+        const permission = await call("perm.query", { permission: scope });
+        if (!permission.grants?.length)
+          throw Object.assign(new Error(messageText("engines.pgSession.refused")), {
+            code: "permission_denied",
+          });
+      }
+      const attempt = async (/** @type {{ password?: string }} */ given) =>
+        /** @type {import("@endue-ai/bridge").DbOpenResult} */ (
+          await granted(
+            () =>
+              tls.open(conn, secure, plan.quiet === true, (t) =>
+                tunnel.open(conn, plan.quiet === true, (via) =>
+                  call("db.open", { ...params, ...given, ...(t && { tls: t }), ...via }),
+                ),
+              ),
+            scope,
+            conn,
+            quiet,
+          )
+        );
+      const signed = helper
+        ? await signInWithCommand(
+            (connection) => helper(connection, quiet),
+            (password) => attempt({ password }),
+            conn,
+            where,
+          )
+        : { opened: await attempt({}) };
+      if ("error" in signed) return { error: signed.error };
+      const { opened } = signed;
+      if (opened.sessionId) {
+        own.add(opened.sessionId);
+        const failed = await runStartup(first, conn, opened.sessionId, plan.timeoutMs);
+        if (failed) return { error: failed };
+        return { sessionId: opened.sessionId, pid: opened.pid ?? 0 };
+      }
+      if (opened.ssh) return { error: tunnel.refused(conn, opened.ssh) };
+      if (opened.keyPassword) return { error: tls.refused(conn, opened.keyPassword) };
+      if (opened.error) return { error: refusedOf(opened.error) };
+      const message =
+        "passwordRef" in params
+          ? messageText("engines.pgSession.asksForAPasswordAndNeither", {
+              where: String(where),
+              user: String(target.user),
+            })
+          : messageText("engines.pgSession.asksForAPasswordAndThe", {
+              where: String(where),
+              user: String(target.user),
+            });
+      return { error: { kind: "auth", message } };
+    } catch (error) {
+      return openFailed(error, where);
+    }
+  };
+
+  const { script } = createScript({ call, sinks, setTimer, clearTimer });
+  const first = {
+    script,
+    close: (/** @type {string} */ id) => call("db.close", { sessionId: id }),
+  };
+  const cursors = createCursors({ script, kept: () => keeper.kept() });
+  const keeper = createKeeper({
+    call,
+    slots,
+    onState: options.onState ?? (() => {}),
+    onLost: options.onLost ?? (() => {}),
+    idleMs: options.idleMs ?? (() => 0),
+    ...(options.holds ? { holds: options.holds } : {}),
+    ...(options.ended ? { ended: options.ended } : {}),
+    limit: options.limit ?? (() => PER_CONNECTION),
+    now,
+    setTimer,
+    clearTimer,
+  });
+
+  hearEvents(bridge, { own, sinks, answered, keeper, cursors, ...options });
+
+  const short = async (
+    /** @type {Job} */ job,
+    /** @type {Connection} */ conn,
+    /** @type {Exclude<ReturnType<typeof targetOf>, string>} */ target,
+    /** @type {Plan} */ plan,
+  ) => {
+    await slots.take("short");
+    try {
+      if (job.cancelled) return failedRun(plan.statements, cancelled());
+      const opened = await open(conn, target, plan);
+      if ("error" in opened) return failedRun(plan.statements, opened.error);
+      job.sessionId = opened.sessionId;
+      try {
+        // Cancelled while it signed in: nothing ran.
+        if (job.cancelled) return failedRun(plan.statements, cancelled());
+        return await script(job, plan);
+      } finally {
+        sinks.delete(opened.sessionId);
+        await call("db.close", { sessionId: opened.sessionId }).catch(() => {});
+      }
+    } finally {
+      slots.give("short");
+    }
+  };
+
+  /** A run on the session its owner keeps: opened at the first, and what earlier runs set stays. */
+  const owned = async (
+    /** @type {Job} */ job,
+    /** @type {Connection} */ conn,
+    /** @type {Exclude<ReturnType<typeof targetOf>, string>} */ target,
+    /** @type {Plan & { session: import("../session/keeper.js").Owner }} */ plan,
+  ) => {
+    const used = await keeper.use(
+      plan.session,
+      conn,
+      plan.timeoutMs,
+      () => open(conn, target, plan),
+      async (entry, notes) => {
+        if (job.cancelled) return failedRun(plan.statements, cancelled());
+        job.sessionId = entry.sessionId;
+        job.transaction = entry.transaction;
+        notes.push(...(await cursors.end(job, plan, entry)));
+        // A changed statement timeout reaches the session outside a transaction, where SET stays;
+        // through a pooler nothing stays, and the plugin's own stop holds the timeout.
+        if (pooled(conn)) entry.timeoutMs = plan.timeoutMs;
+        else if (entry.timeoutMs !== plan.timeoutMs && entry.transaction === "idle") {
+          const ran = await script(job, {
+            ...plan,
+            mode: "run",
+            statements: [setTimeout_(plan.timeoutMs)],
+          });
+          if (!ran.statements[0]?.error) entry.timeoutMs = plan.timeoutMs;
+        }
+        const timed = { ...plan, timeoutMs: entry.timeoutMs };
+        const done = cursors.wanted(plan, entry, pooled(conn))
+          ? await cursors.declare(job, timed, entry)
+          : await script(job, timed, entry.transaction);
+        entry.transaction = job.transaction ?? entry.transaction;
+        if (job.ended) keeper.lost(entry.sessionId, job.ended);
+        return { ...done, notices: [...notes, ...done.notices] };
+      },
+    );
+    return "error" in used ? failedRun(plan.statements, used.error) : used.done;
+  };
+
+  /**
+   * Run the plan: on its owner's kept session when it names one, else on a short one.
+   * @param {Connection} conn
+   * @param {Plan} plan
+   * @returns {Promise<RunResult>}
+   */
+  const run = async (conn, plan) => {
+    const started = now();
+    const target = targetOf(conn);
+    if (typeof target === "string")
+      return failedRun(plan.statements, { kind: "connect", message: target });
+    if (plan.signal?.aborted) return failedRun(plan.statements, cancelled());
+    /** @type {Job} */
+    const job = {
+      running: false,
+      cancelled: false,
+      timedOut: false,
+      agent: plan.agent === true,
+      ...(plan.session ? { owner: plan.session.owner } : {}),
+    };
+    const abort = () => stop(job);
+    plan.signal?.addEventListener("abort", abort, { once: true });
+    jobs.add(job);
+    onBusy(jobs.size);
+    try {
+      const done = plan.session
+        ? await owned(job, conn, target, /** @type {never} */ (plan))
+        : await short(job, conn, target, plan);
+      return { ...done, ms: now() - started };
+    } finally {
+      plan.signal?.removeEventListener("abort", abort);
+      jobs.delete(job);
+      onBusy(jobs.size);
+    }
+  };
+
+  /** Cancel one run: its statement is cancelled on its session, nothing after it starts. */
+  const stop = (/** @type {Job} */ job) => {
+    job.cancelled = true;
+    if (job.running && job.sessionId)
+      void call("db.cancel", { sessionId: job.sessionId }).catch(() => {});
+  };
+  /**
+   * Cancel runs. With a scope, the owner's runs and the plugin's own short reads; another owner's
+   * and agents' go on. A kept session stays open: only its statement is cancelled.
+   * @param {Scope} [scope]
+   */
+  const cancel = (scope) => {
+    for (const job of jobs)
+      if (!scope || job.owner === scope.owner || (!job.owner && !job.agent)) stop(job);
+  };
+
+  return {
+    run,
+    rows: cursorRows({ jobs, onBusy, keeper, cursors }),
+    rowsGone: cursors.gone,
+    cancel,
+    running: () => jobs.size,
+    /** What the header shows for an owner's session. */
+    state: keeper.state,
+    /** Close the kept sessions `test` takes (a console's, a connection's). */
+    close: keeper.close,
+    /** An owner that is gone: its session closes. */
+    forget: keeper.forget,
+    /** The kept sessions `test` takes that are in a transaction. */
+    inTransaction: keeper.inTransaction,
+    /** The consoles' sessions, for the surface state. */
+    kept: keeper.kept,
+    /**
+     * After a frame wakes: take back the consoles' sessions `saved` names that db.list still
+     * holds, for owners `known` still has; close every other session but this frame's own.
+     * @param {unknown} saved
+     * @param {(owner: string, connection: string) => Connection | undefined} known
+     */
+    async adopt(saved, known) {
+      const listed = await call("db.list", {}).catch(() => ({ sessions: [] }));
+      const keptOf = Array.isArray(saved) ? saved.filter(isKept) : [];
+      await keeper.adopt(keptOf, listed.sessions ?? [], known, own);
+    },
+  };
+}
+
+/** SET statement_timeout as a statement of the plugin's own. */
+const setTimeout_ = (/** @type {number} */ ms) =>
+  own_(`SET statement_timeout = ${Math.max(0, Math.round(ms))}`);
+
+/** One kept session in the surface state, as keeper.kept() wrote it. */
+const isKept = (/** @type {any} */ k) =>
+  typeof k?.owner === "string" &&
+  typeof k.sessionId === "string" &&
+  typeof k.connection === "string" &&
+  typeof k.timeoutMs === "number";

@@ -1,12 +1,12 @@
 > 本文为中文译文，内容以[英文原版](../../../plugins/authoring.md)为准。
 
-# 编写 Desk 插件
+# 编写 endue 插件
 
-Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文先介绍插件的种类及其模板，再详细介绍 UI 插件，然后是原生插件，最后介绍主题；工具（MCP）插件将在之后推出。
+endue 插件就是一个目录。内置功能使用完全相同的格式，因此 endue 自身能在屏幕上做的任何事，你的插件也都能做到。本文先介绍插件的种类及其模板，再详细介绍 UI 插件，然后是原生插件，最后介绍主题；工具（MCP）插件将在之后推出。
 
 ## 从模板开始
 
-`create-plugin` 会生成一个某种类型的插件目录，它能通过 `desk plugin validate`，并带有一个测试（包发布后可使用 `pnpm create @endue-ai/plugin`）：
+`create-plugin` 会生成一个某种类型的插件目录，它能通过 `endue plugin validate`，并带有一个测试（包发布后可使用 `pnpm create @endue-ai/plugin`）：
 
 ```bash
 pnpm --filter @endue-ai/create-plugin build
@@ -26,17 +26,17 @@ cargo run -p desk-cli -- plugin test ../my-plugin
 
 Rust 类型的插件用该语言自己的命令构建：在目录中针对 `wasm32-wasip2` 目标运行 `cargo build --release`（首次需执行一次 `rustup target add wasm32-wasip2`）。组件会生成在 `plugin.json` 的 `entry` 所指的位置。
 
-如果想在开发插件的同时在 Desk 上看到它，请将你的目录作为开发插件来运行 Desk：
+如果想在开发插件的同时在 endue 上看到它，请将你的目录作为开发插件来运行 endue：
 
 ```bash
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-保存目录中的任意文件后，只有你的插件会在一秒内重新加载。Desk 的其余部分以及插件的状态都保持原样。Desk 启动时为空或已损坏的目录，在文件到达或被修复后也会立即出现，无需重启。
+保存目录中的任意文件后，只有你的插件会在一秒内重新加载。endue 的其余部分以及插件的状态都保持原样。endue 启动时为空或已损坏的目录，在文件到达或被修复后也会立即出现，无需重启。
 
-### 用 `desk plugin test` 测试
+### 用 `endue plugin test` 测试
 
-`desk plugin test <folder>` 会像 `validate` 一样检查目录，然后在与其种类相符的宿主上运行 `tests/`：
+`endue plugin test <folder>` 会像 `validate` 一样检查目录，然后在与其种类相符的宿主上运行 `tests/`：
 
 - `ui`、`view`、`policy`、`theme` 以及其他不含 Wasm 的种类：在 jsdom 页面中，用 SDK 测试宿主（`@endue-ai/plugin-sdk/testing`，见下文“测试”）上的 vitest 运行 `tests/*.test.js` 或 `*.test.ts`。按名称导入 SDK，并像模板那样让被测试的代码不导入 SDK（`ui/plugin.js`，由 `ui/main.js` 调用 `defineUiPlugin(plugin)`）。
 - `logic` 和 Wasm `connector`：使用构建好的组件，在脚本化的 desk，即 `desk-plugin-host` 测试工具上运行每个 `tests/<name>.test.json`：
@@ -61,7 +61,7 @@ DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 | 路径 | 是否必需 | 用途 |
 | --- | --- | --- |
 | `plugin.json` | 是 | 清单：id、version、kind、entry、permissions、surfaces |
-| `ui/index.html` | 是（即 `entry`） | Desk 加载到沙箱框架中的页面 |
+| `ui/index.html` | 是（即 `entry`） | endue 加载到沙箱框架中的页面 |
 | `ui/*.js`、`ui/*.css` | 否 | 你的代码和样式，相对于入口加载 |
 | `README.md` | 建议 | 插件的作用、申请哪些权限以及原因 |
 
@@ -82,7 +82,7 @@ id 使用小写的反向域名格式（`example.my-plugin`）。入口须位于�
 
 ## SDK
 
-在入口页面中通过 import map 导入 SDK；Desk 在 `/_desk/plugin-sdk.js` 提供它：
+在入口页面中通过 import map 导入 SDK；endue 在 `/_desk/plugin-sdk.js` 提供它：
 
 ```html
 <script type="importmap">
@@ -106,9 +106,9 @@ defineUiPlugin({
 
 `bridge.call(method, params)` 用于调用核心。在同一个 tick 内发出的调用会合并成一条消息发送。被拒绝的调用会以 `BridgeCallError` 被 reject，其 `code` 例如为 `permission_denied`。
 
-一段时间内没有人看到的表面（被其他窗口挡住或在屏幕之外）可能会被卸载以节省内存，再次显示时会重新加载（ADR 0070）。要恢复原样，请登记需要保留的内容：`surface.onUnload(() => ({ open, caret, scroll }))` 会以不超过 64 KiB 的 JSON 回应 Desk 的 `ui.surface.state`，重新加载的页面可以在 `surface.restored` 中取回它。没有提供者时会以初始状态恢复；上面的 `state` 仍会恢复。
+一段时间内没有人看到的表面（被其他窗口挡住或在屏幕之外）可能会被卸载以节省内存，再次显示时会重新加载（ADR 0070）。要恢复原样，请登记需要保留的内容：`surface.onUnload(() => ({ open, caret, scroll }))` 会以不超过 64 KiB 的 JSON 回应 endue 的 `ui.surface.state`，重新加载的页面可以在 `surface.restored` 中取回它。没有提供者时会以初始状态恢复；上面的 `state` 仍会恢复。
 
-SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以等待一次慢调用永远不会被当成卡死。5 秒内没有回应的框架，其窗口会显示“未响应”以及“等待”和“停止”，“重新加载”会带着它最后的 `state` 把它恢复（#39）。
+SDK 从加载那一刻起就自行回应 endue 的 ping（`desk:ping`），所以等待一次慢调用永远不会被当成卡死。5 秒内没有回应的框架，其窗口会显示“未响应”以及“等待”和“停止”，“重新加载”会带着它最后的 `state` 把它恢复（#39）。
 
 ### 表面的源
 
@@ -150,7 +150,7 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 
 这些只是提示。配置文件或会话保存的位置，以及用户自己的排布（填充、吸附、平铺），无论提示怎么说都会决定
 画布上窗口的大小；分成多个窗格的窗口则跟随它的窗格。用户可以把任何窗口移出去再移回来（面板里的
-“Pop out window”，Window > Move to Desk）。`DESK_APP_WINDOWS` 在一次运行中覆盖清单：`off` 让所有窗口留在
+“Pop out window”，Window > Move to endue（v0.3.0 中为 Move to Desk））。`DESK_APP_WINDOWS` 在一次运行中覆盖清单：`off` 让所有窗口留在
 画布上，`on` 让所有应用打开在外面，插件 ID 列表则让这些插件打开在外面。`examples/plugin-hello-window`
 用各一条命令演示两种方式。
 
@@ -160,7 +160,7 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 * 拖放（`ctx.dnd`）不会越过操作系统窗口的边缘。页面内的拖放和来自操作系统的文件与在画布上一样落下；
   在窗口外松开的拖放以效果 `none` 结束，从画布开始的拖放到不了操作系统窗口。
 * 桌面向用户提出的询问显示在桌面的窗口里，而不是你的窗口里。`desk.palette.pick` 会把桌面带到前面，
-  答案回到你的页面；权限询问在桌面里等待，桌面不在前面时则在岛（island）里等待。
+  答案回到你的页面；权限请求在桌面中等待答复。
 * Web 视图（`web.*`）只显示在桌面里：窗口移出去时它就结束。
 
 `desk.files.*` 和 `desk.buffers.*` 与在画布上一样工作：在你的打开器里打开的文件，或被显示的缓冲区，
@@ -174,7 +174,7 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 
 ## 权限
 
-你的框架运行在只允许脚本的沙箱中：不能访问 Desk 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。
+你的框架运行在只允许脚本的沙箱中：不能访问 endue 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。
 
 1. 在 `plugin.json` 的 `permissions` 中声明所有可能申请的内容。
 2. 在需要的那一刻再申请：`bridge.call("perm.request", { permission, reason })`。
@@ -184,7 +184,7 @@ SDK 从加载那一刻起就自行回应 Desk 的 ping（`desk:ping`），所以
 
 ## 自己的进程和自己的源
 
-目前所有插件的框架共用 Desk 的一个页面和一个进程。Desk 正在迁移到 Chromium，在那里每个表面都运行在自己的进程中（ADR 0140）。插件代码无需任何改动：清单、导入映射、`@endue-ai/plugin-sdk`、桥接层和 CSP 都保持本页所述的样子。
+目前所有插件的框架共用 endue 的一个页面和一个进程。endue 正在迁移到 Chromium，在那里每个表面都运行在自己的进程中（ADR 0140）。插件代码无需任何改动：清单、导入映射、`@endue-ai/plugin-sdk`、桥接层和 CSP 都保持本页所述的样子。
 
 * 每个表面在 `desk-plugin` 协议上都有自己的源：按表面划分，而不是按插件。请用相对 URL 加载自己的文件，不要写死主机名；需要保留的内容放在 `state` 或 `store.*` 中，而不是 `localStorage` 或 IndexedDB，因为同一插件的两个窗口并不共享它们。
 * 插件中的死循环、内存泄漏或崩溃只影响它自己的窗口。一段时间不在视野中的窗口可能会休眠，醒来时带回 `surface.onUnload` 保留的内容（ADR 0142）。
@@ -262,6 +262,11 @@ endue AI 的代理或本地大脑，通过人所运行的同一套命令操作�
 `cmd.register` 使用相同的字段（`description`、`argsSchema`、`resultSchema`、`agent`、`readOnly`），
 `ctx.commands.tools()` 会列出你的权限覆盖到的代理命令。内置的 git、terminal、docker、calendar 和
 database 插件就是示例。
+
+标上 `agent` 的命令，代理无需询问人即可运行，因为安装你的插件就是人对它所提供内容的同意（ADR 0268）。没有
+标上的命令在代理运行之前会询问人，而声明了 `perm:manage` 的插件，其任何命令都不会由代理运行（ADR 0367）。处理
+函数的第二个参数是调用者 `{ invocationId, caller }`；代理的调用者以 `agent:` 或 `mcp:` 开头，所以命令可以拒绝
+代理去做只有人才能做的事。
 
 ## 编辑文件：编辑层级
 
@@ -395,11 +400,11 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-发布之前，必须通过 `desk plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。
+发布之前，必须通过 `endue plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。
 
 ## 原生插件
 
-原生插件（类型 `native`）是你自己用任意语言编写的程序，由 Desk 作为独立进程启动（ADR 0154）。它用你选择的 GPU API 绘制窗口，画进与桌面共享的纹理，并调用与 UI 插件相同的桥接。桌面的合成器像绘制其他窗口一样绘制它的窗口（ADR 0156）；`just example plugin-native-wgpu` 会构建示例并在桌面中运行。
+原生插件（类型 `native`）是你自己用任意语言编写的程序，由 endue 作为独立进程启动（ADR 0154）。它用你选择的 GPU API 绘制窗口，画进与桌面共享的纹理，并调用与 UI 插件相同的桥接。桌面的合成器像绘制其他窗口一样绘制它的窗口（ADR 0156）；`just example plugin-native-wgpu` 会构建示例并在桌面中运行。
 
 ```json
 {
@@ -440,7 +445,7 @@ DESK_DEV_PLUGINS=$PWD/../my-theme just dev
 cargo run -p desk-cli -- theme apply local.my-theme
 ```
 
-包发布之后，这一步就是 `pnpm create @endue-ai/plugin my-theme --kind theme`。模板包含两种 scheme 下的全部角色颜色、保持默认值的其余各层，以及说明每个值涂在哪里的 README；`examples/plugin-hello-theme` 是带一个字体和一个背景的最小主题。安装主题并不会应用它：当前生效的主题由设置 `desk.theme.active` 指定，可以在主题工作室（右上角的调色板按钮，或命令面板中的 Themes）、通过 `desk.theme.use` 或 `desk theme apply` 选择。
+包发布之后，这一步就是 `pnpm create @endue-ai/plugin my-theme --kind theme`。模板包含两种 scheme 下的全部角色颜色、保持默认值的其余各层，以及说明每个值涂在哪里的 README；`examples/plugin-hello-theme` 是带一个字体和一个背景的最小主题。安装主题并不会应用它：当前生效的主题由设置 `desk.theme.active` 指定，可以在主题工作室（右上角的调色板按钮，或命令面板中的 Themes）、通过 `desk.theme.use` 或 `endue theme apply` 选择。
 
 主题工作室也能制作主题：“Tune a copy”（或 `desk.theme.edit`）以所选主题的副本打开编辑器，“New theme”则以 endue 主题打开。每一层都有对应的控件，包括字体和背景图片；整个桌面随草稿实时变化，门禁的修正列在调色板下方，Save 会把结果保存为你自己的主题（`local.<名称>`）。要把主题放进仓库、测试并发布，就用目录。
 
@@ -501,7 +506,7 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` 按模式检查主题块，按限制检查文件。`desk plugin test` 在 SDK 测试宿主上用 vitest 运行模板中的 `tests/theme.test.ts`：它像桌面应用主题前那样，用 `compileTheme` 编译两种 scheme，并在 endue 调色板之上用 `gate` 检查；只要门禁需要修正，测试就失败并列出每一处修正。
+`endue plugin validate` 按模式检查主题块，按限制检查文件。`endue plugin test` 在 SDK 测试宿主上用 vitest 运行模板中的 `tests/theme.test.ts`：它像桌面应用主题前那样，用 `compileTheme` 编译两种 scheme，并在 endue 调色板之上用 `gate` 检查；只要门禁需要修正，测试就失败并列出每一处修正。
 
 ### 以 `.desk-theme` 分享
 
@@ -510,16 +515,16 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再安装到用户的主题目录，id 不在 `local.` 或 `market.` 之下时改为 `local.<名称>`；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
+`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再安装到用户的主题目录，id 不在 `local.` 或 `market.` 之下时改为 `local.<名称>`；`endue theme list` 可以列出它，`endue theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
 
 ### 市场
 
-主题工作室的 Market 标签页列出设置 `desk.theme.markets` 以各索引的 https URL 列出的市场中的主题（ADR 0060）。默认是本仓库 `main` 分支上的 `market/themes/index.json`，从 `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 读取。其他市场的索引可以在 `init.yaml` 中加在它之后；两个市场列出同一个 id 时，以排在前面的为准：
+主题工作室的 Market 标签页列出设置 `desk.theme.markets` 以各索引的 https URL 列出的市场中的主题（ADR 0060）。默认是本仓库 `main` 分支上的 `market/themes/index.json`，从 `https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json` 读取。其他市场的索引可以在 `init.yaml` 中加在它之后；两个市场列出同一个 id 时，以排在前面的为准：
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
@@ -527,7 +532,7 @@ settings:
 
 要发布主题，请提交一个拉取请求，把它的包和索引条目加入 `market/themes/`：
 
-1. 导出主题（`desk theme export <id> <file>`，或工作室中的 Export），使用 `market.` 之下的 id，并设置版本、`theme.author` 和 `theme.license`（也涵盖其字体和图片的 SPDX 表达式）。
+1. 导出主题（`endue theme export <id> <file>`，或工作室中的 Export），使用 `market.` 之下的 id，并设置版本、`theme.author` 和 `theme.license`（也涵盖其字体和图片的 SPDX 表达式）。
 2. 把文件以 `<name>.desk-theme` 放进 `market/themes/`，并在 `index.json`（`specs/plugin/v0/theme-index.schema.json`）中加入它的条目：`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最多五个 `preview` 颜色、`url`（文件名）、`sha256` 和 `size`。
 3. 运行 `node scripts/theme-market.mjs`。这个市场检查器属于 `just check`，会拒绝哈希或大小不符、缺少许可证、id 重复以及不是有效主题插件的包；另有测试在两种 scheme 下用门禁检查每个市场主题。
 

@@ -319,3 +319,10 @@
 .build label {
   font-weight: 600;
 }
+
+.studio:has(#chat:not([hidden])) { grid-template-columns:minmax(0,1fr); }
+.studio:has(#chat:not([hidden])) #studio-card { order:2; }
+#chat { min-height:0; border:0; padding:0; }
+#studio-reader { height:clamp(360px,72vh,900px); }
+#studio-reader .composer { padding:var(--desk-space-2); border-top:1px solid var(--desk-border); }
+#studio-reader .composer-row { flex-wrap:wrap; }

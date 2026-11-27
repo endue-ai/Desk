@@ -2,7 +2,7 @@
  "tag": "div",
  "class": "shell has-canvas",
  "style": {
-  "background": "rgb(250, 249, 252)"
+  "background": "rgb(255, 255, 255)"
  },
  "children": [
   {
@@ -18,7 +18,7 @@
      "tag": "div",
      "class": "wallpaper-effects",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     }
    ]
@@ -27,7 +27,7 @@
    "tag": "div",
    "class": "shell-glow",
    "style": {
-    "color": "rgb(30, 24, 51)"
+    "color": "rgb(23, 21, 31)"
    }
   },
   {
@@ -51,7 +51,7 @@
          "data-mode": "morning",
          "style": {
           "background": "rgb(255, 255, 255)",
-          "border": "solid rgb(107, 79, 158)"
+          "border": "solid rgb(23, 21, 31)"
          },
          "children": [
           {
@@ -62,7 +62,7 @@
            "tag": "span",
            "class": "mode-name",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "Morning"
           },
@@ -78,7 +78,7 @@
        "tag": "div",
        "class": "modes-menu-slot",
        "style": {
-        "color": "rgb(30, 24, 51)"
+        "color": "rgb(23, 21, 31)"
        }
       }
      ]
@@ -87,7 +87,7 @@
      "tag": "div",
      "class": "dialog-slot",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     },
     {
@@ -100,7 +100,7 @@
        "class": "desktops-pill",
        "style": {
         "background": "rgb(255, 255, 255)",
-        "border": "solid rgb(221, 214, 229)"
+        "border": "solid rgb(233, 231, 237)"
        },
        "children": [
         {
@@ -123,7 +123,7 @@
            "tag": "span",
            "class": "desktop-number",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "1"
           },
@@ -135,32 +135,32 @@
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             }
            ]
@@ -187,7 +187,7 @@
            "tag": "span",
            "class": "desktop-number",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "2"
           },
@@ -199,34 +199,34 @@
              "tag": "span",
              "class": "mini-dot is-on",
              "style": {
-              "background": "rgb(30, 24, 51)",
-              "color": "rgb(30, 24, 51)",
-              "border": "solid rgb(30, 24, 51)"
+              "background": "rgb(23, 21, 31)",
+              "color": "rgb(23, 21, 31)",
+              "border": "solid rgb(23, 21, 31)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot is-on",
              "style": {
-              "background": "rgb(30, 24, 51)",
-              "color": "rgb(30, 24, 51)",
-              "border": "solid rgb(30, 24, 51)"
+              "background": "rgb(23, 21, 31)",
+              "color": "rgb(23, 21, 31)",
+              "border": "solid rgb(23, 21, 31)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(30, 24, 51)",
-              "border": "solid rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)",
+              "border": "solid rgb(23, 21, 31)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(30, 24, 51)",
-              "border": "solid rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)",
+              "border": "solid rgb(23, 21, 31)"
              }
             }
            ]
@@ -253,7 +253,7 @@
            "tag": "span",
            "class": "desktop-number",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "3"
           },
@@ -265,33 +265,33 @@
              "tag": "span",
              "class": "mini-dot is-on",
              "style": {
-              "background": "rgb(103, 95, 112)",
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "background": "rgb(105, 101, 115)",
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             }
            ]
@@ -318,7 +318,7 @@
            "tag": "span",
            "class": "desktop-number",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "4"
           },
@@ -330,32 +330,32 @@
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             },
             {
              "tag": "span",
              "class": "mini-dot",
              "style": {
-              "color": "rgb(103, 95, 112)",
-              "border": "solid rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)",
+              "border": "solid rgb(105, 101, 115)"
              }
             }
            ]
@@ -387,19 +387,95 @@
      ]
     },
     {
+     "tag": "nav",
+     "class": "shortcuts float-bar",
+     "aria-label": "바로가기",
+     "box": [
+      16,
+      116,
+      52,
+      92
+     ],
+     "style": {
+      "background": "rgb(255, 255, 255)",
+      "border": "solid rgb(233, 231, 237)"
+     },
+     "children": [
+      {
+       "tag": "button",
+       "class": "icon-button shortcut",
+       "aria-label": "검색",
+       "box": [
+        24,
+        124,
+        36,
+        36
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "search"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button shortcuts-add",
+       "aria-label": "바로가기 추가",
+       "aria-expanded": "false",
+       "box": [
+        24,
+        164,
+        36,
+        36
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "plus"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "shortcuts-popover-slot",
+     "style": {
+      "color": "rgb(23, 21, 31)"
+     }
+    },
+    {
+     "tag": "div",
+     "class": "tooltip",
+     "role": "tooltip",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(23, 21, 31)",
+      "color": "rgb(243, 241, 236)"
+     }
+    },
+    {
      "tag": "aside",
      "class": "sidebar float-bar",
      "aria-label": "에이전트 · 스페이스",
      "box": [
       16,
-      172,
+      220,
       52,
       380
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
-      "border": "solid rgb(221, 214, 229)",
-      "transform": "matrix(1, 0, 0, 1, 0, -189.875)"
+      "border": "solid rgb(233, 231, 237)",
+      "transform": "matrix(1, 0, 0, 1, 0, -142)"
      },
      "children": [
       {
@@ -409,7 +485,7 @@
        "aria-expanded": "false",
        "box": [
         17,
-        173,
+        221,
         1,
         1
        ],
@@ -433,18 +509,18 @@
          "aria-pressed": "true",
          "box": [
           25,
-          181,
+          229,
           34,
           34
          ],
          "style": {
-          "background": "rgb(234, 228, 242)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "M"
           }
@@ -457,18 +533,18 @@
          "aria-pressed": "false",
          "box": [
           25,
-          225,
+          273,
           34,
           34
          ],
          "style": {
-          "background": "rgb(234, 228, 242)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "T"
           }
@@ -481,18 +557,18 @@
          "aria-pressed": "false",
          "box": [
           25,
-          269,
+          317,
           34,
           34
          ],
          "style": {
-          "background": "rgb(234, 228, 242)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "J"
           }
@@ -504,7 +580,7 @@
          "aria-label": "새 에이전트 만들기",
          "box": [
           17,
-          312,
+          360,
           50,
           63
          ],
@@ -513,7 +589,7 @@
            "tag": "span",
            "class": "bar-place-face bar-new-face",
            "style": {
-            "border": "dashed rgb(137, 127, 149)"
+            "border": "dashed rgb(134, 130, 143)"
            },
            "children": [
             {
@@ -526,7 +602,7 @@
            "tag": "span",
            "class": "bar-place-name",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "새 에이전트"
           }
@@ -539,8 +615,8 @@
        "class": "bar-divider",
        "role": "separator",
        "style": {
-        "background": "rgb(221, 214, 229)",
-        "color": "rgb(30, 24, 51)"
+        "background": "rgb(233, 231, 237)",
+        "color": "rgb(23, 21, 31)"
        }
       },
       {
@@ -556,18 +632,18 @@
          "aria-pressed": "true",
          "box": [
           25,
-          394,
+          441,
           34,
           34
          ],
          "style": {
-          "background": "rgba(182, 163, 245, 0.12)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "H"
           }
@@ -580,18 +656,18 @@
          "aria-pressed": "false",
          "box": [
           25,
-          438,
+          485,
           34,
           34
          ],
          "style": {
-          "background": "rgb(234, 228, 242)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
            "tag": "span",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "S"
           }
@@ -603,7 +679,7 @@
          "aria-label": "새 스페이스 만들기",
          "box": [
           17,
-          481,
+          528,
           50,
           63
          ],
@@ -612,7 +688,7 @@
            "tag": "span",
            "class": "bar-place-face bar-new-face",
            "style": {
-            "border": "dashed rgb(137, 127, 149)"
+            "border": "dashed rgb(134, 130, 143)"
            },
            "children": [
             {
@@ -625,7 +701,7 @@
            "tag": "span",
            "class": "bar-place-name",
            "style": {
-            "color": "rgb(103, 95, 112)"
+            "color": "rgb(105, 101, 115)"
            },
            "text": "새 스페이스"
           }
@@ -639,7 +715,7 @@
      "tag": "div",
      "class": "agents-more-slot",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     },
     {
@@ -649,8 +725,8 @@
      "hidden": "",
      "style": {
       "display": "none",
-      "background": "rgb(30, 24, 51)",
-      "color": "rgb(242, 240, 245)"
+      "background": "rgb(23, 21, 31)",
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
@@ -665,7 +741,7 @@
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
-      "border": "solid rgb(221, 214, 229)"
+      "border": "solid rgb(233, 231, 237)"
      },
      "children": [
       {
@@ -707,7 +783,7 @@
          "tag": "span",
          "class": "account-avatar",
          "style": {
-          "background": "rgb(234, 228, 242)"
+          "background": "rgb(239, 237, 242)"
          },
          "children": [
           {
@@ -724,7 +800,7 @@
      "tag": "div",
      "class": "account-popover-slot",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     }
    ]
@@ -754,7 +830,7 @@
            "tag": "iframe",
            "class": "desk-surface-frame",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            }
           }
          ]
@@ -767,9 +843,34 @@
        "role": "status",
        "aria-live": "polite",
        "style": {
-        "color": "rgb(103, 95, 112)"
+        "color": "rgb(105, 101, 115)"
        },
-       "text": "desk ready · bridge: browser"
+       "text": "endue ready · bridge: browser"
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-xs desk-notify-bell",
+       "aria-label": "알림",
+       "aria-expanded": "false",
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "bell"
+        },
+        {
+         "tag": "span",
+         "class": "desk-notify-count",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(245, 244, 247)",
+          "color": "rgb(105, 101, 115)"
+         }
+        }
+       ]
       },
       {
        "tag": "button",
@@ -778,7 +879,7 @@
        "style": {
         "display": "none",
         "background": "rgb(255, 255, 255)",
-        "border": "solid rgb(221, 214, 229)"
+        "border": "solid rgb(233, 231, 237)"
        },
        "children": [
         {
@@ -809,8 +910,8 @@
        "tag": "span",
        "class": "eris-ring",
        "style": {
-        "color": "rgb(30, 24, 51)",
-        "border": "dashed rgb(137, 127, 149)",
+        "color": "rgb(23, 21, 31)",
+        "border": "dashed rgb(134, 130, 143)",
         "opacity": "0",
         "transform": "matrix(1, 0, 0, 1, -74, -74)"
        }
@@ -819,7 +920,7 @@
        "tag": "div",
        "class": "eris-body",
        "style": {
-        "transform": "matrix(1, 0, 0, 1, 0, 5.2)"
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
        },
        "children": [
         {
@@ -828,75 +929,47 @@
          "hidden": "",
          "style": {
           "display": "none",
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "canvas",
          "class": "eris-mesh",
-         "data-mesh": "faces=529 back=250 dots=182 h=9ba92b03",
-         "data-rings": "0.45 0.34 0.24 0.16 0.09 0.04 0.01 0.00 0.01",
+         "data-mesh": "faces=527 back=248 dots=198 h=b8c0a377",
+         "data-rings": "0.00 0.01 0.04 0.09 0.15 0.23 0.33 0.43 0.55",
          "data-voice": "idle",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "eris-core",
          "style": {
-          "color": "rgb(30, 24, 51)",
-          "opacity": "0.845",
+          "color": "rgb(23, 21, 31)",
           "transform": "matrix(1, 0, 0, 1, -24, -24)"
-         }
-        },
-        {
-         "tag": "span",
-         "class": "eris-tail eris-tail-1",
-         "hidden": "",
-         "style": {
-          "display": "none",
-          "background": "rgb(110, 120, 144)",
-          "color": "rgb(30, 24, 51)",
-          "opacity": "0.5"
-         }
-        },
-        {
-         "tag": "span",
-         "class": "eris-tail eris-tail-2",
-         "hidden": "",
-         "style": {
-          "display": "none",
-          "background": "rgb(110, 120, 144)",
-          "color": "rgb(30, 24, 51)",
-          "opacity": "0.3"
          }
         },
         {
          "tag": "span",
          "class": "eris-moon-box",
          "style": {
-          "transform": "matrix(1, 0, 0, 1, -9, -12.94)"
+          "transform": "matrix(0.967411, -0.253213, 0.253213, 0.967411, -9, -9)"
          },
          "children": [
           {
            "tag": "canvas",
            "class": "eris-moon",
            "style": {
-            "color": "rgb(30, 24, 51)"
-           }
-          },
-          {
-           "tag": "span",
-           "class": "eris-spark",
-           "hidden": "",
-           "style": {
-            "display": "none",
-            "background": "rgb(154, 107, 18)",
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            }
           }
          ]
+        },
+        {
+         "tag": "svg",
+         "class": "eris-mind",
+         "icon": null
         }
        ]
       }
@@ -907,7 +980,7 @@
      "class": "sr-only soul-live",
      "aria-live": "polite",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     },
     {
@@ -918,7 +991,7 @@
      "style": {
       "display": "none",
       "background": "rgb(255, 255, 255)",
-      "border": "solid rgb(221, 214, 229)"
+      "border": "solid rgb(233, 231, 237)"
      },
      "children": [
       {
@@ -931,7 +1004,7 @@
         0
        ],
        "style": {
-        "color": "rgb(30, 24, 51)"
+        "color": "rgb(23, 21, 31)"
        }
       },
       {
@@ -940,7 +1013,7 @@
        "hidden": "",
        "style": {
         "display": "none",
-        "color": "rgb(30, 24, 51)"
+        "color": "rgb(23, 21, 31)"
        }
       },
       {
@@ -979,7 +1052,7 @@
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
-      "border": "solid rgb(221, 214, 229)",
+      "border": "solid rgb(233, 231, 237)",
       "transform": "matrix(1, 0, 0, 1, 0, -159)"
      },
      "children": [
@@ -1008,7 +1081,7 @@
          "class": "dot dot-success rail-dot",
          "style": {
           "background": "oklch(0.595 0.17 163)",
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(105, 101, 115)"
          }
         }
        ]
@@ -1059,9 +1132,9 @@
          "tag": "span",
          "class": "badge rail-badge",
          "style": {
-          "background": "rgb(242, 239, 246)",
-          "color": "rgb(30, 24, 51)",
-          "border": "solid rgb(221, 214, 229)"
+          "background": "rgb(245, 244, 247)",
+          "color": "rgb(105, 101, 115)",
+          "border": "solid rgba(0, 0, 0, 0)"
          },
          "text": "3"
         }
@@ -1072,8 +1145,8 @@
        "class": "bar-divider",
        "role": "separator",
        "style": {
-        "background": "rgb(221, 214, 229)",
-        "color": "rgb(30, 24, 51)"
+        "background": "rgb(233, 231, 237)",
+        "color": "rgb(23, 21, 31)"
        }
       },
       {
@@ -1133,7 +1206,7 @@
         36
        ],
        "style": {
-        "background": "rgba(182, 163, 245, 0.12)",
+        "background": "rgb(239, 237, 242)",
         "border": "solid rgba(0, 0, 0, 0)"
        },
        "children": [
@@ -1145,8 +1218,8 @@
          "tag": "span",
          "class": "dot dot-active rail-dot",
          "style": {
-          "background": "rgb(95, 208, 190)",
-          "color": "rgb(30, 24, 51)"
+          "background": "rgb(59, 162, 144)",
+          "color": "rgb(105, 101, 115)"
          }
         }
        ]
@@ -1156,8 +1229,8 @@
        "class": "bar-divider",
        "role": "separator",
        "style": {
-        "background": "rgb(221, 214, 229)",
-        "color": "rgb(30, 24, 51)"
+        "background": "rgb(233, 231, 237)",
+        "color": "rgb(23, 21, 31)"
        }
       },
       {
@@ -1191,15 +1264,15 @@
      "hidden": "",
      "style": {
       "display": "none",
-      "background": "rgb(30, 24, 51)",
-      "color": "rgb(242, 240, 245)"
+      "background": "rgb(23, 21, 31)",
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "div",
      "class": "rail-popover-slot",
      "style": {
-      "color": "rgb(30, 24, 51)"
+      "color": "rgb(23, 21, 31)"
      }
     },
     {
@@ -1212,7 +1285,7 @@
        "data-state": "idle",
        "style": {
         "background": "rgb(255, 255, 255)",
-        "border": "solid rgba(182, 163, 245, 0.3)",
+        "border": "solid rgb(233, 231, 237)",
         "transform": "matrix(1, 0, 0, 1, -220, 0)"
        },
        "children": [
@@ -1224,8 +1297,8 @@
          "style": {
           "display": "none",
           "background": "rgb(255, 255, 255)",
-          "color": "rgb(30, 24, 51)",
-          "border": "solid rgb(221, 214, 229)"
+          "color": "rgb(23, 21, 31)",
+          "border": "solid rgb(233, 231, 237)"
          }
         },
         {
@@ -1233,7 +1306,7 @@
          "class": "composer-hint",
          "style": {
           "display": "none",
-          "color": "rgb(103, 95, 112)"
+          "color": "rgb(105, 101, 115)"
          },
          "text": "Hey Eris 라고 말하거나 바로 입력하세요"
         },
@@ -1258,7 +1331,7 @@
            "aria-label": "Eris 에게 말하기",
            "aria-expanded": "false",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "value": ""
           }
@@ -1279,7 +1352,7 @@
            "tag": "span",
            "class": "talk-hint",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "Eris 에게 말하기"
           }
@@ -1290,7 +1363,7 @@
          "class": "talk-grip",
          "style": {
           "display": "none",
-          "color": "rgb(103, 95, 112)"
+          "color": "rgb(105, 101, 115)"
          },
          "text": "⠿"
         },
@@ -1321,8 +1394,8 @@
          "tag": "span",
          "class": "talk-preview",
          "style": {
-          "background": "rgb(242, 239, 246)",
-          "color": "rgb(103, 95, 112)",
+          "background": "rgb(245, 244, 247)",
+          "color": "rgb(105, 101, 115)",
           "opacity": "0"
          },
          "text": "Mira, Theo, Juno"
@@ -1331,8 +1404,8 @@
          "tag": "kbd",
          "class": "talk-shortcut",
          "style": {
-          "color": "rgb(103, 95, 112)",
-          "border": "solid rgb(221, 214, 229)"
+          "color": "rgb(105, 101, 115)",
+          "border": "solid rgb(233, 231, 237)"
          },
          "text": "⌥Space"
         },
@@ -1345,14 +1418,14 @@
          "style": {
           "display": "none",
           "background": "rgb(255, 255, 255)",
-          "border": "solid rgb(221, 214, 229)"
+          "border": "solid rgb(233, 231, 237)"
          },
          "children": [
           {
            "tag": "button",
            "class": "menu-item",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "Mira"
           },
@@ -1360,7 +1433,7 @@
            "tag": "button",
            "class": "menu-item",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "Theo"
           },
@@ -1368,7 +1441,7 @@
            "tag": "button",
            "class": "menu-item",
            "style": {
-            "color": "rgb(30, 24, 51)"
+            "color": "rgb(23, 21, 31)"
            },
            "text": "Juno"
           }
@@ -1390,15 +1463,15 @@
            "aria-label": "Kai · Compare flights",
            "style": {
             "background": "rgb(255, 255, 255)",
-            "border": "solid rgb(221, 214, 229)"
+            "border": "solid rgb(233, 231, 237)"
            },
            "children": [
             {
              "tag": "span",
              "class": "run-avatar",
              "style": {
-              "background": "rgb(234, 228, 242)",
-              "color": "rgb(30, 24, 51)"
+              "background": "rgb(239, 237, 242)",
+              "color": "rgb(23, 21, 31)"
              },
              "text": "K"
             },
@@ -1406,7 +1479,7 @@
              "tag": "span",
              "class": "run-title",
              "style": {
-              "color": "rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)"
              },
              "text": "Compare flights"
             },
@@ -1414,7 +1487,7 @@
              "tag": "span",
              "class": "run-time",
              "style": {
-              "color": "rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)"
              },
              "text": "1:06"
             },
@@ -1426,8 +1499,8 @@
                "tag": "span",
                "class": "run-bar",
                "style": {
-                "background": "rgb(182, 163, 245)",
-                "color": "rgb(30, 24, 51)"
+                "background": "rgb(23, 21, 31)",
+                "color": "rgb(23, 21, 31)"
                }
               }
              ]
@@ -1445,15 +1518,15 @@
            "aria-label": "Mira · Sort the inbox",
            "style": {
             "background": "rgb(255, 255, 255)",
-            "border": "solid rgb(221, 214, 229)"
+            "border": "solid rgb(233, 231, 237)"
            },
            "children": [
             {
              "tag": "span",
              "class": "run-avatar",
              "style": {
-              "background": "rgb(234, 228, 242)",
-              "color": "rgb(30, 24, 51)"
+              "background": "rgb(239, 237, 242)",
+              "color": "rgb(23, 21, 31)"
              },
              "text": "M"
             },
@@ -1461,7 +1534,7 @@
              "tag": "span",
              "class": "run-title",
              "style": {
-              "color": "rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)"
              },
              "text": "Sort the inbox"
             },
@@ -1469,7 +1542,7 @@
              "tag": "span",
              "class": "run-time",
              "style": {
-              "color": "rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)"
              },
              "text": "4:13"
             },
@@ -1481,8 +1554,8 @@
                "tag": "span",
                "class": "run-bar",
                "style": {
-                "background": "rgb(182, 163, 245)",
-                "color": "rgb(30, 24, 51)"
+                "background": "rgb(23, 21, 31)",
+                "color": "rgb(23, 21, 31)"
                }
               }
              ]
@@ -1508,7 +1581,7 @@
        "tag": "span",
        "class": "map-strip-name",
        "style": {
-        "color": "rgb(103, 95, 112)"
+        "color": "rgb(105, 101, 115)"
        },
        "text": "데스크톱 2"
       },
@@ -1520,7 +1593,7 @@
          "tag": "div",
          "class": "drawer-slot",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
@@ -1546,9 +1619,9 @@
            "tag": "span",
            "class": "badge",
            "style": {
-            "background": "rgb(242, 239, 246)",
-            "color": "rgb(30, 24, 51)",
-            "border": "solid rgb(221, 214, 229)"
+            "background": "rgb(245, 244, 247)",
+            "color": "rgb(105, 101, 115)",
+            "border": "solid rgba(0, 0, 0, 0)"
            },
            "text": "3"
           }
@@ -1586,8 +1659,8 @@
      "hidden": "",
      "style": {
       "display": "none",
-      "background": "rgba(182, 163, 245, 0.06)",
-      "border": "dashed rgba(182, 163, 245, 0.3)"
+      "background": "rgb(245, 244, 247)",
+      "border": "dashed rgb(233, 231, 237)"
      },
      "children": [
       {
@@ -1597,7 +1670,7 @@
       {
        "tag": "span",
        "style": {
-        "color": "rgb(107, 79, 158)"
+        "color": "rgb(23, 21, 31)"
        },
        "text": "Eris 에게 건네기"
       }
@@ -1621,7 +1694,7 @@
        ],
        "style": {
         "background": "rgb(255, 255, 255)",
-        "border": "solid rgb(221, 214, 229)"
+        "border": "solid rgb(233, 231, 237)"
        },
        "children": [
         {
@@ -1640,7 +1713,7 @@
              "tag": "span",
              "class": "surface-name",
              "style": {
-              "color": "rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)"
              },
              "text": "캘린더"
             },
@@ -1648,7 +1721,7 @@
              "tag": "span",
              "class": "surface-sub",
              "style": {
-              "color": "rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)"
              },
              "text": "이번 주"
             }
@@ -1659,58 +1732,29 @@
            "class": "surface-tools",
            "children": [
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "오른쪽으로 나누기 (⌘D)",
-             "box": [
-              517,
-              249,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "고정됨",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
                "tag": "svg",
-               "icon": "split-right"
+               "icon": "pin"
               }
              ]
             },
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "아래로 나누기 (⌥⌘D)",
-             "box": [
-              543,
-              249,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "플로팅",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
-             },
-             "children": [
-              {
-               "tag": "svg",
-               "icon": "split-down"
-              }
-             ]
-            },
-            {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "플로팅 모드",
-             "aria-pressed": "false",
-             "box": [
-              569,
-              249,
-              24,
-              24
-             ],
-             "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
@@ -1722,11 +1766,11 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "고정",
-             "aria-pressed": "false",
+             "aria-label": "창 메뉴",
+             "aria-expanded": "false",
              "box": [
               595,
-              249,
+              247,
               24,
               24
              ],
@@ -1736,7 +1780,7 @@
              "children": [
               {
                "tag": "svg",
-               "icon": "pin"
+               "icon": "more"
               }
              ]
             },
@@ -1746,7 +1790,7 @@
              "aria-label": "창으로 꺼내기",
              "box": [
               621,
-              249,
+              247,
               24,
               24
              ],
@@ -1766,7 +1810,7 @@
              "aria-label": "닫기",
              "box": [
               647,
-              249,
+              247,
               24,
               24
              ],
@@ -1790,8 +1834,59 @@
          "children": [
           {
            "tag": "div",
-           "class": "panes",
+           "class": "tabs",
            "children": [
+            {
+             "tag": "div",
+             "class": "tab-strip",
+             "role": "tablist",
+             "style": {
+              "display": "none"
+             },
+             "children": [
+              {
+               "tag": "div",
+               "class": "tab is-active",
+               "role": "tab",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "tab-name",
+                 "style": {
+                  "color": "rgb(23, 21, 31)"
+                 },
+                 "text": "캘린더",
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "calendar"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "icon-button tool tab-close",
+                 "aria-label": "탭 닫기 · 캘린더",
+                 "box": [
+                  0,
+                  0,
+                  0,
+                  0
+                 ],
+                 "style": {
+                  "border": "solid rgba(0, 0, 0, 0)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "close"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
             {
              "tag": "div",
              "class": "pane",
@@ -1806,7 +1901,7 @@
                  "tag": "desk-universal-view",
                  "class": "sample-view",
                  "style": {
-                  "color": "rgb(30, 24, 51)"
+                  "color": "rgb(23, 21, 31)"
                  }
                 }
                ]
@@ -1821,56 +1916,56 @@
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         }
        ]
@@ -1889,7 +1984,7 @@
        ],
        "style": {
         "background": "rgb(255, 255, 255)",
-        "border": "solid rgba(182, 163, 245, 0.3)"
+        "border": "solid rgb(233, 231, 237)"
        },
        "children": [
         {
@@ -1908,7 +2003,7 @@
              "tag": "span",
              "class": "surface-name",
              "style": {
-              "color": "rgb(30, 24, 51)"
+              "color": "rgb(23, 21, 31)"
              },
              "text": "Tomorrow"
             },
@@ -1916,7 +2011,7 @@
              "tag": "span",
              "class": "surface-sub",
              "style": {
-              "color": "rgb(103, 95, 112)"
+              "color": "rgb(105, 101, 115)"
              },
              "text": "내일 할 일"
             },
@@ -1924,8 +2019,8 @@
              "tag": "span",
              "class": "eris-badge",
              "style": {
-              "background": "rgba(182, 163, 245, 0.12)",
-              "color": "rgb(107, 79, 158)"
+              "background": "rgb(239, 237, 242)",
+              "color": "rgb(23, 21, 31)"
              },
              "text": "Eris 가 만듦"
             }
@@ -1936,58 +2031,29 @@
            "class": "surface-tools",
            "children": [
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "오른쪽으로 나누기 (⌘D)",
-             "box": [
-              1157,
-              229,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "고정됨",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
                "tag": "svg",
-               "icon": "split-right"
+               "icon": "pin"
               }
              ]
             },
             {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "아래로 나누기 (⌥⌘D)",
-             "box": [
-              1183,
-              229,
-              24,
-              24
-             ],
+             "tag": "span",
+             "class": "surface-mark",
+             "role": "img",
+             "aria-label": "플로팅",
+             "hidden": "",
              "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
-             },
-             "children": [
-              {
-               "tag": "svg",
-               "icon": "split-down"
-              }
-             ]
-            },
-            {
-             "tag": "button",
-             "class": "icon-button tool",
-             "aria-label": "플로팅 모드",
-             "aria-pressed": "false",
-             "box": [
-              1209,
-              229,
-              24,
-              24
-             ],
-             "style": {
-              "border": "solid rgba(0, 0, 0, 0)"
+              "display": "none"
              },
              "children": [
               {
@@ -1999,11 +2065,11 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "고정",
-             "aria-pressed": "false",
+             "aria-label": "창 메뉴",
+             "aria-expanded": "false",
              "box": [
               1235,
-              229,
+              227,
               24,
               24
              ],
@@ -2013,7 +2079,7 @@
              "children": [
               {
                "tag": "svg",
-               "icon": "pin"
+               "icon": "more"
               }
              ]
             },
@@ -2023,7 +2089,7 @@
              "aria-label": "창으로 꺼내기",
              "box": [
               1261,
-              229,
+              227,
               24,
               24
              ],
@@ -2043,7 +2109,7 @@
              "aria-label": "닫기",
              "box": [
               1287,
-              229,
+              227,
               24,
               24
              ],
@@ -2067,8 +2133,59 @@
          "children": [
           {
            "tag": "div",
-           "class": "panes",
+           "class": "tabs",
            "children": [
+            {
+             "tag": "div",
+             "class": "tab-strip",
+             "role": "tablist",
+             "style": {
+              "display": "none"
+             },
+             "children": [
+              {
+               "tag": "div",
+               "class": "tab is-active",
+               "role": "tab",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "tab-name",
+                 "style": {
+                  "color": "rgb(23, 21, 31)"
+                 },
+                 "text": "Tomorrow",
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "list"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "icon-button tool tab-close",
+                 "aria-label": "탭 닫기 · Tomorrow",
+                 "box": [
+                  0,
+                  0,
+                  0,
+                  0
+                 ],
+                 "style": {
+                  "border": "solid rgba(0, 0, 0, 0)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "close"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
             {
              "tag": "div",
              "class": "pane is-eris",
@@ -2083,7 +2200,7 @@
                  "tag": "desk-universal-view",
                  "class": "sample-view",
                  "style": {
-                  "color": "rgb(30, 24, 51)"
+                  "color": "rgb(23, 21, 31)"
                  }
                 }
                ]
@@ -2098,56 +2215,56 @@
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         },
         {
          "tag": "span",
          "class": "surface-resize",
          "style": {
-          "color": "rgb(30, 24, 51)"
+          "color": "rgb(23, 21, 31)"
          }
         }
        ]

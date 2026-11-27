@@ -6,7 +6,8 @@
 //! desktops in their order. Each says where it is on screen in whole CSS pixels (a window
 //! on another desktop: where it is when that desktop comes to the front; one in the drawer: where
 //! it comes back), its rank in its desktop's stacking order (0 at the back), how it is placed
-//! (normal, floating, snapped, filled), whether it is pinned or in use, its desktop and its panes.
+//! (normal, floating, snapped, filled), whether it is pinned or in use, its desktop and its tabs
+//! (the contract's `panes`, from when a window split inside: the one in use is the tab it shows).
 //! A plugin window in its slot is on every desktop until it is moved (ADR 0117): it is named once,
 //! where it is seen. The desktops carry their pans.
 //!
@@ -223,19 +224,11 @@ impl Desk {
         // A window out of the canvas is in use whatever desktop is in front (#235).
         let focused = (seat.desktop == Some(self.here().as_str()) || p.out.is_some())
             && self.focused.as_deref() == Some(p.id.as_str());
-        let tree = p.panes();
-        let leaves: Vec<(&str, &str)> = tree.leaves().into_iter().take(PANES).collect();
-        let in_use = focused
-            .then(|| {
-                (leaves
-                    .iter()
-                    .find(|(id, _)| Some(*id) == self.pane.as_deref()))
-                .or(leaves.first())
-                .map(|(id, _)| *id)
-            })
-            .flatten();
-        let mut panes: Vec<BrainDeskPane> = (leaves.iter())
-            .map(|&leaf| self.pane_snapshot(p, leaf, in_use, seen))
+        let tabs = p.tabs();
+        let shown = p.shown().id;
+        let in_use = focused.then_some(shown.as_str());
+        let mut panes: Vec<BrainDeskPane> = (tabs.iter().take(PANES))
+            .map(|tab| self.pane_snapshot(p, (&tab.id, &tab.view), in_use, seen))
             .collect();
         if panes.is_empty() {
             panes.push(BrainDeskPane {

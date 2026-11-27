@@ -15,8 +15,8 @@ question are found with an embedding model (vectors kept in `rag/`) and shown as
 
 | Permission | Why |
 | --- | --- |
-| `net:connect` (`localhost`, `127.0.0.1`) | Talk to the model servers on this computer; another computer is asked for once |
-| `net:fetch` (`huggingface.co`) | Search models and read their files and cards, in Discover only |
+| `net:connect` (`localhost`, `127.0.0.1`) | Talk to local model servers. Add and Retry review the exact remote address for a lasting grant (ADR 0382) |
+| `net:fetch` (`huggingface.co`) | Search models and read catalog files from Discover and agent commands |
 | `proc:spawn` (`llama-server`, `curl`, `sysctl`, `nvidia-smi`) | Run model files, download them, read this computer's memory |
 | `fs:read`, `fs:write` (`${home}/**`) | Threads, presets and model files under `~/.endue/local-models/`, and the folders added |
 | `shell:open` (`http`, `https`) | Open a link from an answer in the browser |

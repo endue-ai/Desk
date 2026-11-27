@@ -27,6 +27,7 @@ const CONTROLS = "button|input|select|textarea";
 export const KIT = new Set([
   "desk-btn",
   "desk-icon-btn",
+  "desk-chip",
   "desk-field",
   "desk-check",
   "desk-tab",

@@ -5,11 +5,15 @@ name: release-final
 # issue on the milestone vX.Y. The candidate's commit is built again as X.Y.Z, since the version is in
 # the binary and in every signature. A person approves the publish in the stable environment; then it
 # is uploaded, tagged vX.Y.Z with its GitHub Release by the release app, and only then listed: on
-# stable to a tenth of the desks (rollout.yml widens it), on beta to all. A step that fails leaves
+# stable for 10% of installations (rollout.yml widens it), on beta for all. A step that fails leaves
 # nothing listed, and re-running the publish job picks up where it stopped.
 on:
   workflow_dispatch:
     inputs:
+      min-from:
+        description: Oldest installed app version that can install this final directly
+        required: false
+        type: string
       soak-days:
         description: Days the newest candidate must have been on beta
         required: false
@@ -36,7 +40,6 @@ jobs:
       version: ${{ steps.pick.outputs.version }}
       commit: ${{ steps.pick.outputs.commit }}
       candidate: ${{ steps.pick.outputs.candidate }}
-      notes-start: ${{ steps.pick.outputs.notes-start }}
       shell: ${{ steps.pick.outputs.shell }}
     env:
       LINE: ${{ github.ref_name }}
@@ -94,13 +97,12 @@ jobs:
             echo "::error::Open release-blocker issues on $milestone: $blockers"
             exit 1
           fi
-          # The desk its candidates were: what the candidate's own commit names (#46).
+          # Build endue with the shell selected by the candidate commit (#46).
           shell="$(git show "$commit:.github/release-shell" 2>/dev/null | tr -d '[:space:]' || true)"
           {
             echo "candidate=$candidate"
             echo "commit=$commit"
             echo "version=$version"
-            echo "notes-start=$(node scripts/release-version.mjs --notes-start "$version")"
             echo "shell=${shell:-tauri}"
           } | tee -a "$GITHUB_OUTPUT"
 
@@ -130,7 +132,7 @@ jobs:
       VERSION: ${{ needs.gate.outputs.version }}
       COMMIT: ${{ needs.gate.outputs.commit }}
       CANDIDATE: ${{ needs.gate.outputs.candidate }}
-      NOTES_START: ${{ needs.gate.outputs.notes-start }}
+      MIN_FROM: ${{ inputs.min-from || vars.DESK_UPDATE_MIN_FROM }}
       BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
       BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
       ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
@@ -163,19 +165,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-*
+          pattern: endue-app-*
           path: dist
           merge-multiple: true
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: dist/endue-desk_*
+          subject-path: |
+            dist/${{ env.DESKTOP_PREFIX }}*
+            dist/endue-cli_*
       - name: Write and sign release.json
         run: |
           notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
-            --commit "$COMMIT" --notes "$notes" > release.json
+            --commit "$COMMIT" --notes "$notes" --min-from "$MIN_FROM" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum "$DESKTOP_PREFIX"* "endue-cli_${VERSION}_"* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build (listed nowhere yet)
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
@@ -190,21 +199,30 @@ jobs:
           {
             echo "Built from $CANDIDATE, which ran on beta first."
             echo
-            echo "## Download"
+            echo "## endue app"
             echo
-            for path in dist/endue-desk_*; do
+            for path in dist/"$DESKTOP_PREFIX"*; do
               file="${path##*/}"
               case "$file" in *.sig) continue ;; esac
               echo "- [$file]($BASE/releases/$VERSION/$file)"
             done
             echo
             echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Provenance: \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
-            echo "Installed desks on the stable channel update themselves as the rollout widens."
+            echo "Installed copies of endue receive the update as the stable rollout expands."
+            if [ -f "dist/endue-cli_${VERSION}_linux-x86_64.tar.gz" ]; then
+              echo
+              node scripts/release-assets.mjs cli-section "$VERSION" --repo "$GITHUB_REPOSITORY"
+            fi
           } > downloads.md
-          args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue Desk $VERSION" --generate-notes --notes-file downloads.md)
-          if [ -n "$NOTES_START" ]; then args+=(--notes-start-tag "$NOTES_START"); fi
+          args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue $VERSION" --notes-file downloads.md)
           gh release create "v$VERSION" "${args[@]}"
-      - name: List it on stable to a tenth of the desks, and on beta
+      - name: Attach the signed packages and tag-local manifest
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: bash scripts/publish-upgrade-path.sh packages dist "$VERSION" "$COMMIT" "$MIN_FROM"
+      - name: Publish to 10% of stable installations and all beta installations
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           fetch() {
             if ! out="$(aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$1/index.json" "$1.json" --endpoint-url "$ENDPOINT" 2>&1)"; then
@@ -220,5 +238,6 @@ jobs:
             mv "$channel-index.json" index.json
             mv "$channel-index.json.sig" index.json.sig
             node scripts/release-publish.mjs index index.json --channel "$channel" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+            bash scripts/publish-upgrade-path.sh index index.json "$channel" "$VERSION"
           done
-          echo "::notice::$VERSION is on stable for 10% of the desks; widen it with rollout.yml"
+          echo "::notice::endue $VERSION is available to 10% of stable installations. Use rollout.yml to expand availability."

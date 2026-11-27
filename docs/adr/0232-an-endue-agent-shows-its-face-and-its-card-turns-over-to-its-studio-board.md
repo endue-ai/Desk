@@ -5,8 +5,8 @@ decision-makers: Team endue
 ---
 
 Amends ADR 0129 (no remote picture; the back of an agent's card lists its status; the endue half
-of the agent bar). Amends ADR 0223: an agent's Studio is also drawn on the desk, as a board; its
-pages still open live.
+of the agent bar). Amends ADR 0223: an agent's Studio is drawn on the desk, as a board, and its
+window opens no endue.ai page (amended 2026-11-17, below).
 
 # An endue agent shows its face, and its card turns over to its Studio board
 
@@ -63,11 +63,15 @@ is, a web view cannot turn with a card, and the board is the part of Studio the 
   of its newest 200 memories are live and how many of those are rules, how many artifacts it made
   and when the newest changed, and its chat's wallpaper by name. Only what a row shows crosses the
   bridge: no secret, key prefix or scope, memory, wallpaper manifest or artifact name. A row whose
-  facet endue AI did not answer is drawn as not read, says to look on endue.ai, and counts nothing;
+  facet endue AI did not answer is drawn as not read, says to look in Studio, and counts nothing;
   the board decides on and off as endue.ai's does (a channel while one is active, the API while a
   key has not expired).
 * **Setting up.** The board only reads. Every row, every line of the sheet and every action opens
-  that part of endue.ai's Studio (`/agent/<id>/studio/<section>`) in a desk window (ADR 0223).
+  the agent's Studio in the Agents plugin (`endue.agents.studio`, `{ agent, facet }`) at the facet
+  that part belongs to (`system/endue-studio.ts`), inside the desk. Amended 2026-11-17: it first
+  opened that part of endue.ai's Studio in a desk window (ADR 0223); the agent window, its card's
+  foot and the Agents Studio now open no endue.ai page, and the window is the card itself (its
+  faces draw no border, accent line or shadow of their own), as on the web.
 * **Built here.** The board's layout, its words and the order of its rows follow endue.ai's Studio.
   The code is written for the desk (its DOM builder, its tokens, its icons); no file of the web's is
   copied. The maintainers, who own both, decided to show this much of Studio's look here.
@@ -84,7 +88,8 @@ is, a web view cannot turn with a card, and the board is the part of Studio the 
   as endue.ai's web does for everyone who sees the agent.
 * Bad, because turning a card asks endue AI fourteen things at once after the agent itself (each
   on its own thread, 15 s at most), where Studio's page asks for them as its panels need them.
-* Bad, because nothing is changed on the board itself: every change is made on endue.ai.
+* Bad, because nothing is changed on the board itself: every change is made in the Agents Studio,
+  and a part it has no facet for yet (memory, devices, the API, analytics) opens its nearest one.
 * Bad, because the marks are Anthropic's and OpenAI's: they name whose program a button opens, and
   a fork that may not show them replaces `packages/runtime/src/shell/marks.ts`.
 

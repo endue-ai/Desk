@@ -8,7 +8,7 @@ binding through `data.query` and keeps it live with `data.subscribe`, and draws 
 
 | Command | What it does |
 | --- | --- |
-| `desk.views.open` | `{ id, params?, bindings?, notice? }`: opens a view, replacing the one shown; bindings are `{ name: "connector/instance" }`; `notice` `{ text, action? }` sits above it with a button (Undo) |
+| `desk.views.open`, `.list`, `.read` | Agents open or read saved views with `{ id, params? }` and list them by ID. Reads answer item sections. The window remembers accounts picked per view and can pass temporary bindings or a notice (ADR 0389). |
 | `desk.views.preview` | `{ view, note? }`: a proposed view drawn as given in a floating card with Apply, Try again (a correction) and Discard; answers `{ choice, correction? }` like a pick; Escape is Discard (ADR 0073) |
 | `desk.views.close` | `{ id? }`: ends its subscriptions and hides it (Escape); with `id`, only that view |
 | `desk.views.reconnect` | `{ connector, instance }`: `connector.sync` (the Reconnect button) |

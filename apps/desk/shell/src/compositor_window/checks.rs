@@ -24,14 +24,22 @@ impl CompositorWindow {
     /// The composed frame as a PNG at `path` (development builds: checks and screenshots).
     pub fn capture(&mut self, path: &str) -> Result<Value, String> {
         self.compose();
-        let rgba = self.shared.lock().read(&self.scene).ok_or("no readback")?;
+        // The render thread draws the scene laid out for this capture next (#249).
+        self.shared.lock().dirty = true;
+        let (target, device, queue) = self.shared.lock().drawn_off_screen(&self.scene);
+        let rgba = target
+            .read_rgba(&device, &queue)
+            .map_err(|e| e.to_string())?;
         let (w, h) = self.scene.viewport();
         let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
         let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), w, h);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
+        // Capture runs on the event loop while the compositor continues presenting frames.
+        encoder.set_compression(png::Compression::Fast);
         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
         writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
+        writer.finish().map_err(|e| e.to_string())?;
         Ok(json!({ "path": path, "width": w, "height": h, "nodes": self.scene.len() }))
     }
 
@@ -76,6 +84,7 @@ impl CompositorWindow {
 
     /// What each surface did, and the hosted desk, for checks (development builds).
     pub fn stats(&self) -> Value {
+        let drawn = self.render.state();
         let composed = self.shared.lock();
         let mut surfaces = serde_json::Map::new();
         for (surface, plugin, asleep) in self.hosted.surfaces().made() {
@@ -177,11 +186,13 @@ impl CompositorWindow {
             "native": self.native.stats(),
             "relayed": self.relay.counts(),
             "composed": self.composed,
-            "presented": self.presented,
+            "drawn": drawn.drawn,
+            "presented": drawn.presented,
+            "hz": self.rate,
             "pump": pump(self.desk.pump.counts()),
-            "slow_presents": self.slow_presents,
+            "slow_presents": drawn.slow,
             "occluded": self.occluded,
-            "presenting": self.gpu.presents(),
+            "presenting": drawn.presenting,
             "adapter": format!("{} ({:?})", self.gpu.adapter.name, self.gpu.adapter.backend),
             "wm": self.wm_state(),
         })

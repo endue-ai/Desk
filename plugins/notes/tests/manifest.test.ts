@@ -58,8 +58,14 @@ describe("plugin.json", () => {
           "desk.buffers.update",
           "desk.files.open",
           "desk.buffers.switch",
+          // The shelf: a renamed or deleted note's buffer closes; New makes a note.
+          "desk.buffers.close",
+          "endue.notes.new",
         ],
       },
+      // A note opened, chosen or saved elsewhere: asked for at run time, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
   });
 
@@ -71,6 +77,13 @@ describe("plugin.json", () => {
       "endue.notes.search-open",
       "endue.notes.open",
       "endue.notes.save-as",
+      "endue.notes.list",
+      "endue.notes.read",
+      "endue.notes.append",
+      "endue.notes.replace",
+      "endue.notes.show",
+      "endue.notes.rename",
+      "endue.notes.trash",
     ]);
     expect(contributes?.commands?.[0]).toMatchObject({ title: "New note" });
     expect(contributes?.commands?.[3]).toMatchObject({ title: "Open a note…" });

@@ -1,8 +1,8 @@
 //! Commands as agents' tools (ADR 0088). A registration takes what it leaves out from the
 //! provider's manifest (`described`): the description, the args and result schemas, `agent`,
 //! `readOnly`, the undo and `irreversible`. Commands marked `agent` are the desk's tools: cmd.tools
-//! lists them for a caller (an agent sees those its allowlist could let it run, anyone else those
-//! its grants cover), and the desk's brain turns offer them (`offer`) with two tools of the desk's
+//! lists them for a caller (an agent sees those its allowlist could let it run, an installed
+//! plugin's as granted (ADR 0268), anyone else those its grants cover), and the desk's brain turns offer them (`offer`) with two tools of the desk's
 //! own: desk-tools, which answers cmd.tools, and desk-run, which runs a command by id. A tool's
 //! name is its command id with every dot an underscore; command ids hold no underscores, so the
 //! name gives the id back, and the desk's two names, with no underscore, are never a command's.
@@ -34,15 +34,18 @@ const LIMIT: u64 = 50;
 
 impl Core {
     /// The command a cmd.register of `caller` makes: the call's fields, else what the caller's
-    /// manifest declares for the id. `irreversible` is only ever the manifest's (ADR 0078). An
-    /// agent command needs a description, and an irreversible one is never read-only.
+    /// manifest declares for the id. The desk supplies its own `irreversible` marker.
+    /// An agent command needs a description, and an irreversible one is never read-only.
     pub(crate) fn described(
         &self,
         caller: &str,
         params: CmdRegisterParams,
     ) -> Result<CommandInfo, BridgeError> {
-        let declared = self.declared(caller, &params.id);
+        let (built_in, declared) = self.manifest_command(caller, &params.id);
         let declared = declared.as_ref();
+        if built_in {
+            check_agent_contract(&params, declared)?;
+        }
         let field = |pick: fn(&CommandContribution) -> Option<bool>| declared.and_then(pick);
         let irreversible = match mcp_server_of(caller) {
             // An MCP server has no manifest: what it says changes nothing is read-only, and the
@@ -54,6 +57,7 @@ impl Core {
                 }
                 params.read_only != Some(true)
             }
+            None if caller == DESK => params.irreversible == Some(true),
             None => field(|c| c.irreversible) == Some(true),
         };
         let info = CommandInfo {
@@ -111,7 +115,10 @@ impl Core {
     /// The registered commands marked `agent`, in registration order.
     pub(crate) fn agent_commands(&self) -> Vec<CommandInfo> {
         let registered = self.registered().into_iter();
-        registered.filter(|c| c.agent == Some(true)).collect()
+        let offered = registered.filter(|c| c.agent == Some(true));
+        offered
+            .filter(|c| !self.manages_permissions(&c.provider))
+            .collect()
     }
 
     /// The registered command a tool call names: by its id, or by its tool name.
@@ -182,6 +189,12 @@ impl Core {
             Some(allow) => allow.is_empty() || allow.iter().any(|a| covers(a, &scope)),
             None => held,
         };
+        // Installed tools and Eris's unconditional desk commands need no scope prompt.
+        let target = Target::CommandId(&info.id);
+        let held = held
+            || (allow.is_some()
+                && (self.installed_command(&scope, &target)
+                    || self.eris_desk_command(caller, &info, None)));
         inside.then(|| CommandTool {
             name: tool_name(&info.id),
             granted: held,
@@ -196,22 +209,53 @@ impl Core {
         })
     }
 
-    /// What `provider`'s manifest declares for its command `id` (`contributes.commands`).
-    fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
-        let plugins = self
-            .plugins
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let declared = plugins
-            .get(provider)
-            .and_then(|plugin| plugin.manifest)
+    /// The installed provider and what its manifest declares for `id`.
+    fn manifest_command(&self, provider: &str, id: &str) -> (bool, Option<CommandContribution>) {
+        let Some(plugin) = self.registry().get(provider) else {
+            return (false, None);
+        };
+        let declared = plugin
+            .manifest
             .and_then(|manifest| manifest.contributes)
-            .and_then(|contributes| contributes.commands);
-        declared
+            .and_then(|contributes| contributes.commands)
             .unwrap_or_default()
             .into_iter()
-            .find(|c| c.id == id)
+            .find(|c| c.id == id);
+        (plugin.built_in, declared)
     }
+}
+
+/// A built-in's agent metadata is available before its page runs, so it must match its manifest.
+fn check_agent_contract(
+    params: &CmdRegisterParams,
+    declared: Option<&CommandContribution>,
+) -> Result<(), BridgeError> {
+    let same = match declared.filter(|c| c.agent == Some(true)) {
+        Some(command) => {
+            params.agent != Some(false)
+                && params
+                    .read_only
+                    .is_none_or(|read_only| read_only == (command.read_only == Some(true)))
+                && params
+                    .description
+                    .as_ref()
+                    .is_none_or(|text| command.description.as_ref() == Some(text))
+                && params
+                    .args_schema
+                    .as_ref()
+                    .is_none_or(|args| command.args.as_ref() == Some(args))
+                && params
+                    .result_schema
+                    .as_ref()
+                    .is_none_or(|result| command.result.as_ref() == Some(result))
+        }
+        None => params.agent != Some(true),
+    };
+    if same {
+        return Ok(());
+    }
+    let why = format!("{} must use the agent metadata in its manifest", params.id);
+    Err(error(ErrorCode::InvalidParams, why))
 }
 
 /// What an MCP server's caller id starts with (ADR 0098).
@@ -313,9 +357,9 @@ fn desk_run() -> ToolDefinition {
     ToolDefinition {
         name: DESK_RUN.to_owned(),
         description: "Run one of the desk's commands by its id (command, as desk-tools lists \
-            it) with args that match its argsSchema, and get what it answers. Without a grant \
-            that covers it the person is asked first, and an irreversible command waits for \
-            their approval."
+            it) with args that match its argsSchema, and get what it answers. An installed \
+            plugin's command runs without a question; an irreversible command waits for the \
+            person's approval."
             .to_owned(),
         schema: object(json!({
             "type": "object",

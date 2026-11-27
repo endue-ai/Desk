@@ -9,7 +9,8 @@
 //! `desk.windows.list` answers); in development builds
 //! `compositor_capture { path }` (the composed frame as a PNG), `compositor_stats` (what every surface
 //! painted), `compositor_input { events, logical? }` (events fed to the window's own input entry,
-//! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
+//! `harness.rs`; `{ shake }` the motion gate's shake, `motion.rs`; `{ busy: ms }` a busy loop on the
+//! main thread after the next frame is handed, `frame.rs`), `compositor_input_state` (where input goes), `compositor_a11y` (the
 //! accessibility tree the adapter has, and a screen reader's request, `a11y_check.rs`) and
 //! `compositor_clock { hold?, at? }` (the window manager's clock held, so a check sees a motion at a
 //! time it chooses, ADR 0013) and `compositor_window { to } | { occluded } | { frame } | { sway } | { shortcut } | { seen }`
@@ -135,6 +136,18 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 .recv_timeout(Duration::from_secs(10))
                 .map_err(|_| "the window manager did not answer".to_owned())
         }
+        // A desk.edit.* command: the Edit menu's command where the keys are (`edit_command.rs`).
+        "compositor_edit_command" => {
+            let name = args.get("command").and_then(Value::as_str).unwrap_or("");
+            let command = super::edit_command::blink_command(name)
+                .ok_or_else(|| format!("no edit command {name}"))?;
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.page_edit_command(command);
+                }
+            });
+            Ok(Value::Null)
+        }
         // The motion gate's shake (#247) and sway (#258, `motion.rs`): each runs on a thread of
         // its own.
         "compositor_input" if cfg!(debug_assertions) && args.get("shake").is_some() => {
@@ -142,6 +155,16 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
         }
         "compositor_window" if cfg!(debug_assertions) && args.get("sway").is_some() => {
             super::motion::sway(desk, args)
+        }
+        // The motion gate's busy main thread (#249): answered at once, held after the next frame.
+        "compositor_input" if cfg!(debug_assertions) && args.get("busy").is_some() => {
+            let ms = args.get("busy").and_then(Value::as_f64).unwrap_or_default();
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.busy(ms);
+                }
+            });
+            Ok(Value::Null)
         }
         "compositor_capture"
         | "compositor_stats"
@@ -211,7 +234,7 @@ fn main_window(
     args: &Value,
 ) -> Result<Value, String> {
     // A global shortcut's action, without the machine's keyboard, and which of the shell's
-    // windows show right after it, before a window that loses the keys hides or folds (#237).
+    // windows show right after it, before the palette hides on losing the keys (#237).
     let shortcut = args.get("shortcut").and_then(Value::as_str);
     match shortcut {
         Some("search") => crate::palette::toggle(shell),
@@ -221,11 +244,8 @@ fn main_window(
     }
     if shortcut.is_some() || args.get("seen").is_some() {
         let seen = |role| shell.pane(role).is_some_and(crate::pane::Pane::visible);
-        let [main, palette, island] = [Role::Main, Role::Palette, Role::Island].map(seen);
-        let open = crate::island::is_open(shell);
-        return Ok(serde_json::json!(
-            { "main": main, "palette": palette, "island": island, "islandOpen": open }
-        ));
+        let [main, palette] = [Role::Main, Role::Palette].map(seen);
+        return Ok(serde_json::json!({ "main": main, "palette": palette }));
     }
     let main = shell.pane(Role::Main).ok_or("no main window")?;
     if let Some(occluded) = args.get("occluded").and_then(Value::as_bool) {
@@ -243,10 +263,7 @@ fn main_window(
     }
     match args.get("to").and_then(Value::as_str).unwrap_or_default() {
         "closed" => shell.hide_main(),
-        "minimized" => {
-            main.window.set_minimized(true);
-            crate::eris_window::main_changed(shell);
-        }
+        "minimized" => main.window.set_minimized(true),
         "front" => crate::palette::reveal_main(shell),
         other => return Err(format!("not a way to show the main window: {other}")),
     }

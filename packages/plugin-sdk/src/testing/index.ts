@@ -7,6 +7,7 @@ import {
   type BridgeRequest,
   browserStub,
   type CmdAnsweredData,
+  type CommandContribution,
   type ErrorCode,
   type Grant,
   type Item,
@@ -18,6 +19,7 @@ import {
   type Permission,
   type PermPromptData,
   type ResultOf,
+  type StubDatabase,
   StubError,
   type StubFiles,
   type StubHandlers,
@@ -54,6 +56,8 @@ export interface TestHostOptions {
    * ctx.commands.run; ids nobody registered are unknown_command, as in the core.
    */
   commands?: Record<string, (args: unknown) => unknown>;
+  /** This plugin's manifest commands, prepared by the host before the plugin mounts. */
+  manifestCommands?: CommandContribution[];
   /** Settings at start: a bare key is the plugin's own, `owner/key` another caller's. */
   settings?: Record<string, unknown>;
   /** The plugin's grants at start. */
@@ -72,6 +76,11 @@ export interface TestHostOptions {
    * fs.url gives a `data:` URL, and a write keeps what it replaces as a version (ADR 0076).
    */
   files?: StubFiles;
+  /**
+   * A scripted database server: with it db.open signs in and db.* answer from its statements as the
+   * core does (ADR 0281), under the plugin's db:connect grants; without it db.open is io_error.
+   */
+  db?: StubDatabase;
   /** The desk's language at start (desk.language, ADR 0250); English by default. */
   language?: Language;
   /** The plugin's catalogs, as its manifest's `messages` folder holds them: one per language. */
@@ -150,7 +159,14 @@ export function createTestHost(options: TestHostOptions): TestHost {
       else if (event.event === "cmd.answered" && event.data.caller === "desk")
         answers.get(event.data.invocationId)?.(event.data);
     },
-    { grants, settings, prompt: options.prompt, now: options.now, files: options.files },
+    {
+      grants,
+      settings,
+      prompt: options.prompt,
+      now: options.now,
+      files: options.files,
+      db: options.db,
+    },
   );
   const refused = Object.fromEntries(
     Object.entries(options.refuse ?? {}).map(([method, code]) => [
@@ -165,6 +181,32 @@ export function createTestHost(options: TestHostOptions): TestHost {
   const bridge = new BridgeClient(stub);
   for (const id of Object.keys(options.commands ?? {})) {
     void registry.handlers["cmd.register"]({ id, title: id }, undefined);
+  }
+  for (const {
+    id,
+    title,
+    args,
+    agent,
+    readOnly,
+    description,
+    result,
+    runs,
+    keywords,
+  } of options.manifestCommands ?? []) {
+    if (!id.startsWith(`${me}.`) || runs) continue;
+    void registry.handlers["cmd.register"](
+      {
+        id,
+        title,
+        argsSchema: args,
+        resultSchema: result,
+        agent,
+        readOnly,
+        description,
+        keywords,
+      },
+      me,
+    );
   }
   const answerForDesk = async (data: { invocationId: string; id: string; args?: unknown }) => {
     const { invocationId } = data;

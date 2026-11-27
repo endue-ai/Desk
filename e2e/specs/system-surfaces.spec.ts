@@ -1,6 +1,5 @@
 // System surfaces (#55, ADR 0160): the desk is the compositor and its system surfaces. What stays
-// web of the shell runs in browsers with fixed callers (the desk's own page, the palette's window,
-// floating Eris's), and the compositor places them in its system layer, above every window: the
+// web of the shell runs in browsers with fixed callers (the desk's own page and the palette's), and the compositor places them in its system layer, above every window: the
 // desk's parts whole, the dock's surface under them, an overlay's (the palette) over them. No plugin
 // runs in the desk's page: the runtime keeps only each plugin surface's place there, and its plugin
 // host talks to each plugin's own browser through the shell. Read through the shell's development
@@ -65,21 +64,17 @@ describe("system surfaces: the desk is the compositor and its system surfaces", 
     await feed([{ type: "windowFocused", focused: true }]);
   });
 
-  it("starts the compositor, then the desk's, the palette's and the island's system surfaces, each calling as its window", async () => {
+  it("starts the compositor, then the Desk and Search Desk system surfaces", async () => {
     const { system } = await stats();
     expect(system.surfaces).toEqual([
       { id: "desk", role: "Main", caller: "desk" },
       { id: "palette", role: "Palette", caller: "palette" },
-      { id: "island", role: "Island", caller: "desk" },
     ]);
     const urls = await pages();
-    // The island's page opens while desk.island.show is on (ADR 0204), as it is by default; the
-    // island itself shows only while the desk is not in front. The floating Eris's page is gone.
-    for (const view of ["", "?view=palette", "?view=island"]) {
-      const page = `desk-app://app/index.html${view}`;
-      expect(urls.some((u) => u === page)).toBe(true);
-    }
-    expect(urls).not.toContain("desk-app://app/index.html?view=eris");
+    expect(urls.filter((url) => url.startsWith("desk-app://app/index.html")).sort()).toEqual([
+      "desk-app://app/index.html",
+      "desk-app://app/index.html?view=palette",
+    ]);
   });
 
   it("holds no plugin in the desk's page: each plugin's page is a browser of its own, reached through the shell", async () => {

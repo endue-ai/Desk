@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.read reads a view's page",
+  "instance": {
+    "id": 40,
+    "method": "web.read",
+    "params": {
+      "viewId": "w-1",
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

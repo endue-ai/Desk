@@ -4,11 +4,11 @@ import { LOOK_MS, LOOKS, LookTween, mixLook } from "./states";
 describe("looks glide from one state to the next", () => {
   test("numbers move between the two looks; switches flip halfway", () => {
     const a = LOOKS.idle;
-    const b = LOOKS.done;
+    const b = LOOKS["heads-up"];
     const mid = mixLook(a, b, 0.25);
     expect(mid.brightness).toBeCloseTo(a.brightness + (b.brightness - a.brightness) * 0.25);
     expect(mid.lines).toBe("frost");
-    expect(mixLook(a, b, 0.75).lines).toBe("gold");
+    expect(mixLook(a, b, 0.75).lines).toBe("warning");
     expect(mixLook(a, b, 1)).toBe(b);
   });
 
@@ -40,4 +40,16 @@ describe("looks glide from one state to the next", () => {
     expect(fading).toBeLessThan(1);
     expect(tween.at("listening", 100 + LOOK_MS, false).breath).toBe(0);
   });
+});
+
+test("every state turns, with intact geometry and distinct warnings", () => {
+  for (const look of Object.values(LOOKS)) expect(look.spin).toBeGreaterThan(0);
+  expect(LOOKS["heads-up"].lines).toBe("warning");
+  expect(LOOKS.oops.lines).toBe("danger");
+  const tween = new LookTween("idle");
+  tween.at("oops", 100, false);
+  expect(tween.at("oops", 149, false).tremor).not.toBe(0);
+  expect(tween.at("oops", 579, false).tremor).not.toBe(0);
+  expect(tween.at("oops", 1000, false).tremor).toBe(0);
+  expect(tween.at("oops", 149, true).tremor).toBe(0);
 });

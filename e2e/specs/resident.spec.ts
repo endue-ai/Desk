@@ -1,12 +1,6 @@
-// endue with every window closed (#237, ADR 0225). The desk starts as its login item starts it
-// (`--background`, support/driver.ts): it is ready with no window. Its hidden page keeps its
-// timers' pace and ends what waits on animation frames; a run reported from it finishes and its
-// notice reaches the island; the shortcuts' actions summon Search Desk and the island; the start
-// at login writes its login item under the spec's HOME; the window comes back and closes again
-// with the desk running on; the menu's Quit ends every process, and so does Quit on the island,
-// open, after a second start. The shortcuts' actions run
-// through the shell's development command (`compositor_window { shortcut }`): the keys are the
-// machine's, which the specs never press.
+// Exercise a background start, live timers and agent notices, the global shortcuts, the login
+// item and quitting with the main window closed (#237, ADR 0225). Use the shell's development
+// command for shortcut actions so the tests do not send global keystrokes to the machine.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -20,8 +14,6 @@ import { appPid, HOME_VAR, loginItems } from "../support/driver";
 interface Seen {
   main: boolean;
   palette: boolean;
-  island: boolean;
-  islandOpen: boolean;
 }
 interface Answer {
   result?: Record<string, unknown>;
@@ -73,32 +65,6 @@ async function count(name: string): Promise<number> {
   return took ?? Number.POSITIVE_INFINITY;
 }
 
-/** The island's page among the session's windows, once found. */
-let island: string | undefined;
-
-/** Run `body` in the island's page; back on the desk's after. */
-async function inIsland<T>(body: () => Promise<T>): Promise<T> {
-  const shell = await browser.getWindowHandle();
-  try {
-    if (island === undefined) {
-      for (const handle of await browser.getWindowHandles()) {
-        await browser.switchToWindow(handle);
-        if ((await browser.getUrl()).includes("view=island")) {
-          island = handle;
-          break;
-        }
-      }
-      if (island === undefined) throw new Error("the island has no page");
-    } else await browser.switchToWindow(island);
-    return await body();
-  } finally {
-    await browser.switchToWindow(shell);
-  }
-}
-
-const islandLine = () =>
-  inIsland(() => browser.execute(() => document.querySelector(".island-line")?.textContent ?? ""));
-
 /** The pids of `pid` and every process under it that still run. */
 function tree(pid: number): number[] {
   const rows = execFileSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" })
@@ -118,7 +84,7 @@ describe("endue with every window closed", () => {
   });
 
   it("started by its login item, is ready with no window, and what waits on frames has ended", async () => {
-    expect(await seen()).toMatchObject({ main: false });
+    expect(await seen()).toEqual({ main: false, palette: false });
     expect(await shellCommand("compositor_window", { frame: true })).toBeNull();
     expect(await occluded()).toBe(true);
     expect(await hidden()).toBe(true);
@@ -140,8 +106,8 @@ describe("endue with every window closed", () => {
     expect(ms).toBeLessThan(5000);
   });
 
-  it("finishes a run behind closed windows, and its notice reaches the island", async () => {
-    expect(await seen()).toMatchObject({ main: false, island: true });
+  it("finishes a run behind closed windows and updates its status line", async () => {
+    expect(await seen()).toEqual({ main: false, palette: false });
     const run = {
       id: "run-resident",
       agent: { id: "probe", name: "Probe" },
@@ -149,9 +115,6 @@ describe("endue with every window closed", () => {
       startedAt: new Date().toISOString(),
     };
     await bridge("agent.report", { ...run, state: "running" });
-    await browser.waitUntil(async () => (await islandLine()) === "1 agent at work", {
-      timeoutMsg: "the island never said the run",
-    });
     // The work is the hidden page's own: forty steps on its timers, then the run's end.
     expect(await count("run")).toBeLessThan(5000);
     await bridge("agent.report", {
@@ -165,20 +128,27 @@ describe("endue with every window closed", () => {
       level: "success",
       scope: { permission: "ui:notify" },
     });
-    await browser.waitUntil(async () => (await islandLine()) === "Probe counted to forty", {
-      timeoutMsg: "the notice never reached the island",
-    });
-    expect(await seen()).toMatchObject({ main: false });
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          (selector: string) =>
+            document.querySelector(selector)?.textContent === "Probe counted to forty",
+          `${MODE} footer.desk-status`,
+        ),
+      { timeoutMsg: "the notice never reached the status line" },
+    );
+    expect(await seen()).toEqual({ main: false, palette: false });
   });
 
-  it("summons Search Desk and the island by their shortcuts' actions, the desk still closed", async () => {
-    // What shows is read in the shell right after the action: a palette that loses the keys
-    // hides and an island that loses them folds, and other apps on this machine take them.
+  it("summons Search Desk in the background and brings Desk forward to talk to Eris", async () => {
     const shortcut = (action: string) =>
       shellCommand<Seen>("compositor_window", { shortcut: action });
-    expect(await shortcut("search")).toMatchObject({ main: false, palette: true });
-    expect(await shortcut("eris")).toMatchObject({ main: false, island: true, islandOpen: true });
-    expect(await seen()).toMatchObject({ main: false });
+    expect(await shortcut("search")).toEqual({ main: false, palette: true });
+    expect(await shortcut("eris")).toEqual({ main: true, palette: false });
+    await browser.waitUntil(
+      () => browser.execute(() => Boolean(document.querySelector('.talk-pill[data-state="edit"]'))),
+      { timeoutMsg: "Eris's talk line did not open" },
+    );
   });
 
   it("writes the login item the setting asks for, which starts this desk in the background", async () => {
@@ -202,7 +172,7 @@ describe("endue with every window closed", () => {
       timeoutMsg: "the desk's page stayed hidden in a window that shows",
     });
     await shellCommand("compositor_window", { to: "closed" });
-    expect(await seen()).toMatchObject({ main: false });
+    expect(await seen()).toEqual({ main: false, palette: false });
     expect(await occluded()).toBe(true);
     await browser.waitUntil(hidden, { timeoutMsg: "the closed desk's page still shows" });
     expect(tree(appPid() ?? 0).length).toBeGreaterThan(1);
@@ -223,32 +193,11 @@ describe("endue with every window closed", () => {
     if (process.platform !== "darwin") this.skip();
     const before = tree(appPid() ?? 0);
     expect(before.length).toBeGreaterThan(1);
-    expect(await seen()).toMatchObject({ main: false });
+    expect(await seen()).toEqual({ main: false, palette: false });
     const at = (
       browser.requestedCapabilities as { "goog:chromeOptions"?: { debuggerAddress?: string } }
     )["goog:chromeOptions"]?.debuggerAddress;
     expect(await closeBrowser(Number(at?.split(":")[1]))).toBe(true);
-    expect(await gone(before)).toEqual([]);
-  });
-
-  it("starts again with no window, and quits from the island with it open", async () => {
-    await browser.reloadSession();
-    await shellReady();
-    island = undefined;
-    expect(await seen()).toMatchObject({ main: false, island: true });
-    const before = tree(appPid() ?? 0);
-    expect(before.length).toBeGreaterThan(1);
-    await shellCommand("compositor_window", { shortcut: "eris" });
-    // On the island's page for good: the desk may be gone before a switch back would be answered.
-    await inIsland(async () => {});
-    await browser.switchToWindow(island ?? "");
-    await browser
-      .execute(() => {
-        const native = (globalThis as unknown as { __deskNative: { send(text: string): void } })
-          .__deskNative;
-        native.send(JSON.stringify({ id: 990_001, cmd: "island_quit", args: {} }));
-      })
-      .catch(() => {});
     expect(await gone(before)).toEqual([]);
   });
 });

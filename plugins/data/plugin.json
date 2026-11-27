@@ -10,6 +10,14 @@
     {
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed", "desk.palette.pick", "desk.buffers.update"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
     }
   ],
   "surfaces": [
@@ -133,6 +141,106 @@
         "default": true,
         "description": "Show values whose key looks like a secret (password, passwd, secret, token, api_key, apikey, private_key) as dots until revealed. dotenv values are always masked."
       }
-    }
+    },
+    "commands": [
+      {
+        "id": "endue.data.read",
+        "title": "Data: the open file as data",
+        "keywords": ["data", "json", "yaml", "toml", "xml", "csv", "env", "config", "read"],
+        "description": "The file in the Data window in use (JSON, YAML, TOML, XML, .env, plist and the other formats Data opens), or the open one named by path, as the value at pointer (a JSON Pointer, /servers/0/host; the whole document without it) nested to depth (3, at most 8; deeper branches say how many children they hold, a branch lists 200 at most). document picks one of several (YAML documents, JSON Lines). Values Data masks, every .env value and values under keys that look like a password, secret, token or key, come back as [secret] even when the person revealed them; the raw text is never answered. errors lists what did not parse. It leaves the screen as it is. Data reads only what the desk opened in it: open a file with desk.files.open first, which brings its window into use.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "pointer": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "document": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "documents": {
+              "type": "integer"
+            },
+            "pointer": {
+              "type": "string"
+            },
+            "value": {},
+            "errors": {
+              "type": "array"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.data.set",
+        "title": "Set a data value",
+        "description": "Set a scalar at a JSON Pointer in an open file. Uses the field's original type and leaves the edit unsaved.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "pointer": { "type": "string", "maxLength": 4096 },
+            "value": { "type": ["string", "number", "boolean", "null"] },
+            "document": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["pointer", "value"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.data.problems",
+        "title": "Read schema problems",
+        "description": "Read schema problems in an open data file. This omits masked values.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.data.search",
+        "title": "Search a data file",
+        "description": "Find keys and unmasked values in an open data file. Answers bounded paths and JSON Pointers.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "query": { "type": "string", "minLength": 1, "maxLength": 2000 }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      }
+    ]
   }
 }

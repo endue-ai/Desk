@@ -16,10 +16,20 @@ pub fn dist() -> PathBuf {
     if let Some(dir) = std::env::var_os("DESK_SHELL_DIST") {
         return PathBuf::from(dir);
     }
-    if let Some(dir) = bundled(&std::env::current_exe().unwrap_or_default()) {
-        return dir;
+    let exe = std::env::current_exe().unwrap_or_default();
+    let development = option_env!("DESK_PACKAGED_SHELL")
+        .is_none()
+        .then(|| Path::new(env!("CARGO_MANIFEST_DIR")));
+    dist_from(&exe, development)
+}
+
+/// Packaged programs resolve the installed shell even when an installation is incomplete.
+/// Only an unpackaged development binary can fall back to the build checkout.
+fn dist_from(exe: &Path, development: Option<&Path>) -> PathBuf {
+    if let Some(root) = development {
+        return bundled(exe).unwrap_or_else(|| root.join("../dist"));
     }
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../dist")
+    resource(exe, "shell").expect("cannot locate the packaged shell relative to its executable")
 }
 
 /// The shell's files inside a bundle around `exe`, when they are there.
@@ -39,9 +49,9 @@ fn resource(exe: &Path, name: &str) -> Option<PathBuf> {
     })
 }
 
-/// The folders whose plugins install as built in: `DESK_PLUGIN_DIRS` when it is set (development
-/// builds and the e2e point it at the repository's `plugins/`), else the package's own copy of
-/// `plugins/` (#47), else none.
+/// The folders whose plugins install as built in: `DESK_PLUGIN_DIRS` when it is set (`just dev` and
+/// the e2e point it at the repository's `plugins/`), else the package's own copy of `plugins/`
+/// (#47; in the development bundle a link to the repository's), else none.
 pub fn plugin_dirs() -> Vec<PathBuf> {
     if std::env::var_os("DESK_PLUGIN_DIRS").is_some() {
         return desk_boot::boot::env_paths("DESK_PLUGIN_DIRS");
@@ -94,7 +104,7 @@ pub fn home_dir() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{IDENTIFIER, bundled, bundled_plugins, data_dir};
+    use super::{IDENTIFIER, bundled, bundled_plugins, data_dir, dist_from};
     use std::fs;
 
     #[test]
@@ -121,6 +131,31 @@ mod tests {
         let _ = fs::remove_dir_all(dir);
     }
 
+    /// The development bundle links the repository's `plugins/` (`desk-shell-bundle`), so the app
+    /// opened without `DESK_PLUGIN_DIRS` is not a desk without plugins.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_development_bundle_finds_the_plugins_it_links_to() {
+        let dir = std::env::temp_dir().join(format!("desk-shell-linked-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let contents = dir.join("Desk.app/Contents");
+        let exe = contents.join("MacOS/endue-desk");
+        let linked = contents.join("Resources/plugins");
+        fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        fs::create_dir_all(linked.parent().unwrap()).unwrap();
+        fs::create_dir_all(dir.join("repository/plugins/launcher")).unwrap();
+        std::os::unix::fs::symlink(dir.join("repository/plugins"), &linked).unwrap();
+        let found = bundled_plugins(&exe).expect("the linked folder");
+        assert!(found.join("launcher").is_dir());
+        fs::remove_dir_all(dir.join("repository")).unwrap();
+        assert_eq!(
+            bundled_plugins(&exe),
+            None,
+            "a link to nothing is no folder"
+        );
+        let _ = fs::remove_dir_all(dir);
+    }
+
     #[test]
     fn the_data_folder_is_named_after_the_identifier() {
         assert!(data_dir().ends_with(IDENTIFIER));
@@ -141,6 +176,12 @@ mod tests {
         } else {
             dir.join("shell")
         };
+        let development = dir.join("checkout/apps/desk/shell");
+        assert_eq!(
+            dist_from(&exe, Some(&development)),
+            development.join("../dist")
+        );
+        assert_eq!(dist_from(&exe, None), shell);
         fs::create_dir_all(&shell).unwrap();
         fs::write(shell.join("index.html"), "<!doctype html>").unwrap();
         assert_eq!(bundled(&exe), Some(shell));

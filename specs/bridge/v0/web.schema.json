@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/web.schema.json",
-  "title": "Desk bridge v0: web",
-  "description": "Show a live web page in the caller's window: a web view is a browser of its own that the desk draws over the caller's surface at the box the caller gives. The page gets nothing of the desk and keeps its cookies apart from the desk's own pages. Scoped by web:browse hosts.",
+  "title": "endue bridge v0: web",
+  "description": "Show a live web page in the caller's window: a web view is a browser of its own that the desk draws over the caller's surface at the box the caller gives. The page gets nothing of the desk and keeps its cookies apart from the desk's own pages. Scoped by web:browse hosts; reading a view's page and acting in it (web.read, web.act) by web:control hosts.",
   "$defs": {
     "WebViewId": {
       "description": "A web view of the caller's, as web.open named it.",
@@ -72,6 +72,10 @@
         "y": { "type": "number", "minimum": -100000, "maximum": 100000 },
         "width": { "type": "number", "minimum": 0, "maximum": 100000 },
         "height": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "fill": {
+          "description": "true extends the box from x and y to the surface's right and bottom edges, using the current surface size in place of width and height. Defaults to false.",
+          "type": "boolean"
+        },
         "shown": {
           "description": "false hides the view and rests its page; true by default.",
           "type": "boolean"
@@ -196,6 +200,294 @@
       "description": "Result of web.close.",
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "WebRef": {
+      "description": "An element of a view's page, as web.read named it. It holds while that element is in the page: a page that loads another document names its elements anew.",
+      "type": "string",
+      "pattern": "^e[1-9][0-9]{0,6}$"
+    },
+    "WebReadRequest": {
+      "description": "Read the page a web view shows: its text in reading order, with every element that can be pressed, filled in or chosen from named, and where the page is scrolled to.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.read" },
+        "params": { "$ref": "#/$defs/WebReadParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebReadParams": {
+      "description": "Parameters of web.read: the part of the page's text from character from on, max characters at most.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "from": {
+          "description": "The character the part starts at; 0 by default.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "max": {
+          "description": "How many characters the part holds at most; 20000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebControlPermission" }
+      },
+      "required": ["viewId", "scope"],
+      "additionalProperties": false
+    },
+    "WebReadResult": {
+      "description": "Result of web.read: the page of the view's main document as it is now. A frame in the page is named, not read.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "The address the page was read at.",
+          "type": "string",
+          "maxLength": 8192
+        },
+        "title": { "type": "string", "maxLength": 1024 },
+        "text": {
+          "description": "The part asked for of the page's text, in reading order: one block a line, a heading after #, a list item after -. An element that can be acted on is written [ref kind \"name\"], a field with = \"what it holds\" (never a password), a box or a choice with its state; kind is link, button, field, checkbox, radio, select, tab or item. What the page hides is left out.",
+          "type": "string",
+          "maxLength": 100000
+        },
+        "from": {
+          "description": "The character the part starts at.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "description": "How many characters the whole text has: a part that ends before it leaves more to read from there on.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "scroll": { "$ref": "#/$defs/WebScrolled" }
+      },
+      "required": ["url", "title", "text", "from", "length", "scroll"],
+      "additionalProperties": false
+    },
+    "WebScrolled": {
+      "description": "Where a page is scrolled to, in CSS pixels: the part in view (x, y from the page's top left, width and height) and the size of the whole page.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 },
+        "pageWidth": { "type": "integer", "minimum": 0 },
+        "pageHeight": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["x", "y", "width", "height", "pageWidth", "pageHeight"],
+      "additionalProperties": false
+    },
+    "WebActRequest": {
+      "description": "Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "web.act" },
+        "params": { "$ref": "#/$defs/WebActParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "WebActParams": {
+      "description": "Parameters of web.act.",
+      "type": "object",
+      "properties": {
+        "viewId": { "$ref": "#/$defs/WebViewId" },
+        "action": { "$ref": "#/$defs/WebAction" },
+        "invocationId": {
+          "description": "For a built-in Browser action on an agent command, the pending invocation that authorizes the action.",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebControlPermission" }
+      },
+      "required": ["viewId", "action", "scope"],
+      "additionalProperties": false
+    },
+    "WebAction": {
+      "description": "What web.act does, named by do.",
+      "oneOf": [
+        { "$ref": "#/$defs/WebScroll" },
+        { "$ref": "#/$defs/WebShow" },
+        { "$ref": "#/$defs/WebPress" },
+        { "$ref": "#/$defs/WebType" },
+        { "$ref": "#/$defs/WebKey" },
+        { "$ref": "#/$defs/WebChoose" },
+        { "$ref": "#/$defs/WebFollow" },
+        { "$ref": "#/$defs/WebFind" },
+        { "$ref": "#/$defs/WebZoom" },
+        { "$ref": "#/$defs/WebHistory" }
+      ]
+    },
+    "WebScroll": {
+      "description": "Scroll the page, or the part of it that scrolls when the page itself does not.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "scroll" },
+        "to": { "$ref": "#/$defs/WebScrollTo" },
+        "pages": {
+          "description": "How far a step up, down, left or right goes, in views of the page; 1 by default. An end takes none.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": ["do", "to"],
+      "additionalProperties": false
+    },
+    "WebScrollTo": {
+      "description": "Where a scroll goes: a step up, down, left or right, or to the top or the bottom of the page.",
+      "type": "string",
+      "enum": ["up", "down", "left", "right", "top", "bottom"]
+    },
+    "WebShow": {
+      "description": "Bring an element into view, in the middle of it where the page can.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "show" },
+        "ref": { "$ref": "#/$defs/WebRef" }
+      },
+      "required": ["do", "ref"],
+      "additionalProperties": false
+    },
+    "WebPress": {
+      "description": "Press an element once with the pointer, brought into view first: a link, a button, a box, a tab.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "press" },
+        "ref": { "$ref": "#/$defs/WebRef" }
+      },
+      "required": ["do", "ref"],
+      "additionalProperties": false
+    },
+    "WebType": {
+      "description": "Type text into a field as written, in any script.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "type" },
+        "text": { "type": "string", "maxLength": 20000 },
+        "ref": {
+          "description": "The field; absent types into the one the page has the caret in.",
+          "$ref": "#/$defs/WebRef"
+        },
+        "replace": {
+          "description": "false types at the caret and keeps what the field holds; true by default: the field holds the text alone afterwards.",
+          "type": "boolean"
+        },
+        "submit": {
+          "description": "true presses Enter in the field afterwards, as a search or a form is sent.",
+          "type": "boolean"
+        }
+      },
+      "required": ["do", "text"],
+      "additionalProperties": false
+    },
+    "WebKey": {
+      "description": "Press a key in the page.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "key" },
+        "key": { "$ref": "#/$defs/WebKeyName" },
+        "ref": {
+          "description": "The element that takes the key; absent it goes to what the page has the keys on.",
+          "$ref": "#/$defs/WebRef"
+        }
+      },
+      "required": ["do", "key"],
+      "additionalProperties": false
+    },
+    "WebKeyName": {
+      "description": "A key web.act presses, by its name in KeyboardEvent.key (Space is the space bar).",
+      "type": "string",
+      "enum": [
+        "Enter",
+        "Tab",
+        "Escape",
+        "Backspace",
+        "Delete",
+        "Space",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+        "PageUp",
+        "PageDown",
+        "Home",
+        "End"
+      ]
+    },
+    "WebChoose": {
+      "description": "Choose an option of a list of choices (a select).",
+      "type": "object",
+      "properties": {
+        "do": { "const": "choose" },
+        "ref": { "$ref": "#/$defs/WebRef" },
+        "option": {
+          "description": "The option, by the words it shows or by its value.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": ["do", "ref", "option"],
+      "additionalProperties": false
+    },
+    "WebFollow": {
+      "description": "Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "follow" },
+        "ref": { "$ref": "#/$defs/WebRef" }
+      },
+      "required": ["do", "ref"],
+      "additionalProperties": false
+    },
+    "WebFind": {
+      "description": "Find text in the current page. Asking again for the same text moves to the next match.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "find" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      },
+      "required": ["do", "text"],
+      "additionalProperties": false
+    },
+    "WebZoom": {
+      "description": "Set the page magnification, where 1 is the usual size.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "zoom" },
+        "level": { "type": "number", "minimum": 0.25, "maximum": 5 }
+      },
+      "required": ["do", "level"],
+      "additionalProperties": false
+    },
+    "WebHistory": {
+      "description": "Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "history" },
+        "to": { "$ref": "#/$defs/WebStep" }
+      },
+      "required": ["do", "to"],
+      "additionalProperties": false
+    },
+    "WebActResult": {
+      "description": "Result of web.act: the act was done. What the page made of it is read with web.read.",
+      "type": "object",
+      "properties": {
+        "moved": {
+          "description": "Of a scroll: false when there was nowhere further to go.",
+          "type": "boolean"
+        }
+      },
       "additionalProperties": false
     },
     "WebChangedEvent": {

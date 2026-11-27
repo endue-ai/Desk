@@ -2,10 +2,9 @@
  * Eris on the desk: the mesh body, the core glow, Dysnomia, her words under her (a card: soul text,
  * or a long line kept as text, said.ts), and the sound rings. Draggable anywhere (the position is
  * saved in the current mode); a click (or Enter) starts a spoken turn (talk.ts), a drag never does.
- * Everything runs on the ticker. Idle, silent and settled for `REST_MS`, she rests (ADR 0164): her
- * last frame stays and her tick tells the ticker it is idle, so a desk at rest draws nothing; a new
- * state, a line, a turn, a drag, a pointer on her or a new size wakes her. With no place of her own
- * she rests in the talk line and comes out above it while she is at work (rest.ts, ADR 0254).
+ * The visible figure turns on the shared ticker. A hidden, docked or reduced-motion figure can
+ * sleep once quiet (ADR 0164). Delegated work brings her out of the talk line while its moons
+ * are present and she docks again once the last one leaves (rest.ts, ADR 0254).
  */
 import userHello from "../bridge/envelopes/user-hello.json";
 import type { Bands, WordTime } from "../bridge/types";
@@ -14,29 +13,23 @@ import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { IDLE } from "../shell/ticker";
-import { BODY, digest, type FrameModel, frameModel, paint, paintMoon } from "./draw";
+import { erisText } from "./copy";
+import { BODY } from "./draw";
 import { audioContext, openMic, sampleEar } from "./ear";
 import { mountErrands } from "./errand";
-import { palette } from "./figure";
-import { linkDesk } from "./float-desk";
-import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
+import { mindOf } from "./mind";
+import { defineModelCommands } from "./model";
 import { speakAloud } from "./mouth";
 import { atWork, homeOf, pillOf, Rest, showRest, watchCard } from "./rest";
 import { SoulText } from "./SoulText";
 import { mountSaid } from "./said";
-import {
-  coreBreath,
-  type ErisState,
-  floatOffset,
-  LOOKS,
-  type Look,
-  LookTween,
-  REST_MS,
-} from "./states";
+import { fleetOf } from "./satellites";
+import { createScene } from "./scene";
+import { type ErisState, REST_MS } from "./states";
+import { defineSummon } from "./summon";
 import { Talk } from "./talk";
 import { type Cue, PULSE_TO_RIM_MS, Voice } from "./voice";
 
-const MOON = 18;
 const DEFAULT_TOP = 40;
 const CUES: Partial<Record<ErisState, Cue>> = { listening: "listen", thinking: "think" };
 const SYLLABLE_PULSE = 0.75;
@@ -59,17 +52,8 @@ export function mountEris(
   ctx: ShellCtx,
   layout: () => { x: number; y: number } | null,
 ): ErisHandle {
-  const canvas = h("canvas", { class: "eris-mesh", width: BODY.width, height: BODY.height });
-  const moon = h("canvas", { class: "eris-moon", width: MOON, height: MOON });
-  const core = h("span", { class: "eris-core" });
-  const halo = h("span", { class: "eris-halo" });
-  const tail = [
-    h("span", { class: "eris-tail eris-tail-1" }),
-    h("span", { class: "eris-tail eris-tail-2" }),
-  ];
-  const spark = h("span", { class: "eris-spark" });
-  const moonBox = h("span", { class: "eris-moon-box" }, moon, spark);
-  const body = h("div", { class: "eris-body" }, halo, canvas, core, ...tail, moonBox);
+  const scene = createScene(ctx.store.get().eris.state, ctx.ticker.now());
+  scene.body.append(mindOf(document));
   const soul = new SoulText({
     style: () => ctx.store.get().eris.soul,
     reduced: ctx.reduced,
@@ -84,30 +68,12 @@ export function mountEris(
       "data-state": "idle",
     },
     h("span", { class: "eris-ring", "aria-hidden": "true" }),
-    body,
+    scene.body,
   );
   root.append(el, soul.live);
   const said = mountSaid(root, ctx, soul.el);
 
   const voice = new Voice();
-  const tween = new LookTween(ctx.store.get().eris.state);
-  const meshes = new Map<string, Mesh>();
-  const meshFor = (density: DensityName, state: ErisState): Mesh => {
-    const look = LOOKS[state];
-    const key = `${density}:${look.view.join()}:${look.goldToward.join()}`;
-    let mesh = meshes.get(key);
-    if (!mesh) {
-      mesh = generateMesh({ ...DENSITIES[density], view: look.view, goldToward: look.goldToward });
-      meshes.set(key, mesh);
-    }
-    return mesh;
-  };
-  const ctx2d = canvas.getContext("2d");
-  let colors = palette();
-  // The frame painted last, so a new theme repaints it at once instead of on the next tick.
-  let painted: { model: FrameModel; look: Look } | undefined;
-  let spin = 0;
-  let last = ctx.ticker.now();
   let dragging: { x: number; y: number } | null = null;
   const rest = new Rest();
   const pill = () => pillOf(root);
@@ -165,7 +131,7 @@ export function mountEris(
     // (ADR 0089), and she speaks once every errand is back.
     answer: async (text) => {
       try {
-        return await ctx.bridge.brain.say(text, (step) => errands.step(step));
+        return await errands.say(text, (step) => errands.step(step));
       } finally {
         await errands.finish();
       }
@@ -179,12 +145,6 @@ export function mountEris(
       voice.hush(now);
     },
   });
-
-  const paintMoonNow = () => {
-    const m = moon.getContext("2d");
-    if (m && colors.frost) paintMoon(m, MOON, colors);
-  };
-  paintMoonNow();
 
   const size = () => ({
     width: root.clientWidth || window.innerWidth,
@@ -200,14 +160,20 @@ export function mountEris(
     };
   };
 
+  let inView = true;
+  let paintedOnce = false;
+  const observer =
+    typeof IntersectionObserver === "undefined"
+      ? undefined
+      : new IntersectionObserver(([entry]) => {
+          inView = entry?.isIntersecting ?? true;
+          wake();
+        });
+  observer?.observe(el);
   const frame = (now: number) => {
     const s = ctx.store.get();
     const state = s.eris.state;
     const reduced = ctx.reduced();
-    const { look, goldOf, breath: breathShown } = tween.at(state, now, reduced);
-    const dt = Math.max(0, now - last);
-    last = now;
-    if (!reduced) spin += (look.spin * dt) / 1000;
     const heard = talk.update(now);
     const host = ctx.bridge.audio.levels();
     const levels = { user: louder(host.user, heard), eris: host.eris };
@@ -217,43 +183,6 @@ export function mountEris(
       voice.hush(now);
       if (talk.phase === "speaking") talk.cancel();
     }
-    const target = meshFor(s.eris.density, state);
-    // Between two looks the same mesh turns from one view to the other; its gold face changes halfway.
-    const mesh =
-      look === LOOKS[state]
-        ? target
-        : { ...target, basis: basisFor(look.view), gold: meshFor(s.eris.density, goldOf).gold };
-    const model = frameModel({
-      mesh,
-      look,
-      geometry: BODY,
-      spin,
-      disp: rings.disp,
-      glow: rings.glow,
-      goldMoves: rings.mode === "speaking",
-    });
-    if (!colors.frost) {
-      colors = palette();
-      paintMoonNow();
-    }
-    painted = { model, look };
-    if (ctx2d && colors.frost) paint(ctx2d, model, look, colors, BODY);
-    canvas.dataset.mesh = digest(model);
-    canvas.dataset.rings = rings.disp.map((d) => (d * 100).toFixed(2)).join(" ");
-    canvas.dataset.voice = rings.mode;
-
-    const float = reduced ? { body: 0, moon: 0 } : floatOffset(now);
-    body.style.transform = `translateY(${float.body.toFixed(2)}px)`;
-    const breath = reduced ? 1 : 1 + (coreBreath(now) - 1) * breathShown;
-    core.style.opacity = (look.core.opacity * breath).toFixed(3);
-    core.style.transform = `translate(-50%, -50%) scale(${(look.core.scale * rings.core).toFixed(3)})`;
-    halo.hidden = !look.halo;
-    moonBox.style.left = `${Math.round(look.dysnomia.x * 100)}%`;
-    moonBox.style.top = `${Math.round(look.dysnomia.y * 100)}%`;
-    moonBox.style.transform = `translate(-50%, calc(-50% + ${float.moon.toFixed(2)}px))`;
-    for (const t of tail) t.hidden = !look.dysnomia.tail;
-    spark.hidden = !look.dysnomia.spark;
-
     soul.update(now);
     const saying = soul.current(now);
     const doing =
@@ -263,7 +192,11 @@ export function mountEris(
           ? ctx.tr("erisThinking")
           : "";
     const busy = saying || doing;
-    const label = saying || said.kept() || doing;
+    const alert =
+      state === "heads-up" || state === "oops"
+        ? erisText(s.lang, state === "oops" ? "status.critical" : "status.warning")
+        : "";
+    const label = [alert, saying || said.kept() || doing].filter(Boolean).join(" · ");
     el.setAttribute("aria-label", label ? `${ctx.tr("erisLabel")}: ${label}` : ctx.tr("erisLabel"));
     el.dataset.state = state;
     if (talk.phase === "off") delete el.dataset.talk;
@@ -271,7 +204,23 @@ export function mountEris(
     const shown = soul.visible(now);
     const words = shown || said.kept() !== "";
     const work = { state, phase: talk.phase, words, dragging: dragging !== null };
-    showRest(el, rest.resting(layout() !== null, pill() !== null, atWork(work), now), reduced);
+    const helpers = fleetOf(s.localRuns, s.erisRuns);
+    const resting = rest.resting(
+      layout() !== null,
+      pill() !== null,
+      atWork(work) || helpers.length > 0,
+      now,
+    );
+    // Keep the last frame through the dock transition. Sleeping ticks are sometimes called by other shell animations.
+    if (
+      inView &&
+      !document.hidden &&
+      (!resting || !el.classList.contains("is-resting") || !paintedOnce)
+    ) {
+      scene.update(state, s.eris.density, rings, now, reduced, helpers);
+      paintedOnce = true;
+    }
+    showRest(el, resting, reduced);
     const p = position();
     el.style.left = `${p.x}px`;
     el.style.top = `${p.y}px`;
@@ -281,10 +230,11 @@ export function mountEris(
     // While the microphone question is open she does nothing and waits: its answer wakes her.
     const still =
       state === "idle" &&
-      look === LOOKS.idle &&
+      (resting || reduced || !inView || document.hidden) &&
       rings.mode === "idle" &&
       (talk.phase === "off" || talk.phase === "asking") &&
       !busy &&
+      helpers.length === 0 &&
       !dragging &&
       !rest.waiting;
     if (!still) {
@@ -304,19 +254,18 @@ export function mountEris(
     // What wakes her from rest: her state, a line, her place, the window's size, a pointer on her.
     ctx.store.watch((s) => s.eris, wake),
     ctx.store.watch(() => layout(), wake),
+    ctx.store.watch((s) => fleetOf(s.localRuns, s.erisRuns), wake),
+    listen(document, "visibilitychange", wake),
     listen(window, "resize", wake),
     listen(el, "pointerenter", wake),
     watchCard(said.el, wake),
-    // The floating window over the OS shows her while the desk is inactive (ADR 0121).
-    linkDesk(ctx, { phase: () => talk.phase, say: (text) => speakLine(text, undefined), setState }),
+    defineSummon(ctx),
+    defineModelCommands(ctx),
     // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
     // OS's scheme. The theme system calls this after it has set the new tokens.
     ctx.runtime.themes.onChange(() => {
-      colors = palette();
-      paintMoonNow();
-      if (ctx2d && colors.frost && painted) {
-        paint(ctx2d, painted.model, painted.look, colors, BODY);
-      }
+      scene.restyle();
+      wake();
     }),
     draggable(el, {
       press: () => {
@@ -382,6 +331,7 @@ export function mountEris(
       talk.toggle(ctx.ticker.now());
     },
     dispose() {
+      observer?.disconnect();
       talk.dispose();
       errands.dispose();
       for (const off of offs) off();

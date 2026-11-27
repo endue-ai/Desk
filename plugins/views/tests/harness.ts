@@ -8,7 +8,12 @@ import {
   type PluginManifest,
   type View,
 } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import {
+  defineUiPlugin,
+  entriesFromItems,
+  universalItems,
+  universalParams,
+} from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import {
   type ComponentModel,
@@ -123,6 +128,7 @@ export async function mount(
           now: () => Date.parse(FIXTURE_NOW),
           zone: "Asia/Seoul",
           locale: "en-US",
+          readTools: { entriesFromItems, universalItems, universalParams },
         });
         preview = createPreview(ctx, engine);
       },

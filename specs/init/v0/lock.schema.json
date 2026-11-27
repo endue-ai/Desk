@@ -10,7 +10,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "description": "The format version. Desk refuses a lock newer than it reads.",
+          "description": "The format version. endue refuses a lock newer than it reads.",
           "type": "integer",
           "minimum": 0,
           "maximum": 0
@@ -45,7 +45,7 @@
       "additionalProperties": false
     },
     "LockSource": {
-      "description": "Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).",
+      "description": "Where the plugin came from: builtin (shipped with endue), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).",
       "type": "string",
       "pattern": "^(builtin|folder:\\S.*|url:https://\\S+)$",
       "maxLength": 2048

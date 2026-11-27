@@ -26,7 +26,15 @@ function validator() {
 type Manifest = {
   id: string;
   permissions: { permission: string; commands?: string[] }[];
-  contributes: { commands: { id: string }[] };
+  contributes: {
+    commands: {
+      id: string;
+      description?: string;
+      agent?: boolean;
+      readOnly?: boolean;
+      irreversible?: boolean;
+    }[];
+  };
 };
 const manifest = readJson(join(folder, "plugin.json")) as Manifest;
 
@@ -56,5 +64,48 @@ describe("plugin.json", () => {
       const answered = sources.includes(`"${id}"`) || sources.includes(`on("${name}",`);
       expect(answered, id).toBe(true);
     }
+  });
+
+  it("exposes Studio tools and holds the commands that may publish or remove work", () => {
+    const command = (name: string) =>
+      manifest.contributes.commands.find(({ id }) => id === `endue.git-studio.${name}`);
+    for (const name of ["diff", "show", "blame-data", "file-log"]) {
+      expect(command(name), name).toMatchObject({ agent: true, readOnly: true });
+    }
+    for (const name of [
+      "push",
+      "discard",
+      "delete-branch",
+      "drop-stash",
+      "reset-hard",
+      "proceed",
+    ]) {
+      expect(command(name), name).toMatchObject({ agent: true, irreversible: true });
+    }
+    for (const name of [
+      "open",
+      "history",
+      "blame",
+      "graph",
+      "search",
+      "unstage",
+      "stash",
+      "stash-apply",
+      "merge",
+      "rebase",
+      "cherry-pick",
+      "revert",
+      "tag",
+      "rename-branch",
+      "reset",
+      "set-upstream",
+      "undo",
+    ]) {
+      expect(command(name), name).toMatchObject({
+        agent: true,
+        description: expect.any(String),
+      });
+    }
+    expect(command("reset")).not.toHaveProperty("irreversible");
   });
 });

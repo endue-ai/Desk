@@ -204,13 +204,13 @@ fn a_failed_install_keeps_the_build_staged() {
     let key = Key::new();
     let desk = desk("refused", &key);
     desk.updater.check_now(CANARY);
-    *desk.installer.refuse.lock().unwrap() = Some("Desk could not replace the app".to_owned());
+    *desk.installer.refuse.lock().unwrap() = Some("endue could not replace the app".to_owned());
     let status = desk.updater.apply_now().unwrap();
     assert_eq!(status.state, State::Failed);
     assert!(status.staged);
     assert_eq!(
         status.reason.as_deref(),
-        Some("Desk could not replace the app")
+        Some("endue could not replace the app")
     );
     *desk.installer.refuse.lock().unwrap() = None;
     assert_eq!(desk.updater.apply_now().unwrap().state, State::Applying);
@@ -235,4 +235,12 @@ fn reports_progress_while_downloading() {
     assert_eq!(progress.last(), Some(&(Some(size), Some(size))));
     assert_eq!(progress.len(), 11, "the start and one per tenth");
     assert!(progress.windows(2).all(|w| w[0].0 < w[1].0));
+}
+
+#[test]
+fn new_installations_discover_releases_in_the_renamed_repository() {
+    assert_eq!(
+        desk_update::GITHUB_RELEASES,
+        "https://github.com/endue-ai/endue/releases"
+    );
 }

@@ -6,7 +6,7 @@
  * @typedef {import("./repo.js").Runner} Runner
  * @typedef {{ remote?: string, prune?: boolean }} FetchOptions
  * @typedef {{ mode?: "ff" | "rebase" | "merge" }} PullOptions
- * @typedef {{ remote?: string, branch?: string, force?: boolean, setUpstream?: boolean, tags?: boolean }} PushOptions
+ * @typedef {{ remote?: string, branch?: string, force?: boolean, setUpstream?: boolean, tags?: boolean, refspec?: string }} PushOptions
  */
 
 /** @param {Runner} git @param {string} root */
@@ -46,7 +46,9 @@ export function createOps(git, root) {
       if (options.force) args.push("--force-with-lease");
       if (options.setUpstream) args.push("-u");
       if (options.tags) args.push("--tags");
-      if (options.remote) args.push(options.remote);
+      if (options.refspec) args.push("--no-follow-tags");
+      if (options.remote) args.push("--", options.remote);
+      if (options.remote && options.refspec) args.push(options.refspec);
       if (options.remote && options.branch) args.push(options.branch);
       return run(args, net);
     },
@@ -68,17 +70,31 @@ export function createOps(git, root) {
     /** Take files out of the index (before the first commit, `rm --cached`). */
     unstage: async (/** @type {string[]} */ paths, { born = true } = {}) => {
       if (!born)
-        return run(["rm", "-r", "-q", "--cached", "--", ...(paths.length ? paths : ["."])]);
-      return run(
-        paths.length ? ["restore", "--staged", "--", ...paths] : ["restore", "--staged", "--", "."],
-      );
+        return run([
+          "--literal-pathspecs",
+          "rm",
+          "-r",
+          "-q",
+          "--cached",
+          "--",
+          ...(paths.length ? paths : ["."]),
+        ]);
+      return run([
+        "--literal-pathspecs",
+        "restore",
+        "--staged",
+        "--",
+        ...(paths.length ? paths : ["."]),
+      ]);
     },
     /** Throw away the working copy's changes of tracked files, and untracked files themselves. */
     discard: async (
       /** @type {{ tracked: string[], untracked: string[] }} */ { tracked, untracked },
     ) => {
-      if (tracked.length) await run(["restore", "--worktree", "--", ...tracked]);
-      if (untracked.length) await run(["clean", "-f", "-d", "-q", "--", ...untracked]);
+      if (tracked.length)
+        await run(["--literal-pathspecs", "restore", "--worktree", "--", ...tracked]);
+      if (untracked.length)
+        await run(["--literal-pathspecs", "clean", "-f", "-d", "-q", "--", ...untracked]);
       return { stdout: "", stderr: "", code: 0, signal: null };
     },
     /** Commit what is staged with `message` on git's stdin; resolves with the new commit's id. */

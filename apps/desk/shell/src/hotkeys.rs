@@ -82,7 +82,7 @@ impl Hotkeys {
         let manager = match GlobalHotKeyManager::new() {
             Ok(manager) => Some(manager),
             Err(why) => {
-                eprintln!("endue Desk: no global shortcuts ({why}); use the tray");
+                eprintln!("endue: no global shortcuts ({why}); use the tray");
                 None
             }
         };
@@ -115,7 +115,7 @@ impl Hotkeys {
         if let Some(before) = self.table.hold(action, key) {
             let _ = manager.unregister(before);
         }
-        eprintln!("endue Desk: the shortcut {text} is held for {action:?}");
+        eprintln!("endue: the shortcut {text} is held for {action:?}");
         Ok(())
     }
 

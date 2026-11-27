@@ -12,6 +12,8 @@
 //!   window, as one cannot leave the desk's (ADR 0119): past its edge it is over nothing, and let
 //!   go there it ends with `none`.
 
+mod landing;
+
 use desk_compositor::input::dnd::data::{EFFECTS, path_holds, paths_item, read_effects};
 use desk_compositor::input::dnd::data::{read_answer, with_fallback};
 use desk_compositor::input::dnd::{read_items, taken, type_of};
@@ -25,6 +27,12 @@ pub use desk_compositor::input::dnd::ANSWER_WAIT;
 pub enum Act {
     /// Post this to the page, as the runtime's message.
     Page(Value),
+    /// Give an app window the files the OS delivered before posting its drop.
+    GrantFiles {
+        target: String,
+        paths: Vec<String>,
+        destination: Option<String>,
+    },
     /// Open these files: a drop from the OS the page did not take.
     Open(Vec<String>),
     /// Settle the drop under way after `ANSWER_WAIT` (`settle`) if the page has not answered.
@@ -52,6 +60,7 @@ struct Drag {
     entered: bool,
     /// The page's answer to hover `answered`, and where the drag was last.
     answer: SurfaceDropAnswer,
+    destination: Option<String>,
     answered: u64,
     at: (f64, f64),
     keys: Value,
@@ -70,6 +79,7 @@ impl Drag {
             seq: 0,
             entered: false,
             answer: SurfaceDropAnswer::None,
+            destination: None,
             answered: 0,
             at: (f64::NAN, f64::NAN),
             keys: Value::Null,
@@ -270,6 +280,7 @@ impl Drags {
         drag.seq = 1;
         drag.entered = true;
         drag.answer = SurfaceDropAnswer::None;
+        drag.destination = None;
         let from = match drag.source {
             Source::Os(_) => "os".to_owned(),
             Source::Page(_) => owner,
@@ -287,6 +298,7 @@ impl Drags {
         };
         drag.entered = false;
         drag.answer = SurfaceDropAnswer::None;
+        drag.destination = None;
         let mut out = vec![Act::Page(
             json!({ "type": "desk:dragleave", "drag": drag.id }),
         )];
@@ -324,13 +336,21 @@ impl Drags {
             return Vec::new();
         };
         let seq = m.get("seq").and_then(Value::as_u64).unwrap_or(0);
-        if m.get("drag").and_then(Value::as_u64) != Some(drag.id) || seq < drag.answered {
+        if m.get("drag").and_then(Value::as_u64) != Some(drag.id)
+            || seq != drag.seq
+            || seq < drag.answered
+        {
             return Vec::new();
         }
         let answer: SurfaceDropAnswer =
             serde_json::from_value(m.get("effect").cloned().unwrap_or(Value::Null))
                 .unwrap_or(SurfaceDropAnswer::None);
         drag.answer = read_answer(answer, &drag.allowed);
+        drag.destination = m
+            .get("destination")
+            .and_then(Value::as_str)
+            .filter(|path| path_holds(path))
+            .map(str::to_owned);
         drag.answered = seq;
         let mut out = Vec::new();
         if let Source::Page(local) = drag.source {
@@ -340,39 +360,6 @@ impl Drags {
         }
         if drag.released && seq == drag.seq {
             out.extend(self.land());
-        }
-        out
-    }
-
-    /// The drag lands: on the page's target with its effect, else (from the OS) its files open.
-    fn land(&mut self) -> Vec<Act> {
-        let types = self
-            .drag
-            .as_ref()
-            .map(|d| self.types(d))
-            .unwrap_or_default();
-        let Some(drag) = self.drag.as_mut() else {
-            return Vec::new();
-        };
-        if drag.entered && drag.answer != SurfaceDropAnswer::None {
-            drag.dropped = true;
-            let items: Vec<&SurfaceDragItem> = (drag.items.iter())
-                .filter(|item| types.contains(&type_of(item)))
-                .collect();
-            let (x, y) = drag.at;
-            let drop = json!({ "type": "desk:drop", "drag": drag.id, "x": x, "y": y,
-                "keys": drag.keys, "effect": drag.answer, "items": items });
-            // A drop from the OS ends here; the page's own drag ends with the effect performed.
-            if matches!(drag.source, Source::Os(_)) {
-                self.drag = None;
-            }
-            return vec![Act::Page(drop)];
-        }
-        let source = drag.source.clone();
-        let mut out = self.leave();
-        match source {
-            Source::Os(paths) => out.push(Act::Open(paths)),
-            Source::Page(local) => out.push(Self::ended(local, SurfaceDropAnswer::None, None)),
         }
         out
     }

@@ -1,9 +1,10 @@
 /**
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
  * doubles as the command palette. A sent line flies into Eris wherever she floats and is absorbed;
- * her hand-offs to plugins while she answers are drawn as errands (eris/errand.ts, ADR 0089). A
- * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07),
- * and one to make something to desk.propose (ADR 0073); propose/route.ts decides which.
+ * she takes it in and reads it, and her hand-offs to plugins while she answers are drawn as errands
+ * once it is in her (eris/errand.ts, ADR 0089, ADR 0275). A request to change the look goes to the
+ * theme studio's Describe tab instead (eris/look.ts, TS-07), and one to make something to
+ * desk.propose (ADR 0073); propose/route.ts decides which.
  */
 
 import type { CommandInfo } from "../commands";
@@ -149,7 +150,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     const body = host.querySelector(".eris-body")?.getBoundingClientRect();
     const dx = body ? body.left + body.width / 2 - frame.left - x : 0;
     const dy = body ? body.top + body.height / 2 - frame.top - y : frame.height / 2 - y;
-    void ctx.ticker
+    const arrived = ctx.ticker
       .animate(ctx.reduced() ? 200 : ABSORB_MS, ctx.reduced() ? (t) => t : absorbEase, (t) => {
         const move = ctx.reduced() ? 0 : t;
         ghost.style.transform = `translate(calc(-50% + ${(dx * move).toFixed(1)}px), calc(-50% + ${(dy * move).toFixed(1)}px)) scale(${(1 - 0.6 * move).toFixed(3)})`;
@@ -177,21 +178,29 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
       if (!(await runGesture(ctx.runtime, "desk.propose", to.args))) ctx.eris.setState("idle");
       return;
     }
-    await converse(text);
+    await converse(text, arrived);
   };
 
   /**
-   * Eris's conversation: the line goes to the brain with the desk the person sees (ADR 0109), her
-   * agentic loop runs plugin commands on the desk (each one an errand on screen), and she says the
-   * answer once every errand is back.
+   * Eris's conversation: the line goes to the brain with the desk the person sees (ADR 0109) and
+   * into her, there once `arrived` (its flight from the input); her agentic loop runs plugin
+   * commands on the desk, each one an errand on screen once she has read the line, and she says
+   * the answer once the line is in her and every errand is back (ADR 0275).
    */
-  const converse = async (text: string) => {
+  const converse = async (text: string, arrived: Promise<void> = Promise.resolve()) => {
     ctx.eris.setState("thinking");
+    errands.ask(arrived);
     let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
     try {
       const desk = await deskSnapshot(ctx);
-      reply = await ctx.bridge.brain.say(text, (step) => errands.step(step), desk);
+      // What a sweep handed her goes with this line, once (ADR 0296).
+      const context = ctx.store.get().sweep.context;
+      if (context) ctx.store.set((s) => ({ sweep: { ...s.sweep, context: null } }));
+      const line = context ? `${context.text}\n\n${text}` : text;
+      reply = await errands.say(line, (step) => errands.step(step), desk);
     } catch {
+      // An errand left out comes home.
+      await errands.finish();
       ctx.eris.setState("idle");
       ctx.runtime.notify({ caller: "desk", title: ctx.tr("brainFailed"), level: "error" });
       return;
@@ -214,8 +223,12 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     listen(input, "focus", () =>
       ctx.store.set((s) => ({ composer: { ...s.composer, open: true } })),
     ),
-    listen(input, "blur", () => {
-      if (!input.value) ctx.store.set({ composer: { open: false, text: "", selected: 0 } });
+    listen(input, "blur", (event) => {
+      // Bringing Desk forward can briefly take focus from the open talk line.
+      const movesWithinDesk = (event as FocusEvent).relatedTarget || input.ownerDocument.hasFocus();
+      if (!input.value && movesWithinDesk) {
+        ctx.store.set({ composer: { open: false, text: "", selected: 0 } });
+      }
     }),
     listen(input, "input", () =>
       ctx.store.set({ composer: { open: true, text: input.value, selected: 0 } }),

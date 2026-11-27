@@ -8,7 +8,7 @@ import type { DesktopId, DesktopRef, SurfacePlacement } from "../modes/types";
 import { desktopIsEmpty, desktopsOf, edit, layoutOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
-import { focusPane } from "../shell/windows";
+import { focusTab } from "../shell/windows";
 import { MAX_DESKTOPS } from "../wm/view";
 import { type DesktopsCopyKey, dt } from "./copy";
 
@@ -36,7 +36,7 @@ export const nameOf = (s: DeskState, id: DesktopId): string =>
 /** The runtime's surfaces follow the window the desktop brought back. */
 async function arrived(ctx: ShellCtx): Promise<void> {
   const s = ctx.store.get();
-  if (s.focused) await focusPane(ctx, s.focused, s.pane ?? undefined);
+  if (s.focused) await focusTab(ctx, s.focused);
 }
 
 /** Bring a desktop to the front, with the window it had in use when the person left it. */

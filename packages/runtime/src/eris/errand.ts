@@ -1,224 +1,358 @@
 /**
- * Eris's errands (ADR 0089): each hand-off of her agentic loop drawn on the desk. On `tool` a spark
- * leaves her body, labelled with the plugin it goes to, and flies to that plugin's window (or, with
- * no window on screen, to a place beside her); the window glows while the plugin works. On
- * `tool-result` the spark flies back with what it got and sinks into her. With reduced motion the
- * label shows beside her and nothing moves. Everything runs on the ticker.
+ * Eris's errands (ADR 0089, ADR 0271, ADR 0275): each hand-off of her agentic loop drawn on the
+ * desk, so the person sees how she works a line. The talk line's line flies into her (`ask`): she
+ * takes it in and reads it, her ring turning (`mind.ts`), and only then do her errands leave. On
+ * `tool` a spark in her gold leaves her body, labelled with the plugin it goes to, and flies along
+ * a thread to every window that shows that plugin (or, with no window on screen, to a place beside
+ * her); each window glows in the star's colour from the moment its spark lands until the plugin
+ * has answered (`visiting.ts`), her ring dim meanwhile. On `tool-result` the answer flies back
+ * along the thread in the star's colour and she takes it in and reads it. A command of the desk's
+ * own that names a window (its `window`, or the one its answer names) uses that window: the spark
+ * flies on to it and it glows. Each spark and its thread end on the window's border, at the point
+ * that faces her, and keep to it as she, the window or the desk's pan moves (`errand-spark.ts`).
+ * A line that runs nothing lights no window. With reduced motion the
+ * label shows beside her, the windows light up at once and nothing moves. All on the ticker.
  */
 import type { BrainStep } from "../bridge/types";
 import { cubicBezier } from "../ease";
+import { windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
-import type { WindowDocs } from "../surface/window-docs";
+import { cloudTurns } from "./cloud-turns";
+import { lay, place, render, type Spark } from "./errand-spark";
+import { edgeOf, erisAt, labelOf, type Target, targetsOf } from "./errand-targets";
+import type { Point } from "./errand-thread";
+import { setMind, takeIn } from "./mind";
+import { USE, VISITING, visitingOf } from "./visiting";
+
+export { centre, labelOf, nameOf, targetOf, windowOf } from "./errand-targets";
 
 /** One leg of an errand, out or back. */
 export const LEG_MS = 640;
+/** How long she reads a line once it is in her before her first errand for it leaves. */
+export const READ_MS = 480;
+/** How long a spark stays at its window, lit, however soon the plugin answers. */
+export const DWELL_MS = 520;
 /** Where the spark waits beside Eris when the plugin has no window on screen. */
 const BESIDE = { x: 150, y: -36 };
 const legEase = cubicBezier(0.45, 0, 0.2, 1);
-
-interface Point {
-  x: number;
-  y: number;
-}
+/** Who runs a command of the desk's as Eris's tool call (`system/local-agent-commands.ts`). */
+const ERIS = "agent:eris";
 
 interface Errand {
-  el: HTMLElement;
-  /** What the errand is drawn on. */
-  host: HTMLElement;
-  /** The plugin's window glowing while it works. */
-  window: HTMLElement | null;
-  /** Where the spark is, in the host's coordinates. */
-  at: Point;
-  /** The outbound leg; the way back waits for it. */
-  out: Promise<void>;
+  command: string;
+  provider: string;
+  sparks: Spark[];
+  /** The windows it lights, and what puts each out again. */
+  windows: Set<string>;
+  leaves: Array<() => void>;
+  /** Its sparks are on their way: once the line is in her and read. */
+  drawn: Promise<void>;
+  /** The plugin answered and she left its windows: nothing lights for it any more. */
+  left: boolean;
 }
 
 export interface Errands {
+  /** Send one conversation turn through the selected brain, showing a signal for cloud turns. */
+  say: ShellCtx["bridge"]["brain"]["say"];
+  /**
+   * A line is on its way into her, there once `arrived` resolves: she takes it in and reads it, and
+   * her errands for it wait until she has.
+   */
+  ask(arrived: Promise<void>): void;
   step(step: BrainStep): void;
   /**
    * The turn is over: an errand whose plugin never answered comes back empty, and this resolves
-   * once every spark is home.
+   * once the line is in her and every errand's spark is home; her ring goes.
    */
   finish(): Promise<void>;
   dispose(): void;
 }
 
-/**
- * The centre of `el` in `host`'s coordinates; an element in a window's own page (ADR 0201) is
- * measured in that page and lies at the window's place on the desk (`window-docs.ts`).
- */
-export function centre(el: Element, host: HTMLElement, docs?: WindowDocs): Point {
-  const r = el.getBoundingClientRect();
-  const f = host.getBoundingClientRect();
-  let at = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  const elsewhere = el.ownerDocument !== host.ownerDocument;
-  const page = elsewhere ? docs?.windowOf(el.ownerDocument) : undefined;
-  if (page && docs) at = docs.toDesk(page, at);
-  return { x: at.x - f.left, y: at.y - f.top };
-}
-
-/**
- * The plugin's window on screen: its main surface, or another of its surfaces; in `host`, then in
- * the windows' own pages (ADR 0201).
- */
-export function windowOf(
-  host: ParentNode,
-  provider: string,
-  docs?: WindowDocs,
-): HTMLElement | null {
-  for (const root of [host, ...(docs?.each() ?? []).map(([, doc]) => doc)]) {
-    for (const el of root.querySelectorAll<HTMLElement>("[data-surface]")) {
-      const id = el.dataset.surface ?? "";
-      const own = id === provider || id.startsWith(`${provider}/`) || id.startsWith(`${provider}:`);
-      const shown = !el.hidden && el.getClientRects().length > 0;
-      if (own && shown) return el;
-    }
-  }
-  return null;
-}
-
-/** The desk's commands for the agent programs on this computer (ADR 0110). */
-const LOCAL_AGENTS = "desk.agents.";
-
-/**
- * Where a step's errand goes: the plugin's window, or for the desk's local agent tools a local
- * agent's screen, else their group in the agent bar.
- */
-export function targetOf(
-  host: ParentNode,
-  step: Pick<BrainStep, "provider" | "command">,
-  docs?: WindowDocs,
-) {
-  if (!step.command.startsWith(LOCAL_AGENTS)) return windowOf(host, step.provider, docs);
-  const screen = windowOf(host, "local", docs);
-  if (screen) return screen;
-  const group = host.querySelector<HTMLElement>("[data-local-agents]");
-  return group && group.getClientRects().length > 0 ? group : null;
-}
-
-/** Who a step goes to, as people read it: `endue.mail` is Mail, the local agent tools Agents. */
-export function labelOf(step: Pick<BrainStep, "provider" | "command">): string {
-  return step.command.startsWith(LOCAL_AGENTS) ? "Agents" : nameOf(step.provider);
-}
-
-/** The plugin's name as people read it: `endue.mail` is Mail, `desk` is Desk. */
-export function nameOf(provider: string): string {
-  const last = provider.split(".").pop() ?? provider;
-  return last
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-/** Where Eris is: her body's centre, else the top middle of the desk. */
-function erisAt(host: HTMLElement): Point {
-  const eris = host.querySelector(".eris-body") ?? host.querySelector(".eris");
-  if (eris) return centre(eris, host);
-  return { x: host.clientWidth / 2, y: 100 };
-}
-
 /** Errands drawn on the element `shell` names when each starts (the shell, once it is mounted). */
 export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
+  const cloud = cloudTurns(shell, ctx);
   const open = new Map<string, Errand>();
+  /** Every errand not over yet: open, or on its way back. */
+  const live = new Set<Errand>();
+  /** Every spark not home yet, also those of errands on their way back. */
+  const sparks = new Set<Spark>();
   const legs = new Set<Promise<void>>();
-  const place = (errand: Errand, p: Point, scale = 1, opacity = 1) => {
-    errand.at = p;
-    errand.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
-    errand.el.style.opacity = opacity.toFixed(3);
-  };
-  const fly = (errand: Errand, from: Point, to: Point, end: (t: number) => [number, number]) => {
-    const leg = ctx.ticker
-      .animate(ctx.reduced() ? 0 : LEG_MS, legEase, (t) => {
-        const move = ctx.reduced() ? 1 : t;
-        // A shallow arc, so the spark reads as thrown rather than slid.
-        const lift = Math.sin(Math.PI * move) * Math.min(60, Math.abs(to.x - from.x) / 4);
-        const p = { x: from.x + (to.x - from.x) * move, y: from.y + (to.y - from.y) * move - lift };
-        const [scale, opacity] = end(t);
-        place(errand, p, scale, opacity);
-      })
-      .finally(() => legs.delete(leg));
-    legs.add(leg);
-    return leg;
-  };
-
-  const go = (step: BrainStep) => {
-    if (open.has(step.callId)) return;
-    const host = shell();
-    const label = h(
-      "span",
-      { class: "errand-label" },
-      h("strong", {}, labelOf(step)),
-      step.title ? h("small", {}, step.title) : null,
+  const visiting = visitingOf(ctx);
+  /** Until the line is in her and read; her errands wait for it. */
+  let ready: Promise<void> = Promise.resolve();
+  /** Whether she is at a line the talk line gave her, and how many of her sparks are out. */
+  let reading = false;
+  let away = 0;
+  let gone = false;
+  const mind = () => setMind(shell(), away > 0 ? "waiting" : reading ? "reading" : null);
+  const wait = (ms: number) =>
+    ctx.ticker.animate(
+      ctx.reduced() ? 0 : ms,
+      (t) => t,
+      () => {},
     );
+  /** The leg a spark is on, which its thread shows too. */
+  const leg = (spark: Spark, name: "out" | "there" | "back") => {
+    spark.el.dataset.leg = name;
+    if (spark.thread) spark.thread.dataset.leg = name;
+  };
+  /** Fly the spark from where it is to `to`, a place that may move as it goes. */
+  const fly = (spark: Spark, to: () => Point, end: (t: number) => [number, number]) => {
+    const flight = ++spark.flight;
+    // From where it is: her body, a window or the place beside her, which keep moving with her and
+    // the window; sent on mid-flight, from the point it had got to.
+    const from = spark.aim;
+    const at = spark.at;
+    spark.from = spark.t >= 1 ? from : () => at;
+    spark.aim = to;
+    spark.t = 0;
+    lay(spark, ctx.reduced());
+    return ctx.ticker.animate(ctx.reduced() ? 0 : LEG_MS, legEase, (t) => {
+      if (spark.flight !== flight) return;
+      spark.t = t;
+      spark.look = end(t);
+      render(spark, ctx.reduced());
+    });
+  };
+  /**
+   * The spark's way out to `to`: there once this flight, and no later one, has landed. What it
+   * carries lands (`landed`) when the flight is over, even if a later one took the spark on; the
+   * way back waits `DWELL_MS` more, so a window a fast plugin answers for is still seen lit.
+   */
+  const out = (
+    spark: Spark,
+    to: () => Point,
+    end: (t: number) => [number, number],
+    landed?: () => void,
+  ) => {
+    const flown = fly(spark, to, end);
+    const flight = spark.flight;
+    spark.out = flown.then(() => {
+      landed?.();
+      if (spark.flight === flight) leg(spark, "there");
+      return wait(DWELL_MS);
+    });
+  };
+  /** A spark carrying `label` leaves her for `to`; `landed` runs as it gets there. */
+  const send = (
+    host: HTMLElement,
+    to: () => Point,
+    label: HTMLElement,
+    data: Record<string, string>,
+    landed?: () => void,
+  ): Spark => {
     const el = h(
       "div",
-      {
-        class: "errand",
-        role: "status",
-        "data-provider": step.provider,
-        "data-command": step.command,
-        "data-leg": "out",
-      },
+      { class: "errand", role: "status", "data-leg": "out", ...data },
       h("span", { class: "errand-spark", "aria-hidden": "true" }),
       label,
     );
     host.append(el);
-    const from = erisAt(host);
-    const window = targetOf(host, step, ctx.pages);
-    const to = ctx.reduced()
-      ? { x: from.x + BESIDE.x, y: from.y + BESIDE.y }
-      : window
-        ? centre(window, host, ctx.pages)
-        : { x: from.x + BESIDE.x, y: from.y + BESIDE.y };
-    const errand: Errand = { el, host, window, at: from, out: Promise.resolve() };
-    open.set(step.callId, errand);
-    place(errand, from, 0.4, 0);
-    window?.classList.add("is-eris-visiting");
-    ctx.eris.setState("thinking");
-    errand.out = fly(errand, from, to, (t) => [0.4 + 0.6 * t, Math.min(1, t * 3)]).then(() => {
-      el.dataset.leg = "there";
+    const her = () => erisAt(host);
+    const spark: Spark = {
+      el,
+      host,
+      thread: null,
+      at: her(),
+      aim: her,
+      from: her,
+      t: 1,
+      look: [0.4, 0],
+      unfollow: () => {},
+      out: Promise.resolve(),
+      flight: 0,
+      away: true,
+    };
+    away += 1;
+    sparks.add(spark);
+    place(spark, spark.at, ...spark.look);
+    // Until it is home, it and its thread keep to where she and the window are, frame by frame.
+    spark.unfollow = ctx.ticker.add(() => render(spark, ctx.reduced()));
+    out(spark, to, (t) => [0.4 + 0.6 * t, Math.min(1, t * 3)], landed);
+    void takeIn(host, ctx, "out");
+    return spark;
+  };
+  /**
+   * The answer flies home in the spark, whole for most of the way so it is seen going back, and
+   * sinks into her as she takes it in.
+   */
+  const home = (spark: Spark, ok: boolean) => {
+    leg(spark, "back");
+    spark.el.dataset.ok = String(ok);
+    const sink = (t: number): [number, number] => [1 - 0.6 * t ** 3, 1 - t ** 6];
+    return fly(spark, () => erisAt(spark.host), sink).then(() => {
+      drop(spark);
+      if (!gone) void takeIn(spark.host, ctx);
     });
+  };
+  const drop = (spark: Spark) => {
+    spark.unfollow();
+    spark.thread?.remove();
+    spark.el.remove();
+    sparks.delete(spark);
+    if (!spark.away) return;
+    spark.away = false;
+    away -= 1;
+    if (!gone) mind();
+  };
+  /** Light window `id` as one `errand` uses, unless its plugin has answered already. */
+  const glow = (errand: Errand, id: string) => {
+    if (!errand.left && !gone) errand.leaves.push(visiting.enter(id, USE));
+  };
+  /** Light what an errand goes to: its window's frame, or the element itself outside a window. */
+  const light = (errand: Errand, { el, window }: Target) => {
+    if (window) return glow(errand, window);
+    if (!el || errand.left || gone) return;
+    el.classList.add(VISITING);
+    errand.leaves.push(() => el.classList.remove(VISITING));
+  };
+  /** She leaves the windows an errand went to: their glow goes. */
+  const leave = (errand: Errand) => {
+    errand.left = true;
+    for (const off of errand.leaves.splice(0)) off();
+  };
+  /**
+   * A command of the desk's that `errand` runs names window `id`: it glows as one she uses, once
+   * the errand's spark, which had no window to go to, has flown on to its middle.
+   */
+  const reach = (errand: Errand, id: unknown) => {
+    if (typeof id !== "string" || errand.left || errand.windows.has(id)) return;
+    if (!windowsOf(ctx.store.get()).some((w) => w.id === id)) return;
+    const first = errand.windows.size === 0;
+    errand.windows.add(id);
+    const [spark] = errand.sparks;
+    const to =
+      first && spark && !ctx.reduced() ? edgeOf(spark.host, { window: id }, ctx) : undefined;
+    if (spark && to)
+      out(
+        spark,
+        to,
+        () => [1, 1],
+        () => glow(errand, id),
+      );
+    else glow(errand, id);
+  };
+  // What the core asks the desk to run for her: the window it names is the one she uses.
+  const offRuns = ctx.runtime?.commands?.watchRuns?.(({ id, args, caller }) => {
+    const errand = caller === ERIS && [...open.values()].reverse().find((e) => e.command === id);
+    if (!errand) return undefined;
+    const named = (said: unknown) => (said as { window?: unknown } | null | undefined)?.window;
+    void errand.drawn.then(() => reach(errand, named(args)));
+    return (result) => void errand.drawn.then(() => reach(errand, named(result)));
+  });
+
+  /** Send `errand`'s sparks for `step`, now that she has read the line. */
+  const draw = (errand: Errand, step: BrainStep) => {
+    if (gone || errand.left) return;
+    const host = shell();
+    const targets = targetsOf(host, step, ctx);
+    for (const t of targets) if (t.window) errand.windows.add(t.window);
+    const beside = () => {
+      const from = erisAt(host);
+      return { x: from.x + BESIDE.x, y: from.y + BESIDE.y };
+    };
+    const still = ctx.reduced() || targets.length === 0;
+    if (still) for (const t of targets) light(errand, t);
+    // To the point of the window's border that faces her, where it is drawn, wherever it moves: a
+    // place kept in the desk's page is not there.
+    const flights = still
+      ? []
+      : targets.flatMap((target) => {
+          const to = edgeOf(host, target, ctx);
+          if (to) return [{ to, target }];
+          // Nowhere on screen to fly to: lit at once.
+          light(errand, target);
+          return [];
+        });
+    const ends: Array<{ to: () => Point; target?: Target }> = flights.length
+      ? flights
+      : [{ to: beside }];
+    errand.sparks = ends.map(({ to, target }) => {
+      const label = h(
+        "span",
+        { class: "errand-label" },
+        h("strong", {}, labelOf(step)),
+        step.title ? h("small", {}, step.title) : null,
+      );
+      const data = { "data-provider": step.provider, "data-command": step.command };
+      return send(host, to, label, data, target && (() => light(errand, target)));
+    });
+    mind();
+  };
+
+  const go = (step: BrainStep) => {
+    if (open.has(step.callId)) return;
+    const { command, provider } = step;
+    const errand: Errand = {
+      command,
+      provider,
+      sparks: [],
+      windows: new Set(),
+      leaves: [],
+      drawn: Promise.resolve(),
+      left: false,
+    };
+    open.set(step.callId, errand);
+    live.add(errand);
+    errand.drawn = ready.then(() => draw(errand, step));
+    ctx.eris.setState("thinking");
   };
 
   const back = (step: BrainStep) => {
     const errand = open.get(step.callId);
     if (!errand) return;
     open.delete(step.callId);
-    const leg = errand.out.then(() => {
-      errand.window?.classList.remove("is-eris-visiting");
-      errand.el.dataset.leg = "back";
-      errand.el.dataset.ok = String(step.ok !== false);
-      const home = erisAt(errand.host);
-      return fly(errand, errand.at, home, (t) => [1 - 0.7 * t, 1 - t * t]).then(() => {
-        errand.el.remove();
-        // She has what she went for; her answer follows.
-        ctx.eris.setState(step.ok === false ? "oops" : "done");
-      });
+    const ok = step.ok !== false;
+    const way = errand.drawn
+      .then(() => Promise.all(errand.sparks.map((spark) => spark.out)))
+      .then(() => {
+        leave(errand);
+        return Promise.all(errand.sparks.map((spark) => home(spark, ok)));
+      })
+      // She has the answer and reads it; one that failed she shows.
+      .then(() => ctx.eris.setState(ok ? "thinking" : "oops"));
+    legs.add(way);
+    void way.finally(() => {
+      legs.delete(way);
+      live.delete(errand);
     });
-    legs.add(leg);
-    void leg.finally(() => legs.delete(leg));
   };
 
   return {
+    say: cloud.say,
+    ask(arrived) {
+      reading = false;
+      ready = arrived.then(async () => {
+        if (gone) return;
+        reading = true;
+        mind();
+        void takeIn(shell(), ctx);
+        await wait(READ_MS);
+      });
+    },
     step(step) {
       if (step.kind === "tool") go(step);
       else back(step);
     },
     async finish() {
-      for (const [callId, errand] of [...open]) {
-        const command = errand.el.dataset.command ?? "";
-        const provider = errand.el.dataset.provider ?? "";
+      await ready;
+      for (const [callId, { command, provider }] of [...open]) {
         back({ kind: "tool-result", callId, command, provider, ok: false });
       }
       while (legs.size) await Promise.all([...legs]);
+      reading = false;
+      if (!gone) mind();
     },
     dispose() {
-      for (const errand of open.values()) {
-        errand.window?.classList.remove("is-eris-visiting");
-        errand.el.remove();
-      }
+      gone = true;
+      cloud.dispose();
+      offRuns?.();
+      for (const errand of live) leave(errand);
+      live.clear();
       open.clear();
+      for (const spark of [...sparks]) drop(spark);
+      setMind(shell(), null);
     },
   };
 }

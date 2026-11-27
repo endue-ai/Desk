@@ -92,9 +92,19 @@ export function dndTarget(transport: Transport) {
 
   const hover = (drag: number, seq: number, x: number, y: number, keys: DragKeys) => {
     if (hovering?.drag !== drag) return;
-    const { effect, found } = answer(x, y, keys);
+    const { effect, found, over } = answer(x, y, keys);
+    const destination =
+      over && (effect === "copy" || effect === "move")
+        ? found?.registration.options.destination?.(over)
+        : undefined;
     mark(found?.element, effect);
-    transport.send({ type: "desk:drag-status", drag, seq, effect });
+    transport.send({
+      type: "desk:drag-status",
+      drag,
+      seq,
+      effect,
+      ...(destination ? { destination } : {}),
+    });
   };
 
   const drop = async (message: Extract<HostMessage, { type: "desk:drop" }>) => {

@@ -1,0 +1,159 @@
+/* The SQL problems in the console editor (ADR 0294): the component's lint underline, gutter mark,
+   hover message and list, drawn from the theme's --desk-* tokens in place of the component's own
+   colours. */
+
+#editor-box .cm-lintRange-error {
+  background-image: none;
+  text-decoration: underline wavy var(--desk-danger);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+#editor-box .cm-lintRange-active {
+  background: var(--desk-danger-soft);
+}
+
+#editor-box .cm-lintPoint-error::after,
+#editor-box .cm-lintPoint::after {
+  border-bottom-color: var(--desk-danger);
+}
+
+#editor-box .cm-gutter-lint {
+  width: 12px;
+}
+
+#editor-box .cm-gutter-lint .cm-gutterElement {
+  padding: 0;
+}
+
+#editor-box .cm-lint-marker {
+  width: 12px;
+  height: 100%;
+  min-height: 1em;
+  background: none;
+  content: none;
+  position: relative;
+}
+
+#editor-box .cm-lint-marker-error::before {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--desk-danger);
+  content: "";
+}
+
+/* Under its line, the message keeps clear of the line's wavy underline, which hangs below the text;
+   the pointer crossing the gap keeps it open (the hover allows 6px). */
+#editor-box .cm-tooltip-hover.cm-tooltip-below {
+  margin-top: 4px;
+}
+
+#editor-box .cm-tooltip-lint {
+  max-width: 480px;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-sans);
+}
+
+#editor-box .cm-diagnostic {
+  padding: 4px 8px;
+  border-left: 3px solid var(--desk-border);
+}
+
+#editor-box .cm-diagnostic-error {
+  border-left-color: var(--desk-danger);
+}
+
+#editor-box .cm-diagnosticSource {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  opacity: 1;
+}
+
+#editor-box .cm-panel.cm-panel-lint {
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-card);
+  color: var(--desk-text);
+}
+
+#editor-box .cm-panel.cm-panel-lint ul {
+  max-height: 120px;
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+}
+
+#editor-box .cm-panel.cm-panel-lint ul [aria-selected] {
+  background: var(--desk-hover);
+  color: var(--desk-text);
+}
+
+#editor-box .cm-panel.cm-panel-lint ul:focus [aria-selected] {
+  background: var(--desk-primary-soft);
+  color: var(--desk-text);
+}
+
+#editor-box .cm-panel.cm-panel-lint ul:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: -2px;
+}
+
+#editor-box .cm-panel.cm-panel-lint [name="close"] {
+  right: 4px;
+  color: var(--desk-text-muted);
+  cursor: pointer;
+}
+
+/* The warnings (ADR 0328): a likely mistake, in the warning colour, and its fix as a small outline
+   button under the message. */
+#editor-box .cm-lintRange-warning {
+  background-image: none;
+  text-decoration: underline wavy var(--desk-warning);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+#editor-box .cm-lintRange-warning.cm-lintRange-active {
+  background: var(--desk-warning-soft);
+}
+
+#editor-box .cm-lintPoint-warning::after {
+  border-bottom-color: var(--desk-warning);
+}
+
+#editor-box .cm-lint-marker-warning::before {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--desk-warning);
+  content: "";
+}
+
+#editor-box .cm-diagnostic-warning {
+  border-left-color: var(--desk-warning);
+}
+
+#editor-box .cm-diagnosticAction {
+  margin: 0 0 0 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-sans);
+  cursor: pointer;
+}
+
+#editor-box .cm-diagnosticAction:hover {
+  background: var(--desk-hover);
+}
+
+#editor-box .cm-diagnosticAction:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}

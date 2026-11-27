@@ -1,5 +1,4 @@
-// shell.open performs its own check-or-ask in the core. A refusal is final for this click: do not
-// issue a second permission request or retry the URL behind the person's answer.
+// The Reader's HTTP, HTTPS and mailto links use the shell:open grant from installation.
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 const scope = { permission: "shell:open", schemes: ["http", "https", "mailto"] };
 /** @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge */

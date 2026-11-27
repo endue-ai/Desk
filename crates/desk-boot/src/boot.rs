@@ -108,13 +108,13 @@ pub fn boot(input: BootInput) -> Booted {
     // install (ADR 0061).
     let (mut core, last) = start::begin(&data, core, &crash);
     if let Some(problem) = core.init_problem() {
-        eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
+        eprintln!("endue: init.yaml is not in force ({problem}); using the defaults");
     }
     // The item index (ADR 0033): without it data.* answers io_error and syncs fail. An index that
     // cannot be opened is kept as index.sqlite.broken and opened fresh.
     core = core.with_index_file(data.join("index.sqlite"));
     if let Some(why) = core.index_problem() {
-        eprintln!("endue Desk: no item index ({why}); data.* is unavailable");
+        eprintln!("endue: no item index ({why}); data.* is unavailable");
     }
     // The OS calendar makes the built-in connectors desk.calendar and desk.reminders. It is macOS
     // only for now; elsewhere there is none, and nothing asks the OS until connect.
@@ -136,12 +136,21 @@ pub fn boot(input: BootInput) -> Booted {
     let mut account = AccountOptions::from_env();
     account.file = Some(data.join("account.json"));
     // Its tokens in the OS keychain (ADR 0239); without one, the private file as before.
-    match desk_sys::keychain::os(desk_sys::keychain::SERVICE) {
-        Ok(keychain) => account.keychain = Some(Arc::new(keychain)),
-        Err(err) => {
-            eprintln!("desk: account: no OS keychain ({err}); the session stays in account.json")
-        }
-    }
+    let keychain: Option<Arc<dyn desk_core::account::Keychain>> =
+        match desk_sys::keychain::os(desk_sys::keychain::SERVICE) {
+            Ok(keychain) => Some(Arc::new(keychain)),
+            Err(err) => {
+                eprintln!(
+                    "desk: account: no OS keychain ({err}); the session stays in account.json"
+                );
+                None
+            }
+        };
+    account.keychain = keychain.clone();
+    // Database passwords a plugin keeps for db.open, in the same keychain (ADR 0311).
+    core = core.with_db_passwords(keychain, Some(data.join("db-passwords.json")));
+    // The SSH host keys a plugin's tunnels trust, by host and port (ADR 0359).
+    core = core.with_db_ssh_hosts(Some(data.join("db-ssh-hosts.json")));
     let account = Account::open(account, NetIdClient);
     core = core.with_account(account.clone());
     // The agent programs on this computer (ADR 0110): Claude Code and Codex, their sessions read
@@ -176,7 +185,7 @@ pub fn boot(input: BootInput) -> Booted {
     let plugins = core.watch_plugins().ok();
     let themes = core
         .watch_themes()
-        .map_err(|why| eprintln!("endue Desk: the themes folder is not watched ({why})"))
+        .map_err(|why| eprintln!("endue: the themes folder is not watched ({why})"))
         .ok();
     tracing.phase("plugin registry", started);
 
@@ -190,12 +199,12 @@ pub fn boot(input: BootInput) -> Booted {
     crash::follow_plugins(&core, Arc::clone(&crash.context));
     let views = core.watch_views().ok();
     for problem in core.view_problems() {
-        eprintln!("endue Desk: a view is left out ({problem})");
+        eprintln!("endue: a view is left out ({problem})");
     }
     // Setting values that fail their declarations (ADR 0080): the core logs each one and sends it to
     // the runtime, which tells the person; the terminal and the e2e log name them too.
     for problem in core.settings_problems() {
-        eprintln!("endue Desk: {problem}");
+        eprintln!("endue: {problem}");
     }
     tracing.phase("connectors and views", started);
     // Subscribing also tells the core a router listens: without one it never sends a prompt and the
@@ -225,13 +234,13 @@ fn sync_init(core: &Core) {
         Ok(SyncOutcome::Conflict { revision }) => {
             let copy = core.init_remote_copy().unwrap_or_default();
             eprintln!(
-                "endue Desk: init.yaml changed here and on endue (revision {revision}); endue's copy is in {}",
+                "endue: init.yaml changed here and on endue (revision {revision}); endue's copy is in {}",
                 copy.display()
             );
         }
-        Ok(outcome) => eprintln!("endue Desk: init.yaml sync: {outcome:?}"),
+        Ok(outcome) => eprintln!("endue: init.yaml sync: {outcome:?}"),
         Err(SyncError::Off) => {}
-        Err(why) => eprintln!("endue Desk: init.yaml not synced ({why})"),
+        Err(why) => eprintln!("endue: init.yaml not synced ({why})"),
     }
 }
 

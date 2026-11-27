@@ -20,6 +20,8 @@ import { addressOf } from "./computers.js";
  * @typedef {new (target: Element, channel: unknown, options: object) => Rfb} RfbClass
  * @typedef {{
  *   bridge: { call(method: string, params: unknown): Promise<any> },
+ *   onGrant?(grant: unknown): void,
+ *   retryPermission?: boolean,
  *   sockets: { connect(target: { host: string, port: number }): Promise<{ close(): void }> },
  *   RFB: RfbClass,
  *   target: Element,
@@ -62,20 +64,28 @@ export async function fingerprintOf(key) {
  * Open the socket, asking once for the grant when the plugin's grants do not cover the address.
  * @param {Options} options
  */
-async function open({ bridge, sockets, computer }) {
+async function open(
+  { bridge, sockets, computer, onGrant, retryPermission },
+  /** @type {() => boolean} */ active,
+) {
   const target = { host: computer.host, port: computer.port };
   try {
     return await sockets.connect(target);
   } catch (error) {
     if (codeOf(error) !== "permission_denied") throw error;
   }
+  if (!active()) throw Object.assign(new Error("Session ended"), { code: "cancelled" });
   const asked = await bridge
     .call("perm.request", {
       permission: scopeOf(computer.host, computer.port),
       reason: `To show ${computer.name}'s screen`,
+      duration: "always",
+      ...(retryPermission === false ? {} : { again: true }),
     })
     .catch(() => ({ granted: false }));
   if (!asked.granted) throw Object.assign(new Error("refused"), { code: "permission_denied" });
+  onGrant?.(asked.grant);
+  if (!active()) throw Object.assign(new Error("Session ended"), { code: "cancelled" });
   return sockets.connect(target);
 }
 
@@ -155,7 +165,7 @@ export function startSession(options) {
     rfb.viewOnly = viewOnly;
   };
 
-  void open(options).then(
+  void open(options, () => !stopped).then(
     (channel) => {
       if (stopped) {
         channel.close();

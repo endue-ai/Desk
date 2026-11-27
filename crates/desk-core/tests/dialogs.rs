@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use desk_bridge::{DialogOpenParams, DialogSaveParams, ErrorCode};
 use desk_core::{Asker, Core, DialogError, Dialogs};
 use serde_json::{Value, json};
-use support::{call, grant, home, install_hello, manage, roots};
+use support::{call, grant, home, install_hello, install_hello_declaring, manage, roots};
 
 /// The installed plugin that asks.
 const NOTES: &str = "example.hello";
@@ -72,7 +72,10 @@ impl Dialogs for Person {
 fn desk(tag: &str) -> (Core, Arc<Person>, PathBuf) {
     let home = home(tag);
     let core = Core::new(roots(&home));
-    install_hello(&core, &home);
+    // It may be granted whatever the person picks, anywhere (ADR 0260).
+    let anywhere = json!([{ "permission": "fs:read", "paths": ["/**"] },
+        { "permission": "fs:write", "paths": ["/**"] }]);
+    install_hello_declaring(&core, &home, anywhere);
     let person = Arc::new(Person::default());
     core.set_dialogs(Some(person.clone()));
     (core, person, home)
@@ -144,6 +147,62 @@ fn open_of_a_folder_grants_what_lies_inside() {
     assert!(call(&core, NOTES, "fs.read", inside).is_ok());
     denied(read(&core, NOTES, "~/Calendar/today.ics"));
     denied(write(&core, NOTES, "~/Documents/new.md"));
+}
+
+#[test]
+fn a_destination_is_writable_inside_and_cancellation_grants_nothing() {
+    let (core, person, home) = desk("dialog-destination");
+    let params = json!({ "kind": "folders", "intent": "destination" });
+    person.cancel();
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", params.clone()).unwrap()["cancelled"],
+        true
+    );
+    denied(write(&core, NOTES, "~/Documents/new.md"));
+    person.choose(&[home.join("Documents")]);
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", params).unwrap()["paths"],
+        json!(["~/Documents"])
+    );
+    assert!(read(&core, NOTES, "~/Documents/hello.md").is_ok());
+    write(&core, NOTES, "~/Documents/new.md").unwrap();
+    denied(write(&core, NOTES, "~/Calendar/today.ics"));
+    let asked = person.asked().len();
+    let file = json!({ "kind": "files", "intent": "destination" });
+    assert_eq!(
+        call(&core, NOTES, "dialog.open", file).unwrap_err().code,
+        ErrorCode::InvalidParams
+    );
+    assert_eq!(person.asked().len(), asked);
+}
+
+#[test]
+fn staged_save_can_write_and_rename_only_its_exact_temporary_sibling() {
+    let (core, person, home) = desk("dialog-staged-save");
+    let path = "~/Documents/export.csv";
+    let partial = "~/Documents/.export.csv.partial";
+    person.choose(&[home.join("Documents/export.csv")]);
+    call(
+        &core,
+        NOTES,
+        "dialog.save",
+        json!({ "temporarySibling": true }),
+    )
+    .unwrap();
+    write(&core, NOTES, partial).unwrap();
+    denied(read(&core, NOTES, partial));
+    denied(write(&core, NOTES, "~/Documents/.unrelated.csv.partial"));
+    let from_scope = json!({ "permission": "fs:write", "paths": [partial] });
+    let scope = json!({ "permission": "fs:write", "paths": [path] });
+    call(
+        &core,
+        NOTES,
+        "fs.rename",
+        json!({ "from": partial, "to": path, "scope": scope, "fromScope": from_scope }),
+    )
+    .unwrap();
+    assert!(!home.join("Documents/.export.csv.partial").exists());
+    assert_eq!(read(&core, NOTES, path).unwrap()["content"], "# Saved");
 }
 
 #[test]
@@ -301,7 +360,7 @@ fn only_the_desk_and_plugins_can_open_a_dialog() {
     let answer = call(&core, "desk", "dialog.open", json!({})).unwrap();
     assert_eq!(answer["paths"], json!(["~/Documents/hello.md"]));
     assert!(
-        person.asked()[0].starts_with("open endue Desk "),
+        person.asked()[0].starts_with("open endue "),
         "{:?}",
         person.asked()
     );
@@ -325,7 +384,7 @@ fn a_plugins_dialog_names_its_id_beside_its_name() {
     let dir = home.join("plugins/impostor");
     std::fs::create_dir_all(dir.join("ui")).unwrap();
     std::fs::write(dir.join("ui/index.html"), "<p>hi</p>").unwrap();
-    let manifest = r#"{ "id": "example.impostor", "name": "endue Desk", "version": "0.1.0",
+    let manifest = r#"{ "id": "example.impostor", "name": "endue", "version": "0.1.0",
         "kind": "ui", "entry": "ui/index.html" }"#;
     std::fs::write(dir.join("plugin.json"), manifest).unwrap();
     core.install_plugin(&dir, false);
@@ -334,7 +393,7 @@ fn a_plugins_dialog_names_its_id_beside_its_name() {
     call(&core, NOTES, "dialog.save", json!({})).unwrap();
     let asked = person.asked();
     assert!(
-        asked[0].starts_with("open endue Desk (example.impostor) "),
+        asked[0].starts_with("open endue (example.impostor) "),
         "{asked:?}"
     );
     assert!(asked[1].starts_with("save example.hello "), "{asked:?}");

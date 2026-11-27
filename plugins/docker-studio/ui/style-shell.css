@@ -1,0 +1,302 @@
+/* The frame: sidebar, top bar, banner, content and status bar. Theme tokens only. */
+
+.studio {
+  display: grid;
+  grid-template-columns: var(--ds-side) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+/* ── sidebar ───────────────────────────────────────────────────────────── */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  min-height: 0;
+  padding: var(--desk-space-3) var(--desk-space-2);
+  overflow: auto;
+  border-right: 1px solid var(--ds-line);
+  background: var(--ds-soft);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-1) var(--desk-space-2) var(--desk-space-2);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--desk-radius-md);
+  background: linear-gradient(
+    135deg,
+    var(--desk-primary),
+    color-mix(in srgb, var(--desk-primary) 55%, var(--desk-chart-3))
+  );
+  color: var(--desk-primary-foreground);
+  box-shadow: var(--desk-shadow-sm);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-text b {
+  font-size: var(--desk-text-sm);
+}
+
+.brand-text small {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.desk-btn.engine-card {
+  justify-content: flex-start;
+  gap: var(--desk-space-2);
+  min-height: 48px;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  text-align: left;
+}
+
+.engine-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.engine-text b {
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.engine-text small {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.side-group {
+  margin: var(--desk-space-3) var(--desk-space-3) var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.desk-btn.side-item {
+  justify-content: flex-start;
+  gap: var(--desk-space-3);
+  min-height: 34px;
+  padding: 0 var(--desk-space-3);
+  border-radius: var(--desk-radius-md);
+  color: color-mix(in srgb, var(--desk-text) 82%, transparent);
+  font-weight: 500;
+}
+
+.desk-btn.side-item .icon {
+  color: var(--desk-text-muted);
+}
+
+.desk-btn.side-item.active {
+  background: var(--ds-select);
+  color: var(--desk-text);
+}
+
+.desk-btn.side-item.active .icon {
+  color: var(--desk-primary-text);
+}
+
+.side-label {
+  flex: 1;
+  text-align: left;
+}
+
+.side-count,
+.side-note {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.side-spacer {
+  flex: 1;
+}
+
+.side-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: var(--desk-space-2);
+  border-top: 1px solid var(--ds-line);
+}
+
+.desk-btn.side-item.ai-item,
+.desk-btn.side-item.ai-item .icon {
+  color: var(--ds-ai);
+}
+
+/* ── main column ───────────────────────────────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-4);
+  min-height: 64px;
+  padding: var(--desk-space-2) var(--desk-space-6);
+  border-bottom: 1px solid var(--ds-line);
+  background: var(--desk-background);
+}
+
+.page-head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.page-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-lg);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-sub {
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  max-width: 440px;
+  margin-left: auto;
+  color: var(--desk-text-muted);
+}
+
+.search-wrap > .icon {
+  position: absolute;
+  left: 10px;
+}
+
+.search-wrap > kbd {
+  position: absolute;
+  right: 8px;
+}
+
+.desk-field.top-search {
+  width: 100%;
+  padding-left: 32px;
+  border-radius: var(--desk-radius-md);
+  background: var(--ds-soft);
+}
+
+.page-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.page-tools:empty {
+  display: none;
+}
+
+.banner {
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  margin: var(--desk-space-3) var(--desk-space-6) 0;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border: 1px solid var(--desk-danger-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.banner p {
+  flex: 1;
+  margin: 0;
+  color: var(--desk-text);
+}
+
+.content {
+  grid-row: 3;
+  min-height: 0;
+  container: content / inline-size;
+  overflow: auto;
+  outline: none;
+}
+
+/* ── status bar ────────────────────────────────────────────────────────── */
+.statusbar {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--desk-space-4);
+  min-height: 28px;
+  padding: 0 var(--desk-space-4);
+  overflow: hidden;
+  border-top: 1px solid var(--ds-line);
+  background: var(--ds-soft);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  white-space: nowrap;
+}
+
+.sb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-spacer {
+  flex: 1;
+}
+
+.sb-item .dot {
+  box-shadow: none;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-ok);
+  animation: ds-pulse calc(var(--desk-motion-slow) * 6) ease-in-out infinite;
+}

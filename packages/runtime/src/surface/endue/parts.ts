@@ -3,7 +3,6 @@ import type { ShellCtx } from "../../shell/context";
 import { type Child, h } from "../../shell/dom";
 import { facePicture, flipCard as turn } from "../../system/endue";
 import type { EndueState, Read } from "../../system/endue-ids";
-import { showOnDesk } from "../../system/endue-web";
 import { type EndueKey, endueText } from "./copy";
 import type { Fact, Line } from "./model";
 
@@ -123,12 +122,12 @@ export function flipButton(ctx: ShellCtx, side: "front" | "back", view: string):
   );
 }
 
-/** One of endue.ai's pages a card opens: the action's name, its words and the page. */
-export type Page = [action: string, label: EndueKey, url: string];
+/** What a card's foot offers: the action's name, its words and what a press does. */
+export type Page = [action: string, label: EndueKey, run: () => void];
 
 /**
- * A face's foot: Read again on the back, and endue.ai's own pages on both, each shown in a desk
- * window (ADR 0223).
+ * A face's foot: Read again on the back, and the card's own actions on both, each inside the desk
+ * (the Agents Studio for an agent).
  */
 export function actions(
   ctx: ShellCtx,
@@ -147,7 +146,7 @@ export function actions(
         )
       : null,
     h("span", { class: "endue-spacer" }),
-    pages.map(([action, label, url]) =>
+    pages.map(([action, label, run]) =>
       h(
         "button",
         {
@@ -155,7 +154,7 @@ export function actions(
           type: "button",
           "data-action": action,
           title: text(ctx, "pageHint"),
-          onClick: () => void showOnDesk(ctx, url).catch(() => undefined),
+          onClick: run,
         },
         text(ctx, label),
       ),

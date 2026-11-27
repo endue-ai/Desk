@@ -135,6 +135,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "proc:spawn": "run programs",
   "net:fetch": "use the network",
   "net:connect": "connect to other computers",
+  "db:connect": "sign in to databases",
   "audio:capture": "use the microphone",
   "ui:surface": "open its surfaces",
   "ui:notify": "show notifications",
@@ -161,6 +162,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "computer:see": "see your screen and the apps on it",
   "computer:control": "operate your computer's apps with the mouse and keyboard",
   "web:browse": "show web pages",
+  "web:control": "read the web pages it shows and scroll, click and type in them",
 };
 
 /** A permission's scope: "paths: ~/Notes/**", or "" when it has none. */

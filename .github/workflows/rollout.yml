@@ -1,9 +1,9 @@
 name: rollout
 
-# Widen or stop a stable build's rollout (ADR 0092), by hand only: the share of desks that see it, 10
-# when release-final.yml lists it, then 50 and 100; 0 stops new desks from taking it. A desk's bucket
-# for a version never changes, so a wider share only adds desks. Taking a build off every desk that
-# staged it is rollback.yml. Runs in the stable environment, which people approve.
+# Adjust the share of stable endue installations offered a version (ADR 0092). The initial share
+# is 10%. Choose 50 or 100 to reach more installations, or 0 to stop offering this version.
+# Each installation keeps the same bucket for a version. Use rollback.yml to withdraw a staged build.
+# A maintainer approves the rollout in the stable environment.
 on:
   workflow_dispatch:
     inputs:
@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       percent:
-        description: The share of desks that see it
+        description: Percentage of stable endue installations offered this version
         required: true
         type: choice
         options: ["50", "100", "10", "0"]
@@ -22,6 +22,8 @@ permissions:
 
 jobs:
   rollout:
+    permissions:
+      contents: write
     name: rollout
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -48,10 +50,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Set ${{ inputs.version }} to ${{ inputs.percent }}% on stable
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           aws s3api get-object --bucket "$BUCKET" --key desk/channels/stable/index.json current.json \
             --endpoint-url "$ENDPOINT" > /dev/null
           node scripts/release-manifest.mjs rollout current.json --version "$VERSION" --percent "$PERCENT" > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          bash scripts/publish-upgrade-path.sh index index.json stable "$VERSION"
           node scripts/release-publish.mjs index index.json --channel stable --bucket "$BUCKET" --endpoint "$ENDPOINT"
-          echo "::notice::$VERSION reaches $PERCENT% of stable desks"
+          echo "::notice::endue $VERSION is available to $PERCENT% of stable installations"

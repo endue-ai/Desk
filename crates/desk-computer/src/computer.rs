@@ -3,12 +3,12 @@
 
 use std::sync::Arc;
 
-use crate::Error;
 use crate::apps::{App, AppOp, Launch};
 use crate::ax::{AxAction, Budget, Element, ElementRef, Query, Setting, Tree};
 use crate::input::Event;
 use crate::permissions::{Permission, Permissions};
 use crate::screen::{Capture, Display, Screenshot, Window, WindowScope};
+use crate::{Error, ErrorCode, Point};
 
 /// Proof that `Control` let an act through. It cannot be made outside this crate, so no caller
 /// reaches a `Computer`'s acting methods around the guard; implementations only receive it.
@@ -64,6 +64,13 @@ pub trait Computer: Send + Sync {
     -> Result<Vec<Element>, Error>;
     /// The running apps.
     fn apps(&self) -> Result<Vec<App>, Error>;
+    /// The current pointer location in screen points.
+    fn pointer_position(&self) -> Result<Point, Error> {
+        Err(Error::new(
+            ErrorCode::Unsupported,
+            "the computer driver cannot read the pointer",
+        ))
+    }
 
     /// Post one input event.
     fn post(&self, event: &Event, permit: &Permit) -> Result<(), Error>;

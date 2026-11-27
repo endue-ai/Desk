@@ -1,4 +1,4 @@
-# Releasing endue Desk
+# Releasing endue
 
 How a build reaches installed desks, and what a maintainer does at each step. The decisions are ADR
 0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where), ADR 0092 (release
@@ -6,27 +6,80 @@ lines, candidates on beta, stable in steps) and ADR 0229 (a GitHub Release a per
 the macOS app). Agents stop at the cherry-pick pull request: every run of the line pipeline waits for
 a person in the `stable` environment.
 
+## Verify a Linux CLI download
+
+Download `endue-cli_<version>_linux-x86_64.tar.gz` and `SHA256SUMS-cli` from the release into an empty directory. Run `sha256sum -c SHA256SUMS-cli` before extracting the archive. The manual [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) uses SHA-256 verification for its Linux CLI.
+
+For a signed channel release, also download the archive's `.sig`. Set `VERSION` to the version on the release without the leading `v`.
+
+1. Verify the build provenance with `gh attestation verify "endue-cli_${VERSION}_linux-x86_64.tar.gz" --repo endue-ai/endue`.
+2. Obtain the trusted updater public key from your existing installation or release administrator. Set `DESK_UPDATER_PUBKEY` to its Tauri-encoded public value. From a public source checkout, verify the version-bound signature with `node scripts/release-verify.mjs /path/to/archive.tar.gz --pubkey "$DESK_UPDATER_PUBKEY" --version "$VERSION"`.
+
+Extract the verified archive and open its directory. Run `bin/endue --version` to check the installation. Set `ENDUE_BRAIN_URL` to your brain v0 service and run `bin/endue run "hello"`. To activate both terminal names, run `bin/activate` with your chosen bin directory.
+
+The Linux desktop build ships the same executable in its installer and the standalone archive. A manual release-macos run for a published tag builds the Linux CLI at the same commit as both macOS images. The archive includes the project license and dependency notices. The in-app updater selects signed desktop packages.
+
 ## Publish a GitHub Release with the macOS app
 
-The short way to a macOS app, with no updater key, R2 bucket or release app (ADR 0229). It lists the
-build on no channel; the line pipeline below is how builds reach installed desks.
+Dispatching release-macos for a published version tag builds both macOS disk images. Configuring the updater key also makes
+the tag eligible for in-app updates (ADR 0229, ADR 0291).
 
 1. Publish a GitHub Release for a tag `vX.Y.Z` (or `vX.Y.Z-<pre>`) on the commit to ship:
-   `gh release create v0.1.0 --target <commit> --title "endue Desk 0.1.0" --generate-notes`, or
+   `gh release create v0.4.0 --target <commit> --title "endue 0.4.0" --notes-file <reviewed-notes>`, or
    Releases → Draft a new release → Publish.
-2. **release-macos** starts on its own. It builds the CEF desk at the tag's commit for Apple silicon
+2. Run `gh workflow run release-macos --ref main -f tag=v0.4.0` with the published tag. It builds the app at the tag's commit for Apple silicon
    and Intel (`release-build.yml`), runs the install smoke on each package, and
-   attaches `endue-desk_<version>_darwin-aarch64.dmg`, `endue-desk_<version>_darwin-x86_64.dmg` and
+   attaches `endue_<version>_darwin-aarch64.dmg`, `endue_<version>_darwin-x86_64.dmg` and
    `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
 3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
    notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
    ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
    and still attached: the run warns, and the notes tell the person to allow the app once in System
-   Settings > Privacy & Security, or to run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.
+   Settings > Privacy & Security.
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
 
-A release made by `release-final` is left alone: its build is on R2 and its notes link there. The tag
+For in-app upgrades, set the repository variable `DESK_UPDATER_PUBKEY` and its matching signing
+key in the protected environment. The release then includes the signed updater archives,
+`release.json` and `UPGRADE_PATH.json` with their signatures. To require a stepping stone, set
+`DESK_UPDATE_MIN_FROM` before publishing or supply `min-from` on a workflow dispatch. For example,
+a tag with `minFrom` of `1.3.0` can be installed by Desk 1.3.0 or later. Older installations
+stage the highest earlier release whose own path accepts them. Mark version tags with prerelease
+suffixes as GitHub prereleases. Existing installer-only tags are skipped by the updater.
+
+### Move installed Desk clients to endue
+
+1. Publish the signed transition build in the original repository, now named `endue-ai/endue`.
+   Set its `minFrom` to a supported update-capable Desk version and make it available to all of
+   those installations before publishing the first branded app. Verify the signed index and
+   manifest through the old Desk URLs. Keep the tag, signatures and GitHub redirect throughout the
+   compatibility window in [ADR 0333](adr/0333-endue-product-and-installation-identity.md).
+2. For the first endue tag, set `minFrom` to the transition version. On **both tags** the signed
+   `UPGRADE_PATH.json` must point to `https://github.com/endue-ai/Desk/releases/download/v<V>/release.json`.
+   Desk checks that exact address even for a tag above its own version floor. The signed manifest
+   can name artifacts at the new repository. Keep the same updater signing identity.
+3. Run `e2e/smoke/update-two-hops.sh --github-rename` from a checkout with the history of #516.
+   It uses the unchanged pre-transition updater for the first hop and the current updater for the
+   second. Both see the same signed publisher output and both tags from the start. It also checks
+   that a bad signature leaves the transition install usable. It uses an ephemeral test key.
+4. Before rolling out, run the package-level two-hop smoke described below on the three builds.
+   From an isolated, update-capable Desk installation with the release key, check for updates
+   with both production tags visible. Record the installed version after each restart. Verify the
+   old API and tag download URLs still resolve after the rename. A Desk installation from an
+   installer-only release can install the official endue package over its existing installation
+   and reopen its workspace. Keep its application data in place.
+
+New installations discover releases at `https://github.com/endue-ai/endue/releases`. If a renamed
+release fails verification, keep the signed transition tag available. Withdraw the new offer using
+the signed empty tag path below and verify both repository addresses before resuming rollout.
+
+The app checks the public release list on startup and periodically. It verifies the available package
+and offers **Restart to update**, **Install on next restart** and **Later**. The restart choice
+belongs to that exact version and is consumed before installation. The staged package works offline.
+The beta and canary feeds are signed snapshots on the `desk-updates-beta` and `desk-updates-canary`
+prereleases. The release line continues to serve its earlier clients from R2.
+
+A release made by `release-final` publishes its own GitHub assets and signed stable path. The tag
 counts as a release for the line pipeline's versions (`scripts/release-version.mjs`). On a Mac,
 `just package-shell 0.1.0` makes the same `.app` and `.dmg` for that machine's architecture in
 `target/packager/<triple>/bundle` (cargo-packager 0.11.8 on the `PATH`). Its disk image step lays
@@ -41,8 +94,8 @@ already on `main`.
 
 | Channel | Fed by | Version | When |
 | --- | --- | --- | --- |
-| canary | `main` | the next line's .0, `-pre.<run>` (`0.5.0-pre.212`) | nightly when `main` moved (`canary.yml`), or by hand |
-| beta | `release/vX.Y` | `X.Y.Z-rc.<run>` (`0.4.0-rc.31`), then `X.Y.Z` | every push to the line (`release.yml`) |
+| canary | `main` | the next line's .0, `-pre.<run>` (`0.5.0-pre.212`) | dispatch `canary.yml` on `main` |
+| beta | `release/vX.Y` | `X.Y.Z-rc.<run>` (`0.4.0-rc.31`), then `X.Y.Z` | dispatch `release.yml` on the line |
 | stable | the candidate three days on beta | `X.Y.Z` (`0.4.0`) | `release-final.yml`, then `rollout.yml` |
 
 Versions live in no file: the workflows write them into the build (`scripts/release-version.mjs`).
@@ -60,7 +113,7 @@ stable from then on; a beta tester who wants the next line's candidates keeps
    the next line at the commit of the newest canary build that has been on canary three days; give a
    line (`release/v1.0`) or a `main` commit to choose.
 2. Approve it in `stable`. The release app creates the branch and the milestone `vX.Y`.
-3. The push starts **release**: check and unit tests on every OS, then the line's first candidate on
+3. Run `gh workflow run release --ref release/vX.Y`. It checks every OS and publishes the line's first candidate on
    beta. Its notes are the commit page.
 
 ## Fix a line
@@ -69,8 +122,8 @@ stable from then on; a beta tester who wants the next line's candidates keeps
 2. On a branch from the line, `git cherry-pick -x <commit>` and open a pull request into
    `release/vX.Y` titled `[vX.Y] <the original title>`. Its body keeps the original `Closes #N`, so
    `scope-check` reads that issue's Scope.
-3. `ci` runs every OS; the `release` ruleset asks for a review and a branch up to date with the line.
-   Merging it builds the next candidate (`X.Y.Z-rc.<run>`, Z one past the line's newest tag).
+3. Run `gh workflow run ci --ref main -f pr=<PR-number>` to check every OS. The `release` ruleset asks for a review and a branch up to date with the line.
+   After merging, dispatch `release` on the line to build the next candidate (`X.Y.Z-rc.<run>`, Z one past the line's newest tag).
 4. A problem that must hold the final back gets an issue with the label `release-blocker` on the
    milestone `vX.Y`.
 
@@ -102,8 +155,7 @@ tracker is the signal.
 Since Stage 1 of #32 ended (#97) the desk is the CEF desk (`apps/desk/shell`, ADR 0143), and its
 executable is `endue-desk`, as the Tauri desk's was. `release-build.yml` builds it and refuses any
 other desk; a line builds what `.github/release-shell` names at its commit, its final what the
-candidate's commit names. The file says `cef`, so canary builds the CEF desk every night `main`
-moved, and the next line cut from `main` carries it to beta, then stable (ADR 0145). Lines cut before
+candidate's commit names. The file says `cef`, so dispatching canary builds the CEF app from the selected default-branch commit, and the next line cut from `main` carries it to beta, then stable (ADR 0145). Lines cut before
 then build the Tauri desk from their own commits. Rehearse a line with **release-dry-run** and the
 update smoke below on every OS.
 
@@ -218,7 +270,7 @@ Signing, which accepts organisations in South Korea; wiring it is a task of its 
 | --- | --- | --- |
 | `is not a release tag` | **release-macos** met a release whose tag is not `vX.Y.Z` or `vX.Y.Z-<pre>` | publish the release under such a tag |
 | `has no GitHub Release` | **release-macos** was run by hand for a tag without a release | publish the release first |
-| `builds no candidate: … not set` | a secret or variable is missing in `signing` | set it, push again or re-run |
+| `builds no candidate: … not set` | a secret or variable is missing in `signing` | set it and dispatch the workflow again |
 | `is not a release line` | the branch is `release/vX.Y.Z` or another name | lines are `release/vX.Y` only |
 | `No candidate of … has been on beta N days` | the newest candidate is younger | wait, or lower `soak-days` |
 | `Open release-blocker issues` | the milestone holds the final | close or move the issues |

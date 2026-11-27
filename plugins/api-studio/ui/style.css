@@ -1,0 +1,222 @@
+/* API Studio's base: the studio's own derived tones, method and status colours, syntax colours,
+   pills, menus, dialogs, toasts and spinners. Every colour, size, radius and duration is a theme
+   token (scripts/ui-lint.mjs). */
+
+:root {
+  --as-line: color-mix(in srgb, var(--desk-border) 82%, transparent);
+  --as-line-soft: color-mix(in srgb, var(--desk-border) 50%, transparent);
+  --as-soft: color-mix(in srgb, var(--desk-text) 3%, var(--desk-background));
+  --as-panel: color-mix(in srgb, var(--desk-text) 2%, var(--desk-card));
+  --as-raised: color-mix(in srgb, var(--desk-text) 6%, var(--desk-card));
+  --as-sunk: color-mix(in srgb, var(--desk-background) 70%, var(--desk-card));
+  --as-select: color-mix(in srgb, var(--desk-primary) 16%, transparent);
+  --as-select-line: color-mix(in srgb, var(--desk-primary) 60%, transparent);
+  --as-faint: color-mix(in srgb, var(--desk-text-muted) 75%, transparent);
+
+  --m-get: var(--desk-success);
+  --m-post: var(--desk-warning);
+  --m-put: var(--desk-info);
+  --m-patch: var(--desk-chart-1);
+  --m-delete: var(--desk-danger);
+  --m-head: var(--desk-chart-2);
+  --m-options: var(--desk-chart-8);
+  --m-other: var(--desk-text-muted);
+
+  --s-info: var(--desk-info);
+  --s-ok: var(--desk-success);
+  --s-redirect: var(--desk-chart-3);
+  --s-client: var(--desk-warning);
+  --s-server: var(--desk-danger);
+  --s-none: var(--desk-text-muted);
+
+  --as-mono: var(--desk-font-mono);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+}
+
+.icon {
+  flex: none;
+}
+
+.as-grow {
+  flex: 1;
+}
+
+.as-hint {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--as-line);
+  border-bottom-width: 2px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--as-soft);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  line-height: 1;
+}
+
+/* ── methods and statuses ───────────────────────────────────────────── */
+.m-get { --m: var(--m-get); }
+.m-post { --m: var(--m-post); }
+.m-put { --m: var(--m-put); }
+.m-patch { --m: var(--m-patch); }
+.m-delete { --m: var(--m-delete); }
+.m-head { --m: var(--m-head); }
+.m-options { --m: var(--m-options); }
+.m-other { --m: var(--m-other); }
+
+.method {
+  flex: none;
+  min-width: 34px;
+  color: var(--m, var(--m-other));
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+}
+
+.s-info { --s: var(--s-info); }
+.s-ok { --s: var(--s-ok); }
+.s-redirect { --s: var(--s-redirect); }
+.s-client { --s: var(--s-client); }
+.s-server { --s: var(--s-server); }
+.s-none { --s: var(--s-none); }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--s) 35%, transparent);
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--s) 14%, transparent);
+  color: var(--s);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-dot {
+  flex: none;
+  min-width: 30px;
+  color: var(--s);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+  font-weight: 700;
+  text-align: right;
+}
+
+.tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--desk-radius-full);
+  background: var(--as-raised);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+
+.tab-count.is-ok {
+  background: color-mix(in srgb, var(--desk-success) 18%, transparent);
+  color: var(--desk-success);
+}
+
+.tab-count.is-bad {
+  background: color-mix(in srgb, var(--desk-danger) 18%, transparent);
+  color: var(--desk-danger);
+}
+
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--desk-success);
+  vertical-align: middle;
+}
+
+/* ── syntax ─────────────────────────────────────────────────────────── */
+.t-key { color: var(--desk-chart-4); }
+.t-str { color: var(--desk-chart-2); }
+.t-num { color: var(--desk-chart-3); }
+.t-bool { color: var(--desk-chart-1); }
+.t-null { color: var(--desk-text-muted); font-style: italic; }
+.t-punct { color: var(--as-faint); }
+.t-tag { color: var(--desk-chart-4); }
+.t-attr { color: var(--desk-chart-3); }
+.t-entity { color: var(--desk-chart-7); }
+.t-comment { color: var(--desk-text-muted); font-style: italic; }
+.t-keyword { color: var(--desk-chart-1); }
+.t-builtin { color: var(--desk-chart-2); }
+
+.var {
+  border-radius: var(--desk-radius-sm);
+  box-shadow: inset 0 -1px 0 currentColor;
+}
+.var-set {
+  background: color-mix(in srgb, var(--desk-success) 14%, transparent);
+  color: var(--desk-success);
+}
+.var-dynamic {
+  background: color-mix(in srgb, var(--desk-info) 14%, transparent);
+  color: var(--desk-info);
+}
+.var-missing {
+  background: color-mix(in srgb, var(--desk-danger) 14%, transparent);
+  color: var(--desk-danger);
+}
+
+/* ── spinners ───────────────────────────────────────────────────────── */
+.as-spin {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: as-turn calc(var(--desk-motion-slow) * 3) linear infinite;
+}
+.as-spin.is-small {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+.as-spin.is-big {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+  color: var(--desk-primary);
+}
+@keyframes as-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

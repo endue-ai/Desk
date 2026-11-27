@@ -21,7 +21,7 @@
           "token": {
             "kind": "string",
             "title": "Personal access token",
-            "description": "A token that reads your issues and pull requests: fine-grained with read access to Issues and Pull requests, or classic with repo. Desk keeps it on this computer and sends it only to api.github.com.",
+            "description": "A token that reads your issues and pull requests: fine-grained with read access to Issues and Pull requests, or classic with repo. endue keeps it on this computer and sends it only to api.github.com.",
             "secret": true,
             "required": true
           }

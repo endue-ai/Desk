@@ -13,21 +13,18 @@ pub enum System {
     /// The system layer: the runtime's page in the main window, off screen, drawn above every
     /// window (its parts in [`PARTS`]), and the plugin host of every plugin surface.
     Desk,
-    /// Search Desk over every app, a window of its own.
+    /// Search endue over every app, a window of its own.
     Palette,
-    /// The island over every app (ADR 0204), a window of its own while `desk.island.show` is on.
-    Island,
 }
 
 impl System {
-    pub const ALL: [System; 3] = [System::Desk, System::Palette, System::Island];
+    pub const ALL: [System; 2] = [System::Desk, System::Palette];
 
     /// Its surface id: the compositor's for the desk's page, the shell's for the other windows.
     pub fn id(self) -> &'static str {
         match self {
             System::Desk => "desk",
             System::Palette => "palette",
-            System::Island => "island",
         }
     }
 
@@ -36,15 +33,13 @@ impl System {
         match self {
             System::Desk => Role::Main,
             System::Palette => Role::Palette,
-            System::Island => Role::Island,
         }
     }
 
-    /// The caller its bridge calls run as: the desk's, the palette's, and the island's, which is the
-    /// runtime's (it asks only for its own part, [`Sender::may_ask`]).
+    /// The caller its bridge calls run as.
     pub fn caller(self) -> &'static str {
         match self {
-            System::Desk | System::Island => RUNTIME,
+            System::Desk => RUNTIME,
             System::Palette => PALETTE,
         }
     }
@@ -86,7 +81,7 @@ pub enum Level {
 /// The parts the compositor draws over the windows that take no press of their own: one there is
 /// for what lies under it. The status line's text is drawn over a window snapped to the top, whose
 /// tools are its own page's (ADR 0201); its buttons are a part of their own.
-const UNHEARD: &[&str] = &["desk.notices"];
+const UNHEARD: &[&str] = &["desk.notices", "desk.sweep-marks"];
 
 impl SystemPart {
     /// The system surface it is a part of: the desk's, whose caller it calls as.
@@ -111,6 +106,11 @@ pub const PARTS: &[SystemPart] = &[
     SystemPart {
         id: "desk.desktops",
         holds: "the desktops, top right",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.shortcuts",
+        holds: "the shortcut bar above the agent bar: the person's plugins and commands",
         level: Level::Bar,
     },
     SystemPart {
@@ -160,6 +160,18 @@ pub const PARTS: &[SystemPart] = &[
         level: Level::Bar,
     },
     SystemPart {
+        id: "desk.sweep-marks",
+        holds: "a sweep's area and the rings of the windows it selected (ADR 0296), one box each: \
+                drawn over the windows, they hear nothing",
+        level: Level::Bar,
+    },
+    SystemPart {
+        id: "desk.sweep",
+        holds: "the sweep bar: its modes, the selection's commands, what the next line to Eris \
+                carries",
+        level: Level::Bar,
+    },
+    SystemPart {
         id: "desk.scrim",
         holds: "each modal's scrim the page has open, one box each: a dialog's, the settings' \
                 backdrop",
@@ -198,7 +210,7 @@ mod tests {
         let ids: Vec<&str> = System::ALL.iter().map(|s| s.id()).collect();
         assert_eq!(
             ids,
-            ["desk", "palette", "island"],
+            ["desk", "palette"],
             "the order the desk starts them in"
         );
         for system in System::ALL {
@@ -209,11 +221,6 @@ mod tests {
         }
         assert_eq!(System::Desk.caller(), "desk");
         assert_eq!(System::Palette.caller(), "palette");
-        assert_eq!(
-            System::Island.caller(),
-            "desk",
-            "the runtime's caller, for what the island shows only"
-        );
         assert_eq!(
             System::of(Role::Banner),
             None,
@@ -230,6 +237,7 @@ mod tests {
             assert_eq!(part(p.id), Some(p));
         }
         for wanted in [
+            "desk.shortcuts",
             "desk.agents",
             "desk.rail",
             // What the page draws over the dock takes its own presses (#158, #159).
@@ -260,7 +268,10 @@ mod tests {
         let actions = part("desk.notice-actions").expect("its buttons");
         assert!(actions.hears());
         assert_eq!(actions.level, Level::Bar);
-        for p in PARTS.iter().filter(|p| p.id != "desk.notices") {
+        for p in PARTS
+            .iter()
+            .filter(|p| !["desk.notices", "desk.sweep-marks"].contains(&p.id))
+        {
             assert!(p.hears(), "{}", p.id);
         }
     }

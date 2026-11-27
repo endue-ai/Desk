@@ -120,6 +120,7 @@ export const SAY = {
   still: "Still there? You can type, too.",
   offline:
     "I can't reach endue right now. Check your connection, and I'll pick up where we left off.",
+  offlineTask: "I'll send your task when you're back online. Or choose an example to try now.",
   brief: "Fine. I'll be brief.",
   resume: "Where were we? Right, your desk.",
   /** A finished first run's greeting, by the hour of the day (0-23) on this computer. */

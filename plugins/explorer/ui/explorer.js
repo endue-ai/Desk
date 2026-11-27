@@ -1,6 +1,7 @@
 // Explorer state and commands on the public SDK: bounded previews, folder grants, file opening
 // through desk.files.open, the remembered tree selection and the rows selected with it (selection.js),
 // the status line (status.js), the edits on disk (edits.js, many.js) and the find bar (finding.js).
+import { answerAgents } from "./agent.js";
 import { commandRegistry } from "./command-registry.js";
 import { contextActions } from "./context-actions.js";
 import { createDeskLink } from "./desk.js";
@@ -248,6 +249,7 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     void save();
   };
   const { reveal, addFolder, removeFolder } = createReach({
+    bridge,
     desk,
     surface,
     settings,
@@ -328,8 +330,12 @@ export function createExplorer({ bridge, commands, settings, surface, dnd }, vie
     expanded,
     folders,
   });
+  const agents = { roots: () => roots, showHidden: () => showHidden, selected: () => selected };
+  answerAgents(answer, { ...agents, disk, place: drops.place, picked: picking.picked });
   const context = contextActions(bridge, commands, {
     selected: () => rowOf(selected),
+    reach: async (path) => ((await reveal(path)) ? rowOf(path) : undefined),
+    rootOf,
     say,
     open: async (row) => {
       if (row.kind !== "dir") return open(row.path);

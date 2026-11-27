@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/events.schema.json",
-  "title": "Desk bridge v0: events",
+  "title": "endue bridge v0: events",
   "description": "The core event bus, opened to callers. Events about a caller's own work reach it without asking; events.subscribe asks for named events about every caller, scoped by events:subscribe.",
   "$defs": {
     "EventsSubscribeRequest": {

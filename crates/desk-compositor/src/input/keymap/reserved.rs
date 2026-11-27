@@ -13,15 +13,15 @@ pub struct Reserved {
     pub chord: String,
     /// "macOS", "Windows and Linux" or "the desk".
     pub by: String,
-    /// What it does there, as a clause: "quits Desk".
+    /// What it does there, as a clause: "quits endue".
     pub does: String,
     /// The binding can never run (a cancel key after a prefix), so it is not bound.
     pub never: bool,
 }
 
 const MAC: [(&str, &str); 13] = [
-    ("Meta+Q", "quits Desk"),
-    ("Meta+H", "hides Desk"),
+    ("Meta+Q", "quits endue"),
+    ("Meta+H", "hides endue"),
     ("Meta+Alt+H", "hides the other apps"),
     ("Meta+M", "minimizes the window"),
     ("Meta+Tab", "switches apps"),

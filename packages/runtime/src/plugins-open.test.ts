@@ -6,7 +6,7 @@ import {
   type PluginManifest,
   stubCommands,
 } from "@endue-ai/bridge";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fleet from "../../../plugins/fleet/plugin.json";
 import today from "../../../plugins/today/plugin.json";
 import { PolicyHub } from "./hub";
@@ -29,12 +29,17 @@ const git: PluginManifest = {
 };
 
 /** desk.plugins.open on a stub core whose plugin list is `plugins`; desk.views and desk.universal answer. */
-async function setup(plugins: PluginInfo[]) {
+async function setup(plugins: PluginInfo[], disabledAtLaunch = false, granted = false) {
   const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
   const enabled: string[] = [];
+  const requests: unknown[] = [];
   const stub = browserStub({
     ...registry.handlers,
     "plugin.list": () => ({ plugins }),
+    "perm.request": ({ permission }, caller) => {
+      requests.push({ permission, caller });
+      return { granted };
+    },
     "plugin.setEnabled": ({ plugin }: { plugin: string }) => {
       enabled.push(plugin);
       const info = plugins.find((p) => p.id === plugin) as PluginInfo;
@@ -60,10 +65,12 @@ async function setup(plugins: PluginInfo[]) {
   const focused: string[] = [];
   /** The windows each running plugin has, as PluginHost numbers them (ADR 0212). */
   const windows = new Map<string, number>();
+  const define = vi.spyOn(hub.commands, "define");
   defineOpenPlugin({
     commands: hub.commands,
     bridge: client,
-    launch: async (id, wait) => {
+    launch: async (id: string, wait: boolean, beforeEnable?: () => Promise<void>) => {
+      if (disabledAtLaunch) await beforeEnable?.();
       launched.push({ id, wait });
       windows.set(id, Math.max(1, windows.get(id) ?? 0));
     },
@@ -77,7 +84,11 @@ async function setup(plugins: PluginInfo[]) {
   });
   await hub.commands.settled();
   const open = (args: unknown) => hub.commands.run("desk.plugins.open", args);
-  return { open, opened, launched, focused, enabled };
+  const definition = define.mock.calls.find(([id]) => id === "desk.plugins.open");
+  if (!definition) throw new Error("No definition for desk.plugins.open");
+  const [, command] = definition;
+  const openAsEris = (args: unknown) => command.run(args, { caller: "agent:eris" });
+  return { open, openAsEris, opened, launched, focused, enabled, requests };
 }
 
 describe("desk.plugins.open", () => {
@@ -101,6 +112,43 @@ describe("desk.plugins.open", () => {
     await open({ plugin: "desk.today" });
     expect(enabled).toEqual(["desk.today"]);
     expect(opened).toHaveLength(1);
+  });
+
+  it("does not enable a data-only plugin when Eris lacks the scope", async () => {
+    const { openAsEris, opened, enabled, requests } = await setup([
+      installed(today as PluginManifest, false),
+    ]);
+    await expect(openAsEris({ plugin: "desk.today" })).rejects.toThrow(/scope/);
+    expect(requests).toEqual([
+      {
+        caller: "agent:eris",
+        permission: { permission: "cmd:invoke", ids: ["desk.plugins.open"] },
+      },
+    ]);
+    expect({ opened, enabled }).toEqual({ opened: [], enabled: [] });
+  });
+
+  it("keeps a plugin disabled when it was turned off while Eris was opening it", async () => {
+    const { openAsEris, launched, focused, requests } = await setup([installed(git)], true);
+    await expect(openAsEris({ plugin: "endue.git" })).rejects.toThrow(/scope/);
+    expect(requests).toHaveLength(1);
+    expect({ launched, focused }).toEqual({ launched: [], focused: [] });
+  });
+
+  it("opens built-in data views for Eris without requesting scope", async () => {
+    const { openAsEris, opened, requests } = await setup([installed(today as PluginManifest)]);
+    await openAsEris({ plugin: "desk.today" });
+    expect(opened).toHaveLength(1);
+    expect(requests).toEqual([]);
+  });
+
+  it("requires scope for an opener supplied by a third-party plugin", async () => {
+    const { openAsEris, opened, requests } = await setup([
+      { ...installed(today as PluginManifest), builtIn: false },
+    ]);
+    await expect(openAsEris({ plugin: "desk.today" })).rejects.toThrow(/scope/);
+    expect(requests).toHaveLength(1);
+    expect(opened).toEqual([]);
   });
 
   it("says a plugin with nothing to show has no window, instead of calling it not launchable", async () => {

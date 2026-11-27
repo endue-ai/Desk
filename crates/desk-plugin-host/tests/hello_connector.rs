@@ -48,7 +48,7 @@ fn hello_connector_turns_its_sample_notes_into_note_items() {
     };
     let titles = [
         ("untitled.md", "untitled"),
-        ("welcome.md", "Welcome to Desk"),
+        ("welcome.md", "Welcome to endue"),
     ];
     for (item, (name, title)) in items.iter().zip(titles) {
         let path = notes.join(name);

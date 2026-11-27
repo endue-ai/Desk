@@ -131,7 +131,7 @@ describe("dropping on the Database surface", () => {
     expect(await host.dnd.hover({ items: [{ type: "desk/text", text: "select 1" }] })).toBe("copy");
   });
 
-  it("opens a dropped .sql file in a console, reading it under its own grant", async () => {
+  it("opens a dropped .sql file as a console bound to it, reading it under its own grant", async () => {
     let refused = 0;
     const asked: unknown[] = [];
     const m = await mount({
@@ -153,8 +153,14 @@ describe("dropping on the Database surface", () => {
     expect(done).toBe("copy");
     const scope = { permission: "fs:read", paths: ["/Users/me/report.sql"] };
     expect(asked).toEqual([{ permission: scope, reason: "To open report.sql in Database" }]);
-    expect(m.shown()).toMatchObject({ kind: "console", connection: "c-lite" });
-    expect(m.view.inserted).toEqual(["-- /Users/me/report.sql\nselect 1;\n"]);
+    // A console bound to the file (PG-24), not its text put in another console.
+    expect(m.shown()).toMatchObject({
+      kind: "console",
+      connection: "c-lite",
+      text: "-- /Users/me/report.sql\nselect 1;\n",
+      file: { path: "/Users/me/report.sql", modified: false },
+    });
+    expect(m.view.inserted).toEqual([]);
   });
 
   it("puts dropped SQL text into the console on screen", async () => {
@@ -167,7 +173,9 @@ describe("dropping on the Database surface", () => {
   it("refuses a file it cannot do anything with, and says what it takes", async () => {
     const { drop, view } = await database();
     expect(await drop(paths("/Users/me/photo.png"))).toBe("none");
-    expect(view.said.at(-1)).toMatch(/drop a \.sql file, a \.csv or \.json file/);
+    expect(view.said.at(-1)).toMatch(
+      /drop a \.sql file, a \.csv, \.tsv, \.json, \.jsonl or \.xlsx file/,
+    );
   });
 });
 

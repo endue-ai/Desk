@@ -2,18 +2,22 @@
 //! only with a program for this OS that is there; it says what starting it runs; it starts the
 //! process with its two connections, and the bridge connection calls as that plugin, whatever the
 //! process says; the process's end is a death unless the desk asked it to stop, and one that does
-//! not stop within its grace is killed. The programs here are shell scripts that speak the wire.
+//! not stop within its grace is killed. The fixtures start with POSIX shell scripts and use Rust for socket I/O.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use desk_bridge::PluginStatus;
-use desk_core::native::{self, Exit};
+use desk_core::native;
 use desk_core::{Core, Roots};
-use serde_json::{Value, json};
+use serde_json::json;
+
+#[cfg(unix)]
+#[path = "native_plugin/fixture.rs"]
+mod native_fixture;
 
 const ID: &str = "example.native-test";
 
@@ -78,6 +82,12 @@ fn a_native_plugin_loads_with_its_program_for_this_os_and_says_what_starting_it_
         .expect("a ready native plugin starts");
     assert_eq!(launch.plugin, ID);
     assert_eq!(launch.program, dir.join("bin/plugin"));
+    assert!(
+        fs::read_to_string(&launch.program)
+            .unwrap()
+            .starts_with("#!/bin/sh\n"),
+        "fixture scripts run with the platform's POSIX shell"
+    );
     assert_eq!(launch.dir, dir);
     assert_eq!(launch.args, vec!["--hello".to_owned()]);
     assert_eq!(launch.grace, Duration::from_millis(300));
@@ -135,6 +145,10 @@ mod process {
     use super::*;
     use std::io::{BufRead, BufReader};
     use std::sync::mpsc;
+    use std::time::Instant;
+
+    use desk_core::native::Exit;
+    use serde_json::Value;
 
     /// Start the plugin whose program is `script`; its end comes on the channel.
     fn start(
@@ -151,10 +165,16 @@ mod process {
         assert_eq!(core.install_plugin(&dir, false).status, PluginStatus::Ready);
         let launch = core.native_launch(ID).unwrap();
         let (tx, rx) = mpsc::channel();
-        let process = native::NativeProcess::start(&core, &launch, &[], move |ended| {
+        // The child can inherit sockets above descriptor 9 even when the tests run serially.
+        let occupied: Vec<_> = (0..10)
+            .map(|_| fs::File::open("/dev/null").unwrap())
+            .collect();
+        let extra = native_fixture::environment(tag);
+        let process = native::NativeProcess::start(&core, &launch, &extra, move |ended| {
             let _ = tx.send(ended);
         })
         .expect("the program starts");
+        drop(occupied);
         (process, rx, dir)
     }
 
@@ -184,16 +204,7 @@ mod process {
     #[test]
     fn the_bridge_connection_calls_as_the_plugin_and_cannot_become_anyone_else() {
         // Its own setting needs no permission; fs.read is not declared; socket.agent is the CLI's.
-        let script = r#"
-printf '%s\n' '{"id":1,"method":"settings.get","params":{"key":"speed"}}' >&"$DESK_BRIDGE_FD"
-read -r one <&"$DESK_BRIDGE_FD"; printf '%s\n' "$one" >> out
-printf '%s\n' '{"id":2,"method":"socket.agent","params":{"agent":"codex"}}' >&"$DESK_BRIDGE_FD"
-read -r two <&"$DESK_BRIDGE_FD"; printf '%s\n' "$two" >> out
-printf '%s\n' '{"id":3,"method":"fs.read","params":{"path":"~/x","scope":{"permission":"fs:read","paths":["~/**"]}}}' >&"$DESK_BRIDGE_FD"
-read -r three <&"$DESK_BRIDGE_FD"; printf '%s\n' "$three" >> out
-printf '%s %s %s\n' "$DESK_PLUGIN_ID" "$1" "$(pwd)" > env
-"#;
-        let (_process, rx, dir) = start("bridge", script);
+        let (_process, rx, dir) = start("bridge", native_fixture::RUN);
         let end = ended(&rx);
         assert_eq!((end.exit, end.asked), (Exit::Code(0), false));
         let answers = answers(&dir);
@@ -202,18 +213,17 @@ printf '%s %s %s\n' "$DESK_PLUGIN_ID" "$1" "$(pwd)" > env
         assert_eq!(answers[0]["result"]["value"], 1.5, "its own setting");
         assert_eq!(answers[1]["ok"], false, "a plugin never becomes an agent");
         assert_eq!(answers[2]["ok"], false, "fs:read is not in its manifest");
-        let env = fs::read_to_string(dir.join("env")).unwrap();
-        let dir = fs::canonicalize(&dir).unwrap();
-        assert_eq!(env.trim(), format!("{ID} --hello {}", dir.display()));
+        let env = fs::read_to_string(dir.join("env"))
+            .expect("the fixture wrote its relative output in the plugin directory");
+        assert!(
+            env.trim() == format!("{ID} --hello"),
+            "the fixture output should contain only the plugin ID and argument"
+        );
     }
 
     #[test]
     fn the_surface_connection_reaches_the_process() {
-        let script = r#"
-read -r line <&"$DESK_SURFACE_FD"; printf '%s\n' "$line" > got
-printf '%s\n' '{"type":"ready","surface":"main.example-native--test"}' >&"$DESK_SURFACE_FD"
-"#;
-        let (mut process, rx, dir) = start("surface", script);
+        let (mut process, rx, dir) = start("surface", native_fixture::RUN);
         let surface = process
             .take_surface()
             .expect("the desk's end of the surface connection");
@@ -239,8 +249,7 @@ printf '%s\n' '{"type":"ready","surface":"main.example-native--test"}' >&"$DESK_
         let end = ended(&rx);
         assert_eq!((end.exit, end.asked), (Exit::Code(3), false));
         // It stops when its connections close: read waits for the end of the surface connection.
-        let script = r#": > started; read -r line <&"$DESK_SURFACE_FD"; exit 0"#;
-        let (process, rx, dir) = start("stops", script);
+        let (process, rx, dir) = start("stops", native_fixture::RUN);
         running(&dir);
         process.stop();
         let end = ended(&rx);

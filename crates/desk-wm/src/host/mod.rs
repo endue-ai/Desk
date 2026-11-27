@@ -3,17 +3,18 @@
 //! in which order, from one `Desk` state.
 //!
 //! - `bars`: the bands the bars float in and the free area between them (ADR 0028, ADR 0132).
-//! - `panes`: each window's body under its title bar, split into its panes and dividers.
+//! - `tabs`: each window's body under its title bar, and the strip of its tabs (ADR 0270).
 //! - [`Plan`] (`Desk::host_plan`): every window of the desktop in front back to front, at its
-//!   rectangle on screen, with its title, its fill's title clearance, and each pane's box and what
-//!   it shows: a plugin's surface, or a view the page draws (the launcher, a sample view); which
+//!   rectangle on screen, with its title, its fill's title clearance, and the box of the tab it
+//!   shows and what that is: a plugin's surface, or a view the page draws (the launcher, a sample
+//!   view); which
 //!   plugins are in sight (ADR 0070's cover); and where the page's system layer (bars, Eris,
 //!   menus) is drawn above the windows (`page`): the screen without what the page draws of a
-//!   window (its title bar's tools, its own views, panes' headers) under another window, which is
+//!   window (its title bar's tools, its own views, its tabs' strip) under another window, which is
 //!   drawn at its window's place.
 //! - `budget`: the live budget (ADR 0134): who keeps a renderer, who sleeps, who wakes.
 //! - `surfaces`: the surfaces made and the lifecycle steps (`specs/surface/v0`) each look calls
-//!   for: never a reload for a split, the drawer or a desktop switch (ADR 0040's reload goes).
+//!   for: never a reload for a tab, the drawer or a desktop switch (ADR 0040's reload goes).
 //!
 //! Plain data again: the compositor's shell turns a plan into a scene and the steps into protocol
 //! messages; the runtime publishes the state it keeps (ADR 0151, ADR 0156).
@@ -22,10 +23,10 @@ mod bars;
 mod budget;
 mod cut;
 mod out;
-mod panes;
 mod parts;
 mod shown;
 mod surfaces;
+mod tabs;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -33,13 +34,10 @@ pub use bars::{Bars, ERIS_H, ERIS_W, bars};
 pub use budget::{Decision, LiveBudget};
 pub use cut::{intersect, subtract};
 pub use out::OutWindow;
-pub use panes::{
-    BORDER, Cell, DIVIDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START, body_of, cells, head_of,
-    title_bar_of,
-};
 pub use parts::{PagePart, cut_out, page_parts};
 pub use shown::{Laid, PageShown, QUIET_MS};
 pub use surfaces::{FrameDoc, FrameState, Seat, Step, Surfaces};
+pub use tabs::{BORDER, TAB_STRIP, TITLE, TITLE_END, TITLE_START, body_of, strip_of, title_bar_of};
 
 use crate::clearance::{TitleClearance, TopChrome, title_clearance};
 use crate::coordinates::{is_floating, screen_rect};
@@ -50,7 +48,8 @@ use crate::placed::PLUGIN_VIEW;
 use crate::snapshot::Seen;
 use crate::types::{Fill, Placement, Rect, Size};
 
-/// One pane of a window, on screen.
+/// What a window shows, on screen: the tab it shows (ADR 0270). A window's other tabs have no
+/// place on screen, so their plugins have no seat.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostPane {
     pub id: String,
@@ -59,19 +58,19 @@ pub struct HostPane {
     /// The plugin whose surface it shows; `None` for a view the page draws.
     pub plugin: Option<String>,
     pub title: String,
-    /// Its box in the window.
+    /// Its box in the window: the window's body.
     pub rect: Rect,
-    /// Its header, which the page draws, in a window of more than one pane.
+    /// The strip of the window's tabs, which the page draws, in a window of more than one tab.
     pub head: Option<Rect>,
-    /// What it shows: its box under its header.
+    /// What it shows: its box under the strip.
     pub body: Rect,
-    /// The pane in use, in the window in use.
+    /// The tab in use, in the window in use.
     pub focused: bool,
 }
 
 impl HostWindow {
     /// What the page draws of it, at its place in the stack: its title bar's icon and tools, and
-    /// what its panes leave to the page.
+    /// what its tab leaves to the page.
     pub fn drawn_by_page(&self) -> Vec<Rect> {
         let mut all = vec![self.title_bar];
         all.extend(self.panes.iter().flat_map(HostPane::drawn_by_page));
@@ -103,7 +102,7 @@ pub fn title_insets_of(clearance: TitleClearance) -> (f64, f64) {
 }
 
 impl HostPane {
-    /// What the page draws of it: its header, and the whole of a view of its own.
+    /// What the page draws of it: its window's strip of tabs, and the whole of a view of its own.
     pub fn drawn_by_page(&self) -> Vec<Rect> {
         match self.plugin {
             None => vec![self.rect],
@@ -127,11 +126,13 @@ pub struct HostWindow {
     pub fill: Option<Fill>,
     /// How far its title keeps clear of the top chips at each end.
     pub clearance: TitleClearance,
-    /// The title bar's text: the pane in use's title (the first pane's in a window not in use).
+    /// The title bar's text: the title of the tab it shows.
     pub title: String,
     /// Its title bar, whose icon and tools the page draws.
     pub title_bar: Rect,
+    /// The tab it shows: one, always.
     pub panes: Vec<HostPane>,
+    /// None: a window's inside no longer splits (ADR 0270). The compositor's shell still reads it.
     pub dividers: Vec<Rect>,
     /// Where the page's picture shows it: where it is drawn, unless the window manager moves it
     /// ahead of the page (#80) or the page has not painted where its DOM has it yet (`PageShown`).
@@ -152,7 +153,7 @@ pub struct Plan {
     /// The plugins in sight: in a window of the desktop in front that is not wholly covered or
     /// off the screen.
     pub shown: BTreeSet<String>,
-    /// The plugin with the keys: the one the pane in use shows.
+    /// The plugin with the keys: the one the tab in use shows.
     pub focused_plugin: Option<String>,
     /// Where the page's system layer is drawn above every window: the screen without what the
     /// page draws of a window (`HostWindow::drawn_by_page`) where another window lies over it;
@@ -164,7 +165,8 @@ pub struct Plan {
 }
 
 impl Plan {
-    /// Where plugin `plugin` sits: the frontmost pane showing it, and whether it is in sight.
+    /// Where plugin `plugin` sits: the frontmost window showing it, and whether it is in sight.
+    /// One in a tab its window does not show has no seat.
     pub fn seat(&self, plugin: &str) -> Seat {
         let pane = (self.windows.iter().rev())
             .flat_map(|w| w.panes.iter())
@@ -190,7 +192,7 @@ impl Plan {
         self.windows.iter().find(|w| w.id == id)
     }
 
-    /// Every pane showing plugin `plugin`, back to front.
+    /// Every window's tab showing plugin `plugin`, back to front.
     pub fn panes_of<'a>(&'a self, plugin: &'a str) -> impl Iterator<Item = &'a HostPane> + 'a {
         (self.windows.iter())
             .flat_map(|w| w.panes.iter())
@@ -246,11 +248,11 @@ impl Desk {
         let windows = self.windows_of(here.as_str());
         let focused = self.focused.as_deref();
         let levels = self.used.levels(&windows, focused);
-        let covered = covered_plugins(&windows, &levels, |p| self.plugins_of(p), pan, vw, vh);
+        let covered = covered_plugins(&windows, &levels, |p| self.shown_plugins(p), pan, vw, vh);
         let mut shown = BTreeSet::new();
         for p in &windows {
             shown.extend(
-                self.plugins_of(p)
+                self.shown_plugins(p)
                     .into_iter()
                     .filter(|id| !covered.contains(id)),
             );
@@ -334,49 +336,26 @@ impl Desk {
         let focused = self.focused.as_deref() == Some(p.id.as_str());
         let floating = is_floating(p);
         let fill = p.fill.filter(|_| floating);
-        let tree = p.panes();
-        let leaves = tree.leaves();
-        let in_use = focused
-            .then(|| {
-                (leaves
-                    .iter()
-                    .find(|(id, _)| Some(*id) == self.pane.as_deref()))
-                .or(leaves.first())
-                .map(|(id, _)| id.to_string())
-            })
-            .flatten();
-        let many = leaves.len() > 1;
-        let mut panes = Vec::new();
-        let mut dividers = Vec::new();
-        for cell in cells(&tree, body_of(rect)) {
-            match cell {
-                Cell::Pane { id, view, rect } => {
-                    let resolved = self.resolve(p, &view);
-                    let plugin = resolved.strip_prefix(PLUGIN_VIEW).map(String::from);
-                    let title = match &plugin {
-                        Some(plugin) => (self.adopted.iter().find(|a| &a.id == plugin))
-                            .map_or_else(|| plugin.clone(), |a| a.title.clone()),
-                        None => seen.title(&view).unwrap_or_else(|| view.clone()),
-                    };
-                    let focused = in_use.as_deref() == Some(id.as_str());
-                    let (head, body) = head_of(rect, many);
-                    panes.push(HostPane {
-                        id,
-                        view: resolved,
-                        plugin,
-                        title,
-                        rect,
-                        head,
-                        body,
-                        focused,
-                    });
-                }
-                Cell::Divider { rect, .. } => dividers.push(rect),
-            }
-        }
-        let title = (panes.iter().find(|pane| pane.focused))
-            .or(panes.first())
-            .map_or_else(|| p.id.clone(), |pane| pane.title.clone());
+        let tab = p.shown();
+        let resolved = self.resolve(p, &tab.view);
+        let plugin = resolved.strip_prefix(PLUGIN_VIEW).map(String::from);
+        let title = match &plugin {
+            Some(plugin) => (self.adopted.iter().find(|a| &a.id == plugin))
+                .map_or_else(|| plugin.clone(), |a| a.title.clone()),
+            None => seen.title(&tab.view).unwrap_or_else(|| tab.view.clone()),
+        };
+        let whole = body_of(rect);
+        let (head, body) = strip_of(whole, p.tabs().len() > 1);
+        let panes = vec![HostPane {
+            id: tab.id,
+            view: resolved,
+            plugin,
+            title: title.clone(),
+            rect: whole,
+            head,
+            body,
+            focused,
+        }];
         let mut w = HostWindow {
             id: p.id.clone(),
             rect,
@@ -389,7 +368,7 @@ impl Desk {
             title,
             title_bar: title_bar_of(rect),
             panes,
-            dividers,
+            dividers: Vec::new(),
             page: rect,
             heard: rect,
             page_parts: Vec::new(),

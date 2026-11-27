@@ -20,21 +20,21 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
 - `ctx.settings` (own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`, `onChange(listener)`. `ctx.log`:
   `write(level, message, fields?)`, `tail({ channel?, count? })` (`log:read`). `ctx.events.subscribe(names, listener)`
   resolves its unsubscribe (`events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.
-- `ctx.commands` (`cmd.*`, ADR 0017): `run(id, args)` is `cmd.invoke` and resolves with the provider's
-  answer (needs `cmd:invoke` for the id); `list()`; `tools(query?)` (ADR 0088); `on(name, handler)`
-  answers this plugin's commands and the desk's requests, after `mount`. Failures are `CommandFailed`
-  (`unknown_command`, `failed`, `cancelled`). `ctx.search.replace(documents)`: 500 / 4 MiB; `[]` clears.
+- `ctx.commands` (`cmd.*`, ADR 0017): `run(id, args)` is `cmd.invoke` and resolves with the provider's answer (needs
+  `cmd:invoke` for the id); `list()`; `tools(query?)` (ADR 0088); `on(name, handler)` answers this plugin's commands
+  and the desk's requests after `mount`, the handler taking `(args, { caller })` (ADR 0367). Failures are
+  `CommandFailed` (`unknown_command`, `failed`, `cancelled`). `ctx.search.replace(documents)`: 500 / 4 MiB; `[]` clears.
 - `ctx.theme`: `get()`, `on(listener)` (`--desk-*`, `data-scheme`, ...). `ctx.messages` (ADR 0250): the manifest's
   `messages` catalogs in the desk's language: `t(id, params?)`, `language()`, `onChange`, `ready`. `readBytes(ctx, file,
   options?)`: 2 MiB `Range`s of `fs.url`; `byteSource(ctx, file)`, `startWorker(url)`, `fileHistory`, `restoreFile`.
 - `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave in
   one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, instance?, state?, restored?, handlers?, commands?,
-  settings?, grants?, callers?, prompt?, now?, refuse?, files?, language?, messages? })` runs a plugin on the stub
+  settings?, grants?, callers?, prompt?, now?, refuse?, files?, db?, language?, messages? })` runs a plugin on the stub
   core: `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
   `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `language`, `upsert`, `remove`, `settle`; `dnd`
   plays the broker (`drags`, `accepts`, `hover`, `drop`, `move`, `release`, `end`, `cancel`). Byte checks
   (ADR 0071): `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)`.
 
 ## Testing
-`pnpm exec vitest run packages/plugin-sdk`; `desk plugin test` runs plugins on `vitest.plugin.config.ts`.
+`endue plugin test` runs the SDK host. Themes import `compileTheme`, `gate` and `enduePalette` from `@endue-ai/plugin-sdk/testing/theme`.

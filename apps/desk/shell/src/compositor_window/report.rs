@@ -2,8 +2,9 @@
 //! desk, whose windows `desk-wm` holds (#83) and publishes: each plugin frame's document and
 //! state, the titles of its own views, the top chips' edges, the live budget's two settings, what
 //! a window without a live frame says (the page's copy, in the desk's language, with the spread's and
-//! the canvas map's), the last desk it took and laid out, where it lays a held window out, and
-//! whether the canvas map is folded.
+//! the canvas map's), the last desk it took and laid out, where it lays a held window out, whether
+//! the canvas map is folded and how wide the person made it, each view's icon, which the map
+//! draws in its window (ADR 0273), and the windows Eris is at, which glow (ADR 0271).
 
 use std::collections::BTreeMap;
 
@@ -150,13 +151,15 @@ pub struct MapCopy {
     pub fold: String,
 }
 
-/// The canvas map as the person left it: folded to its button (the session keeps it). While a
-/// window fills the whole app the map goes with the right rail (ADR 0221): `shift` is how far
-/// the rail has slid toward the edge, in CSS pixels, and `away` that it is out of the app.
+/// The canvas map as the person left it: folded to its button, and its box's width in CSS pixels
+/// once they resized it (`desk_wm::map_size`; the session keeps both). While a window fills the
+/// whole app the map goes with the right rail (ADR 0221): `shift` is how far the rail has slid
+/// toward the edge, in CSS pixels, and `away` that it is out of the app.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct MapState {
     pub folded: bool,
+    pub width: Option<f64>,
     pub shift: f32,
     pub away: bool,
 }
@@ -177,6 +180,11 @@ pub struct DeskReport {
     /// The titles of the page's own views, by view.
     #[serde(default)]
     pub titles: BTreeMap<String, String>,
+    /// The icon of every view a window of the desktop in front shows, by view as the window
+    /// manager resolves it (`plugin:<id>` for a plugin's surface): SVG path data on the runtime's
+    /// 24 grid (`shell/icons.ts`), what its title bar shows and the map draws (ADR 0273).
+    #[serde(default)]
+    pub icons: BTreeMap<String, String>,
     #[serde(default)]
     pub top: TopChrome,
     #[serde(default)]
@@ -192,6 +200,26 @@ pub struct DeskReport {
     /// The canvas map, which the compositor draws (#54).
     #[serde(default)]
     pub map: MapState,
+    /// The windows Eris looks at or uses now (ADR 0271).
+    #[serde(default)]
+    pub lit: Vec<Lit>,
+}
+
+/// A window Eris is at, and how brightly its frame glows: softly while she looks at it, fully
+/// while she uses it, and in between while the glow comes and goes.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct Lit {
+    pub window: String,
+    #[serde(default)]
+    pub level: f32,
+}
+
+impl DeskReport {
+    /// How brightly window `id`'s frame glows, 0 (Eris is not at it) to 1.
+    pub fn glow_of(&self, id: &str) -> f32 {
+        let lit = self.lit.iter().find(|l| l.window == id);
+        lit.map_or(0.0, |l| l.level).clamp(0.0, 1.0)
+    }
 }
 
 /// Where the page lays a held window out, in CSS pixels.
@@ -211,6 +239,10 @@ impl desk_wm::Seen for DeskReport {
 }
 
 #[cfg(test)]
+#[path = "report_lit_tests.rs"]
+mod lit_tests;
+
+#[cfg(test)]
 mod tests {
     use super::{DeskReport, Layer};
     use desk_wm::{FrameState, Seen};
@@ -224,15 +256,38 @@ mod tests {
                 "src": "desk-plugin://main.e2e-hello/index.html", "loads": 2, "state": "late",
                 "card": { "title": "Not responding", "line": "Hello has not answered", "actions": ["Wait", "Stop"] } }],
             "titles": { "launcher": "Launcher" },
+            "icons": { "plugin:e2e.hello": "M4 12h16" },
             "top": { "left": 300, "right": 260 },
-            "budget": { "live": 4, "afterMs": 300000 }
+            "budget": { "live": 4, "afterMs": 300000 },
+            "map": { "folded": false, "width": 288 }
         }))
         .unwrap();
+        assert_eq!(report.icons["plugin:e2e.hello"], "M4 12h16");
+        assert_eq!(report.map.width, Some(288.0));
         assert_eq!(report.applied, 2);
         assert_eq!(report.frames[0].state, FrameState::Late);
         assert_eq!(report.frames[0].card.as_ref().unwrap().actions.len(), 2);
         assert_eq!(report.title("launcher").as_deref(), Some("Launcher"));
         assert_eq!((report.budget.live, report.top.left), (4, Some(300.0)));
+    }
+
+    #[test]
+    fn a_report_names_the_windows_eris_is_at_and_how_brightly_each_glows() {
+        let report: DeskReport = serde_json::from_value(json!({
+            "seq": 1, "width": 1280, "height": 800,
+            "lit": [{ "window": "endue.mail", "level": 0.6 }, { "window": "window-1", "level": 1 },
+                { "window": "window-2", "level": 4 }, { "window": "window-3" }]
+        }))
+        .unwrap();
+        assert_eq!(report.glow_of("endue.mail"), 0.6);
+        assert_eq!(report.glow_of("window-1"), 1.0);
+        assert_eq!(report.glow_of("window-2"), 1.0, "never past full");
+        assert_eq!(report.glow_of("window-3"), 0.0, "no level: dark");
+        assert_eq!(report.glow_of("endue.notes"), 0.0, "she is not at it");
+        // A page that says nothing of it lights nothing.
+        let quiet: DeskReport =
+            serde_json::from_value(json!({ "seq": 1, "width": 1280, "height": 800 })).unwrap();
+        assert_eq!(quiet.glow_of("endue.mail"), 0.0);
     }
 
     #[test]

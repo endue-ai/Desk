@@ -183,7 +183,13 @@
   opacity: 0;
   pointer-events: none;
 }
-.talk-pill.is-open .composer-field { opacity: 1; pointer-events: auto; border: 0; background: transparent; }
+.talk-pill.is-open .composer-field {
+  left: calc(var(--desk-space-16) + var(--desk-space-1));
+  opacity: 1;
+  pointer-events: auto;
+  border: 0;
+  background: transparent;
+}
 .talk-pill.is-open .composer-field:focus-within { outline: none; }
 .talk-pill:focus-within { outline: 1px solid var(--desk-accent); outline-offset: 0; }
 .talk-pill .composer-input { padding: 0; font-size: var(--text-base); }
@@ -202,7 +208,16 @@
   white-space: nowrap;
 }
 .talk-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.talk-orb { width: var(--talk-orb); height: var(--talk-orb); flex: none; fill: none; stroke: var(--desk-eris-frost); stroke-width: 0.22; }
+.talk-orb {
+  width: var(--talk-orb); height: var(--talk-orb); flex: none;
+  fill: none; stroke: var(--desk-eris-frost); stroke-width: 0.22;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle at 38% 33%, var(--desk-eris-moon-lit), var(--desk-eris-moon-dark) 54%, transparent 72%);
+}
+.talk-orb path { transform-origin: center; animation: talk-orb-turn calc(var(--desk-motion-slow) * 225) linear infinite; }
+@keyframes talk-orb-turn { to { transform: rotate(1turn); } }
+[data-motion="reduce"] .talk-orb path { animation: none; }
+@media (prefers-reduced-motion: reduce) { .talk-orb path { animation: none; } }
 .talk-preview {
   position: absolute;
   left: 150px;
@@ -219,9 +234,8 @@
   white-space: nowrap;
   opacity: 0;
 }
-.talk-pill[data-state="hover"] .talk-preview,
-.talk-pill.is-open .talk-preview { opacity: 1; }
-.talk-pill.is-open .talk-preview { left: 68px; right: auto; width: 184px; top: 24px; }
+.talk-pill[data-state="hover"] .talk-preview { opacity: 1; }
+.talk-pill.is-open .talk-preview { display: none; }
 .talk-shortcut {
   position: absolute;
   right: 12px;

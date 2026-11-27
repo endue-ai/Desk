@@ -6,26 +6,32 @@
 //! off and their key equivalents pass on to the window: the focused page hears ⌘C, ⌘V and the rest
 //! as keys that go down with their edit commands (#156, `web_host/edit_keys.rs`), as a windowed view
 //! would have run them, and a page that binds one of them keeps it. A choice reaches the event loop
-//! as a job (`Shell::menu`).
+//! as a job (`Shell::menu`). Every item is in the desk's language (`model.rs`, ADR 0276) and is
+//! re-worded in place when it changes, so AppKit keeps the windows it lists under Window.
+
+mod model;
+
+pub use model::{APP, Entry, Section, Standard, bar, texts};
 
 use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem};
 
 use crate::pump::Pump;
+use crate::words::Language;
 
 /// What a menu item does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Choice {
-    /// Search Desk (the palette).
+    /// Search endue (the palette).
     Search,
     /// Talk to Eris: as her shortcut does.
     Eris,
-    /// Open Desk: the main window in front.
+    /// Open endue: the main window in front.
     Desk,
     /// Restart to update (ADR 0054): into the staged build.
     Update,
     /// Quit Desk.
     Quit,
-    /// Window > Move to Desk: the window out of the canvas in front docks back (#235).
+    /// Window > Move to endue: the window out of the canvas in front docks back (#235).
     Dock,
 }
 
@@ -71,24 +77,54 @@ pub fn listen(pump: &Pump) {
     }));
 }
 
-/// The app's menu bar on macOS: the app menu (About, Hide, Quit) and the Edit and Window menus.
-/// Elsewhere there is none: Edit's keys work in CEF without one. Keep the menu for the app's life.
-pub fn app_menu() -> Option<Menu> {
+/// The app's menu bar and the items it words, kept for the app's life: re-worded in place.
+pub struct MenuBar {
+    /// The bar AppKit shows (`init_for_nsapp`); held so its items live as long.
+    _menu: Menu,
+    /// Every place with words, in the order of [`texts`].
+    worded: Vec<Worded>,
+}
+
+/// A place in the menu bar that has words. Only macOS has a menu bar to make them for.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+enum Worded {
+    Menu(tray_icon::menu::Submenu),
+    Item(MenuItem),
+    Standard(tray_icon::menu::PredefinedMenuItem),
+}
+
+impl MenuBar {
+    /// Every item in `language`'s words.
+    pub fn reword(&self, language: Language) {
+        for (worded, text) in self.worded.iter().zip(texts(language)) {
+            match worded {
+                Worded::Menu(menu) => menu.set_text(&text),
+                Worded::Item(item) => item.set_text(&text),
+                Worded::Standard(item) => item.set_text(&text),
+            }
+        }
+    }
+}
+
+/// The app's menu bar on macOS, in `language`: the app menu (About, Hide, Quit) and the Edit and
+/// Window menus. Elsewhere there is none: Edit's keys work in CEF without one.
+pub fn app_menu(language: Language) -> Option<MenuBar> {
     #[cfg(target_os = "macos")]
     {
-        let menu = mac_menu().map_err(|why| eprintln!("endue Desk: no menu bar ({why})"));
-        let (menu, window) = menu.ok()?;
-        menu.init_for_nsapp();
+        let made = mac_menu(language).map_err(|why| eprintln!("endue: no menu bar ({why})"));
+        let (bar, window) = made.ok()?;
+        bar._menu.init_for_nsapp();
         // AppKit lists the desk's window and its windows out of the canvas under Window (#235);
         // the floating ones keep out of it (`float.rs`).
         window.set_as_windows_menu_for_nsapp();
-        eprintln!(
-            "endue Desk: the menu bar is set (Edit: Undo, Redo, Cut, Copy, Paste, Select All)"
-        );
-        Some(menu)
+        eprintln!("endue: the menu bar is set (Edit: Undo, Redo, Cut, Copy, Paste, Select All)");
+        Some(bar)
     }
     #[cfg(not(target_os = "macos"))]
-    None
+    {
+        let _ = language;
+        None
+    }
 }
 
 /// The titles of the windows the app's Window menu lists, as AppKit keeps them: the items it adds
@@ -136,57 +172,66 @@ fn mac_listed_windows() -> Vec<String> {
     }
 }
 
+/// The menu bar `bar` describes in `language`, and its Window menu.
 #[cfg(target_os = "macos")]
-fn mac_menu() -> tray_icon::menu::Result<(Menu, tray_icon::menu::Submenu)> {
-    use tray_icon::menu::{PredefinedMenuItem as P, Submenu, accelerator::Accelerator};
-    let quit = MenuItem::with_id(
-        Choice::Quit.id(),
-        "Quit endue Desk",
-        true,
-        "CmdOrCtrl+Q".parse::<Accelerator>().ok(),
-    );
-    let app = Submenu::with_items(
-        "endue Desk",
-        true,
-        &[
-            &P::about(Some("About endue Desk"), None),
-            &P::separator(),
-            &P::services(None),
-            &P::separator(),
-            &P::hide(None),
-            &P::hide_others(None),
-            &P::show_all(None),
-            &P::separator(),
-            &quit,
-        ],
-    )?;
-    let edit = Submenu::with_items(
-        "Edit",
-        true,
-        &[
-            &P::undo(None),
-            &P::redo(None),
-            &P::separator(),
-            &P::cut(None),
-            &P::copy(None),
-            &P::paste(None),
-            &P::select_all(None),
-        ],
-    )?;
-    // An OS window a window popped out into goes back to the desk (#235); on the desk's own window
-    // it does nothing.
-    let dock = MenuItem::with_id(
-        Choice::Dock.id(),
-        "Move to Desk",
-        true,
-        "CmdOrCtrl+Shift+Backslash".parse::<Accelerator>().ok(),
-    );
-    let window = Submenu::with_items(
-        "Window",
-        true,
-        &[&P::minimize(None), &dock, &P::close_window(None)],
-    )?;
-    Ok((Menu::with_items(&[&app, &edit, &window])?, window))
+fn mac_menu(language: Language) -> tray_icon::menu::Result<(MenuBar, tray_icon::menu::Submenu)> {
+    use tray_icon::menu::{IsMenuItem, Submenu, accelerator::Accelerator};
+    let mut worded = Vec::new();
+    let mut menus = Vec::new();
+    for section in bar(language) {
+        let menu = Submenu::new(&section.title, true);
+        worded.push(Worded::Menu(menu.clone()));
+        for entry in section.entries {
+            let row: Box<dyn IsMenuItem> = match entry {
+                Entry::Item { choice, text, keys } => {
+                    let keys = keys.and_then(|k| k.parse::<Accelerator>().ok());
+                    let item = MenuItem::with_id(choice.id(), text, true, keys);
+                    worded.push(Worded::Item(item.clone()));
+                    Box::new(item)
+                }
+                Entry::Standard { kind, text } => {
+                    let item = standard(kind, &text);
+                    worded.push(Worded::Standard(item.clone()));
+                    Box::new(item)
+                }
+                Entry::Separator => Box::new(tray_icon::menu::PredefinedMenuItem::separator()),
+            };
+            menu.append(row.as_ref())?;
+        }
+        menus.push(menu);
+    }
+    let window = menus.last().cloned().expect("the bar ends with Window");
+    let refs: Vec<&dyn IsMenuItem> = menus.iter().map(|m| m as &dyn IsMenuItem).collect();
+    let menu = Menu::with_items(&refs)?;
+    Ok((
+        MenuBar {
+            _menu: menu,
+            worded,
+        },
+        window,
+    ))
+}
+
+/// The item AppKit runs for `kind`, named `text`.
+#[cfg(target_os = "macos")]
+fn standard(kind: Standard, text: &str) -> tray_icon::menu::PredefinedMenuItem {
+    use tray_icon::menu::PredefinedMenuItem as P;
+    let text = Some(text);
+    match kind {
+        Standard::About => P::about(text, None),
+        Standard::Services => P::services(text),
+        Standard::Hide => P::hide(text),
+        Standard::HideOthers => P::hide_others(text),
+        Standard::ShowAll => P::show_all(text),
+        Standard::Undo => P::undo(text),
+        Standard::Redo => P::redo(text),
+        Standard::Cut => P::cut(text),
+        Standard::Copy => P::copy(text),
+        Standard::Paste => P::paste(text),
+        Standard::SelectAll => P::select_all(text),
+        Standard::Minimize => P::minimize(text),
+        Standard::CloseWindow => P::close_window(text),
+    }
 }
 
 #[cfg(test)]

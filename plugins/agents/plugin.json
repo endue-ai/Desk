@@ -34,6 +34,9 @@
       {
         "id": "endue.agents.open",
         "title": "Agents: Home",
+        "description": "Open the Agents home for the person.",
+        "args": { "type": "object" },
+        "agent": true,
         "keywords": ["agents", "studio", "endue", "claude", "codex", "cards"],
         "runs": {
           "command": "desk.plugins.open",
@@ -46,7 +49,33 @@
         "id": "endue.agents.new",
         "title": "Agents: New agent",
         "keywords": ["agent", "new", "create", "새 에이전트"],
-        "description": "Show the New agent page in an open Agents window, as the agent bar's New agent does."
+        "description": "Show the New agent page for the person.",
+        "agent": true,
+        "args": { "type": "object", "additionalProperties": false }
+      },
+      {
+        "id": "endue.agents.studio",
+        "title": "Agents: Studio",
+        "keywords": ["agent", "studio", "edit", "스튜디오"],
+        "description": "Show an endue agent's Studio using its ID from endue.agents.list. Give a facet to open its inspector.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": { "type": "string", "minLength": 1 },
+            "facet": { "type": "string" }
+          },
+          "required": ["agent"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.agents.list",
+        "title": "List endue agents",
+        "description": "List the person's endue Studio agents by ID, name, slug and status.",
+        "agent": true,
+        "readOnly": true,
+        "args": { "type": "object", "additionalProperties": false }
       }
     ]
   }

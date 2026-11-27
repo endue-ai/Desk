@@ -37,13 +37,32 @@ describe("the prompt", () => {
       title: "Notes asks for permission",
       caller: { id: "example.notes", name: "Notes", kind: "UI plugin" },
       permission: "Read files",
+      permissionKind: "fs:read",
       scope: "~/Notes/**",
       reason: "To index your notes",
       duration: "This session",
       warning: null,
       parent: null,
+      preferPersistent: false,
       waiting: 0,
     });
+  });
+
+  it("presents a lasting grant as the main choice for built-ins", async () => {
+    const { app, view, params, settle } = await prompted(
+      core({
+        "plugin.list": () => ({
+          plugins: [{ ...plugin("example.notes", "Notes", "ui"), builtIn: true }],
+        }),
+      }),
+      ask("p1"),
+    );
+    expect(view.prompts.at(-1)).toMatchObject({ preferPersistent: true });
+    await app.answer("always");
+    await settle();
+    expect(params("perm.answer")).toEqual([
+      { promptId: "p1", granted: true, duration: "always", scope: MANAGE },
+    ]);
   });
 
   it("shows the reason, and says when none was given", async () => {
@@ -150,7 +169,7 @@ describe("the prompt", () => {
     await settle();
     expect(view.prompts.at(-1)).toMatchObject({
       promptId: "p3",
-      title: "Desk asks for permission",
+      title: "endue asks for permission",
       waiting: 0,
     });
     expect(host.visible).toBe(true);

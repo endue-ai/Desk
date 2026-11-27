@@ -1,5 +1,5 @@
 // Selection commands delegate to the owning plugin; only system reveal uses a bridge grant here.
-import { folderOf } from "./tree.js";
+import { folderOf, patternOf } from "./tree.js";
 
 /** @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext */
 /** @typedef {import("./tree.js").Row} Row */
@@ -8,11 +8,16 @@ const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} *
 /**
  * @param {PluginContext["bridge"]} bridge
  * @param {PluginContext["commands"]} commands
- * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown>, say(text: string): void }} deps
+ * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown>, say(text: string): void,
+ *   reach?(path: string): Promise<Row | undefined>, rootOf?(path: string): string | undefined }} deps
+ * Each command acts on `path` when the call names one (revealed first, as an agent names it), else
+ * on the selection.
  */
-export function contextActions(bridge, commands, { selected, open, say }) {
+export function contextActions(bridge, commands, { selected, open, say, reach, rootOf }) {
+  /** @type {Row | undefined} */
+  let named;
   const picked = () => {
-    const row = selected();
+    const row = named ?? selected();
     if (!row || row.kind === "more") throw new Error("Select a file or folder first.");
     return row;
   };
@@ -38,7 +43,9 @@ export function contextActions(bridge, commands, { selected, open, say }) {
     // Bridge path scopes use wildcards. Do not turn a literal filename into a broader grant.
     if (/[*?]/u.test(path))
       throw new Error("Cannot request an exact reveal grant for a path with wildcard characters.");
-    const scope = { permission: /** @type {const} */ ("shell:open"), paths: [path] };
+    const root = rootOf?.(path);
+    const paths = root && !/[*?]/u.test(root) ? [root, patternOf(root)] : [path];
+    const scope = { permission: /** @type {const} */ ("shell:open"), paths };
     const params = { target: path, reveal: true, scope };
     const refused = new Error(`Not allowed to show ${path} in the system file manager.`);
     const failed = (/** @type {unknown} */ error) =>
@@ -50,7 +57,21 @@ export function contextActions(bridge, commands, { selected, open, say }) {
       throw failed(error);
     });
   };
-  return {
+  /** @param {() => Promise<unknown>} run */
+  const at =
+    (run) =>
+    async (/** @type {Record<string, unknown>} */ a = {}) => {
+      const path = typeof a.path === "string" && a.path !== "" ? a.path : undefined;
+      named = path !== undefined && reach ? await reach(path) : undefined;
+      if (path !== undefined && !named)
+        throw new Error(`${path} is not in the explorer's folders.`);
+      try {
+        return await run();
+      } finally {
+        named = undefined;
+      }
+    };
+  const actions = {
     "endue.explorer.open-selected": async () => open(picked()),
     "endue.explorer.copy-path": async () => {
       const { path } = picked();
@@ -71,4 +92,5 @@ export function contextActions(bridge, commands, { selected, open, say }) {
     },
     "endue.explorer.show-in-file-manager": reveal,
   };
+  return Object.fromEntries(Object.entries(actions).map(([id, run]) => [id, at(run)]));
 }

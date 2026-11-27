@@ -4,6 +4,7 @@
 import { BridgeClient } from "@endue-ai/bridge";
 import {
   deskPluginUrl,
+  mapWidthOf,
   mountDesk,
   type Published,
   phase,
@@ -22,7 +23,9 @@ import { shellSurfaces } from "./compositor-surfaces";
 import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
+import { installEditCommands } from "./edit-commands";
 import "./crashes.css";
+import { installFrameSignals } from "./frame-signals";
 import { adapter, invoke, listen } from "./host";
 import { followLogin } from "./login";
 import { pickNativeFile, realNativePath } from "./native-files";
@@ -33,10 +36,19 @@ import { installQuit } from "./quit";
 import { shellBridge } from "./shell-bridge";
 import { readStart, relauncher } from "./start";
 import { nextPaint, reportStartup } from "./startup";
+import { followSystemNotices } from "./system-notices";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
-// The shell window's uncaught errors become local crash reports from here on (#322).
-const stopCrashReports = reportCrashes(window, (command, args) => invoke(command, args));
+// The shell window's uncaught errors become local crash reports once the desk is ready (#322, #566).
+let deskReady = () => {};
+const reportsStart = new Promise<void>((resolve) => {
+  deskReady = resolve;
+});
+const stopCrashReports = reportCrashes(
+  window,
+  (command, args) => invoke(command, args),
+  reportsStart,
+);
 window.addEventListener("pagehide", stopCrashReports, { once: true });
 
 // Start-up phases for the app's trace (DESK_TRACE=1): from the page's time origin to this code.
@@ -149,6 +161,19 @@ void desk.ready.then(() => {
   window.addEventListener("pagehide", stopLogin, { once: true });
 });
 
+// The OS's notifications while endue is out of sight (#306): every notice that shows goes to the
+// shell, which posts it when the desk is not in front; a click on one comes back here.
+void desk.ready.then(() => {
+  const stopNotices = followSystemNotices({
+    settings: desk.runtime.settings,
+    notices: desk.runtime.notices,
+    post: (post) => invoke("desk_notice_post", { ...post }),
+    listen: (handler) => listen("notice://activated", ({ payload }) => handler(payload)),
+    report: (error) => console.error("desk_notice_post:", error),
+  });
+  window.addEventListener("pagehide", stopNotices, { once: true });
+});
+
 // The page reports what only it knows (ADR 0151); the CEF shell answers with the windows that keep
 // a live frame, which the runtime carries out, and with each desk desk-wm publishes, which the
 // runtime takes whole (ADR 0153, #83). Its input (#56) decides by the keymap whose a key is, and
@@ -179,11 +204,17 @@ const offRun = listen<RunPayload>("desk://compositor-run", ({ payload }) => {
   const run = payload && cardCommand(payload);
   if (run) void desk.runtime.commands.run(run.command, run.args).catch(() => undefined);
 });
-// The person folded the canvas map the compositor draws, or opened it: the session keeps that.
-const offMap = listen<{ folded?: unknown }>("desk://compositor-map", ({ payload }) => {
-  if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
-  stopDesk.wake();
-});
+// The person folded the canvas map the compositor draws, opened it or resized it (ADR 0273): the
+// session keeps that, and the strip under the map follows its width.
+const offMap = listen<{ folded?: unknown; width?: unknown }>(
+  "desk://compositor-map",
+  ({ payload }) => {
+    if (typeof payload?.folded === "boolean") desk.store.set({ mapFolded: payload.folded });
+    const width = mapWidthOf(payload?.width);
+    if (width !== null) desk.store.set({ mapWidth: width });
+    stopDesk.wake();
+  },
+);
 // The pointer came to an edge of the app, or left one, over a window's page: the chrome a
 // filled window sent away comes back there (ADR 0221).
 const EDGES = ["left", "right", "top", "bottom"] as const;
@@ -215,11 +246,14 @@ const stopCompositor = () => {
 };
 window.addEventListener("pagehide", stopCompositor, { once: true });
 
-// A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.
-const offCrashes = listen<{ plugin?: string }>("desk://frame-crashed", ({ payload }) => {
-  if (typeof payload?.plugin === "string") desk.runtime.frames.crashed(payload.plugin);
-});
-window.addEventListener("pagehide", () => void offCrashes.then((off) => off()), { once: true });
+// A plugin frame whose renderer died (#44), or whose page the shell loaded again by itself (#378):
+// the CEF shell names its plugin, and the runtime's frames take it from there.
+const offFrameSignals = installFrameSignals(desk.runtime.frames);
+window.addEventListener("pagehide", offFrameSignals, { once: true });
+
+// The Edit menu as desk.edit.* commands, for any key a person binds to them (ADR 0296).
+const disposeEdit = installEditCommands(desk.runtime.commands, invoke);
+window.addEventListener("pagehide", disposeEdit, { once: true });
 
 // The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
 const disposeUpdates = installUpdates({
@@ -240,6 +274,7 @@ const disposeUpdates = installUpdates({
 window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
+deskReady();
 const ready = performance.now();
 const painted = nextPaint();
 // The native palette window has no runtime of its own: it follows the theme in force here (TH-08).

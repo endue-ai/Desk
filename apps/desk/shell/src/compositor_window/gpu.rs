@@ -1,8 +1,9 @@
 //! The compositor window's GPU: Metal, DX12 or Vulkan as #32 §10 says, a device on the adapter that
-//! presents to the window (the one CEF renders with), and the window's swapchain. Headless
-//! (`DESK_COMPOSITOR_HEADLESS=1`) composes only for the router and the captures. A frame the OS
-//! withholds (`Occluded`: a locked screen, out of sight without winit saying so) is not asked for
-//! again for `WITHHELD` (#134): the window composed it for nothing at every desk frame.
+//! presents to the window (the one CEF renders with), and the window's swapchain, which the render
+//! thread owns (`Swapchain`, `render_thread.rs`, #249). Headless (`DESK_COMPOSITOR_HEADLESS=1`)
+//! composes only for the router and the captures. A frame the OS withholds (`Occluded`: a locked
+//! screen, out of sight without winit saying so) is not asked for again for `WITHHELD` (#134): the
+//! window composed it for nothing at every desk frame.
 //!
 //! A window that hands out no image in time (a locked screen, a display going off) stops presenting
 //! for `PAUSED`, or until it shows again (#155). Its surface stays all the while: a frame taken from
@@ -19,7 +20,17 @@ pub struct Gpu {
     pub queue: wgpu::Queue,
     pub format: wgpu::TextureFormat,
     pub adapter: wgpu::AdapterInfo,
-    surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
+    /// The window's swapchain until the render thread takes it; none headless.
+    pub swapchain: Option<Swapchain>,
+    /// Composing off screen only (`DESK_COMPOSITOR_HEADLESS`).
+    pub headless: bool,
+}
+
+/// The window's swapchain, on the render thread.
+pub struct Swapchain {
+    device: wgpu::Device,
+    surface: wgpu::Surface<'static>,
+    config: wgpu::SurfaceConfiguration,
     /// The OS withheld the last frame asked for, or handed out none in time: when to ask again.
     withheld: Option<Instant>,
     /// Presenting stopped until `withheld` (`stop_presenting`), or the window shows again.
@@ -89,7 +100,7 @@ impl Gpu {
         // software one (WARP, lavapipe) rather than open no desk at all.
         let adapter = request(false)
             .or_else(|first| {
-                eprintln!("endue Desk: no GPU adapter ({first}); trying a software one");
+                eprintln!("endue: no GPU adapter ({first}); trying a software one");
                 request(true)
             })
             .map_err(|e| e.to_string())?;
@@ -104,7 +115,7 @@ impl Gpu {
             ..Default::default()
         }))
         .map_err(|e| e.to_string())?;
-        let (surface, format) = match surface {
+        let (swapchain, format) = match surface {
             Some(surface) => {
                 let caps = surface.get_capabilities(&adapter);
                 let format = caps
@@ -125,7 +136,14 @@ impl Gpu {
                     color_space: wgpu::SurfaceColorSpace::Auto,
                 };
                 surface.configure(&device, &config);
-                (Some((surface, config)), format)
+                let swapchain = Swapchain {
+                    device: device.clone(),
+                    surface,
+                    config,
+                    withheld: None,
+                    paused: false,
+                };
+                (Some(swapchain), format)
             }
             None => (None, wgpu::TextureFormat::Bgra8Unorm),
         };
@@ -134,27 +152,32 @@ impl Gpu {
             queue,
             format,
             adapter: adapter.get_info(),
-            surface,
-            withheld: None,
-            paused: false,
+            headless: swapchain.is_none(),
+            swapchain,
         })
     }
+}
 
+impl Swapchain {
     /// Follow the window's new size.
     pub fn resize(&mut self, width: u32, height: u32) {
-        if let Some((surface, config)) = self.surface.as_mut() {
-            config.width = width.max(1);
-            config.height = height.max(1);
-            surface.configure(&self.device, config);
+        self.config.width = width.max(1);
+        self.config.height = height.max(1);
+        self.surface.configure(&self.device, &self.config);
+    }
+
+    /// Follow `size`, a scene's viewport, if the swapchain is of another.
+    pub fn fit(&mut self, size: (u32, u32)) {
+        if (self.config.width, self.config.height) != (size.0.max(1), size.1.max(1)) {
+            self.resize(size.0, size.1);
         }
     }
 
     /// The next swapchain image, when the window can present one. Asked for, it presents again.
     pub fn frame(&mut self) -> Option<wgpu::SurfaceTexture> {
-        let (surface, config) = self.surface.as_ref()?;
         self.withheld = None;
         self.paused = false;
-        match surface.get_current_texture() {
+        match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => Some(frame),
             wgpu::CurrentSurfaceTexture::Occluded => {
@@ -162,21 +185,16 @@ impl Gpu {
                 None
             }
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                surface.configure(&self.device, config);
+                self.surface.configure(&self.device, &self.config);
                 None
             }
             _ => None,
         }
     }
 
-    /// Whether the window has no swapchain (`DESK_COMPOSITOR_HEADLESS`).
-    pub fn headless(&self) -> bool {
-        self.surface.is_none()
-    }
-
-    /// Whether a composed frame goes to the window: not headless, and not stopped.
+    /// Whether a composed frame goes to the window: not stopped.
     pub fn presents(&self) -> bool {
-        self.surface.is_some() && !self.paused
+        !self.paused
     }
 
     /// When to ask again for a frame the OS withheld (`None`: it did not).
@@ -187,10 +205,8 @@ impl Gpu {
     /// Present nothing for `PAUSED` from `now` (the window hands out no image in time), and keep the
     /// surface: a frame of it may be in hand, and is presented or dropped as any other.
     pub fn stop_presenting(&mut self, now: Instant) {
-        if self.surface.is_some() {
-            self.paused = true;
-            self.withheld = Some(now + PAUSED);
-        }
+        self.paused = true;
+        self.withheld = Some(now + PAUSED);
     }
 
     /// The window shows again: frames go to it from the next one on.

@@ -34,7 +34,7 @@ describe("the grant list", () => {
     const list = view.lists.at(-1);
     expect(list?.summary).toBe("4 permissions held by 3 callers");
     expect(list?.groups.map((g) => g.caller)).toEqual([
-      { id: "desk", name: "Desk", kind: "Runtime" },
+      { id: "desk", name: "endue", kind: "Runtime" },
       { id: "endue.eris", name: "Eris", kind: "UI plugin" },
       { id: "example.notes", name: "Notes", kind: "UI plugin" },
     ]);

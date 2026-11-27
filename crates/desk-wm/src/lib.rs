@@ -4,11 +4,11 @@
 //! rendering, so the compositor, the core and the tests drive it alike. Each module names the TS
 //! module it ports.
 //!
-//! - `types`: the shared data (rects, placements, fills, panes' shape, keys).
+//! - `types`: the shared data (rects, placements, fills, tabs, keys).
 //! - `geometry`, `coordinates`, `clearance`: the reference frame, the free area, normal and
 //!   floating windows' spaces, a filled window's title clear of the top chips.
 //! - `snap`, `settle`, `fill`: 8-way snap (ADR 0128), the glide into a part, filling and coming
-//!   back.
+//!   back; `magnet`: edges pulled flush with a neighbour's or the area's while dragging.
 //! - `tiling`, `arrange`: slots for unplaced windows (ADR 0040), tile and cascade (ADR 0116).
 //! - `hints`: what a plugin's manifest asks of its window: first size, smallest size, fixed (ADR
 //!   0226).
@@ -17,7 +17,7 @@
 //! - `cover`, `placed`: which plugins are out of sight (ADR 0070) and which a layout places.
 //! - `reach`: a window's title bar kept within reach of the pointer after a drop or a move.
 //! - `pan`, `minimap`: the canvas pan and the canvas map (ADR 0082).
-//! - `panes`, `pane_min`: the pane tree and its dividers, and each pane's room; `desktops`,
+//! - `tabs`: a window's tabs (ADR 0270): adding, closing, and what kind a window takes; `desktops`,
 //!   `migrate`: the named list of desktops (ADR 0117) and what profiles and sessions stored;
 //!   `layout`: a desktop's layout and the profile's saved ones; `drawer`, `buffers`: the drawer's
 //!   items and the buffer list.
@@ -25,7 +25,7 @@
 //!   cascade, ADR 0116); `snapshot`: what `desk.windows.list` answers, as the contract's
 //!   `BrainDesk` (specs/bridge/v0, #82).
 //! - `host`: what the compositor draws for the desktop in front (#81): the bars' bands and the free
-//!   area, each window at its rectangle with its panes, the live budget, and the surfaces'
+//!   area, each window at its rectangle with the tab it shows, the live budget, and the surfaces'
 //!   lifecycle steps.
 //! - `interact`: dragging, resizing, snapping, the pan and the window commands on the compositor's
 //!   input (#80), and what the runtime takes back from them.
@@ -45,12 +45,11 @@ pub mod hints;
 pub mod host;
 pub mod interact;
 pub mod layout;
+pub mod magnet;
 mod math;
 pub mod migrate;
 pub mod minimap;
 pub mod pan;
-pub mod pane_min;
-pub mod panes;
 pub mod pixels;
 pub mod placed;
 pub mod reach;
@@ -58,6 +57,7 @@ pub mod settle;
 pub mod snap;
 pub mod snapshot;
 pub mod spread;
+pub mod tabs;
 pub mod tiling;
 pub mod types;
 pub mod undo;
@@ -90,15 +90,16 @@ pub use host::{
     PageShown, Places, Plan, Seat, Step, Surfaces,
 };
 pub use layout::{DesktopLayout, Saved, Visible};
+pub use magnet::MAGNET;
 pub use minimap::{
-    Fit, MAP, MapDrag, fill_in_sight, fit_world, map_shows, pan_by_key, pan_centred_on,
-    pan_moved_by, to_map, to_world, view_rect, world_of,
+    Fit, MAP, MAP_LEAST, MAP_MOST, MapDrag, MapEdges, fill_in_sight, fit_world, map_resized,
+    map_shows, map_size, pan_by_key, pan_centred_on, pan_moved_by, to_map, to_world, view_rect,
+    world_of,
 };
 pub use pan::{
     EXTENT, LATCH_MS, LATCH_SLOP, PanDrag, PanTarget, WheelLatch, WheelMode, bounded, drag_pans,
     hint_shows, reset_shows, wheel_pan, wheel_pans,
 };
-pub use pane_min::{PANE_MIN, fit_panes, window_min};
 pub use placed::{PLUGIN_VIEW, placed_plugins, resolve_view, shown_plugins};
 pub use reach::{GRAB, top_within_reach, within_reach};
 pub use settle::{Glided, SETTLE_MS, Settle, SettleKind};

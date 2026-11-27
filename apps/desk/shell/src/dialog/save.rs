@@ -1,7 +1,8 @@
 //! The bridge's side of the dialogs (#308): `dialog.open` and `dialog.save` from plugins, shown as the
 //! desk's own open dialog is (`super::start`) and as an `rfd` save dialog, both over the main window.
 //! The core grants what the person chose; this only shows the dialogs and says what was chosen.
-//! Each title says who asks (`Notes: Open a note`), one dialog shows at a time (a second waits),
+//! Each title says who asks (`Notes: Open a note`; without one of its own, Open or Save in the desk's
+//! language, ADR 0276), one dialog shows at a time (a second waits),
 //! and a desk without a main window answers `unsupported` rather than show one unattached.
 
 use std::path::PathBuf;
@@ -11,6 +12,7 @@ use desk_core::{Asker, DialogError, Dialogs};
 
 use super::{Filter, NotShown, Options, on_the_loop, start};
 use crate::pump::Pump;
+use crate::words::{Language, text};
 
 /// The dialogs the shell gives the core once the desk is up.
 pub struct ShellDialogs {
@@ -62,16 +64,30 @@ fn filters(filters: Option<&Vec<DialogFilter>>) -> Vec<Filter> {
         .collect()
 }
 
-/// The desk's open options for a plugin's `dialog.open`.
+/// The desk's open options for a plugin's `dialog.open`, titled in `language`.
 pub(crate) fn open_options(
     asker: &Asker,
     params: &DialogOpenParams,
     home: &std::path::Path,
+    language: Language,
 ) -> Options {
+    let destination = params.intent == Some(desk_bridge::DialogOpenIntent::Destination);
+    let open = text(
+        language,
+        if destination {
+            "desk.dialog.save"
+        } else {
+            "desk.dialog.open"
+        },
+    );
     Options {
         multiple: params.multiple == Some(true),
         directory: params.kind == Some(DialogOpenKind::Folders),
-        title: Some(titled(asker, params.title.as_deref(), "Open")),
+        title: Some(titled(
+            asker,
+            params.title.as_deref().filter(|_| !destination),
+            &open,
+        )),
         default_path: (params.start_in.as_deref()).map(|p| local(p, home).to_string_lossy().into()),
         filters: filters(params.filters.as_ref()),
     }
@@ -86,14 +102,16 @@ pub(crate) struct SaveOptions {
     pub filters: Vec<Filter>,
 }
 
-/// The save options for a plugin's `dialog.save`.
+/// The save options for a plugin's `dialog.save`, titled in `language`.
 pub(crate) fn save_options(
     asker: &Asker,
     params: &DialogSaveParams,
     home: &std::path::Path,
+    language: Language,
 ) -> SaveOptions {
+    let save = text(language, "desk.dialog.save");
     SaveOptions {
-        title: titled(asker, params.title.as_deref(), "Save"),
+        title: titled(asker, params.title.as_deref(), &save),
         directory: (params.start_in.as_deref()).map(|p| local(p, home)),
         file_name: params.suggested_name.clone(),
         filters: filters(params.filters.as_ref()),
@@ -129,7 +147,7 @@ impl Dialogs for ShellDialogs {
         params: &DialogOpenParams,
     ) -> Result<Option<Vec<PathBuf>>, DialogError> {
         let _one = self.one.lock().unwrap_or_else(|e| e.into_inner());
-        let options = open_options(asker, params, &self.home);
+        let options = open_options(asker, params, &self.home, crate::language::in_force());
         on_the_loop(&self.pump, true, move |parent| start(options, parent)).map_err(not_shown)
     }
 
@@ -139,7 +157,7 @@ impl Dialogs for ShellDialogs {
         params: &DialogSaveParams,
     ) -> Result<Option<PathBuf>, DialogError> {
         let _one = self.one.lock().unwrap_or_else(|e| e.into_inner());
-        let options = save_options(asker, params, &self.home);
+        let options = save_options(asker, params, &self.home, crate::language::in_force());
         on_the_loop(&self.pump, true, move |parent| start_save(options, parent)).map_err(not_shown)
     }
 }
@@ -153,12 +171,17 @@ mod tests {
     use serde_json::json;
 
     use super::{Filter, NotShown, SaveOptions, local, not_shown, open_options, save_options};
+    use crate::words::Language;
 
     fn notes() -> Asker {
         Asker {
             caller: "endue.notes".into(),
             name: "Notes".into(),
         }
+    }
+
+    fn fixture_home() -> &'static Path {
+        Path::new(if cfg!(windows) { r"C:\endue" } else { "/endue" })
     }
 
     fn markdown() -> Filter {
@@ -175,13 +198,18 @@ mod tests {
             "filters": [{ "name": "Markdown", "extensions": ["md"] }],
         }))
         .unwrap();
-        let options = open_options(&notes(), &params, Path::new("/Users/person"));
+        let options = open_options(&notes(), &params, fixture_home(), Language::En);
         assert!(options.multiple && options.directory);
         assert_eq!(options.title.as_deref(), Some("Notes: Pick"));
-        assert_eq!(options.default_path.as_deref(), Some("/Users/person/Notes"));
+        assert_eq!(
+            options.default_path.as_deref().map(Path::new),
+            Some(fixture_home().join("Notes").as_path())
+        );
         assert_eq!(options.filters, [markdown()]);
         let none: DialogOpenParams = serde_json::from_value(json!({})).unwrap();
-        let none = open_options(&notes(), &none, Path::new("/h"));
+        let korean = open_options(&notes(), &none, fixture_home(), Language::Ko);
+        assert_eq!(korean.title.as_deref(), Some("Notes: 열기"));
+        let none = open_options(&notes(), &none, fixture_home(), Language::En);
         assert!(!none.multiple && !none.directory && none.default_path.is_none());
         assert_eq!(none.title.as_deref(), Some("Notes: Open"));
     }
@@ -194,16 +222,18 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(
-            save_options(&notes(), &params, Path::new("/Users/person")),
+            save_options(&notes(), &params, fixture_home(), Language::Ko),
             SaveOptions {
                 title: "Notes: Save the note as".into(),
-                directory: Some(PathBuf::from("/Users/person/Notes")),
+                directory: Some(fixture_home().join("Notes")),
                 file_name: Some("a.md".into()),
                 filters: vec![markdown()],
             }
         );
         let none: DialogSaveParams = serde_json::from_value(json!({})).unwrap();
-        let none = save_options(&notes(), &none, Path::new("/h"));
+        let korean = save_options(&notes(), &none, fixture_home(), Language::Ko);
+        assert_eq!(korean.title, "Notes: 저장");
+        let none = save_options(&notes(), &none, fixture_home(), Language::En);
         assert_eq!(none.title, "Notes: Save");
         assert!(none.directory.is_none() && none.file_name.is_none() && none.filters.is_empty());
     }
@@ -222,12 +252,9 @@ mod tests {
 
     #[test]
     fn home_paths_are_the_home_folder() {
-        let home = Path::new("/Users/person");
-        assert_eq!(local("~", home), PathBuf::from("/Users/person"));
-        assert_eq!(
-            local("${home}/Notes", home),
-            PathBuf::from("/Users/person/Notes")
-        );
+        let home = fixture_home();
+        assert_eq!(local("~", home), fixture_home());
+        assert_eq!(local("${home}/Notes", home), fixture_home().join("Notes"));
         assert_eq!(local("/tmp/x", home), PathBuf::from("/tmp/x"));
         assert_eq!(local("~other/x", home), PathBuf::from("~other/x"));
     }

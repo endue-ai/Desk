@@ -14,7 +14,9 @@
     {
       "permission": "shell:open",
       "paths": ["${home}/**"]
-    }
+    },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "shell:open", "paths": ["/**"] }
   ],
   "surfaces": [
     {
@@ -25,6 +27,129 @@
     }
   ],
   "contributes": {
+    "commands": [
+      {
+        "id": "endue.images.pan",
+        "title": "Images: Pan the current image",
+        "description": "Move the image view by CSS pixel offsets within the active pane. Read the matching pane view from desk.windows.list to name a window.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "dx": { "type": "number" },
+            "dy": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.images.show-details",
+        "title": "Images: Show or hide image details",
+        "description": "Set whether the image details panel is shown in this pane.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "shown": { "type": "boolean" }
+          },
+          "required": ["shown"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.images.slice",
+        "title": "Images: Show a volume slice",
+        "description": "Show the one-based slice of the current imaging volume. Details reports the number of slices.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." },
+            "at": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["at"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.images.details",
+        "title": "Images: Read the current image",
+        "description": "Read the visible image's dimensions, parsed EXIF, folder position and view transforms.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
+          },
+          "additionalProperties": false
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
+        "id": "endue.images.zoom",
+        "title": "Images: Set image zoom",
+        "description": "Set the view scale, where 1 is 100%, or fit the image to the pane.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "anyOf": [{ "type": "number", "minimum": 0.01, "maximum": 64 }, { "const": "fit" }]
+            },
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
+          },
+          "required": ["level"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.images.turn",
+        "title": "Images: Turn the image view",
+        "description": "Rotate by degrees in multiples of 90 or set whether the image is mirrored. Changes only the view.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "rotate": { "type": "integer", "multipleOf": 90 },
+            "flip": { "type": "boolean" },
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.images.step",
+        "title": "Images: Walk the image folder",
+        "description": "Show the next, previous, first or last image in this pane's folder.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": { "enum": ["next", "previous", "first", "last"] },
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
+          },
+          "required": ["to"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.images.compare",
+        "title": "Images: Compare images",
+        "description": "Show a second image beside the current image using an existing read grant. Pass null to end the comparison.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": ["string", "null"] },
+            "window": { "type": "string", "description": "Pane view from desk.windows.list." }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true
+      }
+    ],
     "files": [
       {
         "pattern": "*.png",

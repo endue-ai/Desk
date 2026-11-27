@@ -18,7 +18,12 @@ const WORDS = {
   "proc:spawn": ["Run programs", (p) => list([...p.commands, ...(p.pty ? ["in a terminal"] : [])])],
   "net:fetch": ["Use the network", (p) => list(p.hosts)],
   "net:connect": ["Connect to other computers", (p) => list(p.hosts)],
+  "db:connect": ["Sign in to databases", (p) => list(p.hosts)],
   "web:browse": ["Show web pages", (p) => (p.hosts ? list(p.hosts) : "any site")],
+  "web:control": [
+    "Read and operate the web pages it shows",
+    (p) => (p.hosts ? list(p.hosts) : "any site"),
+  ],
   "audio:capture": ["Use the microphone", (p) => (p.wakeWord ? "with the wake word" : "")],
   "ui:surface": ["Open its surfaces", () => ""],
   "ui:notify": ["Show notifications", () => ""],
@@ -125,6 +130,15 @@ export function broadWarning(permission) {
         ? `It can connect to every computer under ${host.slice(1).replace(/:\d+$/, "")}.`
         : `It can connect to every port of ${host}.`;
     }
+    case "db:connect": {
+      const host = permission.hosts.find((h) => h.startsWith("*") || !h.includes(":"));
+      if (!host) return null;
+      if (host === "*" || host.startsWith("*:"))
+        return "It can sign in to databases on any computer.";
+      return host.startsWith("*.")
+        ? `It can sign in to databases on every computer under ${host.slice(1).replace(/:\d+$/, "")}.`
+        : `It can sign in to databases on every port of ${host}.`;
+    }
     case "fs:read":
     case "fs:write": {
       const where = permission.paths.map(widePath).find(Boolean);
@@ -160,9 +174,9 @@ export function describeCaller(id, plugins) {
   const manifest = plugins.find((p) => p.id === id)?.manifest;
   if (manifest)
     return { id, name: manifest.name || id, kind: PLUGIN_KINDS[manifest.kind] ?? "Plugin" };
-  if (id === "desk") return { id, name: "Desk", kind: "Runtime" };
-  if (id === "core") return { id, name: "Desk", kind: "Core" };
+  if (id === "desk") return { id, name: "endue", kind: "Runtime" };
+  if (id === "core") return { id, name: "endue", kind: "Core" };
   if (id.startsWith("agent:")) return { id, name: `Agent ${id.slice(6)}`, kind: "Agent" };
   if (id.startsWith("mcp:")) return { id, name: `MCP server ${id.slice(4)}`, kind: "MCP server" };
-  return { id, name: id, kind: id.includes(".") ? "Plugin" : "Desk" };
+  return { id, name: id, kind: id.includes(".") ? "Plugin" : "endue" };
 }

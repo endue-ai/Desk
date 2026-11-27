@@ -1,4 +1,4 @@
-// The SDK's test host for one plugin folder, which `desk plugin test <dir>` runs with vitest:
+// The SDK's test host for one plugin folder, which `endue plugin test <dir>` runs with vitest:
 // the folder is the root, its `tests/*.test.{js,ts}` the tests, in a jsdom page.
 // `@endue-ai/plugin-sdk` and `@endue-ai/plugin-sdk/testing` resolve to this package, so a plugin
 // anywhere imports them as its page does. Caches stay in this checkout, not in the plugin's folder.
@@ -26,6 +26,7 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^@endue-ai\/plugin-sdk\/testing$/, replacement: here("./src/testing/index.ts") },
+      { find: "@endue-ai/plugin-sdk/testing/theme", replacement: here("./src/testing/theme.ts") },
       { find: /^@endue-ai\/plugin-sdk$/, replacement: here("./src/index.ts") },
     ],
   },

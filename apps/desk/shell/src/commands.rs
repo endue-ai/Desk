@@ -8,7 +8,6 @@ use desk_web::wire::Call;
 use serde_json::{Value, json};
 
 use crate::host::Desk;
-use crate::island::commands as island;
 
 /// The answer to `call` from `sender`.
 pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String> {
@@ -81,6 +80,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
         }
         // What `desk.login.start` is, from the page that reads it (`login.rs`, #237).
         "desk_login" => crate::login::answer(&call.args),
+        // A notice the page sends to the OS's notifications (`system_notices.rs`, #306).
+        "desk_notice_post" => crate::system_notices::answer(desk, &call.args),
         "desk_crash" => Ok(json!(crash.record(&text("message"), &text("stack")))),
         "take_last_crash" => Ok(crash.take_last().unwrap_or(Value::Null)),
         "plugin:dialog|open" => crate::dialog::open(desk, &call.args),
@@ -90,7 +91,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
                 .run(move |shell, _| crate::palette::command(shell, &cmd));
             Ok(Value::Null)
         }
-        cmd if cmd.starts_with(island::PREFIX) => island::answer(desk, cmd, &call.args),
+        // The desk's window commands on a window out of the canvas, in its OS window (ADR 0294).
+        "app_window" => crate::app_windows::control(desk, &call.args),
         // The windows out of the canvas, for checks in development builds (#235).
         "compositor_window" if cfg!(debug_assertions) && call.args.get("app").is_some() => {
             crate::app_windows::check(desk, &call.args)
@@ -102,8 +104,8 @@ pub fn answer(desk: &Desk, sender: &Sender, call: Call) -> Result<Value, String>
     }
 }
 
-/// A bridge call, for the runtime itself or a plugin it hosts, the palette or the island. The core
-/// checks permissions; this names the caller and keeps the island to what it shows.
+/// A bridge call, for the runtime itself or a plugin it hosts, or the palette. This names
+/// the caller whose permissions the core checks.
 fn bridge_call(desk: &Desk, sender: &Sender, args: &Value) -> Result<Value, String> {
     let named = args.get("caller").and_then(Value::as_str);
     let caller = sender
@@ -115,7 +117,6 @@ fn bridge_call(desk: &Desk, sender: &Sender, args: &Value) -> Result<Value, Stri
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_owned();
-    sender.may_ask(&method)?;
     let request: BridgeRequest =
         serde_json::from_value(raw).map_err(|why| format!("not a bridge request: {why}"))?;
     if cfg!(debug_assertions) && caller != desk_web::sender::RUNTIME {

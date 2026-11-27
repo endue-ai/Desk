@@ -8,27 +8,78 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+/** @typedef {{ worker: string, modules: string[] }} Declared */
 export const PLUGINS = join(ROOT, "plugins");
 
 /**
  * What the audit moved off the main thread, by plugin folder: the worker module the plugin starts and
- * every parser or decoder module only that worker may load. Plugins whose parsers also run in the
- * frame below a size (docs, slides, web, images, data) are not here: see the audit table.
- * @type {Record<string, { worker: string, modules: string[] }>}
+ * every parser or decoder module only that worker may load, or a list of them for a plugin with
+ * several workers. Plugins whose parsers also run in the frame below a size (docs, slides, web,
+ * images, data) are not here: see the audit table.
+ * @type {Record<string, Declared | Declared[]>}
  */
 export const OFF_MAIN = {
-  database: {
-    worker: "ui/output-worker.js",
-    modules: [
-      "ui/output-worker.js",
-      "ui/output/index.js",
-      "ui/output/postgres.js",
-      "ui/output/mysql.js",
-      "ui/output/sqlite.js",
-      "ui/output/csv.js",
-      "ui/output/readers.js",
-    ],
-  },
+  database: [
+    {
+      worker: "ui/output-worker.js",
+      modules: [
+        "ui/output-worker.js",
+        "ui/output/index.js",
+        "ui/output/mysql.js",
+        "ui/output/sqlite.js",
+        "ui/output/readers.js",
+      ],
+    },
+    // PostgreSQL's grammar and the resolver over its trees (ADR 0283); the page holds client.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/sql/parse/worker.js",
+        "ui/sql/parse/wasm.js",
+        "ui/vendor/libpg-query.mjs",
+        "ui/sql/parse/parse.js",
+        "ui/sql/parse/positions.js",
+        "ui/sql/parse/tree.js",
+        "ui/sql/parse/model.js",
+        "ui/sql/parse/resolve.js",
+        "ui/sql/parse/scope.js",
+        "ui/sql/parse/names.js",
+        "ui/sql/parse/query.js",
+        "ui/sql/parse/columns.js",
+        "ui/sql/parse/from.js",
+        "ui/sql/parse/dml.js",
+      ],
+    },
+    // Format SQL's layout, on the same parser in the same worker (ADR 0292); the page and the
+    // settings read only its style.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/sql/layout/layout.js",
+        "ui/sql/layout/build.js",
+        "ui/sql/layout/clauses.js",
+        "ui/sql/layout/doc.js",
+        "ui/sql/layout/roles.js",
+        "ui/sql/layout/tokens.js",
+      ],
+    },
+    // The editor's SQL problems check (ADR 0294), in the same worker; the page holds diagnose/editor.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/diagnose/check.js",
+        "ui/diagnose/script.js",
+        "ui/diagnose/names.js",
+        "ui/diagnose/insert.js",
+      ],
+    },
+    // A file import's .xlsx reader, the vendored one (PG-60, ADR 0363); the page holds import-copy/client.js.
+    {
+      worker: "ui/import-copy/worker.js",
+      modules: ["ui/import-copy/worker.js", "ui/import-copy/xlsx.js", "ui/vendor/sheetjs/xlsx.mjs"],
+    },
+  ],
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
   player: {
     worker: "ui/software/worker.js",
@@ -90,6 +141,8 @@ export function graph(entries) {
     const file = /** @type {string} */ (todo.pop());
     if (modules.has(file) || !existsSync(file)) continue;
     modules.add(file);
+    // JSON modules are data dependencies. Words in a catalog cannot import other modules.
+    if (file.endsWith(".json")) continue;
     const { imports, workers: started } = scan(readFileSync(file, "utf8"));
     for (const spec of imports) {
       const target = resolveFrom(file, spec);
@@ -135,7 +188,7 @@ export function pluginGraphs(name, root = PLUGINS) {
  * What breaks the audit for one plugin: a declared worker the page never starts, a declared module
  * its worker does not load, or one the main thread loads.
  * @param {string} name
- * @param {{ worker: string, modules: string[] }} declared
+ * @param {Declared} declared
  * @param {string} [root]
  */
 export function offMainProblems(name, declared, root = PLUGINS) {

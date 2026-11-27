@@ -104,11 +104,10 @@ impl Core {
             if !inside {
                 continue;
             }
-            for permission in asked {
-                if missing(std::slice::from_ref(&permission), accepted).is_empty() {
-                    self.grant(&plugin.id, permission);
-                }
-            }
+            let given = asked.into_iter().filter(|permission| {
+                missing(std::slice::from_ref(permission), accepted).is_empty()
+            });
+            self.grant_installed(&plugin.id, given.collect());
         }
     }
 }

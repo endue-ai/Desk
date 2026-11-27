@@ -4,6 +4,9 @@ date: 2026-10-31
 decision-makers: Team endue
 ---
 
+Superseded in part by ADR 0281: PostgreSQL sessions live in the core behind `db.*` and a `db:connect`
+grant; `psql` stays only until #441 lands. MySQL, MariaDB and SQLite stay on this decision.
+
 # The database plugin drives each engine's own command-line client
 
 ## Context and Problem Statement

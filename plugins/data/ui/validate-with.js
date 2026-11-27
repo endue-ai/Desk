@@ -14,10 +14,10 @@ const codeOf = (/** @type {unknown} */ error) =>
 /**
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext, "bridge" | "commands">} ctx
  * @param {{ current(): File | undefined, view: View, say(text: string): void,
- *   check(file: File): Promise<void>, scopeOf(path: string): unknown }} hooks check: run the
+ *   check(file: File): Promise<void> }} hooks check: run the
  *   file's schema check and show it
  */
-export function createValidateWith({ bridge, commands }, { current, view, say, check, scopeOf }) {
+export function createValidateWith({ bridge, commands }, { current, view, say, check }) {
   return async () => {
     const file = current();
     if (!file) return say("Open a JSON, YAML or TOML file first.");
@@ -25,7 +25,7 @@ export function createValidateWith({ bridge, commands }, { current, view, say, c
       return say(`${file.opened.label} files are not checked against a JSON Schema.`);
     const folder = folderOf(file.path);
     const listed = await bridge
-      .call("fs.list", { path: folder, scope: /** @type {*} */ (scopeOf(file.path)) })
+      .call("fs.list", { path: folder, scope: { permission: "fs:read", paths: [`${folder}/**`] } })
       .catch(() => ({ entries: [] }));
     const items = listed.entries
       .filter((e) => e.kind === "file" && /\.json$/i.test(e.name) && e.name !== file.name)
@@ -44,6 +44,21 @@ export function createValidateWith({ bridge, commands }, { current, view, say, c
     }
     if (typeof picked !== "string" || picked.trim() === "") return;
     const schema = join(folder, picked.trim());
+    if (/[*?]/u.test(schema)) return say("Choose an exact schema file path.");
+    const scope = { permission: /** @type {const} */ ("fs:read"), paths: [schema] };
+    try {
+      await bridge.call("fs.stat", { path: schema, scope });
+    } catch (error) {
+      if (codeOf(error) === "permission_denied") {
+        const permission = await bridge
+          .call("perm.request", {
+            permission: scope,
+            reason: `To validate ${file.name} with ${schema}`,
+          })
+          .catch(() => ({ granted: false }));
+        if (!permission.granted) return say(`Not allowed to read ${schema}.`);
+      }
+    }
     const value = { file: file.path, schema };
     await bridge.call("store.set", { key: pickedKey(file.path), value }).catch(() => {});
     view.schema(file.buffer, { state: "loading", how: "picked", source: schema, errors: [] });

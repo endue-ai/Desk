@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.cancel of the running statement",
+  "instance": {
+    "id": 21,
+    "method": "db.cancel",
+    "params": {
+      "sessionId": "d-1"
+    }
+  }
+}

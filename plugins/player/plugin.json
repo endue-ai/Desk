@@ -7,11 +7,155 @@
   "autoload": true,
   "description": "Plays video and audio files in one player: one transport, subtitles drawn over the video, playlists and CUE chapters, and each file's tags and cover. What the desk's engine cannot play itself is remuxed for Media Source Extensions or decoded by FFmpeg in WebAssembly; a codec neither decodes, and damaged and protected files, open as their details, which say why and show the file in the file manager for another app. It never writes a file.",
   "permissions": [
-    { "permission": "cmd:invoke", "ids": ["desk.files.changed"] },
-    { "permission": "shell:open", "paths": ["${home}/**"] }
+    { "permission": "cmd:invoke", "ids": ["desk.files.changed", "desk.files.playlist-entries"] },
+    { "permission": "shell:open", "paths": ["${home}/**"] },
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "shell:open", "paths": ["/**"] }
   ],
   "surfaces": [{ "id": "main", "title": "Player", "placement": "center" }],
   "contributes": {
+    "commands": [
+      {
+        "id": "endue.player.view",
+        "title": "Player: Set loop and theatre mode",
+        "description": "Set loop, theatre mode for a video, or both, using the existing transport controls.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "loop": { "type": "boolean" }, "theatre": { "type": "boolean" } },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.player.chapter",
+        "title": "Player: Show a chapter",
+        "description": "Seek to the one-based chapter of the current item. The state tool lists chapters.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": { "at": { "type": "integer", "minimum": 1 } },
+          "required": ["at"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.player.retry",
+        "title": "Player: Retry the current media",
+        "description": "Retry the current item at its kept position with the existing file read grant.",
+        "agent": true,
+        "args": { "type": "object", "properties": {}, "additionalProperties": false }
+      },
+      {
+        "id": "endue.player.state",
+        "title": "Player: Read the current player",
+        "description": "Read the current item, playback position, duration, playing state, tags, subtitle tracks, loop, theatre mode, chapters and playlist entry.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "readOnly": true,
+        "agent": true
+      },
+      {
+        "id": "endue.player.play",
+        "title": "Player: Play the current item",
+        "description": "Start or continue the current item.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.pause",
+        "title": "Player: Pause the current item",
+        "description": "Pause the current item at its current position.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.seek",
+        "title": "Player: Seek in the current item",
+        "description": "Seek to an absolute time or relative to the current position, in seconds. Give exactly one of to or by.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "number" },
+            "by": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.volume",
+        "title": "Player: Set volume or mute",
+        "description": "Set the volume from 0 to 1 or set mute explicitly. Give exactly one of level or mute.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "number", "minimum": 0, "maximum": 1 },
+            "mute": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.speed",
+        "title": "Player: Set playback speed",
+        "description": "Set the transport's playback rate.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "rate": { "enum": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] }
+          },
+          "required": ["rate"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.subtitles",
+        "title": "Player: Choose subtitles",
+        "description": "Choose a track id from state, on for the first available track, or off. An optional offset is in seconds, positive for later.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "track": { "type": "string" },
+            "offset": { "type": "number" }
+          },
+          "required": ["track"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.player.entry",
+        "title": "Player: Choose a playlist entry",
+        "description": "Open the one-based playlist entry, or move next, previous, first or last among readable local entries.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "anyOf": [
+                { "type": "integer", "minimum": 1 },
+                { "enum": ["next", "previous", "first", "last"] }
+              ]
+            }
+          },
+          "required": ["to"],
+          "additionalProperties": false
+        },
+        "agent": true
+      }
+    ],
     "files": [
       { "pattern": "*.mp4", "plugin": "endue.player" },
       { "pattern": "*.m4v", "plugin": "endue.player" },

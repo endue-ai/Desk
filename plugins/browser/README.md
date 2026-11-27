@@ -14,24 +14,23 @@ own cookies). This page holds the toolbar and asks for addresses.
 | Back, forward, reload, stop | `web.go`; the buttons follow `web.changed`, reload is stop while a page loads |
 | Enter | loads and gives the page the keys (`web.focus`); a press on the toolbar takes them back; Escape puts the page's address back |
 | A window out of the canvas | says the page shows in the desk only |
-
-Not yet: tabs, bookmarks, history, downloads, find, zoom, a page's permission prompts.
+| The assistant in the page | `web.read` and `web.act` (ADR 0272): the page as text with its elements named by a ref, then acts on a ref; each command answers the page as it reads once it rests, 4000 characters a part (`more` reads on) |
 
 | Permission | Why |
 | --- | --- |
 | `web:browse` | Show web pages in its view; asked once (`perm.request`) when it does not hold it |
+| `web:control` | Read the page and act in it for the assistant; asked once when it does not hold it |
 
 | Command | What it does |
 | --- | --- |
 | `endue.browser.open` | Opens the Browser (`desk.plugins.open`) |
-| `endue.browser.go { url }` | Shows an address, or searches for words, in the window in use |
-| `endue.browser.reload` | Loads the page again |
+| `go { url }`, `follow { ref }`, `reload`, `back`, `forward`, `stop` | Load, follow a link's address, traverse history or stop. Each history step that may resend a form needs approval (ADR 0390) |
+| `read { from?, chars? }` | Address, title, loading and history state, scroll and text |
+| `scroll { to?, pages?, ref? }`, `navigate-key { key, ref? }`, `find { text }`, `zoom { level }` | Move around or change magnification |
+| `click { ref }`, `type { text, ref?, replace?, submit? }`, `key { key, ref? }`, `select { ref, option }` | Click, submit and editing keys use the view and site approval (ADR 0375). Selecting and ordinary typing use the site's grant |
 
-| File | Purpose |
-| --- | --- |
-| `ui/address.js` | What was typed, as an address or a search |
-| `ui/browser.js` | The view: open, place, load, steps, what a sleep keeps |
-| `ui/view.js`, `ui/main.js` | The toolbar and `#page`; the SDK joined to the behaviour |
+`ui/address.js`: what was typed. `ui/browser.js`: the view (open, place, load, steps, when a page
+rests). `ui/agent.js`: the assistant's commands. `ui/view.js`, `ui/main.js`: the toolbar, the SDK.
 
 ```bash
 pnpm exec vitest run plugins/browser

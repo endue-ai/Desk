@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.describe needs the statement",
+  "instance": {
+    "id": 27,
+    "method": "db.describe",
+    "params": { "sessionId": "d-1" }
+  }
+}

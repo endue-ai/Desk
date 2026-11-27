@@ -1,5 +1,6 @@
-// The desk's floating bars share one shape (#291, #292): the agent bar, the account bar and the
-// rail are 52 wide with a 16 radius, a 1px border and no shadow, 16 from the app's edge; a button
+// The desk's floating bars share one shape (#291, #292): the shortcut bar (ADR 0274), the agent bar,
+// the account bar and the rail are 52 wide with a 16 radius, a 1px border and no shadow, 16 from
+// the app's edge; a button
 // in a bar is 36 square with a 10 radius and an avatar 34. The agent bar names an avatar in a
 // tooltip of the page's own, beside it, on hover and on keyboard focus; the rail stands in three
 // groups, and its Listen button is filled while the desk listens. The agent bar unfolds into a
@@ -73,10 +74,12 @@ test.beforeEach(async ({ page }) => {
   await openShell(page);
 });
 
-test("the agent bar, the account bar and the rail have one shape", async ({ page }) => {
+test("the shortcut bar, the agent bar, the account bar and the rail have one shape", async ({
+  page,
+}) => {
   await findLocalAgents(page);
   const shapes = await page.evaluate(() =>
-    [".sidebar", ".account-bar", ".rail"].map((selector) => {
+    [".sidebar", ".account-bar", ".rail", ".shortcuts"].map((selector) => {
       const el = document.querySelector<HTMLElement>(`#desk ${selector}`);
       if (!el) throw new Error(`no ${selector}`);
       const r = el.getBoundingClientRect();
@@ -92,18 +95,20 @@ test("the agent bar, the account bar and the rail have one shape", async ({ page
   );
   for (const bar of shapes)
     expect(bar.shape, bar.selector).toEqual([52, "16px", "1px", "solid", "none"]);
-  const [agents, account, rail] = shapes;
+  const [agents, account, rail, shortcuts] = shapes;
   expect(agents?.left).toBe(16);
   expect(account?.left).toBe(16);
   expect(account?.bottom).toBe(16);
   expect(rail?.right).toBe(16);
+  expect(shortcuts?.left).toBe(16);
 
-  // A button is 36 square with a 10 radius: the account bar's launcher (its other control is the
-  // person's own avatar) and the rail's seven. The agent bar's unfold control is out of sight until
-  // the keyboard's focus is on it, and its labelled places are not buttons of that shape (below).
+  // A button is 36 square with a 10 radius: the shortcut bar's Search and "+", the account bar's
+  // launcher (its other control is the person's own avatar) and the rail's seven. The agent bar's
+  // unfold control is out of sight until the keyboard's focus is on it, and its labelled places
+  // are not buttons of that shape (below).
   const avatars = ".avatar, .space, .account-profile";
   const buttons = await sizes(page, `.float-bar button:not(${avatars}, .bar-unfold, .bar-place)`);
-  expect(buttons).toHaveLength(8);
+  expect(buttons).toHaveLength(10);
   for (const button of buttons)
     expect([button.size, button.radius], button.name).toEqual([[36, 36], "10px"]);
 
@@ -228,12 +233,12 @@ test("the agent bar unfolds where it stands, over the windows, and folds again",
   await step(page, 16);
   await expect(bar).toHaveClass(/is-unfolded/);
   await expect.poll(async () => (await barBox(page)).width).toBe(256);
-  // In the same place: its left edge still 16 from the app's, its middle where it was.
+  // In the same place: its left edge still 16 from the app's, and its top where it was. With three
+  // groups it is too tall to centre here, so it hangs 12 under the shortcut bar (ADR 0274).
   const unfolded = await barBox(page);
   expect(unfolded.x).toBe(16);
-  expect(Math.abs(unfolded.y + unfolded.height / 2 - (folded.y + folded.height / 2))).toBeLessThan(
-    1,
-  );
+  expect(folded.y).toBe(116 + 92 + 12);
+  expect(unfolded.y).toBe(folded.y);
 
   // A caption per group, an agent's row 44 high and a space's 40, the pin at the top right.
   await expect(bar.locator(".bar-caption")).toHaveText(["이 컴퓨터", "에이전트", "스페이스"]);

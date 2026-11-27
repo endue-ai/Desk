@@ -7,8 +7,9 @@
   "description": "Eris, the secretary: her status poses, a conversation typed to her, and the soul text and orb other plugins reuse.",
   "permissions": [
     { "permission": "brain:converse" },
-    { "permission": "cmd:invoke", "ids": ["desk.buffers.list", "desk.palette.pick"] },
-    { "permission": "fs:read", "paths": ["${home}/**"] }
+    { "permission": "cmd:invoke", "ids": ["desk.files.attach"] },
+    { "permission": "fs:read", "paths": ["${home}/**"] },
+    { "permission": "fs:read", "paths": ["/**"] }
   ],
   "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }],
   "contributes": {
@@ -17,7 +18,7 @@
       "endue.eris.shortcut": {
         "kind": "string",
         "default": "Alt+Enter",
-        "description": "The key that summons Eris from any app (Option+Enter on macOS): on the island over other apps, in the desk while it is in front. DESK_ERIS_SHORTCUT overrides it. The tray's Talk to Eris works whatever the key."
+        "description": "The shortcut that brings endue forward and opens the talk line (Option+Enter on macOS). With endue in front, it toggles the talk line. DESK_ERIS_SHORTCUT overrides it. Talk to Eris in the tray works with any shortcut."
       }
     }
   }

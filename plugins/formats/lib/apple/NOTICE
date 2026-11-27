@@ -1,6 +1,6 @@
 endue.formats Apple disk image and file system readers (lib/apple)
 
-These readers were written for endue Desk from Apple's published specifications and from Apple's
+These readers were written for endue from Apple's published specifications and from Apple's
 own BSD-licensed reference decoder. No code was taken or followed from apfs-fuse, libfsapfs,
 libfshfs, the Linux hfsplus or apfs drivers, afsctool, or any other source under the GPL or the
 LGPL.

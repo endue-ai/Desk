@@ -20,7 +20,6 @@ there were two formats, the API would have holes.
 | `views/` | The view engine (`desk.views`): opens any view by id, draws the deprecated item views (`specs/view/v0`) as surfaces over the core's `data.*` and `view.*`, and hands universal ones to `desk.universal` (ADR 0103) |
 | `universal/` | Universal View (`desk.universal`): opens a universal view (`specs/view/v0/universal.schema.json`) of inline data, a file, a URL, another plugin's command or the index, as a timeline, calendar, board, list, text, chat, agent run, chart, stat or detail, or a page of them (ADR 0087, ADR 0103) |
 | `fleet/` | The control center for agents (`desk.fleet`, ADR 0100): a data-only `policy` plugin whose command opens a universal kanban of every agent's runs, the ones waiting for approval first, with Approve, Deny and Stop |
-| `island/` | The island's settings (`desk.island`, ADR 0204): a data-only `policy` plugin; `desk.island.show` puts the shell's island over every app |
 | `login/` | The start at login (`desk.login`, ADR 0225): a data-only `policy` plugin; `desk.login.start` has the shell register the desk as a login item that starts it with no window |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin, a page of universal views that `desk.universal` draws; `Mod+T` opens it |
 | `github/` | Your GitHub work as tasks (`desk.github`): an http connector the core runs (ADR 0106), the issues assigned to you, the reviews you owe and your own pull requests; the token stays in the core |
@@ -30,6 +29,7 @@ there were two formats, the API would have holes.
 | `memory/` | What Eris knows, kept on this computer (`endue.memory`, autoload): facts and conversations, search, edit a fact, forget one or everything (ADR 0095) |
 | `agents/` | Every agent as a card (`endue.agents`, autoload, ADR 0112): your endue AI agents (`studio.*`) and the agent programs the core finds on this computer (`agents.*`) in one Home (cards with source and status chips and search, and the Activity board: Waiting, Active, Failed, Done), one Studio (the card's facets with an inspector beside it, Delete with the name typed) and New agent (find in the catalog, or build from scratch); a chat with a local agent whose reply streams, Stop, and its sessions' history |
 | `computer/` | Eris uses your computer (`endue.computer`, autoload, ADR 0123): her tools to look, find, click, type, press keys and open and switch apps through `computer.*`, each act approved by the person and kept as a run with a screenshot; the Computer page with what macOS allows (Accessibility, Screen Recording), the apps she may operate, Stop and Resume; the banner the desk shows above every app while she acts |
+| `android-emulator/` | Android Emulator (`endue.android-emulator`) brings a local Android virtual device into Desk with touch and keyboard input, reusable test conditions, APK installation, logcat and snapshots |
 | `screens/` | Screen Sharing (`endue.screens`, autoload, ADR 0133): another Mac's screen in a desk window over VNC, the protocol macOS Screen Sharing speaks; the kept computers, the macOS or VNC sign-in asked each time and never kept, View only and Fit; noVNC (vendored, MPL-2.0) over the core's `net.connect`, granted per computer |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
@@ -39,7 +39,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | --- | --- | --- |
 | `display/` (`desk.display`) | `window.el`, `display-buffer-alist` | Where a new surface goes, how big, whether it takes the focus |
 | `palette/` (`desk.palette`) | `M-x`, the minibuffer | The command palette, picking one of many, run history, cancel (a UI plugin) |
-| `browser/` | Browser (`endue.browser`, autoload, ADR 0216): surf the web in a desk window. A toolbar (back, forward, reload or stop, an address field that takes an address or words to search for) over a live page, which is a web view of the desk's (`web.*` under `web:browse`): a browser of its own with nothing of the desk in it, drawn over the plugin's surface. The address comes back after a sleep. Commands `endue.browser.open`, `.go`, `.reload`; settings `endue.browser.home`, `.search` |
+| `browser/` | Browser (`endue.browser`, autoload, ADR 0216): surf the web in a desk window. A toolbar (back, forward, reload or stop, an address field that takes an address or words to search for) over a live page, which is a web view of the desk's (`web.*` under `web:browse`): a browser of its own with nothing of the desk in it, drawn over the plugin's surface. The address comes back after a sleep. The desk's assistant reads the page and acts in it (`web.read`, `web.act` under `web:control`, ADR 0272): agent commands `.read`, `.scroll`, `.click`, `.type`, `.key`, `.select`, `.back`, `.forward` beside `.go` and `.reload`, each answering the page as it reads afterwards; the four that act in the page wait for approval when an agent calls them. Commands `endue.browser.open`, `.stop`; settings `endue.browser.home`, `.search` |
 | `buffers/` (`desk.buffers`) | `buffer.el`, `ibuffer` | The buffer list, switching, asking before closing unsaved work, what shows next |
 | `files/` (`desk.files`) | `files.el`, `auto-mode-alist` | Which plugin opens a file, recent files, saving, changes on disk |
 | `session/` (`desk.session`) | `desktop.el`, `savehist` | Putting the layout, open files, focus and history back at start |
@@ -47,6 +47,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
 | `design/` (`desk.design`) | `defface` per widget | Which design system the components are made of (`desk.design.active`, ADR 0090) |
+| `customize/` (`desk.customize`) | Emacs's `custom.el` | The person's own style and script on any plugin's page, per endue account (ADR 0398) |
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
 | `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 
@@ -58,7 +59,10 @@ The base plugins a person works with from the first day (requirements, BASE):
 | `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
 | `git-studio/` (`endue.git-studio`) | A graphical Git client: the commit graph with the work in progress on top, branches, tags, stashes and worktrees, staging, diffs, history operations from the graph, a conflict tool, blame, and AI for messages and explanations |
 | `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
+| `api-studio/` (`endue.api-studio`) | An HTTP client: requests with params, bodies, headers and auth; collections as folders of plain files in Git; environments with secrets kept off disk; scripts, checks and tests; a runner with data rows; OpenAPI, HAR and curl import; code in a dozen languages; and an assistant that explains failures and writes tests |
 | `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
+| `docker-studio/` (`endue.docker-studio`) | A graphical Docker client: a live dashboard, containers by Compose stack with logs, files, stats and a shell, images with layers and a run form, volumes, networks, stacks with their service map, builds, and AI that diagnoses failures |
+| `network/` (`endue.network`) | Who is on the network this computer is on, how safe it is and why it is slow: a map around the router, a checkup scored out of 100 with what to do, the Wi-Fi channels' congestion, a log of devices that come and go; macOS's own programs only, the private network only (autoload, ADR 0266) |
 
 The agent programs a person already has, attached as a plugin (AG-09) and off until the person turns
 it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
@@ -66,7 +70,7 @@ it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
 | Plugin | Role |
 | --- | --- |
 | `local-agents/` (`endue.local-agents`) | Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent and OpenCode, found by their versions and asked through their non-interactive modes, read-only by default: the agents found, a chat with one, answers compared side by side, a kanban board of tasks they work through, the activity; every operation a command. The card Home of `agents/` shows the agents the core finds beside the endue ones (ADR 0112); this plugin stays for its compare, board and tools |
-| `local-models/` (`endue.local-models`) | A client for the language models that run on this computer: the Ollama, llama.cpp and OpenAI-compatible servers found or added, their models with what each can do, and chat in threads kept as files, streamed as markdown with reasoning, speed and every version of an answer |
+| `local-models/` (`endue.local-models`) | A client for the language models that run on this computer: the Ollama, llama.cpp and OpenAI-compatible servers found or added, their models with what each can do, and chat in threads kept as files, streamed as markdown with reasoning, speed and every version of an answer (ADR 0267) |
 
 The file plugins: one plugin per thing a person does with a file, every format of that kind in one
 interface (ADR 0045). Each reads; none edits yet. Each autoloads: off at start, on when a file it

@@ -1,7 +1,1 @@
-{
-  "packages/runtime/src/surface/endue/board-copy.ts": 2,
-  "packages/runtime/src/surface/endue/copy.ts": 1,
-  "packages/runtime/src/surface/endue/model.ts": 1,
-  "packages/runtime/src/surface/local-agent/copy.ts": 1,
-  "packages/runtime/src/surface/samples/universal.ts": 1
-}
+{}

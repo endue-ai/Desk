@@ -1,6 +1,8 @@
 //! The tools against a real desk with two plugins and the runtime: the catalog shows every plugin's
-//! commands; running one is the agent's call, refused until the person allows it, held for approval
-//! when the plugin marks it irreversible; the plugins `--plugin` names get a tool per command.
+//! commands; running one is the agent's call, without a question for a command a plugin offers
+//! agents (ADR 0268, ADR 0367) and refused until the person allows it for any other, the desk's own
+//! included, held for approval when the plugin marks it irreversible; the plugins `--plugin` names
+//! get a tool per command.
 #![cfg(unix)]
 
 mod support;
@@ -83,21 +85,33 @@ fn run_command_is_the_agents_call_and_waits_for_the_person() {
     let (mut mcp, _) = Mcp::initialized(desk.options(&[]), PROTOCOL_VERSIONS[0]);
     let open = json!({ "command": "example.notes.open", "args": { "path": "a.md" } });
 
-    // Nobody holds perm:manage here, so the default prompter answers the prompt: no.
-    let (refused, is_error) = mcp.tool(RUN_COMMAND, open.clone());
-    assert!(is_error, "{refused}");
-    assert_eq!(refused["error"]["code"], "permission_denied");
-    assert_eq!(refused["error"]["permission"]["permission"], "cmd:invoke");
-    assert!(refused["hint"].as_str().unwrap().contains("allowlist"));
-
-    desk.allow(&["example.*", "desk.*"]);
+    // A command an installed plugin offers agents runs without a question (ADR 0268, ADR 0367).
     let (ran, is_error) = mcp.tool(RUN_COMMAND, open);
     assert!(!is_error, "{ran}");
     assert_eq!(ran["command"], "example.notes.open");
     assert_eq!(ran["result"]["args"], json!({ "path": "a.md" }));
     assert_eq!(ran["result"]["caller"], format!("agent:{AGENT}"));
-    let (toggled, _) = mcp.tool(RUN_COMMAND, json!({ "command": "desk.theme.toggle" }));
+
+    // The desk's own command is no plugin's: it asks. Nobody holds perm:manage here, so the
+    // default prompter answers the prompt: no.
+    let toggle = json!({ "command": "desk.theme.toggle" });
+    let (refused, is_error) = mcp.tool(RUN_COMMAND, toggle.clone());
+    assert!(is_error, "{refused}");
+    assert_eq!(refused["error"]["code"], "permission_denied");
+    assert_eq!(refused["error"]["permission"]["permission"], "cmd:invoke");
+    assert!(refused["hint"].as_str().unwrap().contains("allowlist"));
+
+    // So does one the plugin keeps for the person (ADR 0367).
+    let status = json!({ "command": "example.git.status" });
+    let (kept, is_error) = mcp.tool(RUN_COMMAND, status.clone());
+    assert!(is_error, "{kept}");
+    assert_eq!(kept["error"]["code"], "permission_denied");
+
+    desk.allow(&["example.*", "desk.*"]);
+    let (toggled, _) = mcp.tool(RUN_COMMAND, toggle);
     assert_eq!(toggled["result"]["ran"], "desk.theme.toggle");
+    let (status, is_error) = mcp.tool(RUN_COMMAND, status);
+    assert!(!is_error, "{status}");
 
     let (wrong, is_error) = mcp.tool(RUN_COMMAND, json!({ "command": "example.notes.open" }));
     assert!(is_error);

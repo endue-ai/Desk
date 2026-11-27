@@ -1,5 +1,5 @@
 //! endue stays when its windows go (#237, ADR 0225). Closing the desk's window hides it and the
-//! process runs on: the core, the runtime's page, the island and the shortcuts. Three things keep
+//! process runs on: the core, the runtime's page and the shortcuts. Three things keep
 //! the hidden page working. Chromium throttles a hidden page's timers (to one a second, and to one
 //! a minute after five minutes) and lowers its renderer's priority; `SWITCHES` turn both off, for
 //! the desk's page and for every plugin's, whose work an agent may be waiting for. The shell says
@@ -39,7 +39,6 @@ impl Shell {
         if let Some(compositor) = self.compositor.as_mut() {
             compositor.occluded(!seen);
         }
-        crate::eris_window::main_changed(self);
     }
 
     /// Hide the main window: its red button, which leaves the desk running.
@@ -77,8 +76,6 @@ impl Shell {
     fn main_back(&mut self, hidden: bool) {
         if hidden {
             self.main_seen(true);
-        } else {
-            crate::eris_window::main_changed(self);
         }
     }
 

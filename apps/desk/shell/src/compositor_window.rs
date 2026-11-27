@@ -9,7 +9,8 @@
 //! it is for (`input.rs`), and first through `desk-wm`'s window manager, which drags, resizes,
 //! snaps and pans (`wm.rs`, #80, ADR 0153); the compositor draws a page's hover title
 //! (`tooltip.rs`, #156). Every surface and the page render on the desk's frame clock (`clock.rs`,
-//! ADR 0152). Screen readers see the desk as one tree through an AccessKit adapter (`a11y.rs`,
+//! ADR 0152), at the display's rate (`display.rs`), and a render thread of the window's own draws
+//! each frame the main thread lays out (`frame.rs`, `render_thread.rs`, #249). Screen readers see the desk as one tree through an AccessKit adapter (`a11y.rs`,
 //! #57). The spread (`spread.rs`), the canvas map (`minimap.rs`) and every surface's snapshot for
 //! the core (`snapshots.rs`) draw on the surfaces' live and last textures (#54, ADR 0161).
 
@@ -22,6 +23,7 @@ pub mod commands;
 mod compose;
 pub mod composed;
 pub mod cursor;
+mod display;
 pub mod draw;
 mod draw_map;
 mod draw_pane;
@@ -30,6 +32,8 @@ mod draw_slide;
 mod draw_spread;
 mod draw_web;
 mod edges;
+pub mod edit_command;
+mod frame;
 mod gpu;
 pub use gpu::headless;
 mod handed;
@@ -42,6 +46,7 @@ mod os_pointer;
 pub mod overlay;
 mod page;
 pub mod pan;
+mod render_thread;
 pub mod report;
 mod snapshots;
 mod spread;
@@ -49,6 +54,7 @@ mod steps;
 pub mod system;
 mod tooltip;
 mod web;
+mod web_control;
 pub mod winit_input;
 pub mod wm;
 
@@ -69,7 +75,7 @@ use winit::window::Window;
 use crate::host::Desk;
 use crate::native_host::NativeHost;
 use crate::web_host::view::{SharedView, View};
-use crate::web_host::{WebHost, frames::FRAME, relay::Relay, top};
+use crate::web_host::{WebHost, frames, relay::Relay, top};
 use composed::Shared;
 use hosted::{Hosted, Outcome, look, motion, owner};
 use report::DeskReport;
@@ -78,15 +84,13 @@ use report::DeskReport;
 pub const PAGE: &str = "desk";
 /// What the runtime hears: the windows that keep a renderer (ADR 0151).
 pub const LIVE: &str = "desk://compositor-live";
-/// An image asked of the window this late held the event loop for it.
-const SLOW_IMAGE: Duration = Duration::from_millis(250);
-/// So many late images in a row and the window presents nothing for a while (`gpu::PAUSED`).
-const SLOW_IMAGES: u32 = 3;
 
 /// The compositor window and everything it draws.
 pub struct CompositorWindow {
     pub window: Arc<Window>,
     gpu: gpu::Gpu,
+    /// The thread that draws each frame (#249).
+    render: render_thread::RenderThread,
     shared: Shared,
     pub host: WebHost,
     /// Native plugins' surfaces, each its own process (#59).
@@ -100,14 +104,15 @@ pub struct CompositorWindow {
     scene: Scene,
     desk: Arc<Desk>,
     occluded: bool,
+    /// The display's frames a second (`display.rs`, #249).
+    rate: u32,
     last_frame: Instant,
     /// When the frame clock looks next (`clock.rs`).
     begin_due: Option<Instant>,
-    /// Frames composed for the window, and those it presented.
+    /// Frames composed for the window.
     composed: u64,
-    presented: u64,
-    /// The late images in a row.
-    slow_presents: u32,
+    /// A check's busy loop after the next frame is handed (`frame.rs`).
+    busy: Option<Duration>,
     /// Where input goes (#56).
     router: InputRouter,
     cursors: cursor::Cursors,
@@ -137,12 +142,15 @@ impl CompositorWindow {
         window: Arc<Window>,
         desk: Arc<Desk>,
     ) -> Result<CompositorWindow, String> {
-        let gpu = gpu::Gpu::new(Arc::clone(&window), headless())?;
+        let mut gpu = gpu::Gpu::new(Arc::clone(&window), headless())?;
         eprintln!(
-            "endue Desk: compositor mode on {} ({:?})",
+            "endue: compositor mode on {} ({:?})",
             gpu.adapter.name, gpu.adapter.backend
         );
         let shared = Shared::new(Compositor::new(&gpu.device, &gpu.queue, gpu.format));
+        // The render thread draws each scene after its layout: a new size takes a new texture (#249).
+        shared.lock().render_thread_draws();
+        let render = frame::start(&mut gpu, &shared, display::rate(&window));
         let relay = Relay::default();
         let host = WebHost::new(
             Arc::new(shared.clone()),
@@ -171,10 +179,13 @@ impl CompositorWindow {
         let theme = look(&table);
         let mut hosted = Hosted::new(window.scale_factor());
         hosted.wm.set_motion(motion(&table));
+        // Off screen as on it, the frames follow the display's rate: none until it is read.
+        let rate = 0;
         let mut opened = CompositorWindow {
             hosted,
             window,
             gpu,
+            render,
             shared,
             host,
             native,
@@ -186,11 +197,11 @@ impl CompositorWindow {
             scene: Scene::new(physical.width, physical.height),
             desk,
             occluded: false,
-            last_frame: Instant::now() - FRAME,
+            rate,
+            last_frame: Instant::now() - frames::FRAME,
             begin_due: None,
             composed: 0,
-            presented: 0,
-            slow_presents: 0,
+            busy: None,
             router,
             cursors: cursor::Cursors::default(),
             page_composing: None,
@@ -202,6 +213,7 @@ impl CompositorWindow {
             mapping: minimap::Mapping::default(),
             tips: tooltip::Tips::default(),
         };
+        opened.follow_display();
         opened.stand_in();
         opened.attach_a11y(event_loop);
         let snapshots = snapshots::Snapshots::new(opened.desk.pump.clone());
@@ -238,24 +250,27 @@ impl CompositorWindow {
     /// The window has a new size or scale: the page lays out again.
     pub fn resized(&mut self) {
         let physical = self.window.inner_size();
-        self.gpu.resize(physical.width, physical.height);
+        // The render thread fits the swapchain to the next scene's size.
         self.scene.resize(physical.width, physical.height);
+        self.shared.lock().dirty = true;
         let scale = self.window.scale_factor();
         let size = physical.to_logical::<f64>(scale);
         let size = (size.width.round() as u32, size.height.round() as u32);
         self.page_resized(size, scale as f32);
         let outcome = self.hosted.rescale(scale, Instant::now());
         self.carry(outcome);
+        self.follow_display();
     }
 
     /// The window went off screen or came back: every surface is hidden, or shown again, and a
     /// window that could not present presents again.
     pub fn occluded(&mut self, occluded: bool) {
         // A headless desk under a frame trace measures, whatever covers its window (#247).
-        let occluded = occluded && !(self.gpu.headless() && crate::frame_trace::on());
+        let occluded = occluded && !(self.gpu.headless && crate::frame_trace::on());
         self.occluded = occluded;
         if !occluded {
-            self.gpu.resume();
+            self.render.resume();
+            self.follow_display();
         }
         self.page.lock().hidden = occluded;
         self.host.page_shown(!occluded);
@@ -297,7 +312,7 @@ impl CompositorWindow {
                 self.shared.lock().dirty = true;
                 if let Some((plugin, _)) = owner(&died.surface) {
                     eprintln!(
-                        "endue Desk: the renderer of {plugin} stopped ({:?})",
+                        "endue: the renderer of {plugin} stopped ({:?})",
                         died.reason
                     );
                     let event = json!({ "plugin": plugin });
@@ -330,62 +345,16 @@ impl CompositorWindow {
         self.tip_tick(now);
         self.a11y_tick();
         self.begin_frames(now);
-        // The OS withheld the last frame (a locked screen): one now means the window shows again.
-        if self.due().withheld().is_some_and(|until| now >= until) && self.gpu.frame().is_some() {
-            self.shared.lock().dirty = true;
+        // The OS withheld the last frame (a locked screen), or presenting paused: a frame asks the
+        // window again, the scene as it was unless the desk changed, and shows if it does.
+        if self.due().withheld().is_some_and(|until| now >= until) {
+            self.render.resume();
+            self.frame(now);
         }
         // Out of sight, nothing is due: what changed meanwhile is drawn once it shows (#155).
-        if !self.due().frame().is_some_and(|at| now >= at) {
-            return;
+        if self.due().frame().is_some_and(|at| now >= at) {
+            self.frame(now);
         }
-        // The motion gate's frame trace times each frame (#247, `frame_trace.rs`).
-        let mut timed = crate::frame_trace::Timed::begin(|| self.shared.lock().dirty);
-        self.scene_for_frame();
-        timed.mark();
-        self.composed += 1;
-        self.last_frame = clock::Due::beat(self.last_frame, now);
-        if !self.gpu.presents() {
-            return self.unseen(timed);
-        }
-        let started = Instant::now();
-        let frame = self.gpu.frame();
-        timed.mark();
-        let slow = started.elapsed() > SLOW_IMAGE;
-        self.slow_presents = if slow { self.slow_presents + 1 } else { 0 };
-        let shown = frame.is_some();
-        match frame {
-            Some(frame) => self.present(frame),
-            // Composed for the router and captures, shown nowhere: not again until a change,
-            // where it composed every desk frame for nothing (#134).
-            None if self.gpu.withheld().is_some() => self.shared.lock().drawn(),
-            None => {}
-        }
-        timed.end(self.composed, shown);
-        if self.slow_presents >= SLOW_IMAGES {
-            // A locked screen, a display going off: the images come late, each holding the loop.
-            // The frame in hand went out first; its surface stays (`gpu.rs`).
-            eprintln!(
-                "endue Desk: the window cannot present; composing off screen only for {:?}",
-                gpu::PAUSED
-            );
-            self.gpu.stop_presenting(now);
-        }
-    }
-
-    /// The composed scene into `frame`, to the window.
-    fn present(&mut self, frame: wgpu::SurfaceTexture) {
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let size = (frame.texture.width(), frame.texture.height());
-        let mut composed = self.shared.lock();
-        composed.compositor.invalidate();
-        composed.compositor.render(&self.scene, &view, size);
-        composed.drawn();
-        drop(composed);
-        self.window.pre_present_notify();
-        self.gpu.queue.present(frame);
-        self.presented += 1;
     }
 
     /// Close the page's browser and every surface's (the desk quits).

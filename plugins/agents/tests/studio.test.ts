@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deleteConfirmed, localFacets, localInspector, webStudio } from "../ui/studio.js";
+import { deleteConfirmed, localFacets, localInspector } from "../ui/studio.js";
 import { localAgents } from "./fixtures";
 import { mount, pick, settle } from "./harness";
 
@@ -26,7 +26,7 @@ describe("Studio", () => {
       ["skills", "card", "1 skill"],
       // endue AI did not answer for the connectors: the cell says so instead of "0".
       ["connectors", "card", "Could not be read"],
-      ["channels", "card", "Paired on endue.ai"],
+      ["channels", "card", "Where people reach it"],
       ["status", "card", "Active"],
       ["settings", "foot", "Private · claude-sonnet-4.5"],
     ]);
@@ -171,7 +171,7 @@ describe("Studio", () => {
     const { app, host, studio, last, methods, params } = await mount();
     app.studio("endue:ag_miso", "settings");
     await settle(host);
-    expect(studio().inspector?.actions?.map((a) => a.id)).toEqual(["open-web", "delete"]);
+    expect(studio().inspector?.actions?.map((a) => a.id)).toEqual(["delete"]);
     await app.studioActions.act("ag_miso", "delete");
     expect(studio().deleting).toBe(true);
 
@@ -187,16 +187,16 @@ describe("Studio", () => {
     expect(last().home?.cards.map((c) => c.key)).not.toContain("endue:ag_miso");
   });
 
-  it("opens an endue agent on endue.ai through shell.open", async () => {
-    expect(webStudio("ag_miso")).toBe("https://endue.ai/agent/ag_miso/studio");
-    const { app, host, params } = await mount();
+  it("keeps an endue agent's Studio in the desk: no button opens endue.ai", async () => {
+    const { app, host, studio, params } = await mount();
+    for (const facet of ["channels", "settings"]) {
+      app.studio("endue:ag_miso", facet);
+      await settle(host);
+      expect(studio().inspector?.actions?.map((a) => a.id) ?? []).not.toContain("open-web");
+    }
+    expect(JSON.stringify(studio())).not.toContain("endue.ai");
     await app.studioActions.act("ag_miso", "open-web");
     await settle(host);
-    expect(params("shell.open")).toEqual([
-      {
-        target: "https://endue.ai/agent/ag_miso/studio",
-        scope: { permission: "shell:open", schemes: ["https"] },
-      },
-    ]);
+    expect(params("shell.open")).toEqual([]);
   });
 });

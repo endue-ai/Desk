@@ -39,5 +39,14 @@ generator and `node:zlib` only (no downloads). Run `node scripts/theme-textures.
 commit the PNGs; its test, in `just test-unit`, checks that it draws the same bytes twice, writes valid
 PNGs and that the committed tiles hold the pixels it draws.
 
+`app-icons.swift` (`just app-icons`, macOS only) renders the desk's app icons in `apps/desk/shell/icons/`
+from the brand's `brand/endue/app-icon.svg`: the tile as it is with continuous corners, edge to edge for the
+PNGs and `icon.ico`, on Apple's 824-in-1024 grid for `icon.icns`. Run it after the brand's icon changes.
+
 `theme-market.mjs` (`just check`, ADR 0060) checks `market/themes`: an index with unique ids, each bundle
 beside it with its sha256, size and licence and a valid theme plugin. Its test runs in `just test-unit`.
+
+`pg-versions.mjs` (`just test-pg-versions`, ADR 0351) runs the database plugin's live tests against
+PostgreSQL 15 to 19, each in a throwaway container (`pg-versions/server.mjs`) on a port Docker picks:
+as the superuser, as a role that is not one with its own `search_path`, and over TLS with a client
+certificate made for the run (`pg-versions/certs.mjs`). Its unit test runs in `just test-unit`.

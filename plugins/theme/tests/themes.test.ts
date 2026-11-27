@@ -47,8 +47,13 @@ const NON_TEXT: [string, string][] = [
   ["input", "card"],
   ["ring", "background"],
   ["ring", "card"],
+  ["star", "background"],
+  ["star", "card"],
+  ["star", "muted"],
   ...STATUSES.map((s): [string, string] => [s, "card"]),
 ];
+// Code: every token colour on a code block's tint over the card, 4.5:1 or more.
+const CODE = ["Comment", "Keyword", "String", "Number", "Function", "Tag", "Property"];
 
 const ratio = (set: Record<string, string>, fg: string, bg: string, layer?: string) => {
   const color = (name: string) => {
@@ -92,6 +97,9 @@ describe("the endue theme", () => {
     });
     it.each(NON_TEXT)("border or fill %s on %s is at least 3:1", (fg, bg) => {
       expect(ratio(set, fg, bg)).toBeGreaterThanOrEqual(3);
+    });
+    it.each(CODE)("code %s on a code block over the card is at least 4.5:1", (name) => {
+      expect(ratio(set, `code${name}`, "card", "codeSurface")).toBeGreaterThanOrEqual(4.5);
     });
     it("reaches 7:1 for text with high contrast", () => {
       const strong = high(scheme);

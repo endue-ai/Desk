@@ -11,7 +11,7 @@ import { ask } from "./ask.js";
  *   started: number, ended: number, ending: "running" | import("./ask.js").Ending,
  *   answer: string, error: string, line: string, problems: string[],
  *   tools: import("./parse.js").Reply["tools"], usage: import("./parse.js").Reply["usage"],
- *   session: string, model: string }} Run
+ *   parts: import("./parse.js").Reply["parts"], session: string, model: string }} Run
  */
 
 const RUNS_KEPT = 100;
@@ -25,14 +25,17 @@ export function createRuns(runner, env) {
   let runs = [];
   /** @type {Map<string, () => void>} */
   const stops = new Map();
+  /** @type {WeakMap<Run, string>} */
+  const owners = new WeakMap();
 
   /**
    * Ask, as a run of `origin`.
    * @param {Question} question
    * @param {Origin} origin
+   * @param {string} [owner] authenticated caller of an agent-owned work run
    * @returns {{ run: Run, done: Promise<Result> }}
    */
-  const start = (question, origin) => {
+  const start = (question, origin, owner) => {
     /** @type {Run} */
     const run = {
       id: env.id(),
@@ -48,11 +51,13 @@ export function createRuns(runner, env) {
       line: question.agent.command,
       problems: [],
       tools: [],
+      parts: [],
       usage: {},
       session: "",
       model: question.model ?? "",
     };
     runs.push(run);
+    if (owner) owners.set(run, owner);
     const finished = runs.filter((r) => r.ending !== "running");
     if (runs.length > RUNS_KEPT && finished[0]) runs = runs.filter((r) => r !== finished[0]);
     const asked = ask(runner, question, {
@@ -60,6 +65,7 @@ export function createRuns(runner, env) {
       onUpdate: (reply) => {
         run.answer = reply.text.trim() || reply.final.trim();
         run.tools = [...reply.tools];
+        run.parts = reply.parts;
         run.usage = { ...reply.usage };
         run.problems = [...reply.problems];
         if (reply.session) run.session = reply.session;
@@ -109,6 +115,7 @@ export function createRuns(runner, env) {
     stop,
     stopAll,
     find: (/** @type {unknown} */ id) => runs.find((r) => r.id === id),
+    owns: (/** @type {Run} */ run, /** @type {string} */ caller) => owners.get(run) === caller,
     /** Newest first. */
     list: () => [...runs].reverse(),
     running: () => runs.filter((r) => r.ending === "running"),

@@ -5,8 +5,8 @@
  "aria-label": "User information",
  "data-popover": "account",
  "style": {
-  "background": "rgb(43, 39, 49)",
-  "border": "solid rgb(51, 49, 54)"
+  "background": "rgb(42, 40, 36)",
+  "border": "solid rgb(50, 48, 43)"
  },
  "children": [
   {
@@ -29,7 +29,7 @@
        "tag": "span",
        "class": "pop-text",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Inbox"
       },
@@ -37,9 +37,9 @@
        "tag": "span",
        "class": "badge",
        "style": {
-        "background": "rgb(36, 33, 39)",
-        "color": "rgb(242, 240, 245)",
-        "border": "solid rgb(51, 49, 54)"
+        "background": "rgb(35, 33, 30)",
+        "color": "rgb(179, 175, 165)",
+        "border": "solid rgba(0, 0, 0, 0)"
        },
        "text": "2"
       }
@@ -59,7 +59,7 @@
        "tag": "span",
        "class": "pop-text",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Open settings"
       },
@@ -67,7 +67,7 @@
        "tag": "span",
        "class": "pop-muted",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "⌘,"
       }
@@ -80,8 +80,8 @@
    "class": "pop-divider",
    "role": "separator",
    "style": {
-    "background": "rgb(51, 49, 54)",
-    "color": "rgb(242, 240, 245)"
+    "background": "rgb(50, 48, 43)",
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
@@ -92,7 +92,7 @@
      "tag": "span",
      "class": "account-avatar",
      "style": {
-      "background": "rgb(48, 40, 62)"
+      "background": "rgb(42, 40, 36)"
      },
      "children": [
       {
@@ -107,14 +107,14 @@
       {
        "tag": "strong",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Local user"
       },
       {
        "tag": "small",
        "style": {
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
        },
        "text": "On this device"
       }
@@ -126,7 +126,7 @@
    "tag": "div",
    "class": "pop-row",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    },
    "text": "endue ID",
    "children": [
@@ -134,7 +134,7 @@
      "tag": "span",
      "class": "pop-muted",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "Waiting for the browser"
     }
@@ -144,13 +144,13 @@
    "tag": "div",
    "class": "account-code",
    "style": {
-    "border": "solid rgb(51, 49, 54)"
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
      "tag": "p",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      },
      "text": "Confirm this code on the endue ID page in your browser."
     },
@@ -158,7 +158,7 @@
      "tag": "strong",
      "class": "account-user-code",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      },
      "text": "WDJB-MJHT"
     },
@@ -166,7 +166,7 @@
      "tag": "small",
      "class": "pop-muted",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "auth.endue.ai/realms/endue/device"
     },
@@ -174,7 +174,7 @@
      "tag": "p",
      "class": "pop-muted",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "If the page asks you to sign in, choose “New to Endue? Create an account”."
     }
@@ -188,9 +188,9 @@
      "tag": "button",
      "class": "btn btn-primary",
      "style": {
-      "background": "rgb(182, 163, 245)",
-      "color": "rgb(30, 24, 51)",
-      "border": "solid rgb(182, 163, 245)"
+      "background": "rgb(243, 241, 236)",
+      "color": "rgb(28, 26, 23)",
+      "border": "solid rgb(243, 241, 236)"
      },
      "text": "Open browser again"
     },
@@ -198,9 +198,9 @@
      "tag": "button",
      "class": "btn btn-outline",
      "style": {
-      "background": "rgb(55, 49, 63)",
-      "color": "rgb(242, 240, 245)",
-      "border": "solid rgb(131, 121, 145)"
+      "background": "rgb(53, 50, 45)",
+      "color": "rgb(243, 241, 236)",
+      "border": "solid rgb(53, 50, 45)"
      },
      "text": "Cancel"
     }
@@ -210,7 +210,7 @@
    "tag": "div",
    "class": "pop-row",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    },
    "text": "Profile",
    "children": [
@@ -218,7 +218,7 @@
      "tag": "span",
      "class": "pop-muted",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "Morning"
     }
@@ -228,7 +228,7 @@
    "tag": "div",
    "class": "pop-row",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    },
    "text": "Space",
    "children": [
@@ -236,7 +236,7 @@
      "tag": "span",
      "class": "pop-muted",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "Home"
     }

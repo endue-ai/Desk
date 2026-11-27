@@ -55,7 +55,24 @@ impl FakeNotifier {
     /// if there is one and `id` was posted.
     pub fn click(&self, id: &str) {
         if lock(&self.posted).iter().any(|posted| posted.id == id) {
-            self.clicks.fire(Click { id: id.to_owned() });
+            self.clicks.fire(Click {
+                id: id.to_owned(),
+                action: false,
+            });
+        }
+    }
+
+    /// The person presses the button of the notification posted with `id`: the handler is called,
+    /// on this thread, if there is one and `id` was posted with a button.
+    pub fn press(&self, id: &str) {
+        let has_button = lock(&self.posted)
+            .iter()
+            .any(|posted| posted.id == id && posted.action.is_some());
+        if has_button {
+            self.clicks.fire(Click {
+                id: id.to_owned(),
+                action: true,
+            });
         }
     }
 }

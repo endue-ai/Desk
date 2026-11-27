@@ -1,0 +1,181 @@
+/* The figures: area charts with a crosshair and a tooltip, sparklines, meters and the segmented
+   bar. Marks take their series colour from --series, a theme chart token. */
+
+.area-chart {
+  position: relative;
+  height: var(--chart-h);
+}
+
+.area-svg {
+  display: block;
+  overflow: visible;
+}
+
+.area-svg .grid {
+  stroke: color-mix(in srgb, var(--desk-text) 9%, transparent);
+  stroke-width: 1;
+}
+
+.area-svg .line,
+.spark .line {
+  fill: none;
+  stroke: var(--series);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.area-svg .wash,
+.spark .wash {
+  fill: color-mix(in srgb, var(--series) 12%, transparent);
+  stroke: none;
+}
+
+.area-svg .end,
+.spark .end {
+  fill: var(--series);
+  stroke: var(--desk-card);
+  stroke-width: 2;
+}
+
+.area-svg .tick {
+  fill: var(--desk-text-muted);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.area-svg .cross {
+  stroke: color-mix(in srgb, var(--desk-text) 35%, transparent);
+  stroke-width: 1;
+}
+
+.chart-tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  padding: var(--desk-space-2);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-md);
+  font-size: var(--desk-text-xs);
+  pointer-events: none;
+}
+
+.tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tip-row b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-when {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.key {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--series);
+}
+
+.spark {
+  display: block;
+  overflow: visible;
+}
+
+.meter {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-primary) 14%, transparent);
+}
+
+.meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+}
+
+.meter.warning {
+  background: color-mix(in srgb, var(--ds-warn) 16%, transparent);
+}
+
+.meter.warning .meter-fill {
+  background: var(--ds-warn);
+}
+
+.meter.danger {
+  background: color-mix(in srgb, var(--ds-bad) 16%, transparent);
+}
+
+.meter.danger .meter-fill {
+  background: var(--ds-bad);
+}
+
+.segmented {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+}
+
+.segments {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+
+.segment-part {
+  min-width: 4px;
+  border-radius: var(--desk-radius-full);
+  background: var(--series);
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-2) var(--desk-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--desk-text-xs);
+}
+
+.legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend small {
+  grid-column: 2 / -1;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.legend-name {
+  color: var(--desk-text-muted);
+}

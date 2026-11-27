@@ -81,7 +81,7 @@ fn core_phases_are_complete_events_in_microseconds_from_process_start() {
         .iter()
         .find(|e| e["ph"] == "M" && e["name"] == "process_name")
         .expect("a process name");
-    assert_eq!(process["args"]["name"], "endue Desk");
+    assert_eq!(process["args"]["name"], "endue");
 }
 
 #[test]

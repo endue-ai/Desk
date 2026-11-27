@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "web:control for one site and its subdomains",
+  "instance": {
+    "permission": "web:control",
+    "hosts": ["example.com", "*.example.com"]
+  }
+}

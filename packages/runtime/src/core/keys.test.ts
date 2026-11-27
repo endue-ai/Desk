@@ -22,10 +22,11 @@ describe("the default keymap", () => {
     for (const key of keys) expect(key.command).toMatch(/^desk\.[a-z]+\.[a-z0-9-]+$/);
   });
 
-  it("gives the shell's panes and desktops keys that clash with no policy's", () => {
+  it("gives the shell's tabs and desktops keys that clash with no policy's", () => {
     const map = new Map(resolveKeymap(keys, "mac").map((b) => [b.combo, b.command]));
-    expect(map.get("Meta+D")).toBe("desk.display.split-right");
-    expect(map.get("Meta+Alt+D")).toBe("desk.display.split-down");
+    expect(map.get("Meta+D")).toBe("desk.display.new-tab");
+    expect(map.get("Control+PageDown")).toBe("desk.display.next-tab");
+    expect(map.get("Control+PageUp")).toBe("desk.display.previous-tab");
     expect(map.get("Meta+Shift+D")).toBe("desk.notify.dnd");
     expect(map.get("Meta+W")).toBe("desk.buffers.close");
     expect(map.get("Meta+]")).toBe("desk.display.focus-next");

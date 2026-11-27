@@ -14,8 +14,8 @@
      "aria-expanded": "true",
      "data-mode": "morning",
      "style": {
-      "background": "rgb(30, 29, 33)",
-      "border": "solid rgb(182, 163, 245)"
+      "background": "rgb(29, 28, 25)",
+      "border": "solid rgb(243, 241, 236)"
      },
      "children": [
       {
@@ -26,7 +26,7 @@
        "tag": "span",
        "class": "mode-name",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Morning"
       },
@@ -48,8 +48,8 @@
      "role": "menu",
      "aria-label": "프로필 · Morning",
      "style": {
-      "background": "rgb(43, 39, 49)",
-      "border": "solid rgb(51, 49, 54)"
+      "background": "rgb(42, 40, 36)",
+      "border": "solid rgb(50, 48, 43)"
      },
      "children": [
       {
@@ -66,7 +66,7 @@
          "tag": "span",
          "class": "mode-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Deep work"
         }
@@ -86,7 +86,7 @@
          "tag": "span",
          "class": "mode-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Review"
         }
@@ -107,7 +107,7 @@
          "tag": "span",
          "class": "mode-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Studio"
         },
@@ -115,7 +115,7 @@
          "tag": "span",
          "class": "mode-copied",
          "style": {
-          "color": "rgb(176, 173, 183)"
+          "color": "rgb(179, 175, 165)"
          },
          "text": "jin",
          "children": [
@@ -141,7 +141,7 @@
          "tag": "span",
          "class": "mode-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Night"
         }
@@ -161,7 +161,7 @@
          "tag": "span",
          "class": "mode-name",
          "style": {
-          "color": "rgb(242, 240, 245)"
+          "color": "rgb(243, 241, 236)"
          },
          "text": "Default"
         }
@@ -172,8 +172,8 @@
        "class": "mode-menu-rule",
        "role": "separator",
        "style": {
-        "background": "rgb(51, 49, 54)",
-        "color": "rgb(242, 240, 245)"
+        "background": "rgb(50, 48, 43)",
+        "color": "rgb(243, 241, 236)"
        }
       },
       {
@@ -181,7 +181,7 @@
        "class": "menu-item",
        "role": "menuitem",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "새 프로필"
       },
@@ -190,8 +190,8 @@
        "class": "mode-menu-rule",
        "role": "separator",
        "style": {
-        "background": "rgb(51, 49, 54)",
-        "color": "rgb(242, 240, 245)"
+        "background": "rgb(50, 48, 43)",
+        "color": "rgb(243, 241, 236)"
        }
       },
       {
@@ -200,7 +200,7 @@
        "role": "menuitem",
        "disabled": "",
        "style": {
-        "color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
         "opacity": "0.5"
        },
        "text": "이 프로필에 저장"
@@ -211,7 +211,7 @@
        "role": "menuitem",
        "disabled": "",
        "style": {
-        "color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
         "opacity": "0.5"
        },
        "text": "되돌리기"
@@ -221,7 +221,7 @@
        "class": "menu-item",
        "role": "menuitem",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "이름 바꾸기…"
       }

@@ -140,7 +140,7 @@ impl WebHost {
         let url = {
             let mut inner = self.inner();
             let Some(url) = inner.sources.get(surface).cloned() else {
-                eprintln!("endue Desk: surface {surface} has no document to show");
+                eprintln!("endue: surface {surface} has no document to show");
                 return;
             };
             inner.apps.open.insert(surface.to_owned(), None);

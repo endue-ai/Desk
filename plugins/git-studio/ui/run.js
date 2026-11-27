@@ -198,6 +198,8 @@ export function createRunner(bridge, options = {}) {
 
 /** What git said, without its `fatal:` and `error:` prefixes, or a plain line about the exit. */
 export function explain(/** @type {string[]} */ args, /** @type {Outcome} */ outcome) {
+  const conflict = outcome.stdout.split("\n").find((line) => line.startsWith("CONFLICT "));
+  if (conflict) return conflict;
   const said = outcome.stderr
     .split("\n")
     .map((line) => line.replace(/^(fatal|error|warning): /, "").trim())

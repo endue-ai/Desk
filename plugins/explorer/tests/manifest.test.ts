@@ -59,9 +59,14 @@ describe("plugin.json", () => {
           "desk.palette.pick",
           "endue.terminal.new",
           "endue.git.status",
+          "endue.docker.copy-out",
         ],
       },
       { permission: "shell:open", paths: [HOME] },
+      // A folder outside the home folder: asked for at run time, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
+      { permission: "shell:open", paths: ["/**"] },
     ]);
     // The explorer opens no file type itself: the desk's rules name the plugin that does.
     expect(explorer.contributes?.files).toBeUndefined();
@@ -92,6 +97,11 @@ describe("plugin.json", () => {
       `${ID}.paste`,
       `${ID}.find`,
       `${ID}.find-below`,
+      `${ID}.folders`,
+      `${ID}.list`,
+      `${ID}.search`,
+      `${ID}.read`,
+      `${ID}.move`,
     ]);
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
     expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+E", "Mod+Shift+R"]);
@@ -114,6 +124,9 @@ describe("plugin.json", () => {
     const run = new Set(
       [...source.matchAll(/commands\.run\("([a-z.-]+)"/g)].map((m) => m[1] ?? ""),
     );
+    // A drop from Docker copies out through the Docker plugin's command, named once (drops.js).
+    if (source.includes('const COPY_OUT = "endue.docker.copy-out"'))
+      run.add("endue.docker.copy-out");
     const grant = manifest().permissions?.find((p) => p.permission === "cmd:invoke");
     const ids = grant && "ids" in grant ? grant.ids : [];
     for (const id of run) expect(ids.some((pattern) => covers(pattern, id))).toBe(true);

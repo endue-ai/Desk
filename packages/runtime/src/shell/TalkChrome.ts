@@ -9,7 +9,7 @@ import { mountTalkPlace } from "./talk-place";
 const TALK = "desk.shell.talk";
 
 function orb(): SVGSVGElement {
-  const mesh = generateMesh({ ...DENSITIES.airy, view: VIEW_IDLE, goldToward: [1, 0] });
+  const mesh = generateMesh({ ...DENSITIES.airy, view: VIEW_IDLE });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("class", "talk-orb");
@@ -111,7 +111,8 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     input.placeholder = ctx.tr("talkPlaceholder");
     const available = spaceAgents(s);
     const names = available.map((a) => a.name).join(", ");
-    preview.textContent = names || ctx.tr("talkPreview");
+    preview.textContent = names;
+    preview.hidden = !names;
     preview.title = names;
     agentButton.hidden = !open;
     agentButton.setAttribute("aria-label", ctx.tr("agents"));

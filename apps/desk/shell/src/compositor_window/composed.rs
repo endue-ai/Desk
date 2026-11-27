@@ -29,9 +29,6 @@ pub struct Composed {
     /// size it had (a caret's blink, a page's own animation): the scene is drawn again as it was
     /// laid out (R1, `compose.rs`).
     pub repainted: BTreeSet<TextureId>,
-    /// The pixels each texture's frames changed since the canvas map last drew its thumbnail
-    /// (`minimap.rs`): a frame of pictures alone redraws only the thumbnails much changed.
-    pub unmapped: HashMap<TextureId, u64>,
     /// Messages other than frames, for the owner to act on in order.
     pub messages: Vec<SurfaceMessage>,
     /// Frames attached and refused, by surface.
@@ -50,6 +47,8 @@ pub struct Composed {
     /// Each window's own page's paints of a size its panes' plugins have no picture of yet, held
     /// aside (ADR 0233).
     pages: window::Pages,
+    /// The textures retired until the render thread drew past them (#249).
+    retired: retired::Retired,
 }
 
 impl Composed {
@@ -79,10 +78,7 @@ impl Composed {
         size: (u32, u32),
         had: Option<(u32, u32)>,
     ) {
-        let (picture, changed) = taken(attach, size, had);
-        let unmapped = self.unmapped.entry(id).or_default();
-        *unmapped = unmapped.saturating_add(changed);
-        if picture {
+        if taken(attach, size, had) {
             self.repainted.insert(id);
         } else {
             self.dirty = true;
@@ -109,8 +105,8 @@ impl Composed {
 
     fn drop_frames(&mut self, surface: &str) {
         if let Some(id) = self.textures.remove(surface) {
-            self.unmapped.remove(&id);
-            self.frames.destroy(&mut self.compositor, id);
+            // A scene handed before may still draw it (`composed_retired.rs`).
+            self.retire(id);
             self.dirty = true;
         }
     }
@@ -130,30 +126,29 @@ impl Composed {
 
     /// Draw `scene` into a fresh off-screen target and read it back (RGBA rows).
     pub fn read(&mut self, scene: &Scene) -> Option<Vec<u8>> {
+        let (target, device, queue) = self.drawn_off_screen(scene);
+        target.read_rgba(&device, &queue).ok()
+    }
+
+    /// `scene` drawn into a fresh off-screen target, to read back once the lock is let go (a
+    /// capture's readback holds the render thread up no more, #249), with the device and queue.
+    pub fn drawn_off_screen(&mut self, scene: &Scene) -> (Target, wgpu::Device, wgpu::Queue) {
         let size = scene.viewport();
         let device = self.compositor.device().clone();
         let queue = self.compositor.queue().clone();
         let target = Target::new(&device, size, self.compositor.format());
         self.compositor.invalidate();
         self.compositor.render(scene, &target.view, size);
-        target.read_rgba(&device, &queue).ok()
+        (target, device, queue)
     }
 }
 
-/// What a frame `attach` changes, its texture now `size` pixels and `had` before: whether only its
-/// picture (a frame of the size the texture had), and how many of its pixels (all of them for a
-/// frame that names no damage). The desk's page lays the windows' page parts out from its paints
-/// (`PageShown`), so each of its frames lays the scene out again, as a surface's first frame or a
-/// new size does.
-pub fn taken(attach: &SurfaceAttach, size: (u32, u32), had: Option<(u32, u32)>) -> (bool, u64) {
-    let (w, h) = (u64::from(size.0), u64::from(size.1));
-    let changed = match attach.damage.as_slice() {
-        [] => w * h,
-        damage => (damage.iter())
-            .map(|r| r.width.min(w.saturating_sub(r.x)) * r.height.min(h.saturating_sub(r.y)))
-            .sum(),
-    };
-    (attach.surface != super::PAGE && had == Some(size), changed)
+/// Whether a frame `attach`, its texture now `size` pixels and `had` before, changes only its
+/// picture: a frame of the size the texture had. The desk's page lays the windows' page parts out
+/// from its paints (`PageShown`), so each of its frames lays the scene out again, as a surface's
+/// first frame or a new size does.
+pub fn taken(attach: &SurfaceAttach, size: (u32, u32), had: Option<(u32, u32)>) -> bool {
+    attach.surface != super::PAGE && had == Some(size)
 }
 
 /// The compositor's state, shared with the web host's handlers.
@@ -169,7 +164,6 @@ impl Shared {
             next: 0,
             dirty: true,
             repainted: BTreeSet::new(),
-            unmapped: HashMap::new(),
             messages: Vec::new(),
             attached: HashMap::new(),
             page_damage: Vec::new(),
@@ -178,6 +172,7 @@ impl Shared {
             page: page::PageAside::default(),
             panes: pane::Panes::default(),
             pages: window::Pages::default(),
+            retired: retired::Retired::default(),
         })))
     }
 
@@ -201,6 +196,13 @@ impl SurfaceSink for Shared {
             composed.dirty |= composed.pages_waiting();
             composed.pane_texture(&attach.surface, size)
         };
+        // A paint shown of another size than its picture goes to a texture of its own (#249).
+        let picture = id;
+        let id = if aside {
+            id
+        } else {
+            composed.shown_texture(id, size)
+        };
         // A paint to another texture than the one before it carries that one's damage only.
         let all = whole.then(|| SurfaceAttach {
             damage: Vec::new(),
@@ -213,6 +215,9 @@ impl SurfaceSink for Shared {
         let result = state
             .frames
             .attach(&mut state.compositor, id, attach, source);
+        if id != picture {
+            state.resized(&attach.surface, picture, id, result.is_ok());
+        }
         let damage = attach.damage.len();
         crate::frame_trace::attached(&attach.surface, started, damage, result.is_ok());
         let counts = state.attached.entry(attach.surface.clone()).or_default();
@@ -283,6 +288,8 @@ impl SurfaceSink for Shared {
 mod page;
 #[path = "composed_pane.rs"]
 mod pane;
+#[path = "composed_retired.rs"]
+mod retired;
 #[path = "composed_window.rs"]
 pub mod window;
 

@@ -18,6 +18,7 @@ export type Found = "every" | "scrim";
 export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?: Found]> = [
   ["desk.profiles", '[data-layer="system"] .modes'],
   ["desk.desktops", '[data-layer="system"] .desktops'],
+  ["desk.shortcuts", '[data-layer="system"] .shortcuts'],
   ["desk.agents", '[data-layer="system"] .sidebar'],
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],
@@ -27,20 +28,24 @@ export const PARTS: ReadonlyArray<readonly [id: string, selector: string, found?
   ["desk.canvas", ".map-strip"],
   ["desk.safe", '[data-layer="system"] .safe-badge'],
   ["desk.eris", ".eris"],
-  // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201).
+  // The status line is drawn over the windows but hears nothing; its buttons do (ADR 0201), and
+  // so does the notification centre's control right after it (#307), whose panel is a popover.
   ["desk.notices", ".desk-status"],
   [
     "desk.notice-actions",
-    ".desk-status .desk-status-action, .desk-status .desk-status-dismiss, .desk-status .desk-status-open",
+    ".desk-status .desk-status-action, .desk-status .desk-status-dismiss, .desk-status .desk-status-open, .desk-notify-bell",
     "every",
   ],
   // The theme studio docked to the side while it edits dims nothing (`editor.css`).
+  // A sweep's area and the rings of the windows it selected hear nothing; its bar does (ADR 0296).
+  ["desk.sweep-marks", ".sweep-mark", "every"],
+  ["desk.sweep", ".sweep-bar"],
   ["desk.scrim", ".scrim:not(.is-editing), .desk-describe, dialog[open]", "scrim"],
   ["desk.settings", "dialog.desk-settings[open]"],
   ["desk.studios", ".theme-studio"],
   [
     "desk.overlays",
-    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key',
+    '.popover, .tooltip, [role="menu"], .dialog, .proposal, .desk-describe-panel, .desk-which-key, .crash-card',
     "every",
   ],
 ];

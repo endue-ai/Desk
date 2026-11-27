@@ -7,7 +7,7 @@
     "opacity": "1",
     "transform": "none",
     "filter": "none",
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
   },
   "children": [
     {
@@ -20,7 +20,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -32,7 +32,7 @@
             "opacity": "0.5",
             "transform": "matrix3d(1, 0, 0, 0, 0, 0.174, 0.985, 0, 0, -0.985, 0.174, 0, 0, 0, 0, 1)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -47,7 +47,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(176, 173, 183)"
+        "color": "rgb(179, 175, 165)"
       }
     },
     {
@@ -59,7 +59,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     },
     {
@@ -71,7 +71,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -83,7 +83,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Skip intro"
         }
@@ -100,7 +100,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -111,7 +111,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Hello."
         },
@@ -123,7 +123,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "I'm E. R. I. S."
         },
@@ -135,7 +135,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Endue's Ridiculously Impressive Secretary."
         },
@@ -147,7 +147,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Small, I know."
         },
@@ -159,7 +159,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "But I'll take care of your whole desk."
         },
@@ -171,7 +171,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "I'd rather talk than type."
         },
@@ -183,7 +183,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "May I use your microphone?"
         },
@@ -195,7 +195,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Thanks. I'm listening."
         },
@@ -207,7 +207,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "What should I call you?"
         },
@@ -219,7 +219,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "text": "Nice to meet you, Ada."
         }
@@ -234,7 +234,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       },
       "children": [
         {
@@ -247,7 +247,7 @@
             "opacity": "1",
             "transform": "matrix(1, 0, 0, 1, 0, 0)",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -259,9 +259,21 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, -0.107)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
+                {
+                  "tag": "img",
+                  "class": "body",
+                  "style": {
+                    "display": "block",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
+                    "filter": "blur(0px)",
+                    "color": "rgb(243, 241, 236)"
+                  }
+                },
                 {
                   "tag": "div",
                   "class": "core-wrap",
@@ -271,7 +283,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, 0)",
                     "filter": "brightness(1)",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -283,22 +295,10 @@
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
                         "filter": "brightness(0.856)",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       }
                     }
                   ]
-                },
-                {
-                  "tag": "img",
-                  "class": "body",
-                  "style": {
-                    "display": "block",
-                    "visibility": "visible",
-                    "opacity": "1",
-                    "transform": "matrix(0.988, -0.156, 0.156, 0.988, 0, 0)",
-                    "filter": "blur(0px)",
-                    "color": "rgb(242, 240, 245)"
-                  }
                 }
               ]
             },
@@ -311,7 +311,7 @@
                 "opacity": "1",
                 "transform": "matrix(1, 0, 0, 1, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -323,7 +323,7 @@
                     "opacity": "1",
                     "transform": "matrix(1, 0, 0, 1, 0, -1.801)",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   }
                 }
               ]
@@ -337,19 +337,19 @@
                 "opacity": "0",
                 "transform": "matrix(1.3, 0, 0, 1.3, 0, 0)",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             },
             {
               "tag": "div",
-              "class": "glint",
+              "class": "warning-rim",
               "style": {
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "0",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               }
             }
           ]
@@ -364,7 +364,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           },
           "children": [
             {
@@ -377,7 +377,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(242, 240, 245)"
+                "color": "rgb(243, 241, 236)"
               },
               "children": [
                 {
@@ -389,7 +389,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(242, 240, 245)"
+                    "color": "rgb(243, 241, 236)"
                   },
                   "children": [
                     {
@@ -401,7 +401,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -413,7 +413,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "N"
                         },
@@ -426,7 +426,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "i"
                         },
@@ -439,7 +439,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "c"
                         },
@@ -452,7 +452,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         }
@@ -467,7 +467,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -479,7 +479,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0)",
                             "filter": "blur(0px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "t"
                         },
@@ -492,7 +492,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0.002)",
                             "filter": "blur(0.003px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "o"
                         }
@@ -507,7 +507,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -519,7 +519,7 @@
                             "opacity": "1",
                             "transform": "matrix(1, 0, 0, 1, 0, 0.025)",
                             "filter": "blur(0.044px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "m"
                         },
@@ -532,7 +532,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.044)",
                             "filter": "blur(0.076px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -545,7 +545,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.001, 0, 0, 1.001, 0, 0.068)",
                             "filter": "blur(0.12px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "e"
                         },
@@ -558,7 +558,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.002, 0, 0, 1.002, 0, 0.1)",
                             "filter": "blur(0.175px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "t"
                         }
@@ -573,7 +573,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -585,7 +585,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.003, 0, 0, 1.003, 0, 0.197)",
                             "filter": "blur(0.345px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "y"
                         },
@@ -598,7 +598,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.004, 0, 0, 1.004, 0, 0.258)",
                             "filter": "blur(0.452px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "o"
                         },
@@ -611,7 +611,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.005, 0, 0, 1.005, 0, 0.333)",
                             "filter": "blur(0.582px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "u"
                         },
@@ -624,7 +624,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.006, 0, 0, 1.006, 0, 0.422)",
                             "filter": "blur(0.738px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": ","
                         }
@@ -639,7 +639,7 @@
                         "opacity": "1",
                         "transform": "none",
                         "filter": "none",
-                        "color": "rgb(242, 240, 245)"
+                        "color": "rgb(243, 241, 236)"
                       },
                       "children": [
                         {
@@ -651,7 +651,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.015, 0, 0, 1.015, 0, 1.032)",
                             "filter": "blur(1.806px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "A"
                         },
@@ -664,7 +664,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.019, 0, 0, 1.019, 0, 1.269)",
                             "filter": "blur(2.221px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "d"
                         },
@@ -677,7 +677,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.023, 0, 0, 1.023, 0, 1.562)",
                             "filter": "blur(2.734px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "a"
                         },
@@ -690,7 +690,7 @@
                             "opacity": "1",
                             "transform": "matrix(1.029, 0, 0, 1.029, 0, 1.929)",
                             "filter": "blur(3.376px)",
-                            "color": "rgb(242, 240, 245)"
+                            "color": "rgb(243, 241, 236)"
                           },
                           "text": "."
                         }
@@ -711,7 +711,7 @@
             "opacity": "1",
             "transform": "none",
             "filter": "none",
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
           }
         }
       ]
@@ -725,7 +725,7 @@
         "opacity": "1",
         "transform": "none",
         "filter": "none",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
       }
     }
   ]

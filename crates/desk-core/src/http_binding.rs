@@ -154,7 +154,7 @@ fn headers(binding: &HttpBinding, token: Option<&str>) -> BTreeMap<String, Strin
         .keys()
         .any(|name| name.eq_ignore_ascii_case("user-agent"))
     {
-        headers.insert("User-Agent".into(), "endue-Desk".into());
+        headers.insert("User-Agent".into(), "endue".into());
     }
     if let (Some(auth), Some(token)) = (&binding.auth, token) {
         let name = auth
@@ -293,6 +293,21 @@ fn encode(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_default_user_agent_names_endue_and_respects_the_connector_header() {
+        let mut binding = HttpBinding {
+            base_url: "https://endue.ai".into(),
+            headers: None,
+            auth: None,
+            requests: Vec::new(),
+            maps: BTreeMap::new(),
+        };
+        assert_eq!(headers(&binding, None).get("User-Agent").unwrap(), "endue");
+        let custom = BTreeMap::from([("user-agent".into(), "endue-connector".into())]);
+        binding.headers = Some(custom.clone());
+        assert_eq!(headers(&binding, None), custom);
+    }
 
     #[test]
     fn a_link_header_names_its_next_page() {

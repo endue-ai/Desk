@@ -67,6 +67,7 @@ describe("plugin.json", () => {
         "search",
         "refresh",
         "next-unread",
+        "draft",
         "send",
         "reply",
         "react",
@@ -77,6 +78,10 @@ describe("plugin.json", () => {
         "save",
         "pin",
         "find",
+        "conversations",
+        "current",
+        "messages",
+        "find-messages",
         "connect",
       ].map((n) => `${ID}.${n}`),
     );
@@ -84,7 +89,9 @@ describe("plugin.json", () => {
     const irreversible = (contributes?.commands ?? [])
       .filter((c) => c.irreversible)
       .map((c) => c.id);
-    expect(irreversible).toEqual([`${ID}.send`, `${ID}.delete`]);
+    expect(irreversible).toEqual(
+      ["send", "react", "edit", "delete"].map((name) => `${ID}.${name}`),
+    );
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
     expect(contributes?.paletteProviders).toEqual([{ command: `${ID}.find`, title: "Chats" }]);
     expect(Object.keys(contributes?.settings ?? {})).toEqual(

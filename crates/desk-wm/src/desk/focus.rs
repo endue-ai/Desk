@@ -26,29 +26,27 @@ pub fn cycle<'a>(order: &'a [String], focused: Option<&str>, step: i64) -> Optio
 }
 
 impl Desk {
-    /// The panes of the shell's own on the desktop in front, in reading order (`paneViews`):
-    /// `<window>/<pane>`, those showing a plugin's surface left out.
+    /// The shell's own views the windows of the desktop in front show, in reading order
+    /// (`paneViews`): `<window>/<tab>` for the tab each shows, those showing a plugin's surface
+    /// left out. A tab a window does not show is no stop: showing it is its window's (ADR 0270).
     pub fn pane_views(&self) -> Vec<String> {
         self.windows()
             .into_iter()
-            .flat_map(|p| {
-                p.panes()
-                    .leaves()
-                    .into_iter()
-                    .filter(|(_, view)| !self.resolve(&p, view).starts_with(PLUGIN_VIEW))
-                    .map(|(pane, _)| format!("{}/{pane}", p.id))
-                    .collect::<Vec<_>>()
+            .filter_map(|p| {
+                let tab = p.shown();
+                (!self.resolve(&p, &tab.view).starts_with(PLUGIN_VIEW))
+                    .then(|| format!("{}/{}", p.id, tab.id))
             })
             .collect()
     }
 
-    /// Every stop the focus cycles through: the panes of the shell's own, then the plugin
+    /// Every stop the focus cycles through: the views of the shell's own, then the plugin
     /// surfaces the desktop in front shows, in the order the runtime mounted them.
     pub fn focus_order(&self) -> Vec<String> {
         let shown: Vec<String> = self
             .windows()
             .iter()
-            .flat_map(|p| self.plugins_of(p))
+            .flat_map(|p| self.shown_plugins(p))
             .collect();
         let mut order = self.pane_views();
         order.extend(
@@ -60,29 +58,23 @@ impl Desk {
         order
     }
 
-    /// The stop in use: the plugin surface in use, else the pane of the shell's own in use.
+    /// The stop in use: the plugin surface in use, else the view of the shell's own in use.
     pub fn focused_id(&self) -> Option<String> {
         if let Some(plugin) = self.focused_plugin() {
             return Some(plugin);
         }
         let window = self.focused_window()?;
         let p = self.window(&window)?;
-        let tree = p.panes();
-        let leaves = tree.leaves();
-        let pane = self
-            .pane
-            .as_deref()
-            .or_else(|| leaves.first().map(|(id, _)| *id))?;
-        let id = format!("{window}/{pane}");
+        let id = format!("{window}/{}", p.shown().id);
         self.pane_views().contains(&id).then_some(id)
     }
 
-    /// Give a stop the focus: a pane of the shell's own on the desktop in front, or a plugin
+    /// Give a stop the focus: a view of the shell's own on the desktop in front, or a plugin
     /// surface wherever its window is (`show_plugin`). Anything else changes nothing.
     pub fn focus(&mut self, id: &str) {
         if self.pane_views().iter().any(|v| v == id) {
-            if let Some((window, pane)) = id.rsplit_once('/') {
-                self.focus_pane(window, Some(pane));
+            if let Some((window, tab)) = id.rsplit_once('/') {
+                self.focus_tab(window, Some(tab));
             }
         } else if self.holds(id) {
             self.show_plugin(id);

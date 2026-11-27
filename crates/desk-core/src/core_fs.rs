@@ -7,15 +7,18 @@
 
 mod moves;
 mod ops;
+mod reversible;
+mod sheets_save;
 mod trash;
 mod undo;
 
+pub(crate) use reversible::FileChange;
 pub(crate) use trash::{TrashFn, system_trash};
 pub(crate) use undo::is_fs_op;
 
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::MutexGuard;
 
@@ -28,6 +31,7 @@ use desk_bridge::{
 use desk_plugin_host::rfc3339;
 use desk_sys::fs as sysfs;
 
+use crate::approval_versions::AgentChange;
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, denied, error, io_error, json};
 use crate::paths::normalize;
@@ -48,9 +52,16 @@ pub(crate) struct Watches {
 }
 
 impl Core {
-    pub(crate) fn fs_write(&self, caller: &str, params: FsWriteParams) -> Answer {
+    pub(crate) fn fs_write(&self, caller: &str, mut params: FsWriteParams) -> Answer {
+        match params.invocation_id.take() {
+            Some(id) => self.sheets_save(caller, &id, params),
+            None => self.write_file(caller, params),
+        }
+    }
+
+    fn write_file(&self, caller: &str, params: FsWriteParams) -> Answer {
         let scope = Permission::FsWrite(params.scope);
-        let path = self.authorize(caller, &scope, &params.path)?;
+        let path = self.resolve(&params.path)?;
         let create_dirs = params.create_dirs.unwrap_or(false);
         if create_dirs && let Some((parent, _)) = params.path.rsplit_once('/') {
             // Folders it creates must be inside the scope too. The grant was checked above, once:
@@ -78,12 +89,48 @@ impl Core {
             file: &path,
             bytes: &bytes,
         };
-        self.hold(caller, &scope, write)?;
+        let append_only = params.append == Some(true);
+        if !append_only && self.use_action_grant(caller, &scope, &write)? {
+            if let Some((bytes_written, change)) =
+                self.write_reversibly(caller, &scope, &params.path, &path, &bytes, create_dirs)?
+            {
+                let version = change.version.clone();
+                if let Some(version) = &version {
+                    self.push_write(caller, "fs.write", &params.path, version.clone());
+                }
+                self.reversible_change(caller, || AgentChange::File(change));
+                return json(FsWriteResult {
+                    bytes_written,
+                    version,
+                });
+            }
+            self.hold(caller, &scope, write)?;
+        } else {
+            self.authorize_action(caller, &scope, write)?;
+        }
+        if append_only {
+            // A chunk at the end, in place: it replaces nothing, so nothing is kept (ADR 0356).
+            let _history = self.history();
+            let bytes_written = append(&path, &bytes).map_err(io_error)?;
+            return json(FsWriteResult {
+                bytes_written,
+                version: None,
+            });
+        }
         // The bytes it replaces are kept first (ADR 0076).
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, create_dirs)?;
         if let Some(version) = &version {
             // Undoable by restoring the version (ADR 0077).
             self.push_write(caller, "fs.write", &params.path, version.clone());
+            self.reversible_change(caller, || {
+                AgentChange::File(FileChange::new(
+                    &params.path,
+                    &path,
+                    &bytes,
+                    Some(version.clone()),
+                    Vec::new(),
+                ))
+            });
         }
         json(FsWriteResult {
             bytes_written,
@@ -273,4 +320,12 @@ pub(crate) fn list(path: &Path) -> Answer {
         })
         .collect();
     json(FsListResult { entries })
+}
+
+/// Add `bytes` at the end of the existing file at `path`; a missing one is NotFound (no create).
+fn append(path: &Path, bytes: &[u8]) -> io::Result<u64> {
+    let mut file = OpenOptions::new().append(true).open(path)?;
+    file.write_all(bytes)?;
+    file.flush()?;
+    Ok(bytes.len() as u64)
 }

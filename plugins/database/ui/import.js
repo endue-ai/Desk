@@ -6,6 +6,7 @@
 
 import { literal } from "./edit/values.js";
 import { quoteName } from "./sql/quote.js";
+import { t as messageText } from "./strings/index.js";
 
 /**
  * @typedef {import("./sql/lexer.js").Dialect} Dialect
@@ -80,7 +81,7 @@ export function parseCsv(text, delimiter) {
       endRow();
     } else field += ch;
   }
-  if (quoted) throw new Error("The file ends inside a quoted field.");
+  if (quoted) throw new Error(messageText("import.theFileEndsInsideAQuoted"));
   if (field !== "" || wasQuoted || row.length > 0) endRow();
   return { rows, delimiter: sep };
 }
@@ -116,20 +117,24 @@ function parseJson(/** @type {string} */ text, /** @type {boolean} */ header) {
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new Error(`The file is not JSON: ${error instanceof Error ? error.message : error}.`);
+    throw new Error(
+      messageText("import.theFileIsNotJson", {
+        value: String(error instanceof Error ? error.message : error),
+      }),
+    );
   }
   // A db/rows value, as the plugin drags rows: { columns, rows }.
   const shaped = /** @type {{ columns?: unknown, rows?: unknown }} */ (data ?? {});
   if (!Array.isArray(data) && Array.isArray(shaped.columns) && Array.isArray(shaped.rows))
     data = [shaped.columns, ...shaped.rows];
-  else if (!Array.isArray(data)) throw new Error("The JSON file must hold an array of rows.");
+  else if (!Array.isArray(data)) throw new Error(messageText("import.theJsonFileMustHoldAn"));
   const list = /** @type {unknown[]} */ (data);
   if (list.every(Array.isArray)) {
     const rows = /** @type {unknown[][]} */ (list).map((r) => r.map(cellOf));
     return header ? rows : [[], ...rows];
   }
   if (!list.every((r) => r !== null && typeof r === "object" && !Array.isArray(r)))
-    throw new Error("The JSON file must hold an array of rows: objects, or arrays.");
+    throw new Error(messageText("import.theJsonFileMustHoldAn2"));
   const objects = /** @type {Record<string, unknown>[]} */ (list);
   const columns = [...new Set(objects.flatMap((o) => Object.keys(o)))];
   return [columns, ...objects.map((o) => columns.map((c) => cellOf(o[c])))];
@@ -185,7 +190,7 @@ export function autoMap(fileColumns, tableColumns) {
  */
 export function importStatements({ dialect, table, columns, mapping, rows, batch = 500 }) {
   const used = columns.filter((c) => mapping.includes(c.name));
-  if (used.length === 0) throw new Error("Map at least one column to the table.");
+  if (used.length === 0) throw new Error(messageText("import.mapAtLeastOneColumnTo"));
   const from = used.map((c) => mapping.indexOf(c.name));
   const head = `INSERT INTO ${table} (${used.map((c) => quoteName(dialect, c.name)).join(", ")}) VALUES `;
   /** @type {string[]} */
@@ -209,7 +214,10 @@ export function importStatements({ dialect, table, columns, mapping, rows, batch
   const total = statements.reduce((sum, s) => sum + new TextEncoder().encode(s).length + 2, 0);
   if (total > MAX_IMPORT_BYTES)
     throw new Error(
-      `This import makes ${Math.ceil(total / 1024)} KiB of SQL and one run takes ${MAX_IMPORT_BYTES / 1024} KiB at most: split the file, or use the engine's own import (COPY, LOAD DATA, .import) in the terminal.`,
+      messageText("import.thisImportMakesKibOfSql", {
+        value: String(Math.ceil(total / 1024)),
+        value2: String(MAX_IMPORT_BYTES / 1024),
+      }),
     );
   return statements;
 }

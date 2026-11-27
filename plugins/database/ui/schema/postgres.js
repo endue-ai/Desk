@@ -2,10 +2,13 @@
 // foreign tables, sequences, functions and procedures (not an extension's), a table's keys,
 // checks, foreign keys, indexes and triggers, and the DDL of each, written from the catalog the way
 // pg_dump writes it: the server's own pg_get_*def where it has one. Every name and value is a
-// quoted literal (quote.js); an oid is checked to be digits before it is written.
+// quoted literal (quote.js); an oid is checked to be digits before it is written. The kinds the
+// schema cache holds beyond these (PG-50) build their DDL from it in pg/.
 
 import { qualified, quoteName, quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { closeStatement, partsOf } from "./common.js";
+import * as pg from "./pg/index.js";
 
 /**
  * @typedef {import("./common.js").SchemaObject} SchemaObject
@@ -33,7 +36,7 @@ export function objects(/** @type {string} */ schema) {
       "coalesce(pg_catalog.pg_get_function_result(p.oid), ''), NULL, p.oid::text " +
       "FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace " +
       `WHERE n.nspname = ${q(schema)} AND p.prokind IN ('f', 'p') AND NOT EXISTS (SELECT 1 FROM ` +
-      "pg_catalog.pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e') ORDER BY 1",
+      "pg_catalog.pg_depend d WHERE d.objid = p.oid AND d.deptype IN ('e', 'i')) ORDER BY 1",
   ];
 }
 
@@ -57,6 +60,8 @@ export function parts(/** @type {string} */ schema, /** @type {string} */ table)
 
 /** The queries the DDL of an object needs; their rows go to `ddl` in the same order. */
 export function ddlQueries(/** @type {SchemaObject | Part} */ object) {
+  const cached = pg.ddlQueries(object);
+  if (cached) return cached;
   if ("table" in object) return [];
   const { schema, name } = object;
   const where = ofTable(schema, name);
@@ -72,7 +77,8 @@ export function ddlQueries(/** @type {SchemaObject | Part} */ object) {
       "SELECT c.relkind::text, c.relpersistence::text, pg_catalog.obj_description(c.oid, 'pg_class'), " +
         "CASE WHEN c.relkind = 'p' THEN pg_catalog.pg_get_partkeydef(c.oid) END, (SELECT s.srvname " +
         "FROM pg_catalog.pg_foreign_table f JOIN pg_catalog.pg_foreign_server s ON s.oid = f.ftserver " +
-        `WHERE f.ftrelid = c.oid) FROM pg_catalog.pg_class c ${inSchema("c", schema)} AND c.relname = ${q(name)}`,
+        "WHERE f.ftrelid = c.oid), CASE WHEN c.relrowsecurity THEN 'YES' END, CASE WHEN " +
+        `c.relforcerowsecurity THEN 'YES' END FROM pg_catalog.pg_class c ${inSchema("c", schema)} AND c.relname = ${q(name)}`,
     ];
   if (object.kind === "view" || object.kind === "materialized view")
     return [
@@ -86,7 +92,8 @@ export function ddlQueries(/** @type {SchemaObject | Part} */ object) {
         `FROM pg_catalog.pg_sequence s JOIN pg_catalog.pg_class c ON c.oid = s.seqrelid ${inSchema("c", schema)} AND c.relname = ${q(name)}`,
     ];
   if (object.kind === "function" || object.kind === "procedure") {
-    if (!/^\d+$/u.test(object.ident)) throw new Error("This routine has no catalog id.");
+    if (!/^\d+$/u.test(object.ident))
+      throw new Error(t("schema.postgres.thisRoutineHasNoCatalogId"));
     return [`SELECT pg_catalog.pg_get_functiondef(${object.ident}::oid)`];
   }
   return [];
@@ -98,6 +105,8 @@ export function ddlQueries(/** @type {SchemaObject | Part} */ object) {
  * @param {Rows[]} results
  */
 export function ddl(object, results) {
+  const cached = pg.ddl(object, results);
+  if (cached !== undefined) return cached;
   const name = qualified(
     "postgresql",
     object.schema,
@@ -131,7 +140,7 @@ export function ddl(object, results) {
 function tableDdl(/** @type {SchemaObject} */ object, /** @type {Rows[]} */ results) {
   const name = qualified("postgresql", object.schema, object.name);
   const [columns = [], constraints = [], indexes = [], triggers = [], meta = []] = results;
-  const [relkind, persistence, comment, partition, server] = meta[0] ?? [];
+  const [relkind, persistence, comment, partition, server, rls, forced] = meta[0] ?? [];
   const lines = columns.map(([column, type, notNull, def, identity, generated]) => {
     let line = `    ${quoteName("postgresql", column ?? "")} ${type}`;
     if (identity === "a") line += " GENERATED ALWAYS AS IDENTITY";
@@ -155,6 +164,10 @@ function tableDdl(/** @type {SchemaObject} */ object, /** @type {Rows[]} */ resu
     .filter((row) => row[3] !== "constraint")
     .map((row) => closeStatement(row[2] ?? ""));
   const fired = triggers.map((row) => closeStatement(row[2] ?? ""));
+  const security = [
+    ...(rls === "YES" ? [`ALTER TABLE ${name} ENABLE ROW LEVEL SECURITY;\n`] : []),
+    ...(forced === "YES" ? [`ALTER TABLE ${name} FORCE ROW LEVEL SECURITY;\n`] : []),
+  ];
   const notes = [
     ...(comment ? [`COMMENT ON TABLE ${name} IS ${q(comment)};\n`] : []),
     ...columns
@@ -164,5 +177,5 @@ function tableDdl(/** @type {SchemaObject} */ object, /** @type {Rows[]} */ resu
           `COMMENT ON COLUMN ${name}.${quoteName("postgresql", row[0] ?? "")} IS ${q(row[6] ?? "")};\n`,
       ),
   ];
-  return [out.join(""), ...own, ...fired, ...notes].join("\n");
+  return [out.join(""), ...own, ...fired, ...security, ...notes].join("\n");
 }

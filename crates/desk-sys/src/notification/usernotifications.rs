@@ -1,6 +1,7 @@
 //! The macOS notifier over UserNotifications: the app's shared `UNUserNotificationCenter`, its
 //! permission prompt (alert and sound, no badge), and one delegate for the process that shows banners
-//! while the app is active and reports a click.
+//! while the app is active and reports a click. A notification's button is the one action of a
+//! category named after its label; the center keeps every category the process registered.
 //!
 //! Like `calendar/eventkit.rs`, this module is allowed `unsafe` (the workspace denies it everywhere
 //! else): for the delegate class, the framework's exported action identifier and the pointers its
@@ -10,20 +11,23 @@
 //! bundle, so `new` refuses before it is ever touched.
 #![allow(unsafe_code)]
 
+use std::collections::BTreeSet;
 use std::ptr::NonNull;
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
 
 use block2::{DynBlock, RcBlock};
 use objc2::rc::{Retained, autoreleasepool};
 use objc2::runtime::{Bool, NSObject, NSObjectProtocol, ProtocolObject};
 use objc2::{AllocAnyThread, DefinedClass, define_class, msg_send};
-use objc2_foundation::{NSBundle, NSError, NSString};
+use objc2_foundation::{NSArray, NSBundle, NSError, NSSet, NSString};
 use objc2_user_notifications::{
     UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent, UNNotification,
-    UNNotificationDefaultActionIdentifier, UNNotificationPresentationOptions,
-    UNNotificationRequest, UNNotificationResponse, UNNotificationSettings, UNNotificationSound,
-    UNUserNotificationCenter, UNUserNotificationCenterDelegate,
+    UNNotificationAction, UNNotificationActionOptions, UNNotificationCategory,
+    UNNotificationCategoryOptions, UNNotificationDefaultActionIdentifier,
+    UNNotificationPresentationOptions, UNNotificationRequest, UNNotificationResponse,
+    UNNotificationSettings, UNNotificationSound, UNUserNotificationCenter,
+    UNUserNotificationCenterDelegate,
 };
 
 use super::{Authorization, Click, ClickHandler, ClickSlot, Notification, Notifier, denied};
@@ -31,6 +35,10 @@ use crate::{Error, ErrorCode};
 
 /// How long a settings read or a post waits for UserNotifications' completion handler.
 const ANSWER_TIMEOUT: Duration = Duration::from_secs(10);
+/// The identifier of a notification's button, which a response reports.
+const BUTTON_ACTION: &str = "desk-action";
+/// The prefix of a category's identifier; the button's label follows it.
+const CATEGORY: &str = "desk-action:";
 
 define_class!(
     // SAFETY: NSObject has no subclassing requirements, and `Delegate` does not implement `Drop`.
@@ -62,9 +70,11 @@ define_class!(
         ) {
             // SAFETY: an immutable NSString the framework exports and never frees.
             let default = unsafe { UNNotificationDefaultActionIdentifier };
-            if response.actionIdentifier().isEqualToString(default) {
+            let pressed = response.actionIdentifier();
+            let action = pressed.isEqualToString(&NSString::from_str(BUTTON_ACTION));
+            if action || pressed.isEqualToString(default) {
                 let id = response.notification().request().identifier().to_string();
-                self.ivars().fire(Click { id });
+                self.ivars().fire(Click { id, action });
             }
             completion.call(());
         }
@@ -87,6 +97,8 @@ impl Delegate {
 
 /// The center's delegate. The center holds it weakly, so this keeps it for the life of the process.
 static DELEGATE: OnceLock<Retained<Delegate>> = OnceLock::new();
+/// The button labels whose categories the center holds: setting categories replaces them all.
+static LABELS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
 
 pub(super) struct UserNotifications {
     clicks: Arc<ClickSlot>,
@@ -161,6 +173,9 @@ impl Notifier for UserNotifications {
         if !authorization.can_post() {
             return Err(denied(authorization));
         }
+        if let Some(label) = &notification.action {
+            register(label);
+        }
         let (sender, receiver) = mpsc::channel::<Option<String>>();
         let completion = RcBlock::new(move |error: *mut NSError| {
             let _ = sender.send(message(error));
@@ -172,6 +187,9 @@ impl Notifier for UserNotifications {
                 content.setBody(&NSString::from_str(body));
             }
             content.setSound(Some(&UNNotificationSound::defaultSound()));
+            if let Some(label) = &notification.action {
+                content.setCategoryIdentifier(&NSString::from_str(&category(label)));
+            }
             let request = UNNotificationRequest::requestWithIdentifier_content_trigger(
                 &NSString::from_str(&notification.id),
                 &content,
@@ -199,6 +217,38 @@ impl Notifier for UserNotifications {
 
 fn center() -> Retained<UNUserNotificationCenter> {
     UNUserNotificationCenter::currentNotificationCenter()
+}
+
+fn category(label: &str) -> String {
+    format!("{CATEGORY}{label}")
+}
+
+/// Give the center a category whose one action is a button labelled `label`, with the ones it has.
+/// A press on the button brings the app forward, as a click on the notification does.
+fn register(label: &str) {
+    let mut labels = LABELS.lock().unwrap_or_else(|e| e.into_inner());
+    if !labels.insert(label.to_owned()) {
+        return;
+    }
+    autoreleasepool(|_| {
+        let categories: Vec<Retained<UNNotificationCategory>> = labels
+            .iter()
+            .map(|label| {
+                let action = UNNotificationAction::actionWithIdentifier_title_options(
+                    &NSString::from_str(BUTTON_ACTION),
+                    &NSString::from_str(label),
+                    UNNotificationActionOptions::Foreground,
+                );
+                UNNotificationCategory::categoryWithIdentifier_actions_intentIdentifiers_options(
+                    &NSString::from_str(&category(label)),
+                    &NSArray::from_retained_slice(&[action]),
+                    &NSArray::new(),
+                    UNNotificationCategoryOptions::empty(),
+                )
+            })
+            .collect();
+        center().setNotificationCategories(&NSSet::from_retained_slice(&categories));
+    });
 }
 
 /// Whether the process runs from an `.app` bundle with an identifier. A bare executable has neither,

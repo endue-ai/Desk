@@ -1,54 +1,66 @@
-//! The tray (ADR 0053), on `tray-icon`: Search Desk, Talk to Eris, Open Desk and Quit Desk keep the
+//! The tray (ADR 0053), on `tray-icon`: Search endue, Talk to Eris, Open endue and Quit endue keep the
 //! app reachable when a shortcut is taken (Talk to Eris summons her as Alt+Enter does, ADR 0121). A
 //! click there is the person's own, so it applies without asking, as does "Restart to update
-//! (<version>)", which shows while a build is staged (ADR 0054, `update::follow`). On Linux the tray
-//! needs a GTK main loop the shell does not run yet: it is left out there and says so.
+//! (<version>)", which shows while a build is staged (ADR 0054, `update::follow`). Its words are in
+//! the desk's language (ADR 0276); a change of it sets the tray a new menu. On Linux the tray needs
+//! a GTK main loop the shell does not run yet: it is left out there and says so.
 
 use tray_icon::menu::Menu;
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use crate::menu::{Choice, item};
+use crate::words::{Language, filled, text};
 
 /// The app's icon: the bundles' 32 px PNG (`apps/desk/shell/icons`).
 const ICON: &[u8] = include_bytes!("../icons/32x32.png");
 
-/// The tray's menu; with a staged build it offers to restart into it.
-pub fn menu(staged: Option<&str>) -> tray_icon::menu::Result<Menu> {
-    let menu = Menu::new();
-    menu.append(&item(Choice::Search, "Search Desk"))?;
-    menu.append(&item(Choice::Eris, "Talk to Eris"))?;
-    menu.append(&item(Choice::Desk, "Open Desk"))?;
+/// The tray's items in `language`: Search endue, Talk to Eris, Open endue, with a staged build the
+/// offer to restart into it, and Quit endue.
+pub fn items(language: Language, staged: Option<&str>) -> Vec<(Choice, String)> {
+    let say = |name: &str| text(language, &format!("desk.tray.{name}"));
+    let mut items = vec![
+        (Choice::Search, say("search")),
+        (Choice::Eris, say("eris")),
+        (Choice::Desk, say("desk")),
+    ];
     if let Some(version) = staged {
-        menu.append(&item(
-            Choice::Update,
-            &format!("Restart to update ({version})"),
-        ))?;
+        let offer = filled(language, "desk.tray.update", &[("version", version)]);
+        items.push((Choice::Update, offer));
     }
-    menu.append(&item(Choice::Quit, "Quit Desk"))?;
+    items.push((Choice::Quit, say("quit")));
+    items
+}
+
+/// The tray's menu in `language`; with a staged build it offers to restart into it.
+pub fn menu(language: Language, staged: Option<&str>) -> tray_icon::menu::Result<Menu> {
+    let menu = Menu::new();
+    for (choice, text) in items(language, staged) {
+        menu.append(&item(choice, &text))?;
+    }
     Ok(menu)
 }
 
-/// Show the menu that offers `staged`, or none.
-pub fn offer(tray: &TrayIcon, staged: Option<&str>) {
-    match menu(staged) {
+/// Show the menu in `language` that offers `staged`, or none.
+pub fn offer(tray: &TrayIcon, language: Language, staged: Option<&str>) {
+    match menu(language, staged) {
         Ok(menu) => tray.set_menu(Some(Box::new(menu))),
-        Err(why) => eprintln!("endue Desk: the tray's menu did not change ({why})"),
+        Err(why) => eprintln!("endue: the tray's menu did not change ({why})"),
     }
 }
 
-/// Put the desk in the tray, offering `staged`. Call on the event loop's thread once it runs; keep
-/// what it returns.
-pub fn setup(staged: Option<&str>) -> Option<TrayIcon> {
+/// Put the desk in the tray, in `language`, offering `staged`. Call on the event loop's thread once
+/// it runs; keep what it returns.
+pub fn setup(language: Language, staged: Option<&str>) -> Option<TrayIcon> {
     if cfg!(target_os = "linux") {
-        eprintln!("endue Desk: no tray on Linux yet (it needs a GTK loop); use the shortcuts");
+        eprintln!("endue: no tray on Linux yet (it needs a GTK loop); use the shortcuts");
         return None;
     }
-    let built = menu(staged)
+    let built = menu(language, staged)
         .map_err(|why| why.to_string())
         .and_then(|menu| {
             let mut tray = TrayIconBuilder::new()
                 .with_id("desk")
-                .with_tooltip("endue Desk")
+                .with_tooltip("endue")
                 .with_menu(Box::new(menu));
             if let Some(icon) = icon() {
                 tray = tray.with_icon(icon);
@@ -58,12 +70,12 @@ pub fn setup(staged: Option<&str>) -> Option<TrayIcon> {
     match built {
         Ok(tray) => {
             eprintln!(
-                "endue Desk: the tray is set (Search Desk, Talk to Eris, Open Desk, Quit Desk)"
+                "endue: the tray is set (Search endue, Talk to Eris, Open endue, Quit endue)"
             );
             Some(tray)
         }
         Err(why) => {
-            eprintln!("endue Desk: no tray ({why})");
+            eprintln!("endue: no tray ({why})");
             None
         }
     }

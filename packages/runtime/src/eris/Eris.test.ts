@@ -26,6 +26,8 @@ const LIGHT = {
   "--desk-eris": "#9a6b12",
   "--desk-eris-frost": "#4a5d7e",
   "--desk-background": "#faf9fc",
+  "--desk-warning": "#925000",
+  "--desk-danger": "#b80012",
 };
 const setTokens = (set: Record<string, string>) => {
   for (const [name, value] of Object.entries(set))
@@ -99,8 +101,9 @@ describe("Eris's palette", () => {
     setTokens(LIGHT);
     themeChanged();
     expect(painted.body.at(-1)).toMatchObject({
-      gold: "#9a6b12",
       frost: "#4a5d7e",
+      warning: "#925000",
+      danger: "#b80012",
       ground: "#faf9fc",
     });
     expect(painted.moon.at(-1)).toMatchObject({ frost: "#4a5d7e" });
@@ -146,13 +149,18 @@ describe("Eris's palette", () => {
     const live = ctx as unknown as { ticker: InstanceType<typeof Ticker>; reduced: () => boolean };
     live.ticker = new Ticker(clock);
     live.reduced = () => false;
+    const pill = document.createElement("div");
+    pill.className = "talk-pill";
+    document.body.append(pill);
     const eris = mountEris(document.body, ctx, () => null);
+    eris.setState("listening");
     const run = (ms: number) => {
       for (let t = 0; t < ms; t += 16) clock.advance(16);
     };
     run(1000);
     expect(painted.body.length, "her idle motion runs").toBeGreaterThan(50);
-    run(REST_MS);
+    eris.setState("idle");
+    run(REST_MS + 2000);
     const rested = painted.body.length;
     run(2000);
     expect(painted.body.length, "at rest: nothing painted").toBe(rested);

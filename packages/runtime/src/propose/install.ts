@@ -54,6 +54,7 @@ export function installProposals(options: InstallProposalsOptions): () => void {
       commands: {
         run: (id: string, args?: unknown) => commands.run(id, args),
         has: (id: string) => commands.has(id),
+        reads: (id: string) => commands.readOnly(id),
       },
       now: options.now ?? (() => Date.now()),
       profile: options.profile,

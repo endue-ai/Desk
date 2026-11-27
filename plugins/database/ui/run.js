@@ -1,10 +1,14 @@
+import { t } from "./strings/index.js";
 // Runs a client through the bridge: `proc.spawn` without a shell, output gathered from `proc.output`
 // by process id until `proc.exit`, one ask with `perm.request` when the grant is missing, and a
 // second try with the usual install folders on PATH when the program is not found. Stopping (a
-// cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes psql and mysql
-// cancel the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
+// cancel, the timeout, enough rows, too much output) sends SIGINT first, which makes mysql cancel
+// the query on the server and sqlite3 interrupt it, then SIGKILL a second later: the mysql
 // client carries on with the next statement when a killed query does not fail (SLEEP() returns 1).
-// A non-zero exit is not an error here: the engine reads what the client said.
+// On Windows the core ends a child whatever the signal (no SIGINT reaches a process without a
+// console), so there one kill is sent at once.
+// A non-zero exit is not an error here: the engine reads what the client said. A long program
+// (pg_dump, features/backup/) is heard as it writes and cancelled by its own signal.
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginBridge} PluginBridge
@@ -40,14 +44,17 @@ export class RunError extends Error {
  * @param {Pick<PluginBridge, "call" | "onEvent">} bridge
  * @param {{
  *   onBusy?(running: number): void,
+ *   platform?: import("./clients.js").Platform,
  *   searchPath?(): string,
  *   now?(): number,
  *   setTimer?(fn: () => void, ms: number): unknown,
  *   clearTimer?(timer: unknown): void,
- * }} [options] `searchPath` is the PATH tried when a program is not found on the desk's own.
+ * }} [options] `searchPath` is the PATH tried when a program is not found on the desk's own;
+ *   `platform` how a program is stopped (Windows: one kill).
  */
 export function createRunner(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
+  const killAtOnce = options.platform === "windows";
   const now = options.now ?? (() => Date.now());
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer =
@@ -84,7 +91,7 @@ export function createRunner(bridge, options = {}) {
    * program.
    * @param {Invocation} invocation
    */
-  const spawn = async (invocation) => {
+  const spawn = async (invocation, quiet = false) => {
     const { command } = invocation;
     const scope = { permission: /** @type {const} */ ("proc:spawn"), commands: [command] };
     const withPath = (/** @type {boolean} */ use) => {
@@ -109,30 +116,31 @@ export function createRunner(bridge, options = {}) {
       } catch (error) {
         const code = codeOf(error);
         if (code === "unsupported")
-          throw new RunError(
-            "This desk cannot run programs yet: proc.spawn is unsupported.",
-            "client",
-          );
+          throw new RunError(t("run.thisDeskCannotRunProgramsYet"), "client");
         if (code === "not_found" && !usePath && options.searchPath?.()) {
           usePath = true;
           continue;
         }
         if (code === "not_found")
           throw new RunError(
-            `${command} was not found. Install it, or set its path in the settings.`,
+            t("run.wasNotFoundInstallItOr", { command: String(command) }),
             "missing",
           );
-        if (code !== "permission_denied" || asked)
-          throw new RunError(`Could not run ${command}: ${code}.`, "refused");
+        if (code !== "permission_denied" || asked || quiet)
+          throw new RunError(
+            t("run.couldNotRun", { command: String(command), code: String(code) }),
+            "refused",
+          );
       }
       asked = true;
       const decision = await bridge
         .call("perm.request", {
           permission: scope,
-          reason: `To run ${command}, the database client`,
+          reason: invocation.reason ?? `To run ${command}, the database client`,
         })
         .catch(() => ({ granted: false }));
-      if (!decision.granted) throw new RunError(`Not allowed to run ${command}.`, "refused");
+      if (!decision.granted)
+        throw new RunError(t("run.notAllowedToRun", { command: String(command) }), "refused");
     }
   };
 
@@ -152,19 +160,23 @@ export function createRunner(bridge, options = {}) {
   /**
    * Run the client and resolve with what it wrote and how it ended.
    * @param {Invocation} invocation
-   * @param {{ timeoutMs?: number }} [runOptions] `timeoutMs` 0 or absent waits as long as it takes.
+   * @param {{ timeoutMs?: number, quiet?: boolean, signal?: AbortSignal, onOutput?(stream: "stdout" | "stderr", text: string): void }} [runOptions]
+   *   `timeoutMs` 0 or absent waits as long as it takes; `signal` cancels this run alone;
+   *   `onOutput` hears each stream's text as it comes (a long program's progress).
    * @returns {Promise<Outcome>}
    */
   const run = async (invocation, runOptions = {}) => {
     const started = now();
-    const { procId } = await spawn(invocation);
+    const { procId } = await spawn(invocation, runOptions.quiet);
     const timeoutMs = runOptions.timeoutMs ?? 0;
+    const { signal, onOutput } = runOptions;
     return new Promise((resolve) => {
       const flags = { stopped: false, cancelled: false, timedOut: false, overflow: false };
       /** @type {unknown[]} */
       const timers = [];
       let stopping = false;
       const decoder = new TextDecoder("utf-8");
+      const heard = { stdout: new TextDecoder("utf-8"), stderr: new TextDecoder("utf-8") };
       const { counter, stopAfter } = invocation;
       /** @type {Job} */
       const job = {
@@ -175,6 +187,10 @@ export function createRunner(bridge, options = {}) {
           const sink = data.stream === "stderr" ? job.err : job.out;
           sink.chunks.push(bytes);
           sink.size += bytes.length;
+          if (onOutput) {
+            const stream = data.stream === "stderr" ? "stderr" : "stdout";
+            onOutput(stream, heard[stream].decode(bytes, { stream: true }));
+          }
           if (job.out.size + job.err.size > OUTPUT_LIMIT) job.stop("overflow");
           if (data.stream !== "stderr" && stopAfter > 0 && counter) {
             if (counter.feed(decoder.decode(bytes, { stream: true })) >= stopAfter)
@@ -185,12 +201,17 @@ export function createRunner(bridge, options = {}) {
           flags[flag] = true;
           if (stopping) return;
           stopping = true;
+          if (killAtOnce) {
+            void kill(procId, invocation.command, "kill");
+            return;
+          }
           void kill(procId, invocation.command, "int");
           timers.push(setTimer(() => void kill(procId, invocation.command, "kill"), GRACE_MS));
         },
         settle: (data) => {
           if (!jobs.delete(procId)) return;
           for (const timer of timers) clearTimer(timer);
+          signal?.removeEventListener("abort", abort);
           onBusy(jobs.size);
           resolve(
             outcomeOf(
@@ -205,9 +226,12 @@ export function createRunner(bridge, options = {}) {
           );
         },
       };
+      const abort = () => job.stop("cancelled");
       jobs.set(procId, job);
       onBusy(jobs.size);
       if (timeoutMs > 0) timers.push(setTimer(() => job.stop("timedOut"), timeoutMs));
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort);
       for (const event of early.get(procId) ?? []) feed(job, event);
       early.delete(procId);
     });

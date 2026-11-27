@@ -1,4 +1,4 @@
-# Desk bridge v0
+# endue bridge v0
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
@@ -21,6 +21,13 @@ or event). Otherwise the answer is `permission_denied`, with the missing permiss
 Scopes are never widened implicitly: asking is `perm.request`, and the person decides. `shell.open` is the
 one call that asks by itself: without a grant that covers its scope, the core asks the person for that
 scope, through `perm.prompt` as `perm.request` does, and runs the call once they allow it.
+
+A plugin's manifest bounds all of it (ADR 0260): a plugin is asked for, granted (`perm.request`,
+`perm.grant`, a dialog, a call that asks by itself) and allowed only scopes a permission in its
+`plugin.json` `permissions` covers. Anything else is refused at once, without a prompt and whatever the
+plugin holds: `perm.request` answers `reason: "undeclared"`, any other call `permission_denied`. A
+declared `*` host or program, or `/**` path, covers any the person names at run time, but a request
+that itself holds `*` is undeclared. The desk, the CLI and agents are not plugins: their own rules hold.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
 its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
@@ -55,7 +62,8 @@ An agent is never granted anything outside `agents.<id>.allow` in init.yaml when
 anything: a call or `perm.request` outside it is refused at once (`perm.request` answers
 `reason: "outside-allowlist"`, any other call `permission_denied`), whatever the agent holds, and the
 runtime hears a `ui.notified` from `core` naming the agent. Inside it, or with an empty list, an agent's
-call without a grant asks the person for the call's scope, as `shell.open` does.
+call without a grant asks the person for the call's scope, as `shell.open` does; `cmd.invoke` of a
+command an installed plugin provides needs no grant and asks nothing (ADR 0268).
 
 An agent's irreversible call waits for the person's approval even when a grant covers it (ADR 0078):
 `fs.write` to a path, and `net.fetch` to a host, that no `always` grant of the agent allows;
@@ -64,7 +72,7 @@ holds the call after the cap and the permission check and sends `perm.approval` 
 A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
-its processes, `net.data` and `net.closed` for its sockets, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+its processes, `net.data` and `net.closed` for its sockets, `db.notice`, `db.call.notice`, `db.notification`, `db.parameter` and `db.closed` for its database sessions, `audio.frame`, `audio.ended` and `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
@@ -98,6 +106,9 @@ an `fs:write` scope; with `createDirs` it also creates missing parent folders in
 bytes go to a temp file beside the target that is renamed over it, so the file is the old content or the
 new, never a mix. Before it overwrites a file whose bytes differ, the core keeps the old ones as a version
 in its local history and answers that version's id as `version` (ADR 0076); a new file keeps nothing.
+With `append` the content is added at the end of the existing file in place, so a file is written in
+chunks without holding it whole: no temp file, no kept version and no undo entry, and a missing file is
+`not_found` (ADR 0356). The first chunk is an ordinary write, which keeps what it replaces.
 
 **fs.history** lists the versions the core kept of one file, newest first, `limit` at most: each is the
 content a write replaced, with `at` (when that write ran), `caller` (whose write it was), `size` and
@@ -190,9 +201,110 @@ desk (ADR 0133).
 **net.close** closes one; closing one that already ended is not an error. Another caller's socket is
 `not_found`.
 
+**db.open** opens a database session to a `host` (a name or an IPv4 address, as for `net.connect`) and
+`port` (5432) inside a `db:connect` scope and signs in (ADR 0281). `engine` is `postgresql`; any other is
+`unsupported`. `tls.mode` is `disable`, `prefer` (the default), `require`, `verify-ca` or `verify-full`;
+`tls.ca` is the authorities' PEM, else the system's trust store, and with `require` the chain is checked
+too. The sign-in is SCRAM-SHA-256, SCRAM-SHA-256-PLUS whenever TLS is on and the server offers it, md5,
+or the password itself only over TLS (a server that asks for it in clear without TLS is `io_error`).
+`password` is used once and dropped; without one the core reads the person's password file
+(`PGPASSFILE`, else `~/.pgpass`, ignored when others can read it). `passwordRef` names a password the
+caller kept with `db.passwords.set` instead (not with `password`): when the password file has no line
+for the session, the core reads it from the OS keychain itself, and only when it was kept for the
+session's `host`, `port` and `user`; one that is not kept, or was kept for another server, is as if
+none was given (ADR 0311). `settings` are startup parameters;
+naming `client_encoding` (always `UTF8`), `user`, `database` or `replication` is `invalid_params`.
+`readOnly` sets `default_transaction_read_only`. `timeoutMs` (10 s, 120 s at most) bounds the connection
+and the sign-in; missed, it is `timeout`. The result is the `sessionId` with the server's `pid`, `auth`,
+`tls` (`{ version, cipher }` when on) and every ParameterStatus in `parameters`; or `{ error }`, the
+server's refusal, and no session; or `{ needsPassword: true }` when no password was given or found and
+the server asks for one. A refused or unreachable host, or a certificate that fails its mode, is
+`io_error`. A caller holds at most 16 sessions; another is `invalid_value`. An agent is
+`permission_denied`.
+
+`ssh` takes the session through an SSH tunnel (ADR 0359): `host`, `port` (22) and `user` of the SSH
+server, and one of `keyFile` (a path the core reads itself, never sent back; `keyPassword` decrypts it),
+`agent: true` (the person's SSH agent), `password` or `passwordRef` (a kept password for that SSH host,
+port and user); `jump` is a jump host of the same shape, reached first. One SSH connection carries the
+session and its cancel requests as channels inside the core, nothing listens on a port, and it closes
+with the session. `db:connect` must cover every hop's host and port as well as the database's, and is
+checked before anything connects. Host keys are trusted on first use per caller: a key not trusted yet
+answers `{ ssh: { hop, stage: "hostKey", hostKey: { status: "unknown", algorithm, fingerprint } } }`,
+and `hostKey` set to that fingerprint in the next `db.open` trusts it once the tunnel opens; a key that
+differs from the trusted one is `changed` (with `known`) and refused until **db.hostKeys.delete**
+`{ host, port }` forgets the trusted one. Any other hop that fails answers `ssh` with its `stage`
+(`connect`, `auth` with `keyPassword` or `needsPassword` when one is missing, `forward`) and a
+`message` naming the hop.
+
+**db.run** runs one statement by the extended protocol and answers its first page; an earlier result
+with pages left is closed first, and while a statement runs, `db.run`, `db.fetch` and `db.copy` are
+`invalid_params`. `params` are text or `null`, their types the server's inference unless `paramTypes`
+gives OIDs (0 infers). A page holds `pageRows` rows (1,000; 1 to 10,000) or `pageBytes` of values (4 MiB;
+64 KiB to 16 MiB), whichever comes first, and always one row; `more` is exact. The first page has
+`columns` (`name`, `typeOid`, `typeModifier`, `typeSize`, `tableOid`, `columnNumber`, 0 and 0 for an
+expression); `rows` are the server's text or `null`. The last page has the `tag` and `rowCount`, both
+counting every page, and `transaction` (`idle`, `open`, `failed`). A statement's error is a result, the
+last page's `error`, with every field the server sent by name (`severity`, `localSeverity`, `code`,
+`message`, `detail`, `hint`, `position`, `internalPosition`, `internalQuery`, `where`, `schema`,
+`table`, `column`, `dataType`, `constraint`, `file`, `line`, `routine`, and `other` by code); after it
+the session is ready again. A row over 64 MiB ends its result with `invalid_value`.
+
+**db.script** runs `statements` (each `{ sql, params?, paramTypes? }`, 1 to 10,000) in order on the
+session, each as `db.run` runs one, and answers `pages`: each statement's first page, with the notices
+it heard (ADR 0344). It stops after a page with `more` (the result or the COPY FROM STDIN stays open
+for `db.fetch` and `db.copy`), at the first error unless `goOn`, at a FATAL, and at a `db.cancel`, which
+then also stops it before its next statement (`cancelled: true`). A failure that is not the server's,
+which `db.run` would have answered as a bridge error, is `failure` and belongs to the statement after
+the last page; an empty `statements`, a busy session or another caller's are errors of the call.
+
+**db.describe** asks the server what one statement takes and answers without running it: Parse and
+Describe of the unnamed statement, then Sync (ADR 0353). Nothing executes, so it changes nothing and
+works on a read-only session. It answers `paramTypes`, the OID of each `$n` as the server infers it
+(`paramTypes` in the call fix some, as in `db.run`), `columns` as `db.run`'s first page has them (absent
+when the statement answers no rows), `transaction`, and the server's `error` with its `position`, after
+which the session is ready again. An earlier result with pages left is closed first; a busy session, a
+waiting COPY FROM STDIN or another caller's session are errors of the call, as for `db.run`.
+
+**db.fetch** answers the next page; `close: true` ends the result without reading on. With no result
+open it is `invalid_params`.
+
+**db.copy** sends a `COPY ... FROM STDIN` its data, 1 MiB a call (`utf8` or `base64`), and answers
+`more: true` while the COPY waits; `done` ends it and `fail` fails it with that message, and either
+answers the statement's last page; a server error on a bad row ends it early with that page. A
+`COPY ... TO STDOUT` answers pages whose `data` holds its bytes (`encoding` `utf8` for text, `base64`
+for binary), read on with `db.fetch`; the first page of either has `copy` (`direction`, `format`,
+`columns`). Closing a COPY out early cancels it on the server.
+
+**db.cancel** asks the server to cancel the statement the session runs, on a connection of its own with
+the session's TLS mode, and answers once the request is sent; the statement's own answer then carries
+57014. With no statement running it does nothing. The session's cancel key never crosses the bridge.
+**db.close** ends a session; closing one that already ended is not an error. **db.list** answers the
+caller's sessions (`sessionId`, `host`, `port`, `database`, `user`, `pid`, `running`, `more`,
+`transaction`), so a frame that slept finds them again.
+
+**db.passwords.set** keeps a `password` in the OS keychain under a `name` the caller chooses (1 to 64
+of `A-Z a-z 0-9 . _ -`, replacing what that name kept), for one `host`, `port` (5432) and `user`; a
+caller keeps 256 at most, another is `invalid_value`. Nothing answers it back: `db.open` uses it by
+`passwordRef`. A plugin's manifest must declare `db:connect` covering the host and port; no grant is
+asked for, since signing in with it is `db.open`'s and its grant's. Where no OS keychain answers it is
+`unsupported`, and nothing is kept elsewhere. **db.passwords.delete** forgets one by name (one not kept
+is not an error); **db.passwords.list** answers the caller's, each `name` with its `host`, `port` and
+`user`, never the password, without reading the keychain. A caller reaches only its own; removing a
+plugin forgets every password it kept. An agent is `permission_denied` (ADR 0311).
+
+A page carries `notices`, every notice the server sent while that call ran, in order (at most 10,000;
+`noticesSkipped` counts the rest), so a statement's notices stay with it whatever order the frame hears
+things in. A session's events go to its caller alone: `db.notice` for a notice sent outside any call
+(with the sign-in, or while idle); `db.call.notice` for each notice a call hears, as it arrives, with the
+call's number (`DbPage.call`), the page still its record; `db.notification` for a NOTIFY, also while idle; `db.parameter`
+for each ParameterStatus; and `db.closed`, the session's last, with `reason` `closed`, `server` (with its FATAL `error` when it sent
+one), `io`, `encoding` (the server's `client_encoding` stopped being `UTF8`), `unloaded` (its plugin
+stopped), `revoked` (the grant that covers it went) or `desk`. The core keeps no timer on a session.
+Another caller's session is `not_found`.
+
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
-A caller without a grant is asked once, as `perm.request` asks (the core does not read the manifest for
-it); then the OS's own microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
+A caller without a grant is asked once, as `perm.request` asks (a plugin only when its manifest declares
+`audio:capture`); then the OS's own microphone permission. The caller hears `audio.frame` every 20 ms: mono LINEAR16 at `sampleRate` (16000
 by default), base64, with its level. `audio.ended` comes once, last, with its reason: a stop, the person,
 the caller stopping, its last surface closing, a revoke, or the device. The runtime hears
 `audio.capturing`, every capture in force and its caller, on each change, so the chrome shows the
@@ -237,7 +349,7 @@ stays, whether do-not-disturb holds it back and how much history is kept is the 
 
 **perm.request** asks the person for a permission, showing the reason when there is one, and resolves
 when they answer. `duration` says how long the grant should last: `once` (the next call it allows, then it
-expires), `session` (until Desk quits, the default) or `always` (kept on disk across restarts). The person
+expires), `session` (until endue quits, the default) or `always` (kept on disk across restarts). The person
 may choose another duration, and the grant carries the one they chose. A refusal is `granted: false`, not
 an error. It needs no scope.
 
@@ -247,7 +359,9 @@ grants (`session` or `always`) already covers is granted at once with that grant
 answer answers them all; a `once` answer gives each its own grant. A refusal the person makes is
 remembered for the session for that caller and that permission: asking again answers `granted: false`
 with `reason: "refused-earlier"` at once, without a prompt, until the caller is granted a permission
-that covers it. `shell.open` answers such a request `permission_denied` at once.
+that covers it, or until the caller sends `again: true`, which it does only from the person's own press
+(an Allow button beside the refusal, ADR 0335): that request is asked again. `shell.open` answers such a request `permission_denied` at once. A plugin's request its
+manifest does not declare answers `reason: "undeclared"` at once (ADR 0260).
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.
 
@@ -282,7 +396,7 @@ say when `cmd.undo` (#276) can take a write back.
 
 **perm.pending** answers what waits for the person now, under `perm:manage`: every prompt nobody has
 answered and every approval nobody has approved or denied, each oldest first and as its event said it,
-for a prompter that comes up while they wait (the island, ADR 0204). `perm.settled` (`kind` `prompt` or
+for a prompter that comes up while they wait. `perm.settled` (`kind` `prompt` or
 `approval`, and its `id`) tells every `perm:manage` holder that one stopped waiting: a holder answered
 it, its caller unloaded, or a waiting run was cancelled, so each prompter takes down a card another one
 answered.
@@ -385,8 +499,8 @@ act of theirs already answers it (ADR 0131): the runtime, opening a file the per
 plugin that opens it read access to the file's folder, the scope that plugin would ask for. It needs
 `perm:manage`. The grant lasts for `duration` (`session` by default), is logged like any grant, and the
 holder hears `perm.changed`; a lasting grant of the caller's that already covers the permission is the
-answer, and no new one is made. An agent is never granted anything outside its allowlist
-(`permission_denied`).
+answer, and no new one is made. An agent is never granted anything outside its allowlist, nor a plugin
+anything its manifest does not declare (`permission_denied`).
 
 **cmd.register** adds one of the caller's commands to the registry, or updates it: an id, a title, an
 optional description, keywords the palette matches, a JSON Schema for its arguments and a `when` context
@@ -398,8 +512,10 @@ plugin when it mounts (ADR 0017). `undo` names the command that undoes this one 
 too); without it, the `undo` the caller's manifest gives the id, if any. `cmd.list` shows it. So do
 `description`, `argsSchema`, `resultSchema`, `agent` and `readOnly` (ADR 0088): each the call's, else what
 the caller's manifest declares for the id (`description`, `args`, `result`, `agent`, `readOnly`), and
-`irreversible`, which only the manifest says. A command marked `agent` without a description, or
-`readOnly` while the manifest marks it irreversible, is `invalid_params`.
+`irreversible`. The desk provider may set `irreversible` for its built-ins. Plugins use their manifest
+declaration, and MCP servers use their existing read-only policy. Agent invocations of irreversible
+commands require approval each time. An agent command without a description, or an irreversible
+command marked `readOnly`, is `invalid_params`.
 
 **cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
 
@@ -409,7 +525,8 @@ registration order. `cmd.changed` events (registered, updated, unregistered) go 
 **cmd.tools** lists the registered commands marked `agent`, the tools agents are offered (ADR 0088), in
 registration order: each with its tool `name` (the id with every dot an underscore, absent past 64
 characters), title, description, args and result schemas, `readOnly`, `irreversible`, provider, and
-`granted`, whether a grant of the caller covers it now. An agent sees every one its allowlist could let it
+`granted`, whether a grant of the caller covers it now (for an agent, an installed plugin's command
+always, ADR 0268). An agent sees every one its allowlist could let it
 run (all of them with an empty allowlist); any other caller those its `cmd:invoke` grants cover. Every
 word of `query` must appear, ignoring case, in the id, title, description or keywords; `limit` is 50 when
 absent, 200 at most. It needs no scope and spends no grant.
@@ -647,6 +764,12 @@ overview and its open rooms at once: the space must answer, and a part that does
 work going on and five newest results, and the rooms with their unread messages. Read only. The bridge
 carries no room member, no person's id, no attention reason and no remote picture.
 
+**studio.chat.ask** (`studio-chat.schema.json`, ADR 0395) lets the runtime send one text question
+to an active agent or a space's exact Front Desk agent under `studio:manage`. Eris calls the
+irreversible `desk.endue.ask` command, and the core holds it for review. The answer carries
+the target, conversation, run when known, and state. A completed answer carries up to 12,000
+characters of assistant text. The question body is the text the caller supplied for review.
+
 **computer.permissions.status**, **.request** and **.open**, **computer.screenshot**,
 **computer.windows**, **computer.apps.list**, **computer.ax.tree** and **computer.ax.find** see the
 computer under `computer:see`; **computer.input.click**, **.move**, **.drag**, **.scroll**, **.type** and
@@ -758,7 +881,9 @@ refused, and a link that asks for a new window loads in the same view.
 
 **web.place** says where one of the caller's views lies in its surface, in CSS pixels from the surface's
 top left, and whether it shows (`shown`, true by default). What lies past the surface's edge is not drawn.
-A view hidden rests its page. A view that is not the caller's is `not_found`.
+With `fill: true`, the box extends from `x` and `y` to the surface's right and bottom edges as the
+surface resizes. In that mode the surface size determines the extent. A view hidden rests its page.
+A view that is not the caller's is `not_found`.
 
 **web.load** loads an address in one of the caller's views, under the same `web:browse` scope as
 `web.open`: an address outside the scope's hosts is `permission_denied`. It answers once the view took
@@ -773,6 +898,30 @@ input method go to the page until a press on the caller's own surface, or the de
 **web.close** closes one of the caller's views; its last `web.changed` says `closed`. Closing one that
 already ended is not an error. A view also ends when its window's surface sleeps, goes away or moves out
 of the desk, and when its plugin stops.
+
+**web.read** reads the page one of the caller's views shows (ADR 0272), under a `web:control` scope
+whose `hosts`, when it has any, cover the host of the page the view shows (`permission_denied`
+otherwise): `web:browse` shows a page, it does not let its plugin see one. A page that went to another
+site between that check and the read is not read (`not_found`); the same holds for `web.act`. It answers the page's `url` and `title`, where it is scrolled to (`scroll`) and its `text` in
+reading order: one block a line, a heading after `#`, a list item after `-`, and every element that
+can be acted on as `[ref kind "name"]` (`link`, `button`, `field`, `checkbox`, `radio`, `select`,
+`tab`, `item`), a field with `= "what it holds"`, a box or a choice with its state. A password is never
+in it, what the page hides is left out, and a frame in the page is named, not read. A `[` or `]` of the
+page's own words is written wide (`［`, `］`): what stands in `[ ]` is an element the read named. `from` and `max`
+(20000 by default) pick a part of the text; `length` is the whole text's. A `ref` names its element
+while that is in the page: a page that loads another document names its elements anew.
+
+**web.act** acts in the page of one of the caller's views as the person would, under the same
+`web:control` scope: `scroll` (`to` a step `up`, `down`, `left`, `right` of `pages` views, 1 by
+default, or to the `top` or the `bottom`; the part of the page that scrolls when the page itself does
+not; the answer's `moved` is false when there was nowhere further to go), `show` (an element brought
+into view), `press` (an element pressed once with the pointer, brought into view first), `type` (text
+typed into a field as written, replacing what it holds unless `replace` is false, with `submit` an
+Enter after it), `key` (one of the keys of `WebKeyName`, to `ref` or to what the page has the keys on)
+and `choose` (an `option` of a select, by the words it shows or its value). A `ref` the page does not
+have is `not_found`; an element that cannot take the act (text into a button, an option a list does not
+have) is `invalid_value`. The keys the person has stay where they are: the page takes the act without
+the view taking the desk's keys. What the page made of the act is read with `web.read`.
 
 **dialog.open** asks the person for files (`kind: files`, the default) or folders (`kind: folders`) to
 open, one or (`multiple`) several, through the OS's own dialog attached to the desk window, its title

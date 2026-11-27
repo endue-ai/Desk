@@ -61,26 +61,6 @@ test("closing a window during a drag releases the pointer and the next window wo
   await expect(surface.locator("textarea.notes-input")).toBeVisible();
 });
 
-test("split dividers keep keyboard focus across repeated arrow adjustments", async ({ page }) => {
-  await page.keyboard.press("Meta+d");
-  const divider = page.locator('[data-surface="window-1"] .divider');
-  await divider.focus();
-  await page.keyboard.press("ArrowLeft");
-  await expect(divider).toBeFocused();
-  await page.keyboard.press("ArrowLeft");
-  await expect(divider).toHaveAttribute("aria-valuenow", "40");
-  await expect(divider).toBeFocused();
-  const bounds = await divider.boundingBox();
-  if (!bounds) throw new Error("no divider");
-  await page.mouse.move(bounds.x, bounds.y + 60);
-  await page.mouse.down();
-  await page.mouse.move(bounds.x + 40, bounds.y + 60, { steps: 3 });
-  await expect(divider).toHaveCSS("cursor", "col-resize");
-  await page.keyboard.press("Escape");
-  await page.mouse.up();
-  await expect(divider).toHaveAttribute("aria-valuenow", "40");
-});
-
 test("profile dialogs contain focus, block background shortcuts and return to the trigger", async ({
   page,
 }) => {

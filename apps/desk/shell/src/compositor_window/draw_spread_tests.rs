@@ -26,6 +26,7 @@ fn report(seq: u64, files: &str, map: serde_json::Value) -> DeskReport {
         "frames": [frame("endue.notes", "main.endue-notes", "live"),
             frame("endue.files", "main.endue-files", files)],
         "copy": { "spread": { "count": "{n} windows", "filter": "Type to filter by title" } },
+        "icons": { "plugin:endue.notes": "M5 4h10l4 4v12H5z" },
         "map": map,
     }))
     .unwrap()
@@ -184,9 +185,9 @@ fn a_sleeping_window_shows_its_last_frame_greyed_under_its_card_with_reload() {
 #[test]
 fn the_canvas_map_goes_toward_the_right_edge_as_far_as_the_page_says_the_rail_has() {
     let mut hosted = hosted("live");
-    let rest = layout(&hosted, None).unwrap();
+    let rest = layout(&hosted, None, None).unwrap();
     hosted.apply(report(2, "live", json!({ "shift": 40 })), Instant::now());
-    let slid = layout(&hosted, None).unwrap();
+    let slid = layout(&hosted, None, None).unwrap();
     for (now, before) in [
         (slid.outer, rest.outer),
         (slid.canvas, rest.canvas),
@@ -207,9 +208,9 @@ fn the_canvas_map_goes_toward_the_right_edge_as_far_as_the_page_says_the_rail_ha
 }
 
 #[test]
-fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_to_its_button() {
+fn the_canvas_map_sits_in_the_bottom_right_with_its_windows_icons_or_folded_to_its_button() {
     let hosted = hosted("live");
-    let laid = layout(&hosted, None).unwrap();
+    let laid = layout(&hosted, None, None).unwrap();
     // 24 px from the right, as the bars are, and 64 from the bottom, 192 by 120 inside 5 px.
     assert_eq!(
         laid.canvas,
@@ -226,14 +227,22 @@ fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_t
     );
     assert_eq!(laid.windows.len(), 2);
     for w in &laid.windows {
-        assert_eq!(w.panes.len(), 1, "{w:?}");
         assert!(laid.canvas.contains(Vec2::new(w.rect.x, w.rect.y)), "{w:?}");
     }
-    let thumbnail = |host: &str| (host == "main.endue-notes").then_some(TextureId(40));
+    let notes = laid.windows.iter().find(|w| w.id == "endue.notes").unwrap();
+    let (path, square) = notes.icon.clone().expect("Notes' view has an icon");
+    assert_eq!(path, "M5 4h10l4 4v12H5z");
+    assert!(
+        notes.rect.contains((square.min() + square.max()) / 2.0),
+        "{notes:?}"
+    );
+    let files = laid.windows.iter().find(|w| w.id == "endue.files").unwrap();
+    assert_eq!(files.icon, None, "the report names no icon for Files' view");
+    let icon = |window: &str| (window == "endue.notes").then_some(TextureId(40));
     let open = MapSource {
         layout: &laid,
         folded: false,
-        thumbnail: &thumbnail,
+        icon: &icon,
     };
     let mut scene = Scene::new(1440, 900);
     let drawn = draw(
@@ -251,7 +260,7 @@ fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_t
                 Some(desk_compositor::NodeKind::Surface(s)) if s.texture == TextureId(40))
         })
         .count();
-    assert_eq!(thumbs, 1, "Notes from its thumbnail; Files has none yet");
+    assert_eq!(thumbs, 1, "Notes with its icon; Files has none");
     // The fold button over the canvas takes the pointer first.
     let b = laid.outer;
     let on = Vec2::new(b.x + b.width - 18.0, b.y + 18.0);
@@ -259,7 +268,7 @@ fn the_canvas_map_sits_in_the_bottom_right_from_the_panes_thumbnails_or_folded_t
     let folded = MapSource {
         layout: &laid,
         folded: true,
-        thumbnail: &thumbnail,
+        icon: &icon,
     };
     let mut scene = Scene::new(1440, 900);
     let drawn = draw(

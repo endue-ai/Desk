@@ -4,7 +4,6 @@ import { denied, disk, mount, note } from "./harness";
 
 const X = note("~/Documents/x.md");
 const DOCS_READ = { permission: "fs:read", paths: ["~/Documents/**"] } as const;
-const DOCS_WRITE = { permission: "fs:write", paths: ["~/Documents/**"] } as const;
 
 describe("files outside the declared grants", () => {
   it("a refused read is asked for and reported in words", async () => {
@@ -75,7 +74,10 @@ describe("files outside the declared grants", () => {
       "Not allowed to write ~/Documents/x.md.",
     );
     expect(params("perm.request")).toEqual([
-      { permission: DOCS_WRITE, reason: "To save ~/Documents/x.md" },
+      {
+        permission: { permission: "fs:write", paths: [X.path] },
+        reason: "To save ~/Documents/x.md",
+      },
     ]);
     expect(params("fs.write")).toHaveLength(1);
     expect(view.notes.at(-1)).toMatchObject({ text: "x, edited\n", modified: true });

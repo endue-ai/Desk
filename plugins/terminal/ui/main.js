@@ -78,9 +78,8 @@ defineUiPlugin({
     // happens there needs no desk notification (notices.js).
     const looking = () => document.visibilityState === "visible" && document.hasFocus();
     app = createTerminals(ctx, view, { platform, looking });
-    wireCommands(ctx.commands, app);
+    wireCommands(ctx.commands, app, () => view.find(), view.scrollback);
     view.drops(ctx.dnd, app);
-    ctx.commands.on("endue.terminal.find", () => view.find());
     ctx.theme.on(() => view.theme(options()));
     // A setting changed while the desk runs: the terminals take it at once (TERM-SET).
     ctx.settings.onChange(({ key, value }) => {

@@ -35,7 +35,7 @@ import {
  * @typedef {{ method?: string, invitations: Invitation[], problems: string[] }} Reading
  */
 
-export const PRODID = "-//endue//Desk Mail 0.1//EN";
+export const PRODID = "-//endue//Mail 0.1//EN";
 export const METHODS = [
   "REQUEST",
   "CANCEL",

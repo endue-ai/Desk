@@ -24,7 +24,7 @@
 use std::time::{Duration, Instant};
 
 use super::{
-    AFTER_PAINT, ASKED_FOR, Clock, FRAME, IDLE, LONG_IDLE, PAINTING, PROMPT, PROMPT_AFTER,
+    AFTER_PAINT, ASKED_FOR, Clock, IDLE, LONG_IDLE, MOST_RATE, PAINTING, PROMPT, PROMPT_AFTER,
     PROMPT_FOR, RATE, SLOW,
 };
 
@@ -57,6 +57,8 @@ enum Mode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pacing {
     pace: u32,
+    /// The display's desk frames a second (#249): a pace of 60 takes every other one at 120 Hz.
+    rate: u32,
     /// The desk frame its pace counts from: its first frame since the pace was set.
     base: Option<u64>,
     /// The paints seen so far, when the count last moved, when it moved before that, and the begin
@@ -90,7 +92,8 @@ impl Pacing {
     /// A surface painting at most `pace` frames a second; its first desk frame is its own.
     pub fn new(pace: u32) -> Pacing {
         Pacing {
-            pace: pace.clamp(1, RATE),
+            pace: pace.clamp(1, MOST_RATE),
+            rate: RATE,
             base: None,
             paints: 0,
             painted: None,
@@ -128,8 +131,17 @@ impl Pacing {
 
     /// The compositor's hint: at most `fps` frames a second from the next desk frame on.
     pub fn set_pace(&mut self, fps: u32) {
-        self.pace = fps.clamp(1, RATE);
+        self.pace = fps.clamp(1, MOST_RATE);
         self.base = None;
+    }
+
+    /// The display's rate, `rate` desk frames a second (the clock's): its pace counts again.
+    pub fn set_rate(&mut self, rate: u32) {
+        let rate = rate.clamp(1, MOST_RATE);
+        if rate != self.rate {
+            self.rate = rate;
+            self.base = None;
+        }
     }
 
     /// The surface heard something at `at` (input, a message, a lifecycle change): it is awake.
@@ -303,30 +315,11 @@ impl Pacing {
         heard && self.painted.is_some() && self.fed < AFTER_PAINT
     }
 
-    /// Whether desk frame `k` is one its pace takes, counted from its base.
+    /// Whether desk frame `k` is one its pace takes, counted from its base: at most every one.
     fn takes(&self, k: u64) -> bool {
         let from = self.base.filter(|base| *base <= k).unwrap_or(k);
-        (k - from) * u64::from(self.pace) % u64::from(RATE) < u64::from(self.pace)
-    }
-
-    /// How far apart its slow frames are: `SLOW` a second, or its pace if that is slower.
-    fn slow_period(&self) -> Duration {
-        FRAME * RATE.div_ceil(self.pace.min(SLOW))
-    }
-
-    /// On the slow frames at `now`: the time of the one due. The first comes a period after it came
-    /// on them, each later one a whole number of periods after it, or where its rhythm skipped
-    /// them to; a late look takes one.
-    fn slow(&mut self, now: Instant) -> Option<Instant> {
-        let period = self.slow_period();
-        let at = *self.slow_at.get_or_insert(now + period);
-        if now < at {
-            return None;
-        }
-        let missed = now.duration_since(at).as_nanos() / period.as_nanos();
-        let ahead = u32::try_from(missed + 1).unwrap_or(u32::MAX);
-        self.slow_at = Some(at + period.saturating_mul(ahead));
-        Some(at)
+        let pace = u64::from(self.pace.min(self.rate));
+        (k - from) * pace % u64::from(self.rate) < pace
     }
 
     fn pressed(&mut self, now: Instant) -> bool {
@@ -361,7 +354,7 @@ impl Pacing {
         let last = clock.last();
         let mode = self.mode(now);
         let paced = match mode {
-            Mode::Every => (1..=u64::from(RATE))
+            Mode::Every => (1..=u64::from(self.rate))
                 .map(|j| last + j)
                 .find(|k| self.takes(*k))
                 .and_then(|k| clock.at(k)),

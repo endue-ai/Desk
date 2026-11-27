@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "the reason is one of the seven",
+  "instance": {
+    "event": "db.closed",
+    "data": {
+      "sessionId": "d-1",
+      "reason": "timeout"
+    }
+  }
+}

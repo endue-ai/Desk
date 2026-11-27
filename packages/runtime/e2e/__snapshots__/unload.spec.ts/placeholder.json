@@ -11,8 +11,8 @@
   261
  ],
  "style": {
-  "background": "rgb(30, 29, 33)",
-  "border": "solid rgb(51, 49, 54)"
+  "background": "rgb(29, 28, 25)",
+  "border": "solid rgb(50, 48, 43)"
  },
  "children": [
   {
@@ -31,7 +31,7 @@
        "tag": "span",
        "class": "surface-name",
        "style": {
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        },
        "text": "Counter"
       }
@@ -42,58 +42,29 @@
      "class": "surface-tools",
      "children": [
       {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "Split right (⌘D)",
-       "box": [
-        322,
-        199,
-        24,
-        24
-       ],
+       "tag": "span",
+       "class": "surface-mark",
+       "role": "img",
+       "aria-label": "Pinned",
+       "hidden": "",
        "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
+        "display": "none"
        },
        "children": [
         {
          "tag": "svg",
-         "icon": "split-right"
+         "icon": "pin"
         }
        ]
       },
       {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "Split down (⌥⌘D)",
-       "box": [
-        348,
-        199,
-        24,
-        24
-       ],
+       "tag": "span",
+       "class": "surface-mark",
+       "role": "img",
+       "aria-label": "Floating",
+       "hidden": "",
        "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "split-down"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button tool",
-       "aria-label": "Floating mode",
-       "aria-pressed": "false",
-       "box": [
-        374,
-        199,
-        24,
-        24
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
+        "display": "none"
        },
        "children": [
         {
@@ -105,11 +76,11 @@
       {
        "tag": "button",
        "class": "icon-button tool",
-       "aria-label": "Pin",
-       "aria-pressed": "false",
+       "aria-label": "Window menu",
+       "aria-expanded": "false",
        "box": [
         400,
-        199,
+        197,
         24,
         24
        ],
@@ -119,7 +90,7 @@
        "children": [
         {
          "tag": "svg",
-         "icon": "pin"
+         "icon": "more"
         }
        ]
       },
@@ -129,7 +100,7 @@
        "aria-label": "Pop out",
        "box": [
         426,
-        199,
+        197,
         24,
         24
        ],
@@ -149,7 +120,7 @@
        "aria-label": "Close",
        "box": [
         452,
-        199,
+        197,
         24,
         24
        ],
@@ -173,8 +144,59 @@
    "children": [
     {
      "tag": "div",
-     "class": "panes",
+     "class": "tabs",
      "children": [
+      {
+       "tag": "div",
+       "class": "tab-strip",
+       "role": "tablist",
+       "style": {
+        "display": "none"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "class": "tab is-active",
+         "role": "tab",
+         "children": [
+          {
+           "tag": "span",
+           "class": "tab-name",
+           "style": {
+            "color": "rgb(243, 241, 236)"
+           },
+           "text": "Counter",
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "box"
+            }
+           ]
+          },
+          {
+           "tag": "button",
+           "class": "icon-button tool tab-close",
+           "aria-label": "Close tab · Counter",
+           "box": [
+            0,
+            0,
+            0,
+            0
+           ],
+           "style": {
+            "border": "solid rgba(0, 0, 0, 0)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "close"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
       {
        "tag": "div",
        "class": "pane",
@@ -194,28 +216,28 @@
              "class": "desk-surface desk-surface--windowed",
              "data-surface": "test.counter",
              "style": {
-              "background": "rgb(30, 29, 33)"
+              "background": "rgb(29, 28, 25)"
              },
              "children": [
               {
                "tag": "div",
                "class": "desk-surface-placeholder",
                "style": {
-                "background": "rgb(30, 29, 33)"
+                "background": "rgb(29, 28, 25)"
                },
                "children": [
                 {
                  "tag": "p",
                  "class": "desk-surface-placeholder-title",
                  "style": {
-                  "color": "rgb(242, 240, 245)"
+                  "color": "rgb(243, 241, 236)"
                  },
                  "text": "Counter"
                 },
                 {
                  "tag": "p",
                  "style": {
-                  "color": "rgb(176, 173, 183)"
+                  "color": "rgb(179, 175, 165)"
                  },
                  "text": "Unloaded while out of sight. It loads again when shown."
                 },
@@ -223,7 +245,7 @@
                  "tag": "button",
                  "class": "btn desk-surface-reload",
                  "style": {
-                  "color": "rgb(242, 240, 245)",
+                  "color": "rgb(243, 241, 236)",
                   "border": "solid rgba(0, 0, 0, 0)"
                  },
                  "text": "Reload"
@@ -246,56 +268,56 @@
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   },
   {
    "tag": "span",
    "class": "surface-resize",
    "style": {
-    "color": "rgb(242, 240, 245)"
+    "color": "rgb(243, 241, 236)"
    }
   }
  ]

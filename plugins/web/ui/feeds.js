@@ -80,8 +80,11 @@ const escapeHtml = (/** @type {string} */ value) =>
   value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** The words of an HTML fragment, for titles marked type="html". */
-const words = (/** @type {string} */ html) =>
-  new DOMParser().parseFromString(html, "text/html").body.textContent?.trim() ?? "";
+const words = (/** @type {string} */ html) => {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  return template.content.textContent?.trim() ?? "";
+};
 
 /** @param {string} html @param {string | undefined} link @returns {import("./formats.js").PageInput} */
 const pageOf = (html, link) => {

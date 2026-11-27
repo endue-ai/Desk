@@ -1,14 +1,8 @@
 name: release
 
-# A push to a release line release/vX.Y builds its next candidate (ADR 0092, amending ADR 0081): check
-# and unit tests on every OS, the four targets built and signed as X.Y.Z-rc.<run>, uploaded to R2 and
-# listed on beta. release-cut.yml's new branch builds the line's first candidate; each merged
-# cherry-pick builds the next. Stable comes from release-final.yml once a candidate has been on beta
-# three days. A branch that is not a line (release/vX.Y.Z) builds nothing, and without the updater key,
-# its public key or the R2 credentials the run fails: a line is meant to ship.
+# Dispatch on a release/vX.Y branch to check every OS and publish its next candidate on beta.
 on:
-  push:
-    branches: ["release/v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,6 +15,7 @@ concurrency:
 
 jobs:
   gate:
+    if: startsWith(github.ref, 'refs/heads/release/v')
     name: gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,9 +29,11 @@ jobs:
           fetch-depth: 0
       - id: version
         name: The candidate's version
-        run: echo "version=$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - id: shell
-        name: The desk the line builds (.github/release-shell, #46)
+        name: Select the endue shell for this release line
         run: |
           shell="$(tr -d '[:space:]' < .github/release-shell)"
           case "$shell" in tauri | cef) ;; *) echo "::error::.github/release-shell names $shell, not tauri or cef"; exit 1 ;; esac
@@ -85,7 +82,7 @@ jobs:
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
-      - name: Install the ALSA headers (cpal, for desk-sys audio)
+      - name: Install ALSA headers for endue audio
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -112,7 +109,7 @@ jobs:
       group: release-index
       cancel-in-progress: false
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
     env:
@@ -135,22 +132,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: desk-*
+          pattern: endue-app-*
           path: dist
           merge-multiple: true
+      - name: Verify the release file list
+        run: |
+          node scripts/release-manifest.mjs check-files dist --version "$VERSION"
+          prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
+          echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: dist/endue-desk_*
+          subject-path: |
+            dist/${{ env.DESKTOP_PREFIX }}*
+            dist/endue-cli_*
       - name: Write and sign release.json
         run: |
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
           mv release.json dist/release.json
-          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          (cd dist && shopt -s nullglob && sha256sum "$DESKTOP_PREFIX"* "endue-cli_${VERSION}_"* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
       - name: List it on beta
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # The bucket's own copy, never the cached public one; a missing index starts at serial 1.
           if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/beta/index.json beta.json --endpoint-url "$ENDPOINT" 2>&1)"; then
@@ -159,4 +165,5 @@ jobs:
           node scripts/release-manifest.mjs list beta.json --channel beta --release dist/release.json > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
           node scripts/release-publish.mjs index index.json --channel beta --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          bash scripts/publish-upgrade-path.sh index index.json beta "$VERSION"
           echo "::notice::candidate $VERSION of $GITHUB_REF_NAME is on $BASE/channels/beta/index.json"

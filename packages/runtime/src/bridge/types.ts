@@ -18,6 +18,8 @@ import type {
   StudioAgent,
   StudioAgentsFacetsResult,
   StudioAgentsPictureResult,
+  StudioChatAskParams,
+  StudioChatAskResult,
   StudioConversation,
   StudioSpace,
   StudioSpacesGetResult,
@@ -195,6 +197,8 @@ export interface LocalAgentsBridge {
  * The person's endue AI agents and spaces as the agent bar and their windows read them, once the
  * desk is signed in (studio.*, ADR 0122 and ADR 0129). The token stays in the core.
  */
+export type StudioQuestion = Omit<StudioChatAskParams, "scope">;
+
 export interface StudioShellBridge {
   /** Every agent of the person's that is not deleted, the newest first. */
   agents(): Promise<StudioAgent[]>;
@@ -208,6 +212,8 @@ export interface StudioShellBridge {
   spaces(): Promise<StudioSpace[]>;
   /** What one space is doing. */
   space(spaceId: string): Promise<StudioSpacesGetResult>;
+  /** Ask one agent or the selected space's Front Desk through the runtime. */
+  ask?(question: StudioQuestion): Promise<StudioChatAskResult>;
   /** Open one of endue.ai's pages (an https URL) in the system browser. */
   open(url: string): Promise<void>;
 }
@@ -249,10 +255,30 @@ export interface ShellBridge {
     /** Choose Eris's brain; answers the status once the desk switched. */
     use(brain: BrainName): Promise<BrainStatus>;
     /**
+     * The models of the brains that have one (ADR 0296): the local brain's Ollama model and Claude
+     * Code's (empty: its own default). Hosts that cannot change them leave it out.
+     */
+    models?: {
+      get(): Promise<{ local: string; claude: string }>;
+      set(brain: "local" | "claude", model: string): Promise<void>;
+    };
+    /**
      * One turn of Eris's loop: its hand-offs reach `onStep` as they happen, then the reply. `desk`
      * is what the person sees as they say it (ADR 0109), so Eris knows which plugin it is for.
      */
     say(text: string, onStep?: (step: BrainStep) => void, desk?: BrainDesk): Promise<BrainReply>;
+  };
+  /**
+   * Pictures of windows for a sweep's snapshot, and a place to keep them (ADR 0296): `window` is a
+   * plugin surface's last frame (ui.surface.snapshot), `save` writes a PNG (base64) under
+   * ~/.desk/snapshots and answers its path. Hosts without a compositor leave it out.
+   */
+  snapshots?: {
+    window(
+      plugin: string,
+      surface?: string,
+    ): Promise<{ image: string; width: number; height: number } | null>;
+    save(name: string, png: string): Promise<string>;
   };
   /** The endue ID the brain thinks with (ADR 0089); hosts without one leave it out. */
   account?: {

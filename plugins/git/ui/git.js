@@ -4,21 +4,14 @@
 // test host runs it with a recording view and a scripted git.
 
 import { createActions } from "./actions.js";
-import { snapshot } from "./agent.js";
+import { readCommits, readStatus, repositoryAt, wireRepositoryTools } from "./agent.js";
 import { findBranches, listBranches } from "./branches.js";
 import { hints } from "./keys.js";
 import { parseDiff } from "./parse-diff.js";
-import { LOG_FORMAT, layoutGraph, parseLog } from "./parse-log.js";
-import {
-  emptyStatus,
-  parseRecent,
-  parseStashes,
-  parseStatus,
-  RECENT_FORMAT,
-  STASH_FORMAT,
-} from "./parse-status.js";
+import { layoutGraph } from "./parse-log.js";
+import { emptyStatus } from "./parse-status.js";
 import { createPick } from "./pick.js";
-import { createRecent, nameOf } from "./recent.js";
+import { createRecent } from "./recent.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
 
@@ -107,40 +100,14 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   };
 
   const refreshStatus = async () => {
-    const [status, stashes, recent] = await Promise.all([
-      git(["status", "--porcelain=v2", "--branch", "-z"]),
-      git(["stash", "list", `--format=${STASH_FORMAT}`]),
-      // A repository without commits has no log yet: that is not an error here.
-      git(["log", "-n", "10", `--format=${RECENT_FORMAT}`], { ok: [128] }),
-    ]);
-    statusView = {
-      repo,
-      status: parseStatus(status.stdout),
-      stashes: parseStashes(stashes.stdout),
-      recent: recent.code === 0 ? parseRecent(recent.stdout) : [],
-    };
+    statusView = { repo, ...(await readStatus(git)) };
     header();
     view.status(statusView);
   };
-  const remotes = async () =>
-    (await git(["remote"])).stdout.split("\n").filter((line) => line !== "");
-
   /** @param {{ all: boolean, skip: number }} what */
   const loadLog = async ({ all, skip }) => {
     const count = settings.logCount;
-    const [names, log] = await Promise.all([
-      remotes(),
-      git([
-        "log",
-        "--topo-order",
-        `--max-count=${count}`,
-        ...(skip > 0 ? [`--skip=${skip}`] : []),
-        `--format=${LOG_FORMAT}`,
-        ...(all ? ["--all"] : ["HEAD"]),
-        "--",
-      ]),
-    ]);
-    const loaded = parseLog(log.stdout, names);
+    const loaded = await readCommits(git, { count, all, skip });
     const commits = skip > 0 && logView ? [...logView.commits, ...loaded] : loaded;
     logView = { commits, rows: layoutGraph(commits), more: loaded.length === count, all };
     view.log(logView);
@@ -229,14 +196,8 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   const open = async (path) => {
     const chosen = path ?? (await pickRepo());
     if (chosen === undefined) return null;
-    const top = await runner
-      .run(["rev-parse", "--show-toplevel"], { cwd: chosen })
-      .catch((/** @type {Error & { outcome?: { code?: number | null } }} */ error) => {
-        if (error.outcome?.code === 128) throw new Error(`Not a Git repository: ${chosen}.`);
-        throw error;
-      });
-    const root = top.stdout.trim();
-    repo = { root, name: nameOf(root) };
+    repo = await repositoryAt(runner.run, chosen);
+    const { root } = repo;
     logView = null;
     diffView = null;
     await remember(root);
@@ -249,6 +210,7 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     git,
     cancel: () => runner.cancel(),
     status: () => statusView.status,
+    root: () => opened().root,
     diff: () => diffView,
     invoke: (id, args) => commands.run(id, args),
     settings: () => settings,
@@ -272,13 +234,13 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
    * status line and ends the request with the same words, which the desk shows in its own notice;
    * a success clears the line.
    * @param {string} name
-   * @param {(args: any) => unknown} handler
+   * @param {(args: any, invocation?: import("@endue-ai/plugin-sdk").Invocation) => unknown} handler
    */
   const answer = (name, handler) =>
-    commands.on(name, async (args) => {
+    commands.on(name, async (args, invocation) => {
       await ready;
       try {
-        const result = await handler(args ?? {});
+        const result = await handler(args ?? {}, invocation);
         if (name !== "endue.git.commit") said = "";
         return result;
       } catch (error) {
@@ -287,25 +249,33 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
       }
     });
 
-  answer("endue.git.status", async ({ path }) => {
+  answer("endue.git.status", async ({ path }, invocation) => {
     if (typeof path === "string" && path !== "") return open(path);
+    if (invocation?.caller.startsWith("agent:"))
+      throw new Error("Give the repository folder as path.");
     if (!repo) return open();
     await refreshStatus();
     show("status");
     return repo.root;
   });
   answer("endue.git.refresh", refresh);
-  // What an agent reads (ADR 0088): the repository `path` is in, else the open one, as data.
-  answer("endue.git.state", async ({ path }) => {
-    if (typeof path === "string" && path !== "" && path !== repo?.root) await open(path);
-    await refresh();
-    return snapshot(opened(), statusView);
+  wireRepositoryTools({
+    answer,
+    git,
+    run: runner.run,
+    opened,
+    refresh,
+    pick,
+    cancelled:
+      options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" })),
   });
   answer("endue.git.log", showLog);
   answer("endue.git.diff", showDiff);
   answer("endue.git.stage", actions.stage);
   answer("endue.git.unstage", actions.unstage);
   answer("endue.git.discard", actions.discard);
+  answer("endue.git.discard-files", actions.discardFiles);
+  answer("endue.git.restore-files", actions.restoreFiles);
   answer("endue.git.discard-patch", actions.discardPatch);
   answer("endue.git.restore-patch", actions.restorePatch);
   answer("endue.git.commit", actions.commit);
@@ -363,8 +333,11 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   })();
   // The palette's Branches group, for the repository a reload brought back too. Asking is not an
   // operation: the status line neither says nor clears anything.
-  commands.on("endue.git.branches", async (args) => {
+  commands.on("endue.git.branches", async (args, invocation) => {
     await ready;
+    const query = /** @type {{ query?: unknown }} */ (args ?? {}).query;
+    if (invocation?.caller.startsWith("agent:") || typeof query !== "string")
+      return (await listBranches(git)).slice(0, 500);
     return findBranches(args, repo, () => listBranches(git), statusView.status.head.branch);
   });
 

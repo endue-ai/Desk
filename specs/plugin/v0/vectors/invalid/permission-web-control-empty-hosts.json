@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "web:control with hosts names at least one",
+  "instance": {
+    "permission": "web:control",
+    "hosts": []
+  }
+}

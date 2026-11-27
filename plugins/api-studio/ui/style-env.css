@@ -1,0 +1,250 @@
+/* Environments: their colours, the picker on the tab strip, the Variables look, an environment's
+   tab, the Environments panel, and the Vars section's help and captured values. */
+
+.env-green { --env: var(--desk-success); }
+.env-orange { --env: var(--desk-warning); }
+.env-red { --env: var(--desk-danger); }
+.env-blue { --env: var(--desk-info); }
+.env-purple { --env: var(--desk-chart-1); }
+.env-teal { --env: var(--desk-chart-2); }
+.env-gray { --env: var(--desk-chart-8); }
+
+.as-env-dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--env, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--env, var(--desk-text-muted)) 22%, transparent);
+}
+.as-env-dot.env-none {
+  border: 1.5px dashed var(--desk-text-muted);
+  box-shadow: none;
+}
+.as-envbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.as-envpick.desk-btn {
+  min-height: 30px;
+  max-width: 220px;
+  padding: 0 10px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-background);
+  font-size: var(--desk-text-xs);
+}
+.as-envpick .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.as-envpick.is-none {
+  color: var(--desk-text-muted);
+}
+.as-look.desk-icon-btn,
+.as-look {
+  border-color: transparent;
+  background: transparent;
+  color: var(--desk-text-muted);
+}
+.env-item .as-menu-label::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--env);
+  content: "";
+}
+
+/* ── the Variables look ─────────────────────────────────────────────── */
+.as-look-menu.as-menu {
+  width: 460px;
+  padding: 0;
+}
+div.as-look {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.as-look-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.as-look-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+}
+.as-look-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--as-line-soft);
+  font-size: var(--desk-text-xs);
+}
+.as-look-row:last-child {
+  border-bottom: 0;
+}
+.as-look-row.is-hidden {
+  opacity: 0.45;
+}
+.as-look-row.is-hidden .as-look-name {
+  text-decoration: line-through;
+}
+.as-look-name,
+.as-look-value {
+  overflow: hidden;
+  font-family: var(--as-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-look-value {
+  color: var(--desk-text-muted);
+}
+.as-look-scope {
+  padding: 1px 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--as-raised);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+.as-look-scope.sc-env {
+  background: color-mix(in srgb, var(--desk-success) 16%, transparent);
+  color: var(--desk-success);
+}
+.as-look-scope.sc-runtime {
+  background: color-mix(in srgb, var(--desk-chart-1) 18%, transparent);
+  color: var(--desk-chart-1);
+}
+.as-look-scope.sc-global {
+  background: color-mix(in srgb, var(--desk-chart-3) 16%, transparent);
+  color: var(--desk-chart-3);
+}
+.as-look-scope.sc-collection,
+.as-look-scope.sc-folder {
+  background: color-mix(in srgb, var(--desk-info) 16%, transparent);
+  color: var(--desk-info);
+}
+.as-look-dyn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.as-look-dyn code,
+.as-help code,
+.as-captured code {
+  padding: 0 4px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--as-raised);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+}
+
+/* ── an environment's tab and the panel ─────────────────────────────── */
+.as-env-icon {
+  background: color-mix(in srgb, var(--env) 18%, transparent);
+  color: var(--env);
+}
+.as-env-colors {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 18px 6px;
+}
+.as-swatches {
+  display: flex;
+  gap: 6px;
+}
+.as-swatch.desk-icon-btn {
+  width: 22px;
+  height: 22px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--env);
+}
+.as-swatch.desk-icon-btn:hover:not(:disabled) {
+  background: var(--env);
+}
+.as-swatch.is-on.desk-icon-btn {
+  border-color: var(--desk-text);
+}
+.as-in-use.desk-btn {
+  border-color: color-mix(in srgb, var(--desk-success) 45%, transparent);
+  background: color-mix(in srgb, var(--desk-success) 12%, transparent);
+  color: var(--desk-success);
+}
+.as-env-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.as-env-row.desk-row {
+  padding-left: 12px;
+}
+.as-env-count {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+.as-env-on {
+  padding: 1px 7px;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-success) 14%, transparent);
+  color: var(--desk-success);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+
+/* ── the Vars section ───────────────────────────────────────────────── */
+.as-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  line-height: 1.7;
+}
+.as-captured {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-md);
+}
+.as-captured h3 {
+  margin: 0 0 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.as-captured-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--desk-text-xs);
+}
+.as-captured-row .icon {
+  color: var(--desk-success);
+}
+.as-captured-row.is-bad .icon {
+  color: var(--desk-danger);
+}
+.as-captured-row span {
+  overflow: hidden;
+  font-family: var(--as-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

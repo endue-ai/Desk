@@ -111,6 +111,12 @@ export function createPane(deps) {
     return model;
   };
 
+  const readFiles = async (/** @type {string} */ id, /** @type {unknown} */ path) => {
+    const at = containerPath(path);
+    const { stdout } = await deps.docker(lsArgs(id, at));
+    return parseLs(stdout, at);
+  };
+
   /** A folder of the pane's container, listed with its own ls; a failure is said in the tab. */
   const listFiles = async (/** @type {unknown} */ path) => {
     if (model?.kind !== "container" || model.item?.kind !== "container")
@@ -126,8 +132,7 @@ export function createPane(deps) {
     /** @type {Files} */
     let files;
     try {
-      const { stdout } = await deps.docker(lsArgs(id, at));
-      files = { path: at, entries: parseLs(stdout, at), problem: "", loading: false };
+      files = { path: at, entries: await readFiles(id, at), problem: "", loading: false };
     } catch (error) {
       files = { path: at, entries: [], problem: lsProblem(messageOf(error)), loading: false };
     }
@@ -156,6 +161,7 @@ export function createPane(deps) {
 
   return {
     model: () => model,
+    readFiles,
     kind: () => model?.kind,
     item: () => model?.item,
     /** The container the pane is about, if any. */

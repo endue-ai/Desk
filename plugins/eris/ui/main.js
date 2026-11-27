@@ -20,7 +20,7 @@ function show(state) {
   if (!STATES.includes(state)) return;
   const pose = document.getElementById("pose");
   pose.dataset.state = state;
-  pose.querySelector("img").setAttribute("src", `./assets/state-${state}.svg`);
+
   document.getElementById("label").textContent = LABELS[state];
 }
 
@@ -50,5 +50,6 @@ defineUiPlugin({
       talk.showExchange(prompt, answer),
     );
     talk.start();
+    document.getElementById("say").inert = false;
   },
 });

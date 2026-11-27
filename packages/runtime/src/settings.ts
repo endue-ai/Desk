@@ -52,13 +52,39 @@ export class Settings {
     return { ...this.#layers[layer] };
   }
 
-  get<T = unknown>(key: string, fallback?: T): T {
-    for (const layer of ORDER) {
+  declaration(key: string): SettingContribution | undefined {
+    return Object.hasOwn(this.#defaults, key) ? this.#defaults[key] : undefined;
+  }
+
+  declaredKeys(): string[] {
+    return Object.keys(this.#defaults).sort();
+  }
+
+  #winningLayer(key: string): Layer | undefined {
+    const declaration = this.declaration(key);
+    return ORDER.find((layer) => {
       const values = this.#layers[layer];
-      if (key in values && fits(this.#defaults[key], values[key])) return values[key] as T;
-    }
-    const declared = this.#defaults[key];
+      return Object.hasOwn(values, key) && fits(declaration, values[key]);
+    });
+  }
+
+  get<T = unknown>(key: string, fallback?: T): T {
+    const source = this.#winningLayer(key);
+    if (source) return this.#layers[source][key] as T;
+    const declared = this.declaration(key);
     return (declared ? declared.default : fallback) as T;
+  }
+
+  describe(key: string) {
+    const declared = this.declaration(key);
+    if (!declared) return undefined;
+    const source = this.#winningLayer(key);
+    return {
+      key,
+      value: source ? this.#layers[source][key] : declared.default,
+      default: declared.default,
+      layer: source ?? ("default" as const),
+    };
   }
 
   /** Every declared setting with the value in force, plus undeclared keys some layer sets. */
@@ -118,5 +144,21 @@ export function fits(setting: SettingContribution | undefined, value: unknown): 
       return Array.isArray(value);
     case "object":
       return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+}
+
+/** Whether `value` is one the declaration allows: its kind and choices, range and pattern. */
+export function schemaFits(setting: SettingContribution, value: unknown): boolean {
+  if (!fits(setting, value)) return false;
+  if (typeof value === "number")
+    return (
+      (setting.minimum === undefined || value >= setting.minimum) &&
+      (setting.maximum === undefined || value <= setting.maximum)
+    );
+  if (typeof value !== "string" || !setting.pattern) return true;
+  try {
+    return new RegExp(setting.pattern, "u").test(value);
+  } catch {
+    return false;
   }
 }

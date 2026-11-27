@@ -31,6 +31,7 @@ const INIT: Record<string, string> = {
   "launch.spec.ts": "init.yaml",
   "settings.spec.ts": "init-bad-values.yaml",
   "browser.spec.ts": "init-browser.yaml",
+  "browser-control.spec.ts": "init-browser.yaml",
   "resident.spec.ts": "init-resident.yaml",
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";
@@ -72,6 +73,9 @@ const ENV: Record<string, Record<string, string>> = {
     ].join(delimiter),
   },
   "app-opens-out.spec.ts": { DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window") },
+  // The echo brain the spec starts for itself, on a port of its own (ADR 0271, ADR 0275).
+  "eris-glow.spec.ts": { DESK_ECHO_URL: "http://127.0.0.1:18787/v0" },
+  "browser-control.spec.ts": { DESK_ECHO_URL: "http://127.0.0.1:18788/v0" },
   "app-opens-canvas.spec.ts": {
     DESK_DEV_PLUGINS: join(root, "examples/plugin-hello-window"),
     DESK_APP_WINDOWS: "off",
@@ -88,7 +92,7 @@ const BUILD: Record<string, string[]> = {
 
 /**
  * Point the session at the desk's main page. The CEF desk has a page per window (the main one, the
- * palette's `?view=palette`, the island's `?view=island`), and chromedriver attaches to whichever
+ * palette's `?view=palette`), and chromedriver attaches to whichever
  * DevTools lists first, which after a relaunch is often not the main one.
  */
 async function toMainPage(): Promise<void> {

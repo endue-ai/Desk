@@ -1,12 +1,20 @@
 {
   "target": "PluginManifest",
-  "description": "a UI plugin that ships its words in catalogs under messages/",
+  "description": "a UI plugin with catalog messages for its surface label and command title",
   "instance": {
     "id": "example.greeter",
     "name": "Greeter",
     "version": "0.1.0",
     "kind": "ui",
     "entry": "ui/index.html",
-    "messages": "messages"
+    "messages": "messages",
+    "surfaces": [
+      { "id": "main", "title": "Greeter", "titleMessage": "greeter.window", "placement": "center" }
+    ],
+    "contributes": {
+      "commands": [
+        { "id": "example.greeter.show", "title": "Show greeting", "titleMessage": "greeter.show" }
+      ]
+    }
   }
 }

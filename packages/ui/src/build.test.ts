@@ -6,6 +6,7 @@ import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import config from "../vite.config";
 import { tokensCss } from "./index";
+import { joinSheets } from "./sheets";
 
 describe("build", () => {
   const outDir = mkdtempSync(join(tmpdir(), "desk-ui-"));
@@ -20,11 +21,13 @@ describe("build", () => {
   }, 60_000);
   afterAll(() => rmSync(outDir, { recursive: true, force: true }));
 
-  it("writes ui.js, ui.iife.js, tokens.css and base.css", () => {
+  it("writes ui.js, ui.iife.js, tokens.css and base.css (the base sheet, then the patterns)", () => {
     expect(readdirSync(outDir).sort()).toEqual(["base.css", "tokens.css", "ui.iife.js", "ui.js"]);
     expect(readFileSync(join(outDir, "tokens.css"), "utf8")).toBe(tokensCss());
-    const base = readFileSync(new URL("./base.css", import.meta.url), "utf8");
+    const base = joinSheets((name) => readFileSync(new URL(`./${name}`, import.meta.url), "utf8"));
     expect(readFileSync(join(outDir, "base.css"), "utf8")).toBe(base);
+    expect(base).toContain(".desk-btn {");
+    expect(base).toContain(".desk-callout {");
     expect(readFileSync(join(outDir, "ui.iife.js"), "utf8")).toMatch(/\bvar DeskUI = /);
   });
 
@@ -32,7 +35,8 @@ describe("build", () => {
     // Imported in Node, where there is no DOM: it must load and leave defining to the browser.
     const ui = await import(pathToFileURL(join(outDir, "ui.js")).href);
     expect(typeof ui.defineElements).toBe("function");
-    expect(Object.keys(ui.elements)).toHaveLength(14);
+    expect(Object.keys(ui.elements)).toHaveLength(15);
+    expect(ui.elements["desk-agent-session"]).toBe(ui.DeskAgentSession);
     expect(ui.elements["desk-table"]).toBe(ui.DeskTable);
     expect(ui.elements["desk-markdown"]).toBe(ui.DeskMarkdown);
     expect(ui.elements["desk-dialog"]).toBe(ui.DeskDialog);

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeEvent",
+  "description": "a granted memory change has its own completion receipt",
+  "instance": {
+    "event": "perm.approval.done",
+    "data": {
+      "approvalId": "a-2",
+      "ok": true,
+      "undoable": true,
+      "change": "fact-remembered"
+    }
+  }
+}

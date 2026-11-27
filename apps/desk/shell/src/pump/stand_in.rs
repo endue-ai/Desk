@@ -63,7 +63,7 @@ impl StandIn {
                 .name("desk-clock-stand-in".to_owned())
                 .spawn(move || shared.run());
             if let Err(why) = spawned {
-                eprintln!("endue Desk: no stand-in for the frame clock ({why})");
+                eprintln!("endue: no stand-in for the frame clock ({why})");
             }
         }
     }

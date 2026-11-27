@@ -43,11 +43,16 @@ describe("plugin.json", () => {
   });
 
   it("opens from the palette through desk.plugins.open", () => {
-    expect(manifest.contributes?.commands).toEqual([
-      expect.objectContaining({
-        id: "endue.memory.open",
-        runs: { command: "desk.plugins.open", args: { plugin: "endue.memory" } },
-      }),
-    ]);
+    expect(manifest.contributes?.commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "endue.memory.open",
+          agent: true,
+          runs: { command: "desk.plugins.open", args: { plugin: "endue.memory" } },
+        }),
+        expect.objectContaining({ id: "endue.memory.find", agent: true, readOnly: true }),
+        expect.objectContaining({ id: "endue.memory.forget", agent: true, irreversible: true }),
+      ]),
+    );
   });
 });

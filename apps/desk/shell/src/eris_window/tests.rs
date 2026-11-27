@@ -1,11 +1,11 @@
-//! Eris's shortcut (ADR 0121): the key in force and how it reads, and where it talks to her when the
-//! island does not (ADR 0204).
+//! Eris's shortcut (ADR 0121): the key in force and how it reads, and where it talks to her.
 
 use super::shortcut::{self, chosen, label, taken};
 use super::{Talk, where_to};
+use crate::words::Language;
 
 #[test]
-fn without_the_island_the_shortcut_talks_in_the_desk_bringing_it_forward_when_needed() {
+fn the_shortcut_talks_in_the_desk_bringing_it_forward_when_needed() {
     assert_eq!(where_to(true), Talk::InDesk);
     assert_eq!(where_to(false), Talk::DeskForward);
 }
@@ -27,9 +27,17 @@ fn the_shortcut_reads_as_symbols_on_macos() {
     assert_eq!(label("CommandOrControl+Shift+KeyE", true), "⌘⇧E");
     assert_eq!(label("Alt+Enter", false), "Alt+Enter");
     assert_eq!(label("CmdOrCtrl+Shift+Digit1", false), "Ctrl+Shift+1");
-    let (title, body) = taken("Alt+Enter", true, "already registered");
+    let (title, body) = taken(Language::En, "Alt+Enter", true, "already registered");
     assert_eq!(title, "⌥↩ cannot summon Eris");
     assert!(body.contains("Talk to Eris"), "{body}");
+    assert!(body.contains("endue.eris.shortcut"), "{body}");
+    assert!(body.contains("already registered"), "{body}");
+    let (title, body) = taken(Language::Ko, "Alt+Enter", true, "already registered");
+    assert_eq!(title, "⌥↩ 로 Eris를 부를 수 없습니다");
+    assert!(
+        body.contains("Eris에게 말하기"),
+        "the tray's item, in its words: {body}"
+    );
     assert!(body.contains("endue.eris.shortcut"), "{body}");
     assert!(body.contains("already registered"), "{body}");
 }

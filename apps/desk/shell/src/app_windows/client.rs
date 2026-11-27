@@ -38,6 +38,18 @@ fn apply(acts: Vec<Act>, frame: &Frame, desk: &Arc<Desk>, drags: &Arc<Mutex<Drag
     for act in acts {
         match act {
             Act::Page(m) => host::send(frame.clone(), m.to_string()),
+            Act::GrantFiles {
+                target,
+                paths,
+                destination,
+            } => {
+                desk.core.grant_file_drop(
+                    None,
+                    &target,
+                    paths.iter().map(String::as_str),
+                    destination.as_deref(),
+                );
+            }
             Act::Open(paths) => {
                 desk.pump.run(move |shell, _| shell.open_dropped(paths));
             }
@@ -100,7 +112,7 @@ wrap_keyboard_handler! {
             &self,
             _browser: Option<&mut Browser>,
             event: Option<&KeyEvent>,
-            _os_event: *mut u8,
+            _os_event: crate::cef_input::OsEvent<'_>,
             _is_keyboard_shortcut: Option<&mut ::std::os::raw::c_int>,
         ) -> ::std::os::raw::c_int {
             let Some(event) = event else { return 0 };
@@ -235,7 +247,7 @@ wrap_request_handler! {
             let mut revived = self.revived.lock().unwrap_or_else(|e| e.into_inner());
             let again = revived.is_none_or(|at| now.duration_since(at) >= CRASH_AGAIN);
             eprintln!(
-                "endue Desk: the renderer of app window {} ended ({status:?}, {error_code}){}",
+                "endue: the renderer of app window {} ended ({status:?}, {error_code}){}",
                 self.surface,
                 if again { "; its page loads again" } else { "" }
             );

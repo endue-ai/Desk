@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "db.open with the defaults: port 5432, prefer, the password file",
+  "instance": {
+    "id": 21,
+    "method": "db.open",
+    "params": {
+      "engine": "postgresql",
+      "host": "db.example.test",
+      "database": "shop",
+      "user": "reader",
+      "scope": {
+        "permission": "db:connect",
+        "hosts": ["db.example.test"]
+      }
+    }
+  }
+}

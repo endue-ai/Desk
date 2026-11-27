@@ -48,7 +48,7 @@ export type DeskUniversalRangeDetail = { anchor: string; range: CalendarRange };
 const MESSAGES: Record<string, string> = {
   loading: "Loading…",
   error: "The source did not answer.",
-  denied: "Desk may not read this source yet.",
+  denied: "endue may not read this source yet.",
 };
 const TALK = new Set<UniversalType>(["chat", "agent"]);
 type Entry = { node: HTMLElement; row: UniversalRow; lane: number };

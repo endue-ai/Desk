@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/init/v0/init.schema.json",
   "title": "init.yaml v0",
-  "description": "A person's own setup, which Desk reads at every start like Emacs reads init.el. The file is YAML; this schema describes the data it holds once parsed. An empty file is the empty object.",
+  "description": "A person's own setup, which endue reads at every start like Emacs reads init.el. The file is YAML; this schema describes the data it holds once parsed. An empty file is the empty object.",
   "$ref": "#/$defs/InitDocument",
   "$defs": {
     "InitDocument": {
@@ -10,7 +10,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "description": "The format version. Default 0. Desk refuses a file with a version newer than it reads.",
+          "description": "The format version. Default 0. endue refuses a file with a version newer than it reads.",
           "type": "integer",
           "minimum": 0,
           "maximum": 0
@@ -34,7 +34,7 @@
       "type": "object",
       "properties": {
         "disabled": {
-          "description": "Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start.",
+          "description": "Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while endue runs; the list applies again at the next start.",
           "type": "array",
           "items": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
           "uniqueItems": true

@@ -1,5 +1,5 @@
-// A result set as other formats (tab-separated for the clipboard, CSV, JSON, Markdown, INSERT and
-// UPDATE statements), sorted by a column, and which columns hold numbers. NULL stays NULL in every
+// A result set as other formats (tab-separated for the clipboard with an HTML table beside it, CSV,
+// JSON, Markdown, INSERT and UPDATE statements), sorted by a column, and which columns hold numbers. NULL stays NULL in every
 // format: an empty CSV field is '' quoted, JSON null, \N in TSV. The SQL formats write each value
 // as its column's literal (edit/values.js) when the column types are known. No DOM.
 
@@ -117,6 +117,32 @@ export function formatRows(set, format, options = {}) {
       .join("\n");
   }
   return rows.map((row) => row.map(tsvField).join("\t")).join("\n");
+}
+
+/**
+ * The cells tab-separated text holds, as an HTML table beside it on the clipboard (#504): a
+ * spreadsheet pastes it as cells, a line break staying in its cell and NULL an empty one (the text
+ * keeps \N). No header row, as the text has none.
+ * @param {ResultSet} set
+ * @param {FormatOptions} [options] `rows` and `columns` as formatRows takes them.
+ */
+export function htmlTable(set, options = {}) {
+  const pick = options.columns ?? set.columns.map((_, i) => i);
+  const cell = (/** @type {string | null | undefined} */ value) =>
+    `<td>${value === null || value === undefined ? "" : escapeHtml(value).replace(/\r?\n/gu, "<br>")}</td>`;
+  const rows = (options.rows ?? set.rows).map(
+    (row) => `<tr>${pick.map((i) => cell(row[i])).join("")}</tr>`,
+  );
+  return `<table>${rows.join("")}</table>`;
+}
+
+/** Text as HTML text and attribute values. */
+function escapeHtml(/** @type {string} */ text) {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 /** A CSV field: quoted when it must be, and '' quoted so it is not NULL (an empty field). */

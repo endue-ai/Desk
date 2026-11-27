@@ -1,0 +1,5 @@
+{
+  "target": "AgentConversationTurn",
+  "description": "A run needs a client message ID to be safe to submit again with refreshed auth",
+  "instance": { "agent_id": "ag_fixture", "content": "What is ready for review?", "stream": true }
+}

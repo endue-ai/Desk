@@ -35,6 +35,9 @@ export const NON_TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["input", "card"],
   ["ring", "background"],
   ["ring", "card"],
+  // The star, the one colour, marks an agent at work: it stands 3:1 like a control (ADR 0265).
+  ["star", "background"],
+  ["star", "card"],
   ...STATUSES.map((s) => [s, "card"] as const),
 ];
 

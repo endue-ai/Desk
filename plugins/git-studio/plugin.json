@@ -38,13 +38,14 @@
             }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.git-studio.state",
         "title": "Git Studio: the repository as data",
         "keywords": ["git", "status", "branches"],
-        "description": "The repository open in Git Studio: root, branch, upstream, ahead and behind, an operation in progress, staged, unstaged and conflicted files, branches, tags, stashes and the latest commits.",
+        "description": "The repository open in Git Studio: root, branch, upstream, ahead and behind, an operation in progress, the 15 latest commits, staged, unstaged and conflicted files, stashes, and the first 30 branches (the current one first) and tags, with branchCount and tagCount for all of them. To find commits, by message, author, code or path, use endue.git-studio.log.",
         "args": { "type": "object", "properties": {}, "additionalProperties": false },
         "result": {
           "type": "object",
@@ -60,10 +61,37 @@
             "staged": { "type": "array" },
             "unstaged": { "type": "array" },
             "conflicts": { "type": "array" },
-            "branches": { "type": "array" },
-            "tags": { "type": "array" },
+            "recent": { "type": "array" },
             "stashes": { "type": "array" },
-            "recent": { "type": "array" }
+            "branchCount": { "type": "integer" },
+            "branches": { "type": "array" },
+            "tagCount": { "type": "integer" },
+            "tags": { "type": "array" }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.log",
+        "title": "Git Studio: find commits as data",
+        "keywords": ["git", "log", "commits", "search", "grep", "history"],
+        "description": "Commits of the open repository as data, newest first, from every branch, remote branch and tag: those whose message holds query (plain text, any case; mode text), whose changes add or remove it (mode code) or that touched a path holding it (mode path); the latest commits without a query. author narrows by name or email. Answers up to limit commits (50, at most 200), each with sha, subject, author and date in seconds, and more when there were more.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "maxLength": 200 },
+            "mode": { "type": "string", "enum": ["text", "code", "path"] },
+            "author": { "type": "string", "maxLength": 200 },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "commits": { "type": "array" },
+            "more": { "type": "boolean" }
           }
         },
         "agent": true,
@@ -88,16 +116,28 @@
         "id": "endue.git-studio.pull",
         "title": "Git Studio: pull",
         "keywords": ["git", "remote", "fast-forward", "rebase"],
-        "description": "Pull the current branch from its upstream; when it cannot fast-forward the person chooses rebase or merge.",
-        "agent": true
+        "description": "Pull the current branch from its upstream. Agents pass a strategy or default to fast-forward only, without a dialog.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "strategy": { "type": "string", "enum": ["ff-only", "merge", "rebase"] }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.git-studio.push",
         "title": "Git Studio: push",
         "keywords": ["git", "remote", "upstream"],
-        "description": "Push the current branch; a new branch asks for its remote, and a rejected push asks the person before forcing with lease.",
+        "description": "Push the current branch to its configured upstream or the named configured remote. An agent names the remote for a new branch. Rejected agent pushes return an error.",
         "agent": true,
-        "irreversible": true
+        "irreversible": true,
+        "args": {
+          "type": "object",
+          "properties": { "remote": { "type": "string", "minLength": 1, "maxLength": 256 } },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.git-studio.stage",
@@ -175,7 +215,8 @@
             "mode": { "type": "string", "enum": ["text", "code", "path"] }
           },
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.git-studio.history",
@@ -186,7 +227,9 @@
           "properties": { "path": { "type": "string", "minLength": 1 } },
           "required": ["path"],
           "additionalProperties": false
-        }
+        },
+        "description": "Show the commits that changed a repository-relative file in Git Studio.",
+        "agent": true
       },
       {
         "id": "endue.git-studio.blame",
@@ -197,17 +240,354 @@
           "properties": { "path": { "type": "string", "minLength": 1 } },
           "required": ["path"],
           "additionalProperties": false
-        }
+        },
+        "description": "Show which commits changed each line of the named repository-relative file.",
+        "agent": true
       },
       {
         "id": "endue.git-studio.graph",
         "title": "Git Studio: show the graph",
-        "keywords": ["git", "log", "commits"]
+        "keywords": ["git", "log", "commits"],
+        "description": "Bring the commit graph back to the center of Git Studio.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.diff",
+        "title": "Git Studio: read diff",
+        "description": "Read a unified diff of a file or all tracked files in the working copy, the index with staged, or a commit with sha. Returns text and a truncation flag.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "staged": { "type": "boolean" },
+            "sha": { "type": "string", "minLength": 1, "maxLength": 256 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.show",
+        "title": "Git Studio: read commit",
+        "description": "Read a commit's metadata, message and changed files as data.",
+        "args": {
+          "type": "object",
+          "properties": { "sha": { "type": "string", "minLength": 1, "maxLength": 256 } },
+          "required": ["sha"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.blame-data",
+        "title": "Git Studio: read line history",
+        "description": "Read the commits and first 200 lines of Git blame for the named file.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.file-log",
+        "title": "Git Studio: read file history",
+        "description": "Read up to 50 commits that changed a file, following its renames.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git-studio.unstage",
+        "title": "Git Studio: unstage",
+        "description": "Unstage the named files or every staged change when paths is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "minItems": 0,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.stash",
+        "title": "Git Studio: stash changes",
+        "description": "Stash working changes with an optional message, with untracked files by default.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "maxLength": 2000 },
+            "untracked": { "type": "boolean" },
+            "keepIndex": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.stash-apply",
+        "title": "Git Studio: apply stash",
+        "description": "Apply the stash at index (0 by default) and keep it in the stash list.",
+        "args": {
+          "type": "object",
+          "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 2147483647 } },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.stash-pop",
+        "title": "Git Studio: pop stash",
+        "description": "Apply the stash at index (0 by default) and remove it after success.",
+        "args": {
+          "type": "object",
+          "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 2147483647 } },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.drop-stash",
+        "title": "Git Studio: drop stash",
+        "description": "Drop the stash in the named repository. Supply both index and sha from the state command.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "index": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "sha": { "type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$" }
+          },
+          "required": ["root", "index", "sha"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.discard",
+        "title": "Git Studio: discard files",
+        "description": "Discard unstaged changes of specific files in the named repository. Untracked files are deleted.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "paths": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["root", "paths"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.merge",
+        "title": "Git Studio: merge",
+        "description": "Merge the named ref into the current branch. Git can stop on a conflict.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "mode": { "type": "string", "enum": ["auto", "no-ff", "ff-only", "squash"] }
+          },
+          "required": ["ref"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.rebase",
+        "title": "Git Studio: rebase",
+        "description": "Rebase the current branch onto the named commit or branch. Git can stop on a conflict.",
+        "args": {
+          "type": "object",
+          "properties": { "onto": { "type": "string", "minLength": 1, "maxLength": 256 } },
+          "required": ["onto"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.cherry-pick",
+        "title": "Git Studio: cherry-pick",
+        "description": "Apply the named commit to the current branch. Select a parent of a merge by mainline.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "sha": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "mainline": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          },
+          "required": ["sha"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.revert",
+        "title": "Git Studio: revert",
+        "description": "Create a commit reversing the named commit. Select a parent of a merge by mainline.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "sha": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "mainline": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          },
+          "required": ["sha"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.tag",
+        "title": "Git Studio: create tag",
+        "description": "Create a tag at a commit. A message makes it an annotated tag.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "sha": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "message": { "type": "string", "maxLength": 2000 }
+          },
+          "required": ["name", "sha"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.rename-branch",
+        "title": "Git Studio: rename branch",
+        "description": "Rename a local branch in this repository.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "to": { "type": "string", "minLength": 1, "maxLength": 256 }
+          },
+          "required": ["from", "to"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.set-upstream",
+        "title": "Git Studio: set branch upstream",
+        "description": "Set a local branch to track the named remote-tracking branch.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "branch": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "upstream": { "type": "string", "minLength": 1, "maxLength": 256 }
+          },
+          "required": ["branch", "upstream"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.delete-branch",
+        "title": "Git Studio: delete branch",
+        "description": "Delete a local branch from the named repository. Force permits deleting an unmerged branch.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "force": { "type": "boolean" }
+          },
+          "required": ["root", "name"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.reset",
+        "title": "Git Studio: reset history",
+        "description": "Move HEAD to a commit. A mixed reset keeps working files and a soft reset keeps the index too.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "sha": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "mode": { "type": "string", "enum": ["mixed", "soft"] }
+          },
+          "required": ["sha"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.reset-hard",
+        "title": "Git Studio: hard reset",
+        "description": "Reset HEAD, the index and working files to the full commit SHA in the named repository.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "sha": { "type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$" }
+          },
+          "required": ["root", "sha"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.proceed",
+        "title": "Git Studio: continue, skip or abort",
+        "description": "Continue, skip or abort the named operation in progress in this repository.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "operation": { "type": "string", "enum": ["merge", "rebase", "cherry-pick", "revert"] },
+            "how": { "type": "string", "enum": ["continue", "skip", "abort"] }
+          },
+          "required": ["root", "operation", "how"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git-studio.undo",
+        "title": "Git Studio: undo history",
+        "description": "Undo the latest reflog move without overwriting conflicting worktree changes.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true
+      },
+      {
+        "id": "endue.git-studio.redo",
+        "title": "Git Studio: redo history",
+        "description": "Reapply the last Git Studio history Undo if HEAD has stayed at its target.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true
       }
     ],
     "keys": [
       {
-        "key": "Mod+Alt+G",
+        "key": "Mod+Alt+Shift+G",
         "command": "endue.git-studio.open"
       }
     ]

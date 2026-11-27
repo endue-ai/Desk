@@ -1,0 +1,16 @@
+{
+  "target": "DbOpenResult",
+  "description": "the SSH host's key is not trusted yet: its fingerprint, and nothing connected past it",
+  "instance": {
+    "ssh": {
+      "hop": "host",
+      "stage": "hostKey",
+      "message": "The SSH host bastion.example.test:22 presented a key this desk has not trusted yet.",
+      "hostKey": {
+        "status": "unknown",
+        "algorithm": "ssh-ed25519",
+        "fingerprint": "SHA256:Ubaq9T2onfDuuwg1uOh25iUN5F+a4udq4a2mVJFwMuw"
+      }
+    }
+  }
+}

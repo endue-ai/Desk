@@ -101,6 +101,22 @@ describe("the slides view", () => {
     expect(key("Escape").defaultPrevented).toBe(false);
   });
 
+  it("shows the same visible slide to commands inside and outside play mode", () => {
+    const view = createView(document);
+    const file = shown();
+    view.show(file);
+    view.showSlide(1);
+    expect(view.slideOf(file.buffer)).toBe(1);
+    view.play(0);
+    expect(player()?.hidden).toBe(false);
+    view.showSlide(2);
+    expect(text("#player-counter")).toBe("3 / 3");
+    expect(view.slideOf(file.buffer)).toBe(2);
+    view.stop();
+    expect(player()?.hidden).toBe(true);
+    expect(current()).toBe(3);
+  });
+
   it("play mode skips hidden slides", () => {
     const view = createView(document);
     view.show(shown(deck(true)));

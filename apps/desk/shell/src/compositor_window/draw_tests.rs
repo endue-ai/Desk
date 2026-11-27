@@ -84,17 +84,17 @@ fn the_pointer_finds_the_plugin_in_its_pane_and_the_page_everywhere_else() {
     .unwrap()
     .shown;
     let pane = hosted.plan().unwrap().seat("endue.notes");
-    assert_eq!(pane.size, Some((379.0, 219.0)));
+    assert_eq!(pane.size, Some((379.0, 223.0)));
     let target = |at: Vec2| {
         let hit = hit_test(&scene, at)?;
         let t: &Target = &shown.iter().find(|(node, _)| *node == hit.node)?.1;
         Some((t.surface.clone(), t.origin + hit.local_point * t.per_unit))
     };
-    // Inside the pane's body (the slot at 104,190; body from 105,231): Notes, at its own point.
+    // Inside the pane's body (the slot at 104,190; body from 105,227): Notes, at its own point.
     let (surface, at) = target(Vec2::new(115.0, 241.0)).unwrap();
     assert_eq!(
         (surface.as_str(), at),
-        ("main.endue-notes", Vec2::new(10.0, 10.0))
+        ("main.endue-notes", Vec2::new(10.0, 14.0))
     );
     // On its title bar, its frame's edge and the wallpaper: the page, at the same point.
     for point in [
@@ -188,7 +188,7 @@ fn a_window_without_a_live_frame_shows_its_card_whose_button_runs_its_command() 
         "no quad for a stopped frame"
     );
     // The card lets the pointer through to the page, but on its Reload button (centred under the
-    // card's line, in the pane's body from 105,231).
+    // card's line, in the pane's body from 105,227).
     let hit = hit_test(&scene, Vec2::new(305.0, 300.0)).unwrap();
     let under = drawn
         .shown
@@ -331,8 +331,8 @@ fn an_open_popup_is_drawn_over_its_surface_and_the_page_s_over_everything_heard_
             t.origin + hit.local_point * t.per_unit,
         ))
     };
-    // The pane's body starts at 105,231: the list from 115,265, the pointer on it Notes's there.
-    let (texture, surface, at) = under(Vec2::new(135.0, 285.0)).unwrap();
+    // The pane's body starts at 105,227: the list from 115,261, the pointer on it Notes's there.
+    let (texture, surface, at) = under(Vec2::new(135.0, 281.0)).unwrap();
     assert_eq!(texture, TextureId(5), "the list, over the frame");
     assert_eq!(
         (surface.as_str(), at),
@@ -368,7 +368,7 @@ fn a_window_rests_on_whole_device_pixels_with_its_content_inside_its_corners() {
     let (scale, theme) = (1.25, ChromeTheme::default());
     let mut hosted = hosted_at("live", f64::from(scale));
     hosted.wm.set_motion(desk_wm::interact::Motion::none());
-    let frame = |s: &str| (s == "main.endue-notes").then_some((TextureId(2), (474, 274)));
+    let frame = |s: &str| (s == "main.endue-notes").then_some((TextureId(2), (474, 279)));
     let from = Sources {
         scale,
         ..sources(&frame)

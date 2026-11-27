@@ -11,7 +11,7 @@ import { askDay } from "./date.js";
 import { createEditing } from "./editing.js";
 import { createFiles, nameOf } from "./files.js";
 import { heading } from "./format.js";
-import { formatComponent, parse } from "./ical/component.js";
+import { parse } from "./ical/component.js";
 import { DAY } from "./ical/values.js";
 import { displayZone } from "./ical/zones.js";
 import { createLayer } from "./layer.js";
@@ -28,7 +28,7 @@ import { createTicker } from "./ticker.js";
  * @typedef {import("./ical/component.js").Document} Document
  * @typedef {import("./layer.js").LayerOccurrence} LayerOccurrence
  * @typedef {import("./layer.js").Source} Source
- * @typedef {{ day?: number, minute?: number, allDay?: boolean }} At where a new event goes
+ * @typedef {{ day?: number, minute?: number, allDay?: boolean, fields?: Partial<EventFields> }} At
  *
  * @typedef {object} Cal an open calendar file
  * @property {string} buffer
@@ -266,24 +266,15 @@ export function createCalendar(ctx, view, options = {}) {
    * Open the calendar file the settings name. When there is none and no file is open, show the
    * system calendar's layer if it has events; else (or to `make` one) make an empty file.
    */
-  const openDefault = async (make = false) => {
-    const path = String(setting("file", DEFAULT_FILE));
-    try {
-      await files.read(path);
-    } catch (error) {
-      if (!/: not_found\.$/.test(messageOf(error))) throw error;
+  const openDefault = async (make = false) =>
+    files.open(String(setting("file", DEFAULT_FILE)), async () => {
       await layer.ready();
-      if (!make && !current() && layer.sources().length) {
-        ctx.surface.show();
-        ticker.show(true);
-        view.focus();
-        return null;
-      }
-      const empty = emptyDocument("Calendar").calendars.map(formatComponent).join("");
-      await files.write(path, empty, true);
-    }
-    return commands.run("desk.files.open", { path });
-  };
+      if (make || current() || !layer.sources().length) return false;
+      ctx.surface.show();
+      ticker.show(true);
+      view.focus();
+      return true;
+    });
 
   /** Go to the day the person names, asking through the palette when no date is given. */
   const askDate = async (/** @type {unknown} */ given) => {
@@ -326,7 +317,6 @@ export function createCalendar(ctx, view, options = {}) {
   answer("endue.calendar.next", () => go(step(mode, anchor, 1)));
   answer("endue.calendar.previous", () => go(step(mode, anchor, -1)));
   for (const each of MODES) answer(`endue.calendar.${each}`, () => show(each));
-  answer("endue.calendar.new", () => compose());
   answer("endue.calendar.goto", (args) =>
     askDate(/** @type {{ date?: unknown } | undefined} */ (args)?.date),
   );
@@ -338,6 +328,14 @@ export function createCalendar(ctx, view, options = {}) {
     display: () => display,
     now,
     uid,
+    layer,
+    screen: () => ({ mode, anchor, weekStart, event: editing.selected() }),
+    navigate: (view, day) => {
+      if (view) mode = view;
+      go(day ?? anchor);
+      ctx.surface.show();
+    },
+    compose,
     readDefault: async () => {
       const path = String(setting("file", DEFAULT_FILE));
       const cal = /** @type {Cal} */ ({ buffer: "", path, name: nameOf(path), modified: false });
@@ -347,6 +345,7 @@ export function createCalendar(ctx, view, options = {}) {
     openDefault: () => openDefault(true),
     change,
     writable,
+    save: files.save,
   });
 
   /** Settings from init.yaml; the view draws once with defaults and again when they arrive. */

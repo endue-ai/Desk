@@ -15,6 +15,11 @@ afterEach(() => {
 
 async function mounted(body: "agent" | "space", id: string, lang: "en" | "ko" = "en") {
   const desk = testDesk(lang);
+  // The desk's commands, as the Agents plugin hears them: every run, in order.
+  const ran: { command: string; args?: unknown }[] = [];
+  (desk.ctx as unknown as { runtime: Record<string, unknown> }).runtime.commands = {
+    run: async (command: string, args?: unknown) => void ran.push({ command, args }),
+  };
   desk.signIn();
   await loadEndue(desk.ctx);
   const { el, off } =
@@ -22,7 +27,7 @@ async function mounted(body: "agent" | "space", id: string, lang: "en" | "ko" = 
   if (off) offs.push(off);
   document.body.append(el);
   await settle();
-  return { ...desk, el };
+  return { ...desk, el, ran };
 }
 
 const face = (el: HTMLElement, side: "front" | "back") =>
@@ -138,11 +143,10 @@ describe("an endue agent's window (ADR 0129)", () => {
     expect(boardRow(el, "mcp")?.hasAttribute("data-expanded")).toBe(false);
   });
 
-  it("opens each part of endue.ai's Studio from the board, and nothing off endue.ai", async () => {
-    const { el, bridge } = await mounted("agent", MISO);
+  it("opens each part of the board in the Agents Studio, and nothing of endue.ai", async () => {
+    const { el, bridge, ran } = await mounted("agent", MISO);
     click(el, "studio", "front");
     await settle();
-    const studio = `https://endue.ai/agent/${MISO}/studio`;
     press(el, '[data-section="prompt"]');
     await settle();
     press(el, '[data-row="devices"] [data-row-head]');
@@ -155,30 +159,39 @@ describe("an endue agent's window (ADR 0129)", () => {
     press(el, '[data-row="console"] [data-row-head]');
     press(el, '[data-row="console"] [data-row-action="open"]');
     await settle();
-    expect(bridge.fake.opened).toEqual([
-      `${studio}/prompt`,
-      `${studio}/devices`,
-      `${studio}/settings`,
-      `${studio}/channel`,
-      `https://endue.ai/agent/${MISO}`,
+    press(el, '[data-key="studio-character"]');
+    await settle();
+    const studio = (facet: string) => [
+      { command: "desk.plugins.open", args: { plugin: "endue.agents" } },
+      { command: "endue.agents.studio", args: { agent: MISO, facet } },
+    ];
+    expect(ran).toEqual([
+      ...studio("prompt"),
+      ...studio("connectors"),
+      ...studio("settings"),
+      ...studio("channels"),
+      ...studio("identity"),
+      ...studio("identity"),
     ]);
+    expect(bridge.fake.opened).toEqual([]);
   });
 
-  it("opens the agent's own page and its Studio on endue.ai, and nothing else", async () => {
-    const { el, bridge } = await mounted("agent", MISO);
-    // No Browser in this desk: the pages go to the system browser (ADR 0223).
-    click(el, "open-agent", "front");
+  it("edits the agent in the Agents Studio from its card, with no endue.ai page", async () => {
+    const { el, bridge, ran } = await mounted("agent", MISO);
+    const labels = (side: "front" | "back") =>
+      [...(face(el, side)?.querySelectorAll(".endue-actions [data-action]") ?? [])].map(
+        (b) => b.textContent,
+      );
+    expect(labels("front")).toEqual(["Edit in Studio"]);
+    expect(labels("back")).toEqual(["Read again", "Edit in Studio"]);
+    click(el, "open-studio", "front");
     await settle();
-    click(el, "open-web", "front");
-    await settle();
-    expect(bridge.fake.opened).toEqual([
-      `https://endue.ai/agent/${MISO}`,
-      `https://endue.ai/agent/${MISO}/studio`,
-    ]);
-    const labels = [
-      ...(face(el, "front")?.querySelectorAll(".endue-actions [data-action]") ?? []),
-    ].map((b) => b.textContent);
-    expect(labels).toEqual(["Agent page", "Studio page"]);
+    expect(ran.at(-1)).toEqual({
+      command: "endue.agents.studio",
+      args: { agent: MISO, facet: "identity" },
+    });
+    expect(face(el, "front")?.querySelector('[data-action="open-web"]')).toBeNull();
+    expect(bridge.fake.opened).toEqual([]);
   });
 
   it("speaks the desk's language on both faces", async () => {

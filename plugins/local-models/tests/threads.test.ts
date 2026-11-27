@@ -42,9 +42,9 @@ describe("threads", () => {
     const t = createThread();
     const q = addNode(t, null, { role: "user", content: "first" });
     addNode(t, null, { role: "user", content: "first, edited" });
-    expect(path(t)[0].content).toBe("first, edited");
-    switchBranch(t, path(t)[0].id, -1);
-    expect(path(t)[0].id).toBe(q.id);
+    expect(path(t)[0]!.content).toBe("first, edited");
+    switchBranch(t, path(t)[0]!.id, -1);
+    expect(path(t)[0]!.id).toBe(q.id);
   });
 
   it("titles from the first line and keeps a preview", () => {

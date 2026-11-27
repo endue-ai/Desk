@@ -29,16 +29,19 @@ export const KEY = {
 export const MOD = process.platform === "darwin" ? KEY.meta : KEY.control;
 
 /**
- * Where the shell draws a window's chrome today (`surface/Surface.ts`, `surface.css`): a 40 px title
- * bar, its tools 24 px wide every 26 px from 21 px inside the right edge, and the resize grips
- * along the edges (6 px) and in the corners (16 px). The compositor's chrome keeps them (#81).
- * A window that shows one plugin has six tools; a split window and one of the desk's own views have
- * no pop-out (#235), so theirs past Close sit one place nearer the edge (`toolAt`'s `popOut`).
- * No tool puts a window in the drawer (#280): `putAway` runs the command.
+ * Where the shell draws a window's chrome today (`surface/title-bar.ts`, `surface.css`, ADR 0255): a
+ * 36 px title bar, its tools 24 px wide every 26 px from 21 px inside the right edge, and the
+ * resize grips along the edges (6 px) and in the corners (16 px). The compositor's chrome keeps them
+ * (#81). A window that shows one plugin has three tools: the window menu, Pop out and Close; a
+ * window of several tabs and one of the desk's own views have no pop-out (#235), so their window
+ * menu sits one place nearer the edge (`toolAt`'s `popOut`). New tab, Floating mode, Pin and Put
+ * in drawer are rows of the window menu (`fromMenu`); `putAway` runs the drawer's command (#280).
  */
-export const TITLE_BAR = 40;
-const TOOLS = ["close", "pop-out", "pin", "floating", "split-down", "split-right"] as const;
+export const TITLE_BAR = 36;
+const TOOLS = ["close", "pop-out", "menu"] as const;
 export type Tool = (typeof TOOLS)[number];
+/** The window menu's rows of its own, above its "Move to" rows (`desktops/window-rows.ts`). */
+export type MenuRow = "new-tab" | "maximize" | "floating" | "pin" | "drawer";
 export type Grip = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 /** A point on a window's title bar, `dx` from its left edge (past its icon by default). */
@@ -46,7 +49,7 @@ export const titleAt = (w: Rect, dx = 80): Point => ({ x: w.x + dx, y: w.y + TIT
 
 /**
  * The middle of one of a window's title bar tools: `popOut` false for a window with no pop-out
- * tool (a split window, or one of the desk's own views).
+ * tool (a window of several tabs, or one of the desk's own views).
  */
 export const toolAt = (w: Rect, tool: Tool, popOut = true): Point => {
   const place = TOOLS.indexOf(tool);
@@ -55,6 +58,56 @@ export const toolAt = (w: Rect, tool: Tool, popOut = true): Point => {
     y: w.y + TITLE_BAR / 2,
   };
 };
+
+/** The middle of row `row` of the window menu if it shows within `ms`: in the desk's page. */
+async function rowWithin(row: MenuRow, ms: number): Promise<Point | null> {
+  let at: Point | null = null;
+  await browser
+    .waitUntil(
+      async () => {
+        at = await browser.execute((key: string) => {
+          const r = document
+            .querySelector(`.desktops-menu [data-key="${key}"]`)
+            ?.getBoundingClientRect();
+          return r?.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+        }, `menu-${row}`);
+        return at !== null;
+      },
+      { timeout: ms },
+    )
+    .catch(() => undefined);
+  return at;
+}
+
+/**
+ * The middle of row `row` of the window menu once it shows: in the desk's page, over every window
+ * (the `desk.overlays` part), where its tool opened it.
+ */
+export async function menuRowAt(row: MenuRow): Promise<Point> {
+  const at = await rowWithin(row, 5_000);
+  if (!at) throw new Error(`the window menu's ${row} never showed`);
+  return at;
+}
+
+/**
+ * Row `row` of window `w`'s menu, as the person runs it: a press on the window menu's tool, then
+ * one on the row (`press`: a spec's own click). `popOut` as `toolAt`'s. A press right after the
+ * window opened can come before its own page shows it (ADR 0201), and reach nothing: the tool is
+ * pressed again while no menu shows, as a person would.
+ */
+export async function fromMenu(
+  w: Rect,
+  row: MenuRow,
+  popOut = true,
+  press: (p: Point) => Promise<void> = click,
+): Promise<void> {
+  for (let tries = 1; ; tries++) {
+    await press(toolAt(w, "menu", popOut));
+    const at = await rowWithin(row, 2_000);
+    if (at) return press(at);
+    if (tries === 3) throw new Error(`the window menu's ${row} never showed`);
+  }
+}
 
 /** The middle of one of a window's resize grips. */
 export function gripAt(w: Rect, grip: Grip): Point {

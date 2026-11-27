@@ -1,7 +1,4 @@
-// A document's links leave the desk through shell.open, which checks the scheme and the grant in
-// the core and asks the person once by itself. Only http, https and mailto are handed over;
-// anything else (javascript:, file:, data:, a bookmark) opens nothing. A refusal is final for that
-// click: no second ask and no retry.
+// A document's HTTP, HTTPS and mailto links leave the desk through shell.open under its install grant.
 
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 export const SHELL_SCOPE = { permission: "shell:open", schemes: ["http", "https", "mailto"] };

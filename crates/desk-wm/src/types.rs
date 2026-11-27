@@ -123,52 +123,70 @@ impl Restore {
     }
 }
 
-/// How a window is split into panes. Only the shape lives here, with `leaves`: the operations on
-/// the tree (split, close, ratios) are the panes module's (#79).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind")]
-pub enum PaneNode {
-    /// One pane showing a view: `"calendar"`, `"launcher"`, `"agent:<id>"`, `"plugin:<id>"`, ...
-    #[serde(rename = "view")]
-    View { id: String, view: String },
-    /// Two panes side by side (`Row`) or stacked (`Column`); `ratio` is the first one's share.
-    #[serde(rename = "split")]
-    Split {
-        id: String,
-        dir: SplitDir,
-        ratio: f64,
-        a: Box<PaneNode>,
-        b: Box<PaneNode>,
-    },
+/// One tab of a window (ADR 0270): its id (`p1`, `p2`, ..., the ids panes had, so a saved layout
+/// and `desk.windows.list` keep theirs) and the view it shows: `"calendar"`, `"launcher"`,
+/// `"agent:<id>"`, `"plugin:<key>"`, ... The operations on a window's tabs are the tabs module's.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tab {
+    pub id: String,
+    pub view: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SplitDir {
-    Row,
-    Column,
-}
-
-impl PaneNode {
-    /// One pane named `id` showing `view`.
-    pub fn view(id: impl Into<String>, view: impl Into<String>) -> Self {
-        PaneNode::View {
+impl Tab {
+    /// A tab named `id` showing `view`.
+    pub fn new(id: impl Into<String>, view: impl Into<String>) -> Self {
+        Self {
             id: id.into(),
             view: view.into(),
         }
     }
+}
 
-    /// The panes that show something, first to last: `(pane id, view)`.
-    pub fn leaves(&self) -> Vec<(&str, &str)> {
+/// A window's tabs as a layout stores them: a list, or the pane tree a layout saved while a
+/// window could be split inside (`panes`, before ADR 0270), whose panes become tabs, first to last.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StoredTabs {
+    Tabs(Vec<Tab>),
+    Panes(SavedPane),
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum SavedPane {
+    View {
+        id: String,
+        view: String,
+    },
+    Split {
+        a: Box<SavedPane>,
+        b: Box<SavedPane>,
+    },
+}
+
+impl SavedPane {
+    fn tabs(self, out: &mut Vec<Tab>) {
         match self {
-            PaneNode::View { id, view } => vec![(id.as_str(), view.as_str())],
-            PaneNode::Split { a, b, .. } => {
-                let mut all = a.leaves();
-                all.extend(b.leaves());
-                all
+            SavedPane::View { id, view } => out.push(Tab { id, view }),
+            SavedPane::Split { a, b } => {
+                a.tabs(out);
+                b.tabs(out);
             }
         }
     }
+}
+
+fn stored_tabs<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Vec<Tab>>, D::Error> {
+    let tabs = match Option::<StoredTabs>::deserialize(d)? {
+        None => return Ok(None),
+        Some(StoredTabs::Tabs(tabs)) => tabs,
+        Some(StoredTabs::Panes(tree)) => {
+            let mut tabs = Vec::new();
+            tree.tabs(&mut tabs);
+            tabs
+        }
+    };
+    Ok(Some(tabs).filter(|t| !t.is_empty()))
 }
 
 /// A window on a desktop. A normal one (`floating` absent or false) keeps world pixels on the
@@ -185,9 +203,17 @@ pub struct Placement {
     pub pinned: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub floating: Option<bool>,
-    /// Absent: one pane showing the view named by `id`.
+    /// Absent: one tab showing the view named by `id`. A layout saved with `panes` reads here.
+    #[serde(
+        default,
+        alias = "panes",
+        deserialize_with = "stored_tabs",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tabs: Option<Vec<Tab>>,
+    /// The tab it shows; absent, or naming one it does not have: its first.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub panes: Option<PaneNode>,
+    pub tab: Option<String>,
     /// Present only while the window fills the app or a part of it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub restore: Option<Restore>,
@@ -213,7 +239,8 @@ impl Placement {
             h: rect.h,
             pinned: false,
             floating: None,
-            panes: None,
+            tabs: None,
+            tab: None,
             restore: None,
             fill: None,
             out: None,
@@ -232,11 +259,21 @@ impl Placement {
         self.h = r.h;
     }
 
-    /// Its panes: as saved, or one pane `p1` showing the view named by its id.
-    pub fn panes(&self) -> PaneNode {
-        self.panes
-            .clone()
-            .unwrap_or_else(|| PaneNode::view("p1", self.id.clone()))
+    /// Its tabs, first to last: as saved, or one tab `p1` showing the view named by its id.
+    pub fn tabs(&self) -> Vec<Tab> {
+        match &self.tabs {
+            Some(tabs) if !tabs.is_empty() => tabs.clone(),
+            _ => vec![Tab::new("p1", self.id.clone())],
+        }
+    }
+
+    /// The tab it shows: the one `tab` names, else its first.
+    pub fn shown(&self) -> Tab {
+        let mut tabs = self.tabs();
+        let at = (self.tab.as_deref())
+            .and_then(|id| tabs.iter().position(|t| t.id == id))
+            .unwrap_or(0);
+        tabs.swap_remove(at)
     }
 }
 

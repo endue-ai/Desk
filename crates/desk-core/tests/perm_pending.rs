@@ -70,7 +70,7 @@ fn what_waits_is_listed_oldest_first_and_settles_whoever_answers() {
         );
         assert_eq!(waiting["approvals"], json!([]));
 
-        // The island answers the second; the permissions plugin hears that it settled.
+        // Another prompter answers the second, and the permissions plugin hears that it settled.
         let answer = json!({ "promptId": second["promptId"], "granted": false, "scope": manage() });
         call(&core, "desk", "perm.answer", answer).unwrap();
         let settled = wait_for(&deliveries, "perm.settled");
@@ -105,7 +105,7 @@ fn a_prompt_withdrawn_with_its_caller_settles() {
     let home = home("pending-unload");
     let (core, deliveries) = prompted(&home);
     grant(&core, "desk", plugin_manage());
-    install_hello(&core, &home);
+    install_hello_declaring(&core, &home, json!([notes_read()]));
     std::thread::scope(|s| {
         let asking = s.spawn(|| ask(&core, "example.hello", notes_read()));
         let prompt = wait_for(&deliveries, "perm.prompt").data().clone();
@@ -128,6 +128,7 @@ fn an_approval_waits_in_the_list_until_it_is_answered() {
     let home = home("pending-approval");
     let (core, deliveries) = prompted(&home);
     fs::create_dir_all(home.join("Notes")).unwrap();
+    fs::write(home.join("Notes/a.md"), "Buy milk\n").unwrap();
     grant(
         &core,
         MIRA,
@@ -156,6 +157,10 @@ fn an_approval_waits_in_the_list_until_it_is_answered() {
         );
     });
     assert_eq!(pending(&core, "desk").unwrap()["approvals"], json!([]));
+    assert_eq!(
+        fs::read_to_string(home.join("Notes/a.md")).unwrap(),
+        "Buy milk\n"
+    );
 }
 
 #[test]

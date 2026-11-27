@@ -1,22 +1,24 @@
 // The motion gate (`just perf-motion [check|record] [--debug] [--screen] [--runs N] [--no-build]
 // [--home DIR] [--open]`, #247 and #258, ADR 0208): a change to the compositor, desk-wm or the
-// off-screen host is judged on rendered pixels while windows move. It builds the optimized shell (development commands
-// on), starts it on the Default profile's 13 plugin windows, and per run shakes one window by its title
-// bar twice (2 Hz, ±200 px, a move every 8 ms): once timed, once reading frames back; then the main
-// scenario (`motion-sway.ts`): the app window itself grown and shrunk on two sines (±300 px wide,
-// ±200 px high, 1 to 1.4 Hz, a new frame every 8 ms) while the window shakes again. Each fails on
-// fewer than 55 frames a second, intervals over 25 ms beyond 2 %, a mid-motion frame where the
-// window shows pixels not its own, a page that stops painting (the desk's own included, and an ADR
-// 0202 restart), and a window at rest after a drop at a fractional place softer than at a whole
-// pixel; the sway also on a picture laid out for another size and on a window off its place once the
-// app window settles. Last, the resize loop (`motion-loop.ts`, #248, ADR 0210): the app window resized
-// by four sizes and a plugin window maximized or restored, a turn every 100 ms for 100 turns; it fails
-// on any page that stops painting in or after it. Limits, known failures and the baseline live in
-// e2e/perf/motion.json; results
-// in e2e/test-results/perf-motion/<variant>. Headless by default: no screen, pointer or keyboard of
+// off-screen host is judged on rendered pixels while windows move. It builds the optimized shell
+// (development commands on), starts it on the Default profile's 13 plugin windows, and per run
+// shakes one window by its title bar three times (2 Hz, ±200 px, a move every 8 ms): once timed,
+// once reading frames back, once with the main thread held 20 ms right after a frame every 250 ms
+// (`busy`, #249); then the main scenario (`motion-sway.ts`): the app window itself grown and shrunk
+// on two sines (±300 px wide, ±200 px high, 1 to 1.4 Hz, a new frame every 8 ms) while the window
+// shakes again. Each fails on fewer frames a second than its display's rate allows (58 at 60 Hz,
+// 110 at 120), intervals over 25 ms beyond 1 %, a frame the busy main thread dropped, a mid-motion
+// frame where the window shows pixels not its own, a page that stops painting (the desk's own
+// included, and an ADR 0202 restart), and a window at rest after a drop at a fractional place
+// softer than at a whole pixel; the sway also on a picture laid out for another size and on a
+// window off its place once the app window settles. Last, the resize loop (`motion-loop.ts`, #248,
+// ADR 0210): the app window resized by four sizes and a plugin window maximized or restored, a turn
+// every 100 ms for 100 turns; it fails on any page that stops painting in or after it. Limits,
+// known failures and the baseline live in e2e/perf/motion.json; results in
+// e2e/test-results/perf-motion/<variant>. Headless by default: no screen, pointer or keyboard of
 // the machine's is used. `--debug` measures the development build for the record and never fails.
-// `--open` first opens three images, two notes and two data files, each in a window of its own (ADR
-// 0212), and measures that desk under its own variant.
+// `--open` first opens three images, two notes and two data files, each in a window of its own
+// (ADR 0212), and measures that desk under its own variant.
 // Node strips the types.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -27,8 +29,9 @@ import { fileURLToPath } from "node:url";
 import { decodePng } from "../support/png.ts";
 import { described } from "./lib/bundle-processes.ts";
 import {
+  busyDrops,
   captured,
-  gripOf,
+  displayRate,
   type Line,
   parseTrace,
   type Rect,
@@ -52,13 +55,13 @@ import { analyzeLoop, type LoopConfig, runLoop } from "./motion-loop.ts";
 import { analyzeSway, runSway, type SwayConfig } from "./motion-sway.ts";
 import {
   bundleProcesses,
-  drag,
+  busyShake,
   endBundle,
+  placeToSwing,
   poke,
   shake,
   startDesk,
   stopDesk,
-  windows,
 } from "./support/motion-desk.ts";
 import { openFiles } from "./support/openers.ts";
 
@@ -78,7 +81,7 @@ const open = argv.includes("--open");
 const variant = `${debug ? "debug" : "optimized"}-${screen ? "screen" : "offscreen"}${open ? "-open" : ""}`;
 const OUT = join(root, "e2e/test-results/perf-motion", variant);
 const BUNDLE = join(root, debug ? "target/bundle-motion-debug" : "target/bundle-motion");
-const APP = join(BUNDLE, "endue-desk.app");
+const APP = join(BUNDLE, "endue.app");
 const BINARY = join(APP, "Contents/MacOS/endue-desk");
 
 interface Config {
@@ -93,6 +96,8 @@ interface Config {
     drop: number[];
   };
   sway: SwayConfig;
+  /** The busy shake's busy loops: `ms` long, `everyMs` apart (#249). */
+  busy: { ms: number; everyMs: number };
   loop: LoopConfig;
   limits: Limits;
   known: Record<string, string>;
@@ -154,23 +159,8 @@ async function once(n: number): Promise<{
   try {
     const opened = open ? await openFiles(desk, root, config.window) : undefined;
     const { amp, periodMs, stepMs, durationMs, captures, drop } = config.shake;
-    const { screen: [sw = 0] = [], windows: all } = await windows(desk.port);
-    const w = all.find((w) => w.id === config.window);
-    if (!w) throw new Error(`no window ${config.window} on the desk: ${all.map((w) => w.id)}`);
-    const [x = 0, y = 0, width = 0] = w.rect;
-    // Its title bar, clear of the icon and the tools; the window to whole pixels first.
-    const grip = gripOf(w.rect, w.titleInsets);
-    if (!grip) throw new Error(`${config.window} has no title bar to grip: ${w.rect}`);
-    const whole = [Math.round(x) - x, Math.round(y) - y];
-    if (whole[0] || whole[1]) {
-      await drag(desk.port, grip, [
-        (grip[0] ?? 0) + (whole[0] ?? 0),
-        (grip[1] ?? 0) + (whole[1] ?? 0),
-      ]);
-    }
-    const at = [Math.round(grip[0] ?? 0), Math.round(grip[1] ?? 0)];
-    if (x - amp < 0 || x + width + amp > sw)
-      throw new Error(`${config.window} cannot swing ±${amp} px`);
+    // Its title bar, clear of the icon and the tools, where the swing has room, on whole pixels.
+    const { at } = await placeToSwing(desk.port, config.window, amp);
     const swing = { x: at[0], y: at[1], amp, periodMs, stepMs, durationMs };
     await shake(desk, { ...swing, tag: "timed" });
     const path = (name: string) => join(dir, `${name}.png`);
@@ -187,6 +177,7 @@ async function once(n: number): Promise<{
       drop,
       dropped: path("dropped"),
     });
+    await busyShake(desk, { ...swing, tag: "busy" }, config.busy);
     const poked = await poke(desk.port);
     // The stall watch says a page stopped after three asks a second apart (`stall.rs`).
     await delay(4_000);
@@ -217,6 +208,7 @@ async function once(n: number): Promise<{
           screen,
         )
       : undefined;
+    if (sway) sway.findings.hz = result.findings.hz;
     result.detail.rested = desk.rested;
     if (opened) result.detail.opened = opened;
     result.detail.load = loadavg().map((l) => Math.round(l * 10) / 10);
@@ -259,6 +251,9 @@ function analyze(
   const all = shakes(lines);
   const timed = all.find((s) => s.tag === "timed");
   const capturedShake = all.find((s) => s.tag === "captured");
+  const hz = displayRate(lines);
+  const busy = all.find((s) => s.tag === "busy");
+  const drops = busy ? busyDrops(busy, hz, screen) : { loops: 0, dropped: 0 };
   const stopped = [
     ...poked.unpainted.map((s) => `${s} painted nothing when touched`),
     ...lines.filter((l) => l.e === "stall").map((l) => `${l.f.surface} stalled (#157 watch)`),
@@ -302,10 +297,14 @@ function analyze(
     stopped,
     loopTurns: 0,
     loopStopped: [],
+    hz,
+    busyLoops: drops.loops,
+    busyDropped: drops.dropped,
     ...(invalid ? { invalid } : {}),
   };
   const detail = {
     timing: t,
+    busy: { ...drops, timing: busy ? timing(busy, limits.longIntervalMs, screen) : undefined },
     poked: poked.poked.length,
     frames: compared.map(({ f, s }) => ({ path: f.path, rect: f.rect, own: f.own, ...s })),
     dropped: dropped?.rect,

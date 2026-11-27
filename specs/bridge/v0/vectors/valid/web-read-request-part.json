@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.read reads a part of the text, on the hosts its scope names",
+  "instance": {
+    "id": 41,
+    "method": "web.read",
+    "params": {
+      "viewId": "w-1",
+      "from": 20000,
+      "max": 4000,
+      "scope": {
+        "permission": "web:control",
+        "hosts": ["example.com"]
+      }
+    }
+  }
+}

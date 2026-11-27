@@ -2,12 +2,22 @@
 // beside the executable on Windows and Linux, nothing that would make cargo-packager sign, the
 // bundle layout scripts/release-collect.mjs reads, and the built-in plugins every package carries (#47).
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { readPin } from "./cef-fetch.mjs";
+import "./cef-package/macos-install.test.mjs";
 import {
   bundleFolder,
   helperApps,
@@ -16,7 +26,8 @@ import {
   packagerConfig,
   pluginFiles,
 } from "./cef-package/config.mjs";
-import { pickFormats, stagePlugins } from "./cef-package.mjs";
+import { nsisIdentity, wixIdentity } from "./cef-package/windows.mjs";
+import { archiveMacApp, pickFormats, stagePlugins } from "./cef-package.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PACKAGER = join(ROOT, "apps/desk/shell/packager");
@@ -29,9 +40,9 @@ const targets = (config) => Object.fromEntries(config.resources.map((r) => [r.ta
 
 describe("cef-package", () => {
   it("lays out the CEF framework and the five helper apps CEF looks for on macOS", () => {
-    const config = render("aarch64-apple-darwin", { hook: "bash sign.sh hook app" });
+    const config = render("aarch64-apple-darwin");
     assert.deepEqual(config.formats, ["app", "dmg"]);
-    assert.equal(config.productName, "endue Desk");
+    assert.equal(config.productName, "endue");
     assert.deepEqual(config.binaries, [{ path: "endue-desk", main: true }]);
     assert.deepEqual(config.macos.frameworks, [
       "/cef/Chromium Embedded Framework.framework",
@@ -50,11 +61,46 @@ describe("cef-package", () => {
       "/cef/LICENSE.txt",
       "CEF's BSD licence ships",
     );
-    assert.equal(
-      config.beforeEachPackageCommand,
-      "bash sign.sh hook app",
-      "the app is signed before the dmg",
-    );
+  });
+
+  it("omits the build account from macOS updater archive headers", {
+    skip: process.platform !== "darwin",
+  }, (t) => {
+    const root = mkdtempSync(join(tmpdir(), "endue-updater-"));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    const app = join(root, "endue.app");
+    mkdirSync(app);
+    const payload = join(app, "payload");
+    writeFileSync(payload, "fixture");
+    chmodSync(payload, 0o755);
+    symlinkSync("payload", join(app, "link"));
+    archiveMacApp(app);
+    execFileSync("python3", [
+      "-c",
+      `
+import sys, tarfile
+with tarfile.open(sys.argv[1]) as archive:
+    assert all(not m.uname and not m.gname and m.uid == m.gid == 0 for m in archive)
+    assert archive.extractfile("endue.app/payload").read() == b"fixture"
+    assert archive.getmember("endue.app/payload").mode == 0o755
+    link = archive.getmember("endue.app/link")
+    assert link.issym() and link.linkname == "payload"
+`,
+      `${app}.tar.gz`,
+    ]);
+  });
+
+  it("requires macOS 13 for the app and its CEF helpers on both Mac architectures", () => {
+    const template = readFileSync(join(PACKAGER, "macos/helper.plist"), "utf8");
+    for (const target of ["aarch64-apple-darwin", "x86_64-apple-darwin"]) {
+      const config = render(target);
+      const minimum = config.macos.minimumSystemVersion;
+      assert.equal(minimum, "13.0", target);
+      for (const helper of helperApps(config.identifier)) {
+        const plist = helperPlist(template, { ...helper, version: config.version, minimum });
+        assert.match(plist, /<key>LSMinimumSystemVersion<\/key>\s*<string>13\.0<\/string>/u);
+      }
+    }
   });
 
   it("never lets cargo-packager sign or show a licence, and passes only fields it knows", () => {
@@ -143,6 +189,54 @@ describe("cef-package", () => {
       undefined,
       "the launcher is /usr/bin/endue-desk itself, where a Tauri desk restarts after this .deb went in (#47)",
     );
+  });
+
+  it("shows endue while preserving the OS identities of an installed Desk", () => {
+    for (const target of [
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+    ]) {
+      const config = render(target);
+      assert.equal(config.productName, "endue");
+      assert.equal(config.identifier, "ai.endue.desk");
+      assert.equal(config.binaries[0].path, "endue-desk");
+    }
+    const win = render("x86_64-pc-windows-msvc");
+    assert.equal(win.nsis.template, join(paths.stage, "installer.nsi"));
+    assert.equal(win.wix.template, join(paths.stage, "main.wxs"));
+    assert.equal(render("x86_64-unknown-linux-gnu").deb.packageName, "endue-desk");
+    assert.equal(
+      targets(render("aarch64-apple-darwin"))["install-endue"],
+      join(paths.stage, "install-endue"),
+    );
+  });
+
+  it("uses the same Windows install receipts after the name change and protects occupied shortcuts", () => {
+    const nsis = nsisIdentity(
+      [
+        '!define UNINSTKEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${PRODUCTNAME}"',
+        '!define MANUPRODUCTKEY "Software\\${MANUFACTURER}\\${PRODUCTNAME}"',
+        '  WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"',
+        '  StrCpy $INSTDIR "$LOCALAPPDATA\\${PRODUCTNAME}"',
+        "  ; Uninstall previous WiX installation if exists.",
+        "  wix_done:",
+        '  CreateShortcut "$DESKTOP\\${PRODUCTNAME}.lnk" "$INSTDIR\\${MAINBINARYNAME}.exe"',
+        '  ApplicationID::Set "$DESKTOP\\${PRODUCTNAME}.lnk" "${IDENTIFIER}"',
+        "Section EarlyChecks",
+      ].join("\n"),
+    );
+    assert.ok(nsis.includes('Uninstall\\endue Desk"'));
+    assert.ok(nsis.includes('WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"'));
+    assert.ok(nsis.includes('$LOCALAPPDATA\\endue Desk"'));
+    assert.ok(nsis.includes('MsiEnumRelatedProductsW(w "{6DF1A592-6BAD-590D-9FF0-F3C26EC6A138}"'));
+    assert.ok(nsis.includes('IfFileExists "$DESKTOP\\${PRODUCTNAME}.lnk" endue_shortcut_done'));
+    assert.ok(nsis.includes('ReadRegStr $4 SHCTX "${MANUPRODUCTKEY}" ""'));
+    const wix = wixIdentity(
+      '<Directory Id="INSTALLDIR" Name="{{product_name}}"/><Property Id="INSTALLDIR"><Shortcut Id="ApplicationDesktopShortcut"/>',
+    );
+    assert.ok(wix.includes('Id="INSTALLDIR" Name="endue Desk"'));
+    assert.ok(wix.includes("NOT ENDUE_DESKTOP_LINK OR ENDUE_OWNS_DESKTOP_LINK"));
   });
 
   it("writes each helper's Info.plist with Apple's numeric version", () => {

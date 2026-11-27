@@ -68,7 +68,9 @@ const KINDS = [
   ["search:system", "Search system files and apps", () => []],
   ["net:fetch", "Network", (p) => p.hosts],
   ["net:connect", "Connect to computers", (p) => p.hosts],
+  ["db:connect", "Sign in to databases", (p) => p.hosts],
   ["web:browse", "Show web pages", (p) => p.hosts ?? []],
+  ["web:control", "Read and operate web pages", (p) => p.hosts ?? []],
   ["audio:capture", "Microphone", (p) => (p.wakeWord ? ["wake word"] : [])],
   [
     "data:read",

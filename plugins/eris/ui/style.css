@@ -29,38 +29,44 @@ body {
   text-align: center;
 }
 
-#pose img {
+.portrait {
+  position: relative;
+  display: inline-block;
   width: 80px;
   height: 80px;
 }
-
-/* In the light scheme her pose, frost art drawn for a dark desk, sits on her night as the orb does
-   in soul-text.css: one halo behind her body, one behind Dysnomia, solid past their lines. The
-   padding is a quarter of the image on each side and the halos are in percent of that box, so the
-   small layout below keeps them. In the state images her centre is at 50% 51.45% of the box and her
-   lines reach 28.2% from it; Dysnomia's facets reach 3.7% from her centre, which moves with the
-   pose. */
-[data-scheme="light"] #pose img {
-  box-sizing: content-box;
-  padding: 20px;
-  margin: -20px;
-  background-image:
-    radial-gradient(ellipse 11% 11% at 74.64% 71.01%, var(--eris-night) 50%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+.portrait .glass { width: 100%; height: 100%; transform-origin: 50% 48.45%; animation: portrait-spin calc(var(--desk-motion-slow) * 225) linear infinite; }
+.lunar-plane { position: absolute; inset: 7%; rotate: 34deg; }
+.lunar-plane img { position: absolute; left: 91%; top: 50%; width: 18%; translate: -50% -50%; }
+#pose[data-state="thinking"] .lunar-plane { animation: portrait-spin calc(var(--desk-motion-base) * 30) linear infinite; }
+.portrait::after {
+  content: "";
+  position: absolute;
+  inset: 35%;
+  border-radius: var(--desk-radius-full);
+  background: radial-gradient(circle, var(--eris-white), transparent 70%);
+  opacity: .25;
 }
-
-/* Thinking, Dysnomia orbits to her upper left; oops, she sinks a little. */
-[data-scheme="light"] #pose[data-state="thinking"] img {
-  background-image:
-    radial-gradient(ellipse 11% 11% at 27.54% 29.71%, var(--eris-night) 50%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+#pose[data-state="listening"] .portrait::after { opacity: .65; }
+#pose[data-state="done"] .portrait::after { opacity: .45; }
+#pose[data-state="heads-up"] { --alert-rim: var(--desk-warning); }
+#pose[data-state="oops"] { --alert-rim: var(--desk-danger); }
+.portrait::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 12.5% 14%;
+  border: 1.5px solid var(--alert-rim, transparent);
+  border-radius: var(--desk-radius-full);
 }
-
-[data-scheme="light"] #pose[data-state="oops"] img {
-  background-image:
-    radial-gradient(ellipse 11% 11% at 74.64% 73.19%, var(--eris-night) 50%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
-}
+#pose[data-state="heads-up"] .portrait { animation: portrait-tremor var(--desk-motion-theme) ease-out; }
+#pose[data-state="oops"] .portrait { animation: portrait-critical calc(var(--desk-motion-slow) * 1.95) ease-out; }
+@keyframes portrait-spin { to { rotate: 1turn; } }
+@keyframes portrait-tremor { 30% { translate: .8px; } 60% { translate: -.55px; } }
+@keyframes portrait-critical { 12% { translate: 1.35px; } 28% { translate: -1px; } 45%,55% { translate: 0; } 68% { translate: 1px; } 83% { translate: -.6px; } }
+@media (prefers-reduced-motion: reduce) { #pose *, #pose[data-state] .portrait, #pose[data-state] .lunar-plane { animation: none; } }
+[data-motion="reduce"] #pose *, [data-motion="reduce"] #pose[data-state] .portrait,
+[data-motion="reduce"] #pose[data-state] .lunar-plane { animation: none; }
 
 #conversation {
   grid-row: 2;
@@ -195,8 +201,7 @@ body {
 /* Small docked panels keep the composer in view and scroll context independently. */
 @media (max-height: 450px) {
   #root { padding: 0 8px 8px; }
-  #pose img { width: 32px; height: 32px; }
-  [data-scheme="light"] #pose img { padding: 8px; margin: -8px; }
+  .portrait { width: 32px; height: 32px; }
   #pose figcaption, #answer.cap { display: none; }
   .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
   #say-text, .send, .stop { grid-row: 1; }

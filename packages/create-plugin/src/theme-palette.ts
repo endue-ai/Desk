@@ -65,6 +65,20 @@ export const LIGHT: Palette = {
   chart6: "#4e8f2a",
   chart7: "#c2651b",
   chart8: "#5f6b7d",
+  chart9: "#008300",
+  chart10: "#d45c91",
+  // The one colour: the star an agent at work shows, and nothing else.
+  star: "#0d6b60",
+  // Code: a block's tint and its tokens' colours.
+  codeSurface: "rgba(21, 33, 32, 0.06)",
+  codeComment: "#53625f",
+  codePunctuation: "rgba(21, 33, 32, 0.65)",
+  codeKeyword: "#0d6b60",
+  codeString: "#006c44",
+  codeNumber: "#925000",
+  codeFunction: "#005fa3",
+  codeTag: "#b80012",
+  codeProperty: "#00707c",
 };
 
 export const DARK: Palette = {
@@ -119,4 +133,16 @@ export const DARK: Palette = {
   chart6: "#8fd36b",
   chart7: "#f5a35b",
   chart8: "#a7b1c3",
+  chart9: "#008300",
+  chart10: "#d55181",
+  star: "#5fd0be",
+  codeSurface: "rgba(238, 243, 242, 0.06)",
+  codeComment: "#a8b5b2",
+  codePunctuation: "rgba(238, 243, 242, 0.65)",
+  codeKeyword: "#5fd0be",
+  codeString: "#5dbe5f",
+  codeNumber: "#ff9800",
+  codeFunction: "#6cadff",
+  codeTag: "#ff8484",
+  codeProperty: "#3cacb8",
 };

@@ -10,9 +10,9 @@
   ],
   "style": {
     "display": "grid",
-    "background-color": "rgb(20, 20, 22)",
-    "color": "rgb(242, 240, 245)",
-    "border-top-color": "rgb(242, 240, 245)",
+    "background-color": "rgb(20, 19, 17)",
+    "color": "rgb(243, 241, 236)",
+    "border-top-color": "rgb(243, 241, 236)",
     "opacity": "1"
   },
   "children": [
@@ -28,8 +28,8 @@
       "style": {
         "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       },
       "children": [
@@ -46,9 +46,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -66,8 +66,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -87,8 +87,8 @@
       "style": {
         "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       },
       "children": [
@@ -105,9 +105,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -123,8 +123,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(176, 173, 183)",
-                "border-top-color": "rgb(176, 173, 183)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
                 "opacity": "1"
               },
               "text": "Hello"
@@ -143,8 +143,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -163,9 +163,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -181,8 +181,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(176, 173, 183)",
-                "border-top-color": "rgb(176, 173, 183)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
                 "opacity": "1"
               },
               "text": "Counter"
@@ -201,8 +201,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -222,8 +222,8 @@
       "style": {
         "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       },
       "children": [
@@ -240,9 +240,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -260,8 +260,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -280,9 +280,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -300,8 +300,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -321,8 +321,8 @@
       "style": {
         "display": "flex",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(242, 240, 245)",
-        "border-top-color": "rgb(242, 240, 245)",
+        "color": "rgb(243, 241, 236)",
+        "border-top-color": "rgb(243, 241, 236)",
         "opacity": "1"
       },
       "children": [
@@ -339,9 +339,9 @@
           ],
           "style": {
             "display": "grid",
-            "background-color": "rgb(30, 29, 33)",
-            "color": "rgb(242, 240, 245)",
-            "border-top-color": "rgb(51, 49, 54)",
+            "background-color": "rgb(29, 28, 25)",
+            "color": "rgb(243, 241, 236)",
+            "border-top-color": "rgb(50, 48, 43)",
             "opacity": "1"
           },
           "children": [
@@ -359,8 +359,8 @@
               "style": {
                 "display": "block",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(242, 240, 245)",
-                "border-top-color": "rgb(242, 240, 245)",
+                "color": "rgb(243, 241, 236)",
+                "border-top-color": "rgb(243, 241, 236)",
                 "opacity": "1"
               }
             }
@@ -382,11 +382,82 @@
       "style": {
         "display": "block",
         "background-color": "rgba(0, 0, 0, 0)",
-        "color": "rgb(176, 173, 183)",
-        "border-top-color": "rgb(51, 49, 54)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(50, 48, 43)",
         "opacity": "1"
       },
-      "text": "desk ready · bridge: browser"
+      "text": "endue ready · bridge: browser"
+    },
+    {
+      "tag": "button",
+      "class": "btn btn-xs desk-notify-bell",
+      "title": "Notifications",
+      "box": [
+        1246,
+        774,
+        30,
+        24
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(179, 175, 165)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "svg",
+          "box": [
+            1254,
+            779,
+            14,
+            14
+          ],
+          "style": {
+            "display": "block",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "path",
+              "box": [
+                1256,
+                780,
+                11,
+                12
+              ],
+              "style": {
+                "display": "inline",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
+                "opacity": "1"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "span",
+          "class": "desk-notify-count",
+          "box": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": {
+            "display": "none",
+            "background-color": "rgb(35, 33, 30)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
+            "opacity": "1"
+          }
+        }
+      ]
     },
     {
       "tag": "button",
@@ -400,9 +471,9 @@
       ],
       "style": {
         "display": "grid",
-        "background-color": "rgb(30, 29, 33)",
-        "color": "rgb(176, 173, 183)",
-        "border-top-color": "rgb(51, 49, 54)",
+        "background-color": "rgb(29, 28, 25)",
+        "color": "rgb(179, 175, 165)",
+        "border-top-color": "rgb(50, 48, 43)",
         "opacity": "1"
       },
       "children": [
@@ -417,8 +488,8 @@
           "style": {
             "display": "block",
             "background-color": "rgba(0, 0, 0, 0)",
-            "color": "rgb(176, 173, 183)",
-            "border-top-color": "rgb(176, 173, 183)",
+            "color": "rgb(179, 175, 165)",
+            "border-top-color": "rgb(179, 175, 165)",
             "opacity": "1"
           },
           "children": [
@@ -433,8 +504,8 @@
               "style": {
                 "display": "inline",
                 "background-color": "rgba(0, 0, 0, 0)",
-                "color": "rgb(176, 173, 183)",
-                "border-top-color": "rgb(176, 173, 183)",
+                "color": "rgb(179, 175, 165)",
+                "border-top-color": "rgb(179, 175, 165)",
                 "opacity": "1"
               }
             }

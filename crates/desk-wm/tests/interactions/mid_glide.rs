@@ -95,7 +95,7 @@ fn a_press_on_a_part_of_the_system_layer_over_it_mid_glide_is_the_pages() {
     let switcher = Rect::new(24.0, 24.0, 101.0, 80.0);
     wm.set_system_parts(vec![switcher]);
     let at = pt(60.0, 30.0);
-    assert!(at.y < mid.y + 41.0, "on its title bar as drawn: {mid:?}");
+    assert!(at.y < mid.y + 37.0, "on its title bar as drawn: {mid:?}");
     wm.pressed(at);
     assert!(!wm.holds());
     assert!(wm.frame(HALF + 1.0).moving, "it still glides");

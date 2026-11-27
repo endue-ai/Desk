@@ -32,8 +32,9 @@ async function mount(agent: "claude" | "codex" = "claude") {
   return { store, local, el: view.el };
 }
 
+const workspace = (el: HTMLElement) => el.querySelector("desk-agent-session")!.shadowRoot!;
 const titles = (el: HTMLElement) =>
-  [...el.querySelectorAll(".local-session-title")].map((t) => t.textContent);
+  [...workspace(el).querySelectorAll(".row-title")].map((t) => t.textContent);
 const click = (el: HTMLElement, selector: string) => {
   const target = el.querySelector<HTMLElement>(selector);
   if (!target) throw new Error(`Missing ${selector}`);
@@ -50,7 +51,7 @@ describe("a local agent's screen", () => {
     expect([...el.querySelectorAll(".local-tabs .segment")].map((t) => t.textContent)).toEqual([
       "Sessions 4",
       "Archive 2",
-      "In Desk 0",
+      "In endue 0",
     ]);
     expect(titles(el)).toEqual([
       "Fix the flaky upload test",
@@ -58,8 +59,9 @@ describe("a local agent's screen", () => {
       "Explain the sync engine",
       "Write the release notes for 1.4",
     ]);
-    expect(el.querySelector(".local-session-meta")?.textContent).toBe(
-      "work/atlas · main · 12 min ago",
+    expect(workspace(el).querySelector(".row-meta")?.textContent).toMatch(/12 min/);
+    expect(workspace(el).querySelector(".workspace")?.getAttribute("title")).toMatch(
+      /work\/atlas$/,
     );
   });
 
@@ -68,7 +70,7 @@ describe("a local agent's screen", () => {
     click(el, '[data-tab="archive"]');
     await settle();
     expect(titles(el)).toEqual(["Spike: drag and drop on the board", "Old CI migration"]);
-    const search = el.querySelector<HTMLInputElement>(".local-search");
+    const search = workspace(el).querySelector<HTMLInputElement>("input[type=search]");
     if (!search) throw new Error("no search");
     search.value = "ci";
     search.dispatchEvent(new Event("input"));
@@ -76,19 +78,19 @@ describe("a local agent's screen", () => {
     expect(titles(el)).toEqual(["Old CI migration"]);
   });
 
-  it("imports sessions and the archive into the desk, then shows them under In Desk", async () => {
+  it("imports sessions into endue and shows them in the local tab", async () => {
     const { el, local } = await mount();
     const imported = vi.spyOn(local, "import");
     click(el, '[data-import="local"]');
     await settle();
     expect(imported).toHaveBeenCalledWith("claude", "local");
     expect(el.querySelector(".local-notice")?.textContent).toBe(
-      "Imported 4 into the desk · 0 already up to date",
+      "Imported 4 into endue · 0 already up to date",
     );
     click(el, '[data-import="archive"]');
     await settle();
     expect(imported).toHaveBeenLastCalledWith("claude", "archive");
-    expect(el.querySelector('[data-tab="desk"]')?.textContent).toBe("In Desk 6");
+    expect(el.querySelector('[data-tab="desk"]')?.textContent).toBe("In endue 6");
     click(el, '[data-tab="desk"]');
     await settle();
     expect(titles(el)).toHaveLength(6);
@@ -97,14 +99,13 @@ describe("a local agent's screen", () => {
   it("reads the session picked and continues it with a work request", async () => {
     const { el, local, store } = await mount();
     const ask = vi.spyOn(local, "ask");
-    click(el, ".local-session");
+    workspace(el).querySelector<HTMLButtonElement>("[data-session-key]")!.click();
     await settle();
-    expect(el.querySelector(".local-detail-title")?.textContent).toBe("Fix the flaky upload test");
-    expect([...el.querySelectorAll(".local-msg-who")].map((w) => w.textContent)).toEqual([
-      "You",
-      "Tool · Bash",
-      "Claude Code",
-    ]);
+    expect(workspace(el).querySelector("h2")?.textContent).toBe("Fix the flaky upload test");
+    expect(
+      [...workspace(el).querySelectorAll("[data-turn]")].map((w) => w.getAttribute("data-role")),
+    ).toEqual(["user", "tool", "assistant"]);
+    expect(workspace(el).querySelector(".tool-line strong")?.textContent).toBe("Bash");
     const prompt = el.querySelector<HTMLTextAreaElement>(".local-prompt");
     if (!prompt) throw new Error("no prompt");
     prompt.value = "Now fix it";
@@ -121,7 +122,7 @@ describe("a local agent's screen", () => {
     expect(store.get().localRuns[0]).toMatchObject({ state: "done", sessionId: session?.id });
     expect(el.querySelector(".local-run")?.getAttribute("data-state")).toBe("done");
     click(el, ".local-new");
-    expect(el.querySelector(".local-detail-title")).toBeNull();
+    expect(workspace(el).querySelector("h2")?.textContent).toBe("Choose a session");
     expect(el.querySelector(".local-folder")).not.toBeNull();
     prompt.value = "Start over";
     el.querySelector("form")?.dispatchEvent(new Event("submit", { cancelable: true }));
@@ -154,6 +155,56 @@ describe("a local agent's screen", () => {
     expect(el.querySelector(".local-composer-hint")?.textContent).toMatch(/change files/);
   });
 
+  it("shows the new run before history is indexed and resumes its assigned session", async () => {
+    const { el, local } = await mount();
+    const ask = vi.spyOn(local, "ask");
+    const input = el.querySelector<HTMLTextAreaElement>(".local-prompt")!;
+    const submit = (text: string) => {
+      input.value = text;
+      el.querySelector("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    };
+    click(el, '[data-access="agent"]');
+    submit("Review the outline");
+    await vi.waitFor(() => expect(local.fixture.runs[0]?.state).toBe("done"));
+    const run = local.fixture.runs[0]!;
+    const root = workspace(el);
+    expect(root.querySelector("h2")?.textContent).toBe("Review the outline");
+    expect(root.querySelector("desk-markdown")?.shadowRoot?.textContent).toContain(run.text);
+    expect(
+      [...root.querySelectorAll("[data-turn]")].map((el) => el.getAttribute("data-role")),
+    ).toEqual(["user", "tool", "assistant"]);
+    submit("Continue the outline");
+    expect(ask).toHaveBeenLastCalledWith({
+      agent: "claude",
+      sessionId: run.sessionId,
+      prompt: "Continue the outline",
+      access: "agent",
+    });
+  });
+
+  it("keeps a later selection and its draft when a new run starts late", async () => {
+    const { el, local } = await mount();
+    const ask = local.ask.bind(local);
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(local, "ask").mockImplementationOnce(async (args) => {
+      await wait;
+      return ask(args);
+    });
+    const input = el.querySelector<HTMLTextAreaElement>(".local-prompt")!;
+    input.value = "First request";
+    el.querySelector("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    const session = local.fixture.sessions[0]!;
+    workspace(el).querySelector<HTMLButtonElement>(`[data-native-id="${session.id}"]`)!.click();
+    input.value = "Draft for the selected session";
+    release();
+    await vi.waitFor(() => expect(local.fixture.runs[0]?.state).toBe("done"));
+    expect(workspace(el).querySelector("h2")?.textContent).toBe(session.title);
+    expect(input.value).toBe("Draft for the selected session");
+  });
+
   it("reads an agent it found no program for, and asks it nothing", async () => {
     const { el, store } = await mount();
     store.set((s) => ({
@@ -163,4 +214,96 @@ describe("a local agent's screen", () => {
     expect(el.querySelector<HTMLButtonElement>(".local-send")?.disabled).toBe(true);
     expect(titles(el)).toHaveLength(4);
   });
+});
+
+it("loads older turns without losing the selection or replacing it with a stale result", async () => {
+  const { el, local } = await mount();
+  const reader = el.querySelector("desk-agent-session");
+  expect(reader?.shadowRoot, "the endue screen uses the session reader").toBeTruthy();
+  const root = reader!.shadowRoot!;
+  const [one, two] = local.fixture.sessions;
+  if (!one || !two) throw Error("two sessions required");
+  const fn = vi.spyOn(local, "transcript");
+  const many = Array.from({ length: 245 }, (_, i) => ({
+    role: "user" as const,
+    text: `Outline ${i}`,
+  }));
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fn.mockImplementation(async (_agent, id, limit = 200) => {
+    if (id === one.id && limit > 200) await pending;
+    return {
+      session: id === one.id ? one : two,
+      messages: id === one.id ? many.slice(-limit) : [{ role: "user", text: "Different notebook" }],
+      truncated: id === one.id && limit < many.length,
+    };
+  });
+  const select = (id: string) =>
+    root.querySelector<HTMLButtonElement>(`[data-native-id="${id}"]`)!.click();
+  select(one.id);
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Outline 45");
+  root.querySelector<HTMLButtonElement>("[data-older]")!.click();
+  select(two.id);
+  await settle();
+  release();
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Different notebook");
+  expect(root.querySelector('[role="log"]')?.textContent).not.toContain("Outline 0");
+  select(one.id);
+  await settle();
+  root.querySelector<HTMLButtonElement>("[data-older]")!.click();
+  await settle();
+  expect(root.querySelector('[role="log"]')?.textContent).toContain("Outline 0");
+  expect(root.querySelectorAll("[data-turn]")).toHaveLength(245);
+});
+
+it("stops at an exhausted imported copy and the native transcript cap", async () => {
+  const { el, local } = await mount();
+  const s = local.fixture.sessions[0];
+  if (!s) throw Error("Missing test session");
+  click(el, '[data-import="local"]');
+  await settle();
+  click(el, '[data-tab="desk"]');
+  await settle();
+  const stub = vi
+    .spyOn(local, "transcript")
+    .mockImplementation(async (_agent, _id, limit = 200) => ({
+      session: s,
+      messages: Array.from({ length: Math.min(200, limit) }, (_, i) => ({
+        role: "user",
+        text: String(i),
+      })),
+      truncated: true,
+    }));
+  const root = workspace(el);
+  const select = () => root.querySelector<HTMLButtonElement>("[data-session-key]")?.click();
+  const more = () => root.querySelector<HTMLButtonElement>("[data-older]")?.click();
+  select();
+  await settle();
+  more();
+  await settle();
+  expect(root.querySelector("[data-older]")).toBeNull();
+  expect(root.textContent).toContain("Earlier history is unavailable.");
+  stub.mockImplementation(async (_agent, _id, limit = 200) => ({
+    session: s,
+    messages: Array.from({ length: limit }, (_, i) => ({
+      role: "user",
+      text: String(1000 - limit + i),
+    })),
+    truncated: true,
+  }));
+  click(el, '[data-tab="local"]');
+  await settle();
+  select();
+  await settle();
+  for (let i = 0; i < 4; i++) {
+    more();
+    await settle();
+  }
+  expect(stub.mock.calls.map((args) => args[2]).slice(-5)).toEqual([200, 400, 600, 800, 1000]);
+  expect(root.querySelector("[data-older]")).toBeNull();
+  expect(root.querySelectorAll("[data-turn]")).toHaveLength(1000);
 });

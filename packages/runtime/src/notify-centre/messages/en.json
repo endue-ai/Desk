@@ -1,0 +1,14 @@
+{
+  "notifyCentre.bell": "Notifications",
+  "notifyCentre.bellUnread": "Notifications, {count} unread",
+  "notifyCentre.title": "Notifications",
+  "notifyCentre.count": { "one": "{count} notification", "other": "{count} notifications" },
+  "notifyCentre.none": "No notifications",
+  "notifyCentre.empty": "What endue and your apps tell you stays here, so you can come back to it.",
+  "notifyCentre.today": "Today",
+  "notifyCentre.earlier": "Earlier",
+  "notifyCentre.dnd": "Do not disturb",
+  "notifyCentre.clear": "Clear all",
+  "notifyCentre.dismiss": "Dismiss",
+  "notifyCentre.desk": "endue"
+}

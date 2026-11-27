@@ -25,7 +25,8 @@ with "connect again".
 | --- | --- |
 | `net:fetch` (`api.github.com`) | The core's requests on its behalf |
 
-Today shows its open work in a GitHub section; Projects shows it in every view.
+Today has a GitHub section and Projects shows this work in its views. Eris can call
+`endue.github.work` to read the local index by GitHub repository, issue or pull request, and status.
 
 ```bash
 pnpm exec vitest run plugins/github

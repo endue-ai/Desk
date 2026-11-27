@@ -79,6 +79,18 @@ describe("the desk's system parts", () => {
     ]);
   });
 
+  it("report the notification centre's control beside the line, and its panel over the windows", () => {
+    // The control is a sibling of the line, which re-renders its own children (#307).
+    at("desk-status", [600, 8, 200, 28]);
+    at("btn btn-xs desk-notify-bell", [804, 8, 40, 28]);
+    at("popover desk-notify-centre", [530, 44, 380, 300]);
+    expect(systemParts(document)).toEqual([
+      { id: "desk.notices", x: 600, y: 8, width: 200, height: 28 },
+      { id: "desk.notice-actions", x: 804, y: 8, width: 40, height: 28 },
+      { id: "desk.overlays", x: 530, y: 44, width: 380, height: 300 },
+    ]);
+  });
+
   it("report every overlay the page has open, each with its own box", () => {
     at("popover rail-popover", [900, 300, 280, 180.4]);
     at("tooltip", [40.5, 640, 120, 24]);
@@ -86,11 +98,14 @@ describe("the desk's system parts", () => {
     // Eris's proposal, the description's panel and the keys' hint are cards over the desk too.
     at("proposal", [360, 72, 560, 300]);
     at("desk-which-key", [360, 600, 560, 120]);
+    // The crash report overlaps the map, so it belongs to the front layer.
+    at("crash-card", [816, 688, 448, 96]);
     expect(systemParts(document)).toEqual([
       { id: "desk.overlays", x: 900, y: 300, width: 280, height: 181 },
       { id: "desk.overlays", x: 40, y: 640, width: 121, height: 24 },
       { id: "desk.overlays", x: 360, y: 72, width: 560, height: 300 },
       { id: "desk.overlays", x: 360, y: 600, width: 560, height: 120 },
+      { id: "desk.overlays", x: 816, y: 688, width: 448, height: 96 },
     ]);
   });
 

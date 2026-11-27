@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { SPECS } from "../ui/agent-specs.js";
 import { ics } from "./fixtures";
 import { disk, file, mount } from "./harness";
 
@@ -61,38 +62,28 @@ const WORK = ics(
 );
 
 describe("agent commands", () => {
-  it("are registered with an argument schema and a description", async () => {
-    const { params } = await mount({ handlers: disk({}) });
-    const registered = params("cmd.register") as Array<{
-      id: string;
-      argsSchema: object;
-      description: string;
-    }>;
-    expect(registered.map((r) => r.id)).toEqual([
-      "endue.calendar.events",
-      "endue.calendar.conflicts",
-      "endue.calendar.add",
-    ]);
-    for (const r of registered) {
-      expect(r.description.length).toBeGreaterThan(20);
-      expect(r.argsSchema).toMatchObject({ type: "object" });
+  it("are declared in the manifest as agent.js describes them, the reads read-only", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(root, "plugins/calendar/plugin.json"), "utf8"),
+    ) as {
+      contributes: { commands: Array<Record<string, unknown>> };
+    };
+    for (const [id, spec] of Object.entries(SPECS)) {
+      const declared = manifest.contributes.commands.find((c) => c.id === id);
+      expect(declared, id).toMatchObject({ ...spec, agent: true });
+      expect(String(declared?.description).length, id).toBeGreaterThan(20);
     }
-    // Agents get all three as tools; only the two reads read only (ADR 0088).
-    const flags = (registered as Array<{ agent?: boolean; readOnly?: boolean }>).map((r) => [
-      r.agent,
-      r.readOnly ?? false,
-    ]);
-    expect(flags).toEqual([
-      [true, true],
-      [true, true],
-      [true, false],
-    ]);
+    expect(SPECS["endue.calendar.events"]?.readOnly).toBe(true);
+    expect(SPECS["endue.calendar.conflicts"]?.readOnly).toBe(true);
+    expect(SPECS["endue.calendar.delete"]?.irreversible).toBeUndefined();
+    expect(SPECS["endue.calendar.save"]?.irreversible).toBe(true);
+    expect(SPECS["endue.calendar.add"]?.readOnly).toBeUndefined();
   });
 
   it("events answers item/v0 items for the span, in the person's zone", async () => {
     const { host } = await mount({ handlers: disk({ [A.path]: WORK }) });
     await host.command("desk.files.visit", A);
-    const answer = (await host.invoke("endue.calendar.events", {
+    const answer = (await host.command("endue.calendar.events", {
       from: "2026-11-02",
       to: "2026-11-04",
     })) as {
@@ -125,6 +116,7 @@ describe("agent commands", () => {
       calendar: "Work Calendar",
       raw: {
         uid: "plan",
+        path: A.path,
         status: "CONFIRMED",
         busy: true,
         sequence: 3,
@@ -141,7 +133,7 @@ describe("agent commands", () => {
       start: "2026-11-03T00:00:00+09:00",
       end: "2026-11-04T00:00:00+09:00",
     });
-    const found = (await host.invoke("endue.calendar.events", {
+    const found = (await host.command("endue.calendar.events", {
       from: "2026-11-01",
       text: "ROADMAP",
     })) as { items: unknown[] };
@@ -151,7 +143,7 @@ describe("agent commands", () => {
   it("conflicts names busy events that overlap, leaving out free and all-day ones", async () => {
     const { host } = await mount({ handlers: disk({ [A.path]: WORK }) });
     await host.command("desk.files.visit", A);
-    const answer = (await host.invoke("endue.calendar.conflicts", { from: "2026-11-02" })) as {
+    const answer = (await host.command("endue.calendar.conflicts", { from: "2026-11-02" })) as {
       conflicts: Array<{
         a: { title: string };
         b: { title: string };
@@ -167,7 +159,7 @@ describe("agent commands", () => {
 
   it("reads the default calendar file when none is open", async () => {
     const { host } = await mount({ handlers: disk({ "~/Calendar/calendar.ics": WORK }) });
-    const answer = (await host.invoke("endue.calendar.events", {
+    const answer = (await host.command("endue.calendar.events", {
       from: "2026-11-02T00:00:00+09:00",
       to: "2026-11-03T00:00:00+09:00",
     })) as {
@@ -181,7 +173,7 @@ describe("agent commands", () => {
     const files = { [A.path]: WORK };
     const { host, view, ran, settle } = await mount({ handlers: disk(files) });
     await host.command("desk.files.visit", A);
-    const answer = (await host.invoke("endue.calendar.add", {
+    const answer = (await host.command("endue.calendar.add", {
       title: "Call with Jun",
       start: "2026-11-04T15:00",
       end: "2026-11-04T15:30",
@@ -206,7 +198,7 @@ describe("agent commands", () => {
     const { host } = await mount({ handlers: disk({ [A.path]: WORK }) });
     await host.command("desk.files.visit", A);
     const fail = (id: string, args: Record<string, unknown>) =>
-      host.invoke(id, args).then(
+      host.command(id, args).then(
         () => "ok",
         (e: Error) => e.message,
       );
@@ -233,5 +225,148 @@ describe("agent commands", () => {
         rrule: "FREQ=SOMETIMES",
       }),
     ).toContain("rrule: FREQ=SOMETIMES is unknown.");
+  });
+
+  it("update moves and renames an event it names, and one instance of a series alone", async () => {
+    const files = { [A.path]: WORK };
+    const { host, view, settle } = await mount({ handlers: disk(files) });
+    await host.command("desk.files.visit", A);
+    const moved = (await host.command("endue.calendar.update", {
+      id: "plan",
+      start: "2026-11-02T10:00:00+09:00",
+      newStart: "2026-11-02T14:00",
+      title: "Planning, moved",
+    })) as { item: Record<string, unknown> };
+    await settle();
+    expect(moved.item).toMatchObject({
+      title: "Planning, moved",
+      start: "2026-11-02T14:00:00+09:00",
+      end: "2026-11-02T15:00:00+09:00",
+      location: "Room 3",
+    });
+    expect(view.last.calendar?.modified).toBe(true);
+    const events = (await host.command("endue.calendar.events", {
+      from: "2026-11-09",
+      to: "2026-11-10",
+    })) as { items: Array<{ id: string; start: string; title: string }> };
+    const second = events.items.find((e) => e.title === "Vendor sync");
+    if (!second) throw new Error("no second instance");
+    await host.command("endue.calendar.update", {
+      id: second.id,
+      start: second.start,
+      title: "Sync, once",
+    });
+    const after = (await host.command("endue.calendar.events", {
+      from: "2026-11-02",
+      to: "2026-11-17",
+    })) as { items: Array<{ title: string }> };
+    expect(after.items.map((e) => e.title).filter((t) => /sync/i.test(t))).toEqual([
+      "Vendor sync",
+      "Sync, once",
+      "Vendor sync",
+    ]);
+    await expect(
+      host.command("endue.calendar.update", { id: "nope", start: "2026-11-02" }),
+    ).rejects.toThrow(/There is no event nope/);
+  });
+
+  it("delete takes an event off, and save writes the calendar through the desk", async () => {
+    const files = { [A.path]: WORK };
+    const commands = { "desk.files.save": () => ({}) };
+    const { host, ran, settle } = await mount({ handlers: disk(files), commands });
+    await host.command("desk.files.visit", A);
+    await expect(host.command("endue.calendar.save")).resolves.toEqual({ path: null });
+    await expect(
+      host.command("endue.calendar.delete", { id: "lunch", start: "2026-11-02T10:30:00+09:00" }),
+    ).resolves.toEqual({ deleted: "lunch" });
+    await settle();
+    const left = (await host.command("endue.calendar.events", {
+      from: "2026-11-02",
+      to: "2026-11-03",
+    })) as { items: Array<{ title: string }> };
+    expect(left.items.map((e) => e.title)).not.toContain("Hold");
+    await expect(host.command("endue.calendar.save")).resolves.toEqual({ path: A.path });
+    expect(ran("desk.files.save")).toEqual([{ buffer: A.buffer }]);
+  });
+
+  it("changes an event's actual calendar and adds to a named calendar without switching it", async () => {
+    const B = file("~/Calendar/other.ics");
+    const other = ics([
+      "UID:clinic",
+      "DTSTART;TZID=Asia/Seoul:20261102T140000",
+      "DTEND;TZID=Asia/Seoul:20261102T143000",
+      "SUMMARY:Clinic",
+    ]);
+    const files = { [A.path]: WORK, [B.path]: other };
+    const { host, view, ran, settle } = await mount({
+      handlers: disk(files),
+      commands: { "desk.files.save": () => ({}) },
+    });
+    await host.command("desk.files.visit", B);
+    await host.command("desk.files.visit", A);
+    const target = { id: "clinic", start: "2026-11-02T14:00:00+09:00" };
+    expect(
+      await host.command("endue.calendar.update", { ...target, title: "Moved" }),
+    ).toMatchObject({
+      item: { title: "Moved", raw: { path: B.path } },
+    });
+    await host.command("endue.calendar.delete", target);
+    await host.command("endue.calendar.add", {
+      calendar: B.path,
+      title: "Another event",
+      start: "2026-11-04T12:30",
+    });
+    await settle();
+    expect(view.last.calendar).toMatchObject({ path: A.path, modified: false });
+    expect(ran("desk.buffers.update")).toEqual([{ id: B.buffer, modified: true }]);
+    expect(files).toEqual({ [A.path]: WORK, [B.path]: other });
+    expect(await host.command("endue.calendar.save", { calendar: B.path })).toEqual({
+      path: B.path,
+    });
+    expect(ran("desk.files.save")).toEqual([{ buffer: B.buffer }]);
+  });
+
+  it("requires the calendar file when two files have the same event", async () => {
+    const B = file("~/Calendar/duplicate.ics");
+    const { host, ran, settle } = await mount({
+      handlers: disk({ [A.path]: WORK, [B.path]: WORK }),
+    });
+    await host.command("desk.files.visit", B);
+    await host.command("desk.files.visit", A);
+    const event = { id: "plan", start: "2026-11-02T10:00:00+09:00" };
+    await expect(host.command("endue.calendar.delete", event)).rejects.toThrow(
+      /more than one calendar/i,
+    );
+    expect(ran("desk.buffers.update")).toEqual([]);
+    await host.command("endue.calendar.delete", { ...event, calendar: B.buffer });
+    await settle();
+    expect(ran("desk.buffers.update")).toEqual([{ id: B.buffer, modified: true }]);
+  });
+
+  it("goes to a named view, reads its span and selection and preloads the editor", async () => {
+    const { host, app, view, params } = await mount({ handlers: disk({ [A.path]: WORK }) });
+    await host.command("desk.files.visit", A);
+    await host.command("endue.calendar.show", { date: "2026-11-02", view: "day" });
+    app.edit("plan");
+    expect(await host.command("endue.calendar.current")).toMatchObject({
+      view: "day",
+      date: "2026-11-02",
+      span: { from: "2026-11-02", to: "2026-11-03" },
+      event: { id: "plan", title: "Planning" },
+    });
+    app.close();
+    await host.command("endue.calendar.new", {
+      fields: { title: "Review first", start: "2026-11-02T13:00", location: "Office" },
+    });
+    expect(view.editors.at(-1)).toMatchObject({
+      kind: "new",
+      fields: {
+        title: "Review first",
+        start: Date.parse("2026-11-02T13:00:00Z"),
+        location: "Office",
+      },
+    });
+    expect(view.last.calendar?.modified).toBe(false);
+    expect(params("fs.write")).toEqual([]);
   });
 });

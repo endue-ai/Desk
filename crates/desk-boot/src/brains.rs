@@ -32,11 +32,11 @@ pub fn brains(data: &Path, home: &Path, account: Arc<Account>) -> Brains {
             let brain = brain.with_token_source(Arc::new(move || account.token()));
             brains = brains.with_endue(Arc::new(brain));
         }
-        Err(why) => eprintln!("endue Desk: no endue AI brain ({why})"),
+        Err(why) => eprintln!("endue: no endue AI brain ({why})"),
     }
     match HttpBrain::new(&url("DESK_ECHO_URL", DEFAULT_ECHO_URL)) {
         Ok(brain) => brains = brains.with_echo(Arc::new(brain)),
-        Err(why) => eprintln!("endue Desk: no echo brain ({why})"),
+        Err(why) => eprintln!("endue: no echo brain ({why})"),
     }
     // A Claude Code not found now still answers as `claude` on PATH, or is unreachable, so the
     // choice exists and the local brain stands in (ADR 0094).
@@ -44,14 +44,21 @@ pub fn brains(data: &Path, home: &Path, account: Arc<Account>) -> Brains {
         .map(PathBuf::from)
         .or_else(|| find_claude(std::env::var_os("PATH"), Some(home.to_path_buf())))
         .unwrap_or_else(|| PathBuf::from("claude"));
-    let mut claude = ClaudeCodeOptions::new(program);
+    let mut claude = ClaudeCodeOptions::new(program.clone());
     if let Ok(model) = std::env::var("DESK_CLAUDE_MODEL") {
         claude = claude.with_model(model);
     }
     match LocalBrain::claude_code(data.join("claude-brain"), claude) {
         Ok(brain) => brains = brains.with_claude(Arc::new(brain)),
-        Err(why) => eprintln!("endue Desk: no Claude Code brain ({why})"),
+        Err(why) => eprintln!("endue: no Claude Code brain ({why})"),
     }
+    // The model the person chose for Eris (`brain.claude-model`, ADR 0296), each in a folder of its own.
+    let claude_models = data.join("claude-brain-models");
+    brains = brains.with_claude_models(move |model: &str| {
+        let options = ClaudeCodeOptions::new(program.clone()).with_model(model.to_owned());
+        let brain = LocalBrain::claude_code(claude_models.join(file_safe(model)), options)?;
+        Ok(Arc::new(brain) as Arc<dyn Brain>)
+    });
     let ollama = url("DESK_OLLAMA_URL", DEFAULT_BASE_URL);
     let folder = data.join("local-brain");
     brains.with_local(move |model: &str| {

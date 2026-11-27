@@ -2,7 +2,8 @@
  * desk.windows.put-away (issue 280): a window of the desktop in front goes into the drawer under
  * the title its title bar shows, the window in use when none is named. The drawer at the bottom
  * edge lists it and brings it back (`shell/Drawer.ts`). A window's title bar has no tool for it:
- * the palette, a key the person binds and an agent run this command.
+ * its window menu's Put in drawer (`desktops/window-rows.ts`), the palette, a key the person binds
+ * and an agent run this command.
  */
 import { CommandError } from "../commands";
 import { stash, windowsOf } from "../shell/actions";

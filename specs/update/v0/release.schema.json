@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/update/v0/release.schema.json",
-  "title": "Desk update v0: the release manifest",
+  "title": "endue update v0: the release manifest",
   "description": "desk/releases/<version>/release.json on the release origin (ADR 0054), signed in release.json.sig: the Tauri updater's static manifest, which tauri-plugin-updater reads as it is, plus a desk block the plugin ignores. Unknown fields are allowed.",
   "$defs": {
     "ReleaseManifest": {
@@ -51,7 +51,7 @@
       "maxLength": 4096
     },
     "ReleaseDesk": {
-      "description": "What Desk adds to the Tauri format.",
+      "description": "What endue adds to the Tauri format.",
       "type": "object",
       "properties": {
         "commit": { "$ref": "index.schema.json#/$defs/ReleaseCommit" },

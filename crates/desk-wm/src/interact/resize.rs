@@ -130,7 +130,7 @@ pub fn resize_rect(start: Rect, grip: Grip, dx: f64, dy: f64, bounds: Option<Rec
     resize_rect_min(start, grip, dx, dy, bounds, MIN)
 }
 
-/// The same, never below `least`: a window of several panes keeps room for each (`pane_min.rs`).
+/// The same, never below `least`: what the window's plugin asks for (`hints.rs`).
 pub fn resize_rect_min(
     start: Rect,
     grip: Grip,

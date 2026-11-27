@@ -55,7 +55,12 @@ impl Core {
             ));
         }
         json(BrainSayResult {
-            turn_id: picked.conversation.say(text, params.desk, picked.fallback),
+            turn_id: picked.conversation.say(
+                text,
+                params.desk,
+                picked.fallback,
+                caller == "desk" || self.trusted_builtin(caller, "endue.eris"),
+            ),
         })
     }
 }

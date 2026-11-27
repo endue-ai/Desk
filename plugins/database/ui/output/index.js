@@ -1,7 +1,9 @@
-// Each engine's reader of what its client printed, by engine id. Only the result worker
-// (ui/output-worker.js) loads this folder: the frame's thread never parses a run's output (#38).
+// Each engine's reader of what its client printed, by engine id: mysql's and sqlite3's (PostgreSQL
+// runs on the core's sessions, whose pages need no reading: engines/pg-session.js). Only the result
+// worker (ui/output-worker.js) loads this folder: the frame's thread never parses a run's output (#38).
+
+import { t } from "../strings/index.js";
 import { readMysql } from "./mysql.js";
-import { readPostgres } from "./postgres.js";
 import { readSqlite } from "./sqlite.js";
 
 /**
@@ -12,8 +14,8 @@ import { readSqlite } from "./sqlite.js";
  *   what of the plan a reader needs
  */
 
-/** @type {Record<EngineId, (outcome: Outcome, invocation: Reading, timeoutMs: number) => RunResult>} */
-const READERS = { postgresql: readPostgres, mysql: readMysql, sqlite: readSqlite };
+/** @type {Partial<Record<EngineId, (outcome: Outcome, invocation: Reading, timeoutMs: number) => RunResult>>} */
+const READERS = { mysql: readMysql, sqlite: readSqlite };
 
 /**
  * The statements' results, sets cut to `maxRows` rows, from one run's outcome.
@@ -25,6 +27,6 @@ const READERS = { postgresql: readPostgres, mysql: readMysql, sqlite: readSqlite
  */
 export function readOutput(engine, outcome, invocation, timeoutMs) {
   const read = READERS[engine];
-  if (!read) throw new Error(`Unknown engine: ${String(engine)}.`);
+  if (!read) throw new Error(t("output.index.unknownEngine", { value: String(String(engine)) }));
   return read(outcome, /** @type {never} */ (invocation), timeoutMs);
 }

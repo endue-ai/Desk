@@ -26,7 +26,7 @@ We credit reporters in the release notes unless you ask us not to.
 
 ## Supported versions
 
-Desk is pre-1.0. Only the latest release on each channel (stable, beta, canary) receives security fixes.
+endue is pre-1.0. Only the latest release on each channel (stable, beta, canary) receives security fixes.
 
 ## Scope
 
@@ -38,6 +38,6 @@ same address).
 
 ## Threat model
 
-[docs/security/threat-model.md](docs/security/threat-model.md) lists what Desk protects, the attackers it
+[docs/security/threat-model.md](docs/security/threat-model.md) lists what endue protects, the attackers it
 considers and, for each trust boundary, the mitigation on `main` today or the gap and the issue that
 closes it.

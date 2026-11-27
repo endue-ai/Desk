@@ -1,7 +1,7 @@
 //! The Linux notifier over freedesktop notifications: `org.freedesktop.Notifications` on D-Bus.
 //! Freedesktop has no permission, so the notifier is always `Authorized`. `Notify` answers the
 //! server's id for each post; `ActionInvoked` with the `default` action on one of those ids is a
-//! click, and `NotificationClosed` forgets the id. One thread per notifier hears both signals.
+//! click (with `desk-action`, a click on its button), and `NotificationClosed` forgets the id. One thread per notifier hears both signals.
 //!
 //! zbus runs on Tokio, as for the vendored single-instance plugin: `zbus::block_on` drives zbus's own
 //! Tokio runtime, and it panics on a thread that already drives one, as a caller's may. So every
@@ -29,6 +29,8 @@ const INTERFACE: &str = "org.freedesktop.Notifications";
 /// The action a server reports for a click on the notification itself, with the label a server
 /// shows if it draws the default action as a button.
 const DEFAULT_ACTION: [&str; 2] = ["default", "Open"];
+/// The key of a notification's own button, which `ActionInvoked` reports.
+const BUTTON_ACTION: &str = "desk-action";
 /// How long a call on the session bus waits for its answer: the D-Bus reference implementation's.
 const CALL_TIMEOUT: Duration = Duration::from_secs(25);
 /// How many posted ids a notifier keeps for a server that never reports them closed.
@@ -131,7 +133,7 @@ impl Notifier for Freedesktop {
                 "",
                 notification.title.as_str(),
                 body.as_str(),
-                DEFAULT_ACTION.to_vec(),
+                actions(notification),
                 hints,
                 -1i32,
             );
@@ -242,12 +244,18 @@ impl Shared {
                     return;
                 };
                 let desk_id = match self.posted().get(&id) {
-                    Some((desk_id, server)) if action == "default" && *server == sender => {
+                    Some((desk_id, server))
+                        if (action == "default" || action == BUTTON_ACTION)
+                            && *server == sender =>
+                    {
                         desk_id.clone()
                     }
                     _ => return,
                 };
-                self.clicks.fire(Click { id: desk_id });
+                self.clicks.fire(Click {
+                    id: desk_id,
+                    action: action == BUTTON_ACTION,
+                });
             }
             Some("NotificationClosed") => {
                 let Ok((id, _reason)) = body.deserialize::<(u32, u32)>() else {
@@ -261,6 +269,16 @@ impl Shared {
             _ => {}
         }
     }
+}
+
+/// The `actions` of a `Notify` call: the default action, then the notification's button if it has
+/// one, as key and label pairs.
+pub fn actions(notification: &Notification) -> Vec<&str> {
+    let mut actions = DEFAULT_ACTION.to_vec();
+    if let Some(label) = notification.action.as_deref() {
+        actions.extend([BUTTON_ACTION, label]);
+    }
+    actions
 }
 
 /// Asked by `Freedesktop::drop`; wakes the thread waiting for the next signal.

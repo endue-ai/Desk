@@ -156,7 +156,7 @@ describe("what the webview cannot decode", () => {
       {
         target: "~/Pictures/a.heic",
         reveal: true,
-        scope: { permission: "shell:open", paths: ["~/Pictures/a.heic"] },
+        scope: { permission: "shell:open", paths: ["~/Pictures/*"] },
       },
     ]);
     expect(byId("status").textContent).toBe("");

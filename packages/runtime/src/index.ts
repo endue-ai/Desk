@@ -21,27 +21,9 @@ export type {
   StudioShellBridge,
 } from "./bridge/types";
 export { type Clock, ManualClock, realClock, type Tween, tween } from "./clock";
-// Eris over other apps (ADR 0121, ADR 0204): the link that hands her state between the desk and the
-// island, which talks to her there.
-export {
-  BACK_KEY,
-  type ErisLine,
-  type ErisSnapshot,
-  type FloatStatus,
-  floatSide,
-  keepLines,
-  type LinkChannel,
-  pairedChannels,
-  SNAPSHOT_KEY,
-  statusOf,
-  storageChannel,
-} from "./eris/float";
-// The same conversation from the island (ADR 0204): her turns and her words, without her figure.
-export { type FloatLang, floatText, statusText } from "./eris/float-copy";
-export { askEris, type BrainWatch, type FloatCore, watchBrain } from "./eris/float-turn";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
 export type { Mode } from "./modes/types";
-// Notices as desk.notify shows them (durations by level, do-not-disturb), for the island too.
+// Notices as desk.notify shows them (durations by level, do not disturb).
 export {
   DEFAULT_NOTIFY,
   type Notice,
@@ -71,7 +53,11 @@ export type { SettingsLanguage } from "./settings-ui/copy";
 export type { SettingsSection } from "./settings-ui/panels";
 export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
+export { iconPath } from "./shell/icons";
+export { mapWidthOf } from "./shell/MapStrip";
+export { pluginIcon, viewIcon } from "./shell/plugin-icons";
 export { viewTitles } from "./shell/titles";
+export { viewIcons } from "./shell/view-icons";
 export type { BrokenStateFile, StartInfo } from "./start";
 export {
   type Opener,
@@ -89,6 +75,8 @@ export {
   type Grab,
   heldWindows,
   noWindowManager,
+  type OutAsk,
+  type OutFrame,
   type WindowManagerHost,
   type WindowOp,
 } from "./wm/host";

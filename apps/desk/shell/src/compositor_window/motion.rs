@@ -1,5 +1,5 @@
 //! The motion gate's parts in the compositor window (#247, ADR 0208, development builds): the shake
-//! and a frame rendered unseen.
+//! and the sway.
 //!
 //! The shake (`compositor_input { shake }`) presses a window's title bar at `x`, `y` (logical
 //! pixels) and swings the pointer left and right on a sine (`amp` pixels, `periodMs`) for
@@ -19,58 +19,22 @@
 //! `Resized` (`frameDidChange:`), live or not, and the shell does nothing else for a live resize.
 //!
 //! A frame the window does not present (headless, `DESK_COMPOSITOR_HEADLESS=1`) is rendered off
-//! screen while a frame trace runs, the window's size, so its GPU work counts as a shown frame's
-//! does and the gate needs no screen to show it on (a locked one, a covered window).
+//! screen while a frame trace runs, by the render thread (`render_thread.rs`, #249).
 
-use std::cell::RefCell;
 use std::f64::consts::TAU;
 use std::sync::mpsc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use desk_compositor::headless::Target;
 use desk_compositor::input::{Button, Input};
 use serde_json::{Value, json};
 
 use desk_web::sender::Role;
 
-use super::CompositorWindow;
-use crate::frame_trace::{self, Timed};
+use crate::frame_trace;
 use crate::host::Desk;
 use crate::main_frame::{self, Frame, LEAST};
 use crate::pump::Pump;
-
-thread_local! {
-    /// The target unseen frames are rendered into, the window's size.
-    static UNSEEN: RefCell<Option<Target>> = const { RefCell::new(None) };
-}
-
-impl CompositorWindow {
-    /// A frame composed and not presented: rendered off screen while a trace runs, after the last
-    /// one finished (one frame in flight, as a swapchain keeps a frame or two).
-    pub(super) fn unseen(&mut self, mut timed: Timed) {
-        if !frame_trace::on() {
-            return;
-        }
-        timed.mark();
-        let size = self.scene.viewport();
-        let mut composed = self.shared.lock();
-        let device = composed.compositor.device().clone();
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        UNSEEN.with(|target| {
-            let mut target = target.borrow_mut();
-            if target.as_ref().is_none_or(|t| t.size != size) {
-                *target = Some(Target::new(&device, size, composed.compositor.format()));
-            }
-            if let Some(target) = target.as_ref() {
-                composed.compositor.invalidate();
-                composed.compositor.render(&self.scene, &target.view, size);
-            }
-        });
-        drop(composed);
-        timed.end(self.composed, false);
-    }
-}
 
 /// A capture the shake asks for at `atMs` into its swing.
 struct Capture {

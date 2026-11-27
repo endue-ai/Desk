@@ -46,9 +46,8 @@ pub struct Sources<'a> {
     pub surface: &'a dyn Fn(&str) -> Option<Texture>,
     /// A surface's open popup widget, by surface host (#156, `draw_popup.rs`).
     pub popup: &'a dyn Fn(&str) -> Option<super::draw_popup::Popup>,
-    /// A plugin surface's web view, by that surface's host: its box in the surface's CSS pixels
-    /// (#273, `draw_web.rs`).
-    pub web: &'a dyn Fn(&str) -> Option<[f32; 4]>,
+    /// A plugin surface's web view placement, by that surface's host (ADR 0216).
+    pub web: &'a dyn Fn(&str) -> Option<desk_core::WebPlace>,
     /// The spread while it is open, and the window manager's time (#54).
     pub spread: Option<(&'a desk_wm::Spread, f64)>,
     /// The canvas map while it shows (#54).
@@ -295,6 +294,9 @@ pub(super) fn window(
     });
     drawn.windows.push((w.id.clone(), at));
     let made = chrome.window(scene, desk, at, &w.title, None, w.focused)?;
+    // Lit around its frame while Eris looks at it or uses it (ADR 0271).
+    let lit = hosted.report().map_or(0.0, |r| r.glow_of(&w.id));
+    chrome.glow(scene, &made, lit)?;
     // The title sits between the icon and the tools the page draws, clear of the top chips.
     let (start, end) = w.title_insets();
     chrome.clear_title(scene, &made, start as f32, end as f32)?;

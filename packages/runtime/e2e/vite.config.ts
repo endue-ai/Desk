@@ -3,6 +3,7 @@ import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import { deskWmWasm } from "../../../scripts/desk-wm-wasm.mjs";
+import { joinSheets } from "../../ui/src/sheets";
 import { largePng } from "./perf/large-png.mjs";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -41,6 +42,8 @@ const plugins: Record<string, string> = {
   // The bottom dock is no built-in plugin (#276): the edges page keeps it as its bottom-edge fixture.
   "endue.dock": join(repo, "e2e/fixtures/built-in/dock"),
   "endue.agents": join(repo, "plugins/agents"),
+  "endue.local-agents": join(repo, "plugins/local-agents"),
+  "endue.android-emulator": join(repo, "plugins/android-emulator"),
   "endue.memory": join(repo, "plugins/memory"),
   "endue.database": join(repo, "plugins/database"),
   "endue.mail": join(repo, "plugins/mail"),
@@ -70,12 +73,13 @@ const many = (id: string) =>
   /^test\.many-\d+$/.test(id) ? join(repo, "examples/plugin-hello-ui") : undefined;
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
 const ui = join(repo, "packages/ui/src/bundle.ts");
+const baseSheet = join(repo, "packages/ui/src/base.css");
 /** What the app serves under /_desk/ (the SDK, elements and shared sheets), from their sources. */
 const desk: Record<string, string> = {
   "/_desk/plugin-sdk.js": sdk,
   "/_desk/ui.js": ui,
   "/_desk/tokens.css": join(repo, "packages/ui/src/tokens.css"),
-  "/_desk/base.css": join(repo, "packages/ui/src/base.css"),
+  "/_desk/base.css": baseSheet,
 };
 /**
  * The app's plugin-frame CSP with this server's origins in place of the plugin scheme: the shared host
@@ -115,6 +119,8 @@ const types: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".woff2": "font/woff2",
+  // The database plugin's SQL parser (ADR 0283), as the app's scheme types it.
+  ".wasm": "application/wasm",
   ".desk-theme": "application/json",
 };
 
@@ -162,7 +168,12 @@ export function pluginFiles(): Plugin {
         if (source?.endsWith(".css")) {
           res.setHeader("Content-Type", "text/css");
           res.setHeader("Cache-Control", "no-store");
-          res.end(readFileSync(source));
+          // base.css is served joined with the page patterns, as the build writes it.
+          res.end(
+            source === baseSheet
+              ? joinSheets((name) => readFileSync(join(repo, "packages/ui/src", name), "utf8"))
+              : readFileSync(source),
+          );
           return;
         }
         if (source) {

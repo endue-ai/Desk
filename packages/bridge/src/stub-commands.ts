@@ -3,9 +3,9 @@
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
  * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
  * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts, cmd.recent and
- * plugin.stats of stub-recent.ts, cmd.list and cmd.tools of stub-tools.ts and, given files, every fs.* of
- * stub-fs.ts. A plugin caller's scoped call needs a covering grant; the runtime (`desk`) is trusted;
- * cmd.list and cmd.invoke check none.
+ * plugin.stats of stub-recent.ts, cmd.list and cmd.tools of stub-tools.ts, every fs.* of stub-fs.ts
+ * given files and the db.* of stub-db.ts given a scripted server. A plugin caller's scoped call needs
+ * a covering grant; the runtime (`desk`) is trusted; cmd.list and cmd.invoke check none.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import { FIXTURE_NOW } from "./fixtures";
@@ -30,6 +30,7 @@ import type {
 } from "./generated";
 import { covers, keyMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
+import { type DbServed, type StubDbOptions, stubDb } from "./stub-db";
 import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
 import { type GrantsServed, stubGrants } from "./stub-grants";
 import { LOG, type LogServed, stubLog } from "./stub-log";
@@ -50,11 +51,12 @@ type Served =
   | SurfaceServed
   | UndoServed
   | DataServed
+  | DbServed
   | ShellServed
   | RecentServed
   | ToolsServed;
 
-export interface StubOptions {
+export interface StubOptions extends StubDbOptions {
   /** Grants each caller holds from the start, as `session` grants with ids g-<n>. */
   grants?: Record<CallerId, Permission[]>;
   /** Settings that exist from the start. */
@@ -90,7 +92,7 @@ export interface StubCommands {
   /** The plugin callers the core would deliver an event to (never the runtime: it hears all). */
   audience(event: BridgeEvent): string[];
   /** A caller stopped: its commands go, what waits on it is cancelled, its surfaces close, its
-   * subscriptions and prompts end. Its grants stay. */
+   * subscriptions, prompts and database sessions end. Its grants stay. */
   drop(caller: string): void;
   state(): StubState;
   /** Put an item in the index, or replace the one with its source and id; fires data.changed. */
@@ -154,8 +156,8 @@ export function stubCommands(
     const [gone] = grants.splice(index, 1);
     changed(grantId, change);
     if (change !== "revoked" || !gone) return;
-    // Revoking a data:read grant ends the data subscriptions no other grant still covers.
-    data.drop(gone.caller, (scope) => may(gone.caller, scope));
+    // Revoking a grant ends the data subscriptions and database sessions no other grant covers.
+    for (const held of [data, db]) held.drop(gone.caller, (s: Permission) => may(gone.caller, s));
     // Revoking an events:subscribe grant ends the subscriptions no other grant still covers.
     if (gone.grant.permission.permission !== "events:subscribe") return;
     for (const [id, { caller, names }] of subscriptions)
@@ -180,6 +182,7 @@ export function stubCommands(
   };
   const undo = stubUndo({ check, later, now, me, invoke: (...a) => invoke(...a), restore });
   const fs = options.files && stubFs(options.files, check, now, undo.wrote);
+  const db = stubDb(options.db, check, later);
   const data = stubData({
     check: (caller, scope) => check(caller, scope),
     may,
@@ -266,7 +269,7 @@ export function stubCommands(
       to.push(event.data.owner, ...subscribers("settings.changed").filter(read));
     } else if (event.event === "log.entry")
       to.push(...subscribers("log.entry").filter((c) => holds(c, LOG)));
-    else to.push(...data.audience(event));
+    else to.push(...data.audience(event), ...db.audience(event));
     return [...new Set(to)].filter((c): c is string => c !== undefined && c !== "desk");
   };
 
@@ -289,6 +292,7 @@ export function stubCommands(
       for (const prompt of [...prompts.values()])
         if (prompt.data.caller === caller) prompt.decide(false);
       data.drop(caller);
+      db.drop(caller);
     },
     state: () =>
       structuredClone({
@@ -303,6 +307,7 @@ export function stubCommands(
     remove: data.remove,
     handlers: {
       ...data.handlers,
+      ...db.handlers,
       ...recent.handlers,
       ...stubTools({ commands, may }).handlers,
       ...fs,
@@ -316,7 +321,14 @@ export function stubCommands(
         if (existing && existing.provider !== provider)
           throw new StubError("already_exists", `${params.id} is provided by ${existing.provider}`);
         checkDescribed(params);
-        commands.set(params.id, { ...params, provider });
+        const { irreversible, ...fields } = params;
+        const marked = provider === "desk" && irreversible;
+        if (marked && fields.readOnly)
+          throw new StubError(
+            "invalid_params",
+            `${fields.id} is irreversible, so it cannot be read-only`,
+          );
+        commands.set(fields.id, { ...fields, provider, ...(marked ? { irreversible: true } : {}) });
         const change = existing ? "updated" : "registered";
         later({ event: "cmd.changed", data: { id: params.id, change, provider } });
         return {};

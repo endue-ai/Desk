@@ -195,6 +195,7 @@ export interface SurfaceDragStatus {
   type: "drag.status";
   surface: SurfaceId;
   effect: SurfaceDropAnswer;
+  destination?: SurfaceDragPath;
 }
 
 /** The drag landed on the surface with the effect it last answered, never none: here are the items of the types it accepts. The surface answers drag.done. */
@@ -204,6 +205,10 @@ export interface SurfaceDragDrop {
   x: number;
   y: number;
   effect: SurfaceDropEffect;
+  source?: SurfaceId;
+  destination?: SurfaceDragPath;
+  /** Set by the compositor when the drop was committed by a physical release or an operating system drop. */
+  personDropped?: boolean;
   items: SurfaceDragItem[];
 }
 

@@ -10,6 +10,7 @@ import { RESERVED } from "./editor/words.js";
 import { engineOf } from "./engines/index.js";
 import { formatRows } from "./results.js";
 import { readableName } from "./sql/quote.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginDnd} PluginDnd
@@ -31,7 +32,7 @@ export const ACCEPTS = ["desk/paths", "desk/text", "text/plain"];
  * @param {{
  *   current(): Console | null,
  *   connection(id: string): Connection | undefined,
- *   selection(): { sorted?: (string | null)[][], rows?: number[], columns?: number[] } | undefined,
+ *   selection(): { sorted?: (string | null)[][], rows?: number[], columns?: number[], visible?: number[] } | undefined,
  * }} deps
  */
 export function createDrags(deps) {
@@ -56,7 +57,8 @@ export function createDrags(deps) {
           : [picked.sorted[row]];
       if (rows.length === 0 || rows.some((r) => !r)) return undefined;
       const full = /** @type {(string | null)[][]} */ (rows);
-      const columns = inBlock || all;
+      // Outside the block a row goes with the columns on screen, in their order.
+      const columns = inBlock || picked.visible || all;
       const conn = deps.connection(shown.connection);
       const target = shown.edit?.target;
       const table = shown.table ?? (target ? { schema: target.schema, name: target.name } : null);
@@ -82,8 +84,11 @@ export function createDrags(deps) {
         ],
         effectAllowed: ["copy"],
         image: {
-          label: `${full.length} row${full.length === 1 ? "" : "s"}`,
-          detail: table?.name ?? conn?.name ?? "result",
+          label: t("dnd.row", {
+            length: String(full.length),
+            value: String(full.length === 1 ? "" : t("dnd.s")),
+          }),
+          detail: table?.name ?? conn?.name ?? t("dnd.result"),
         },
       };
     },
@@ -130,7 +135,7 @@ export function createDatabaseDrops({ dnd }, app, view) {
       );
       const paths = drop.paths ?? [];
       if (paths.length > 1) {
-        app.say(`Drop one file at a time: these are ${paths.length}.`);
+        app.say(t("dnd.dropOneFileAtATime", { length: String(paths.length) }));
         return "none";
       }
       if (paths[0]) return app.drop({ kind: "file", path: paths[0].path }, into);

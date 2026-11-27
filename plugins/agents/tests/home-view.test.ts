@@ -20,7 +20,6 @@ function draw(shown: Awaited<ReturnType<typeof mount>>) {
     boardAgent: vi.fn(),
     openRow: vi.fn(),
     stopRun: vi.fn(),
-    openWeb: vi.fn(),
     create: vi.fn(),
   };
   createHomeView(document, actions).show(shown.last(), shown.home());

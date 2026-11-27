@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "The desk registers an irreversible built-in without offering it as an agent tool",
+  "instance": {
+    "id": 63,
+    "method": "cmd.register",
+    "params": {
+      "id": "desk.example.clear",
+      "title": "Clear example history",
+      "irreversible": true
+    }
+  }
+}

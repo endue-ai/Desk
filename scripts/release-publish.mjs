@@ -8,9 +8,10 @@
 //   node scripts/release-publish.mjs remove --version V   [common]
 //   common: --bucket B --endpoint URL [--prefix desk] [--dry-run]
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { checkNames, downloadNames } from "./release-manifest.mjs";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const SHORT = "public, max-age=60";
@@ -42,6 +43,7 @@ export function releasePlan({ dist, names, version, prefix = "desk" }) {
   if (!names.includes("release.json") || !names.includes("release.json.sig")) {
     throw new Error("the release folder needs release.json and release.json.sig");
   }
+  checkNames(names, version);
   const key = (name) => `${prefix}/releases/${version}/${name}`;
   const at = (name) => step(join(dist, name), key(name), IMMUTABLE);
   const special = new Set(["release.json", "release.json.sig", "SHA256SUMS"]);
@@ -98,8 +100,8 @@ function main([command, ...args]) {
     endpoint: need("--endpoint"),
     prefix: value("--prefix") ?? "desk",
   };
-  const run = (argv) => {
-    console.log(`aws ${argv.join(" ")}`);
+  const run = (argv, summary) => {
+    console.log(summary);
     if (!args.includes("--dry-run")) execFileSync("aws", argv, { stdio: "inherit" });
   };
   if (command === "release") {
@@ -107,21 +109,21 @@ function main([command, ...args]) {
     if (!dist || !existsSync(dist)) fail("the release folder is missing");
     const plan = releasePlan({
       dist,
-      names: readdirSync(dist),
+      names: downloadNames(dist, need("--version")),
       version: need("--version"),
       prefix: target.prefix,
     });
-    for (const s of plan) run(upload(s, target));
+    for (const s of plan) run(upload(s, target), `upload ${s.key.split("/").at(-1)}`);
   } else if (command === "index") {
     for (const s of indexPlan({
       index: args[0],
       channel: need("--channel"),
       prefix: target.prefix,
     })) {
-      run(upload(s, target));
+      run(upload(s, target), `upload ${s.key.split("/").at(-1)}`);
     }
   } else if (command === "remove") {
-    run(removal(need("--version"), target));
+    run(removal(need("--version"), target), `remove release ${need("--version")}`);
   } else {
     fail("usage: release-publish.mjs release|index|remove ...");
   }

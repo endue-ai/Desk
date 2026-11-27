@@ -1,4 +1,4 @@
-# Contributing to endue Desk
+# Contributing to endue
 
 English · [日本語](docs/i18n/ja/CONTRIBUTING.md) · [中文](docs/i18n/zh/CONTRIBUTING.md) ·
 [Français](docs/i18n/fr/CONTRIBUTING.md) · [Deutsch](docs/i18n/de/CONTRIBUTING.md) ·

@@ -1,10 +1,10 @@
-# endue Desk 요구사항
+# endue 요구사항
 
 2026-10-30 · Team endue
 
 > 프로덕션 수준의 오픈소스 뼈대가 갖춰야 할 것을 층마다 번호를 붙여 적은 문서입니다. 구조는 `desk-structure.md` 가, 첫 실행은 `first-run-scenario.md` 가, 셸 UI 는 이슈 #21 이 맡습니다. 이 문서는 그 사이의 빈 곳, 곧 *무엇이 있어야 뼈대가 완성인가* 를 채웁니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 코드와 어긋나면 이 문서를 고치고, 되돌리기 어려운 갈림길은 ADR 로 남깁니다.
 
-Desk 는 사용자가 자기 뜻대로 짜는 데스크입니다. 자유도가 높다는 건 해야 할 게 많다는 뜻이고, 그 비용은 기본 플러그인과 마켓플레이스가 흡수합니다. Emacs 가 그랬듯 코어는 작고 기능은 조합이며, 마켓플레이스까지 전부 오픈소스입니다. 에이전트가 필요하면 endue AI 에서 만들고, 로그인 하나로 어느 데스크에서든 같은 데스크가 됩니다.
+endue는 사용자가 자기 뜻대로 짜는 데스크입니다. 자유도가 높다는 건 해야 할 게 많다는 뜻이고, 그 비용은 기본 플러그인과 마켓플레이스가 흡수합니다. Emacs 가 그랬듯 코어는 작고 기능은 조합이며, 마켓플레이스까지 전부 오픈소스입니다. 에이전트가 필요하면 endue AI 에서 만들고, 로그인 하나로 어느 데스크에서든 같은 데스크가 됩니다.
 
 ## 약속
 
@@ -22,9 +22,9 @@ Desk 는 사용자가 자기 뜻대로 짜는 데스크입니다. 자유도가 �
 
 ## 빌린 개념
 
-Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다* 를, VS Code 에서 *기여 지점 + 격리된 확장 + 마켓플레이스 운영* 을 빌립니다. 둘 다 없는 것(에이전트 · 권한 · 계정)은 Desk 가 더합니다.
+Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다* 를, VS Code 에서 *기여 지점 + 격리된 확장 + 마켓플레이스 운영* 을 빌립니다. 둘 다 없는 것(에이전트 · 권한 · 계정)은 endue가 더합니다.
 
-| 개념 | Emacs | VS Code | Desk | 요구사항 |
+| 개념 | Emacs | VS Code | endue | 요구사항 |
 | --- | --- | --- | --- | --- |
 | 작은 코어, 확장으로 기능 | C 코어 + Elisp | 코어 + 확장 호스트 | Rust 코어 + 플러그인 세 종류 | CORE |
 | 화면 단위 | buffer · window · frame | editor · group · window | surface · pane · desktop · (OS 창) | RT-02 · RT-18 |
@@ -187,8 +187,9 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 | --- | --- | --- |
 | `notes` | 마크다운 메모 표면, 폴더에 파일로 저장 | 2 |
 | `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
-| `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
+| `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 데이터 편집 · 가져오기 · 내보내기 · 읽기 전용과 운영 DB 보호. PostgreSQL 은 코어의 세션으로 프로그램 없이(`db.*`, ADR 0281): 열어 둔 트랜잭션 · 크기 무관 결과와 COPY · SQL 을 아는 편집기 · 스키마 도구 · 서버 보기. 다른 엔진은 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md`(A~D 단계) | 2 |
 | `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
+| `network` | 우리 집 네트워크 표면: 지금 붙은 사설 대역에 누가 있는지(공유기를 가운데 둔 지도 · IP 주소 · MAC 주소 · 제조사 · 핑), 얼마나 안전한지(100점 점수와 할 일 카드 · 포트 점검), Wi-Fi 가 왜 느린지(대역별 채널 혼잡도와 권장 채널), 오가는 기기의 일지와 알림. macOS 기본 프로그램만 셸 없이, 관리자라고 답한 네트워크만 훑는다. 요구사항은 `network-plugin-requirements.md`, 이유는 ADR 0266 | 2 |
 | `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043). 큰 통합 문서는 범위 읽기와 워커 파싱, `<desk-progress>` 와 취소 | 2 |
 | `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP 5.0 · AbiWord 는 서식 그대로, WordPerfect/Works 는 텍스트, Pages 는 미리보기, Google Docs 는 바로가기. 개요 · 주석 · 찾기, 링크는 `shell.open` 으로. 한 문서 모델과 자체 리더, 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |
 | `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt, 둘 다 보이는 그대로) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드, pptx · ODP 의 링크는 `shell.open` 으로, 슬라이드 이동은 덱 안에서. 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |
@@ -337,7 +338,7 @@ ADR 후보입니다. 추천은 적되 결정은 ADR 에서 합니다.
 | 질문 | 추천 | 왜 |
 | --- | --- | --- |
 | 커맨드 레지스트리의 자리 | 코어. 실행은 제공자(런타임 · 플러그인)에게 위임. 결정됨 (#55, ADR 0017) | CLI 와 에이전트가 런타임 없이도 목록을 보고 부른다. Emacs 의 obarray 처럼 하나 |
-| `contributes` · `activation` 어휘 | VS Code 어휘를 빌리되 Desk 에 없는 것(languages · debuggers)은 빼고 `tools` · `agents` 를 더함. `contributes` 는 결정됨 (#55, ADR 0017), `activation` 은 아직 열림 | 저자가 아는 모양. 문서와 도구를 옮겨 쓴다 |
+| `contributes` · `activation` 어휘 | VS Code 어휘를 빌리되 endue에 없는 것(languages · debuggers)은 빼고 `tools` · `agents` 를 더함. `contributes` 는 결정됨 (#55, ADR 0017), `activation` 은 아직 열림 | 저자가 아는 모양. 문서와 도구를 옮겨 쓴다 |
 | 설정 파일 형식 | YAML. `init.yaml` 이 이미 YAML 이고(#31), 모드 · 키맵 · 레이아웃도 같은 형식. 결정됨 (#31, ADR 0016) | 형식은 하나. 주석이 살고, 검증은 `specs/init` 방식(스키마 + 벡터) 그대로 |
 | 키맵 `when` 식 | VS Code 식 불리언 식(`focusedSurface == 'x' && !mode.locked`) | 익숙하고 파서가 작다 |
 | 시스템 플러그인 교체 | `provides` 역할 슬롯 + 설정에서 제공자 선택. 셸의 부분이 어디로 갈지는 ADR 0026 (제안) | Emacs 의 `completing-read-function` 교체와 같다. 역할 하나에 제공자 하나 |

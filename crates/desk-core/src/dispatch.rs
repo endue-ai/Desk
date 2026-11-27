@@ -40,6 +40,7 @@ impl Core {
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),
+            R::PermUndoApproval(r) => (r.id, self.perm_undo_approval(caller, r.params)),
             R::PermPending(r) => (r.id, self.perm_pending(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
@@ -78,6 +79,19 @@ impl Core {
             R::NetConnect(r) => (r.id, self.net_connect(caller, r.params)),
             R::NetSend(r) => (r.id, self.net_send(caller, r.params)),
             R::NetClose(r) => (r.id, self.net_close(caller, r.params)),
+            R::DbOpen(r) => (r.id, self.db_open(caller, r.params)),
+            R::DbRun(r) => (r.id, self.db_run(caller, r.params)),
+            R::DbScript(r) => (r.id, self.db_script(caller, r.params)),
+            R::DbDescribe(r) => (r.id, self.db_describe(caller, r.params)),
+            R::DbFetch(r) => (r.id, self.db_fetch(caller, r.params)),
+            R::DbCopy(r) => (r.id, self.db_copy(caller, r.params)),
+            R::DbCancel(r) => (r.id, self.db_cancel(caller, r.params)),
+            R::DbClose(r) => (r.id, self.db_close(caller, r.params)),
+            R::DbList(r) => (r.id, self.db_list(caller, r.params)),
+            R::DbPasswordsSet(r) => (r.id, self.db_passwords_set(caller, r.params)),
+            R::DbPasswordsDelete(r) => (r.id, self.db_passwords_delete(caller, r.params)),
+            R::DbPasswordsList(r) => (r.id, self.db_passwords_list(caller, r.params)),
+            R::DbHostKeysDelete(r) => (r.id, self.db_host_keys_delete(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, self.audio_capture_start(caller, r.params)),
             R::AudioCaptureStop(r) => (r.id, self.audio_capture_stop(caller, r.params)),
             R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),
@@ -160,6 +174,7 @@ impl Core {
             R::StudioConversationsList(r) => {
                 (r.id, self.studio_conversations_list(caller, r.params))
             }
+            R::StudioChatAsk(r) => (r.id, self.studio_chat_ask(caller, r.params)),
             R::StudioSpacesList(r) => (r.id, self.studio_spaces_list(caller, r.params)),
             R::StudioSpacesGet(r) => (r.id, self.studio_spaces_get(caller, r.params)),
             r @ (R::ComputerPermissionsStatus(_)
@@ -187,6 +202,8 @@ impl Core {
             R::WebGo(r) => (r.id, self.web_go(caller, r.params)),
             R::WebFocus(r) => (r.id, self.web_focus(caller, r.params)),
             R::WebClose(r) => (r.id, self.web_close(caller, r.params)),
+            R::WebRead(r) => (r.id, self.web_read(caller, r.params)),
+            R::WebAct(r) => (r.id, self.web_act(caller, r.params)),
             R::DialogOpen(r) => (r.id, self.dialog_open(caller, r.params)),
             R::DialogSave(r) => (r.id, self.dialog_save(caller, r.params)),
         }

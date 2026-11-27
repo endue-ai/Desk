@@ -1,0 +1,234 @@
+/* The runner: its tab's two columns (what runs, and the run), the totals, the bar per request,
+   the rows with their failures, and the Runner panel. */
+
+.as-runner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.as-run-title {
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+}
+.as-run-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+  padding: 4px 18px 18px;
+}
+.as-run-config,
+.as-run-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+.as-run-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+.as-run-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.as-run-card-head h3 {
+  flex: 1;
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.as-run-card-head .as-grow {
+  flex: 0;
+}
+.as-run-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow: auto;
+}
+.as-run-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 6px;
+  border-radius: var(--desk-radius-sm);
+  font-size: var(--desk-text-xs);
+  cursor: pointer;
+}
+.as-run-item:hover {
+  background: var(--desk-hover);
+}
+.as-run-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-run-folder {
+  color: var(--as-faint);
+  font-size: var(--desk-text-2xs);
+}
+.as-run-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  font-size: var(--desk-text-xs);
+}
+.as-run-data.desk-field {
+  min-height: 110px;
+  padding: 8px 10px;
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-xs);
+  resize: vertical;
+}
+
+/* ── the run ────────────────────────────────────────────────────────── */
+.as-run-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.as-stat-card.is-ok strong {
+  color: var(--desk-success);
+}
+.as-stat-card.is-bad strong {
+  color: var(--desk-danger);
+}
+.as-run-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  padding: 10px 12px 0;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+  background: var(--as-sunk);
+}
+.as-run-bar {
+  flex: 1;
+  min-width: 3px;
+  max-width: 28px;
+  border-radius: var(--desk-radius-sm) var(--desk-radius-sm) 0 0;
+  background: var(--s);
+  opacity: 0.85;
+}
+.as-run-bar:hover {
+  opacity: 1;
+}
+.as-run-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.as-run-table {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--as-line);
+  border-radius: var(--desk-radius-lg);
+}
+.as-run-row {
+  border-bottom: 1px solid var(--as-line-soft);
+}
+.as-run-row:last-child {
+  border-bottom: 0;
+}
+.as-run-row summary {
+  display: grid;
+  grid-template-columns: 40px 44px minmax(0, 1fr) auto 70px 64px 52px;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: var(--desk-text-xs);
+  list-style: none;
+  cursor: pointer;
+}
+.as-run-row summary::-webkit-details-marker {
+  display: none;
+}
+.as-run-row summary:hover {
+  background: var(--desk-hover);
+}
+.as-run-n,
+.as-run-time,
+.as-run-size {
+  color: var(--desk-text-muted);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+}
+.as-run-time,
+.as-run-size {
+  text-align: right;
+}
+.as-run-checks {
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  text-align: right;
+}
+.as-run-checks.is-ok {
+  color: var(--desk-success);
+}
+.as-run-checks.is-bad {
+  color: var(--desk-danger);
+}
+.as-run-fails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 10px 56px;
+  color: var(--desk-danger);
+  font-family: var(--as-mono);
+  font-size: var(--desk-text-2xs);
+}
+.as-run-fails > div {
+  display: flex;
+  gap: 6px;
+}
+.as-run-fails .desk-btn {
+  align-self: flex-start;
+  font-family: var(--desk-font-sans);
+}
+
+/* ── the Runner panel ───────────────────────────────────────────────── */
+.as-side-note {
+  margin: 0 16px 8px;
+}
+.as-run-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--desk-radius-sm);
+  font-size: var(--desk-text-xs);
+}
+.as-run-pick.is-folder {
+  padding-left: 26px;
+}
+.as-run-pick:hover {
+  background: var(--desk-hover);
+}
+.as-run-pick:hover .as-run-go.desk-icon-btn {
+  opacity: 1;
+  color: var(--desk-success);
+}

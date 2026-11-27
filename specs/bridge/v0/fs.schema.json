@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/fs.schema.json",
-  "title": "Desk bridge v0: fs",
+  "title": "endue bridge v0: fs",
   "description": "Files: read (whole or a byte range), hand a frame a URL of a file, write, list, watch, the versions the desk kept of what its writes replaced (history, restore), and what one path is, new folders, renames and moves, copies and the OS trash (stat, mkdir, rename, copy, trash). Scoped by fs:read or fs:write paths.",
   "$defs": {
     "FsReadRequest": {
@@ -117,6 +117,15 @@
         "content": { "description": "The new file content.", "type": "string" },
         "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
         "createDirs": { "description": "Create missing parent folders.", "type": "boolean" },
+        "append": {
+          "description": "Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found.",
+          "type": "boolean"
+        },
+        "invocationId": {
+          "description": "The pending built-in Sheets save command that delegates one whole-file write to the initiating agent. Its named path and exact write scope must match. It cannot append or create parent directories.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
       },
       "required": ["path", "content", "scope"],

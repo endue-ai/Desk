@@ -1,0 +1,286 @@
+/* Compose: the stacks' cards, a stack's service map and rows, and the compose-up output. Theme
+   tokens only. */
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--desk-space-3);
+}
+
+.stack-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+}
+
+.stack-card.st-running {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--ds-ok) 70%, transparent), var(--desk-shadow-sm);
+}
+
+.stack-card.st-partial {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--ds-warn) 70%, transparent), var(--desk-shadow-sm);
+}
+
+.stack-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3) var(--desk-space-4) var(--desk-space-2);
+}
+
+.stack-icon.big {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--desk-radius-md);
+}
+
+.desk-btn.stack-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--desk-space-1) var(--desk-space-2);
+  text-align: left;
+}
+
+.stack-title b {
+  font-size: var(--desk-text-base);
+  font-weight: 650;
+}
+
+.stack-title small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-overflow: ellipsis;
+}
+
+.service-list {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 2px var(--desk-space-2);
+  margin: 0;
+  padding: 0 var(--desk-space-3) var(--desk-space-2);
+  list-style: none;
+}
+
+.desk-btn.service {
+  justify-content: flex-start;
+  gap: var(--desk-space-2);
+  width: 100%;
+  min-height: 30px;
+  padding: 0 var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+  font-weight: 500;
+}
+
+.service small {
+  margin-left: auto;
+  overflow: hidden;
+  font-size: var(--desk-text-2xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
+
+.stack-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-top: 1px solid var(--ds-line);
+  background: var(--ds-soft);
+  border-radius: 0 0 var(--desk-radius-lg) var(--desk-radius-lg);
+}
+
+.stack-use {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.stack-use .icon:not(:first-child) {
+  margin-left: var(--desk-space-2);
+}
+
+.stack-ports {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.desk-btn.add-card {
+  align-items: center;
+  justify-content: center;
+  gap: var(--desk-space-2);
+  border: 1px dashed var(--ds-line);
+  border-radius: var(--desk-radius-lg);
+  background: transparent;
+  color: var(--desk-text-muted);
+  white-space: normal;
+}
+
+.desk-btn.add-card b {
+  color: var(--desk-text);
+}
+
+.desk-btn.add-card:hover:not(:disabled) {
+  border-color: var(--ds-select-line);
+}
+
+/* ── a stack's page ────────────────────────────────────────────────────── */
+.stack-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  overflow: auto;
+}
+
+.stack-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3) var(--desk-space-4);
+  overflow-x: auto;
+}
+
+.stack-map {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.stack-map .edge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--desk-text) 30%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.stack-map .edge.healthy {
+  stroke: color-mix(in srgb, var(--ds-ok) 70%, transparent);
+  stroke-dasharray: none;
+}
+
+.stack-map .arrow-head {
+  fill: color-mix(in srgb, var(--desk-text) 45%, transparent);
+}
+
+.edge-label {
+  fill: var(--desk-success-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-2xs);
+  text-anchor: middle;
+}
+
+.svc {
+  cursor: pointer;
+}
+
+.svc rect:first-child {
+  fill: var(--desk-card);
+  stroke: var(--ds-line);
+  stroke-width: 1;
+}
+
+.svc:hover rect:first-child,
+.svc:focus-visible rect:first-child {
+  stroke: var(--desk-primary);
+}
+
+.svc-bar {
+  fill: var(--ds-idle);
+}
+
+.svc.st-running .svc-bar {
+  fill: var(--ds-ok);
+}
+
+.svc.st-failed .svc-bar,
+.svc.st-dead .svc-bar,
+.svc.st-unhealthy .svc-bar {
+  fill: var(--ds-bad);
+}
+
+.svc.st-paused .svc-bar {
+  fill: var(--ds-warn);
+}
+
+.svc-name {
+  fill: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  font-weight: 650;
+}
+
+.svc-image {
+  fill: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+}
+
+.svc-port,
+.svc-vol {
+  fill: var(--desk-primary-text);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xs);
+  text-anchor: end;
+}
+
+.svc-vol {
+  fill: var(--desk-text-muted);
+}
+
+.map-legend {
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.edge-key {
+  width: 22px;
+  height: 0;
+  border-top: 2px dashed color-mix(in srgb, var(--desk-text) 35%, transparent);
+}
+
+.edge-key.solid {
+  border-top: 2px solid color-mix(in srgb, var(--ds-ok) 70%, transparent);
+}
+
+.row.svc-row {
+  display: grid;
+  grid-template-columns: 14px minmax(160px, 1fr) minmax(120px, 1fr) 120px 140px 110px;
+  gap: var(--desk-space-3);
+}
+
+.svc-image {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.svc-use {
+  color: var(--desk-text-muted);
+}
+
+.compose-out {
+  max-height: 240px;
+  margin: 0;
+  padding: var(--desk-space-3);
+  overflow: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  white-space: pre-wrap;
+}

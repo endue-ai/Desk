@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/plugin/v0/permission.schema.json",
-  "title": "Desk permission vocabulary v0",
+  "title": "endue permission vocabulary v0",
   "description": "Every primitive a plugin or agent can reach, and the scope each one is limited to. Everything not granted is denied.",
   "$defs": {
     "Permission": {
-      "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
+      "description": "One permission with its scope. Plugin manifests declare these, and a plugin is asked for, granted and allowed only what its declarations cover (ADR 0260); bridge calls carry the one that covers them.",
       "oneOf": [
         { "$ref": "#/$defs/SearchReadPermission" },
         { "$ref": "#/$defs/SearchSystemPermission" },
@@ -14,6 +14,7 @@
         { "$ref": "#/$defs/ProcSpawnPermission" },
         { "$ref": "#/$defs/NetFetchPermission" },
         { "$ref": "#/$defs/NetConnectPermission" },
+        { "$ref": "#/$defs/DbConnectPermission" },
         { "$ref": "#/$defs/AudioCapturePermission" },
         { "$ref": "#/$defs/UiSurfacePermission" },
         { "$ref": "#/$defs/UiNotifyPermission" },
@@ -39,7 +40,8 @@
         { "$ref": "#/$defs/StudioManagePermission" },
         { "$ref": "#/$defs/ComputerSeePermission" },
         { "$ref": "#/$defs/ComputerControlPermission" },
-        { "$ref": "#/$defs/WebBrowsePermission" }
+        { "$ref": "#/$defs/WebBrowsePermission" },
+        { "$ref": "#/$defs/WebControlPermission" }
       ]
     },
     "SearchReadPermission": {
@@ -125,6 +127,21 @@
       "type": "object",
       "properties": {
         "permission": { "const": "net:connect" },
+        "hosts": {
+          "description": "Host patterns the permission covers, each optionally with a port.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "hosts"],
+      "additionalProperties": false
+    },
+    "DbConnectPermission": {
+      "description": "Open database sessions (db.open) to the listed hosts, and use the caller's own sessions: a pattern with a port covers that port only, one without a port covers every port of the host. net:connect does not cover db.*, nor db:connect a socket.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "db:connect" },
         "hosts": {
           "description": "Host patterns the permission covers, each optionally with a port.",
           "type": "array",
@@ -346,6 +363,21 @@
       "required": ["permission"],
       "additionalProperties": false
     },
+    "WebControlPermission": {
+      "description": "Read and operate the pages the caller's own web views show (web.read, web.act): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it as the person would. A page may hold what the person is signed in to, so this is apart from web:browse. With hosts, only while the view's page is on a listed host. Without hosts, any page its views show.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "web:control" },
+        "hosts": {
+          "description": "Host patterns of the pages that may be read and operated; absent covers every host.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
     "UpdateManagePermission": {
       "description": "See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.",
       "type": "object",
@@ -440,18 +472,18 @@
       "enum": ["http", "https", "mailto"]
     },
     "PathPattern": {
-      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
+      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. In a manifest's declaration /** covers every path the person may be asked for at run time, under ~ and on Windows drives too, and no install grants a declaration that holds it (ADR 0260).",
       "type": "string",
       "minLength": 1,
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "HostPattern": {
-      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains.",
+      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains. * alone, without a port, is for a manifest's declaration: any host the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no host (ADR 0260).",
       "type": "string",
-      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?$"
+      "pattern": "^(\\*|(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?)$"
     },
     "Command": {
-      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace.",
+      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace. * is for a manifest's declaration: any program the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no program (ADR 0260).",
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\s]+$"

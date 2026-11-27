@@ -8,8 +8,8 @@ use desk_bridge::{CallerGrant, EventName, Grant, GrantDuration, Permission, Shel
 
 use crate::grants;
 use crate::paths::{
-    endpoint_covers, endpoint_match, glob_match, host_covers, host_match, normalize,
-    pattern_covers, setting_match, star_match,
+    app_in, endpoints_cover, glob_match, host_covers, host_match, narrows, normalize,
+    pattern_covers, reaches, setting_match, star_match,
 };
 use crate::time::rfc3339_now;
 
@@ -227,12 +227,18 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             .hosts
             .iter()
             .all(|a| g.hosts.iter().any(|h| host_covers(h, a))),
-        (Permission::NetConnect(g), Permission::NetConnect(s)) => s
-            .hosts
-            .iter()
-            .all(|a| g.hosts.iter().any(|h| endpoint_covers(h, a))),
+        (Permission::NetConnect(g), Permission::NetConnect(s)) => {
+            endpoints_cover(&g.hosts, &s.hosts)
+        }
+        (Permission::DbConnect(g), Permission::DbConnect(s)) => endpoints_cover(&g.hosts, &s.hosts),
         // web:browse without hosts covers every site (ADR 0216).
         (Permission::WebBrowse(g), Permission::WebBrowse(s)) => {
+            narrows(g.hosts.as_deref(), s.hosts.as_deref(), |g, a| {
+                host_covers(g, a)
+            })
+        }
+        // web:control without hosts covers every page its views show (ADR 0272).
+        (Permission::WebControl(g), Permission::WebControl(s)) => {
             narrows(g.hosts.as_deref(), s.hosts.as_deref(), |g, a| {
                 host_covers(g, a)
             })
@@ -293,20 +299,6 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
     }
 }
 
-/// Whether a granted list covers an asked one, where an absent list means all: every asked entry is
-/// matched by a granted one, and only an absent grant covers an absent scope.
-fn narrows<T>(
-    granted: Option<&[T]>,
-    asked: Option<&[T]>,
-    matches: impl Fn(&T, &T) -> bool,
-) -> bool {
-    match (granted, asked) {
-        (None, _) => true,
-        (Some(_), None) => false,
-        (Some(granted), Some(asked)) => asked.iter().all(|a| granted.iter().any(|g| matches(g, a))),
-    }
-}
-
 /// Whether `scope` covers `target`, whatever the grants.
 pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
     match (scope, target) {
@@ -320,13 +312,22 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
         }
         (Permission::NetFetch(s), Target::Url(url)) => desk_sys::net::host_allowed(&s.hosts, url),
         (Permission::NetConnect(s), Target::Endpoint { host, port }) => {
-            s.hosts.iter().any(|h| endpoint_match(h, host, *port))
+            reaches(&s.hosts, host, *port)
+        }
+        (Permission::DbConnect(s), Target::Endpoint { host, port }) => {
+            reaches(&s.hosts, host, *port)
         }
         // web.open and web.load: the address's host; a view with no address yet has no target.
         (Permission::WebBrowse(s), Target::Url(url)) => {
             (s.hosts.as_ref()).is_none_or(|hosts| desk_sys::net::host_allowed(hosts, url))
         }
         (Permission::WebBrowse(_), Target::None) => true,
+        // web.read and web.act: the host of the page the view shows; a view with no page yet
+        // has no target.
+        (Permission::WebControl(s), Target::Url(url)) => {
+            (s.hosts.as_ref()).is_none_or(|hosts| desk_sys::net::host_allowed(hosts, url))
+        }
+        (Permission::WebControl(_), Target::None) => true,
         (Permission::CmdInvoke(s), Target::CommandId(id)) => {
             s.ids.iter().any(|p| star_match(p, id))
         }
@@ -381,12 +382,6 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
 /// computer:*: an absent list covers every app, so only it covers an absent scope list.
 fn apps_cover(granted: &Option<Vec<String>>, asked: &Option<Vec<String>>) -> bool {
     narrows(granted.as_deref(), asked.as_deref(), |g, a| g == a)
-}
-
-/// Whether a computer scope's apps hold `app`; one without a list holds every app and none.
-fn app_in(apps: &Option<Vec<String>>, app: Option<&str>) -> bool {
-    apps.as_ref()
-        .is_none_or(|apps| app.is_some_and(|app| apps.iter().any(|a| a == app)))
 }
 
 fn path_in(patterns: &[String], path: &str) -> bool {

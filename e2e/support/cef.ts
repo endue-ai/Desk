@@ -13,7 +13,7 @@ import { setTimeout as delay } from "node:timers/promises";
 export function cefBinary(root: string, platform = process.platform): string {
   if (process.env.DESK_APP) return resolve(process.env.DESK_APP);
   if (platform === "darwin") {
-    return join(root, "target/bundle/endue-desk.app/Contents/MacOS/endue-desk");
+    return join(root, "target/bundle/endue.app/Contents/MacOS/endue-desk");
   }
   return join(root, "target/debug", platform === "win32" ? "endue-desk.exe" : "endue-desk");
 }
@@ -39,7 +39,7 @@ export function freePort(): Promise<number> {
 
 /** Whether `text` (the log since this start) or last-start.json says this start reached ready. */
 export function startedReady(text: string, lastStart: unknown, pid: number | undefined): boolean {
-  if (/^desk ready/m.test(text)) return true;
+  if (/^(?:endue|desk) ready/m.test(text)) return true;
   const record = lastStart as { pid?: number; phase?: string } | undefined;
   return record?.phase === "ready" && record.pid === pid;
 }
@@ -163,7 +163,7 @@ export async function launchCef(options: CefOptions): Promise<CefDesk> {
   while (Date.now() < until) {
     if (gone) throw new Error(`the CEF desk (${binary}) exited before it was ready; see ${log}`);
     const text = readFileSync(log, "utf8").slice(from);
-    if (/^desk cannot reach the core/m.test(text)) {
+    if (/^(?:endue|desk) cannot reach the core/m.test(text)) {
       await desk.stop();
       throw new Error(`the CEF desk cannot reach its core; see ${log}`);
     }

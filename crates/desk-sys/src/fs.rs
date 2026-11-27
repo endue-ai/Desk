@@ -130,6 +130,32 @@ pub fn write(path: &Path, content: &[u8], create_dirs: bool) -> io::Result<u64> 
     Ok(content.len() as u64)
 }
 
+/// Publish a complete new file without replacing any entry that appeared at `path`.
+pub fn write_new(path: &Path, content: &[u8]) -> io::Result<u64> {
+    let name = path.file_name().ok_or_else(|| {
+        with_path(
+            io::Error::new(io::ErrorKind::InvalidInput, "not a file path"),
+            path,
+        )
+    })?;
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let temp = parent.join(temp_name(name));
+    if let Err(err) = write_temp(&temp, content, None) {
+        if err.kind() != io::ErrorKind::AlreadyExists {
+            let _ = std::fs::remove_file(&temp);
+        }
+        return Err(with_path(err, path));
+    }
+    let result = std::fs::hard_link(&temp, path);
+    let _ = std::fs::remove_file(temp);
+    result.map_err(|err| with_path(err, path))?;
+    sync_dir(parent);
+    Ok(content.len() as u64)
+}
+
 fn write_temp(temp: &Path, content: &[u8], permissions: Option<Permissions>) -> io::Result<()> {
     let mut file = OpenOptions::new().write(true).create_new(true).open(temp)?;
     file.write_all(content)?;

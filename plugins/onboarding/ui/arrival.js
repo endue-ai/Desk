@@ -1,5 +1,5 @@
 // Scene 1, arrival (0-8 s), with no words: a warp, a count of three, the desk's floor unfolding, a
-// beam of light that becomes the core, and the polygons that lock in around it, the gold face last,
+// beam of light that becomes the core, and the polygons that lock in around it, one facet at a time,
 // before Dysnomia slides in. Sounds ride the same timeline. With reduced motion the warp and the
 // floor are left out and the orb fades in.
 import { buildOrb } from "eris/orb.js";
@@ -12,8 +12,6 @@ const SHARDS = 12;
 /** The core's centre and the rim's radius inside the 360x388 sphere. */
 const CORE = { x: 180, y: 188 };
 const RIM = 132;
-/** The gold face of eris-balanced.svg at 360x388: the glint's box (soul-text.css) and its centre. */
-const GOLD = { left: 262, top: 88, x: 279, y: 107 };
 const SHARD_FACES = [
   "polygon(50% 0%, 100% 100%, 0% 85%)",
   "polygon(0% 0%, 100% 30%, 40% 100%)",
@@ -123,7 +121,7 @@ function beam(d, sphere) {
   d.timeline.at(6300, () => ray.remove());
 }
 
-/** 6-7.5 s: polygons fly in from the edges and lock in around the rim, each with a click; gold last. */
+/** 6-7.5 s: polygons fly in from the edges and lock in around the rim, each with a click. */
 function shards(d, sphere) {
   const random = mulberry32(88);
   const pieces = [];
@@ -133,11 +131,10 @@ function shards(d, sphere) {
     const y = Math.round(CORE.y + RIM * Math.sin(angle));
     pieces.push({ x, y, angle, land: 6000 + i * 115, face: SHARD_FACES[i % SHARD_FACES.length] });
   }
-  pieces.push({ x: GOLD.x, y: GOLD.y, angle: -0.9, land: 7500, gold: true });
+  d.timeline.at(7500, () => d.sound.chime());
   for (const piece of pieces) {
-    const shard = element("div", piece.gold ? "shard gold" : "shard");
-    if (piece.gold) Object.assign(shard.style, { left: `${GOLD.left}px`, top: `${GOLD.top}px` });
-    else Object.assign(shard.style, { left: `${piece.x - 11}px`, top: `${piece.y - 11}px` });
+    const shard = element("div", "shard");
+    Object.assign(shard.style, { left: `${piece.x - 11}px`, top: `${piece.y - 11}px` });
     if (piece.face) shard.style.clipPath = piece.face;
     sphere.append(shard);
     const dx = Math.round(Math.cos(piece.angle) * 900);
@@ -160,7 +157,7 @@ function shards(d, sphere) {
         fill: "forwards",
       }),
     );
-    d.timeline.at(piece.land, () => (piece.gold ? d.sound.chime() : d.sound.click()));
+    d.timeline.at(piece.land, () => d.sound.click());
   }
   d.timeline.at(8400, () => {
     for (const shard of sphere.querySelectorAll(".shard")) shard.remove();

@@ -217,13 +217,12 @@ const mac = process.platform === "darwin";
       await browser.waitUntil(async () => (await windowMenu())?.includes("E2E Hello") === true, {
         timeoutMsg: "the Window menu does not list the window out of the canvas",
       });
-      // Search Desk shown, then hidden again: the palette and the island float, and are not listed.
+      // Search Desk shown, then hidden again: the palette floats and is not listed.
       const toggle = () => shellCommand("compositor_window", { shortcut: "search" });
       await toggle();
       const listed = await windowMenu();
       await toggle();
-      expect(listed).not.toContain("Search Desk");
-      expect(listed).not.toContain("endue island");
+      expect(listed).not.toContain("Search endue");
       expect(listed).not.toContain("Eris is using your computer");
     });
 

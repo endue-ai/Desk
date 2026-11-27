@@ -1,5 +1,5 @@
 //! What the runtime asks of the window manager (#83): every change it makes to the windows, the
-//! panes, the desktops, the drawer, the pan, the profile in force and the session as one `Edit`,
+//! tabs, the desktops, the drawer, the pan, the profile in force and the session as one `Edit`,
 //! which the window manager applies to its `Desk` and publishes whole (`interact::Published`). The
 //! runtime keeps no window manager state of its own: it reads what was published and sends these.
 //!
@@ -21,7 +21,7 @@ use crate::hints::WindowHints;
 use crate::interact::{Change, Geometry};
 use crate::layout::Saved;
 use crate::tiling::GAP;
-use crate::types::{Offset, Placement, Size, SplitDir};
+use crate::types::{Offset, Placement, Size};
 use crate::undo::Undo;
 
 /// What becomes of a removed desktop's windows.
@@ -115,10 +115,11 @@ pub enum Edit {
     },
     /// ⌘N: answers the new window's id.
     NewWindow,
+    /// A window in use, showing the tab named (the one it shows when none is).
     Focus {
         window: String,
         #[serde(default)]
-        pane: Option<String>,
+        tab: Option<String>,
     },
     /// No window in use.
     Blur,
@@ -126,29 +127,31 @@ pub enum Edit {
     FocusNext {
         step: i64,
     },
-    Split {
-        dir: SplitDir,
+    /// A tab showing `view` in `window` (ADR 0270), which takes only tabs of its own kind:
+    /// answers the new tab's id, or null when the window does not take it.
+    AddTab {
+        window: String,
+        view: String,
     },
     /// Answers the plugins to unmount.
-    ClosePane {
+    CloseTab {
         #[serde(default)]
         window: Option<String>,
         #[serde(default)]
-        pane: Option<String>,
+        tab: Option<String>,
+    },
+    /// The window in use shows the tab `step` places on (1 next, -1 previous), wrapping around.
+    StepTab {
+        step: i64,
     },
     /// Answers the plugins to unmount.
     CloseWindow {
         id: String,
     },
-    ShowInPane {
+    ShowInTab {
         window: String,
-        pane: String,
+        tab: String,
         view: String,
-    },
-    ResizeSplit {
-        window: String,
-        split: String,
-        ratio: f64,
     },
     TogglePin {
         id: String,
@@ -302,27 +305,23 @@ pub fn apply(desk: &mut Desk, kept: &mut Kept, edit: &Edit, screen: Size) -> Val
         Edit::ShowPlugin { id } => desk.show_plugin(id),
         Edit::OpenView { view } => desk.open_view(view),
         Edit::NewWindow => return json!(desk.new_window()),
-        Edit::Focus { window, pane } => desk.focus_pane(window, pane.as_deref()),
+        Edit::Focus { window, tab } => desk.focus_tab(window, tab.as_deref()),
         Edit::Blur => desk.set(|d| {
             d.focused = None;
-            d.pane = None;
+            d.tab = None;
         }),
         Edit::FocusNext { step } => return json!(desk.focus_next(*step)),
-        Edit::Split { dir } => desk.split(*dir),
-        Edit::ClosePane { window, pane } => {
-            let plugins = desk.close_pane(window.as_deref(), pane.as_deref());
+        Edit::AddTab { window, view } => return json!(desk.add_tab(window, view)),
+        Edit::CloseTab { window, tab } => {
+            let plugins = desk.close_tab(window.as_deref(), tab.as_deref());
             return released(desk, plugins);
         }
+        Edit::StepTab { step } => desk.step_tab(*step),
         Edit::CloseWindow { id } => {
             let plugins = desk.close_window(id);
             return released(desk, plugins);
         }
-        Edit::ShowInPane { window, pane, view } => desk.show_in_pane(window, pane, view),
-        Edit::ResizeSplit {
-            window,
-            split,
-            ratio,
-        } => desk.resize_split(window, split, *ratio),
+        Edit::ShowInTab { window, tab, view } => desk.show_in_tab(window, tab, view),
         Edit::TogglePin { id } => desk.toggle_pin(id),
         Edit::ToggleFloating { id } => desk.toggle_floating(id, screen.w, screen.h),
         Edit::PutAway { id, name, now } => desk.put_away(id, name, *now),

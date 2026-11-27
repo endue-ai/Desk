@@ -45,10 +45,11 @@ describe("plugin.json", () => {
     expect(player).toMatchObject({ id: "endue.player", name: "Player", kind: "ui" });
     expect(player.surfaces).toEqual([{ id: "main", title: "Player", placement: "center" }]);
     const fs = (player.permissions ?? []).filter((p) => p.permission.startsWith("fs:"));
-    expect(fs).toEqual([]);
+    // Any folder may be asked for, and none is held: an install grants no `/**` (ADR 0260).
+    expect(fs).toEqual([{ permission: "fs:read", paths: ["/**"] }]);
     expect(player.permissions).toContainEqual({
       permission: "cmd:invoke",
-      ids: ["desk.files.changed"],
+      ids: ["desk.files.changed", "desk.files.playlist-entries"],
     });
     // Show in Finder on a file this build does not play: shown, never opened or run.
     expect(player.permissions).toContainEqual({
@@ -56,6 +57,7 @@ describe("plugin.json", () => {
       // biome-ignore lint/suspicious/noTemplateCurlyInString: a desk path rooted at ${home}, not a template
       paths: ["${home}/**"],
     });
+    expect(player.permissions).toContainEqual({ permission: "shell:open", paths: ["/**"] });
     expect(player.contributes?.settings?.["endue.player.resume"]).toMatchObject({
       kind: "boolean",
       default: true,

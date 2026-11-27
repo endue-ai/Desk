@@ -181,11 +181,12 @@ fn methods_the_core_does_not_serve_yet_are_unsupported() {
     let audio = json!({ "permission": "audio:capture" });
     let capture = answer("audio.capture.start", json!({ "scope": audio }));
     assert_eq!(capture.code, ErrorCode::Unsupported);
+    // Stopping is served: a capture that was never started is not found.
     let stop = answer(
         "audio.capture.stop",
         json!({ "captureId": "c-1", "scope": audio }),
     );
-    assert_eq!(stop.code, ErrorCode::Unsupported);
+    assert_eq!(stop.code, ErrorCode::NotFound);
 
     // Served now: without a grant they are denied, not unsupported.
     let net = json!({ "permission": "net:fetch", "hosts": ["example.com"] });

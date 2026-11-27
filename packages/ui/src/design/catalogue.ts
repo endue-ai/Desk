@@ -3,7 +3,8 @@
  * a design system shapes, its properties, their named options and the endue design system's choice
  * (today's look). Properties share a vocabulary (`shape` is always none to full, `size` always xs to
  * lg), each list a named enum of `specs/plugin/v0/design-system.schema.json`; a test keeps the two
- * equal. A recipe names options only: values stay the theme's.
+ * equal. A recipe names options only: values stay the theme's. The defaults follow endue.ai/design
+ * (ADR 0265): cards at radius-lg, segmented tabs, tooltips at shadow-md, dialogs at 16px.
  */
 
 /** The option lists, by the name of their enum in the spec. */
@@ -19,7 +20,7 @@ export const VOCABULARY = {
   DesignFieldStyle: ["outline", "filled", "underline"],
   DesignFieldFocus: ["ring", "border"],
   DesignCheckAccent: ["primary", "text"],
-  DesignTabsStyle: ["boxed", "pill", "underline"],
+  DesignTabsStyle: ["boxed", "pill", "underline", "segment"],
   DesignCardStyle: ["outline", "elevated", "filled", "plain"],
   DesignRowSelection: ["fill", "soft", "bar"],
   DesignMenuBorder: ["outline", "none"],
@@ -64,13 +65,13 @@ export const CATALOGUE = {
   },
   check: { accent: p("DesignCheckAccent", "primary"), size: p("DesignSize", "md") },
   tabs: {
-    style: p("DesignTabsStyle", "boxed"),
+    style: p("DesignTabsStyle", "segment"),
     shape: p("DesignShape", "md"),
     size: p("DesignSize", "sm"),
   },
   card: {
     style: p("DesignCardStyle", "outline"),
-    shape: p("DesignShape", "md"),
+    shape: p("DesignShape", "lg"),
     padding: p("DesignPadding", "normal"),
   },
   row: {
@@ -87,7 +88,7 @@ export const CATALOGUE = {
     shape: p("DesignShape", "lg"),
     elevation: p("DesignElevation", "lg"),
     scrim: p("DesignScrim", "blur"),
-    padding: p("DesignPadding", "roomy"),
+    padding: p("DesignPadding", "normal"),
   },
   toast: {
     style: p("DesignToastStyle", "outline"),
@@ -99,7 +100,7 @@ export const CATALOGUE = {
     shape: p("DesignShape", "full"),
     case: p("DesignCase", "none"),
   },
-  tooltip: { shape: p("DesignShape", "md"), elevation: p("DesignElevation", "sm") },
+  tooltip: { shape: p("DesignShape", "md"), elevation: p("DesignElevation", "md") },
   table: {
     rows: p("DesignTableRows", "lines"),
     header: p("DesignTableHeader", "plain"),

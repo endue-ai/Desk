@@ -20,7 +20,10 @@
   transition: background-color var(--motion-fast) ease;
 }
 .icon-button:hover:not(:disabled),
-.icon-button.is-open { background: var(--desk-icon-button-hover-bg); }
+.icon-button.is-open {
+  background: var(--desk-icon-button-hover-bg);
+  color: var(--desk-icon-button-hover-fg);
+}
 
 .add-button {
   display: grid;
@@ -104,8 +107,8 @@
 }
 .input:focus-visible {
   border-color: var(--desk-field-focus-border);
-  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
-  outline-offset: 1px;
+  outline: var(--desk-field-focus-ring-width) solid var(--desk-field-focus-ring);
+  outline-offset: var(--desk-field-focus-ring-offset);
 }
 
 /* A row of a menu or list: the design system's row. */
@@ -134,20 +137,23 @@
 .segmented {
   display: flex;
   gap: var(--desk-tabs-gap);
-  padding: 0 var(--space-2);
+  padding: var(--desk-tabs-padding) max(var(--desk-tabs-padding), var(--space-2));
   border-radius: var(--desk-tabs-radius);
   background: var(--desk-tabs-bg);
 }
 .segment {
   flex: 1;
-  height: var(--desk-tab-height);
+  height: calc(var(--desk-tab-height) - 2 * var(--desk-tabs-padding));
   border: 1px solid var(--desk-tab-border);
   border-radius: var(--desk-tab-radius);
   background: transparent;
   color: var(--desk-tab-fg);
   transition: background-color var(--motion-fast) ease;
 }
-.segment:hover:not(:disabled) { background: var(--desk-tab-hover-bg); }
+.segment:hover:not(:disabled) {
+  background: var(--desk-tab-hover-bg);
+  color: var(--desk-tab-hover-fg);
+}
 .segment.is-selected {
   border-color: var(--desk-tab-selected-border);
   background: var(--desk-tab-selected-bg);

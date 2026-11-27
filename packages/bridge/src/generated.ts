@@ -29,6 +29,8 @@ export interface CommandContribution {
   id: CommandId;
   /** Shown in the palette. */
   title: string;
+  /** A key in this plugin's messages catalog for the command title. The title is the fallback if the message is unavailable. */
+  titleMessage?: MessageId;
   /** More words the palette matches. */
   keywords?: string[];
   /** Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way. */
@@ -91,7 +93,7 @@ export interface PaletteResult {
 /** A command the palette runs on a result, with its args. */
 export interface PaletteAction {
   command: CommandId;
-  /** Shown under the results: Open in Desk. */
+  /** Shown under the results: Open in endue. */
   title: string;
   args?: CommandArgs;
 }
@@ -301,7 +303,7 @@ export interface DesignCheck {
 
 /** Tabs and segmented controls: one choice among a few. */
 export interface DesignTabs {
-  /** Default: boxed. */
+  /** Default: segment. */
   style?: DesignTabsStyle;
   /** Default: md. */
   shape?: DesignShape;
@@ -313,7 +315,7 @@ export interface DesignTabs {
 export interface DesignCard {
   /** Default: outline. */
   style?: DesignCardStyle;
-  /** Default: md. */
+  /** Default: lg. */
   shape?: DesignShape;
   /** Default: normal. */
   padding?: DesignPadding;
@@ -347,7 +349,7 @@ export interface DesignDialog {
   elevation?: DesignElevation;
   /** Default: blur. */
   scrim?: DesignScrim;
-  /** Default: roomy. */
+  /** Default: normal. */
   padding?: DesignPadding;
 }
 
@@ -375,7 +377,7 @@ export interface DesignBadge {
 export interface DesignTooltip {
   /** Default: md. */
   shape?: DesignShape;
-  /** Default: sm. */
+  /** Default: md. */
   elevation?: DesignElevation;
 }
 
@@ -438,8 +440,8 @@ export type DesignFieldFocus = "ring" | "border";
 /** A check's colour: the brand's or the text's. */
 export type DesignCheckAccent = "primary" | "text";
 
-/** Tabs: outlined boxes, pills on a track, or an underline under the selected one. */
-export type DesignTabsStyle = "boxed" | "pill" | "underline";
+/** Tabs: outlined boxes, pills on a track, an underline under the selected one, or a sunken track whose selected item is raised. */
+export type DesignTabsStyle = "boxed" | "pill" | "underline" | "segment";
 
 /** A card: outlined, raised with a shadow, filled, or plain. */
 export type DesignCardStyle = "outline" | "elevated" | "filled" | "plain";
@@ -511,7 +513,7 @@ export interface PackCommand {
   args?: Record<string, unknown>;
 }
 
-/** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
+/** One permission with its scope. Plugin manifests declare these, and a plugin is asked for, granted and allowed only what its declarations cover (ADR 0260); bridge calls carry the one that covers them. */
 export type Permission =
   | SearchReadPermission
   | SearchSystemPermission
@@ -520,6 +522,7 @@ export type Permission =
   | ProcSpawnPermission
   | NetFetchPermission
   | NetConnectPermission
+  | DbConnectPermission
   | AudioCapturePermission
   | UiSurfacePermission
   | UiNotifyPermission
@@ -545,7 +548,8 @@ export type Permission =
   | StudioManagePermission
   | ComputerSeePermission
   | ComputerControlPermission
-  | WebBrowsePermission;
+  | WebBrowsePermission
+  | WebControlPermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -590,6 +594,13 @@ export interface NetFetchPermission {
 /** Open TCP connections (net.connect) to the listed hosts: a pattern with a port covers that port only, one without a port covers every port of the host. */
 export interface NetConnectPermission {
   permission: "net:connect";
+  /** Host patterns the permission covers, each optionally with a port. */
+  hosts: HostPattern[];
+}
+
+/** Open database sessions (db.open) to the listed hosts, and use the caller's own sessions: a pattern with a port covers that port only, one without a port covers every port of the host. net:connect does not cover db.*, nor db:connect a socket. */
+export interface DbConnectPermission {
+  permission: "db:connect";
   /** Host patterns the permission covers, each optionally with a port. */
   hosts: HostPattern[];
 }
@@ -697,6 +708,13 @@ export interface WebBrowsePermission {
   hosts?: HostPattern[];
 }
 
+/** Read and operate the pages the caller's own web views show (web.read, web.act): the page's text and what can be pressed or filled in on it, and scrolling, pressing, typing and choosing in it as the person would. A page may hold what the person is signed in to, so this is apart from web:browse. With hosts, only while the view's page is on a listed host. Without hosts, any page its views show. */
+export interface WebControlPermission {
+  permission: "web:control";
+  /** Host patterns of the pages that may be read and operated; absent covers every host. */
+  hosts?: HostPattern[];
+}
+
 /** See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person. */
 export interface UpdateManagePermission {
   permission: "update:manage";
@@ -752,13 +770,13 @@ export type AppBundleId = string;
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
 export type ShellScheme = "http" | "https" | "mailto";
 
-/** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
+/** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. In a manifest's declaration /** covers every path the person may be asked for at run time, under ~ and on Windows drives too, and no install grants a declaration that holds it (ADR 0260). */
 export type PathPattern = string;
 
-/** A host name, optionally with a port, or *. followed by a domain to cover its subdomains. */
+/** A host name, optionally with a port, or *. followed by a domain to cover its subdomains. * alone, without a port, is for a manifest's declaration: any host the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no host (ADR 0260). */
 export type HostPattern = string;
 
-/** A program name looked up on PATH, or an absolute path. No arguments and no whitespace. */
+/** A program name looked up on PATH, or an absolute path. No arguments and no whitespace. * is for a manifest's declaration: any program the person may be asked for at run time, and no install grants a declaration that holds it. A plugin is never asked for or granted a scope that holds it (undeclared), and in a grant or an allowlist it matches no program (ADR 0260). */
 export type Command = string;
 
 /** A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris. */
@@ -878,6 +896,8 @@ export interface Surface {
   id: string;
   /** Shown where the surface needs a label. */
   title?: string;
+  /** A key in this plugin's messages catalog for the surface label. The title is the fallback if the message is unavailable. */
+  titleMessage?: MessageId;
   placement: SurfacePlacement;
   /** Mounted but not shown until the plugin shows it, like a palette. Default false. */
   hidden?: boolean;
@@ -1747,7 +1767,7 @@ export interface ConnectorManifest {
   instanceSettings?: Record<string, ConnectorSetting>;
 }
 
-/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
+/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the endue profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
 export type ConnectorBinding = "wasm" | "mcp" | "http";
 
 /** none (local files, the OS's own data), token (a key the person pastes) or oauth. */
@@ -2062,7 +2082,7 @@ export interface MarketEntry {
 
 /** The desks the bundle runs on. */
 export interface MarketEngines {
-  /** The Desk versions, as a minimum: >=0.1.0. */
+  /** The endue versions, as a minimum: >=0.1.0. */
   desk?: string;
 }
 
@@ -2086,7 +2106,7 @@ export type BundleData = string;
 
 /** The whole of init.yaml. Every key is optional; a missing key takes its default. */
 export interface InitDocument {
-  /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
+  /** The format version. Default 0. endue refuses a file with a version newer than it reads. */
   version?: number;
   profile?: InitProfile;
   plugins?: InitPlugins;
@@ -2101,7 +2121,7 @@ export type InitProfile = string;
 
 /** Which plugins start how. */
 export interface InitPlugins {
-  /** Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start. */
+  /** Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while endue runs; the list applies again at the next start. */
   disabled?: PluginId[];
 }
 
@@ -2153,7 +2173,7 @@ export interface InitSync {
 
 /** The whole of keys.yaml. Every key is optional. */
 export interface KeysFile {
-  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  /** The format version. Default 0. endue ignores a file with a version newer than it reads. */
   version?: number;
   /** The person's bindings, in order: a later one of the same key sequence wins, and "command": "" takes a sequence away from the plugins. A binding that shadows another (one sequence a prefix of the other) wins over the plugins' and the core's, and the desk lists what it shadows with this file's line (ADR 0118). Default none. */
   bindings?: KeyBinding[];
@@ -2161,7 +2181,7 @@ export interface KeysFile {
 
 /** The whole of plugins.lock. */
 export interface PluginsLock {
-  /** The format version. Desk refuses a lock newer than it reads. */
+  /** The format version. endue refuses a lock newer than it reads. */
   version: number;
   /** Every installed plugin that validates, sorted by id. */
   plugins: LockedPlugin[];
@@ -2178,12 +2198,12 @@ export interface LockedPlugin {
   enabled: boolean;
 }
 
-/** Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
+/** Where the plugin came from: builtin (shipped with endue), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
 export type LockSource = string;
 
 /** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
 export interface ProfileFile {
-  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  /** The format version. Default 0. endue ignores a file with a version newer than it reads. */
   version?: number;
   /** What the profile switcher shows. Default: the file name. */
   name?: string;
@@ -2455,7 +2475,7 @@ export interface AgentChangedData {
   runId: ItemId;
 }
 
-/** One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work (the island, ADR 0204) reads agent.list again. */
+/** One of an agent's runs changed: kept, waiting for an approval, going on or ended. Sent to callers that hold perm:manage, so what shows the agents at work reads agent.list again. */
 export interface AgentChangedEvent {
   event: "agent.changed";
   data: AgentChangedData;
@@ -3209,6 +3229,19 @@ export type BridgeRequest =
   | NetConnectRequest
   | NetSendRequest
   | NetCloseRequest
+  | DbOpenRequest
+  | DbRunRequest
+  | DbScriptRequest
+  | DbDescribeRequest
+  | DbFetchRequest
+  | DbCopyRequest
+  | DbCancelRequest
+  | DbCloseRequest
+  | DbListRequest
+  | DbPasswordsSetRequest
+  | DbPasswordsDeleteRequest
+  | DbPasswordsListRequest
+  | DbHostKeysDeleteRequest
   | AudioCaptureStartRequest
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
@@ -3222,6 +3255,7 @@ export type BridgeRequest =
   | PermListRequest
   | PermAnswerRequest
   | PermApproveRequest
+  | PermUndoApprovalRequest
   | PermPendingRequest
   | PluginListRequest
   | PluginSetEnabledRequest
@@ -3314,6 +3348,7 @@ export type BridgeRequest =
   | StudioCatalogRecommendRequest
   | StudioCatalogUseRequest
   | StudioConversationsListRequest
+  | StudioChatAskRequest
   | StudioSpacesListRequest
   | StudioSpacesGetRequest
   | ComputerPermissionsStatusRequest
@@ -3341,6 +3376,8 @@ export type BridgeRequest =
   | WebGoRequest
   | WebFocusRequest
   | WebCloseRequest
+  | WebReadRequest
+  | WebActRequest
   | DialogOpenRequest
   | DialogSaveRequest;
 
@@ -3386,13 +3423,18 @@ export type ErrorCode =
   | "offline"
   | "forbidden";
 
-/** Something the core reports without being asked: file changes, process output, socket data, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
+/** Something the core reports without being asked: file changes, process output, socket data, database notices, notifications and session ends, captured audio and who captures, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, what is being done to the computer, and what a web view shows. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
   | ProcExitEvent
   | NetDataEvent
   | NetClosedEvent
+  | DbNoticeEvent
+  | DbCallNoticeEvent
+  | DbNotificationEvent
+  | DbParameterEvent
+  | DbClosedEvent
   | AudioFrameEvent
   | AudioEndedEvent
   | AudioCapturingEvent
@@ -3511,8 +3553,10 @@ export interface CmdRegisterParams {
   resultSchema?: Record<string, unknown>;
   /** Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false. */
   agent?: boolean;
-  /** The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only. */
+  /** The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. An irreversible command is never read-only. */
   readOnly?: boolean;
+  /** The desk provider may mark its own command for approval on each agent invocation. Plugin commands use the manifest declaration. MCP commands use the server's read-only policy. */
+  irreversible?: boolean;
 }
 
 /** Result of cmd.register. */
@@ -3696,6 +3740,10 @@ export interface CmdInvokedData {
   id: CommandId;
   args?: Record<string, unknown>;
   caller: CallerId;
+  /** True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request. */
+  approved?: boolean;
+  /** Set by the core when a person's turn lets Eris pass its readable file to the desk-selected opener. The caller cannot set it. */
+  fileOpenGranted?: boolean;
 }
 
 /** A command's provider answered an invocation. Sent to the caller that invoked it. */
@@ -3894,7 +3942,13 @@ export interface ComputerSeeParams {
 export interface ComputerPermissionsStatusRequest {
   id: RequestId;
   method: "computer.permissions.status";
-  params: ComputerSeeParams;
+  params: ComputerStatusParams;
+}
+
+/** The computer status call, optionally for the agent that invoked the built-in Computer status command. */
+export interface ComputerStatusParams {
+  scope: ComputerSeePermission;
+  invocationId?: string;
 }
 
 /** Result of computer.permissions.status. bundleId is the app the OS asks about; absent under just dev, where it asks about the launching terminal (ADR 0120). stopped: computer.stop was raised and acts are refused until it is resumed. */
@@ -3903,6 +3957,8 @@ export interface ComputerPermissionsStatusResult {
   screenRecording: boolean;
   bundleId?: string;
   stopped: boolean;
+  /** Bundle IDs the agent can act in until computer use stops or the conversation changes. */
+  allowedApps?: string[];
 }
 
 /** Parameters of computer.permissions.request and computer.permissions.open. */
@@ -4449,6 +4505,596 @@ export interface DataChangedData {
   changes: ItemChange[];
 }
 
+/** Open a database session and sign in. The scope and the grant are checked before anything connects. */
+export interface DbOpenRequest {
+  id: RequestId;
+  method: "db.open";
+  params: DbOpenParams;
+}
+
+/** Parameters of db.open. */
+export interface DbOpenParams {
+  /** The database engine; postgresql is the one the core speaks, any other is unsupported. */
+  engine: string;
+  /** A host name or an IPv4 address, as net.connect takes it. */
+  host: string;
+  /** 5432 by default. */
+  port?: number;
+  database: string;
+  user: string;
+  /** Used once for the sign-in and dropped. Without it the core reads the person's password file. */
+  password?: string;
+  passwordRef?: DbPasswordName;
+  tls?: DbTls;
+  /** Startup parameters (DateStyle, TimeZone, search_path, statement_timeout, application_name, ...). client_encoding, user, database and replication are invalid_params. */
+  settings?: Record<string, string>;
+  /** Adds default_transaction_read_only=on. */
+  readOnly?: boolean;
+  /** How long the connection and the sign-in may take; 10000 by default. */
+  timeoutMs?: number;
+  scope: DbConnectPermission;
+  ssh?: DbSsh;
+}
+
+/** How the session uses TLS. */
+export interface DbTls {
+  mode: DbTlsMode;
+  /** The authorities to trust, PEM; else the system's trust store. With require, the chain is checked too. */
+  ca?: string;
+  /** The client's certificate, PEM, with any intermediates its authority needs; presented when the server asks for one (disable ignores it). Needs key. */
+  cert?: string;
+  /** The private key of cert, PEM: PKCS#8, PKCS#1 or SEC1, or PKCS#8 encrypted with PBES2 (keyPassword). Decoded before anything connects, held for the session and its cancel requests, never kept. Needs cert. */
+  key?: string;
+  /** The passphrase of an encrypted key: used once to decrypt it and dropped. */
+  keyPassword?: string;
+}
+
+/** An SSH tunnel the session goes through (ADR 0359): one SSH connection for the session and its cancel requests, opened before it and closed with it, through jump first when given. Every stream is a channel inside the core; nothing listens on a port. Exactly one of keyFile, agent, password and passwordRef signs in. db:connect must cover the SSH host and the jump host with their ports, as well as the database's host and port, which the SSH server connects to. */
+export interface DbSsh {
+  /** The SSH server, a host name or an IPv4 address. */
+  host: string;
+  /** 22 by default. */
+  port?: number;
+  /** Who signs in on the SSH server. */
+  user: string;
+  /** The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge. */
+  keyFile?: string;
+  /** The passphrase of an encrypted keyFile: used once to decrypt it and dropped. */
+  keyPassword?: string;
+  /** Sign in with the keys the person's SSH agent holds. */
+  agent?: true;
+  /** The SSH password: used once for the sign-in and dropped. */
+  password?: string;
+  passwordRef?: DbPasswordName;
+  hostKey?: DbSshFingerprint;
+  jump?: DbSshHop;
+}
+
+/** A jump host the tunnel reaches its SSH host through; it signs in as the SSH host does. */
+export interface DbSshHop {
+  /** The SSH server, a host name or an IPv4 address. */
+  host: string;
+  /** 22 by default. */
+  port?: number;
+  /** Who signs in on the SSH server. */
+  user: string;
+  /** The private key to sign in with, a full path (or ~/...) the core reads itself: OpenSSH, PEM or PKCS#8, Ed25519, ECDSA or RSA. Its content never crosses the bridge. */
+  keyFile?: string;
+  /** The passphrase of an encrypted keyFile: used once to decrypt it and dropped. */
+  keyPassword?: string;
+  /** Sign in with the keys the person's SSH agent holds. */
+  agent?: true;
+  /** The SSH password: used once for the sign-in and dropped. */
+  password?: string;
+  passwordRef?: DbPasswordName;
+  hostKey?: DbSshFingerprint;
+}
+
+/** An SSH host key's SHA-256 fingerprint, as OpenSSH prints it. In db.open, the one the person accepted for a host the caller has not trusted yet; it is kept once the tunnel opens. */
+export type DbSshFingerprint = string;
+
+/** Why the tunnel did not open; nothing connected past hop. stage: connect (the SSH server could not be reached), hostKey (its key is not trusted: hostKey says why), auth (the sign-in was refused, or keyPassword or needsPassword says what is missing), forward (the SSH server could not reach the next hop or the database). */
+export interface DbSshAnswer {
+  hop: DbSshHopName;
+  stage: DbSshStage;
+  /** What failed, in words, naming the hop. */
+  message: string;
+  hostKey?: DbSshHostKey;
+  keyPassword?: DbKeyPassword;
+  needsPassword?: true;
+}
+
+/** Which hop: the jump host, or the SSH host the database is reached from. */
+export type DbSshHopName = "jump" | "host";
+
+/** Where the hop failed: connect, hostKey, auth or forward. */
+export type DbSshStage = "connect" | "hostKey" | "auth" | "forward";
+
+/** unknown: not trusted yet. changed: differs from the trusted one. */
+export type DbSshHostKeyStatus = "unknown" | "changed";
+
+/** The key the SSH server presented. unknown: the caller trusts none for this host and port and none was accepted (show fingerprint, then open again with hostKey). changed: it differs from the trusted one (known), and is refused until db.hostKeys.delete forgets that one. */
+export interface DbSshHostKey {
+  status: DbSshHostKeyStatus;
+  /** ssh-ed25519, ecdsa-sha2-nistp256, rsa-sha2-512, ... */
+  algorithm: string;
+  fingerprint: DbSshFingerprint;
+  known?: DbSshFingerprint;
+}
+
+/** Forget the SSH host key the caller trusts for a host and port, so the next db.open through it asks again. Forgetting one that is not trusted is not an error. */
+export interface DbHostKeysDeleteRequest {
+  id: RequestId;
+  method: "db.hostKeys.delete";
+  params: DbHostKeysDeleteParams;
+}
+
+/** Parameters of db.hostKeys.delete. */
+export interface DbHostKeysDeleteParams {
+  host: string;
+  /** 22 by default. */
+  port?: number;
+}
+
+/** Result of db.hostKeys.delete. */
+export type DbHostKeysDeleteResult = Record<string, never>;
+
+/** disable: plain TCP. prefer (the default): TLS when the server has it. require: TLS, the certificate not checked. verify-ca: the chain. verify-full: the chain and the host name. */
+export type DbTlsMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
+
+/** Result of db.open: the session, signed in; or the server's refusal (error) and no session; or ssh when its tunnel did not open; or keyPassword when the client key cannot be decrypted; or needsPassword when no password was given, none was found in the password file or kept under passwordRef for the session's host, port and user, and the server asks for one. */
+export interface DbOpenResult {
+  sessionId?: DbSessionId;
+  /** The server process of the session. */
+  pid?: number;
+  auth?: DbAuth;
+  tls?: DbTlsInfo;
+  /** Every ParameterStatus the server sent (server_version, TimeZone, IntervalStyle, ...). */
+  parameters?: Record<string, string>;
+  error?: DbServerError;
+  needsPassword?: true;
+  keyPassword?: DbKeyPassword;
+  ssh?: DbSshAnswer;
+}
+
+/** tls.key is encrypted and keyPassword was not given (needed) or does not decrypt it (wrong); nothing connected. */
+export type DbKeyPassword = "needed" | "wrong";
+
+/** How the session signed in. */
+export type DbAuth = "scram-sha-256" | "scram-sha-256-plus" | "md5" | "password" | "none";
+
+/** The TLS the session runs over. */
+export interface DbTlsInfo {
+  /** TLSv1.2 or TLSv1.3. */
+  version: string;
+  cipher: string;
+}
+
+/** A session db.open opened, unique for the core's life. */
+export type DbSessionId = string;
+
+/** Run one statement on a session and answer its first page. An earlier result with pages left is closed first. */
+export interface DbRunRequest {
+  id: RequestId;
+  method: "db.run";
+  params: DbRunParams;
+}
+
+/** Parameters of db.run. */
+export interface DbRunParams {
+  sessionId: DbSessionId;
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** $1, $2, ... as text, or null. */
+  params?: DbValue[];
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+  /** Rows a page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+}
+
+/** Result of db.run: the statement's first page. */
+export type DbRunResult = DbPage;
+
+/** Run several statements on a session in one call, in order, each as db.run runs one, and answer each one's first page. It stops after a statement whose page has more (its rest is read with db.fetch, its COPY FROM STDIN fed with db.copy), at the first error unless goOn, and at a cancel; a transaction the statements open stays the session's. */
+export interface DbScriptRequest {
+  id: RequestId;
+  method: "db.script";
+  params: DbScriptParams;
+}
+
+/** Parameters of db.script. */
+export interface DbScriptParams {
+  sessionId: DbSessionId;
+  /** The statements, in the order they run. */
+  statements: DbScriptStatement[];
+  /** Run on past a statement's error instead of stopping there. */
+  goOn?: boolean;
+  /** Rows each statement's first page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values each statement's first page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+}
+
+/** One statement of db.script and its parameters, as db.run takes them. */
+export interface DbScriptStatement {
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** $1, $2, ... as text, or null. */
+  params?: DbValue[];
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+}
+
+/** Result of db.script: one first page for each statement that ran, in order, each with its own notices. Fewer pages than statements: the last page has more, or an error, or the script was cancelled (cancelled), or a failure stopped it (failure, which belongs to the statement after the last page). */
+export interface DbScriptResult {
+  pages: DbPage[];
+  /** A db.cancel came while the script ran: no statement after the last page started. */
+  cancelled?: boolean;
+  /** What stopped the script that is not the server's error, as db.run would have failed with it: the statement after the last page did not answer; the session may be gone (io_error). */
+  failure?: BridgeError;
+}
+
+/** Ask the server what one statement takes and answers without running it: Parse and Describe of the unnamed statement, then Sync. Nothing executes, so it changes nothing and works on a read-only session; an earlier result with pages left is closed first. */
+export interface DbDescribeRequest {
+  id: RequestId;
+  method: "db.describe";
+  params: DbDescribeParams;
+}
+
+/** Parameters of db.describe. */
+export interface DbDescribeParams {
+  sessionId: DbSessionId;
+  /** One statement; two are the server's 42601. */
+  sql: string;
+  /** The parameters' type OIDs; 0, or a missing one, is the server's inference. */
+  paramTypes?: number[];
+}
+
+/** Result of db.describe: the parameters' types (ParameterDescription) and the columns the statement answers (RowDescription; absent for NoData), or the server's error with its position, and the transaction state after it. */
+export interface DbDescribeResult {
+  /** The type OID of $1, $2, ..., as the server infers them; empty with an error. */
+  paramTypes: number[];
+  columns?: DbColumn[];
+  transaction?: DbTransaction;
+  error?: DbServerError;
+  /** The notices the server sent while this call ran. */
+  notices?: DbServerError[];
+}
+
+/** The next page of the session's open result, or close it without reading on. */
+export interface DbFetchRequest {
+  id: RequestId;
+  method: "db.fetch";
+  params: DbFetchParams;
+}
+
+/** Parameters of db.fetch. */
+export interface DbFetchParams {
+  sessionId: DbSessionId;
+  /** Rows a page holds: 1000 by default. */
+  pageRows?: number;
+  /** Bytes of values a page holds: 4 MiB by default. A page holds one row even when it is larger. */
+  pageBytes?: number;
+  /** End the result without reading on. */
+  close?: boolean;
+}
+
+/** Result of db.fetch: the next page, or an empty last one after close. */
+export type DbFetchResult = DbPage;
+
+/** Send data to the session's COPY ... FROM STDIN, or end it. */
+export interface DbCopyRequest {
+  id: RequestId;
+  method: "db.copy";
+  params: DbCopyParams;
+}
+
+/** Parameters of db.copy: data, done and fail may come together; done or fail ends the COPY. */
+export interface DbCopyParams {
+  sessionId: DbSessionId;
+  /** Up to 1 MiB of the COPY's bytes. */
+  data?: string;
+  encoding?: Encoding;
+  /** End the COPY (CopyDone). */
+  done?: boolean;
+  /** Fail the COPY with this message (CopyFail). */
+  fail?: string;
+}
+
+/** Result of db.copy: more while the COPY waits for data, the statement's last page once it ends. */
+export type DbCopyResult = DbPage;
+
+/** Ask the server to cancel the statement the session runs; nothing when none runs. The statement's own answer then carries 57014. */
+export interface DbCancelRequest {
+  id: RequestId;
+  method: "db.cancel";
+  params: DbCancelParams;
+}
+
+/** Parameters of db.cancel. */
+export interface DbCancelParams {
+  sessionId: DbSessionId;
+}
+
+/** Result of db.cancel: the request was sent. */
+export type DbCancelResult = Record<string, never>;
+
+/** End a session. Closing one that already ended is not an error. */
+export interface DbCloseRequest {
+  id: RequestId;
+  method: "db.close";
+  params: DbCloseParams;
+}
+
+/** Parameters of db.close. */
+export interface DbCloseParams {
+  sessionId: DbSessionId;
+}
+
+/** Result of db.close. */
+export type DbCloseResult = Record<string, never>;
+
+/** The caller's sessions, as a frame that slept finds them again. */
+export interface DbListRequest {
+  id: RequestId;
+  method: "db.list";
+  params: DbListParams;
+}
+
+/** Parameters of db.list. */
+export type DbListParams = Record<string, never>;
+
+/** Result of db.list. */
+export interface DbListResult {
+  sessions: DbSessionInfo[];
+}
+
+/** One of the caller's sessions. */
+export interface DbSessionInfo {
+  sessionId: DbSessionId;
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  pid: number;
+  /** A statement runs. */
+  running: boolean;
+  /** A result has pages left, or a COPY FROM STDIN waits for data. */
+  more: boolean;
+  transaction: DbTransaction;
+}
+
+/** A password the caller kept with db.passwords.set, by the name it chose (ADR 0311). db.open's passwordRef names it: the core reads the OS keychain itself, after the password file, and only for the host, port and user it was kept for; a name that is not kept, or was kept for another server or user, is as if none was given. Not with password. */
+export type DbPasswordName = string;
+
+/** Keep a password in the OS keychain under a name, for one host, port and user; it is never answered back. */
+export interface DbPasswordsSetRequest {
+  id: RequestId;
+  method: "db.passwords.set";
+  params: DbPasswordsSetParams;
+}
+
+/** Parameters of db.passwords.set. A name already kept is replaced. A plugin's manifest must declare db:connect for the host and port; no grant is needed, since using it is db.open's. */
+export interface DbPasswordsSetParams {
+  name: DbPasswordName;
+  /** The host db.open names, as net.connect takes it. */
+  host: string;
+  /** 5432 by default. */
+  port?: number;
+  user: string;
+  password: string;
+}
+
+/** Result of db.passwords.set: kept. */
+export type DbPasswordsSetResult = Record<string, never>;
+
+/** Forget a password the caller kept: its keychain entry goes. Forgetting one that is not kept is not an error. */
+export interface DbPasswordsDeleteRequest {
+  id: RequestId;
+  method: "db.passwords.delete";
+  params: DbPasswordsDeleteParams;
+}
+
+/** Parameters of db.passwords.delete. */
+export interface DbPasswordsDeleteParams {
+  name: DbPasswordName;
+}
+
+/** Result of db.passwords.delete. */
+export type DbPasswordsDeleteResult = Record<string, never>;
+
+/** The passwords the caller kept: what each is kept for, never the password. */
+export interface DbPasswordsListRequest {
+  id: RequestId;
+  method: "db.passwords.list";
+  params: DbPasswordsListParams;
+}
+
+/** Parameters of db.passwords.list. */
+export type DbPasswordsListParams = Record<string, never>;
+
+/** Result of db.passwords.list, by name. */
+export interface DbPasswordsListResult {
+  passwords: DbKeptPassword[];
+}
+
+/** A password the caller kept: its name and the host, port and user it is for. */
+export interface DbKeptPassword {
+  name: DbPasswordName;
+  host: string;
+  port: number;
+  user: string;
+}
+
+/** One page of a statement's answer. The first page has the columns; the last has the tag, the row count and the transaction state, or the server's error. */
+export interface DbPage {
+  columns?: DbColumn[];
+  rows: DbRow[];
+  /** Exact: db.fetch has another page, or the COPY FROM STDIN waits for data. */
+  more: boolean;
+  /** The command tag, counting every page. */
+  tag?: string;
+  /** Rows over all pages, or the tag's count. */
+  rowCount?: number;
+  transaction?: DbTransaction;
+  error?: DbServerError;
+  copy?: DbCopy;
+  /** A COPY ... TO STDOUT's bytes. */
+  data?: string;
+  encoding?: Encoding;
+  /** The notices the server sent while this call ran, in the order it sent them: a statement's are on the pages of its db.run, db.fetch and db.copy, never also a db.notice event (each also came as a db.call.notice while the call ran). At most 10,000 a page. */
+  notices?: DbServerError[];
+  /** Notices past the 10,000 a page keeps, counted and left out. */
+  noticesSkipped?: number;
+  /** The session's number for the call this page answers, counting from 1: a db.call.notice with this number or a lower one is already on a page. */
+  call?: number;
+}
+
+/** One row: each value the server's text, or null. */
+export type DbRow = DbValue[];
+
+/** A value as the server prints it, or null for NULL. */
+export type DbValue = string | null;
+
+/** One column, as RowDescription describes it. */
+export interface DbColumn {
+  name: string;
+  typeOid: number;
+  typeModifier: number;
+  typeSize: number;
+  /** The table it comes from; 0 for an expression. */
+  tableOid: number;
+  /** Its attribute number in that table; 0 for an expression. */
+  columnNumber: number;
+}
+
+/** The transaction state ReadyForQuery reports. */
+export type DbTransaction = "idle" | "open" | "failed";
+
+/** A COPY's direction, format and number of columns. */
+export interface DbCopy {
+  direction: DbCopyDirection;
+  format: DbCopyFormat;
+  columns: number;
+}
+
+/** in: FROM STDIN. out: TO STDOUT. */
+export type DbCopyDirection = "in" | "out";
+
+/** text (text and CSV) or binary. */
+export type DbCopyFormat = "text" | "binary";
+
+/** An error or a notice the server sent, every field by name; positions are numbers. */
+export interface DbServerError {
+  /** V, never localized (S on a server that sends no V). */
+  severity: string;
+  /** S. */
+  localSeverity: string;
+  /** C, the SQLSTATE. */
+  code: string;
+  /** M. */
+  message: string;
+  detail?: string;
+  hint?: string;
+  /** P, from 1, in characters. */
+  position?: number;
+  internalPosition?: number;
+  internalQuery?: string;
+  where?: string;
+  schema?: string;
+  table?: string;
+  column?: string;
+  dataType?: string;
+  constraint?: string;
+  file?: string;
+  line?: string;
+  routine?: string;
+  /** Fields a later server adds, by their code. */
+  other?: Record<string, string>;
+}
+
+/** A notice the server sent outside any call (with the sign-in, or while the session is idle). One sent while a call runs comes with that call's page instead. */
+export interface DbNoticeEvent {
+  event: "db.notice";
+  data: DbNoticeData;
+}
+
+/** Payload of db.notice. */
+export interface DbNoticeData {
+  sessionId: DbSessionId;
+  notice: DbServerError;
+}
+
+/** A notice the server sent while a call runs, sent as it arrives, so a long statement's progress can be shown before its answer. The call's page carries it too, and the page is the record (ADR 0334, ADR 0358): an event whose call is already answered is late. At most the 10,000 a page keeps. */
+export interface DbCallNoticeEvent {
+  event: "db.call.notice";
+  data: DbCallNoticeData;
+}
+
+/** Payload of db.call.notice. */
+export interface DbCallNoticeData {
+  sessionId: DbSessionId;
+  /** The number of the call that heard it, as that call's pages say (DbPage.call). */
+  call: number;
+  notice: DbServerError;
+}
+
+/** A NOTIFY on a channel the session listens to, also while it is idle. */
+export interface DbNotificationEvent {
+  event: "db.notification";
+  data: DbNotificationData;
+}
+
+/** Payload of db.notification. */
+export interface DbNotificationData {
+  sessionId: DbSessionId;
+  /** The server process that notified. */
+  pid: number;
+  channel: string;
+  payload: string;
+}
+
+/** A run parameter the server reported changed (ParameterStatus). */
+export interface DbParameterEvent {
+  event: "db.parameter";
+  data: DbParameterData;
+}
+
+/** Payload of db.parameter. */
+export interface DbParameterData {
+  sessionId: DbSessionId;
+  name: string;
+  value: string;
+}
+
+/** A session ended: the session's last event. */
+export interface DbClosedEvent {
+  event: "db.closed";
+  data: DbClosedData;
+}
+
+/** Payload of db.closed. */
+export interface DbClosedData {
+  sessionId: DbSessionId;
+  reason: DbClosedReason;
+  /** Why, when the network or the encoding ended it. */
+  message?: string;
+  error?: DbServerError;
+}
+
+/** closed: db.close. server: the server ended it, with its FATAL error when it sent one. io: the network failed. encoding: the server's client_encoding stopped being UTF8. unloaded: its plugin stopped. revoked: the grant that covers it went. desk: the desk let it go. */
+export type DbClosedReason =
+  | "closed"
+  | "server"
+  | "io"
+  | "encoding"
+  | "unloaded"
+  | "revoked"
+  | "desk";
+
 /** A named set of file extensions the dialog shows, without the dot: { name: Markdown, extensions: [md] }. */
 export interface DialogFilter {
   name: string;
@@ -4463,6 +5109,9 @@ export type DialogTitle = string;
 /** What the person picks: files (the default) or folders. */
 export type DialogOpenKind = "files" | "folders";
 
+/** A destination folder is chosen for writing. The dialog tells the person and grants read and write in the folder. */
+export type DialogOpenIntent = "destination";
+
 /** Ask the person for files or folders to open. */
 export interface DialogOpenRequest {
   id: RequestId;
@@ -4473,6 +5122,7 @@ export interface DialogOpenRequest {
 /** Parameters of dialog.open. */
 export interface DialogOpenParams {
   kind?: DialogOpenKind;
+  intent?: DialogOpenIntent;
   /** Whether the person may pick several; false by default. */
   multiple?: boolean;
   title?: DialogTitle;
@@ -4499,6 +5149,8 @@ export interface DialogSaveParams {
   title?: DialogTitle;
   /** The file name the dialog suggests, without a folder. */
   suggestedName?: string;
+  /** Also grant write access to the exact .<name>.partial sibling used to stage this save before renaming it. */
+  temporarySibling?: boolean;
   /** The folder the dialog starts in. */
   startIn?: Path;
   filters?: DialogFilters;
@@ -4608,6 +5260,10 @@ export interface FsWriteParams {
   encoding?: Encoding;
   /** Create missing parent folders. */
   createDirs?: boolean;
+  /** Add the content at the end of the existing file in place: no temp file, no kept version, no undo entry. A missing file is not_found. */
+  append?: boolean;
+  /** The pending built-in Sheets save command that delegates one whole-file write to the initiating agent. Its named path and exact write scope must match. It cannot append or create parent directories. */
+  invocationId?: string;
   scope: FsWritePermission;
 }
 
@@ -5266,20 +5922,24 @@ export interface PermRequestParams {
   /** Why the caller asks, shown to the person in the prompt. Optional; a prompt without one says that none was given. */
   reason?: string;
   duration?: GrantDuration;
+  /** Check whether a pending approved invocation covers this provider's scope. This answer grants no lasting permission. A matching effect also supplies the invocationId. */
+  invocationId?: string;
+  /** The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry. */
+  again?: boolean;
 }
 
-/** How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
+/** How long a grant lasts. once: the next call it allows, then it expires. session: until endue quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
 export type GrantDuration = "once" | "session" | "always";
 
-/** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist. */
+/** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist, or a plugin and its manifest does not declare it. */
 export interface PermRequestResult {
   granted: boolean;
   grant?: Grant;
   reason?: RefusalReason;
 }
 
-/** Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request. */
-export type RefusalReason = "refused-earlier" | "outside-allowlist";
+/** Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). undeclared: the caller is a plugin and no permission its manifest declares covers the request, or the request itself holds a * host or command; a plugin is never asked for, granted or allowed anything its manifest does not declare (ADR 0260). Absent from a result means the person (or the core's own prompter) refused this request. */
+export type RefusalReason = "refused-earlier" | "outside-allowlist" | "undeclared";
 
 /** List the caller's current grants. */
 export interface PermQueryRequest {
@@ -5321,7 +5981,7 @@ export interface PermGrantRequest {
   params: PermGrantParams;
 }
 
-/** Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied. */
+/** Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist, nor a plugin anything its manifest does not declare: that is permission_denied. */
 export interface PermGrantParams {
   /** Who gets the grant: a plugin id, or agent:<id>. */
   caller: string;
@@ -5423,13 +6083,15 @@ export interface PermApprovalData {
   action: ApprovalAction;
   /** The scope the call carries, which a grant of the agent's covers. */
   permission: Permission;
-  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*. */
+  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*, and the site for web.act. */
   target: string;
   preview?: ApprovalPreview;
   /** fs.write: the bytes it would write. */
   size?: number;
   /** The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task. */
   task?: string;
+  /** The app whose use the person may allow until computer use stops or the conversation changes. Present only when the approval can take an app answer. */
+  untilStopApp?: string;
 }
 
 /** The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096). computer.* is an agent's act on the computer: its target is the app it goes to (ADR 0123). */
@@ -5438,6 +6100,7 @@ export type ApprovalAction =
   | "proc.spawn"
   | "net.fetch"
   | "cmd.invoke"
+  | "web.act"
   | "memory.remember"
   | "computer.input.click"
   | "computer.input.move"
@@ -5474,30 +6137,52 @@ export interface PermApproveParams {
   scope: PermManagePermission;
 }
 
-/** once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again. */
-export type ApprovalAnswer = "once" | "task" | "deny";
+/** once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). app: this call runs and the agent may act in the named app until computer use stops or the conversation changes (invalid_params without untilStopApp). deny: this call is refused with permission_denied; the next one asks again. */
+export type ApprovalAnswer = "once" | "task" | "app" | "deny";
 
 /** Result of perm.approve. */
 export type PermApproveResult = Record<string, never>;
 
-/** An approved call ran: what came of it. Sent to callers that hold perm:manage. */
+/** Undo the exact reversible change named by a completion receipt. The desk calls this from its Undo notice. */
+export interface PermUndoApprovalRequest {
+  id: RequestId;
+  method: "perm.undoApproval";
+  params: PermUndoApprovalParams;
+}
+
+/** The completed change to undo, as named by its receipt. */
+export interface PermUndoApprovalParams {
+  approvalId: string;
+  scope: PermManagePermission;
+}
+
+/** An empty result once the change was undone. */
+export type PermUndoApprovalResult = Record<string, unknown>;
+
+/** An approved call ran or a granted reversible change completed. Sent to callers that hold perm:manage. */
 export interface PermApprovalDoneEvent {
   event: "perm.approval.done";
   data: PermApprovalDoneData;
 }
 
-/** Payload of perm.approval.done. */
+/** Payload of perm.approval.done. Each reversible change has a unique completion id for Undo. */
 export interface PermApprovalDoneData {
   approvalId: string;
   ok: boolean;
   /** fs.write: the bytes it wrote. */
   bytesWritten?: number;
   error?: BridgeError;
-  /** true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo. */
+  /** True when perm.undoApproval can undo this change. */
   undoable?: boolean;
+  change?: ApprovalChange;
+  /** The affected path for a file change. Memory notices carry no fact text. */
+  path?: string;
 }
 
-/** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait (the island, ADR 0204). */
+/** The single change that Undo can reverse. */
+export type ApprovalChange = "file-saved" | "file-created" | "fact-remembered" | "fact-edited";
+
+/** What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait. */
 export interface PermPendingRequest {
   id: RequestId;
   method: "perm.pending";
@@ -5567,7 +6252,7 @@ export interface PluginInfo {
   id: PluginId;
   status: PluginStatus;
   enabled: boolean;
-  /** Shipped with Desk. */
+  /** Shipped with endue. */
   builtIn: boolean;
   /** Increases every time the plugin's files change. */
   revision: number;
@@ -5577,6 +6262,8 @@ export interface PluginInfo {
   /** The folder the plugin was installed from, as an absolute path, so people can be shown its files. */
   folder?: Path;
   heldOff?: PluginHold;
+  /** True for a ready autoload plugin without a saved manual choice or current hold. The desk can activate or release it automatically. */
+  autoStart?: boolean;
 }
 
 /** Why a plugin is off for this run only, whatever its remembered choice says: init (init.yaml's plugins.disabled), safe-mode (ADR 0061) or quarantine (its version stopped an earlier start, ADR 0061). Absent when nothing holds it. plugin.setEnabled ends the hold; desk plugin sync leaves a held plugin as it is. */
@@ -5585,7 +6272,7 @@ export type PluginHold = "init" | "safe-mode" | "quarantine";
 /** ready: the manifest is valid and the entry exists; failed: it cannot run. */
 export type PluginStatus = "ready" | "failed";
 
-/** Turn a plugin on or off. The choice is remembered. */
+/** Turn a plugin on or off. By default the choice is remembered as a manual choice. */
 export interface PluginSetEnabledRequest {
   id: RequestId;
   method: "plugin.setEnabled";
@@ -5596,6 +6283,8 @@ export interface PluginSetEnabledRequest {
 export interface PluginSetEnabledParams {
   plugin: PluginId;
   enabled: boolean;
+  /** Use the desk's automatic activation state for an eligible autoload plugin, without changing a manual choice. Available only to the desk. */
+  automatic?: boolean;
   scope: PluginManagePermission;
 }
 
@@ -5664,6 +6353,8 @@ export interface ProcSpawnParams {
   /** Extra environment variables. */
   env?: Record<string, string>;
   pty?: PtySize;
+  /** The pending approved command invocation that named this program and its arguments. Valid for one matching spawn by its provider. */
+  invocationId?: string;
   scope: ProcSpawnPermission;
 }
 
@@ -5999,6 +6690,30 @@ export interface StoreSetParams {
 
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
+
+export interface StudioChatAskRequest {
+  id: RequestId;
+  method: "studio.chat.ask";
+  params: StudioChatAskParams;
+}
+
+export interface StudioChatAskParams {
+  agentId: StudioAgentId;
+  spaceId?: StudioSpaceId;
+  question: string;
+  scope: StudioManagePermission;
+}
+
+export type StudioChatState = "done" | "needsInput" | "interrupted" | "failed";
+
+export interface StudioChatAskResult {
+  agentId: StudioAgentId;
+  spaceId?: StudioSpaceId;
+  conversationId: StudioAgentId;
+  runId?: StudioAgentId;
+  state: StudioChatState;
+  text?: string;
+}
 
 /** A space's id on endue AI. */
 export type StudioSpaceId = string;
@@ -7390,6 +8105,8 @@ export interface WebPlaceParams {
   y: number;
   width: number;
   height: number;
+  /** true extends the box from x and y to the surface's right and bottom edges, using the current surface size in place of width and height. Defaults to false. */
+  fill?: boolean;
   /** false hides the view and rests its page; true by default. */
   shown?: boolean;
 }
@@ -7463,6 +8180,177 @@ export interface WebCloseParams {
 /** Result of web.close. */
 export type WebCloseResult = Record<string, never>;
 
+/** An element of a view's page, as web.read named it. It holds while that element is in the page: a page that loads another document names its elements anew. */
+export type WebRef = string;
+
+/** Read the page a web view shows: its text in reading order, with every element that can be pressed, filled in or chosen from named, and where the page is scrolled to. */
+export interface WebReadRequest {
+  id: RequestId;
+  method: "web.read";
+  params: WebReadParams;
+}
+
+/** Parameters of web.read: the part of the page's text from character from on, max characters at most. */
+export interface WebReadParams {
+  viewId: WebViewId;
+  /** The character the part starts at; 0 by default. */
+  from?: number;
+  /** How many characters the part holds at most; 20000 by default. */
+  max?: number;
+  scope: WebControlPermission;
+}
+
+/** Result of web.read: the page of the view's main document as it is now. A frame in the page is named, not read. */
+export interface WebReadResult {
+  /** The address the page was read at. */
+  url: string;
+  title: string;
+  /** The part asked for of the page's text, in reading order: one block a line, a heading after #, a list item after -. An element that can be acted on is written [ref kind "name"], a field with = "what it holds" (never a password), a box or a choice with its state; kind is link, button, field, checkbox, radio, select, tab or item. What the page hides is left out. */
+  text: string;
+  /** The character the part starts at. */
+  from: number;
+  /** How many characters the whole text has: a part that ends before it leaves more to read from there on. */
+  length: number;
+  scroll: WebScrolled;
+}
+
+/** Where a page is scrolled to, in CSS pixels: the part in view (x, y from the page's top left, width and height) and the size of the whole page. */
+export interface WebScrolled {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageWidth: number;
+  pageHeight: number;
+}
+
+/** Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are. */
+export interface WebActRequest {
+  id: RequestId;
+  method: "web.act";
+  params: WebActParams;
+}
+
+/** Parameters of web.act. */
+export interface WebActParams {
+  viewId: WebViewId;
+  action: WebAction;
+  /** For a built-in Browser action on an agent command, the pending invocation that authorizes the action. */
+  invocationId?: string;
+  scope: WebControlPermission;
+}
+
+/** What web.act does, named by do. */
+export type WebAction =
+  | WebScroll
+  | WebShow
+  | WebPress
+  | WebType
+  | WebKey
+  | WebChoose
+  | WebFollow
+  | WebFind
+  | WebZoom
+  | WebHistory;
+
+/** Scroll the page, or the part of it that scrolls when the page itself does not. */
+export interface WebScroll {
+  do: "scroll";
+  to: WebScrollTo;
+  /** How far a step up, down, left or right goes, in views of the page; 1 by default. An end takes none. */
+  pages?: number;
+}
+
+/** Where a scroll goes: a step up, down, left or right, or to the top or the bottom of the page. */
+export type WebScrollTo = "up" | "down" | "left" | "right" | "top" | "bottom";
+
+/** Bring an element into view, in the middle of it where the page can. */
+export interface WebShow {
+  do: "show";
+  ref: WebRef;
+}
+
+/** Press an element once with the pointer, brought into view first: a link, a button, a box, a tab. */
+export interface WebPress {
+  do: "press";
+  ref: WebRef;
+}
+
+/** Type text into a field as written, in any script. */
+export interface WebType {
+  do: "type";
+  text: string;
+  /** The field; absent types into the one the page has the caret in. */
+  ref?: WebRef;
+  /** false types at the caret and keeps what the field holds; true by default: the field holds the text alone afterwards. */
+  replace?: boolean;
+  /** true presses Enter in the field afterwards, as a search or a form is sent. */
+  submit?: boolean;
+}
+
+/** Press a key in the page. */
+export interface WebKey {
+  do: "key";
+  key: WebKeyName;
+  /** The element that takes the key; absent it goes to what the page has the keys on. */
+  ref?: WebRef;
+}
+
+/** A key web.act presses, by its name in KeyboardEvent.key (Space is the space bar). */
+export type WebKeyName =
+  | "Enter"
+  | "Tab"
+  | "Escape"
+  | "Backspace"
+  | "Delete"
+  | "Space"
+  | "ArrowUp"
+  | "ArrowDown"
+  | "ArrowLeft"
+  | "ArrowRight"
+  | "PageUp"
+  | "PageDown"
+  | "Home"
+  | "End";
+
+/** Choose an option of a list of choices (a select). */
+export interface WebChoose {
+  do: "choose";
+  ref: WebRef;
+  /** The option, by the words it shows or by its value. */
+  option: string;
+}
+
+/** Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link. */
+export interface WebFollow {
+  do: "follow";
+  ref: WebRef;
+}
+
+/** Find text in the current page. Asking again for the same text moves to the next match. */
+export interface WebFind {
+  do: "find";
+  text: string;
+}
+
+/** Set the page magnification, where 1 is the usual size. */
+export interface WebZoom {
+  do: "zoom";
+  level: number;
+}
+
+/** Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation. */
+export interface WebHistory {
+  do: "history";
+  to: WebStep;
+}
+
+/** Result of web.act: the act was done. What the page made of it is read with web.read. */
+export interface WebActResult {
+  /** Of a scroll: false when there was nowhere further to go. */
+  moved?: boolean;
+}
+
 /** A web view's page changed: its address, its title, whether it loads, where its history can go. Sent to the window that opened the view. */
 export interface WebChangedEvent {
   event: "web.changed";
@@ -7510,6 +8398,19 @@ export interface BridgeMethodMap {
   "net.connect": { params: NetConnectParams; result: NetConnectResult };
   "net.send": { params: NetSendParams; result: NetSendResult };
   "net.close": { params: NetCloseParams; result: NetCloseResult };
+  "db.open": { params: DbOpenParams; result: DbOpenResult };
+  "db.run": { params: DbRunParams; result: DbRunResult };
+  "db.script": { params: DbScriptParams; result: DbScriptResult };
+  "db.describe": { params: DbDescribeParams; result: DbDescribeResult };
+  "db.fetch": { params: DbFetchParams; result: DbFetchResult };
+  "db.copy": { params: DbCopyParams; result: DbCopyResult };
+  "db.cancel": { params: DbCancelParams; result: DbCancelResult };
+  "db.close": { params: DbCloseParams; result: DbCloseResult };
+  "db.list": { params: DbListParams; result: DbListResult };
+  "db.passwords.set": { params: DbPasswordsSetParams; result: DbPasswordsSetResult };
+  "db.passwords.delete": { params: DbPasswordsDeleteParams; result: DbPasswordsDeleteResult };
+  "db.passwords.list": { params: DbPasswordsListParams; result: DbPasswordsListResult };
+  "db.hostKeys.delete": { params: DbHostKeysDeleteParams; result: DbHostKeysDeleteResult };
   "audio.capture.start": { params: AudioCaptureStartParams; result: AudioCaptureStartResult };
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
@@ -7523,6 +8424,7 @@ export interface BridgeMethodMap {
   "perm.list": { params: PermListParams; result: PermListResult };
   "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
   "perm.approve": { params: PermApproveParams; result: PermApproveResult };
+  "perm.undoApproval": { params: PermUndoApprovalParams; result: PermUndoApprovalResult };
   "perm.pending": { params: PermPendingParams; result: PermPendingResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
@@ -7630,10 +8532,11 @@ export interface BridgeMethodMap {
     params: StudioConversationsListParams;
     result: StudioConversationsListResult;
   };
+  "studio.chat.ask": { params: StudioChatAskParams; result: StudioChatAskResult };
   "studio.spaces.list": { params: StudioSpacesListParams; result: StudioSpacesListResult };
   "studio.spaces.get": { params: StudioSpaceParams; result: StudioSpacesGetResult };
   "computer.permissions.status": {
-    params: ComputerSeeParams;
+    params: ComputerStatusParams;
     result: ComputerPermissionsStatusResult;
   };
   "computer.permissions.request": {
@@ -7666,6 +8569,8 @@ export interface BridgeMethodMap {
   "web.go": { params: WebGoParams; result: WebGoResult };
   "web.focus": { params: WebFocusParams; result: WebFocusResult };
   "web.close": { params: WebCloseParams; result: WebCloseResult };
+  "web.read": { params: WebReadParams; result: WebReadResult };
+  "web.act": { params: WebActParams; result: WebActResult };
   "dialog.open": { params: DialogOpenParams; result: DialogOpenResult };
   "dialog.save": { params: DialogSaveParams; result: DialogSaveResult };
 }
@@ -7699,6 +8604,19 @@ export const BRIDGE_METHODS = [
   "net.connect",
   "net.send",
   "net.close",
+  "db.open",
+  "db.run",
+  "db.script",
+  "db.describe",
+  "db.fetch",
+  "db.copy",
+  "db.cancel",
+  "db.close",
+  "db.list",
+  "db.passwords.set",
+  "db.passwords.delete",
+  "db.passwords.list",
+  "db.hostKeys.delete",
   "audio.capture.start",
   "audio.capture.stop",
   "ui.surface.open",
@@ -7712,6 +8630,7 @@ export const BRIDGE_METHODS = [
   "perm.list",
   "perm.answer",
   "perm.approve",
+  "perm.undoApproval",
   "perm.pending",
   "plugin.list",
   "plugin.setEnabled",
@@ -7804,6 +8723,7 @@ export const BRIDGE_METHODS = [
   "studio.catalog.recommend",
   "studio.catalog.use",
   "studio.conversations.list",
+  "studio.chat.ask",
   "studio.spaces.list",
   "studio.spaces.get",
   "computer.permissions.status",
@@ -7831,6 +8751,8 @@ export const BRIDGE_METHODS = [
   "web.go",
   "web.focus",
   "web.close",
+  "web.read",
+  "web.act",
   "dialog.open",
   "dialog.save",
 ] as const satisfies readonly BridgeMethod[];

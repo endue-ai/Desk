@@ -8,6 +8,7 @@ import {
 } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { PolicyHub } from "../hub";
+import { invokeAsEris } from "./agent-tool-test";
 import { installPalette } from "./palette";
 
 /** An installed plugin, on unless said otherwise, contributing `contributes`. */
@@ -96,4 +97,55 @@ describe("desk.palette's policy", () => {
     for (const off of offs) off();
     policy.dispose();
   });
+});
+
+it("desk.search asks the selected palette providers and returns limited matches", async () => {
+  const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+  const stub = browserStub({ ...registry.handlers });
+  const client = new BridgeClient(stub);
+  const hub = new PolicyHub(client);
+  const asked: unknown[] = [];
+  let activated = false;
+  hub.apply([
+    plugin("desk.palette", {}),
+    plugin("example.files", {
+      paletteProviders: [{ command: "example.files.find", title: "Files" }],
+    }),
+  ]);
+  installPalette({ hub });
+  hub.commands.define("example.files.find", {
+    owner: "example.files",
+    title: "Find files",
+    agent: { description: "Read file search results", readOnly: true },
+    run: (args, { caller }) => {
+      asked.push({ args, caller });
+      return {
+        results: ["a", "b"].map((id) => ({
+          id,
+          title: id,
+          actions: [{ command: "example.files.open", title: "Open" }],
+        })),
+      };
+    },
+  });
+  hub.commands.define("example.files.open", {
+    owner: "example.files",
+    title: "Open a file",
+    run: () => {
+      activated = true;
+    },
+  });
+  await hub.commands.settled();
+  expect(hub.commands.readOnly("desk.search")).toBe(true);
+  expect(
+    await hub.commands.run("desk.search", { query: "  notes  ", groups: ["Files"], limit: 1 }),
+  ).toMatchObject({
+    groups: [{ provider: "example.files.find", title: "Files", results: [{ id: "a" }] }],
+  });
+  await invokeAsEris(client, "desk.search", { query: "notes", groups: ["Files"], limit: 1 });
+  expect(asked).toEqual([
+    { args: { query: "notes", limit: 1 }, caller: undefined },
+    { args: { query: "notes", limit: 1 }, caller: "agent:eris" },
+  ]);
+  expect(activated).toBe(false);
 });

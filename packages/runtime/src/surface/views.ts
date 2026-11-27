@@ -1,11 +1,12 @@
 /**
- * Views: what a pane can show. Each has a title for the title bar and a body that may keep itself
+ * Views: what a tab can show. Each has a title for the title bar and a body that may keep itself
  * up to date (the agent screen follows its A2A card and tasks; the shortcut list follows the keymap).
  * The calendar, tomorrow and notes samples are universal views with inline data (ADR 0103).
  */
 import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
+import { viewIcon } from "../shell/plugin-icons";
 import type { DeskState } from "../shell/state";
 import { ENDUE_AGENT_VIEW, ENDUE_SPACE_VIEW, enduePresence } from "../system/endue-ids";
 import { isLocalAgent, LOCAL_VIEW, localName } from "../system/local-ids";
@@ -21,12 +22,12 @@ import { launcherBody } from "./samples/launcher";
 import { notesBody } from "./samples/notes";
 import { tomorrowView } from "./samples/tomorrow";
 import { universalBody } from "./samples/universal";
-import { findLeaf, leaves, panesOf } from "./tree";
+import { shownTab } from "./tree";
 
-/** Where a view is shown: its surface and pane. */
+/** Where a view is shown: its surface and tab. */
 export interface Where {
   surface: string;
-  pane: string;
+  tab: string;
 }
 
 export interface Mounted {
@@ -45,7 +46,7 @@ export interface View {
 const still = (el: HTMLElement): Mounted => ({ el });
 
 /**
- * The view a pane shows. A pane named after its surface whose plugin the runtime handed over shows
+ * The view a tab shows. A tab named after its surface whose plugin the runtime handed over shows
  * that plugin's surface, so a profile that places `endue.calendar` gets the plugin, not a sample.
  */
 export function resolveView(
@@ -57,16 +58,9 @@ export function resolveView(
   return view;
 }
 
-/** The pane whose view the title bar names: the focused one, else the first. */
-export function activeLeaf(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement) {
-  const s = ctx.store.get();
-  const tree = panesOf(p);
-  return (s.focused === p.id && s.pane ? findLeaf(tree, s.pane) : undefined) ?? leaves(tree)[0];
-}
-
-/** The view the title bar names, as the pane resolves it (a plugin's surface when it holds one). */
+/** The view the title bar names: the one the tab shown shows (a plugin's surface when it holds one). */
 export function activeView(ctx: Pick<ShellCtx, "store">, p: SurfacePlacement): string {
-  return resolveView(ctx.store.get(), p, activeLeaf(ctx, p)?.view ?? p.id);
+  return resolveView(ctx.store.get(), p, shownTab(p).view);
 }
 
 export function viewOf(ctx: ShellCtx, view: string): View {
@@ -76,7 +70,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const adopted = s.adopted.find((a) => a.id === id);
     const name = adopted?.title ?? id;
     return {
-      icon: "box",
+      icon: viewIcon(view),
       title: name,
       sub: "",
       byEris: false,
@@ -91,7 +85,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
   switch (view) {
     case "calendar":
       return {
-        icon: "calendar",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceCalendar"),
         sub: ctx.tr("thisWeek"),
         byEris: false,
@@ -99,7 +93,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "tomorrow":
       return {
-        icon: "list",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceTomorrow"),
         sub: ctx.tr("forTomorrow"),
         byEris: true,
@@ -107,7 +101,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "notes":
       return {
-        icon: "note",
+        icon: viewIcon(view),
         title: ctx.tr("surfaceNotes"),
         sub: ctx.tr("notesHint"),
         byEris: false,
@@ -115,7 +109,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "launcher":
       return {
-        icon: "plus",
+        icon: viewIcon(view),
         title: ctx.tr("launcherTitle"),
         sub: ctx.tr("launcherHint"),
         byEris: false,
@@ -123,7 +117,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       };
     case "keys":
       return {
-        icon: "settings",
+        icon: viewIcon(view),
         title: ctx.tr("keysTitle"),
         sub: ctx.tr("keysHint"),
         byEris: false,
@@ -134,7 +128,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(LOCAL_VIEW.length) as Parameters<typeof localAgentBody>[1];
     const running = s.localRuns.find((r) => r.agent === id && r.state === "running");
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: ctx.tr("agentScreen", { name: localName(s.localAgents, id) }),
       sub: running?.prompt ?? "",
       byEris: running ? s.erisRuns.includes(running.runId) : false,
@@ -145,7 +139,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(ENDUE_AGENT_VIEW.length);
     const agent = s.endue.agents.find((a) => a.id === id);
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: agent?.name || endueText(s.lang, "badge"),
       sub: agent ? presenceText(s.lang, enduePresence(agent, s.endue.conversations)) : "",
       byEris: false,
@@ -156,7 +150,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const id = view.slice(ENDUE_SPACE_VIEW.length);
     const space = s.endue.spaces.find((sp) => sp.id === id);
     return {
-      icon: "target",
+      icon: viewIcon(view),
       title: space?.name || endueText(s.lang, "spaceBadge"),
       sub: space?.goal ?? "",
       byEris: false,
@@ -168,7 +162,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
     const name = s.agents.find((a) => a.id === id)?.name ?? id;
     const goal = s.tasks.find((t) => t.targetAgentId === id && t.status === "working")?.goal ?? "";
     return {
-      icon: "user",
+      icon: viewIcon(view),
       title: ctx.tr("agentScreen", { name }),
       sub: goal,
       byEris: false,
@@ -178,7 +172,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
   const name = view.replace(/^(file|recent):/, "");
   const item = s.drawer.find((d) => d.id === name);
   return {
-    icon: view.startsWith("recent:") ? "sparkle" : "file",
+    icon: viewIcon(view),
     title: item?.name ?? name.replace(/^recent-/, ""),
     sub: view.startsWith("recent:") ? ctx.tr("recent") : ctx.tr("file"),
     byEris: view.startsWith("recent:"),

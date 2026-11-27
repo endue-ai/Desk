@@ -7,6 +7,7 @@
 //! redirect). What a view shows comes back through [`Core::web_changed`] as `web.changed` for its
 //! caller. A view ends with `web.close`, when its plugin stops, when a grant that covered it goes,
 //! and when the shell says so (its window's surface slept, went away or moved out of the desk).
+//! Reading a view's page and acting in it is `core_web_control.rs`.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -14,11 +15,16 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use desk_bridge::{
     BridgeEvent, ErrorCode, Permission, WebChangedData, WebChangedEvent, WebCloseParams,
     WebCloseResult, WebFocusParams, WebFocusResult, WebGoParams, WebGoResult, WebLoadParams,
-    WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult, WebStep,
+    WebLoadResult, WebOpenParams, WebOpenResult, WebPlaceParams, WebPlaceResult,
 };
 
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::{Target, scope_allows};
+
+#[path = "core_web_views.rs"]
+mod views;
+
+pub use views::{WebError, WebHistoryTarget, WebViews};
 
 /// How many web views one caller holds at once.
 pub const MAX_WEB_VIEWS: usize = 16;
@@ -31,6 +37,18 @@ pub struct WebPlace {
     pub width: f64,
     pub height: f64,
     pub shown: bool,
+    pub fill: bool,
+}
+
+impl WebPlace {
+    /// Resolve the box in a pane measured in CSS pixels.
+    pub fn in_pane(mut self, width: f64, height: f64) -> Self {
+        if self.fill {
+            self.width = (width - self.x).max(0.0);
+            self.height = (height - self.y).max(0.0);
+        }
+        self
+    }
 }
 
 /// What a view shows now.
@@ -47,34 +65,12 @@ pub struct WebState {
     pub closed: bool,
 }
 
-/// Why the shell could not do what a call asked.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WebError {
-    /// The view, or the surface it was to open in, is not on the desk.
-    NotFound(String),
-    /// No view can show there: the window is out of the canvas.
-    Unsupported(String),
-    Failed(String),
-}
-
-/// What shows web views: the shell's compositor and its web host. Called on the bridge's own
-/// threads, never on the shell's event loop.
-pub trait WebViews: Send + Sync {
-    /// Open view `view` in the window whose surface host is `surface`, hidden, on `url` if any.
-    fn open(&self, surface: &str, view: &str, url: Option<&str>) -> Result<(), WebError>;
-    fn place(&self, view: &str, place: WebPlace) -> Result<(), WebError>;
-    fn load(&self, view: &str, url: &str) -> Result<(), WebError>;
-    fn go(&self, view: &str, step: WebStep) -> Result<(), WebError>;
-    /// Give the view's page the keys.
-    fn focus(&self, view: &str) -> Result<(), WebError>;
-    /// Close the view; one that is gone already is no error.
-    fn close(&self, view: &str);
-}
-
 struct Entry {
     caller: String,
     scope: Permission,
     surface: String,
+    /// The address its page shows, as the shell last said; empty before its first page.
+    url: String,
 }
 
 /// The views callers opened, by id, and what shows them once a shell gave it.
@@ -89,10 +85,12 @@ fn lock(web: &Mutex<Web>) -> MutexGuard<'_, Web> {
     web.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn failed(why: WebError) -> desk_bridge::BridgeError {
+pub(crate) fn failed(why: WebError) -> desk_bridge::BridgeError {
     match why {
         WebError::NotFound(message) => error(ErrorCode::NotFound, message),
         WebError::Unsupported(message) => error(ErrorCode::Unsupported, message),
+        WebError::Invalid(message) => error(ErrorCode::InvalidValue, message),
+        WebError::Changed(message) => error(ErrorCode::Cancelled, message),
         WebError::Failed(message) => error(ErrorCode::Internal, message),
     }
 }
@@ -152,6 +150,18 @@ impl Core {
         }
     }
 
+    /// The shell's views and the address the caller's view `view` shows now.
+    pub(crate) fn web_page(
+        &self,
+        caller: &str,
+        view: &str,
+    ) -> Result<(Arc<dyn WebViews>, String), desk_bridge::BridgeError> {
+        let views = self.web_view(caller, view)?;
+        let web = lock(&self.web);
+        let at = web.entries.get(view).map(|e| e.url.clone());
+        Ok((views, at.unwrap_or_default()))
+    }
+
     pub(crate) fn web_open(&self, caller: &str, params: WebOpenParams) -> Answer {
         let scope = Permission::WebBrowse(params.scope);
         let target = params.url.as_deref().map_or(Target::None, Target::Url);
@@ -193,6 +203,7 @@ impl Core {
                 caller: caller.to_owned(),
                 scope,
                 surface: surface.clone(),
+                url: String::new(),
             };
             web.entries.insert(view_id.clone(), entry);
             (views, view_id, before)
@@ -217,6 +228,7 @@ impl Core {
             width: params.width,
             height: params.height,
             shown: params.shown != Some(false),
+            fill: params.fill.unwrap_or_default(),
         };
         views.place(&params.view_id, place).map_err(failed)?;
         json(WebPlaceResult {})
@@ -280,7 +292,10 @@ impl Core {
     pub fn web_changed(&self, view: &str, state: WebState) {
         let caller = {
             let mut web = lock(&self.web);
-            let caller = web.entries.get(view).map(|e| e.caller.clone());
+            let caller = web.entries.get_mut(view).map(|entry| {
+                entry.url.clone_from(&state.url);
+                entry.caller.clone()
+            });
             if state.closed {
                 web.entries.remove(view);
             }

@@ -1,11 +1,13 @@
-//! The endue Desk shell on winit and CEF (ADR 0143, Stage 1 of #32): windows holding CEF browsers,
+//! The endue shell on winit and CEF (ADR 0143, Stage 1 of #32): windows holding CEF browsers,
 //! the desk's URL schemes, CEF's message pump, the desk booted through desk-boot, the bridge over
 //! CEF's process messages (#43), the plugin scheme (#42) and the shell's services (#45): the tray,
 //! the menus, global shortcuts, the file dialog, one desk per data folder, files opened with the
-//! desk, the palette, the floating Eris and the computer-use banner; and its own updates (#47).
+//! desk, the palette, the floating Eris and the computer-use banner; and its own updates (#47). It
+//! speaks the desk's language (`language`, `words`, ADR 0276).
 
 pub mod app;
 pub mod app_windows;
+mod cef_input;
 pub mod client;
 pub mod commands;
 pub mod compositor_window;
@@ -22,7 +24,7 @@ pub mod guard;
 pub mod host;
 pub mod hotkeys;
 pub mod instance;
-pub mod island;
+pub mod language;
 pub mod login;
 #[cfg(target_os = "macos")]
 pub mod mac;
@@ -53,7 +55,9 @@ pub mod run_event;
 pub mod sandbox;
 pub mod scheme;
 pub mod stall_restart;
+pub mod system_notices;
 pub mod tray;
 pub mod update;
 pub mod web_host;
 pub mod window;
+pub mod words;

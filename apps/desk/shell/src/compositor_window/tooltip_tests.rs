@@ -279,9 +279,9 @@ fn the_title_is_drawn_in_the_theme_and_takes_no_pointer() {
     let stats = compositor.render(&scene, &target.view, target.size);
     let rgba = target.read_rgba(&gpu.device, &gpu.queue).unwrap();
     let at = |x: usize, y: usize| &rgba[(y * 200 + x) * 4..(y * 200 + x) * 4 + 3];
-    // The box's fill is the theme's tooltip colour, #403a49; the text is light on it.
+    // The box's fill is the theme's tooltip colour, Stone's #403d37 (ADR 0265); the text is light on it.
     let fill = at(40, 21);
-    let want = [0x40, 0x3a, 0x49];
+    let want = [0x40, 0x3d, 0x37];
     assert!(
         fill.iter().zip(want).all(|(c, w)| c.abs_diff(w) <= 2),
         "{fill:?}"

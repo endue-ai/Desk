@@ -115,10 +115,9 @@ export const runtimeResources = (pin, os, cefFiles) =>
 /**
  * The whole config for `target`. `paths`: `binaries` (the cargo build's folder), `out`, `stage`
  * (where the helpers, the CEF copies, the built-in plugins and the Linux launcher were put), `cef`
- * (the CEF folder), `dist` (the built shell). `hook`: the command cargo-packager runs before each
- * format.
+ * (the CEF folder), `dist` (the built shell).
  */
-export function packagerConfig({ base, pin, target, version, paths, hook, signCommand }) {
+export function packagerConfig({ base, pin, target, version, paths, signCommand }) {
   const os = osOf(target);
   const config = {
     // Named, or cargo-packager 0.11.8 looks for a Cargo.toml by entering the config file as a folder.
@@ -132,7 +131,11 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
     binariesDir: os === "linux" ? join(paths.stage, "bin") : paths.binaries,
   };
   // The built-in plugins sit beside the shell, where the desk looks when DESK_PLUGIN_DIRS is unset.
+  const cli = os === "windows" ? ["endue.exe", "desk.exe"] : ["endue", "desk"];
+  const activate = os === "windows" ? "activate.ps1" : "activate";
   const runtime = [
+    ...cli.map((name) => ({ src: join(paths.binaries, name), target: `cli/${name}` })),
+    { src: join(PACKAGER, "cli", activate), target: `cli/${activate}` },
     { src: paths.dist, target: "shell" },
     { src: join(paths.stage, "plugins"), target: "plugins" },
   ];
@@ -144,8 +147,11 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
       ...config.macos,
       frameworks: [join(paths.cef, "Chromium Embedded Framework.framework"), ...helpers],
     };
-    config.resources = [...runtime, ...licences(pin, paths.cef)];
-    if (hook) config.beforeEachPackageCommand = hook;
+    config.resources = [
+      ...runtime,
+      { src: join(paths.stage, "install-endue"), target: "install-endue" },
+      ...licences(pin, paths.cef),
+    ];
   } else {
     const cefFiles = join(paths.stage, "cef");
     config.resources = [
@@ -161,8 +167,8 @@ export function packagerConfig({ base, pin, target, version, paths, hook, signCo
     if (os === "windows") {
       // The endue:// scheme and "Open with" entries that never take an extension's default (#310).
       const { nsis, wix } = windowsRegistrations(PACKAGER);
-      config.nsis = { ...config.nsis, ...nsis };
-      config.wix = { ...config.wix, ...wix };
+      config.nsis = { ...config.nsis, ...nsis, template: join(paths.stage, "installer.nsi") };
+      config.wix = { ...config.wix, ...wix, template: join(paths.stage, "main.wxs") };
       if (signCommand) config.windows = { ...config.windows, signCommand };
     }
   }

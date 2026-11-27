@@ -24,8 +24,9 @@ import {
 
 /** A title bar's top to its bottom line. */
 const BAR = TITLE_BAR + 1;
-/** A title bar's tools, from the window's right edge: what does not drag it. */
-const TOOLS = 171;
+/** A title bar's end, from the window's right edge, that desk-wm keeps out of the stretch that
+ * drags it: its three tools and the marks' room (`TITLE_END` and the border, ADR 0255). */
+const TOOLS = 129;
 /** How much of the stretch that drags a window stays in sight at the app's sides. */
 const GRAB = 48;
 /** Longer than a window's glide into reach (`--motion-base`, 220 ms). */

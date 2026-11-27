@@ -66,14 +66,13 @@ export function onePath(path: string): string {
 
 /**
  * Whether an open is the person's own choice, which answers the opener's ask for the file: the desk's
- * own (keys, the palette, the file picker, a restored session), or a plugin's on the person's click
- * (Explorer) with the opener the desk's rules name. Never an agent's, and never a plugin naming the
- * plugin to open with, which could name itself.
+ * own (keys, the palette, the file picker, a restored session), or an open the core authenticated
+ * on the person's behalf. The latter always uses the desk's rule-selected opener.
  */
 export function personChose(from: CommandCaller, named: string | undefined): boolean {
   const { caller } = from;
   if (caller === undefined) return true;
-  return !caller.startsWith("agent:") && named === undefined;
+  return from.fileOpenGranted === true && named === undefined;
 }
 
 /** The read scope an opener carries for a file: its whole folder, as the openers ask. */

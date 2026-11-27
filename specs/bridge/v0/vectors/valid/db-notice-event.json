@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "a notice as it arrives",
+  "instance": {
+    "event": "db.notice",
+    "data": {
+      "sessionId": "d-1",
+      "notice": {
+        "severity": "NOTICE",
+        "localSeverity": "NOTICE",
+        "code": "00000",
+        "message": "table \"scratch\" does not exist, skipping"
+      }
+    }
+  }
+}

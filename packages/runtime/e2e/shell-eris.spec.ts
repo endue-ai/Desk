@@ -267,3 +267,60 @@ test("talking over Eris stops her", async ({ page }) => {
   await step(page, 400);
   await expect(page.locator(".eris")).toHaveAttribute("aria-label", "Eris");
 });
+
+test("working moons cross both sides of the glass and leave independently", async ({ page }) => {
+  await page.evaluate(() => {
+    const { store } = window.__shell.desk;
+    const run = {
+      agent: "codex",
+      caller: "desk",
+      prompt: "Review",
+      cwd: "/workspace",
+      access: "read-only",
+      state: "running",
+      startedAt: "2026-01-01T00:00:00Z",
+      text: "",
+      tools: 0,
+    } as const;
+    store.set({
+      erisRuns: ["one", "two"],
+      localRuns: ["one", "two", "manual"].map((runId) => ({ ...run, runId })),
+    });
+  });
+  await step(page, 16);
+  const helpers = page.locator(".eris [data-helper]");
+  await expect(helpers).toHaveCount(2);
+  await expect(page.locator(".eris")).toBeVisible();
+  const crossings = await page.evaluate(() => {
+    const sides = new Map<string, Set<string>>();
+    for (let frame = 0; frame < 80; frame++) {
+      window.__shell.step(80);
+      const shell = document.querySelector(".eris-mesh")?.getBoundingClientRect();
+      if (!shell) throw new Error("no shell");
+      for (const moon of document.querySelectorAll<HTMLElement>(".eris [data-helper]")) {
+        const box = moon.getBoundingClientRect();
+        // A transit must overlap the interior, not just pass beside the orb.
+        if (
+          Math.hypot(box.x + box.width / 2 - shell.x - 64, box.y + box.height / 2 - shell.y - 67) >
+          40
+        )
+          continue;
+        const id = moon.dataset.helper ?? "";
+        const seen = sides.get(id) ?? new Set();
+        seen.add(Number(moon.style.zIndex) > 100 ? "front" : "rear");
+        sides.set(id, seen);
+      }
+    }
+    return Object.fromEntries([...sides].map(([id, seen]) => [id, [...seen].sort()]));
+  });
+  expect(crossings).toEqual({ one: ["front", "rear"], two: ["front", "rear"] });
+  await page.locator(".eris").screenshot({ path: test.info().outputPath("working-moons.png") });
+  await page.evaluate(() =>
+    window.__shell.desk.store.set((s) => ({
+      localRuns: s.localRuns.map((run) => (run.runId === "one" ? { ...run, state: "done" } : run)),
+    })),
+  );
+  await step(page, 16);
+  await expect(helpers).toHaveCount(1);
+  await expect(helpers).toHaveAttribute("data-helper", "two");
+});

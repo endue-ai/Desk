@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PermApprovalData, PermApprovalDoneData } from "../../../packages/bridge/src/index";
+import type { PermApprovalData } from "../../../packages/bridge/src/index";
 import { type Handlers, MANAGE, type Mounted, mount, plugin } from "./harness";
 
 function core(extra: Handlers = {}): Handlers {
@@ -42,9 +42,6 @@ async function held(handlers: Handlers, ...approvals: PermApprovalData[]): Promi
   await mounted.settle();
   return mounted;
 }
-
-const done = (mounted: Mounted, data: PermApprovalDoneData) =>
-  mounted.host.emit({ event: "perm.approval.done", data });
 
 describe("the approval card (ADR 0078)", () => {
   it("names the agent, the action, the path, the size and the diff", async () => {
@@ -107,16 +104,18 @@ describe("the approval card (ADR 0078)", () => {
     for (const choice of ["once", "task", "deny"] as const) {
       await app.answer(choice);
       await settle();
-      if (choice !== "deny") await app.answer("done");
-      await settle();
     }
     expect(params("perm.approve")).toEqual([
       { approvalId: "a-1", answer: "once", scope: MANAGE },
       { approvalId: "a-2", answer: "task", scope: MANAGE },
       { approvalId: "a-3", answer: "deny", scope: MANAGE },
     ]);
-    expect(view.statuses).toContain("Allowed Agent mira once: Write a file ~/Notes/a.md.");
-    expect(view.statuses).toContain("Allowed Agent mira for this task: Write a file ~/Notes/a.md.");
+    expect(view.statuses).toContainEqual(
+      expect.stringContaining("Allowed Agent mira once: Write a file ~/Notes/a.md."),
+    );
+    expect(view.statuses).toContainEqual(
+      expect.stringContaining("Allowed Agent mira for this task: Write a file ~/Notes/a.md."),
+    );
     expect(view.statuses.at(-1)).toBe("Denied Agent mira: Write a file ~/Notes/a.md.");
     expect(view.approvals.at(-1)).toBeNull();
     expect(host.visible).toBe(false);
@@ -132,6 +131,30 @@ describe("the approval card (ADR 0078)", () => {
     expect(app.key("Escape")).toBe(true);
     await settle();
     expect(params("perm.approve")).toEqual([{ approvalId: "a-1", answer: "deny", scope: MANAGE }]);
+  });
+
+  it("offers an app allowance when the core supplies the app name", async () => {
+    const safari: PermApprovalData = {
+      approvalId: "a-safari",
+      caller: "agent:eris",
+      action: "computer.input.click",
+      permission: { permission: "computer:control" },
+      target: "Safari (com.apple.Safari)",
+      untilStopApp: "Safari",
+    };
+    const { app, view, params, settle } = await held(core(), write("a-file"), safari);
+    expect(view.approvals.at(-1)).toMatchObject({ app: null });
+    await app.answer("app");
+    expect(params("perm.approve")).toEqual([]);
+    await app.answer("deny");
+    await settle();
+    expect(view.approvals.at(-1)).toMatchObject({ app: "Allow in Safari until I stop" });
+    await app.answer("app");
+    expect(params("perm.approve").at(-1)).toEqual({
+      approvalId: "a-safari",
+      answer: "app",
+      scope: MANAGE,
+    });
   });
 
   it("shows a spawn's command line", async () => {
@@ -150,61 +173,31 @@ describe("the approval card (ADR 0078)", () => {
     });
   });
 
-  it("shows the path and the size written once an allowed write ran", async () => {
+  it("moves directly to the next card when a write is approved", async () => {
     const mounted = await held(core(), write("a-1"), spawn);
-    const { app, view, params, settle } = mounted;
-    await app.answer("once");
-    await settle();
-    expect(view.approvals.at(-1)).toMatchObject({
-      kind: "result",
-      approvalId: "a-1",
-      title: "Agent mira is writing a file",
-      text: "Writing ~/Notes/a.md…",
-      undo: false,
-    });
-    done(mounted, { approvalId: "a-1", ok: true, bytesWritten: 21 });
-    await settle();
-    expect(view.approvals.at(-1)).toMatchObject({
-      kind: "result",
-      title: "Agent mira wrote a file",
-      text: "Wrote 21 bytes to ~/Notes/a.md.",
-      undo: false,
-      waiting: 1,
-    });
-    expect(app.key("Escape")).toBe(true);
-    await settle();
-    expect(view.approvals.at(-1)).toMatchObject({ kind: "approval", approvalId: "a-9" });
-    expect(params("cmd.undo")).toEqual([]);
-  });
-
-  it("says when an allowed write failed", async () => {
-    const mounted = await held(core(), write("a-1"));
-    done(mounted, {
-      approvalId: "a-1",
-      ok: false,
-      error: { code: "io_error", message: "disk full" },
-    });
     await mounted.app.answer("once");
     await mounted.settle();
-    expect(mounted.view.approvals.at(-1)).toMatchObject({
-      kind: "result",
-      title: "Agent mira could not write a file",
-      text: "Could not write ~/Notes/a.md: disk full.",
-      undo: false,
+    expect(mounted.view.approvals.at(-1)).toMatchObject({ kind: "approval", approvalId: "a-9" });
+    mounted.host.emit({
+      event: "perm.approval.done",
+      data: {
+        approvalId: "a-1",
+        ok: true,
+        bytesWritten: 21,
+        undoable: true,
+      },
     });
+    await mounted.settle();
+    expect(mounted.view.approvals.at(-1)).toMatchObject({ kind: "approval", approvalId: "a-9" });
+    expect(mounted.params("cmd.undo")).toEqual([]);
   });
 
-  it("offers Undo only when the core can take the write back", async () => {
+  it("dismisses the last approval without requiring a second confirmation", async () => {
     const mounted = await held(core(), write("a-1"));
     await mounted.app.answer("once");
     await mounted.settle();
-    done(mounted, { approvalId: "a-1", ok: true, bytesWritten: 21, undoable: true });
-    await mounted.settle();
-    expect(mounted.view.approvals.at(-1)).toMatchObject({ kind: "result", undo: true });
-    await mounted.app.answer("undo");
-    await mounted.settle();
-    expect(mounted.methods()).toContain("cmd.undo");
     expect(mounted.view.approvals.at(-1)).toBeNull();
+    expect(mounted.host.visible).toBe(false);
   });
 
   it("queues approvals with prompts, one card at a time", async () => {

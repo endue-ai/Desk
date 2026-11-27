@@ -103,10 +103,11 @@ describe("desk.views", () => {
   });
 
   it("several instances ask desk.palette.pick before the surface shows; a cancel draws unbound with Connect a source", async () => {
+    const other = { ...today, id: "example.other" };
     const picks: Array<{ args: unknown; visible: unknown }> = [];
     let answer: (args: unknown) => unknown = () => "desk.fixtures/work";
     const m = await mount({
-      views: [today],
+      views: [today, other],
       commands: {
         "desk.palette.pick": (args) => {
           picks.push({ args, visible: m.host.visible });
@@ -143,7 +144,7 @@ describe("desk.views", () => {
     answer = () => {
       throw new Error("nothing was picked");
     };
-    await m.open({ id: "desk.today" });
+    await m.open({ id: other.id });
     expect(m.shown().map((c) => [c.state, c.kinds])).toEqual([
       ["unbound", ["event"]],
       ["unbound", ["task"]],
@@ -323,7 +324,7 @@ describe("desk.views", () => {
     // A link the desk never opens is said in a toast.
     await m.engine.link("javascript:alert(1)");
     await m.settle();
-    expect(m.view.toasts).toEqual(["Desk could not open the link."]);
+    expect(m.view.toasts).toEqual(["endue could not open the link."]);
   });
 
   it("open hands a universal view to desk.universal.open, with its notice and params, and draws nothing itself", async () => {

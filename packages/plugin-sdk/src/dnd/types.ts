@@ -111,6 +111,8 @@ export interface DropOptions {
   at?(element: unknown): unknown;
   /** The effect it would perform; undefined leaves it to the keys and `effects`. */
   effect?(over: DragOver): DropAnswer | undefined;
+  /** The existing folder this target will copy or move files into. */
+  destination?(over: DragOver): string | undefined;
   /** The effects it prefers, first first, when no key says; copy, move, link by default. */
   effects?: readonly DropEffect[];
 }
@@ -155,7 +157,13 @@ export type DndPluginMessage =
   /** Every type this frame's drop targets accept; the runtime offers it nothing else. */
   | { type: "desk:drop-types"; types: string[] }
   /** The answer to a dragenter or dragover (the runtime's drag id, and that hover's `seq`). */
-  | { type: "desk:drag-status"; drag: number; seq: number; effect: DropAnswer }
+  | {
+      type: "desk:drag-status";
+      drag: number;
+      seq: number;
+      effect: DropAnswer;
+      destination?: string;
+    }
   /** The answer to a drop: the effect performed. */
   | { type: "desk:drop-done"; drag: number; effect: DropAnswer };
 

@@ -21,12 +21,25 @@
         "desk.buffers.list",
         "desk.palette.pick",
         "endue.terminal.new",
-        "endue.git.status"
+        "endue.git.status",
+        "endue.docker.copy-out"
       ]
     },
     {
       "permission": "shell:open",
       "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "shell:open",
+      "paths": ["/**"]
     }
   ],
   "surfaces": [
@@ -46,52 +59,195 @@
       {
         "id": "endue.explorer.reveal",
         "title": "Reveal the file in use in the explorer",
-        "keywords": ["files", "reveal", "locate", "find"]
+        "keywords": ["files", "reveal", "locate", "find"],
+        "description": "Show a file or folder in the explorer: expand the folders down to it, select it and bring the explorer up. path is an absolute path or one under ~, inside one of the explorer's folders (endue.explorer.folders); without it, the file in use. Answers the path, or null when a folder on the way could not be listed.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file or folder to show."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.refresh",
         "title": "Refresh the explorer",
-        "keywords": ["files", "reload", "revert"]
+        "keywords": ["files", "reload", "revert"],
+        "description": "List a folder of the explorer again from disk, or every open folder without path.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder to list again."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.toggle-hidden",
         "title": "Show or hide dotfiles in the explorer",
-        "keywords": ["files", "hidden", "dotfiles"]
+        "keywords": ["files", "hidden", "dotfiles"],
+        "description": "Show or hide dotfiles in the explorer's tree; show true or false sets it, without show it flips. Answers whether they show now.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "show": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.add-folder",
         "title": "Add a folder to the explorer",
-        "keywords": ["files", "folder", "root", "workspace"]
+        "keywords": ["files", "folder", "root", "workspace"],
+        "description": "Add a folder to the explorer's folders, the roots its tree starts from, and show it. path is an absolute path or one under ~; one outside the home folder asks the person first. Answers the path.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder to add."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.remove-folder",
         "title": "Remove a folder from the explorer",
-        "keywords": ["files", "folder", "root"]
+        "keywords": ["files", "folder", "root"],
+        "description": "Take a folder out of the explorer's folders; nothing on disk changes. Answers the folders left.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "One of the explorer's folders."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.new-file",
         "title": "New file in the explorer's folder",
-        "keywords": ["files", "create", "new"]
+        "keywords": ["files", "create", "new"],
+        "description": "Make an empty file named name in folder (an absolute path or one under ~), never over one already there, select it and open it in the plugin that opens its type. Answers its path. Without name the person is asked for one.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder the file goes in."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "The file name, without a folder."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.open-selected",
         "title": "Open the Explorer selection",
-        "keywords": ["files", "selection", "explorer"]
+        "keywords": ["files", "selection", "explorer"],
+        "description": "Open the file at path (an absolute path or one under ~, inside the explorer's folders) in the plugin that opens its type, or expand the folder there; without path, the selection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file or folder to open."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.terminal-here",
         "title": "Open terminal in the Explorer folder",
-        "keywords": ["files", "selection", "explorer"]
+        "keywords": ["files", "selection", "explorer"],
+        "description": "Open a terminal in the folder of path (a file's folder, or the folder itself), inside the explorer's folders; without path, the selection's.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "A file or folder."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.git-here",
         "title": "Git status in the Explorer folder",
-        "keywords": ["files", "selection", "explorer"]
+        "keywords": ["files", "selection", "explorer"],
+        "description": "Show Git's status for the repository holding path, inside the explorer's folders; without path, the selection's.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "A file or folder in the repository."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.show-in-file-manager",
         "title": "Show Explorer selection in the system file manager",
-        "keywords": ["files", "selection", "explorer"]
+        "keywords": ["files", "selection", "explorer"],
+        "description": "Show the file or folder at path in the system file manager (Finder on macOS), inside the explorer's folders; without path, the selection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file or folder to show."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.copy-path",
@@ -101,17 +257,71 @@
       {
         "id": "endue.explorer.new-folder",
         "title": "New folder in the explorer's folder",
-        "keywords": ["files", "folder", "create", "new", "mkdir"]
+        "keywords": ["files", "folder", "create", "new", "mkdir"],
+        "description": "Make a folder named name in folder (an absolute path or one under ~), never over one already there, and select it. Answers its path. Without name the person is asked for one.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder the new one goes in."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "The folder name."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.rename",
         "title": "Rename the Explorer selection",
-        "keywords": ["files", "selection", "explorer", "rename", "name"]
+        "keywords": ["files", "selection", "explorer", "rename", "name"],
+        "description": "Give the file or folder at path (an absolute path or one under ~, inside the explorer's folders) the new name in the same folder, never over one already there; the desk's undo reverses it. To move it to another folder use endue.explorer.move. Answers the new path.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file or folder to rename."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "The new name, without a folder."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.trash",
         "title": "Move the Explorer selection to the Trash",
-        "keywords": ["files", "selection", "explorer", "delete", "remove", "trash", "bin"]
+        "keywords": ["files", "selection", "explorer", "delete", "remove", "trash", "bin"],
+        "description": "Move the file or folder at path (an absolute path or one under ~, inside the explorer's folders) to the OS Trash, after the person says yes. Answers the path, or null when they kept it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file or folder to trash."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.explorer.select-all",
@@ -142,6 +352,260 @@
         "id": "endue.explorer.find-below",
         "title": "Find files by name in the Explorer folder and below",
         "keywords": ["files", "explorer", "find", "search", "name", "recursive"]
+      },
+      {
+        "id": "endue.explorer.folders",
+        "title": "Explorer: its folders as data",
+        "keywords": ["explorer", "folders", "roots"],
+        "description": "The explorer's folders (the roots its tree starts from, which reveal, rename, trash and the selection commands work inside), whether dotfiles show, the selected path and the paths selected together.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "folders": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "showHidden": {
+              "type": "boolean"
+            },
+            "selected": {
+              "type": ["string", "null"]
+            },
+            "marked": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.explorer.list",
+        "title": "Explorer: a folder's entries as data",
+        "keywords": ["explorer", "list", "folder", "files", "ls"],
+        "description": "The entries of the folder at path (an absolute path or one under ~; the explorer's first folder without it), folders first, each with name, path, kind (file, dir or symlink), size in bytes for files and modifiedAt. Dotfiles only when hidden is true, or when the explorer shows them. Answers up to limit entries (200, at most 1000), total, and more when there were more. A folder outside the home folder asks the person first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder to list."
+            },
+            "hidden": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["file", "dir", "symlink"]
+                  },
+                  "size": {
+                    "type": "integer"
+                  },
+                  "modifiedAt": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "total": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.explorer.search",
+        "title": "Explorer: find files by name as data",
+        "keywords": ["explorer", "find", "search", "files", "name"],
+        "description": "Files and folders whose name holds query (plain text, any case) in folder (an absolute path or one under ~; the explorer's first folder without it) and every folder below it, nearest first. Names only: contents are not read. Answers up to limit results (50, at most 500), each with path, name and kind, and stopped (limit, folders or null) when the walk ended early.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder to search below."
+            },
+            "hidden": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "results": {
+              "type": "array"
+            },
+            "stopped": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.explorer.read",
+        "title": "Explorer: a file's text as data",
+        "keywords": ["explorer", "read", "file", "text", "contents", "cat"],
+        "description": "The text of the file at path (an absolute path or one under ~), from its start, up to maxBytes bytes (16384, at most 262144): size in bytes, text (null for a binary file) and truncated when the file is longer. A file outside the home folder asks the person first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The file to read."
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 262144
+            }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            },
+            "binary": {
+              "type": "boolean"
+            },
+            "text": {
+              "type": ["string", "null"]
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.explorer.move",
+        "title": "Explorer: move or copy files into a folder",
+        "keywords": ["explorer", "move", "copy", "mv", "cp"],
+        "description": "Move the files and folders at paths (each an absolute path or one under ~) into folder, or copy them with copy true, as a drop in the explorer does: one step the desk's undo reverses. A name already in folder is asked of the person (keep both, replace or skip), never overwritten unasked. Answers done, effect (move, copy or none) and folder.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096,
+                "description": "A file or folder."
+              }
+            },
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "The folder they go into."
+            },
+            "copy": {
+              "type": "boolean"
+            }
+          },
+          "required": ["paths", "folder"],
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "done": {
+              "type": "boolean"
+            },
+            "effect": {
+              "type": "string",
+              "enum": ["move", "copy", "none"]
+            },
+            "folder": {
+              "type": "string"
+            },
+            "from": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "agent": true
       }
     ],
     "keys": [

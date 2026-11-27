@@ -7,14 +7,14 @@
     <ComponentGroup Id="DeskRegistrations">
       <Component Id="DeskUrlScheme" Directory="INSTALLDIR" Guid="*">
         <RegistryKey Root="HKCR" Key="endue">
-          <RegistryValue Type="string" Value="URL:endue Desk link" KeyPath="yes" />
+          <RegistryValue Type="string" Value="URL:endue link" KeyPath="yes" />
           <RegistryValue Name="URL Protocol" Type="string" Value="" />
           <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; --single-argument %1" />
         </RegistryKey>
       </Component>
       <Component Id="DeskOpenWith" Directory="INSTALLDIR" Guid="*">
         <RegistryKey Root="HKCR" Key="ai.endue.desk.file">
-          <RegistryValue Type="string" Value="endue Desk document" KeyPath="yes" />
+          <RegistryValue Type="string" Value="endue document" KeyPath="yes" />
           <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; --single-argument %1" />
         </RegistryKey>
           <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />

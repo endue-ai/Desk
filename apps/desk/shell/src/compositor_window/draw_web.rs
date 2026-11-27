@@ -1,10 +1,8 @@
 //! A pane's web view (#273, ADR 0216): the live web page a plugin shows in its window, drawn over
 //! the plugin's own surface at the box the plugin gave (`web.place`), in the plugin surface's CSS
-//! pixels from its top left. Only what lies inside the pane is drawn, and of that only what the
-//! view's texture holds: a page not yet painted at a new size shows the picture it has from its
-//! top left, never stretched, as a plugin's surface does. The pointer on it is the view's, at the
-//! view's own point; the plugin's surface shows through wherever the view does not cover it, and
-//! until the view first paints.
+//! pixels from its top left. A fixed box is clipped to the pane and to the available pixels.
+//! A view that fills its pane uses the pane as drawn. While CEF repaints, its last picture
+//! fits that box and the pointer is mapped back to the picture's CSS pixels.
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::{Rect, Scene, SceneError, SurfaceNode};
@@ -23,60 +21,62 @@ pub fn web_view(
     shown: &mut Shown,
     placed: &mut Vec<(String, Rect)>,
 ) -> Result<(), SceneError> {
-    let Some([x, y, width, height]) = (from.web)(host) else {
+    let Some(place) = (from.web)(host) else {
         return Ok(());
     };
     let surface = surface_of(host);
     let Some(texture) = (from.surface)(&surface) else {
         return Ok(());
     };
-    let full = Rect::new(into.to.x + x, into.to.y + y, width, height);
-    let Some((node, from_corner)) = cut(full, into.to, texture, from.scale) else {
+    let place = place.in_pane(f64::from(into.to.width), f64::from(into.to.height));
+    let full = Rect::new(
+        into.to.x + place.x as f32,
+        into.to.y + place.y as f32,
+        place.width as f32,
+        place.height as f32,
+    );
+    let Some((node, origin, per_unit)) = cut(full, into.to, texture, from.scale, place.fill) else {
         return Ok(());
     };
     let node = scene.insert(into.group, node)?;
-    shown.push((node, target(&surface, from_corner)));
+    let mut input = target(&surface, origin);
+    input.per_unit = per_unit;
+    shown.push((node, input));
     // Its whole box on the desk: the screen its page's popups are placed in (#156).
     placed.push((surface, full.translate(into.at)));
     Ok(())
 }
 
-/// What is drawn of a view laid out at `full` in a pane at `pane`, from `texture` at `scale`
-/// pixels a CSS pixel: the node, and how far its top left lies from the view's own. `None` when
-/// nothing of the view lies in the pane.
+/// The clipped node and its mapping from scene coordinates to the painted view's CSS pixels.
 pub fn cut(
     full: Rect,
     pane: Rect,
     (id, (tw, th)): Texture,
     scale: f32,
-) -> Option<(SurfaceNode, Vec2)> {
-    let (tw, th) = (tw.max(1) as f32, th.max(1) as f32);
-    let (x0, y0) = (full.x.max(pane.x), full.y.max(pane.y));
-    let x1 = (full.x + full.width)
-        .min(pane.x + pane.width)
-        .min(full.x + tw / scale);
-    let y1 = (full.y + full.height)
-        .min(pane.y + pane.height)
-        .min(full.y + th / scale);
-    if x1 <= x0 || y1 <= y0 {
+    fill: bool,
+) -> Option<(SurfaceNode, Vec2, Vec2)> {
+    let picture = Vec2::new(tw.max(1) as f32, th.max(1) as f32) / scale;
+    let size = Vec2::new(full.width, full.height);
+    let extent = if fill { size } else { size.min(picture) };
+    let start = full.min().max(pane.min());
+    let end = (full.min() + extent).min(pane.min() + Vec2::new(pane.width, pane.height));
+    let visible = end - start;
+    if visible.x <= 0.0 || visible.y <= 0.0 {
         return None;
     }
-    let off = Vec2::new(x0 - full.x, y0 - full.y);
-    let uv = Rect::new(
-        off.x * scale / tw,
-        off.y * scale / th,
-        (x1 - x0) * scale / tw,
-        (y1 - y0) * scale / th,
-    );
+    let per_unit = if fill { picture / size } else { Vec2::ONE };
+    let origin = (start - full.min()) * per_unit;
+    let uv_start = origin / picture;
+    let uv_size = visible * per_unit / picture;
     let node = SurfaceNode {
-        uv,
-        ..SurfaceNode::new(Rect::new(x0, y0, x1 - x0, y1 - y0), id)
+        uv: Rect::new(uv_start.x, uv_start.y, uv_size.x, uv_size.y),
+        ..SurfaceNode::new(Rect::new(start.x, start.y, visible.x, visible.y), id)
     };
-    Some((node, off))
+    Some((node, origin, per_unit))
 }
 
 /// No surface has a web view (checks of the rest of the scene).
 #[cfg(test)]
-pub fn none(_: &str) -> Option<[f32; 4]> {
+pub fn none(_: &str) -> Option<desk_core::WebPlace> {
     None
 }

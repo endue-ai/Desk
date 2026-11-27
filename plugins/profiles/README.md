@@ -1,6 +1,6 @@
 # plugins/profiles
 
-`desk.profiles`, profiles (like Emacs's `init.el`, switched while Desk runs). A `policy` plugin: no
+`desk.profiles`, profiles (like Emacs's `init.el`, switched while endue runs). A `policy` plugin: no
 code, only `contributes.profiles` (ADR 0017). Formerly `plugins/modes`: "mode" means something else in
 Emacs, so the plugin set plus settings is called a profile, here and in `init.yaml` (`profile:`).
 

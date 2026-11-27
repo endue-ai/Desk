@@ -1,0 +1,942 @@
+{
+  "id": "endue.docker-studio",
+  "name": "Docker Studio",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A graphical client for the Docker engine: a live dashboard of resource use and what needs attention, containers grouped by Compose stack with their logs, files, stats and a shell, images with their layers and a run form, volumes, networks, stacks with their service map, builds with their steps, and AI that diagnoses failures and writes Dockerfiles. Every operation runs the docker program without a shell.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["docker"]
+    },
+    {
+      "permission": "brain:ask"
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["endue.terminal.run", "desk.files.open"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Docker Studio",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.docker-studio.open",
+        "title": "Docker Studio: open",
+        "keywords": ["docker", "containers", "images", "compose", "client"],
+        "description": "Open Docker Studio, on a section or a container when one is named.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "section": {
+              "type": "string",
+              "enum": [
+                "dashboard",
+                "containers",
+                "images",
+                "volumes",
+                "networks",
+                "compose",
+                "builds",
+                "hub",
+                "contexts",
+                "settings"
+              ],
+              "description": "The section to show"
+            },
+            "container": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A container's name or id"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.docker-studio.refresh",
+        "title": "Docker Studio: refresh",
+        "keywords": ["docker", "reload"],
+        "description": "Read the engine and every list again.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.state",
+        "title": "Docker Studio: the engine as data",
+        "keywords": ["docker", "status", "summary"],
+        "description": "The Docker engine at a glance: version, containers running of all, containers in trouble and why, images, volumes, Compose stacks and disk use.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.containers",
+        "title": "Docker Studio: list containers",
+        "keywords": ["docker", "ps"],
+        "description": "Every container with its image, state, health, exit code, problem, stack, service and ports; only those in one state when asked (running, exited, paused, or problems).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": ["running", "exited", "paused", "created", "restarting", "problems"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.container",
+        "title": "Docker Studio: a container's detail",
+        "keywords": ["docker", "inspect"],
+        "description": "One container in detail: state, command, restarts, ports, mounts, networks and the names of its variables (never their values).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "container": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A container's name or id"
+            }
+          },
+          "required": ["container"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.logs",
+        "title": "Docker Studio: a container's last log lines",
+        "keywords": ["docker", "logs", "tail"],
+        "description": "The last lines a container wrote, with their times (200 unless tail says, at most 2000).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "container": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A container's name or id"
+            },
+            "tail": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000
+            }
+          },
+          "required": ["container"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.act",
+        "title": "Docker Studio: start, stop or remove containers",
+        "keywords": ["docker", "start", "stop", "restart", "kill", "rm"],
+        "description": "Start, stop, restart, pause, unpause, kill or remove containers, one docker call each.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["start", "stop", "restart", "pause", "unpause", "kill", "remove"]
+            },
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1
+            }
+          },
+          "required": ["action", "containers"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.docker-studio.images",
+        "title": "Docker Studio: list images",
+        "keywords": ["docker", "images"],
+        "description": "Every image with its names, id, size, age and whether it is dangling.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.pull",
+        "title": "Docker Studio: pull an image",
+        "keywords": ["docker", "pull", "download"],
+        "description": "Pull an image by reference (name[:tag][@digest]).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.run",
+        "title": "Docker Studio: run a container",
+        "keywords": ["docker", "run", "new"],
+        "description": "Run a container in the background from an image, with a name, published ports (host:container), variables and a command.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string"
+            },
+            "ports": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.stacks",
+        "title": "Docker Studio: list Compose stacks",
+        "keywords": ["docker", "compose", "stacks"],
+        "description": "Every Compose stack with its state, folder, files and services.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.compose",
+        "title": "Docker Studio: up, start, stop, restart or pull a stack",
+        "keywords": ["docker", "compose", "up"],
+        "description": "Run docker compose up, start, stop, restart or pull on a stack by its project name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "stack": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "type": "string",
+              "enum": ["up", "start", "stop", "restart", "pull"]
+            }
+          },
+          "required": ["stack", "action"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.compose-down",
+        "title": "Docker Studio: take a stack down",
+        "keywords": ["docker", "compose", "down"],
+        "description": "docker compose down: stop and remove a stack's containers and the networks Compose made; named volumes stay.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "stack": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["stack"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.diagnose",
+        "title": "Docker Studio: diagnose a container with AI",
+        "keywords": ["docker", "why", "failed", "ai"],
+        "description": "Open the assistant on why a container is in trouble.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "container": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A container's name or id"
+            }
+          },
+          "required": ["container"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.docker-studio.ask",
+        "title": "Docker Studio: ask AI about Docker",
+        "keywords": ["docker", "ai", "assistant", "help"],
+        "description": "Open the assistant, asking a question about this engine when one is given.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.docker-studio.cleanup",
+        "title": "Docker Studio: clean up disk space",
+        "keywords": ["docker", "prune", "disk", "clean"],
+        "description": "Open Clean up: what can go and what each gives back, before anything is removed."
+      },
+      {
+        "id": "endue.docker-studio.build",
+        "title": "Docker Studio: build an image",
+        "keywords": ["docker", "build", "dockerfile"],
+        "description": "Build an image from an absolute context folder and tag for an agent. Open the build form from the palette.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "context": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.start",
+        "title": "Docker Studio: start containers",
+        "description": "Start the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.stop",
+        "title": "Docker Studio: stop containers",
+        "description": "Stop the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.restart",
+        "title": "Docker Studio: restart containers",
+        "description": "Restart the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.pause",
+        "title": "Docker Studio: pause containers",
+        "description": "Pause the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.unpause",
+        "title": "Docker Studio: unpause containers",
+        "description": "Unpause the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.kill",
+        "title": "Docker Studio: kill containers",
+        "description": "Kill the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.remove",
+        "title": "Docker Studio: remove containers",
+        "description": "Remove the containers named by id or name.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A container's name or id"
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.volumes",
+        "title": "Docker Studio: read volumes",
+        "description": "List Docker volumes, drivers, and known sizes.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.networks",
+        "title": "Docker Studio: read networks",
+        "description": "List Docker networks and their member containers.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.image",
+        "title": "Docker Studio: read an image and layers",
+        "description": "Read image metadata and its layers without configuration values.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An image reference or id"
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.builds",
+        "title": "Docker Studio: read active and recent builds",
+        "description": "Read active and recent builds and their steps.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.contexts",
+        "title": "Docker Studio: read Docker contexts",
+        "description": "List known contexts and the selected Studio context.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.search",
+        "title": "Docker Studio: search images",
+        "description": "Search the Docker image registry and return up to 40 items.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 255
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.files",
+        "title": "Docker Studio: read a container's files",
+        "description": "List the entries in a directory in a named container.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "container": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An absolute directory path inside the container"
+            }
+          },
+          "required": ["container", "path"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.stats",
+        "title": "Docker Studio: read container stats",
+        "description": "Take a CPU, memory and I/O snapshot for a named container or all running containers.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "container": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.docker-studio.volume-create",
+        "title": "Docker Studio: create a volume",
+        "description": "Create a named volume, optionally choosing its driver.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "driver": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.volume-remove",
+        "title": "Docker Studio: remove a volume",
+        "description": "Remove the named volume and its data.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "volume": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["volume"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.network-create",
+        "title": "Docker Studio: create a network",
+        "description": "Create a named network with an optional driver, subnet, and gateway.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "driver": {
+              "type": "string",
+              "minLength": 1
+            },
+            "subnet": {
+              "type": "string",
+              "minLength": 1
+            },
+            "gateway": {
+              "type": "string",
+              "minLength": 1
+            },
+            "internal": {
+              "type": "boolean"
+            },
+            "attachable": {
+              "type": "boolean"
+            }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.network-connect",
+        "title": "Docker Studio: connect a container to a network",
+        "description": "Connect the named container to the named network.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "network": {
+              "type": "string",
+              "minLength": 1
+            },
+            "container": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["network", "container"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.network-remove",
+        "title": "Docker Studio: remove a network",
+        "description": "Remove a named Docker network that is not built in.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "network": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["network"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.tag",
+        "title": "Docker Studio: tag an image",
+        "description": "Add a repository tag to an existing image.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["image", "target"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.remove-image",
+        "title": "Docker Studio: remove an image",
+        "description": "Remove the named image reference.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.push",
+        "title": "Docker Studio: push an image",
+        "description": "Push the named image reference to its registry.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.docker-studio.use-context",
+        "title": "Docker Studio: select a context",
+        "description": "Switch the Studio to a saved context without changing the CLI default.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.compose-up",
+        "title": "Docker Studio: start a Compose file",
+        "description": "Start the services in an absolute Compose file, optionally naming the project.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The absolute path to a Compose file"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["file"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.docker-studio.prune",
+        "title": "Docker Studio: clean up unused resources",
+        "description": "Prune only the named cleanup kinds.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["containers", "dangling", "images", "cache", "networks", "volumes"]
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": ["kinds"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Alt+K",
+        "command": "endue.docker-studio.open"
+      }
+    ],
+    "settings": {
+      "endue.docker-studio.path": {
+        "kind": "string",
+        "default": "",
+        "description": "The PATH docker is looked up on and runs with (folders separated by :), for a desk started without the shell's PATH. Empty: the desk's PATH, then where docker is usually installed."
+      },
+      "endue.docker-studio.stop-timeout": {
+        "kind": "integer",
+        "default": 10,
+        "description": "Seconds a stop or restart waits before docker kills the container (0 to 600)."
+      },
+      "endue.docker-studio.log-tail": {
+        "kind": "integer",
+        "default": 500,
+        "description": "How many of the last log lines open with the logs (0 to 100000)."
+      },
+      "endue.docker-studio.log-max": {
+        "kind": "integer",
+        "default": 5000,
+        "description": "How many log lines a log view keeps while following (100 to 100000)."
+      },
+      "endue.docker-studio.shell": {
+        "kind": "string",
+        "default": "/bin/sh",
+        "description": "The shell a terminal or the Exec tab starts in a container: a path or name inside it, like /bin/bash."
+      },
+      "endue.docker-studio.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before removing, killing, taking down or pruning."
+      }
+    }
+  }
+}

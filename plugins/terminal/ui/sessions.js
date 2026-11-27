@@ -1,12 +1,4 @@
-// The terminal plugin without its DOM: sessions (one program each, in a PTY the core runs), their
-// output and input over the bridge's proc.* (pipe.js sends a process's calls in order), what
-// programs say in OSC sequences (the folder, the shell's marks, notifications: notices.js), a desk
-// buffer for each (names.js), the tabs as split layouts of them (panes.js), the snapshot the
-// surface comes back from after a reload and the layout kept for a restart (restore.js, keep.js).
-// commands.js answers the plugin's commands and the desk's requests on top. It talks only to
-// ctx.bridge, ctx.commands, ctx.state, ctx.surface and a view, so the SDK's test host runs it with a
-// recording view.
-
+// Terminal sessions, PTY I/O, split layout, shell integration, and desk buffers.
 import { createKeeper, whereOf } from "./keep.js";
 import { createLaunch } from "./launch.js";
 import { createNames, programName } from "./names.js";
@@ -16,6 +8,7 @@ import { decode, exitText, keep } from "./output.js";
 import { createTabSet } from "./panes.js";
 import { createPipes } from "./pipe.js";
 import { createRestore } from "./restore.js";
+import { createSessionProtection } from "./session-protection.js";
 import { candidates, DEFAULTS, PREFIX, parseSettings } from "./shell.js";
 import { blankSession } from "./snapshot.js";
 import { scopeOf } from "./spawn.js";
@@ -90,6 +83,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     if (timer === null) timer = setTimeout(snapshot, snapshotMs);
   };
 
+  const protection = createSessionProtection(commands, changed);
   const { retitle, rename } = createNames({ view, commands, sessions, held, changed });
 
   const { ended, launch, signal } = createLaunch({
@@ -102,6 +96,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     retitle,
     say,
     changed,
+    started: protection.reset,
   });
 
   const show = (/** @type {string} */ id) => {
@@ -130,6 +125,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       (b) => (typeof b === "string" ? b : null),
       () => null,
     );
+    protection.sync(session);
   };
 
   /** Where a new terminal starts: the folder the one on screen is in (OSC 7), else the setting. */
@@ -138,14 +134,12 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     return settings.newTabFolder === "current" && current?.cwd ? current.cwd : settings.cwd;
   };
 
-  /**
-   * A new terminal: the settings' shell, or `program`; in a tab of its own, or beside the pane
-   * `beside` in its tab (issue 315). Resolves once it has started, or failed.
-   */
+  /** Open `program` or the configured shell in a new tab or beside a pane, then await the spawn. */
   const open = async (
     /** @type {Program | undefined} */ program = undefined,
     /** @type {string | undefined} */ cwd = undefined,
     /** @type {{ beside: string, direction: Split } | undefined} */ place = undefined,
+    /** @type {string | undefined} */ invocationId = undefined,
   ) => {
     next += 1;
     const id = `t-${next}`;
@@ -162,7 +156,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     view.layout(tab.id, tab.layout);
     show(id);
     await buffer(session);
-    await launch(session);
+    await launch(session, invocationId);
     return session;
   };
 
@@ -193,22 +187,13 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     return session;
   };
 
-  const close = (/** @type {string} */ id) => {
-    const session = remove(id);
-    if (session?.buffer) commands.run("desk.buffers.close", { id: session.buffer }).catch(() => {});
-  };
-
-  const restart = async (/** @type {string} */ id) => {
-    const session = held(id);
-    if (session.procId) {
-      session.relaunch = true;
-      await signal(id, "term");
-      return;
-    }
-    const again = `Starting ${session.title} again.`;
-    view.line(id, session.exit ? `${session.exit} ${again}` : again);
-    await launch(session);
-  };
+  const { close, restart } = protection.lifecycle({
+    sessions,
+    remove,
+    signal,
+    launch,
+    line: (id, text) => view.line(id, text),
+  });
 
   const input = (/** @type {string} */ id, /** @type {import("./pipe.js").Input} */ data) => {
     const session = held(id);
@@ -216,6 +201,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       if (data === "\r") void restart(id);
       return;
     }
+    protection.input(session, data);
     pipes.write(session.procId, scopeOf(session.program.command), data);
   };
 
@@ -247,6 +233,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
       session.cwd = cwd;
       changed();
     }
+    protection.osc(session, code, data);
     notices.osc(id, code, data);
   };
 
@@ -292,6 +279,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     byProc.delete(exit.procId);
     pipes.drop(exit.procId);
     session.procId = null;
+    protection.reset(session);
     session.exit = exitText(session.title, exit);
     changed();
     if (session.relaunch) {
@@ -343,6 +331,7 @@ export function createTerminals({ bridge, commands, state, surface }, view, opti
     show,
     buffer,
     launch,
+    sync: (session) => protection.sync(session, true),
   });
 
   return {

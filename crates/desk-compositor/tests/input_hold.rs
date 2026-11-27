@@ -151,6 +151,41 @@ fn the_modifiers_wait_with_the_keys_so_a_chord_typed_in_the_wait_stays_one() {
 }
 
 #[test]
+fn pointer_modifiers_change_immediately_while_keyboard_focus_is_pending() {
+    use serde_json::json;
+
+    let mut d = desk();
+    windows(&mut d);
+    d.router.in_use(Some(A));
+    d.click(10.0, 10.0);
+    assert!(d.router.holding());
+
+    let shift = Modifiers {
+        shift: true,
+        ..NO_MODS
+    };
+    assert!(d.key("A", "KeyA", Some("A"), shift).is_empty());
+    let down = sent(&d.press(true));
+    let down = down.iter().find(|m| m["type"] == "pointer.down").unwrap();
+    assert_eq!(down["modifiers"], json!(["shift"]));
+    assert!(d.key("b", "KeyB", Some("b"), NO_MODS).is_empty());
+    let up = sent(&d.press(false));
+    let up = up.iter().find(|m| m["type"] == "pointer.up").unwrap();
+    assert_eq!(up["modifiers"], json!([]));
+
+    d.router.page_focus(PageFocus::Own);
+    let keys: Vec<_> = sent(&d.answer())
+        .into_iter()
+        .filter(|m| m["type"] == "key.down")
+        .map(|m| json!([m["surface"], m["key"], m["modifiers"]]))
+        .collect();
+    assert_eq!(
+        keys,
+        [json!([PAGE, "A", ["shift"]]), json!([PAGE, "b", []])]
+    );
+}
+
+#[test]
 fn without_an_answer_what_waited_goes_on_after_the_hold() {
     let mut d = desk();
     windows(&mut d);

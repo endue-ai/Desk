@@ -191,7 +191,7 @@
                         {
                           "tag": "small",
                           "class": "facet-hint",
-                          "text": "Paired on endue.ai"
+                          "text": "Where people reach it"
                         }
                       ]
                     },
@@ -330,105 +330,77 @@
         {
           "tag": "section",
           "class": "chat",
+          "aria-label": "Conversation",
           "hidden": "",
           "children": [
             {
-              "tag": "header",
-              "class": "chat-head",
+              "tag": "desk-agent-session",
               "children": [
-                {
-                  "tag": "h2"
-                },
-                {
-                  "tag": "span",
-                  "class": "desk-muted"
-                },
-                {
-                  "tag": "span",
-                  "class": "desk-bar-spacer"
-                },
                 {
                   "tag": "button",
                   "class": "desk-btn desk-btn-quiet",
                   "type": "button",
                   "hidden": "",
                   "text": "New session"
-                }
-              ]
-            },
-            {
-              "tag": "p",
-              "class": "desk-muted",
-              "hidden": ""
-            },
-            {
-              "tag": "ol",
-              "class": "chat-log",
-              "role": "log",
-              "aria-label": "Conversation"
-            },
-            {
-              "tag": "p",
-              "class": "desk-error",
-              "role": "alert",
-              "hidden": ""
-            },
-            {
-              "tag": "div",
-              "class": "composer",
-              "role": "group",
-              "aria-label": "New message",
-              "children": [
-                {
-                  "tag": "textarea",
-                  "class": "desk-field",
-                  "aria-label": "Message",
-                  "value": ""
                 },
                 {
                   "tag": "div",
-                  "class": "composer-row",
+                  "class": "composer",
+                  "role": "group",
+                  "aria-label": "New message",
                   "children": [
                     {
+                      "tag": "textarea",
+                      "class": "desk-field",
+                      "aria-label": "Message",
+                      "value": ""
+                    },
+                    {
                       "tag": "div",
-                      "class": "desk-tabs",
-                      "role": "radiogroup",
-                      "aria-label": "What it may do",
+                      "class": "composer-row",
                       "children": [
                         {
-                          "tag": "button",
-                          "class": "desk-tab",
-                          "type": "button",
-                          "role": "radio",
-                          "data-access": "read-only",
-                          "text": "Read only"
+                          "tag": "div",
+                          "class": "desk-tabs",
+                          "role": "radiogroup",
+                          "aria-label": "What it may do",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "class": "desk-tab",
+                              "type": "button",
+                              "role": "radio",
+                              "data-access": "read-only",
+                              "text": "Read only"
+                            },
+                            {
+                              "tag": "button",
+                              "class": "desk-tab",
+                              "type": "button",
+                              "role": "radio",
+                              "data-access": "agent",
+                              "text": "May change files"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "desk-muted hint"
                         },
                         {
                           "tag": "button",
-                          "class": "desk-tab",
+                          "class": "desk-btn desk-btn-danger",
                           "type": "button",
-                          "role": "radio",
-                          "data-access": "agent",
-                          "text": "May change files"
+                          "hidden": "",
+                          "text": "Stop"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "desk-btn desk-btn-primary",
+                          "type": "button",
+                          "text": "Send"
                         }
                       ]
-                    },
-                    {
-                      "tag": "span",
-                      "class": "desk-muted hint"
-                    },
-                    {
-                      "tag": "button",
-                      "class": "desk-btn desk-btn-danger",
-                      "type": "button",
-                      "hidden": "",
-                      "text": "Stop"
-                    },
-                    {
-                      "tag": "button",
-                      "class": "desk-btn desk-btn-primary",
-                      "type": "button",
-                      "text": "Send"
                     }
                   ]
                 }

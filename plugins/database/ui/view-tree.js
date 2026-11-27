@@ -1,10 +1,13 @@
 // The explorer's DOM: the controller's flat rows as a tree (role=tree, aria-level, aria-expanded),
 // a cursor the arrow keys move and that stays on its row across a redraw, Right and Left to open
 // and close (or go to the parent), Enter to open a console, a table or an object's DDL, single keys
-// for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table).
+// for the rest (d the DDL, c the row counts, g a refresh of the row's schema or table, m the
+// maintenance form, x a function's or procedure's form, f the value search, o, the context-menu key
+// and a right click the row's menu of what can be done to it, p its privileges).
 
 import { el } from "./dom.js";
 import { actionFor, pressOf } from "./keys.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./explorer.js").Node} Node
@@ -12,19 +15,40 @@ import { actionFor, pressOf } from "./keys.js";
  */
 
 const MOVES = new Set(["next", "previous", "first", "last"]);
+/** Actions that take the row under the cursor (the objects feature's too). */
+const ROWS = new Set([
+  "ddl",
+  "count",
+  "diagram",
+  "maintain",
+  "routine",
+  "searchData",
+  "objectMenu",
+  "renameObject",
+  "editSource",
+  "privileges",
+]);
 
 /**
  * @param {Document} doc
  * @param {HTMLElement} tree
  * @param {Act} act
+ * @param {(connection: Node | undefined) => void} [moved] Told the connection row the cursor is in
+ *   each time the cursor or the rows change.
  */
-export function createTree(doc, tree, act) {
+export function createTree(doc, tree, act, moved = () => {}) {
   /** @type {Node[]} */
   let rows = [];
   /** @type {HTMLElement[]} */
   let els = [];
   let cursor = 0;
   let cursorKey = "";
+
+  /** The connection row the cursor is in. */
+  const connectionRow = () => {
+    const id = rows[cursor]?.connection;
+    return id ? rows.find((row) => row.kind === "connection" && row.connection === id) : undefined;
+  };
 
   const render = (/** @type {Node[]} */ next) => {
     rows = next;
@@ -64,9 +88,9 @@ export function createTree(doc, tree, act) {
       return node;
     });
     tree.replaceChildren(...els);
-    if (rows.length === 0)
-      tree.append(el(doc, "p", { class: "empty" }, "No connections yet. Press n to add one."));
+    if (rows.length === 0) tree.append(el(doc, "p", { class: "empty" }, t("tree.empty")));
     if (hadFocus) els[cursor]?.focus();
+    moved(connectionRow());
   };
 
   const moveTo = (/** @type {number} */ index) => {
@@ -76,6 +100,7 @@ export function createTree(doc, tree, act) {
     if (els[cursor]) /** @type {HTMLElement} */ (els[cursor]).tabIndex = -1;
     cursor = next;
     cursorKey = rows[cursor]?.key ?? "";
+    moved(connectionRow());
     const node = els[cursor];
     if (!node) return;
     node.tabIndex = 0;
@@ -118,8 +143,7 @@ export function createTree(doc, tree, act) {
     else if (action === "activate" && row) act("activate", row);
     else if (action === "edit" || action === "remove") act(action, row?.connection);
     else if (action === "refresh") act("refresh", row?.connection, row);
-    else if ((action === "ddl" || action === "count" || action === "diagram") && row)
-      act(action, row);
+    else if (ROWS.has(action) && row) act(action, row);
     else if (!MOVES.has(action)) act(action);
   });
   tree.addEventListener("click", (event) => {
@@ -131,6 +155,15 @@ export function createTree(doc, tree, act) {
     moveTo(index);
     const row = rows[index];
     if (row?.expandable && target?.classList.contains("caret")) act("toggle", row);
+  });
+  // A right click is the row's menu (the objects feature's), on that row.
+  tree.addEventListener("contextmenu", (event) => {
+    const item = /** @type {HTMLElement | null} */ (event.target)?.closest?.("[role=treeitem]");
+    const index = Number(/** @type {HTMLElement | null} */ (item)?.dataset.index);
+    if (Number.isNaN(index) || !rows[index]) return;
+    event.preventDefault();
+    moveTo(index);
+    act("objectMenu", rows[index]);
   });
   tree.addEventListener("dblclick", () => {
     const row = rows[cursor];

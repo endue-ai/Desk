@@ -4,7 +4,7 @@
 // change runs the connector's command through sync.js, which undoes it when refused.
 import { emojiOf, sameEmoji } from "./emoji.js";
 import { chatOf, conversationRef, messageKey, messageRef } from "./model.js";
-import { conversationTarget, threadTarget } from "./state.js";
+import { asSource, asString, conversationTarget, threadTarget } from "./state.js";
 
 /**
  * @typedef {import("@endue-ai/bridge").MessageItem} MessageItem
@@ -137,6 +137,14 @@ export function createWriting({
   };
 
   return {
+    /** Fill a composer while keeping any different text already there. */
+    draft(/** @type {string} */ target, /** @type {string} */ text) {
+      if (s.editing?.target === target || (s.drafts[target] && s.drafts[target] !== text))
+        throw new Error("This composer already has a draft. Finish it before starting another.");
+      setDraft(target, text);
+      render();
+    },
+
     /** The person typed in a composer: kept, and stored a moment later. */
     type(/** @type {string} */ target, /** @type {string} */ text) {
       if (text) s.drafts = { ...s.drafts, [target]: text };
@@ -240,10 +248,16 @@ export function createWriting({
       sync.change([message], [], "delete", { id: message.id }, "Deleted."),
 
     /** Add the person's reaction, or take it back when it is there. */
-    react: async (/** @type {ChatMessage} */ message, /** @type {string} */ emoji) => {
+    react: async (
+      /** @type {ChatMessage} */ message,
+      /** @type {string} */ emoji,
+      /** @type {boolean | undefined} */ desired,
+    ) => {
       const shown = emojiOf(emoji);
       const held = message.reactions.find((r) => sameEmoji(r.emoji, shown));
-      const on = !held?.self;
+      const before = held?.self ?? false;
+      const on = desired ?? !before;
+      if (on === before) return on;
       const reactions = held
         ? message.reactions
             .map((r) => (r === held ? { ...r, count: r.count + (on ? 1 : -1), self: on } : r))
@@ -280,14 +294,11 @@ export function createWriting({
     },
 
     /** The message a command names (`{ source, id }`, from an agent), the selected one, or none. */
-    named(/** @type {Record<string, unknown>} */ a) {
-      const source = /** @type {{ connector?: unknown, instance?: unknown }} */ (a.source ?? {});
-      if (
-        typeof a.id === "string" &&
-        typeof source.connector === "string" &&
-        typeof source.instance === "string"
-      )
-        return `${source.connector}/${source.instance}#${a.id}`;
+    named(/** @type {Record<string, unknown>} */ a, fallback = true) {
+      const source = asSource(a.source);
+      const id = asString(a.id);
+      if (source && id) return messageKey(source, id);
+      if (!fallback) return null;
       if (typeof a.key === "string" && messageRef(a.key)) return a.key;
       return s.selected;
     },

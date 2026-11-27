@@ -17,15 +17,15 @@
    "role": "dialog",
    "aria-label": "Desktops",
    "style": {
-    "background": "rgb(43, 39, 49)",
-    "border": "solid rgb(51, 49, 54)"
+    "background": "rgb(29, 28, 25)",
+    "border": "solid rgb(50, 48, 43)"
    },
    "children": [
     {
      "tag": "h2",
      "class": "dialog-title",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      },
      "text": "Desktops"
     },
@@ -33,7 +33,7 @@
      "tag": "p",
      "class": "dialog-hint",
      "style": {
-      "color": "rgb(176, 173, 183)"
+      "color": "rgb(179, 175, 165)"
      },
      "text": "Choose a desktop to go there. Drag a window onto another desktop to move it."
     },
@@ -46,16 +46,16 @@
        "class": "btn btn-outline overview-card",
        "aria-label": "1 · Mail · Empty",
        "style": {
-        "border": "solid rgb(131, 121, 145)"
+        "border": "solid rgb(50, 48, 43)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(50, 48, 43)"
          }
         },
         {
@@ -66,14 +66,14 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "1"
           },
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "Mail"
           },
@@ -81,7 +81,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "Empty"
           }
@@ -94,23 +94,23 @@
        "class": "btn btn-outline overview-card is-current",
        "aria-label": "2 · Plan · 2 windows",
        "style": {
-        "border": "solid rgb(182, 163, 245)"
+        "border": "solid rgb(243, 241, 236)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "border": "solid rgb(50, 48, 43)"
          },
          "children": [
           {
            "tag": "span",
            "class": "desk-map-window",
            "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
+            "background": "rgb(29, 28, 25)",
+            "border": "solid rgb(50, 48, 43)"
            },
            "children": [
             {
@@ -120,7 +120,7 @@
             {
              "tag": "span",
              "style": {
-              "color": "rgb(176, 173, 183)"
+              "color": "rgb(179, 175, 165)"
              },
              "text": "Calendar"
             }
@@ -130,8 +130,8 @@
            "tag": "span",
            "class": "desk-map-window",
            "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
+            "background": "rgb(29, 28, 25)",
+            "border": "solid rgb(50, 48, 43)"
            },
            "children": [
             {
@@ -141,7 +141,7 @@
             {
              "tag": "span",
              "style": {
-              "color": "rgb(176, 173, 183)"
+              "color": "rgb(179, 175, 165)"
              },
              "text": "Tomorrow"
             }
@@ -157,14 +157,14 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "2"
           },
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "Plan"
           },
@@ -172,7 +172,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "2 windows"
           }
@@ -185,23 +185,23 @@
        "class": "btn btn-outline overview-card",
        "aria-label": "3 · 1 window",
        "style": {
-        "border": "solid rgb(131, 121, 145)"
+        "border": "solid rgb(50, 48, 43)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "border": "solid rgb(50, 48, 43)"
          },
          "children": [
           {
            "tag": "span",
            "class": "desk-map-window",
            "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
+            "background": "rgb(29, 28, 25)",
+            "border": "solid rgb(50, 48, 43)"
            },
            "children": [
             {
@@ -211,7 +211,7 @@
             {
              "tag": "span",
              "style": {
-              "color": "rgb(176, 173, 183)"
+              "color": "rgb(179, 175, 165)"
              },
              "text": "Notes"
             }
@@ -226,7 +226,7 @@
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "3"
           },
@@ -234,7 +234,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "1 window"
           }
@@ -247,16 +247,16 @@
        "class": "btn btn-outline overview-card",
        "aria-label": "4 · Empty",
        "style": {
-        "border": "solid rgb(131, 121, 145)"
+        "border": "solid rgb(50, 48, 43)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(50, 48, 43)"
          }
         },
         {
@@ -266,7 +266,7 @@
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "4"
           },
@@ -274,7 +274,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "Empty"
           }
@@ -287,16 +287,16 @@
        "class": "btn btn-outline overview-card",
        "aria-label": "5 · Research · Empty",
        "style": {
-        "border": "solid rgb(131, 121, 145)"
+        "border": "solid rgb(50, 48, 43)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(50, 48, 43)"
          }
         },
         {
@@ -307,14 +307,14 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "5"
           },
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "Research"
           },
@@ -322,7 +322,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "Empty"
           }
@@ -335,16 +335,16 @@
        "class": "btn btn-outline overview-card",
        "aria-label": "6 · Write · Empty",
        "style": {
-        "border": "solid rgb(131, 121, 145)"
+        "border": "solid rgb(50, 48, 43)"
        },
        "children": [
         {
          "tag": "span",
          "class": "desk-map",
          "style": {
-          "background": "rgb(36, 33, 39)",
-          "color": "rgb(242, 240, 245)",
-          "border": "solid rgb(51, 49, 54)"
+          "background": "rgb(35, 33, 30)",
+          "color": "rgb(243, 241, 236)",
+          "border": "solid rgb(50, 48, 43)"
          }
         },
         {
@@ -355,14 +355,14 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "6"
           },
           {
            "tag": "strong",
            "style": {
-            "color": "rgb(242, 240, 245)"
+            "color": "rgb(243, 241, 236)"
            },
            "text": "Write"
           },
@@ -370,7 +370,7 @@
            "tag": "span",
            "class": "overview-meta",
            "style": {
-            "color": "rgb(176, 173, 183)"
+            "color": "rgb(179, 175, 165)"
            },
            "text": "Empty"
           }
@@ -383,13 +383,13 @@
        "class": "add-button overview-add",
        "aria-label": "New desktop",
        "box": [
-        401,
+        397,
         492,
-        204,
-        162
+        208,
+        164
        ],
        "style": {
-        "border": "dashed rgb(131, 121, 145)"
+        "border": "dashed rgb(133, 129, 119)"
        },
        "children": [
         {

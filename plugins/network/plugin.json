@@ -1,0 +1,207 @@
+{
+  "id": "endue.network",
+  "name": "Network",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "messages": "messages",
+  "description": "Who is on the network this computer is on, how safe it is and why it is slow: a map of the devices around the router with their IP address, MAC address, manufacturer and ping, a checkup scored out of 100 with what to do, the Wi-Fi channels around with their congestion, and a log of devices that come and go. Only the private network it is on, only macOS's own programs, ports checked per device after the person allows it.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": [
+        "/usr/sbin/arp",
+        "/sbin/ping",
+        "/sbin/route",
+        "/sbin/ifconfig",
+        "/usr/bin/dig",
+        "/usr/sbin/system_profiler"
+      ]
+    },
+    {
+      "permission": "ui:notify"
+    },
+    {
+      "permission": "brain:ask"
+    },
+    {
+      "permission": "net:connect",
+      "hosts": ["*"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["endue.network.devices"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Network",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.network.open",
+        "title": "Network: Show who is on my network",
+        "keywords": ["network", "wifi", "devices", "router", "네트워크", "와이파이", "기기"],
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.network"
+          }
+        }
+      },
+      {
+        "id": "endue.network.scan",
+        "title": "Network: Scan now",
+        "keywords": ["scan", "devices", "refresh", "훑기"],
+        "description": "Look at the private network this computer is on now: the ARP table, and on a network the person said they administer, a ping to every address of a /24 or smaller and each device's mDNS name. Answers the network, how many devices are online and the new ones.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.network.devices",
+        "title": "Network: Who is on the network",
+        "keywords": ["devices", "who", "connected", "누가", "기기 목록"],
+        "description": "The devices on the network this computer is on, as of the last scan (scans first when there was none): each one's name, kind, IP address, MAC address, manufacturer (or random MAC address), ping in ms, status (known, new or attention), whether it is online, when it was first and last seen, and its open ports when they were checked. Use it to answer \"who is on my network right now?\". mac picks one device; online: false lists those not online too; show: true opens its card on the map.",
+        "agent": true,
+        "readOnly": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            },
+            "online": {
+              "type": "boolean"
+            },
+            "show": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.network.name",
+        "title": "Network: Say who a device is",
+        "keywords": ["name", "label", "who is this", "이름"],
+        "description": "Answer \"Who is this?\" for a device by its MAC address: a name, a kind (router, computer, laptop, phone, tablet, tv, speaker, camera, printer, console, storage, watch, smartHome, unknown) and whether it is the person's own. A named device counts as known. Answers the device.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "kind": {
+              "enum": [
+                "router",
+                "computer",
+                "laptop",
+                "phone",
+                "tablet",
+                "tv",
+                "speaker",
+                "camera",
+                "printer",
+                "console",
+                "storage",
+                "watch",
+                "smartHome",
+                "unknown"
+              ]
+            },
+            "mine": {
+              "type": "boolean"
+            }
+          },
+          "required": ["mac"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.network.checkup",
+        "title": "Network: Checkup",
+        "keywords": ["security", "score", "ports", "점검", "보안"],
+        "description": "Read the current network's score, recorded check results, unknown devices and Wi-Fi security.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "readOnly": true
+      },
+      {
+        "id": "endue.network.check-ports",
+        "title": "Network: Check a known device's ports",
+        "description": "Check the fixed common ports of a known device on the current attached network after the person's permission.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            }
+          },
+          "required": ["mac"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.network.channels",
+        "title": "Network: Wi-Fi channels around",
+        "keywords": ["wifi", "channel", "slow", "congestion", "채널", "느림"],
+        "description": "Listen to the Wi-Fi networks around (macOS's own Wi-Fi report; nothing is joined or probed) and answer per band (2.4, 5, 6 GHz) how many networks share it, which channels are crowded, the recommended channel and one sentence such as \"Channel 6 is crowded; channel 11 is recommended.\", with the channel, signal and security mode of the Wi-Fi this computer is joined to. SSIDs are left out.",
+        "agent": true,
+        "readOnly": true,
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.network.log",
+        "title": "Network: Devices that came and went",
+        "keywords": ["log", "history", "new device", "일지"],
+        "description": "The log of the network this computer is on, newest first: new devices, devices that came back and devices that left, with when, the device and its IP and MAC address. limit: how many entries (50 by default, at most 200).",
+        "agent": true,
+        "readOnly": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
+    "settings": {
+      "endue.network.interval": {
+        "kind": "integer",
+        "default": 5,
+        "description": "Minutes between looks at the network while the plugin is on (0: only when asked, up to 1440)."
+      }
+    }
+  }
+}

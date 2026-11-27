@@ -1,15 +1,17 @@
 /**
- * Routes owned events (brain turns, fs watches, data subscriptions, processes, sockets, web views) to the plugin whose
+ * Routes owned events (brain turns, fs watches, data subscriptions, processes, sockets, database sessions, web views) to the plugin whose
  * call started them: a plugin hears about its own work and nothing of other plugins'. Events that arrive before the
  * call's answer names their key wait for the claim, in order, so a process that writes at once is
  * not missed.
  */
 import type {
+  BrainAskResult,
   BrainSayResult,
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
   DataSubscribeResult,
+  DbOpenResult,
   FsWatchResult,
   NetConnectResult,
   ProcSpawnResult,
@@ -34,6 +36,11 @@ export function eventKey(event: BridgeEvent): string | undefined {
     case "net.data":
     case "net.closed":
       return `net:${event.data.socketId}`;
+    case "db.notice":
+    case "db.notification":
+    case "db.parameter":
+    case "db.closed":
+      return `db:${event.data.sessionId}`;
     case "web.changed":
       return `web:${event.data.viewId}`;
     default:
@@ -47,6 +54,9 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
   switch (request.method) {
     case "brain.say":
       return `turn:${(response.result as BrainSayResult).turnId}`;
+    // An ask's turn is the asker's as a say's is (ADR 0059): it carries the answer.
+    case "brain.ask":
+      return `turn:${(response.result as BrainAskResult).turnId}`;
     case "fs.watch":
       return `watch:${(response.result as FsWatchResult).watchId}`;
     case "data.subscribe":
@@ -55,6 +65,11 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
       return `proc:${(response.result as ProcSpawnResult).procId}`;
     case "net.connect":
       return `net:${(response.result as NetConnectResult).socketId}`;
+    case "db.open": {
+      // A refused sign-in, or one that needs a password, opened no session.
+      const { sessionId } = response.result as DbOpenResult;
+      return sessionId ? `db:${sessionId}` : undefined;
+    }
     case "web.open":
       return `web:${(response.result as WebOpenResult).viewId}`;
     default:
@@ -68,7 +83,7 @@ function ends(event: BridgeEvent): boolean {
     return event.data.kind === "completed" || event.data.kind === "error";
   }
   if (event.event === "web.changed") return event.data.closed === true;
-  return event.event === "proc.exit" || event.event === "net.closed";
+  return event.event === "proc.exit" || event.event === "net.closed" || event.event === "db.closed";
 }
 
 export class Owners {
@@ -107,6 +122,13 @@ export class Owners {
   release(key: string): void {
     this.#owners.delete(key);
     this.#early.delete(key);
+  }
+
+  /** The keys `owner` holds that start with `prefix` (`db:` for its database sessions). */
+  held(owner: string, prefix: string): string[] {
+    return [...this.#owners]
+      .filter(([k, o]) => o === owner && k.startsWith(prefix))
+      .map(([k]) => k);
   }
 
   /** Forget everything `owner` held: its surface went away. */

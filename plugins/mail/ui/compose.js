@@ -1,6 +1,7 @@
 // Writing mail without the DOM: addresses as people type them (RFC 5322 mailbox lists, the common
 // forms), the draft a reply, a reply to all or a forward starts from, the quoted text, the Re: and
 // Fwd: subjects, and the checks before a send. Pure functions, so the tests run them in Node.
+import { messageTarget } from "./state.js";
 
 /**
  * @typedef {import("./model.js").Message} Message
@@ -216,6 +217,55 @@ export function newDraft(given = {}) {
     body: `${given.body ?? ""}${signature}`,
     savedAt: given.now ?? new Date().toISOString(),
   };
+}
+
+/** @param {Record<string, unknown>} given */
+export function draftFields(given) {
+  const { to, cc, bcc, subject, body } = given;
+  return {
+    ...(typeof to === "string" ? { to } : {}),
+    ...(typeof cc === "string" ? { cc } : {}),
+    ...(typeof bcc === "string" ? { bcc } : {}),
+    ...(typeof subject === "string" ? { subject } : {}),
+    ...(typeof body === "string" ? { body } : {}),
+  };
+}
+
+/**
+ * Resolve the reply or forward exactly as named. An empty compose has no original.
+ * @param {Record<string, unknown>} given
+ * @param {(target: ReturnType<typeof messageTarget>) => Promise<Message>} named
+ */
+export function originalFor(given, named) {
+  if (given.replyTo !== undefined && given.forward !== undefined)
+    throw new Error("Choose either a reply or a forward.");
+  const original = given.replyTo ?? given.forward;
+  if (given.replyTo === undefined && given.forward === undefined) return undefined;
+  return named(messageTarget(original));
+}
+
+/**
+ * The same draft for the composer and the reviewed send command.
+ * @param {Record<string, unknown>} given
+ * @param {{ signature: string, addresses: string[], now: string, account?: string | undefined }} options
+ * @param {Message} [original]
+ */
+export function composeDraft(given, options, original) {
+  const fields = draftFields(given);
+  if (!original) {
+    const account = typeof given.account === "string" ? given.account : options.account;
+    return newDraft({
+      ...fields,
+      ...(account ? { account } : {}),
+      signature: options.signature,
+      now: options.now,
+    });
+  }
+  const base =
+    given.forward === undefined
+      ? replyDraft(original, { ...options, all: given.all === true })
+      : forwardDraft(original, options);
+  return { ...base, ...fields, body: (fields.body ?? "") + base.body };
 }
 
 /**

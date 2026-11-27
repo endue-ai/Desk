@@ -5,6 +5,7 @@
     "accessibility": true,
     "screenRecording": false,
     "bundleId": "ai.endue.desk",
-    "stopped": false
+    "stopped": false,
+    "allowedApps": ["com.apple.Safari"]
   }
 }

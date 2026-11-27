@@ -2,9 +2,19 @@
 // the rows come from (a table's view, or a console's plain SELECT of one table), reads its columns
 // for the primary key and the types, and either keeps the changes or says why it cannot. Submit
 // runs them in one transaction and reads the rows again; Revert drops them. A new run of the
-// console starts a new result, so its changes are asked about first. No DOM.
+// console starts a new result, so its changes are asked about first. On PostgreSQL the columns'
+// types are read too, so each column gets its typed editor (cell-editors/, PG-40); they are read again
+// when the catalog reads the columns again, and a failed read leaves the declared types. Every change
+// is one undoable step (edit/history.js, PG-43): a paste, a fill or a duplicate (features/paste/) is
+// made on the state `ready` gives and applied as a `step`. A PostgreSQL result that names its columns'
+// tables is mapped by them instead, a join's cells each by its own table (edit/origins.js, PG-45). No
+// DOM.
 
 import { defaultSchema } from "./catalog.js";
+import { readTypes } from "./cell-editors/pg-types.js";
+import { attachEditors } from "./cell-editors/resolve.js";
+import { createHistory } from "./edit/history.js";
+import { byOrigins, readOrigins } from "./edit/origins.js";
 import {
   addRow,
   countChanges,
@@ -18,6 +28,7 @@ import {
 import { sourceOf } from "./edit/source.js";
 import { previewSql, submitChanges } from "./edit/submit.js";
 import { engineOf } from "./engines/index.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -27,9 +38,10 @@ import { engineOf } from "./engines/index.js";
  * @typedef {import("./edit/pending.js").Changes} Changes
  * @typedef {{
  *   key: string, status: "ready" | "refused", reason: string, target: Target | null,
- *   changes: Changes, count: number, message: string,
+ *   changes: Changes, count: number, message: string, history?: Changes[],
  * }} EditState
- *   `key` names the run and tab the changes are of; `message` is how the last submit went.
+ *   `key` names the run and tab the changes are of; `message` is how the last submit went;
+ *   `history` the changes before each step, for undo (edit/history.js).
  * @typedef {{
  *   catalog: Pick<ReturnType<typeof import("./catalog.js").createCatalog>, "columns">,
  *   execute: import("./catalog.js").Execute,
@@ -49,6 +61,27 @@ export function shownSet(/** @type {Console} */ target) {
 /** @param {Deps} deps */
 export function createEdits(deps) {
   /**
+   * A table's column types, kept with the catalog's answer for its columns: a refresh of the
+   * catalog reads new columns, and so new types.
+   * @type {WeakMap<object, Promise<Map<string, import("./cell-editors/pg-types.js").TypeInfo>>>}
+   */
+  const types = new WeakMap();
+  const typesOf = (
+    /** @type {Connection} */ conn,
+    /** @type {string} */ schema,
+    /** @type {string} */ table,
+    /** @type {object} */ columns,
+  ) => {
+    if (conn.engine !== "postgresql") return Promise.resolve(new Map());
+    let read = types.get(columns);
+    if (!read) {
+      read = readTypes(deps.execute, conn, schema, table).catch(() => new Map());
+      types.set(columns, read);
+    }
+    return read;
+  };
+
+  /**
    * The edit state of the result on screen, found the first time it is asked for.
    * @param {Console} target
    * @param {Connection} conn
@@ -66,37 +99,94 @@ export function createEdits(deps) {
       changes: emptyChanges(),
       count: 0,
       message: "",
+      history: [],
     });
     /** @type {EditState} */
     let state;
-    if (!set) state = refused("Pick a result with rows first.");
+    if (!set) state = refused(t("edits.pickAResultWithRowsFirst"));
+    else if (target.shown?.tabs[target.tab]?.kind === "pinned")
+      state = refused(t("edits.aPinnedResultIsKeptAs"));
     else if (conn.readOnly) state = refused(refusalOf(conn, undefined));
     else {
       const { dialect } = engineOf(conn.engine);
       const tab = target.shown?.tabs[target.tab];
       const statement = target.execution?.statements[tab?.statement ?? 0];
+      const table = target.kind === "table" && target.table;
+      const alone = statement && target.execution?.statements.length === 1;
       const source =
         target.kind === "table" && target.table
           ? { schema: target.table.schema, name: target.table.name }
           : statement && target.execution?.statements.length === 1
             ? sourceOf(statement, dialect)
             : undefined;
-      if (!source) state = refused(refusalOf(conn, undefined));
+      if (byOrigins(conn, set) && (table || alone)) {
+        const found = await readOrigins({
+          execute: deps.execute,
+          conn,
+          set,
+          ...(table || !statement ? {} : { statement }),
+        });
+        const reason = refusalOf(conn, found.target, found.reason);
+        state = reason
+          ? refused(reason)
+          : { ...refused(""), status: "ready", target: found.target ?? null };
+      } else if (!source) state = refused(refusalOf(conn, undefined));
       else {
         const schema = source.schema ?? defaultSchema(conn);
         const columns = await deps.catalog.columns(conn, schema, source.name);
-        if (columns.length === 0) state = refused(`No table ${source.name} was found to change.`);
+        if (columns.length === 0)
+          state = refused(t("edits.noTableWasFoundToChange", { name: String(source.name) }));
         else {
           const found = targetOf(dialect, { schema, name: source.name }, set.columns, columns);
           const reason = refusalOf(conn, found.target, found.reason);
-          state = reason
-            ? refused(reason)
-            : { ...refused(""), status: "ready", target: found.target ?? null };
+          const typed =
+            found.target && !reason
+              ? attachEditors(
+                  found.target,
+                  columns,
+                  await typesOf(conn, schema, source.name, columns),
+                  set.types,
+                )
+              : null;
+          state = reason ? refused(reason) : { ...refused(""), status: "ready", target: typed };
         }
       }
     }
     target.edit = state;
     return state;
+  };
+
+  /**
+   * The edit state and rows of the result on screen when its rows can change; else throws why.
+   * @param {Console} target
+   * @param {Connection} conn
+   */
+  const ready = async (target, conn) => {
+    const state = await ensure(target, conn);
+    const set = shownSet(target);
+    if (state.status !== "ready" || !state.target || !set) throw new Error(state.reason);
+    return { state: /** @type {EditState & { target: Target }} */ (state), set };
+  };
+
+  /**
+   * One undoable step on an edit state, drawn after; what the step answers comes back.
+   * @template T
+   * @param {EditState & { target: Target }} state
+   * @param {ResultSet} set
+   * @param {(changes: Changes, target: Target, set: ResultSet) => T} step
+   * @returns {T}
+   */
+  const record = (state, set, step) => {
+    /** @type {T | undefined} */
+    let answer;
+    state.history ??= [];
+    createHistory(state.history).record(state.changes, () => {
+      answer = step(state.changes, state.target, set);
+    });
+    state.count = countChanges(state.changes);
+    state.message = "";
+    deps.render();
+    return /** @type {T} */ (answer);
   };
 
   /**
@@ -106,18 +196,35 @@ export function createEdits(deps) {
    * @param {(state: EditState & { target: Target }, set: ResultSet) => unknown} change
    */
   const change = async (target, conn, change) => {
-    const state = await ensure(target, conn);
-    const set = shownSet(target);
-    if (state.status !== "ready" || !state.target || !set) throw new Error(state.reason);
-    const answer = change(/** @type {EditState & { target: Target }} */ (state), set);
-    state.count = countChanges(state.changes);
-    state.message = "";
-    deps.render();
-    return answer;
+    const { state, set } = await ready(target, conn);
+    return record(state, set, () => change(state, set));
   };
 
   return {
     ensure,
+    ready,
+    /**
+     * One undoable step on the state `ready` gave, while it is still the result on screen.
+     * @template T
+     * @param {Console} target
+     * @param {EditState} state
+     * @param {(changes: Changes, target: Target, set: ResultSet) => T} step
+     */
+    step(target, state, step) {
+      const set = shownSet(target);
+      if (target.edit !== state || !state.target || !set)
+        throw new Error(t("edits.theResultOnScreenChangedMeanwhile"));
+      return record(/** @type {EditState & { target: Target }} */ (state), set, step);
+    },
+    /** Take back the last step of the result on screen; false when there is none. */
+    undo(/** @type {Console} */ target) {
+      const state = target.edit;
+      if (!state?.history || !createHistory(state.history).undo(state.changes)) return false;
+      state.count = countChanges(state.changes);
+      state.message = "";
+      deps.render();
+      return true;
+    },
     /** Whether the result on screen holds changes not submitted. */
     pending: (/** @type {Console} */ target) => (target.edit?.count ?? 0) > 0,
     editCell: (
@@ -137,19 +244,25 @@ export function createEdits(deps) {
     /** Drop the changes of some rows, or all of them. */
     revert(/** @type {Console} */ target, /** @type {number[] | undefined} */ rows) {
       const set = shownSet(target);
-      if (!target.edit || !set) return 0;
-      const before = target.edit.count;
-      revertRows(target.edit.changes, set, rows);
-      target.edit.count = countChanges(target.edit.changes);
-      target.edit.message = "";
-      deps.render();
-      return before - target.edit.count;
+      const state = target.edit;
+      if (!state || !set) return 0;
+      const before = state.count;
+      if (state.status === "ready" && state.target)
+        record(/** @type {EditState & { target: Target }} */ (state), set, (changes) =>
+          revertRows(changes, set, rows),
+        );
+      else {
+        revertRows(state.changes, set, rows);
+        state.count = countChanges(state.changes);
+        deps.render();
+      }
+      return before - state.count;
     },
     /** The statements a submit would run. */
     preview(/** @type {Console} */ target) {
       const set = shownSet(target);
       if (!target.edit?.target || !set || target.edit.count === 0)
-        throw new Error("No pending changes.");
+        throw new Error(t("edits.noPendingChanges"));
       return previewSql(target.edit.target, set, target.edit.changes);
     },
     /** Run the changes in one transaction; on success read the rows again. */
@@ -157,7 +270,7 @@ export function createEdits(deps) {
       const state = target.edit;
       const set = shownSet(target);
       if (!state?.target || !set || state.count === 0)
-        throw new Error("No pending changes to submit.");
+        throw new Error(t("edits.noPendingChangesToSubmit"));
       const done = await submitChanges({
         execute: deps.execute,
         conn,
@@ -172,6 +285,7 @@ export function createEdits(deps) {
       }
       state.changes = emptyChanges();
       state.count = 0;
+      state.history = [];
       await deps.reload(target, conn);
       if (target.edit && target.edit !== state) target.edit.message = done.message;
       deps.render();

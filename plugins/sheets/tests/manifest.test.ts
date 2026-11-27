@@ -68,13 +68,14 @@ describe("plugin.json", () => {
     );
   });
 
-  it("declares no file paths of its own and the csv-encoding setting", () => {
+  it("may be asked for any file and holds none, and has the csv-encoding setting", () => {
     const sheets = manifest();
-    const kinds = (sheets.permissions ?? []).map((p) => p.permission);
-    expect(kinds).not.toContain("fs:read");
-    expect(kinds).not.toContain("fs:write");
+    // `/**` says only what may be asked: an install grants none of it, and each folder is still
+    // asked for, or granted when the person opens a file there (ADR 0131, ADR 0260).
     expect(sheets.permissions).toEqual([
       { permission: "cmd:invoke", ids: ["desk.files.changed", "desk.buffers.update"] },
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
     expect(sheets.contributes?.settings?.["endue.sheets.csv-encoding"]).toMatchObject({
       kind: "string",

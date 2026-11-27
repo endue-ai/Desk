@@ -11,6 +11,7 @@ import { openShell } from "./shell-helpers";
 const PARTS: ReadonlyArray<readonly [id: string, selector: string]> = [
   ["desk.profiles", '[data-layer="system"] .modes'],
   ["desk.desktops", '[data-layer="system"] .desktops'],
+  ["desk.shortcuts", '[data-layer="system"] .shortcuts'],
   ["desk.agents", '[data-layer="system"] .sidebar'],
   ["desk.account", '[data-layer="system"] .account-bar'],
   ["desk.rail", ".rail"],

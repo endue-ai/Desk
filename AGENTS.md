@@ -57,13 +57,14 @@ installs the commit identity and its hooks on a machine (see Boundaries).
 
 ## Boundaries
 
-- One commit identity, without exception. A commit's author and committer, and every name or email
-  in its message (`Signed-off-by`, `Co-authored-by` and any other line), is `endue-team <team@endue.ai>`
-  or Claude (`<noreply@anthropic.com>`). No other person, email address or account may appear in a
-  commit, ever. Before committing, `git config user.email` must answer `team@endue.ai`; before every
-  push, read `git log --format='%an <%ae> | %cn <%ce>%n%B' origin/main..` and remove anything else. A
-  squash merge adds `Co-authored-by` for every author of the PR's commits, so merge only branches whose
-  commits all pass this rule. Work starts with the identity in place: every Claude Code session and
+- One commit identity, without exception. A commit's author and committer, and every name or email in its
+  message (`Signed-off-by`, `Co-authored-by` and any other line), is `endue-team <team@endue.ai>` or
+  Claude (`<noreply@anthropic.com>`). No other person, email address or account may appear in a commit,
+  ever; the one exception is GitHub (`GitHub <noreply@github.com>`) as the committer of the squash merge
+  it makes for a pull request. Before committing, `git config user.email` must answer `team@endue.ai`;
+  before every push, read `git log --format='%an <%ae> | %cn <%ce>%n%B' origin/main..` and remove anything
+  else. A squash merge adds `Co-authored-by` for every author of the PR's commits, so merge only branches
+  whose commits all pass this rule. Work starts with the identity in place: every Claude Code session and
   `just task-start` run `scripts/git-identity/ensure.sh`, which installs it on a team machine and keeps
   its hooks current; elsewhere run `just identity` once. Never skip the hooks with `--no-verify`.
 - No secrets. Never commit tokens, keys, certificates, `.env` files or personal data. Signing keys live in
@@ -92,6 +93,8 @@ read the same files and follow the steps.
   author agent (`.claude/skills/dispatch/SKILL.md`).
 - `fix-ci <pr>`: fix a PR's failing checks on its branch, within budget (`.claude/skills/fix-ci/SKILL.md`).
 - `add-adr <title>`: add the next MADR page to `docs/adr/` (`.claude/skills/add-adr/SKILL.md`).
+- `design-ui <path>`: build or change UI on the endue design system (endue.ai/design) and run its checks
+  (`.claude/skills/design-ui/SKILL.md`).
 
 Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, stop and label
 `ai:needs-human`. Which tests run for which change: `docs/qa/TESTING.md`.

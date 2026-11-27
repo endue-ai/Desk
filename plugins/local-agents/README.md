@@ -6,22 +6,22 @@ Gemini CLI (`gemini`), Grok CLI (`grok`), Qwen Code (`qwen`), Copilot CLI (`copi
 Agent (`cursor-agent`) and OpenCode (`opencode`), finds which are there by their `--version`, and
 reads each one's own output: stream-json (Claude, Cursor, Gemini), JSON lines (Codex, Grok), plain
 text (the rest). Five views (`1`–`5`): **Agents** (found, versions, how each is held read-only, how
-to install the missing), **Chat** (one conversation per agent; Claude, Codex and Cursor resume their
-own session, the others get the earlier turns in the prompt), **Compare** (one question to several
+to install the missing), **Chat** (all saved conversations and optional native history in the shared
+session reader, with source-aware resume and related-session previews), **Compare** (one question to several
 agents, answers side by side), **Board** (a kanban of cards To do → Running → Done / Failed; drag,
 `[` `]`, or Run; `endue.local-agents.parallel` at once) and **Activity** (every run and its answer).
-Why and how: ADR 0084. Every agent, endue and local, as one card Home: `plugins/agents` (ADR 0112).
-
+See ADR 0084 and the Agents Home in `plugins/agents` (ADR 0112).
 The plugin is `autoload`: installed but off until the person turns it on (the first-run rule: Claude
 and Codex are not on by default). Programs run through `proc.spawn` without a shell; the prompt is one
 argument a leading dash cannot turn into an option. With `endue.local-agents.access` `read-only` (the
 default) Claude runs in plan mode and Codex in its read-only sandbox, and the desk asks once before
 running a program nothing holds read-only. No flag that widens a program's permissions is ever passed.
-Agents get `list`, `ask` (always read-only), `work` (agent access, so their call waits for approval)
-and `add-card` (never run); `ask` and `work` take a `folder` inside the work folder (ADR 0099).
+Agents can read `detect`, `list`, `board`, `activity` and a named `transcript`. `ask` is read-only,
+`work` waits for approval, `stop` is for owned work runs, and `add-card` prepares a card (ADR 0381).
 
 | Permission | Why |
 | --- | --- |
+| `agents:manage` | Open native history on request, import a session or continue it |
 | `proc:spawn` (the eight programs) | Find them by their version and ask them; one grant covers all |
 | `cmd:invoke` (`desk.palette.pick`) | Ask for a prompt, an agent or a model; confirm an unguarded program |
 

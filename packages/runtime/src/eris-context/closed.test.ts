@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { moveWindowTo } from "../desktops/actions";
 import { desktopId, layoutOf, openSurface, setDesktop, stash } from "../shell/actions";
-import { closeWindow, newWindow, showInPane } from "../shell/windows";
+import { closeWindow, newWindow, showInTab } from "../shell/windows";
 import { CLOSED_KEY, CLOSED_MAX, closedOf, watchClosed } from "./closed";
 import { EPOCH, fakeDesk, memoryStorage, settle } from "./fixtures";
 import { mountErisContext } from "./mount";
@@ -228,10 +228,10 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
     expect(log?.list()).toHaveLength(1);
   });
 
-  it("comes back under a new id when another window took its id and its panes allow it", async () => {
+  it("comes back under a new id when another window took its id and its tabs allow it", async () => {
     const { desk } = await mounted();
     const id = await newWindow(desk.ctx);
-    await showInPane(desk.ctx, id, "p1", "notes");
+    await showInTab(desk.ctx, id, "p1", "notes");
     await closeWindow(desk.ctx, id);
     // Later, as the person does: a new window takes the first free id.
     await settle();
@@ -239,8 +239,8 @@ describe("desk.windows.closed and desk.windows.reopen", () => {
     const answer = (await desk.run("desk.windows.reopen", { id })) as { id: string };
     expect(answer.id).toBe("window-2");
     const surfaces = layoutOf(desk.store.get()).surfaces;
-    expect(surfaces.find((p) => p.id === "window-2")?.panes).toMatchObject({ view: "notes" });
-    expect(surfaces.find((p) => p.id === id)?.panes).toMatchObject({ view: "launcher" });
+    expect(surfaces.find((p) => p.id === "window-2")?.tabs).toMatchObject([{ view: "notes" }]);
+    expect(surfaces.find((p) => p.id === id)?.tabs).toMatchObject([{ view: "launcher" }]);
   });
 
   it("puts a window back in the log when its plugin cannot start", async () => {

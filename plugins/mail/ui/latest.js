@@ -7,7 +7,9 @@ import { asString } from "./state.js";
 /**
  * @typedef {import("@endue-ai/bridge").ItemCondition} ItemCondition
  * @typedef {import("@endue-ai/bridge").MessageItem} MessageItem
- * @typedef {{ from: string, subject: string, receivedAt: string, unread: boolean, snippet: string }} Brief
+ * @typedef {{ source: MessageItem["source"], id: string, thread: string, from: string, subject: string,
+ *   receivedAt: string, unread: boolean, snippet: string }} Brief
+ * `source` and `id` name the message to endue.mail.read, show, archive or send-message's replyTo.
  */
 
 /** The most messages one answer holds. */
@@ -38,6 +40,9 @@ export function latestQuery(args) {
 export function latestOf(box, items) {
   /** @type {Brief[]} */
   const messages = items.map(messageOf).map((m) => ({
+    source: m.source,
+    id: m.id,
+    thread: m.thread,
     from: m.from.name ?? m.from.email ?? "Unknown",
     subject: m.title,
     receivedAt: m.receivedAt,

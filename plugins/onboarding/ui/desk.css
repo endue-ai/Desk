@@ -294,3 +294,55 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* The desk boots like a heads-up display (boot.js): while a piece forms in the middle the frame
+   stands over the orb and a targeting ring frames the piece until it flies home. */
+#frame.booting {
+  z-index: 3;
+}
+
+.boot-ring {
+  --boot: var(--desk-eris-glow, var(--desk-chart-3));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--boot) 55%, transparent);
+  border-radius: var(--desk-radius-full);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--boot) 35%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--boot) 20%, transparent);
+  pointer-events: none;
+}
+
+/* A dashed ring just outside it, and four tick marks on it. */
+.boot-ring::before,
+.boot-ring::after {
+  content: "";
+  position: absolute;
+  border-radius: var(--desk-radius-full);
+  pointer-events: none;
+}
+
+.boot-ring::before {
+  inset: -10px;
+  border: 1px dashed color-mix(in srgb, var(--boot) 45%, transparent);
+}
+
+.boot-ring::after {
+  inset: -4px;
+  background: repeating-conic-gradient(var(--boot) 0 3deg, transparent 3deg 90deg);
+  mask: radial-gradient(closest-side, transparent calc(100% - 5px), var(--desk-text) calc(100% - 4px));
+}
+
+/* A bright arc on the ring; the ring turns, so the arc sweeps. */
+.boot-ring .sweep {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: var(--desk-radius-full);
+  border: 2px solid transparent;
+  border-top-color: var(--boot);
+  filter: drop-shadow(0 0 6px var(--boot));
+}

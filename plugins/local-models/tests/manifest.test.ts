@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { wireCommands } from "../ui/commands.js";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/local-models");
@@ -36,19 +37,18 @@ describe("plugin.json", () => {
     expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
   });
 
-  it("connects to this computer only, by itself", () => {
+  it("connects to this computer by itself, and is asked for another", () => {
     const connect = manifest.permissions.filter((p) => p.permission === "net:connect");
-    expect(connect).toEqual([{ permission: "net:connect", hosts: ["localhost", "127.0.0.1"] }]);
+    // `*` holds no host: a server the person adds is asked for at run time (ADR 0260).
+    expect(connect).toEqual([
+      { permission: "net:connect", hosts: ["localhost", "127.0.0.1"] },
+      { permission: "net:connect", hosts: ["*"] },
+    ]);
   });
 
   it("answers every command it declares", () => {
-    const sources = readdirSync(join(folder, "ui"))
-      .filter((f) => f.endsWith(".js"))
-      .map((f) => readFileSync(join(folder, "ui", f), "utf8"))
-      .join("\n");
-    for (const { id } of manifest.contributes.commands) {
-      expect(id.startsWith("endue.local-models.")).toBe(true);
-      expect(sources.includes(`"${id}"`), id).toBe(true);
-    }
+    const registered: string[] = [];
+    wireCommands({ commands: { on: (id: string) => registered.push(id) } }, {} as never);
+    expect(registered.sort()).toEqual(manifest.contributes.commands.map(({ id }) => id).sort());
   });
 });

@@ -106,12 +106,24 @@ impl Composed {
         let Some(spare) = self.page.spare else {
             return false;
         };
-        let page = super::super::PAGE.to_owned();
-        let shown = self.textures.insert(page, spare);
-        self.page.spare = shown;
+        let page = super::super::PAGE;
+        // The picture it replaces retires: a scene handed before draws it still (#249).
+        if let Some(shown) = self.textures.insert(page.to_owned(), spare) {
+            self.retire(shown);
+        }
+        self.page.spare = None;
         self.page_damage.push(Vec::new());
         self.dirty = true;
         true
+    }
+
+    /// `surface`'s paint into `id` aside failed: when it is the page's spare, nothing waits aside
+    /// for a report to show, and the page keeps its picture (#330).
+    pub(super) fn page_aside_failed(&mut self, surface: &str, id: TextureId) {
+        if surface == super::super::PAGE && self.page.spare == Some(id) {
+            self.page.aside = None;
+            self.page.spare = None;
+        }
     }
 }
 

@@ -13,9 +13,7 @@ use std::collections::BTreeMap;
 
 use common::*;
 use desk_bridge::{BrainDesk, BrainDeskFill, BrainDeskWindowState};
-use desk_wm::{
-    Desk, DesktopLayout, Fill, Offset, PaneNode, Placement, Rect, screen_rect, slot_rect,
-};
+use desk_wm::{Desk, DesktopLayout, Fill, Offset, Placement, Rect, Tab, screen_rect, slot_rect};
 use serde_json::json;
 
 const ORIGIN: Offset = Offset::new(0.0, 0.0);
@@ -30,12 +28,12 @@ mod plugin_windows_in_their_slots {
         let launcher = c.new_window();
         c.show_plugin("p.a");
         assert_eq!(c.focused.as_deref(), Some("p.a"));
-        let panes = c
+        let tabs = c
             .windows()
             .into_iter()
             .find(|p| p.id == launcher)
-            .map(|p| p.panes());
-        assert_eq!(panes, Some(PaneNode::view("p1", "launcher")));
+            .map(|p| p.tabs());
+        assert_eq!(tabs, Some(vec![Tab::new("p1", "launcher")]));
     }
 
     #[test]
@@ -183,8 +181,8 @@ fn seen_desk() -> Desk {
     adopt(&mut d, &["p.x"]);
     d.open_surface("files", None);
     d.put_away("files", "Files", EPOCH);
-    d.focus_pane("mail", None);
-    d.focus_pane("notes", None);
+    d.focus_tab("mail", None);
+    d.focus_tab("notes", None);
     d
 }
 
@@ -291,7 +289,7 @@ mod the_desk_state {
         assert_eq!(value["session"]["1"]["rail"], json!({ "visible": true }));
         assert_eq!(
             value["focusBy"]["2"],
-            json!({ "window": "notes", "pane": "p1" })
+            json!({ "window": "notes", "tab": "p1" })
         );
         assert_eq!(value["drawer"][0]["kind"], json!("surface"));
         assert_eq!(value["drawer"][0]["placement"]["id"], json!("files"));

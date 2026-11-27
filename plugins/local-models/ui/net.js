@@ -105,7 +105,7 @@ function inbox() {
 /**
  * The page's sockets, on one bridge.
  * @param {Bridge} bridge
- * @param {{ reason?: (host: string, port: number) => string }} [options]
+ * @param {{ reason?: (host: string, port: number) => string, askForRemote?: boolean }} [options]
  */
 export function createSockets(bridge, options = {}) {
   /** @type {Map<string, ReturnType<typeof inbox>>} */
@@ -167,7 +167,7 @@ export function createSockets(bridge, options = {}) {
    * @param {{ host: string, port: number, timeoutMs?: number, ask?: boolean }} target
    * @returns {Promise<Socket>}
    */
-  async function connect({ host, port, timeoutMs = 4000, ask = true }) {
+  async function connect({ host, port, timeoutMs = 4000, ask = options.askForRemote ?? true }) {
     await take();
     /** @type {{ socketId: string }} */
     let result;

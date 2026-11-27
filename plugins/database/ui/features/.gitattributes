@@ -1,0 +1,2 @@
+# Two branches that each add a feature add a line each: keep both.
+index.js merge=union

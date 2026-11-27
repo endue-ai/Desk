@@ -67,11 +67,13 @@ export function createGrants(bridge) {
    * @param {string} path
    * @param {(scope: FsScope<P>) => Promise<T>} call
    * @param {string} [why] the ask's reason, when it is not opening or saving the file
+   * @param {{ ask?: boolean, exact?: boolean }} [options]
    * @returns {Promise<T>}
    */
-  const withGrant = async (permission, path, call, why) => {
+  const withGrant = async (permission, path, call, why, { ask = true, exact = false } = {}) => {
     const verb = permission === "fs:read" ? "read" : "write";
-    const scope = scopeFor(permission, path);
+    const scope =
+      exact && !/[*?]/u.test(path) ? { permission, paths: [path] } : scopeFor(permission, path);
     const refused = new Error(`Not allowed to ${verb} ${path}.`);
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
@@ -80,7 +82,7 @@ export function createGrants(bridge) {
     try {
       return await call(scope);
     } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw failed(error);
+      if (!ask || codeOf(error) !== "permission_denied") throw failed(error);
     }
     const reason = why ?? (verb === "read" ? `To open ${path} in Notes` : `To save ${path}`);
     // perm.request answers a refusal as a result; a failed ask counts as one.
@@ -110,5 +112,15 @@ export function createGrants(bridge) {
       () => undefined,
     );
 
-  return { withGrant, read, quietly, chose, scopeFor };
+  /** @param {string} path @param {string} content @param {{ ask: boolean, exact: boolean }} options */
+  const write = (path, content, options) =>
+    withGrant(
+      "fs:write",
+      path,
+      (scope) => bridge.call("fs.write", { path, content, encoding: "utf8", scope }),
+      undefined,
+      options,
+    );
+
+  return { withGrant, read, write, quietly, chose, scopeFor };
 }

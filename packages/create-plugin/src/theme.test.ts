@@ -118,12 +118,10 @@ describe("renderPlugin with kind theme", () => {
     );
   });
 
-  it("points its test at the Desk repository it was made beside", () => {
-    const test = render({ desk: "../Desk" })["tests/theme.test.ts"] ?? "";
-    expect(test).toContain('from "../../Desk/packages/ui/src/theme/index"');
-    expect(test).toContain('from "../../Desk/packages/bridge/src/index"');
-    expect(test).toContain('resolve(import.meta.dirname, "../../Desk")');
-    expect(test).not.toContain("../../../");
+  it("uses the installed theme test host even when a caller passes a checkout hint", () => {
+    const test = render({ desk: "../endue-checkout" })["tests/theme.test.ts"] ?? "";
+    expect(test).toBe(read("examples/plugin-hello-theme/tests/theme.test.ts"));
+    expect(test).toContain('from "@endue-ai/plugin-sdk/testing/theme"');
   });
 });
 

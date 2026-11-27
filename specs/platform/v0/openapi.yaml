@@ -3,16 +3,16 @@ info:
   title: endue AI platform API, the desk's subset
   version: 0.1.0
   description: >-
-    The part of endue AI's own platform API (/api/v1, the API endue.ai's web calls) that Desk uses to
+    The part of endue AI's own platform API (/api/v1, the API endue.ai's web calls) that endue uses to
     create and manage the person's endue AI agents: agents and what Studio shows of them, the agent
     catalog, the conversation list of the Home board, the spaces the person can open (ADR 0129), and
     the person's own account settings, as endue.ai's Account and General settings show them (ADR
-    0130). endue AI serves it; Desk is a client (crates/desk-platform) and writes down only what it
+    0130). endue AI serves it; endue is a client (crates/desk-platform) and writes down only what it
     reads and sends (ADR 0122). Bodies are snake_case. Readers ignore fields this document does not
     name, and read null as absent.
   contact:
-    name: endue Desk maintainers
-    url: https://github.com/endue-ai/Desk
+    name: endue maintainers
+    url: https://github.com/endue-ai/endue
   license:
     name: Apache-2.0
 servers:
@@ -48,7 +48,7 @@ paths:
       operationId: listAgents
       tags: [agents]
       summary: One page of the person's agents, the newest first
-      description: Deleted agents may be listed with status deleted; Desk leaves them out.
+      description: Deleted agents may be listed with status deleted; endue leaves them out.
       parameters:
         - $ref: "#/components/parameters/Page"
         - name: limit
@@ -354,7 +354,7 @@ paths:
       summary: The workspaces endue AI runs for the agent alone
       description: >-
         The workspaces endue AI runs for the agent alone (a Linux computer or Chrome). While endue AI
-        has workspaces turned off, every workspace path is 404 FEATURE_DISABLED, which Desk reads as
+        has workspaces turned off, every workspace path is 404 FEATURE_DISABLED, which endue reads as
         none.
       responses:
         "200":
@@ -388,7 +388,7 @@ paths:
       tags: [memories]
       summary: One page of the agent's memories, the newest first
       description: >-
-        One page of the agent's memories, the newest first. Desk asks for the newest 200 and reads
+        One page of the agent's memories, the newest first. endue asks for the newest 200 and reads
         only each one's category and whether it is archived, to count them; no memory's value is
         read.
       parameters:
@@ -411,7 +411,7 @@ paths:
       description: >-
         The API keys endue AI issued to the person for calling their agents from their own
         services: keys for one agent (agent_id) and keys for all of them (agent_id null). A list
-        never carries a secret; Desk reads neither the prefix nor the scopes.
+        never carries a secret; endue reads neither the prefix nor the scopes.
       responses:
         "200":
           description: The keys.
@@ -426,7 +426,7 @@ paths:
       summary: One page of what the person's agents made, the most recently changed first
       description: >-
         One page of the artifacts the person owns, the most recently changed first; one agent's when
-        agent_id is given. Desk asks for one, to read how many there are and when the newest changed.
+        agent_id is given. endue asks for one, to read how many there are and when the newest changed.
       parameters:
         - name: agent_id
           in: query
@@ -539,6 +539,50 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ConversationListEnvelope" }
         default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createAgentConversation
+      tags: [conversations]
+      summary: Open a new conversation with the selected agent
+      description: Opens an agent conversation for the signed-in account at the ask approval level.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentConversationInput" }
+      responses:
+        "201":
+          description: The new conversation and the agent bound to it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentConversationEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/ai/conversations/{conversation_id}/runs:
+    post:
+      operationId: runAgentConversation
+      tags: [conversations]
+      summary: Send a text turn and read its server-sent events
+      description: >-
+        The terminal events are done and error. The assistant message in done is authoritative.
+        interaction describes a pending input. Fields and events outside this subset are additive.
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/ConversationIdentifier" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentConversationTurn" }
+      responses:
+        "200":
+          description: A sequence of Server-Sent Event frames.
+          content:
+            text/event-stream:
+              schema: { type: string }
+              x-sse-events:
+                done: { $ref: "#/components/schemas/AgentConversationDone" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/spaces:
     get:
       operationId: listSpaces
@@ -577,6 +621,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SpaceGetResponse" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces/{space_id}/conversation:
+    post:
+      operationId: ensureSpaceConversation
+      tags: [spaces]
+      summary: Resolve the space's Front Desk conversation
+      description: A space has one Front Desk conversation with a server-bound agent.
+      parameters:
+        - $ref: "#/components/parameters/SpaceId"
+      responses:
+        "200":
+          description: The conversation and the exact agent bound to it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceConversationEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/spaces/{space_id}/overview:
     parameters:
       - $ref: "#/components/parameters/SpaceId"
@@ -586,7 +645,7 @@ paths:
       summary: What a space is doing, in one call
       description: >-
         The space's counts, the agents taking part, the work going on and the latest results, as
-        endue.ai's space page opens with. Desk names only these; the answer carries more.
+        endue.ai's space page opens with. endue names only these; the answer carries more.
       responses:
         "200":
           description: The overview, in an envelope.
@@ -603,7 +662,7 @@ paths:
       summary: The space's rooms that are not archived
       description: >-
         Each room with how many messages the person has not read, when the last came, whether a
-        discussion is going on and its threads. Desk does not read who is in a room.
+        discussion is going on and its threads. endue does not read who is in a room.
       responses:
         "200":
           description: The rooms, in an envelope.
@@ -667,7 +726,7 @@ paths:
       summary: Change some preferences; only the keys sent change
       description: >-
         Change some preferences; only the keys sent change. endue AI stores locale and timezone as
-        given, so Desk checks their shape before it sends them.
+        given, so endue checks their shape before it sends them.
       requestBody:
         required: true
         content:
@@ -720,7 +779,7 @@ components:
       type: http
       scheme: bearer
       description: >-
-        The endue ID access token of the desk's account. Desk sends no Origin header, waits 15 s at
+        The endue ID access token of the desk's account. endue sends no Origin header, waits 15 s at
         most, and after a 401 refreshes the token once and tries once more.
   parameters:
     AgentId:
@@ -745,8 +804,61 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   schemas:
+    ConversationIdentifier:
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+    AgentConversationInput:
+      type: object
+      properties:
+        agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        title: { type: string, maxLength: 60 }
+        approval_level: { const: ask }
+      required: [agent_id, approval_level]
+      additionalProperties: false
+    AgentConversationEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { $ref: "#/components/schemas/ConversationIdentifier" }
+            agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+          required: [id, agent_id]
+      required: [data]
+    SpaceConversationEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            conversation_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+            agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+          required: [conversation_id, agent_id]
+      required: [data]
+    AgentConversationTurn:
+      type: object
+      properties:
+        agent_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        content: { type: string, minLength: 1, maxLength: 8000 }
+        client_message_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        stream: { const: true }
+      required: [agent_id, content, client_message_id, stream]
+      additionalProperties: false
+    AgentConversationDone:
+      description: JSON data of the done event.
+      type: object
+      properties:
+        run_id: { $ref: "#/components/schemas/ConversationIdentifier" }
+        stop_reason: { type: ["string", "null"] }
+        message:
+          type: object
+          properties:
+            role: { const: assistant }
+            content: { type: ["string", "null"] }
+          required: [role, content]
+      required: [run_id, stop_reason, message]
     ErrorEnvelope:
-      description: Every error of the platform. Desk reads the status first (401 signed out, 403 forbidden, 404 and 410 not found, 400 and 422 invalid), then the code.
+      description: Every error of the platform. endue reads the status first (401 signed out, 403 forbidden, 404 and 410 not found, 400 and 422 invalid), then the code.
       type: object
       properties:
         error: { $ref: "#/components/schemas/ErrorBody" }
@@ -819,7 +931,7 @@ components:
         pagination: { $ref: "#/components/schemas/Pagination" }
       required: [items, pagination]
     NatureRole:
-      description: The role; Desk keeps one prompt, the role in words, as endue.ai does.
+      description: The role; endue keeps one prompt, the role in words, as endue.ai does.
       type: object
       properties:
         v: { type: string }
@@ -985,7 +1097,7 @@ components:
         default: { type: [string, "null"] }
         fallback: { type: [string, "null"] }
     AgentSettingsUpdateRequest:
-      description: The settings Desk changes.
+      description: The settings endue changes.
       type: object
       properties:
         visibility:
@@ -1200,7 +1312,7 @@ components:
         author: { type: string }
       required: [kind, id]
     AgentWallpaper:
-      description: The agent's wallpaper. Desk reads its source, never its manifest.
+      description: The agent's wallpaper. endue reads its source, never its manifest.
       type: object
       properties:
         source: { $ref: "#/components/schemas/WallpaperSource" }
@@ -1235,7 +1347,7 @@ components:
           required: [data]
     Memory:
       description: >-
-        One of the agent's memories, as far as Desk reads it: its kind (procedural ones are rules)
+        One of the agent's memories, as far as endue reads it: its kind (procedural ones are rules)
         and when it was archived (null or absent: it is live).
       type: object
       properties:
@@ -1282,7 +1394,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ApiKey" }
     Artifact:
-      description: Something an agent made, as far as Desk reads it.
+      description: Something an agent made, as far as endue reads it.
       type: object
       properties:
         id: { type: string, minLength: 1 }
@@ -1634,7 +1746,7 @@ components:
         updated_at: { type: string }
       required: [id, title, updated_at]
     SpaceOverview:
-      description: What a space is doing. The lists Desk does not name, attention items among them, are ignored.
+      description: What a space is doing. The lists endue does not name, attention items among them, are ignored.
       type: object
       properties:
         counts: { $ref: "#/components/schemas/SpaceCounts" }
@@ -1710,7 +1822,7 @@ components:
       required: [id, email, status, created_at, updated_at]
     UserUpdateRequest:
       description: >-
-        What Desk changes of the account: the name (1 to 200 characters) and the picture's address
+        What endue changes of the account: the name (1 to 200 characters) and the picture's address
         (http or https, at most 2048 characters, or empty to clear it).
       type: object
       properties:
@@ -1725,7 +1837,7 @@ components:
       description: >-
         The person's preferences. locale is a BCP 47 tag, or null while the person never chose a
         language. timezone is an IANA name. The other preferences (models, lists, the window
-        layout, agent routing) are endue.ai's own; Desk ignores them.
+        layout, agent routing) are endue.ai's own; endue ignores them.
       type: object
       properties:
         locale: { type: [string, "null"] }
@@ -1734,7 +1846,7 @@ components:
       required: [timezone]
     UserPreferenceUpdateRequest:
       description: >-
-        The preferences Desk changes: the display language (a BCP 47 tag) and the time zone (an IANA
+        The preferences endue changes: the display language (a BCP 47 tag) and the time zone (an IANA
         name). Only the keys sent change.
       type: object
       properties:

@@ -6,7 +6,7 @@
  */
 import type { ShellCtx } from "../../shell/context";
 import { type Child, h, render } from "../../shell/dom";
-import { ENDUE_SPACE_VIEW, openEndueAgent, readSpace, spacePage } from "../../system/endue";
+import { ENDUE_SPACE_VIEW, openEndueAgent, readSpace } from "../../system/endue";
 import type { Mounted } from "../views";
 import { flipCard } from "./flip";
 import { type SpaceMember, spaceFront, spaceStudio } from "./model";
@@ -21,6 +21,7 @@ import {
   readLine,
   text,
 } from "./parts";
+import { cardQuestion } from "./question";
 
 /** Faces shown on the front before the rest count as more. */
 const FACES = 3;
@@ -56,6 +57,7 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
   const el = h("div", { class: "endue-view", "data-endue-space-view": id });
   const again = () => void readSpace(ctx, id, true);
   let was: boolean | undefined;
+  const question = cardQuestion(ctx, () => draw());
   const draw = () => {
     const s = ctx.store.get();
     const space = s.endue.spaces.find((sp) => sp.id === id);
@@ -71,7 +73,9 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
     const now = ctx.wall();
     const front = spaceFront(s.lang, space, read, s.endue.agents, now);
     const studio = spaceStudio(s.lang, space, read, s.endue.agents, now);
-    const pages: Page[] = [["open-web", "openWeb", spacePage(id)]];
+    const current = read?.state === "ready" ? read.value.space : space;
+    // Nothing of endue.ai opens from the desk: the space is read here, in its window.
+    const pages: Page[] = [];
     const shown = front.members.slice(0, FACES);
     const more = front.members.length - shown.length;
     render(el, () => [
@@ -129,6 +133,11 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
             : null,
           front.latest ? h("p", { class: "endue-latest" }, front.latest) : null,
           actions(ctx, "front", pages, again),
+          question.view(
+            current.status === "active" && current.frontAgentId
+              ? { spaceId: id, agentId: current.frontAgentId }
+              : undefined,
+          ),
         ],
         back: [
           h(
@@ -176,5 +185,11 @@ export function endueSpaceBody(ctx: ShellCtx, id: string): Mounted {
     ],
     draw,
   );
-  return { el, off };
+  return {
+    el,
+    off: () => {
+      off();
+      question.dispose();
+    },
+  };
 }

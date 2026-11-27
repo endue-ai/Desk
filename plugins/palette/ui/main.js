@@ -217,14 +217,16 @@ defineUiPlugin({
     /** Run a command, published document, OS hit, or provider action. */
     const choose = async (mod = false) => {
       const row = shown[selected];
+      // A pick is answered even while the command that asked it runs (Copy as asks its format,
+      // #504): it starts nothing, so it cannot run twice.
+      if (row && mode?.kind === "pick") {
+        close()?.resolve(row.entry.id);
+        return;
+      }
       // Enter on a question with nothing typed: the answer says what it needs.
       if (!row && mode?.kind === "args" && !choosing) return answered(input.value);
       if (!row || choosing || !mode) return;
       const entry = row.entry;
-      if (mode.kind === "pick") {
-        close()?.resolve(entry.id);
-        return;
-      }
       if (mode.kind === "args") return answered(entry.id);
       // A command that needs args asks for them first; Escape on the first goes back here.
       if (row.type === "command" && !entry.hit && !runnable(entry))
@@ -348,7 +350,7 @@ defineUiPlugin({
       const hidden = new Set([...OWN, ...asked.map((p) => p.command)]);
       show({
         kind: "commands",
-        title: "Search Desk",
+        title: "Search endue",
         placeholder: "Search plugins, data, files and applications",
         query: args?.query ?? "",
         providers: asked,

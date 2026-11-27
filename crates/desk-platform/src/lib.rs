@@ -12,6 +12,7 @@ use std::time::Duration;
 mod agents;
 mod board;
 mod catalog;
+mod chat;
 mod error;
 mod facets;
 #[cfg(feature = "fake")]
@@ -28,6 +29,7 @@ pub mod wire_spaces;
 
 pub use agents::Switch;
 pub use board::MEMORIES;
+pub use chat::{ChatConversation, ChatDone, ChatState, ChatTurn};
 pub use error::{ErrorKind, PlatformError, Result, SIGN_IN};
 pub use pictures::{DRAWN_URL, Face, MAX_PICTURE, Picture};
 

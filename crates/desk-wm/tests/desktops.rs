@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use common::*;
 use desk_wm::desktops::{MAX_DESKTOPS, added, default_desktops, moved, next_id, renamed};
-use desk_wm::{Desk, Desktop, DesktopLayout, InUse, Offset, OnRemove, PaneNode, Placement};
+use desk_wm::{Desk, Desktop, DesktopLayout, InUse, Offset, OnRemove, Placement, Tab};
 
 fn win(id: &str, x: f64) -> Placement {
     at(id, "endue.notes", x, 120.0, 400.0, 300.0)
@@ -203,7 +203,7 @@ mod moving_a_window_to_another_desktop {
     fn notes() -> Placement {
         let mut p = at("notes", "endue.notes", 300.0, 200.0, 420.0, 360.0);
         p.pinned = true;
-        p.panes = Some(PaneNode::view("p1", "notes"));
+        p.tabs = Some(vec![Tab::new("p1", "notes")]);
         p
     }
 
@@ -214,7 +214,7 @@ mod moving_a_window_to_another_desktop {
             d.pan.insert("1".into(), Offset::new(-100.0, 0.0));
             d.pan.insert("3".into(), Offset::new(50.0, 40.0));
             d.focused = Some("notes".into());
-            d.pane = Some("p1".into());
+            d.tab = Some("p1".into());
         });
         s
     }
@@ -245,7 +245,7 @@ mod moving_a_window_to_another_desktop {
             s.focus_by.get("3"),
             Some(&InUse {
                 window: "notes".into(),
-                pane: Some("p1".into()),
+                tab: Some("p1".into()),
             })
         );
     }
@@ -318,19 +318,19 @@ mod switching_desktops {
             ("1", layout(vec![win("a", 100.0)])),
             ("2", layout(vec![win("b", 100.0)])),
         ]);
-        s.focus_pane("a", None);
+        s.focus_tab("a", None);
         s.switch_to("2");
         assert_eq!(s.desktop, "2");
         assert_eq!(s.focused, None);
         let kept = InUse {
             window: "a".into(),
-            pane: Some("p1".into()),
+            tab: Some("p1".into()),
         };
         assert_eq!(s.focus_by.get("1"), Some(&kept));
-        s.focus_pane("b", None);
+        s.focus_tab("b", None);
         s.switch_to(1);
         assert_eq!(s.focused.as_deref(), Some("a"));
-        assert_eq!(s.pane.as_deref(), Some("p1"));
+        assert_eq!(s.tab.as_deref(), Some("p1"));
         assert_eq!(s.focus_by["2"].window, "b");
         // The one it came back to keeps its entry, for the next time it is left.
         assert_eq!(s.focus_by.get("1"), Some(&kept));

@@ -1,5 +1,6 @@
 // The window's commands for the palette: open it (on a thread when one is named) and start a chat,
 // on a model and with a first message when given.
+import { wireAgent } from "./agent.js";
 import { modelKey } from "./models.js";
 
 /** @typedef {import("./app.js").App} App */
@@ -60,4 +61,5 @@ export function wireCommands(ctx, app) {
     if (typeof args.prompt === "string" && args.prompt.trim()) await app.send(args.prompt);
     return { thread: thread.id };
   });
+  wireAgent(app, on, () => whenReady(app));
 }

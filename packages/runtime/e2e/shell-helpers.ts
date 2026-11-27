@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 export const DESK = { width: 1440, height: 900 };
 
@@ -24,6 +24,19 @@ export function putAway(page: Page, id?: string): Promise<unknown> {
   );
 }
 
+/**
+ * Window `id`'s menu, opened by a click on the tool on its title bar (ADR 0255): the desk's one
+ * window menu (ADR 0117), with New tab, Maximize or restore, Floating mode, Pin and Put in drawer
+ * above its "Move to" rows.
+ */
+export async function windowMenu(page: Page, id: string): Promise<Locator> {
+  const section = page.locator(`section.surface[data-surface="${id}"]`);
+  await section.locator('.surface-tools [aria-haspopup="menu"]').click();
+  const menu = page.locator(".desktops-menu");
+  await menu.waitFor();
+  return menu;
+}
+
 /** The theme studio lives in Settings > Appearance; Settings is a row of the avatar's menu. */
 export async function openThemes(page: Page): Promise<void> {
   await page.locator(".account-profile").click();
@@ -38,7 +51,7 @@ export function step(page: Page, ms: number): Promise<void> {
   return page.evaluate((m) => window.__shell.step(m), ms);
 }
 
-/** Count elements filled with the primary lavender (thin progress lines excluded). */
+/** Count the controls filled with the primary fill (thin progress lines excluded). */
 export function primaryFills(page: Page): Promise<number> {
   return page.evaluate(() => {
     const probe = document.createElement("span");
@@ -46,7 +59,11 @@ export function primaryFills(page: Page): Promise<number> {
     document.body.append(probe);
     const primary = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    return [...document.querySelectorAll("#desk *")].filter((el) => {
+    // Filled controls only: the fill is ink, the text colour in Stone, so a dot or mark drawn in the
+    // text colour (a desktop's map) shares its colour without being a filled button (ADR 0265).
+    return [
+      ...document.querySelectorAll("#desk button, #desk a[href], #desk [role='button']"),
+    ].filter((el) => {
       const r = el.getBoundingClientRect();
       return r.height > 2 && r.width > 0 && getComputedStyle(el).backgroundColor === primary;
     }).length;

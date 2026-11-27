@@ -9,7 +9,7 @@ mod support;
 
 use std::sync::{Arc, Mutex};
 
-use desk_bridge::{BridgeError, ErrorCode, WebStep};
+use desk_bridge::{BridgeError, ErrorCode, WebActResult, WebAction, WebReadResult, WebStep};
 use desk_core::{Core, WebError, WebPlace, WebState, WebViews};
 use serde_json::{Value, json};
 use support::{call, grant, home, named, roots};
@@ -66,6 +66,15 @@ impl WebViews for Shown {
     fn close(&self, view: &str) {
         self.note(format!("close {view}"));
     }
+
+    // Reading a page and acting in it: `web_control.rs`.
+    fn read(&self, view: &str, _: &str, _: u64, _: u64) -> Result<WebReadResult, WebError> {
+        Err(WebError::NotFound(format!("no page in {view}")))
+    }
+
+    fn act(&self, view: &str, _: &str, _: &WebAction) -> Result<WebActResult, WebError> {
+        Err(WebError::NotFound(format!("no page in {view}")))
+    }
 }
 
 fn any() -> Value {
@@ -94,7 +103,10 @@ fn a_view_opens_in_the_callers_window_and_takes_its_calls() {
     grant(&core, BROWSER, any());
     let view = open(&core, BROWSER, "https://example.com/", any()).unwrap();
     let place = json!({ "viewId": view, "x": 0, "y": 40, "width": 800, "height": 560 });
-    call(&core, BROWSER, "web.place", place).unwrap();
+    call(&core, BROWSER, "web.place", place.clone()).unwrap();
+    let mut fill = place;
+    fill["fill"] = json!(true);
+    call(&core, BROWSER, "web.place", fill).unwrap();
     let load = json!({ "viewId": view, "url": "https://endue.ai/blog", "scope": any() });
     call(&core, BROWSER, "web.load", load).unwrap();
     call(
@@ -111,7 +123,10 @@ fn a_view_opens_in_the_callers_window_and_takes_its_calls() {
         [
             format!("open {SURFACE} {view} https://example.com/"),
             format!(
-                "place {view} WebPlace {{ x: 0.0, y: 40.0, width: 800.0, height: 560.0, shown: true }}"
+                "place {view} WebPlace {{ x: 0.0, y: 40.0, width: 800.0, height: 560.0, shown: true, fill: false }}"
+            ),
+            format!(
+                "place {view} WebPlace {{ x: 0.0, y: 40.0, width: 800.0, height: 560.0, shown: true, fill: true }}"
             ),
             format!("load {view} https://endue.ai/blog"),
             format!("go {view} Back"),
@@ -122,7 +137,7 @@ fn a_view_opens_in_the_callers_window_and_takes_its_calls() {
     assert_eq!(core.web_view_count(), 0);
     // Closing one that already ended is no error, and asks the shell nothing.
     call(&core, BROWSER, "web.close", json!({ "viewId": view })).unwrap();
-    assert_eq!(shown.asked().len(), 6);
+    assert_eq!(shown.asked().len(), 7);
 }
 
 #[test]

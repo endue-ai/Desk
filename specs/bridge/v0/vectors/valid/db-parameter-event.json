@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a run parameter changed",
+  "instance": {
+    "event": "db.parameter",
+    "data": {
+      "sessionId": "d-1",
+      "name": "TimeZone",
+      "value": "Europe/Paris"
+    }
+  }
+}

@@ -3,6 +3,7 @@
 //! and answered) and `index.sqlite` (full-text search, derived from both). The files are the truth:
 //! a hand edit or a file another desk synced is read on the next call, and the index follows.
 
+mod facts;
 mod files;
 mod ids;
 mod index;
@@ -111,38 +112,11 @@ impl Memory {
             tags: tags.filter(|tags| !tags.is_empty()),
         };
         state.facts.push(fact.clone());
-        files::write_facts(&self.dir, &state.facts)?;
-        let seen = files::fingerprint(&self.dir);
-        state.index.put(&fact_row(&fact), &seen)?;
-        state.seen = seen;
-        Ok(fact)
-    }
-
-    /// Change the words (and the tags, when given) of the fact `id`.
-    pub fn edit(
-        &self,
-        id: &str,
-        text: &str,
-        tags: Option<Vec<String>>,
-    ) -> Result<MemoryFact, MemoryError> {
-        let text = words(text, 2000)?;
-        let mut state = self.fresh()?;
-        let at = time::rfc3339((self.clock)());
-        let fact = state
-            .facts
-            .iter_mut()
-            .find(|fact| fact.id == id)
-            .ok_or_else(|| MemoryError::NotFound(format!("no fact {id}")))?;
-        fact.text = text;
-        fact.updated = Some(at);
-        if let Some(tags) = tags {
-            fact.tags = (!tags.is_empty()).then_some(tags);
+        if let Err(failure) = files::write_facts(&self.dir, &state.facts) {
+            state.facts.pop();
+            return Err(failure);
         }
-        let fact = fact.clone();
-        files::write_facts(&self.dir, &state.facts)?;
-        let seen = files::fingerprint(&self.dir);
-        state.index.put(&fact_row(&fact), &seen)?;
-        state.seen = seen;
+        facts::index_fact(&self.dir, &mut state, &fact.id, Some(&fact));
         Ok(fact)
     }
 

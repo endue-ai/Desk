@@ -1,4 +1,4 @@
-# endue Desk 테마 요구사항
+# endue 테마 요구사항
 
 2026-11-02 · Team endue
 

@@ -1,134 +1,9 @@
-/* The work area's newer parts: the highlighted editor and its completions, the result's toolbar,
-   the diff of pending changes, the record view, the plan tree and the wide dialogs. Every colour,
-   font, size, radius and duration comes from the theme's --desk-* tokens; the token colours of the
-   highlighting are the theme's status and category text colours, so both schemes keep contrast. */
+/* The SQL editor's look lives beside its modules. */
+@import url("./editor/editor.css");
 
-/* The textarea and the highlighted copy under it share every metric, so the text lines up. */
-#editor,
-#highlight,
-.mirror {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 8px 12px;
-  border: 0;
-  font: calc(var(--desk-text-sm) - 1px) / 1.5 var(--desk-font-mono);
-  letter-spacing: normal;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  tab-size: 2;
-}
-
-#editor,
-#highlight {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-}
-
-#highlight {
-  color: var(--desk-text);
-  pointer-events: none;
-}
-
-#editor {
-  z-index: 1;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--desk-text);
-  resize: none;
-  outline: none;
-}
-
-#editor::placeholder {
-  color: var(--desk-text-muted);
-}
-
-#editor::selection {
-  background: color-mix(in srgb, var(--desk-primary) 28%, transparent);
-}
-
-#editor[readonly] {
-  caret-color: var(--desk-text-muted);
-}
-
-.mirror {
-  position: absolute;
-  top: 0;
-  left: 0;
-  visibility: hidden;
-}
-
-.tok-keyword {
-  color: var(--desk-primary-text);
-  font-weight: 600;
-}
-
-.tok-function {
-  color: var(--desk-info-text);
-}
-
-.tok-string {
-  color: var(--desk-success-text);
-}
-
-.tok-number {
-  color: var(--desk-warning-text);
-}
-
-.tok-comment {
-  color: var(--desk-text-muted);
-  font-style: italic;
-}
-
-.tok-name {
-  color: var(--desk-chart-5);
-}
-
-.tok-param {
-  color: var(--desk-danger-text);
-}
-
-#complete {
-  position: absolute;
-  z-index: 3;
-  width: 320px;
-  max-height: 220px;
-  margin: 0;
-  padding: 2px;
-  overflow: auto;
-  list-style: none;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-popover);
-  box-shadow: var(--desk-shadow-md);
-  font: var(--desk-text-xs) / 1.6 var(--desk-font-mono);
-}
-
-#complete .option {
-  display: flex;
-  gap: 8px;
-  padding: 1px 6px;
-  border-radius: var(--desk-radius-sm);
-  cursor: default;
-}
-
-#complete .option[aria-selected="true"] {
-  background: var(--desk-primary-soft);
-}
-
-#complete .detail {
-  margin-left: auto;
-  overflow: hidden;
-  color: var(--desk-text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#complete .kind-keyword .label {
-  color: var(--desk-primary-text);
-}
+/* The work area's newer parts: the result's toolbar, the diff of pending changes, the record
+   view, the plan tree and the wide dialogs. Every colour, font, size, radius and duration comes
+   from the theme's --desk-* tokens. */
 
 /* The bars over the tree and the rows hold the design system's controls at its smallest size, so
    a short window keeps its room for what they filter. */
@@ -192,7 +67,7 @@
   align-items: center;
   gap: 6px;
   padding-left: 8px;
-  border-left: 2px solid var(--desk-warning-border);
+  border-left: 2px solid var(--desk-warning);
   color: var(--desk-warning-text);
 }
 
@@ -207,10 +82,11 @@
 }
 
 /* The diff of pending changes: a changed cell, a row to add, a row to delete. Each also has a
-   title or a label, so the change is said as well as shown. */
+   title or a label, so the change is said as well as shown; a changed cell's bar is the solid
+   warning colour, which stands 3:1 where its tint does not. */
 .cell.changed {
   background: var(--desk-warning-soft);
-  box-shadow: inset 2px 0 0 var(--desk-warning-border);
+  box-shadow: inset 2px 0 0 var(--desk-warning);
 }
 
 .grid-row.inserted .cell {
@@ -346,5 +222,13 @@
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The press beside a Messages line: Allow connecting to a refused server (ADR 0335). */
+.messages .line-act {
+  display: block;
+  margin-block: 6px;
+  font-family: var(--desk-font-sans);
   white-space: nowrap;
 }

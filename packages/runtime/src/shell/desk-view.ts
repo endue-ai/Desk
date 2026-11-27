@@ -17,7 +17,7 @@ import { closedForBrain } from "../eris-context/brain";
 import { mountErisContext } from "../eris-context/mount";
 import { contextOf } from "../eris-context/registry";
 import type { FrameResponses } from "../frames/watch";
-import { leaves, panesOf } from "../surface/tree";
+import { tabsOf } from "../surface/tree";
 import type { WindowManagerHost } from "../wm/host";
 import type { Told } from "../wm/types";
 import type { ShellCtx } from "./context";
@@ -38,7 +38,7 @@ export function toldOf(ctx: Seen): Told {
     ...s.drawer.flatMap((d) => (d.placement ? [d.placement] : [])),
   ];
   for (const p of windows) {
-    for (const leaf of leaves(panesOf(p))) {
+    for (const leaf of tabsOf(p)) {
       if (!leaf.view.startsWith("plugin:") && !(leaf.view in titles))
         titles[leaf.view] = surfaceTitle(ctx, leaf.view);
     }
@@ -78,7 +78,7 @@ export function defineDeskView(ctx: ShellCtx): () => void {
       run: () => deskSnapshot(ctx),
       agent: {
         description:
-          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those popped out of the canvas into OS windows of their own (out: the OS window's frame in points; x, y, w, h where it docks back; desk.windows.dock brings one back), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in whole CSS pixels, its place in its desktop's stacking order (z, higher in front), how it is placed (state: normal, floating, snapped to a half or quarter, filled; fill names the part), whether it is pinned, and the panes it shows with the plugin that draws each, whether that plugin's frame sleeps (asleep) and whether it stopped answering (responsiveness: late or stopped, which desk.frames.wait, stop and reload act on). Also the desktops (the current one marked, each with its canvas pan), the windows closed recently and a summary of what the person can do. Look again after opening or moving something.",
+          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those popped out of the canvas into OS windows (out: the OS window's frame in points; x, y, w, h where it docks back; desk.windows.dock brings it back), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in whole CSS pixels, its place in its desktop's stacking (z, higher in front), how it is placed (state: normal, floating, snapped to a half or quarter, filled; fill names the part), whether it is pinned, and the panes it shows with the plugin that draws each, whether its frame sleeps (asleep) and whether it stopped answering (responsiveness: late or stopped, as desk.frames.wait, stop and reload act on). Also the desktops (the current one marked, each with its canvas pan), the windows closed lately and a summary of what the person can do. Look again after opening or moving something.",
         readOnly: true,
       },
     }),

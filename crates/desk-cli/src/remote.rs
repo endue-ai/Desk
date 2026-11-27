@@ -325,7 +325,7 @@ impl Session {
             }
             Err((code, message)) => {
                 if !self.json {
-                    eprintln!("desk: {code}: {message}");
+                    eprintln!("{}: {code}: {message}", crate::name());
                 }
                 ExitCode::from(1)
             }
@@ -358,10 +358,10 @@ fn out(line: &str) {
 fn unreachable(path: &Path, why: &io::Error) -> String {
     match why.kind() {
         io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused => {
-            format!("no desk at {} (is endue Desk running?)", path.display())
+            format!("no endue app at {} (is endue running?)", path.display())
         }
         io::ErrorKind::Unsupported => why.to_string(),
-        _ => format!("cannot reach the desk at {}: {why}", path.display()),
+        _ => format!("cannot reach endue at {}: {why}", path.display()),
     }
 }
 
@@ -378,6 +378,6 @@ fn say(json: bool, code: &str, message: &str) {
         let line = json!({ "ok": false, "error": { "code": code, "message": message } });
         out(&line.to_string());
     } else {
-        eprintln!("desk: {message}");
+        eprintln!("{}: {message}", crate::name());
     }
 }

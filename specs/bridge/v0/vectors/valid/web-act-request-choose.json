@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "web.act chooses an option of a list",
+  "instance": {
+    "id": 57,
+    "method": "web.act",
+    "params": {
+      "viewId": "w-1",
+      "action": {
+        "do": "choose",
+        "ref": "e7",
+        "option": "한국어"
+      },
+      "scope": {
+        "permission": "web:control"
+      }
+    }
+  }
+}

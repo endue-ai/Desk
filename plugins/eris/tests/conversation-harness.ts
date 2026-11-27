@@ -44,13 +44,12 @@ export function mounted(
     },
   };
   const commands = {
-    run: vi.fn(async (name: string) =>
-      name === "desk.buffers.list"
-        ? (options.files ?? [{ path: "~/notes.txt", name: "notes.txt" }])
-        : options.pick === null
-          ? undefined
-          : (options.pick ?? "~/notes.txt"),
-    ),
+    run: vi.fn(async (name: string) => {
+      if (name !== "desk.files.attach" || options.pick === null || options.pick?.endsWith(".pdf"))
+        return null;
+      const path = options.pick ?? "~/notes.txt";
+      return (options.files ?? [{ path }]).find((file) => file.path === path) ?? null;
+    }),
   };
   const state = {
     get: () => saved,

@@ -1,0 +1,142 @@
+/* Backup and restore (features/backup/): the two forms' groups and the command line under them, and
+   the log panel (its head, the command, the result, the program's lines). Every colour, font, size
+   and radius comes from the theme's --desk-* tokens; the feature links this sheet itself
+   (features/README.md). */
+
+.backup-form fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.backup-form legend {
+  float: left;
+  width: 7em;
+  padding: 0;
+}
+
+.backup-form [hidden] {
+  display: none;
+}
+
+.backup-schemas,
+.backup-checks,
+.backup-tables {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-3);
+}
+
+.backup-tables .desk-field {
+  flex: 1 1 14em;
+}
+
+.backup-pair {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+.backup-pair .desk-field {
+  min-width: 0;
+}
+
+.backup-pair [name="level"] {
+  flex: 0 0 9em;
+}
+
+.backup-command {
+  margin: 0;
+  padding: var(--desk-space-2);
+  max-height: 8em;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.backup-problem {
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
+
+.backup-problem:empty,
+.backup-result[hidden] {
+  display: none;
+}
+
+.restore-pick {
+  flex-direction: column;
+}
+
+.restore-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.restore-tools .desk-field {
+  flex: 1 1 12em;
+}
+
+.restore-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  max-height: 9em;
+  overflow: auto;
+}
+
+.restore-kind {
+  color: var(--desk-text-muted);
+  font: var(--desk-text-xs) var(--desk-font-mono);
+}
+
+.backup-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+}
+
+.backup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.backup-title {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+  overflow-wrap: anywhere;
+}
+
+.backup-status {
+  color: var(--desk-text-muted);
+}
+
+.backup-lines {
+  flex: 1 1 auto;
+  min-height: 4em;
+  margin: 0;
+  padding: var(--desk-space-2);
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

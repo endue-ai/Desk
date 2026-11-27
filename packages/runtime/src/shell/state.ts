@@ -1,7 +1,7 @@
 /**
  * The shell's state in one store, the empty desk the app starts with and the sample desk the dev
  * page and the fixtures start with. Profiles and Eris's settings mirror the runtime's (link.ts);
- * the theme is desk.theme's. The windows, panes, desktops, the drawer and the pan are the window
+ * the theme is desk.theme's. The windows, tabs, desktops, the drawer and the pan are the window
  * manager's (crates/desk-wm, #83): the store holds the last desk it published (`wm/take.ts`) and
  * nothing else writes them.
  */
@@ -13,6 +13,7 @@ import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import { baseMode } from "../modes/profiles";
 import type { Desktop, DesktopId, DesktopRef, Mode } from "../modes/types";
+import type { SweepState } from "../sweep/model";
 import { type EndueState, emptyEndue } from "../system/endue-ids";
 import type { Adopted, DrawerItem, WmView } from "../wm/types";
 import { emptyView } from "../wm/view";
@@ -36,6 +37,9 @@ export type Popover =
   | "drawer"
   | "mode-menu"
   | "agents-more"
+  /** The shortcut bar's "+" list and a shortcut's own menu (ADR 0274). */
+  | "shortcuts"
+  | "shortcut-menu"
   /** A desktop's menu in the switcher, a window's menu, the desktops overview (ADR 0117). */
   | "desktop-menu"
   | "window-menu"
@@ -65,6 +69,12 @@ export interface DeskState {
    */
   mapFolded: boolean;
   /**
+   * The canvas map's box width in CSS pixels once the person resized it (ADR 0273), `null` at its
+   * default: the compositor draws it that wide and says so as it changes (`desk://compositor-map`);
+   * the strip under it follows (`MapStrip.ts`).
+   */
+  mapWidth: number | null;
+  /**
    * The agent bar is pinned unfolded to its list of names (issue 294): the person's choice, kept
    * with the session (link.ts). Not pinned, it unfolds while the pointer rests on it.
    */
@@ -75,8 +85,8 @@ export interface DeskState {
    * there (ADR 0221).
    */
   edges: Edge[];
-  /** The window (and pane) each desktop had in use when the person left it, by id. */
-  focusBy: Partial<Record<DesktopId, { window: string; pane: string | null }>>;
+  /** The window (and tab) each desktop had in use when the person left it, by id. */
+  focusBy: Partial<Record<DesktopId, { window: string; tab: string | null }>>;
   /** The agent directory (specs/brain/v0), loaded through the bridge. */
   spaces: Space[];
   spaceId: string;
@@ -96,6 +106,11 @@ export interface DeskState {
   localRuns: LocalAgentRun[];
   /** The runs Eris handed out with her desk.agents.* tools, so their screens say so. */
   erisRuns: string[];
+  /**
+   * The windows Eris looks at or uses now (ADR 0271, `eris/visiting.ts`), each with how brightly
+   * its frame glows, 0 to 1.
+   */
+  erisWindows: { id: string; glow: number }[];
   /** What is put away: never a surface that a desktop places (#4). */
   drawer: DrawerItem[];
   /**
@@ -113,10 +128,12 @@ export interface DeskState {
   dialog: "new-mode" | null;
   eris: { state: ErisState; density: DensityName; soul: SoulStyle; saying: string };
   composer: { open: boolean; text: string; selected: number };
+  /** Cmd+drag's sweep (ADR 0296): its mode, the windows it selected, what the next line to Eris carries. */
+  sweep: SweepState;
   /** Surface id with keyboard/pointer focus; it draws on top. */
   focused: string | null;
-  /** The focused pane inside the focused surface. */
-  pane: string | null;
+  /** The tab in use: the one the focused surface shows. */
+  tab: string | null;
 }
 
 type Listener = (state: DeskState, previous: DeskState) => void;
@@ -172,6 +189,7 @@ export function emptyState(lang: Lang): DeskState {
     desktops: null,
     pan: {},
     mapFolded: false,
+    mapWidth: null,
     agentsPinned: false,
     edges: [],
     focusBy: {},
@@ -187,6 +205,7 @@ export function emptyState(lang: Lang): DeskState {
     localAgents: [],
     localRuns: [],
     erisRuns: [],
+    erisWindows: [],
     drawer: [],
     adopted: [],
     attention: [],
@@ -199,8 +218,9 @@ export function emptyState(lang: Lang): DeskState {
     dialog: null,
     eris: { state: "idle", density: "balanced", soul: "wisp", saying: "" },
     composer: { open: false, text: "", selected: 0 },
+    sweep: { mode: "select", selected: [], context: null },
     focused: null,
-    pane: null,
+    tab: null,
   };
 }
 

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { plainText } from "../ui/agent.js";
+import { plainText, scrollbackLines } from "../ui/agent.js";
 import { mount, scope } from "./harness";
 
 const manifest = () =>
@@ -44,6 +44,25 @@ describe("the terminal for agents (ADR 0088)", () => {
     );
   });
 
+  it("searches a named session and reports its current folder", async () => {
+    const { host, app, settle } = await mount();
+    app.osc("t-1", 7, "file://localhost/sample/project");
+    host.emit(output("\x1b[32mConnected\x1b[0m to the worker\r\nWaiting\r\nconnected again\r\n"));
+    await settle();
+    await expect(host.command("endue.terminal.sessions")).resolves.toMatchObject([
+      { cwd: "/sample/project" },
+    ]);
+    await expect(
+      host.command("endue.terminal.find", { session: "t-1", text: "connected" }),
+    ).resolves.toMatchObject({
+      session: "t-1",
+      matches: [
+        { line: 1, text: "Connected to the worker" },
+        { line: 3, text: "connected again" },
+      ],
+    });
+  });
+
   it("types text into the program under the shell's scope, Enter unless asked not to", async () => {
     const { host, params, settle } = await mount();
     await host.command("endue.terminal.send", { text: "git status" });
@@ -65,8 +84,17 @@ describe("the terminal for agents (ADR 0088)", () => {
     );
     expect(flags).toEqual({
       "endue.terminal.new": "acts",
+      "endue.terminal.focus": "acts",
       "endue.terminal.close": "acts",
+      "endue.terminal.split": "acts",
+      "endue.terminal.focus-pane": "acts",
+      "endue.terminal.next": "acts",
+      "endue.terminal.previous": "acts",
+      "endue.terminal.find": "reads",
+      "endue.terminal.clear": "acts",
       "endue.terminal.interrupt": "acts",
+      "endue.terminal.restart": "acts",
+      "endue.terminal.rename": "acts",
       "endue.terminal.run": "irreversible",
       "endue.terminal.sessions": "reads",
       "endue.terminal.output": "reads",
@@ -76,5 +104,30 @@ describe("the terminal for agents (ADR 0088)", () => {
 
   it("keeps a line as its last carriage return left it", () => {
     expect(plainText([{ data: "50%\r100%\r\nok\r\n", encoding: "utf8" }])).toBe("100%\nok\n");
+  });
+
+  it("keeps the first row and content of a wrapped scrollback line", () => {
+    const rows = [
+      { text: "abc ", isWrapped: false },
+      { text: "def ", isWrapped: true },
+      { text: "next", isWrapped: false },
+    ];
+    expect([
+      ...scrollbackLines({
+        length: rows.length,
+        getLine: (at) => {
+          const row = rows[at];
+          return (
+            row && {
+              isWrapped: row.isWrapped,
+              translateToString: (trim) => (trim ? row.text.trimEnd() : row.text),
+            }
+          );
+        },
+      }),
+    ]).toEqual([
+      { line: 1, text: "abc def" },
+      { line: 3, text: "next" },
+    ]);
   });
 });

@@ -19,17 +19,31 @@ function* everyChoice(): Generator<Record<string, Record<string, string>>> {
 }
 
 describe("compileDesignSystem", () => {
-  it("gives the endue design system today's look", () => {
+  it("gives the endue design system endue.ai/design's look", () => {
     expect(componentTokens).toMatchObject({
       buttonRadius: "var(--desk-radius-md)",
       buttonHeight: "var(--desk-control-sm)",
       buttonPrimaryBg: "var(--desk-primary)",
       buttonPrimaryFg: "var(--desk-primary-foreground)",
-      buttonBorder: "var(--desk-input)",
+      // An outline is a hairline that turns into the hover surface.
+      buttonBorder: "var(--desk-border)",
+      buttonHoverBorder: "var(--desk-hover)",
+      // A field is sunken, its border the control's; focus turns the border into a 2px ring.
+      fieldBg: "var(--desk-background)",
       fieldBorderColor: "var(--desk-input)",
+      fieldFocusBorder: "var(--desk-ring)",
+      fieldFocusRingWidth: "1px",
       fieldHeight: "var(--desk-control-md)",
-      tabSelectedBg: "var(--desk-primary-soft)",
+      // Tabs are a segment: a sunken track whose selected item is raised, never the fill.
+      tabsBg: "var(--desk-muted)",
+      tabSelectedBg: "var(--desk-popover)",
+      tabSelectedFg: "var(--desk-text)",
+      cardRadius: "var(--desk-radius-lg)",
+      cardShadow: "none",
+      dialogBg: "var(--desk-card)",
+      dialogPadding: "var(--desk-space-4)",
       dialogRadius: "var(--desk-radius-lg)",
+      tooltipShadow: "var(--desk-shadow-md)",
       dialogScrimFilter: "blur(8px)",
       focusWidth: "2px",
     });

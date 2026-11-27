@@ -57,24 +57,24 @@ mod the_order_of_use {
     #[test]
     fn puts_the_window_used_a_moment_ago_right_behind_the_one_in_use() {
         let mut d = desk();
-        d.focus_pane("p.a", None);
-        d.focus_pane("p.c", None);
+        d.focus_tab("p.a", None);
+        d.focus_tab("p.c", None);
         assert_eq!(top(&d, 2), ["p.c", "p.a"]);
-        d.focus_pane("p.b", None);
+        d.focus_tab("p.b", None);
         assert_eq!(pile(&d), ["p.b", "p.c", "p.a", "p.d"]);
     }
 
     #[test]
     fn keeps_a_window_that_was_moved_or_filled_and_given_back_where_its_use_puts_it() {
         let mut d = desk();
-        d.focus_pane("p.b", None);
+        d.focus_tab("p.b", None);
         d.place("p.b", Rect::new(600.0, 300.0, 400.0, 300.0));
-        d.focus_pane("p.d", None);
+        d.focus_tab("p.d", None);
         assert_eq!(top(&d, 2), ["p.d", "p.b"]);
-        d.focus_pane("p.c", None);
+        d.focus_tab("p.c", None);
         d.toggle_maximize("p.c");
         d.toggle_maximize("p.c");
-        d.focus_pane("p.a", None);
+        d.focus_tab("p.a", None);
         assert_eq!(pile(&d), ["p.a", "p.c", "p.d", "p.b"]);
     }
 
@@ -91,15 +91,15 @@ mod the_order_of_use {
     #[test]
     fn leaves_the_windows_never_in_use_under_the_others_in_desk_order() {
         let mut d = desk();
-        d.focus_pane("p.b", None);
+        d.focus_tab("p.b", None);
         assert_eq!(pile(&d), ["p.b", "p.d", "p.c", "p.a"]);
     }
 
     #[test]
     fn is_kept_in_the_desks_json() {
         let mut d = desk();
-        d.focus_pane("p.a", None);
-        d.focus_pane("p.c", None);
+        d.focus_tab("p.a", None);
+        d.focus_tab("p.c", None);
         let back: Desk = serde_json::from_value(serde_json::to_value(&d).unwrap()).unwrap();
         assert_eq!(pile(&back), pile(&d));
     }
@@ -111,7 +111,7 @@ mod the_window_in_use {
     #[test]
     fn opens_in_front_of_a_maximized_window_and_the_fill_stays_behind_it() {
         let mut d = desk();
-        d.focus_pane("p.a", None);
+        d.focus_tab("p.a", None);
         d.toggle_maximize("p.a");
         assert_eq!(top(&d, 1), ["p.a"]);
         let fresh = d.new_window();
@@ -121,7 +121,7 @@ mod the_window_in_use {
     #[test]
     fn reached_by_the_focus_cycle_comes_in_front_of_a_snapped_window() {
         let mut d = desk();
-        d.focus_pane("p.c", None);
+        d.focus_tab("p.c", None);
         d.snap_to("p.c", desk_wm::Fill::Left);
         let fresh = d.new_window();
         let reached = d.focus_next(1).expect("a stop");
@@ -135,17 +135,17 @@ mod the_window_in_use {
     fn on_the_canvas_stays_under_a_window_floating_by_choice_and_above_the_rest() {
         let mut d = desk();
         d.toggle_floating("p.b", W, H);
-        d.focus_pane("p.b", None);
+        d.focus_tab("p.b", None);
         // A window moved, opened or pressed under a floating one does not cover it (ADR 0219).
-        d.focus_pane("p.c", None);
+        d.focus_tab("p.c", None);
         assert_eq!(top(&d, 2), ["p.b", "p.c"]);
-        d.focus_pane("p.d", None);
+        d.focus_tab("p.d", None);
         assert_eq!(top(&d, 3), ["p.b", "p.d", "p.c"]);
         // Of two floating windows the one in use is on top.
         d.toggle_floating("p.a", W, H);
-        d.focus_pane("p.a", None);
+        d.focus_tab("p.a", None);
         assert_eq!(top(&d, 3), ["p.a", "p.b", "p.d"]);
-        d.focus_pane("p.b", None);
+        d.focus_tab("p.b", None);
         assert_eq!(top(&d, 3), ["p.b", "p.a", "p.d"]);
     }
 }
@@ -157,7 +157,7 @@ mod a_cascade {
     fn lays_the_windows_out_in_the_order_they_stack_and_keeps_it() {
         let mut d = desk();
         for id in ["p.c", "p.a", "p.d", "p.b"] {
-            d.focus_pane(id, None);
+            d.focus_tab(id, None);
         }
         let before = pile(&d);
         Arranger::default()

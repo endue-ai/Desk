@@ -98,7 +98,7 @@ fn an_older_picture_is_drawn_from_the_corner_that_stayed() {
 fn what_lies_at_the_frames_far_edges_follows_the_frame_drawn() {
     let laid = (400.0, 300.0);
     // The one pane's body, a border in from the frame, under the title bar.
-    let body = Rect::new(1.0, 41.0, 398.0, 258.0);
+    let body = Rect::new(1.0, 37.0, 398.0, 262.0);
     assert_eq!(
         within(body, laid, laid),
         body,
@@ -107,28 +107,28 @@ fn what_lies_at_the_frames_far_edges_follows_the_frame_drawn() {
     // The frame still 340×240, before a growth: the body ends a border in from it.
     assert_eq!(
         within(body, laid, (340.0, 240.0)),
-        Rect::new(1.0, 41.0, 338.0, 198.0)
+        Rect::new(1.0, 37.0, 338.0, 202.0)
     );
     // The frame still 460×360, before a shrink: the body reaches it too.
     assert_eq!(
         within(body, laid, (460.0, 360.0)),
-        Rect::new(1.0, 41.0, 458.0, 318.0)
+        Rect::new(1.0, 37.0, 458.0, 322.0)
     );
     // Split side by side: the left pane ends where it did, or at a narrower frame; the right one
     // keeps its border from the frame's right edge and never turns inside out.
-    let left = Rect::new(1.0, 41.0, 199.0, 258.0);
+    let left = Rect::new(1.0, 37.0, 199.0, 262.0);
     assert_eq!(within(left, laid, (460.0, 300.0)), left);
     assert_eq!(
         within(left, laid, (150.0, 300.0)),
-        Rect::new(1.0, 41.0, 149.0, 258.0)
+        Rect::new(1.0, 37.0, 149.0, 262.0)
     );
-    let right = Rect::new(201.0, 41.0, 198.0, 258.0);
+    let right = Rect::new(201.0, 37.0, 198.0, 262.0);
     assert_eq!(
         within(right, laid, (340.0, 300.0)),
-        Rect::new(201.0, 41.0, 138.0, 258.0)
+        Rect::new(201.0, 37.0, 138.0, 262.0)
     );
     assert_eq!(
         within(right, laid, (150.0, 300.0)),
-        Rect::new(201.0, 41.0, 0.0, 258.0)
+        Rect::new(201.0, 37.0, 0.0, 262.0)
     );
 }

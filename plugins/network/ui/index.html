@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Network</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "@endue-ai/ui": "/_desk/ui.js"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./plan.css" />
+    <link rel="stylesheet" href="./panels.css" />
+  </head>
+  <body>
+    <header class="desk-bar top">
+      <h1 class="desk-bar-title" data-t="app.title">Network</h1>
+      <p id="here" class="here"></p>
+      <span class="desk-bar-spacer"></span>
+      <progress id="busy" class="desk-progress" hidden></progress>
+      <span id="busy-text" class="busy-text" aria-live="polite"></span>
+      <button type="button" id="scan" class="desk-btn desk-btn-primary" data-act="scan" data-t="action.scan">Scan now</button>
+    </header>
+    <nav id="tabs" class="desk-tabs" role="tablist"></nav>
+    <section id="problem" class="desk-error problem" role="alert" hidden>
+      <p id="problem-text"></p>
+      <p id="problem-todo"></p>
+    </section>
+    <section id="ask" class="desk-card ask" aria-live="polite" hidden></section>
+    <div class="split">
+      <main class="panels">
+        <section id="panel-map" class="panel" role="tabpanel" aria-labelledby="tab-map"></section>
+        <section id="panel-checkup" class="panel" role="tabpanel" aria-labelledby="tab-checkup" hidden></section>
+        <section id="panel-channels" class="panel" role="tabpanel" aria-labelledby="tab-channels" hidden></section>
+        <section id="panel-log" class="panel" role="tabpanel" aria-labelledby="tab-log" hidden></section>
+      </main>
+      <aside id="device" class="desk-card device" aria-labelledby="device-title" hidden></aside>
+    </div>
+    <footer>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

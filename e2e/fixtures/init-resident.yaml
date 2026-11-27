@@ -9,6 +9,8 @@ plugins:
 
 settings:
   desk.login.start: true
+  # The test observes notices in the desk without prompting for OS authorization.
+  desk.notify.system: never
 
 sync:
   enabled: false

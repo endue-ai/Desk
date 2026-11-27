@@ -84,10 +84,7 @@ describe("connections", () => {
 
 describe("clients", () => {
   it("tells each client and version from --version", () => {
-    expect(parseVersion("psql (PostgreSQL) 17.6 (Debian 17.6-1.pgdg120+1)")).toEqual({
-      flavor: "postgresql",
-      version: "17.6",
-    });
+    expect(parseVersion("psql (PostgreSQL) 17.6 (Debian 17.6-1.pgdg120+1)")).toBeUndefined();
     expect(
       parseVersion("mysql  Ver 8.4.13 for Linux on aarch64 (MySQL Community Server - GPL)"),
     ).toEqual({ flavor: "mysql", version: "8.4.13" });
@@ -105,14 +102,16 @@ describe("clients", () => {
 
   it("says a client that is too old, and searches the install folders after the settings' own", () => {
     expect(compareVersions("3.37.2", "3.37")).toBe(1);
-    expect(tooOld({ command: "psql", flavor: "postgresql", version: "12.9" })).toMatch(
-      /13 or newer/u,
+    expect(tooOld({ command: "mysql", flavor: "mysql", version: "8.0.18" })).toMatch(
+      /8\.0\.19 or newer/u,
     );
     expect(tooOld({ command: "sqlite3", flavor: "sqlite", version: "3.43.2" })).toBe("");
-    expect(searchPath("mac", ["/opt/pg/bin"]).split(":").slice(0, 3)).toEqual([
-      "/opt/pg/bin",
+    // libpq's folder is for pg_dump and pg_restore (features/backup/), which Homebrew keeps out of PATH.
+    expect(searchPath("mac", ["/opt/db/bin"]).split(":").slice(0, 4)).toEqual([
+      "/opt/db/bin",
       "/opt/homebrew/bin",
       "/opt/homebrew/opt/libpq/bin",
+      "/opt/homebrew/opt/mysql-client/bin",
     ]);
   });
 
@@ -232,6 +231,38 @@ describe("the rest", () => {
       ),
     ).toBe("cancel");
     expect(actionFor("grid", { key: "s", mod: false, shift: false, alt: false })).toBe("sort");
+  });
+
+  it("maps the grid's new keys", () => {
+    const grid = (key: string, mod = false) =>
+      actionFor("grid", {
+        key,
+        mod,
+        shift: key !== key.toLowerCase() || /[<>()]/u.test(key),
+        alt: false,
+      });
+    const keys = { h: "hide", H: "showColumns", "<": "moveLeft", ">": "moveRight", P: "pin" };
+    const more = {
+      w: "fit",
+      "(": "narrower",
+      ")": "wider",
+      S: "addSort",
+      f: "menu",
+      "=": "filterCell",
+    };
+    for (const [key, action] of Object.entries({ ...keys, ...more, F: "clearFilters" }))
+      expect(grid(key), key).toBe(action);
+    expect(grid("f", true)).toBe("find");
+    const modF = { key: "f", mod: true, shift: false, alt: false };
+    expect(actionFor("editor", modF)).toBeUndefined();
+    expect(actionFor("explorer", modF)).toBeUndefined();
+    // f on a connection, schema or table searches its tables for a value; s stays the source.
+    expect(actionFor("explorer", { key: "f", mod: false, shift: false, alt: false })).toBe(
+      "searchData",
+    );
+    expect(actionFor("explorer", { key: "s", mod: false, shift: false, alt: false })).toBe(
+      "editSource",
+    );
   });
 
   it("lets a table's filter be one expression only", () => {

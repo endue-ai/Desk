@@ -1,7 +1,8 @@
 //! The canvas map's chrome (ADR 0082, the runtime's `shell/minimap.css`): the box with the canvas
-//! in it, each normal window (its thumbnail drawn by the caller between its fill and its edge, the
-//! focused one marked), the part in sight and the fold button at the top right, or the button
-//! alone, folded. The icons are drawn from rectangles: a bar to fold, a frame round a view to open.
+//! in it, each normal window (its icon drawn by the caller between its fill and its edge, ADR
+//! 0273, the focused one marked), the part in sight, the fold button at the top right and the
+//! grips along the left and top edges that resize the box, or the button alone, folded. The
+//! button's icons are drawn from rectangles: a bar to fold, a frame round a view to open.
 
 use super::{Chrome, Role};
 use crate::node::{NodeId, RectNode};
@@ -33,6 +34,9 @@ pub enum MapPart {
     /// An icon's filled bar, and its outlined frame.
     IconBar,
     IconFrame,
+    /// A band along an edge of the open box that resizes it: it draws nothing, the pointer finds
+    /// it.
+    Grip,
 }
 
 /// The nodes of the map's box and its button.
@@ -111,7 +115,17 @@ impl Chrome {
         self.add(scene, parent, Role::Map(role), rect, "")
     }
 
-    /// The part in sight, in the map at `rect`.
+    /// A grip that resizes the open map, at `rect`.
+    pub fn map_grip(
+        &mut self,
+        scene: &mut Scene,
+        parent: NodeId,
+        rect: Rect,
+    ) -> Result<NodeId, SceneError> {
+        self.add(scene, parent, Role::Map(MapPart::Grip), rect, "")
+    }
+
+    /// The outline of the part in sight, hittable across `rect` without covering its contents.
     pub fn map_view(
         &mut self,
         scene: &mut Scene,
@@ -145,7 +159,11 @@ impl Chrome {
                 };
                 rect(Color::TRANSPARENT, border(1.0, color), m.small_radius)
             }
-            MapPart::View => rect(m.view, border(2.0, m.view_border), m.small_radius),
+            MapPart::View => rect(
+                Color::TRANSPARENT,
+                border(2.0, m.view_border),
+                m.small_radius,
+            ),
             MapPart::Button { folded: true } => RectNode {
                 shadow: m.shadow,
                 ..rect(m.fill, border(1.0, m.border), m.canvas_radius)
@@ -153,6 +171,7 @@ impl Chrome {
             MapPart::Button { folded: false } => rect(Color::TRANSPARENT, None, m.small_radius),
             MapPart::IconBar => rect(m.icon, None, 0.75),
             MapPart::IconFrame => rect(Color::TRANSPARENT, border(1.5, m.icon), 2.0),
+            MapPart::Grip => rect(Color::TRANSPARENT, None, 0.0),
         };
         node.into()
     }

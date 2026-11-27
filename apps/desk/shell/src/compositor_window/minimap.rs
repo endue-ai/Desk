@@ -1,52 +1,55 @@
-//! The canvas map on the compositor (#54, ADR 0082, ADR 0161; the runtime's `shell/Minimap.ts`,
-//! which it replaces): it shows while the desktop in front holds something to find (`map_shows`),
-//! drawn from downscaled copies of the windows' surfaces, refreshed at most ten times a second. A
-//! press takes the view to that point and a drag moves it with the fit the press held, so the map
-//! stays still; Escape puts the view back, and the wheel pans as over the background. It folds to
-//! its button, which the page keeps with the session (`desk://compositor-map`), and folds by itself
-//! while a filled window is in sight; the button opens it over that window until the fill goes.
+//! The canvas map on the compositor (#54, ADR 0082, ADR 0161, ADR 0273; the runtime's
+//! `shell/Minimap.ts`, which it replaces): it shows while the desktop in front holds something to
+//! find (`map_shows`), each window drawn with its icon (`desk_compositor::Icons`). A press takes the
+//! view to that point and a drag moves it with the fit the press held, so the map stays still;
+//! Escape puts the view back, and the wheel pans as over the background. A press on a grip along
+//! its left or top edge resizes it, Escape back to where the press found it. It folds to its
+//! button, and the page keeps that and the width with the session (`desk://compositor-map`, told
+//! as the width changes so the strip under the map follows); it folds by itself while a filled
+//! window is in sight, and the button opens it over that window until the fill goes.
 
-use std::collections::BTreeSet;
-use std::time::{Duration, Instant};
+use std::collections::HashMap;
+use std::time::Instant;
 
 use desk_compositor::glam::Vec2;
 use desk_compositor::input::{Button, Input};
-use desk_compositor::{NodeId, TextureId, Thumbnails};
-use desk_surface::generated::SurfaceWheelUnit;
+use desk_compositor::{Compositor, Icons, MapStyle, NodeId, TextureId};
+use desk_surface::generated::{SurfaceCursorName, SurfaceWheelUnit};
 use desk_web::sender::Role;
 use desk_wm::{
-    MapDrag, Offset, WheelMode, fill_in_sight, map_shows, pan_centred_on, to_world, wheel_pan,
+    MapDrag, MapEdges, Offset, WheelMode, fill_in_sight, map_resized, map_shows, pan_centred_on,
+    to_world, wheel_pan,
 };
 use serde_json::json;
 
 use super::CompositorWindow;
-use super::composed::Composed;
 use super::draw_map::{MapDrawn, MapLayout};
 
-/// What the page hears when the person folds the map or opens it: it keeps that with the session.
+/// What the page hears when the person folds the map, opens it or resizes it: it keeps that with
+/// the session.
 pub const MAP: &str = "desk://compositor-map";
-/// The thumbnails are drawn again at most this often.
-const REFRESH: Duration = Duration::from_millis(100);
-/// A frame of pictures alone draws a surface's thumbnail again once its frames changed this share
-/// of its pixels since the thumbnail was drawn: a caret's blink changes a few hundred of a window's
-/// hundreds of thousands, too few to see at the map's scale, where a page of new text or a video's
-/// frame changes more at once (R1). Every frame that lays the scene out draws them all.
-const MAPPED_SHARE: u64 = 32;
 
-/// Whether `changed` pixels of a `size` texture show in its thumbnail (`MAPPED_SHARE`).
-fn seen(changed: u64, size: (u32, u32)) -> bool {
-    changed.saturating_mul(MAPPED_SHARE) >= u64::from(size.0) * u64::from(size.1)
+/// A resize from a grip: the edges it holds, where it was pressed (CSS), the canvas's width then
+/// and now.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Resize {
+    edges: MapEdges,
+    from: Vec2,
+    start: f64,
+    now: f64,
 }
 
 /// The map's state between events.
 #[derive(Default)]
 pub struct Mapping {
-    pub thumbnails: Thumbnails,
-    refreshed: Option<Instant>,
+    pub icons: Icons,
     /// The person opened the map over a filled window; it lasts while a fill is in sight.
     peek: bool,
     /// A press in the map: the drag it holds, where it was pressed (CSS) and the pan it started at.
     drag: Option<(MapDrag, Vec2, Offset)>,
+    resize: Option<Resize>,
+    /// The width last told the page, until its report says it back: the map keeps it meanwhile.
+    told: Option<f64>,
     /// A press on the fold button, until it is released.
     folding: bool,
     pub layout: Option<MapLayout>,
@@ -54,60 +57,71 @@ pub struct Mapping {
 }
 
 impl Mapping {
-    /// Draw the thumbnails `layout` needs again (`only` those of these textures whose frames
-    /// changed `MAPPED_SHARE` of their pixels since), at most every `REFRESH` (at once for one not
-    /// made yet), and let go of the others; whether one is new (a scene drawn before shows none of
-    /// it).
-    pub fn refresh(
+    /// The icons `layout`'s windows show, by window, `scale` device pixels to the CSS one, in
+    /// `style`'s icon colour (the focused window's in its mark's), made now where they were not;
+    /// the others are let go.
+    pub fn icons(
         &mut self,
-        composed: &mut Composed,
+        compositor: &mut Compositor,
         layout: &MapLayout,
         scale: f32,
-        now: Instant,
-        only: Option<&BTreeSet<TextureId>>,
-    ) -> bool {
-        let mut made = false;
-        let due = self
-            .refreshed
-            .is_none_or(|at| now.duration_since(at) >= REFRESH);
-        let mut keep = Vec::new();
-        for (host, at) in layout.windows.iter().flat_map(|w| w.panes.iter()) {
-            let Some(id) = composed.texture_of(host) else {
+        style: &MapStyle,
+    ) -> HashMap<String, TextureId> {
+        let mut shown = HashMap::new();
+        for w in &layout.windows {
+            let Some((path, square)) = &w.icon else {
                 continue;
             };
-            let Some(source) = composed.frames.size(id) else {
-                continue;
+            let px = (square.width * scale).round() as u32;
+            let color = if w.focused {
+                style.focused_border
+            } else {
+                style.icon
             };
-            keep.push(id);
-            let changed = composed.unmapped.get(&id).copied().unwrap_or_default();
-            let wanted = only.is_none_or(|only| only.contains(&id) && seen(changed, source));
-            if wanted && due || self.thumbnails.of(id).is_none() {
-                composed.unmapped.remove(&id);
-                let size = (
-                    (at.width * scale).ceil() as u32,
-                    (at.height * scale).ceil() as u32,
-                );
-                let compositor = &mut composed.compositor;
-                let had = self.thumbnails.of(id);
-                let thumbnail =
-                    self.thumbnails
-                        .refresh(compositor, id, source, (size.0.max(1), size.1.max(1)));
-                made |= had != Some(thumbnail);
+            if let Some(id) = self.icons.icon(compositor, path, px, color) {
+                shown.insert(w.id.clone(), id);
             }
         }
-        self.thumbnails
-            .retain(&mut composed.compositor, |id| keep.contains(&id));
-        if due {
-            self.refreshed = Some(now);
-        }
-        made
+        self.icons.sweep(compositor);
+        shown
     }
-}
 
-impl Mapping {
     /// The fit a drag in the map holds, while one lasts.
     pub fn held(&self) -> Option<desk_wm::Fit> {
         self.drag.as_ref().map(|(drag, ..)| drag.fit)
+    }
+
+    /// The canvas's width to draw, the page's `reported` one aside: a resize's while it lasts,
+    /// then the one told the page until its report says it back.
+    pub fn width(&mut self, reported: Option<f64>) -> Option<f64> {
+        if let Some(resize) = self.resize {
+            return Some(resize.now);
+        }
+        if self.told.is_some() && self.told == reported {
+            self.told = None;
+        }
+        self.told.or(reported)
+    }
+
+    /// The cursor over map node `node`: a grip's resize cursor, none elsewhere.
+    pub fn cursor_on(&self, node: NodeId) -> Option<SurfaceCursorName> {
+        let drawn = self.drawn.as_ref()?;
+        let (_, edges) = drawn.grips.iter().find(|(grip, _)| *grip == node)?;
+        Some(resize_cursor(*edges))
+    }
+
+    /// The cursor of the resize that lasts, wherever the pointer is.
+    pub fn resize_cursor(&self) -> Option<SurfaceCursorName> {
+        self.resize.map(|r| resize_cursor(r.edges))
+    }
+}
+
+/// The cursor of a resize that holds `edges`.
+fn resize_cursor(edges: MapEdges) -> SurfaceCursorName {
+    match (edges.left, edges.top) {
+        (true, true) => SurfaceCursorName::NwseResize,
+        (true, false) => SurfaceCursorName::EwResize,
+        _ => SurfaceCursorName::NsResize,
     }
 }
 
@@ -138,6 +152,10 @@ impl CompositorWindow {
                 button: Button::Left,
                 pressed: true,
             } => self.map_press(device, scale),
+            Input::PointerMoved { x, y } if self.mapping.resize.is_some() => {
+                self.map_resize_to(Vec2::new(*x, *y) / scale);
+                true
+            }
             Input::PointerMoved { x, y } => {
                 let Some((drag, from, start)) = self.mapping.drag.clone() else {
                     return false;
@@ -155,6 +173,7 @@ impl CompositorWindow {
             } => {
                 let folding = std::mem::take(&mut self.mapping.folding);
                 let dragging = self.mapping.drag.take().is_some();
+                let resizing = self.mapping.resize.take().is_some();
                 if folding
                     && self
                         .map_node_at(device)
@@ -162,10 +181,18 @@ impl CompositorWindow {
                 {
                     self.map_fold();
                 }
-                if dragging {
+                if dragging || resizing {
                     self.shared.lock().dirty = true;
                 }
-                folding || dragging
+                folding || dragging || resizing
+            }
+            Input::Key(key)
+                if key.key == "Escape" && key.pressed && self.mapping.resize.is_some() =>
+            {
+                if let Some(resize) = self.mapping.resize.take() {
+                    self.map_width(resize.start);
+                }
+                true
             }
             Input::Key(key) if key.key == "Escape" && key.pressed => {
                 let Some((drag, ..)) = self.mapping.drag.take() else {
@@ -197,8 +224,9 @@ impl CompositorWindow {
         }
     }
 
-    /// A press on the map: on its button it folds or opens on the release; on the canvas away
-    /// from the part in sight it takes the view there at once; anywhere on it a drag moves it.
+    /// A press on the map: on its button it folds or opens on the release; on a grip a drag
+    /// resizes it; on the canvas away from the part in sight it takes the view there at once;
+    /// anywhere else on it a drag moves it.
     fn map_press(&mut self, device: Vec2, scale: f32) -> bool {
         let Some(node) = self.map_node_at(device) else {
             return false;
@@ -211,6 +239,16 @@ impl CompositorWindow {
             return true;
         };
         let at = device / scale;
+        if let Some((_, edges)) = drawn.grips.iter().find(|(grip, _)| *grip == node) {
+            let (edges, start) = (*edges, layout.width);
+            self.mapping.resize = Some(Resize {
+                edges,
+                from: at,
+                start,
+                now: start,
+            });
+            return true;
+        }
         let desk = self.hosted.wm.desk();
         let here = desk.here();
         let before = desk.pan_of(&here);
@@ -257,6 +295,31 @@ impl CompositorWindow {
         self.shared.lock().dirty = true;
     }
 
+    /// The resize with the pointer at `at` (CSS): the width it makes, if it changed.
+    fn map_resize_to(&mut self, at: Vec2) {
+        let Some(resize) = self.mapping.resize else {
+            return;
+        };
+        let d = at - resize.from;
+        let size = map_resized(resize.start, resize.edges, f64::from(d.x), f64::from(d.y));
+        if size.w != resize.now {
+            self.map_width(size.w);
+        }
+    }
+
+    /// The map `width` wide: drawn so at once, and the page told, so the strip under the map and
+    /// the session follow.
+    fn map_width(&mut self, width: f64) {
+        if let Some(resize) = self.mapping.resize.as_mut() {
+            resize.now = width;
+        }
+        self.mapping.told = Some(width);
+        self.desk
+            .pages
+            .emit(Role::Main, MAP, json!({ "width": width }));
+        self.shared.lock().dirty = true;
+    }
+
     /// The canvas of the desktop in front at `pan`: the map's, and a wheel's run's (`pan.rs`).
     pub(super) fn map_pan(&mut self, pan: Offset) {
         let outs = self.hosted.wm.pan_to(pan);
@@ -287,27 +350,50 @@ impl CompositorWindow {
         let windows: Vec<_> = (layout.windows.iter())
             .map(|w| {
                 json!({ "id": w.id, "rect": quad(w.rect), "focused": w.focused,
-                "thumbnails": w.panes.len() })
+                "icon": w.icon.as_ref().map(|(_, at)| quad(*at)) })
             })
             .collect();
+        let grips: Vec<_> = layout.grips.iter().map(|(_, at)| quad(*at)).collect();
         json!({ "shows": drawn.is_some(), "folded": drawn.is_some_and(|d| d.canvas.is_none()),
-            "outer": quad(layout.outer), "canvas": quad(layout.canvas), "button": quad(layout.button),
-            "view": quad(layout.view), "windows": windows, "peek": self.mapping.peek,
-            "thumbnails": self.mapping.thumbnails.len() })
+            "width": layout.width, "outer": quad(layout.outer), "canvas": quad(layout.canvas),
+            "button": quad(layout.button), "view": quad(layout.view), "windows": windows,
+            "grips": grips, "peek": self.mapping.peek, "resizing": self.mapping.resize.is_some(),
+            "icons": self.mapping.icons.len() })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::seen;
+    use super::{Mapping, Resize};
+    use desk_compositor::glam::Vec2;
+    use desk_wm::MapEdges;
 
     #[test]
-    fn a_carets_blink_does_not_show_in_a_thumbnail_and_a_page_of_new_text_does() {
-        let window = (656, 422);
-        assert!(!seen(17 * 34, window), "a blink");
-        assert!(!seen(17 * 34 * 14, window), "fourteen blinks");
-        assert!(seen(17 * 34 * 15, window), "fifteen add up to a 32nd");
-        assert!(seen(656 * 60, window), "a few lines of output");
-        assert!(seen(u64::MAX, window), "no overflow");
+    fn the_width_told_the_page_holds_until_its_report_says_it_back() {
+        let mut map = Mapping::default();
+        assert_eq!(map.width(None), None, "the default");
+        assert_eq!(map.width(Some(240.0)), Some(240.0), "the session's");
+        let edges = MapEdges {
+            left: true,
+            top: true,
+        };
+        let (from, start, now) = (Vec2::ZERO, 240.0, 300.0);
+        map.resize = Some(Resize {
+            edges,
+            from,
+            start,
+            now,
+        });
+        assert_eq!(
+            map.width(Some(240.0)),
+            Some(300.0),
+            "a resize's while it lasts"
+        );
+        map.resize = None;
+        map.told = Some(300.0);
+        assert_eq!(map.width(Some(240.0)), Some(300.0), "the report is behind");
+        assert_eq!(map.width(Some(300.0)), Some(300.0));
+        assert_eq!(map.told, None, "caught up");
+        assert_eq!(map.width(Some(320.0)), Some(320.0), "the page's again");
     }
 }

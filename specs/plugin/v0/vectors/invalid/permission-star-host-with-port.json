@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "* stands for any host alone: it takes no port",
+  "instance": {
+    "permission": "net:connect",
+    "hosts": ["*:631"]
+  }
+}

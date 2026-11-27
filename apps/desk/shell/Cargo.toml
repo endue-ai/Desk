@@ -1,6 +1,6 @@
 [package]
 name = "desk-shell"
-description = "The endue Desk app: its shell on winit and CEF (ADR 0143), which replaced the Tauri shell when Stage 1 of #32 ended."
+description = "The endue app: its shell on winit and CEF (ADR 0143), which replaced the Tauri shell when Stage 1 of #32 ended."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -29,7 +29,7 @@ path = "src/bin/bundle.rs"
 required-features = ["bundle"]
 
 [features]
-bundle = ["cef/build-util", "dep:semver"]
+bundle = ["cef/build-util", "dep:semver", "dep:plist", "dep:rustix", "dep:tempfile"]
 
 [package.metadata.cef.bundle]
 helper_name = "endue-desk-helper"
@@ -52,8 +52,9 @@ desk-compositor.workspace = true
 desk-link = { path = "../../../crates/desk-link" }
 desk-surface = { workspace = true, features = ["native"] }
 desk-core.workspace = true
-# Start at login (#237): the login item the setting registers, and the start it makes.
-desk-sys = { workspace = true, features = ["login"] }
+# Start at login (#237): the login item the setting registers, and the start it makes. The OS's
+# notifications (#306): a notice posted while endue is out of sight, and its click.
+desk-sys = { workspace = true, features = ["login", "notification"] }
 desk-trace.workspace = true
 # The desk's own updates (ADR 0054, ADR 0147): the updater, its HTTPS origin and the installer.
 desk-update = { workspace = true, features = ["https", "install"] }
@@ -73,10 +74,16 @@ serde.workspace = true
 serde_json.workspace = true
 tray-icon = "0.25"
 url = "2.5"
-winit = "0.30"
+# Crossfont draws native Wayland titles with the system font rasterizer.
+winit = { version = "0.30", default-features = false, features = [
+    "rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita-crossfont",
+] }
 wgpu.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
+plist = { version = "1", optional = true }
+rustix = { version = "1", features = ["fs"], optional = true }
+tempfile = { version = "3", optional = true }
 # When the OS started the process (`proc_pidinfo`): the start-up trace's origin (#112).
 libc = "0.2"
 objc2 = "0.6"

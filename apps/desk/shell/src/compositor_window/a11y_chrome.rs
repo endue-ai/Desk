@@ -234,10 +234,10 @@ pub fn chrome(
         })
         .collect();
     DeskChrome {
-        label: "endue Desk".into(),
+        label: "endue".into(),
         scale,
         size: (plan.screen.w as f32, plan.screen.h as f32),
-        page: Some(("Desk".into(), Placed::at(PAGE, 0.0, 0.0))),
+        page: Some(("endue".into(), Placed::at(PAGE, 0.0, 0.0))),
         windows_label: "Windows".into(),
         windows,
         overlays,
@@ -271,7 +271,7 @@ mod tests {
         let node = scene
             .insert(
                 window,
-                SurfaceNode::new(Rect::new(1.0, 40.0, 400.0, 300.0), TextureId(1)),
+                SurfaceNode::new(Rect::new(1.0, 36.0, 400.0, 300.0), TextureId(1)),
             )
             .unwrap();
         let target = Target {
@@ -282,7 +282,7 @@ mod tests {
         let shown = shown(&scene, &[(node, target)], &[], 2.0);
         assert_eq!(
             shown.placed["main.e2e-a"],
-            [1.0, 0.0, 0.0, 1.0, 101.0, 100.0]
+            [1.0, 0.0, 0.0, 1.0, 101.0, 96.0]
         );
     }
 }

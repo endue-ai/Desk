@@ -10,6 +10,17 @@ import { clock } from "./time.js";
  * @typedef {import("./player.js").Row} Row
  */
 
+/** The current item's displayed title. */
+export function titleOf(/** @type {Pick<Model, "mode" | "info" | "item" | "name">} */ model) {
+  return (model.mode === "media" && model.info?.tags?.title) || model.item?.name || model.name;
+}
+
+/** The chapters the transport shows for the current entry or file. */
+export function chaptersOf(/** @type {Entry} */ entry) {
+  const list = entry.playlist;
+  return (list ? list.entries[list.index]?.chapters : undefined) ?? entry.item?.info?.chapters;
+}
+
 /** A playlist's rows: each entry's title, what is said about it, and its state. */
 export function rowsOf(/** @type {NonNullable<Entry["playlist"]>} */ list) {
   return list.entries.map((e, i) => {
@@ -58,11 +69,8 @@ export function modelOf(/** @type {Entry} */ entry) {
   if (item && item.path !== path)
     model.item = { path: item.path, name: item.name, size: item.size };
   const list = entry.playlist;
-  if (list) {
-    model.playlist = { rows: rowsOf(list), index: list.index };
-    const chapters = list.entries[list.index]?.chapters;
-    if (chapters) model.chapters = chapters;
-  }
-  if (!model.chapters && item?.info?.chapters) model.chapters = item.info.chapters;
+  if (list) model.playlist = { rows: rowsOf(list), index: list.index };
+  const chapters = chaptersOf(entry);
+  if (chapters) model.chapters = chapters;
   return model;
 }

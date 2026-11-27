@@ -1,7 +1,7 @@
 # desk-mcp
 
 An MCP server for the running desk (ADR 0086): Claude Code, Claude Desktop, an IDE or any MCP client
-starts `desk mcp` and reaches every plugin through the desk socket (`crates/desk-ipc`). Layer: Rust core.
+starts `endue mcp` and reaches every plugin through the desk socket (`crates/desk-ipc`). Layer: Rust core.
 
 ## Tools and resources
 
@@ -13,7 +13,7 @@ starts `desk mcp` and reaches every plugin through the desk socket (`crates/desk
   its id with dots as underscores (`endue_git_status`), its args schema as input.
 - Resources `desk://plugins` and `desk://plugins/<id>`; `list_changed` when commands or plugins change.
 
-Every call runs as `agent:<id>` (`--agent`, default `mcp`): the first use asks the person in Desk, an
+Every call runs as `agent:<id>` (`--agent`, default `mcp`): the first use asks the person in endue, an
 irreversible one waits for approval, `agents.<id>.allow` in init.yaml caps it, and
 `desk perm log --agent <id>` shows it.
 
@@ -25,11 +25,11 @@ irreversible one waits for approval, `agents.<id>.allow` in init.yaml caps it, a
 ## Use it
 
 ```bash
-cargo install --path crates/desk-cli --locked      # puts desk on PATH
-claude mcp add desk -- desk mcp --agent claude-code --plugin endue.git
+cargo install --path crates/desk-cli --locked      # installs endue and the desk compatibility command
+claude mcp add endue -- endue mcp --agent claude-code --plugin endue.git
 ```
 
-Other clients: `{ "mcpServers": { "desk": { "command": "desk", "args": ["mcp", "--agent", "ide"] } } }`.
+Other clients: `{ "mcpServers": { "endue": { "command": "endue", "args": ["mcp", "--agent", "ide"] } } }`.
 
 ## Testing
 

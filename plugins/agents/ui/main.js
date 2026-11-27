@@ -3,6 +3,7 @@
 // bridge only, as a community plugin would. The tested modules take the bridge from here.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { defineElements } from "@endue-ai/ui";
+import { installAgentCommands } from "./agent-commands.js";
 import { createApp } from "./app.js";
 import { createAsk } from "./ask.js";
 import { createView } from "./view.js";
@@ -29,7 +30,6 @@ defineUiPlugin({
       boardAgent: (key) => on().boardAgent(key),
       openRow: (row) => void on().openRow(row),
       stopRun: (runId) => void on().stopRun(runId),
-      openWeb: (id) => void on().studioActions.act(id, "open-web"),
       save: (facet, values) => {
         const key = on().route.key ?? "";
         if (key.startsWith("local:")) on().local(shownId(), facet, values);
@@ -52,6 +52,10 @@ defineUiPlugin({
         stop: () => void on().chat(shownId()).stop(),
         access: (access) => on().chat(shownId()).setAccess(access),
         fresh: () => on().local(shownId(), "new-session"),
+        open: (id) => on().local(shownId(), "open", { id }),
+        older: () => on().chat(shownId()).older(),
+        more: () => on().moreSessions(shownId()),
+        preview: (id) => on().preview(shownId(), id),
         link: (href) => void on().studioActions.link(href),
       },
       flow: {
@@ -61,7 +65,11 @@ defineUiPlugin({
         use: (slug) => void on().flow.use(slug),
         build: (fields) => void on().flow.build(fields),
       },
-      catalogPage: () => void on().studioActions.link("https://endue.ai/agents"),
+      // The whole catalog, here: the query cleared and every published agent read again.
+      catalogPage: () => {
+        void on().flow.find("");
+        void on().flow.browse();
+      },
     });
     app = createApp(ctx, view, {
       confirm: (text) => ask({ title: "Are you sure?", text, yes: "Disable", danger: true }),
@@ -73,8 +81,7 @@ defineUiPlugin({
           yes: "Allow and send",
         }),
     });
-    // The agent bar's New agent (and the palette) asks for the New agent page.
-    ctx.commands.on("endue.agents.new", () => on().create());
+    installAgentCommands(ctx, app);
     // Signing in happens in the desk's account menu: look again when the person comes back.
     window.addEventListener("focus", () => {
       if (on().sides.endue.state === "signed-out") void on().refreshEndue();

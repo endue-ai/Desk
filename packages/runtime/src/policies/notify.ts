@@ -5,9 +5,14 @@
  * that fails says why in a notice of its own (gesture.ts). A notice that stays until it is dismissed
  * (an error, one with actions) has a Dismiss button after them (#158). A running plugin's notice
  * opens what it is about (ADR 0113): a click on its text, or picking it in the history, shows the
- * plugin (desk.display.show) and then hands it the notice (desk.notify.open).
+ * plugin (desk.display.show) and then hands it the notice (desk.notify.open). Hosts outside the
+ * page hear each notice that shows (`onShown`) and act on one as a click on it would (`activate`):
+ * the OS's notifications while endue is out of sight (#306). The notification centre holds the
+ * history (#307): a control right after the line opens it, as desk.notify.history does.
  */
-import type { NotifyLevel } from "@endue-ai/bridge";
+import type { ApprovalChange, NotifyLevel } from "@endue-ai/bridge";
+import { NOTIFY_TOOLS } from "../agent-specs";
+import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import { type GestureDesk, runGesture } from "../gesture";
 import {
   DEFAULT_NOTIFY,
@@ -16,17 +21,27 @@ import {
   Notifications,
   noticeText,
 } from "../notify";
+import { installCentre, type NotifyCentre } from "../notify-centre/install";
+import type { RuntimeNotices } from "../runtime-api";
 import { type DeskContext, disposer, type Installed } from "./context";
+import { LANGUAGE_SETTING } from "./language";
 
-export interface NotifyPolicy extends Installed {
+export interface NotifyPolicy extends Installed, RuntimeNotices {
   notifications: Notifications;
   notify(input: NoticeInput): Notice;
-  /** The line the status shows when no notice does ("desk ready ..."). */
+  /** The line the status shows when no notice does ("endue ready ..."). */
   setBase(text: string): void;
   text(): string;
 }
 
+const UNDO_APPROVAL = "desk.approvals.undo";
 const LEVELS: NotifyLevel[] = ["info", "success", "warning", "error"];
+const CHANGE_TITLES: Record<ApprovalChange, string> = {
+  "file-saved": "File saved",
+  "file-created": "File created",
+  "fact-remembered": "Fact remembered",
+  "fact-edited": "Fact updated",
+};
 
 export function installNotify(ctx: DeskContext, statusLine: HTMLElement): NotifyPolicy {
   const { hub, bridge, clock } = ctx;
@@ -106,6 +121,31 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   const notifications = new Notifications(clock, render);
   offs.add(() => notifications.dispose());
 
+  const dnd = () => notifications.settings.dnd;
+  const setDnd = (on: boolean) => {
+    settings.set("desk.notify.dnd", on);
+    return on;
+  };
+  const toggleDnd = () => setDnd(!dnd());
+  // The centre's control goes beside the line on its page; a line on no page (a test's) has none.
+  const centre: NotifyCentre | undefined = statusLine.parentElement
+    ? installCentre(statusLine, {
+        notifications,
+        language: () => ctx.language?.() ?? "en",
+        now: () => Date.now(),
+        pluginName: (id) => hub.plugins.find((p) => p.id === id)?.manifest?.name ?? id,
+        dnd,
+        toggleDnd,
+        opens,
+        open,
+        act: (notice, action) => {
+          if (notifications.current() === notice) notifications.dismiss();
+          return runGesture(desk, action.command, action.args);
+        },
+      })
+    : undefined;
+  if (centre) offs.add(centre.dispose);
+
   const configure = () =>
     notifications.configure({
       durations: Object.fromEntries(
@@ -122,20 +162,55 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   offs.add(
     settings.onChange((keys) => keys.some((k) => k.startsWith("desk.notify.")) && configure()),
   );
+  // The centre's switch follows do not disturb, and its words the desk's language.
+  offs.add(
+    settings.onChange((keys) => {
+      if (keys.some((k) => k.startsWith("desk.notify.") || k === LANGUAGE_SETTING))
+        centre?.refresh();
+    }),
+  );
 
   offs.add(
     bridge.onEvent((event) => {
+      if (event.event === "perm.approval.done" && event.data.ok && event.data.undoable) {
+        const { approvalId, change, path } = event.data;
+        notifications.push({
+          caller: "desk",
+          title: CHANGE_TITLES[change ?? "file-saved"],
+          level: "success",
+          ...(path ? { body: path } : {}),
+          actions: [{ label: "Undo", command: UNDO_APPROVAL, args: { approvalId } }],
+        });
+        return;
+      }
       if (event.event !== "ui.notified") return;
       const { notificationId, caller, title, body, level } = event.data;
       notifications.push({ id: notificationId, caller, title, level, ...(body ? { body } : {}) });
     }),
   );
 
+  offs.add(
+    commands.define(UNDO_APPROVAL, {
+      title: "Undo a recent change",
+      owner: "desk",
+      run: (args, { caller }) => {
+        const approvalId = (args as { approvalId?: unknown } | undefined)?.approvalId;
+        if ((caller && caller !== "desk") || typeof approvalId !== "string")
+          throw new Error("Use Undo on the change notice");
+        return bridge.call("perm.undoApproval", {
+          approvalId,
+          scope: { permission: "perm:manage" },
+        });
+      },
+    }),
+  );
+
   const define = (
     id: string,
     title: string,
-    run: (args: unknown) => unknown,
-    keywords: string[] = [],
+    run: CommandHandler,
+    keywords: string[],
+    agent: AgentSpec,
   ) =>
     offs.add(
       commands.define(id, {
@@ -143,50 +218,77 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
         keywords: ["notifications", ...keywords],
         owner: "desk.notify",
         run,
+        agent,
       }),
     );
-  define("desk.notify.dismiss", "Dismiss the notification", () => notifications.dismiss());
+  define(
+    "desk.notify.dismiss",
+    "Dismiss the notification",
+    (args, { caller }) => {
+      const id = (args as { id?: string } | undefined)?.id;
+      if (id !== undefined) return { dismissed: notifications.dismiss(id) };
+      if (caller?.startsWith("agent:"))
+        throw new CommandError("failed", "Give the notification ID");
+      notifications.dismiss();
+    },
+    [],
+    NOTIFY_TOOLS.dismiss,
+  );
   define(
     "desk.notify.dnd",
     "Turn do not disturb on or off",
-    () => {
-      const next = !notifications.settings.dnd;
-      settings.set("desk.notify.dnd", next);
-      return next;
+    (args, { caller }) => {
+      const on = (args as { on?: boolean } | undefined)?.on;
+      if (typeof on === "boolean") return setDnd(on);
+      if (caller?.startsWith("agent:")) throw new CommandError("failed", "Set on to true or false");
+      return toggleDnd();
     },
     ["do not disturb", "focus", "quiet"],
+    NOTIFY_TOOLS.dnd,
   );
   define(
     "desk.notify.history",
     "Show past notifications",
-    (args) => {
-      const history = notifications.history();
-      // The palette shows them (when it is on); the answer does not wait for the person.
-      const show = (args as { show?: boolean } | undefined)?.show !== false;
-      if (show && commands.has("desk.palette.pick")) {
-        const items = history.map((n) => ({ id: n.id, label: noticeText(n), detail: n.caller }));
-        void commands
-          .run("desk.palette.pick", { title: "Notifications", items })
-          .then((picked) => {
-            const notice = history.find((n) => n.id === picked);
-            return notice ? open(notice) : undefined;
-          })
-          .catch(() => {});
-      }
-      return history;
+    (args, { caller }) => {
+      const notices = notifications.history();
+      if (caller?.startsWith("agent:"))
+        return notices.map(({ actions: _actions, ...notice }) => notice);
+      if ((args as { show?: boolean } | undefined)?.show !== false) centre?.toggle();
+      return notices;
     },
-    ["messages", "history"],
+    ["messages", "history", "notification centre"],
+    NOTIFY_TOOLS.history,
   );
-  define("desk.notify.clear", "Clear past notifications", () => notifications.clear(), ["history"]);
+  define(
+    "desk.notify.clear",
+    "Clear past notifications",
+    () => notifications.clear(),
+    ["history"],
+    NOTIFY_TOOLS.clear,
+  );
+
+  const activate = async (id: string, action: boolean) => {
+    const notice = notifications.history().find((n) => n.id === id);
+    if (!notice) return;
+    if (notifications.current() === notice) notifications.dismiss();
+    const first = notice.actions?.[0];
+    if (action && first) await runGesture(desk, first.command, first.args);
+    else await open(notice);
+  };
 
   return {
     notifications,
     notify: (input) => notifications.push(input),
+    onShown: (listener) =>
+      notifications.onPush((notice) => {
+        if (!notice.held) listener(notice);
+      }),
+    activate,
     setBase: (text) => {
       base = text;
       if (!notifications.current()) render(null);
     },
-    // The base line, not the notice over it: desk_ready and the smoke test read "desk ready".
+    // The base line, not the notice over it: desk_ready and the smoke test read the base startup status.
     text: () => base,
     dispose: offs.dispose,
   };

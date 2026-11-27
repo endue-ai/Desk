@@ -1,6 +1,6 @@
 {
   "target": "UserPreferenceUpdateRequest",
-  "description": "Desk changes only the language and the time zone, never endue.ai's window layout",
+  "description": "endue changes only the language and the time zone, never endue.ai's window layout",
   "instance": {
     "locale": "en-US",
     "window_layout": null

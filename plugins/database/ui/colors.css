@@ -1,0 +1,63 @@
+/* The connections' colours and groups. Every colour, font, size, radius and duration comes from
+   the theme's --desk-* tokens; a connection's colour is a category colour, drawn leaning toward the
+   body text so its dot and band reach 3:1 on every surface in both schemes (tests/contrast.test.ts:
+   chart-2, chart-3 and chart-7 stand under it on the light surfaces alone). */
+
+/* A connection's colour: a dot in the explorer, a band down the header's left edge. */
+.swatch {
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--swatch) 70%, var(--desk-text));
+}
+
+.swatch-chart-1,
+body[data-color="chart-1"] {
+  --swatch: var(--desk-chart-1);
+}
+
+.swatch-chart-2,
+body[data-color="chart-2"] {
+  --swatch: var(--desk-chart-2);
+}
+
+.swatch-chart-3,
+body[data-color="chart-3"] {
+  --swatch: var(--desk-chart-3);
+}
+
+.swatch-chart-4,
+body[data-color="chart-4"] {
+  --swatch: var(--desk-chart-4);
+}
+
+.swatch-chart-5,
+body[data-color="chart-5"] {
+  --swatch: var(--desk-chart-5);
+}
+
+.swatch-chart-6,
+body[data-color="chart-6"] {
+  --swatch: var(--desk-chart-6);
+}
+
+.swatch-chart-7,
+body[data-color="chart-7"] {
+  --swatch: var(--desk-chart-7);
+}
+
+.swatch-chart-8,
+body[data-color="chart-8"] {
+  --swatch: var(--desk-chart-8);
+}
+
+body[data-color^="chart-"] header {
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--swatch) 70%, var(--desk-text));
+}
+
+.row.group .label {
+  color: var(--desk-text-muted);
+  font-weight: 600;
+}

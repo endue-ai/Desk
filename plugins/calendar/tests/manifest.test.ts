@@ -42,11 +42,20 @@ describe("plugin.json", () => {
       { permission: "fs:write", paths: [CALENDAR] },
       {
         permission: "cmd:invoke",
-        ids: ["desk.files.changed", "desk.files.open", "desk.buffers.update", "desk.palette.pick"],
+        ids: [
+          "desk.files.changed",
+          "desk.files.open",
+          "desk.buffers.update",
+          "desk.palette.pick",
+          "desk.files.save",
+        ],
       },
       { permission: "ui:notify" },
       // The system calendar's events, as a read-only layer: the desk.calendar connector's only.
       { permission: "data:read", kinds: ["event"], sources: ["desk.calendar"] },
+      // A calendar opened or kept elsewhere: asked for its folder, never held (ADR 0260).
+      { permission: "fs:read", paths: ["/**"] },
+      { permission: "fs:write", paths: ["/**"] },
     ]);
   });
 

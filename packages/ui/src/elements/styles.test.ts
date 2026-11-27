@@ -22,7 +22,7 @@ const DENSE = [
 ];
 
 describe("element styles", () => {
-  it("cover the fourteen elements", () => {
+  it("cover every registered element", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -38,6 +38,7 @@ describe("element styles", () => {
       "desk-progress",
       "desk-edit-tier",
       "desk-universal-view",
+      "desk-agent-session",
     ]);
   });
 
@@ -78,8 +79,10 @@ describe("element styles", () => {
 
     if (UNFOCUSED.has(name)) continue;
     it(`${name} draws a visible focus ring in the ring token`, () => {
-      // The design system's focus width (ADR 0090), in the theme's ring colour.
-      const RING = /^var\(--desk-focus-width\) solid var\(--desk-(ring|field-focus-ring)\)$/;
+      // The design system's focus width (ADR 0090), or a field's own ring width (ADR 0265), in the
+      // theme's ring colour.
+      const RING =
+        /^var\(--desk-(focus-width|field-focus-ring-width)\) solid var\(--desk-(ring|field-focus-ring)\)$/;
       const rings = rules.filter(
         (rule) =>
           rule.selector.includes(":focus-visible") && RING.test(rule.declarations.outline ?? ""),

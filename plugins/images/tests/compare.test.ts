@@ -7,11 +7,12 @@ import { join } from "node:path";
 import { beforeEach, expect, it } from "vitest";
 import { createView } from "../ui/view.js";
 import { pngHeader } from "./build";
-import { disk, image, mount } from "./harness";
+import { disk, fixture, image, mount } from "./harness";
 
 const html = readFileSync(join(import.meta.dirname, "../ui/index.html"), "utf8");
 const A = image("~/Pictures/a.png");
 const FILES = { [A.path]: pngHeader(1600, 1200), "~/Pictures/b.png": pngHeader(1600, 1200) };
+const PHOTO = image("~/Pictures/c.jpg");
 
 type Actions = Record<string, (...args: unknown[]) => unknown>;
 
@@ -21,7 +22,7 @@ beforeEach(() => {
 
 async function open() {
   const mounted = await mount({
-    handlers: disk(FILES),
+    handlers: disk({ ...FILES, [PHOTO.path]: fixture("exif.jpg") }),
     view: (app) =>
       createView(
         document,
@@ -86,4 +87,41 @@ it("with an image chosen, Escape in the chooser and Compare again end the split"
   byId("compare").click();
   await settle();
   left();
+});
+
+it("reads the visible image and shares the view transforms, comparison and folder walk", async () => {
+  const mounted = await open();
+  const { host, ran } = mounted;
+  await host.command("desk.files.visit", PHOTO);
+  await expect(host.command("endue.images.details", {})).resolves.toMatchObject({
+    path: PHOTO.path,
+    width: 64,
+    height: 48,
+    exif: expect.arrayContaining([{ label: "Camera", value: "Example Camera 1" }]),
+    position: { index: 3, count: 3 },
+  });
+  await host.command("endue.images.zoom", { level: 2 });
+  await host.command("endue.images.turn", { rotate: -90, flip: true });
+  expect(byId("flip").getAttribute("aria-pressed")).toBe("true");
+  await expect(host.command("endue.images.details", {})).resolves.toMatchObject({
+    rotation: 0,
+    flipped: true,
+  });
+  await host.command("endue.images.compare", { path: A.path });
+  expect(byId("pane-b").hidden).toBe(false);
+  await host.command("endue.images.step", { to: "first" });
+  expect(ran("desk.files.open").at(-1)).toMatchObject({ path: A.path });
+});
+
+it("uses the existing pan and details controls for an agent", async () => {
+  const { host } = await open();
+  await host.command("endue.images.zoom", { level: 2 });
+  await expect(host.command("endue.images.pan", { dx: 24, dy: -12 })).resolves.toMatchObject({
+    x: 24,
+    y: -12,
+  });
+  await host.command("endue.images.show-details", { shown: true });
+  expect(byId("details-toggle").getAttribute("aria-expanded")).toBe("true");
+  await host.command("endue.images.show-details", { shown: false });
+  expect(byId("details-toggle").getAttribute("aria-expanded")).toBe("false");
 });

@@ -157,7 +157,10 @@ pub fn hand_off(
     Ok(())
 }
 
-static PUMP: OnceLock<(Pump, fn(&Pump, Input))> = OnceLock::new();
+/// What hands an OS drop to the desk: the event loop's pump and the function that delivers on it.
+type Delivery = (Pump, fn(&Pump, Input));
+
+static PUMP: OnceLock<Delivery> = OnceLock::new();
 static ENTERED: OnceLock<Imp> = OnceLock::new();
 static PERFORMED: OnceLock<Imp> = OnceLock::new();
 /// The desk window's delegate: the only one the wrapped methods act for.

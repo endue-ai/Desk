@@ -168,6 +168,20 @@ test.describe("first run, scenes 6-10", () => {
     expect(await frameTree(frame)).toMatchSnapshot("first-screen-plus-3500ms.json");
   });
 
+  test("submitting before the choices appear leaves no buttons from the last question", async ({
+    page,
+  }) => {
+    const frame = await open(page, "?resume=task&name=Ada");
+    await answer(page, frame, "Type a task", "Plan my week");
+    await run(page, 1000);
+    await expect(frame.locator("#edge button")).toHaveCount(0);
+    await answer(page, frame, "Name this layout", "Work week");
+    await run(page, 1000);
+    await expect(frame.locator("#edge button")).toHaveCount(0);
+    await untilScene(page, frame, "outro");
+    await expect(frame.locator("#frame .dock .saved")).toHaveText("Work week");
+  });
+
   test("a first run quit while naming the layout asks for a task again", async ({ page }) => {
     const frame = await open(page, "?resume=task&name=Ada");
     await pickTask(page, frame, "Plan my week");

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "The motion gate's limits (`just perf-motion`, #247, #258 and #248, ADR 0208, ADR 0213 and ADR 0210; `loop` is the resize loop's). A check named in `known` fails today and is fixed by the issue named: it is reported, not failed, and a run where it passes fails until it is taken out of `known`. One named in `sometimes` fails today in some runs and not in others: a failure is reported, not failed, and a pass passes; its fix takes it out. `baseline` is what `just perf-motion record` measured last.",
+  "about": "The motion gate's limits (`just perf-motion`, #247, #258 and #248, ADR 0208, ADR 0213 and ADR 0210; `loop` is the resize loop's, `busy` the busy shake's, #249; `minFps` by the display's rate, ADR 0235). A check named in `known` fails today and is fixed by the issue named: it is reported, not failed, and a run where it passes fails until it is taken out of `known`. One named in `sometimes` fails today in some runs and not in others: a failure is reported, not failed, and a pass passes; its fix takes it out. `baseline` is what `just perf-motion record` measured last.",
   "window": "endue.sidebar",
   "windows": 13,
   "shake": {
@@ -27,23 +27,28 @@
       "fill": "right"
     }
   },
+  "busy": {
+    "ms": 20,
+    "everyMs": 250
+  },
   "loop": {
     "times": 100,
     "gapMs": 100
   },
   "limits": {
-    "minFps": 55,
+    "minFps": {
+      "60": 58,
+      "120": 110
+    },
     "longIntervalMs": 25,
-    "maxLongShare": 0.02,
+    "maxLongShare": 0.01,
     "maxForeignFrames": 0,
     "foreignBlocks": 4,
     "minRestSharpness": 0.95,
     "maxUnfitFrames": 0,
     "maxPaneShare": 0.015
   },
-  "known": {
-    "sway-smooth": "#249"
-  },
+  "known": {},
   "sometimes": {},
   "baseline": {
     "optimized-offscreen": {

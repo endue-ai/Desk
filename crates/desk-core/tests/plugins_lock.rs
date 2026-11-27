@@ -254,7 +254,7 @@ fn sync_turns_plugins_on_and_off_as_the_lock_says() {
 #[test]
 fn a_lock_newer_than_this_desk_is_refused() {
     let newer = lock::parse("version: 1\nplugins: []\n").unwrap_err();
-    assert!(newer.contains("newer than this Desk reads"), "{newer}");
+    assert!(newer.contains("newer than endue supports"), "{newer}");
     let broken = lock::parse("version: 0\nplugins: [{ id: x }]\n").unwrap_err();
     assert!(!broken.is_empty());
     let empty = lock::parse("version: 0\nplugins: []\n").unwrap();

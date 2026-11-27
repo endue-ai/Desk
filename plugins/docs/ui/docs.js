@@ -6,6 +6,7 @@
 // desk lists and the frame lost (it slept, or its page loaded again) opens again, where it was when a
 // sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
 // SDK's test host runs it with a recording view.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
 import { createLinks } from "./view/links.js";
@@ -21,7 +22,8 @@ import { createLinks } from "./view/links.js";
  *   zoom the person chose (null: fitted)
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
  * @typedef {{ show(shown: Shown | null, where?: Where): unknown, status(text: string): void,
- *   focus(): void, where?(): Where, progress?(value: Progress | null): void }} View
+ *   focus(): void, where?(): Where, progress?(value: Progress | null): void }
+ *   & Partial<import("./view/view.js").DocControls>} View
  * @typedef {Shown & { watchId?: string, at?: At }} Open
  * @typedef {typeof import("./open.js").openDocument} OpenDocument
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
@@ -327,6 +329,18 @@ export function createDocs({ bridge, commands, surface }, view, options) {
     if (shown !== buffer) return;
     shown = null;
     await render();
+  });
+
+  answerAgents(commands, {
+    open: () => [...docs.values()],
+    shown: () => shown,
+    position: () => {
+      if (view.position) return view.position();
+      const where = view.where?.();
+      return where?.at ? { page: where.at.page + 1, zoom: where.zoom } : {};
+    },
+    navigate: view.navigate,
+    zoom: view.zoom,
   });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {

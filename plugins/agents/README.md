@@ -11,8 +11,8 @@ activity, laid out after the endue.ai web. On the public SDK and bridge only; au
   without `studio.*` and a refused permission each say so, and the local side keeps working.
 - **Studio**: one agent's card with its facet cells and an inspector beside it. An endue agent:
   identity, prompt (revisions, restore), traits, skills, connectors, channels, status (Enable,
-  Disable) and settings (visibility, chat model, Open in endue.ai, Delete with the name typed). A
-  local agent: program, version, model, working folder, sessions, and a chat.
+  Disable) and settings (visibility, chat model, Delete). `endue.agents.studio` opens it. A
+  local agent: program, version, model, working folder, and the shared session workspace with read-only previews.
 - **Chat with a local agent**: `agents.ask` (resuming a session with its `sessionId`), the reply
   built from `agents.run` steps as it streams, Stop (`agents.stop`), history (`agents.transcript`). A
   message that may change files waits for the person's yes (ADR 0099).
@@ -23,7 +23,7 @@ activity, laid out after the endue.ai web. On the public SDK and bridge only; au
 | --- | --- |
 | `studio:manage` | The endue agents, their facets, conversations and the catalog (`studio.*`) |
 | `agents:manage` | The local agents, their sessions and runs; asked for when refused |
-| `shell:open` (https) | Open in endue.ai, links in answers |
+| `shell:open` (https) | Links in answers, an endue conversation |
 | `cmd:invoke` (`desk.account.sign-in`) | Sign in from the signed-out Home |
 
 | File | Purpose |

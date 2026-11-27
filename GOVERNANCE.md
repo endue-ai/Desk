@@ -2,7 +2,7 @@
 
 ## Today
 
-endue Desk has a single maintainer, Team endue. The maintainer reviews and merges pull requests, decides
+endue has a single maintainer, Team endue. The maintainer reviews and merges pull requests, decides
 releases, and owns the protected areas of the repository (`.github/workflows/`, `specs/`, `brand/`).
 
 ## How decisions are made

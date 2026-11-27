@@ -1,9 +1,9 @@
-/** A new surface's first pane: pick what to show in it. */
+/** A new surface's first tab: pick what to show in it. */
 
 import type { ShellCtx } from "../../shell/context";
 import { h } from "../../shell/dom";
 import { icon } from "../../shell/icons";
-import { showInPane } from "../../shell/windows";
+import { showInTab } from "../../shell/windows";
 import { spaceAgents } from "../../system/agents";
 import type { Mounted, Where } from "../views";
 
@@ -38,7 +38,7 @@ export function launcherBody(ctx: ShellCtx, where: Where): Mounted {
             onClick: () =>
               view === "keys"
                 ? ctx.runtime.settingsWindow.open("keyboard")
-                : showInPane(ctx, where.surface, where.pane, view),
+                : showInTab(ctx, where.surface, where.tab, view),
           },
           icon(glyph, 16),
           h("span", {}, label),

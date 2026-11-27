@@ -12,6 +12,7 @@
 
 mod app_surfaces;
 pub mod client;
+pub mod clipboard;
 pub mod clock;
 mod copy_wake;
 pub mod cursor;
@@ -32,8 +33,10 @@ mod sink;
 pub mod stall;
 pub mod top;
 pub mod view;
+mod web_actions;
 mod web_client;
 mod web_keys;
+pub mod web_page;
 mod web_refusals;
 pub mod web_rules;
 pub mod web_views;
@@ -263,7 +266,7 @@ impl WebHost {
     fn open(&self, surface: &str, view: &SharedView, hidden: bool, pace: u32) {
         let url = self.inner().sources.get(surface).cloned();
         let Some(url) = url else {
-            eprintln!("endue Desk: surface {surface} has no document to show");
+            eprintln!("endue: surface {surface} has no document to show");
             return;
         };
         view.lock().restart();

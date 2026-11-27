@@ -68,14 +68,14 @@ fn a_first_size_under_the_minimum_asked_opens_at_the_minimum() {
         "min": { "w": 400.0, "h": 300.0 },
     }));
     let p = desk.window("p.app").expect("its window");
-    assert_eq!((p.w, p.h), (402.0, 342.0));
+    assert_eq!((p.w, p.h), (402.0, 338.0));
 }
 
 #[test]
 fn a_resize_stops_at_the_smallest_page_the_plugin_asks() {
     let desk = desk_with(json!({ "min": { "w": 400.0, "h": 300.0 } }));
     let p = desk.window("p.app").expect("its window");
-    assert_eq!(desk.least_of(&p), Size { w: 402.0, h: 342.0 });
+    assert_eq!(desk.least_of(&p), Size { w: 402.0, h: 338.0 });
     let mut wm = Wm::new();
     wm.start(desk, APP);
     wm.run(
@@ -86,7 +86,7 @@ fn a_resize_stops_at_the_smallest_page_the_plugin_asks() {
         Some("p.app"),
     );
     let p = wm.desk().window("p.app").expect("its window");
-    assert_eq!((p.w, p.h), (402.0, 342.0));
+    assert_eq!((p.w, p.h), (402.0, 338.0));
 }
 
 #[test]
@@ -111,11 +111,22 @@ fn a_window_that_keeps_its_size_is_not_resized_and_shows_no_grip() {
 }
 
 #[test]
-fn hints_leave_a_window_of_several_panes_to_its_panes() {
+fn a_window_of_several_tabs_follows_the_hints_of_the_tab_it_shows() {
     let mut desk = desk_with(json!({ "min": { "w": 400.0, "h": 300.0 }, "fixed": true }));
-    desk.focus_pane("p.app", None);
-    desk.split(desk_wm::SplitDir::Row);
+    desk.focus_tab("p.app", None);
+    // Another window of the plugin, which asks for nothing, as a tab: shown, the window resizes.
+    desk.adopt("p.app@2", "App", desk_wm::FREE);
+    let added = desk
+        .add_tab("p.app", "plugin:p.app@2")
+        .expect("a tab of its own kind");
     let p = desk.window("p.app").expect("its window");
     assert!(desk.resizable(&p));
-    assert_eq!(desk.least_of(&p), desk_wm::window_min(&p.panes()));
+    assert_eq!(desk.least_of(&p), desk_wm::MIN);
+    // Back on its first tab it keeps to that one's hints.
+    desk.step_tab(1);
+    let p = desk.window("p.app").expect("its window");
+    assert_ne!(p.shown().id, added);
+    assert!(!desk.resizable(&p));
+    // Its 400 × 300 of content, in the window's frame.
+    assert_eq!((desk.least_of(&p).w, desk.least_of(&p).h), (402.0, 338.0));
 }

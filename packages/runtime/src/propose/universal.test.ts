@@ -61,6 +61,28 @@ describe("the universal view kind", () => {
     });
   });
 
+  it("refuses a source command that does not only read: the preview runs it before any yes", async () => {
+    const core = browserCore({ manifests, brain: { answer: () => "" } });
+    const kind = universalKind({
+      bridge: core.client,
+      commands: {
+        run: async () => ({}),
+        has: () => true,
+        reads: (id) => id === "desk.universal.folder",
+      },
+      now: () => Date.parse(FIXTURE_NOW),
+      profile: () => undefined,
+    });
+    const sending = { ...BOARD, source: { command: "endue.mail.send-message" } };
+    expect(await kind.check(sending, request)).toEqual({
+      problems: [
+        "/source/command: endue.mail.send-message does not only read, so it cannot be a view's source",
+      ],
+    });
+    const folder = { ...BOARD, source: { command: "desk.universal.folder", args: { path: "~" } } };
+    expect(await kind.check(folder, request)).toHaveProperty("value");
+  });
+
   it("asks through propose_universal_view with UniversalView bundled without id and provenance", () => {
     const { kind } = setup();
     const tool = kind.tool();

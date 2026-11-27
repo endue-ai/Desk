@@ -6,16 +6,18 @@
  * opener read access to the file's folder first (perm.grant, ADR 0131). An autoload opener that is
  * off comes on for a file and, when the desk turned it on, goes off again with its last buffer (ADR
  * 0046). A file no rule names opens in the fallbacks (`files-open.ts`), and a file is named in one
- * spelling, so it is one buffer. An opener that asks for it opens each file in a window of its own
- * (`files-windows.ts`, ADR 0212).
+ * spelling, so it is one buffer. Openers can give each file its own window (ADR 0212).
  */
+
+import { WORKSPACE_TOOLS } from "../agent-specs";
 import { baseName, windowOf } from "../buffers";
 import { type AgentSpec, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
 import { autoloads } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
-import { folderRead, OPEN_FOR_AGENTS, onePath, opener, openers, personChose } from "./files-open";
+import { installFileChoices, pickFileChoice } from "./files-choices";
+import { OPEN_FOR_AGENTS, onePath, opener, openers, personChose } from "./files-open";
 import { fileWindows } from "./files-windows";
 
 export { folderRead, opener, personChose } from "./files-open";
@@ -62,6 +64,8 @@ export function installFiles(
   const { commands, settings } = hub;
   const list = buffers.buffers;
   const offs = disposer();
+  const choices = installFileChoices(ctx, list);
+  offs.add(choices.dispose);
   let recent: RecentFile[] = [];
   /** When the desk last had each path saved, so the plugin's own write is not reported as a change. */
   const savedAt = new Map<string, number>();
@@ -83,20 +87,12 @@ export function installFiles(
     void bridge.call("store.set", { key: RECENT_KEY, value: recent }).catch(() => {});
   };
 
-  const pick = async (title: string, items: unknown[], free = false) => {
-    if (!commands.has("desk.palette.pick")) return undefined;
-    const answer = await commands
-      .run("desk.palette.pick", { title, items, free, placeholder: free ? "~/path/to/file" : "" })
-      .catch(() => undefined);
-    return typeof answer === "string" ? answer : undefined;
-  };
-
   /** Turn the opener on when it is off, and wait until it can answer. */
   const ready = async (plugin: string) => {
     if (!ctx.mounted(plugin)) {
       const info = hub.plugins.find((p) => p.id === plugin);
       const off = goingOff.delete(plugin) || info?.enabled === false;
-      await ctx.launch(plugin);
+      await ctx.launch(plugin, info?.autoStart === true);
       // Off and autoload: the desk turned it on, so the desk turns it off after its last file.
       if (autoloads(info) && off && !autoloaded.has(plugin)) {
         autoloaded.add(plugin);
@@ -114,8 +110,14 @@ export function installFiles(
     if (ctx.mounted(plugin))
       for (const key of (ctx.instances?.(plugin) ?? [plugin]).reverse()) ctx.unmount(key);
     goingOff.add(plugin);
+    const automatic = hub.plugins.find((p) => p.id === plugin)?.autoStart;
     void bridge
-      .call("plugin.setEnabled", { plugin, enabled: false, scope: MANAGE })
+      .call("plugin.setEnabled", {
+        plugin,
+        enabled: false,
+        ...(automatic ? { automatic } : {}),
+        scope: MANAGE,
+      })
       .catch(() => {});
   };
   /** Files whose buffer has not shown yet (opened with `show: false`), by path. */
@@ -124,6 +126,7 @@ export function installFiles(
   offs.add(
     buffers.onClosed((buffer) => {
       if (buffer.path) unshown.delete(buffer.path);
+      choices.close(buffer.id);
       windows.closed(buffer);
       release(buffer.plugin);
     }),
@@ -165,27 +168,20 @@ export function installFiles(
   ): Promise<string> => {
     const path = await named(given);
     const going = visiting.get(path);
-    if (going) return show && !going.show ? going.opening.then(reveal) : going.opening;
     const existing = list.byPath(path);
-    if (existing) return show ? reveal(existing.id) : Promise.resolve(existing.id);
+    if (going || existing) {
+      const id = going ? await going.opening : existing?.id;
+      const buffer = id && list.get(id);
+      if (!buffer) throw new CommandError("failed", "the file was closed");
+      if (chosen) await choices.read(buffer.plugin, path, buffer.id);
+      return show && !going?.show ? reveal(buffer.id) : buffer.id;
+    }
     const opening = visit(path, by, show, chosen, caller).finally(() => {
       if (visiting.get(path)?.opening === opening) visiting.delete(path);
     });
     visiting.set(path, { opening, show });
     return opening;
   };
-
-  /** The person chose the file: its opener may read the folder without asking (ADR 0131). */
-  const allowRead = (plugin: string, path: string) =>
-    bridge
-      .call("perm.grant", {
-        caller: plugin,
-        permission: folderRead(path),
-        reason: `The person opened ${path}`,
-        scope: { permission: "perm:manage" },
-      })
-      // Without it the opener asks as before.
-      .catch(() => undefined);
 
   /** The plugins that may open `path`, in turn: the one named, its rule's, or the fallbacks. */
   const openersOf = (path: string, by: string | undefined) => {
@@ -210,13 +206,14 @@ export function installFiles(
     const id = `file:${path}`;
     for (const [at, plugin] of plugins.entries()) {
       const { key, opened } = await windows.place(plugin, caller, () => ready(plugin));
-      if (chosen) await allowRead(plugin, path);
+      if (chosen) await choices.read(plugin, path, id);
       const file = { id, name: baseName(path), plugin, path, modified: false, surface: false };
       list.add(key === plugin ? file : { ...file, instance: key });
       windows.placed(key, opened);
       try {
         await ctx.request(key, "desk.files.visit", { buffer: id, path });
       } catch (error) {
+        choices.close(id);
         list.remove(id);
         windows.placed(key, opened);
         release(plugin);
@@ -236,7 +233,6 @@ export function installFiles(
     return show ? reveal(id) : id;
   };
 
-  /** The file buffer a command is about: the one named, or the one in use. */
   const fileBuffer = (args: unknown) => {
     const named = (args as { buffer?: string } | undefined)?.buffer;
     const buffer = named ? list.get(named) : list.current();
@@ -286,7 +282,8 @@ export function installFiles(
         path ??
         (pickFile
           ? await pickFile()
-          : await pick(
+          : await pickFileChoice(
+              commands,
               "Open a file",
               recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
               true,
@@ -301,20 +298,26 @@ export function installFiles(
   define(
     "desk.files.recent",
     "Open a recent file",
-    async () => {
-      const path = await pick(
+    async (_args, { caller }) => {
+      if (caller?.startsWith("agent:")) return recent;
+      const path = await pickFileChoice(
+        commands,
         "Recent files",
         recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
       );
       return path ? open(path) : null;
     },
     ["recentf", "history"],
+    WORKSPACE_TOOLS.filesRecent,
   );
   define(
     "desk.files.save",
     "Save the file",
-    async (args) => {
+    async (args, { caller }) => {
+      if (caller?.startsWith("agent:") && !(args as { buffer?: string } | undefined)?.buffer)
+        throw new CommandError("failed", "Give a file buffer ID from desk.buffers.list");
       const buffer = fileBuffer(args);
+      await choices.save(buffer, caller);
       await ctx.request(windowOf(buffer), "desk.files.save", {
         buffer: buffer.id,
         path: buffer.path,
@@ -325,6 +328,7 @@ export function installFiles(
       return buffer.id;
     },
     ["save-buffer", "write"],
+    WORKSPACE_TOOLS.fileSave,
   );
   define("desk.files.revert", "Reload the file from disk", revert, ["revert-buffer"]);
   define(
@@ -348,7 +352,7 @@ export function installFiles(
         return "reloaded";
       }
       notify({ caller: "desk", title: `${buffer.name} changed on disk`, level: "warning" });
-      const choice = await pick(`${buffer.name} changed on disk`, [
+      const choice = await pickFileChoice(commands, `${buffer.name} changed on disk`, [
         {
           id: "reload",
           label: "Reload it from disk",

@@ -1,6 +1,5 @@
 //! What the shell asks of the core for Eris (ADR 0121): her shortcut's setting, desk.eris.summon in
-//! the main window, and the notice that the shortcut is taken; and `call`, a core call as a fixed
-//! caller, which the island uses too.
+//! the main window, and the notice that the shortcut is taken.
 
 use std::sync::atomic::Ordering::Relaxed;
 
@@ -19,7 +18,8 @@ pub(super) fn notice(state: &Eris) {
     if !state.ready.load(Relaxed) || state.noticed.swap(true, Relaxed) {
         return;
     }
-    let (title, body) = shortcut::taken(&held.shortcut, MAC, &why);
+    let language = crate::language::in_force();
+    let (title, body) = shortcut::taken(language, &held.shortcut, MAC, &why);
     let request = json!({
         "id": 0,
         "method": "ui.notify",

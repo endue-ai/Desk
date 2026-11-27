@@ -47,6 +47,8 @@
         <div id="prompt-warning"></div>
         <p id="prompt-why"></p>
         <p id="prompt-asked"></p>
+        <p id="prompt-effects" hidden></p>
+        <p id="prompt-revoke" class="kind" hidden>You can revoke this permission in Permissions.</p>
       </div>
       <div class="actions">
         <button type="button" data-answer="once" class="desk-btn">Allow once</button>
@@ -78,11 +80,8 @@
       <div class="actions" data-for="approval">
         <button type="button" data-answer="once" class="desk-btn">Allow once</button>
         <button type="button" data-answer="task" class="desk-btn">Allow for this task</button>
+        <button type="button" data-answer="app" class="desk-btn" hidden></button>
         <button type="button" data-answer="deny" class="desk-btn">Deny</button>
-      </div>
-      <div class="actions" data-for="result" hidden>
-        <button type="button" data-answer="undo" hidden class="desk-btn">Undo</button>
-        <button type="button" data-answer="done" class="desk-btn">Done</button>
       </div>
       <p id="approval-waiting"></p>
     </section>

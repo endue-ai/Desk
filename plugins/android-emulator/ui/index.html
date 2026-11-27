@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Android Emulator</title>
+    <link rel="stylesheet" href="/_desk/tokens.css">
+    <link rel="stylesheet" href="/_desk/base.css">
+    <link rel="stylesheet" href="./style.css">
+    <script type="importmap">
+    {
+      "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" }
+    }
+    </script>
+  </head>
+  <body>
+    <header class="desk-bar">
+      <h1 class="desk-bar-title">Android Emulator</h1>
+      <span class="desk-bar-spacer"></span>
+      <button class="desk-btn desk-btn-quiet" id="refresh">Refresh devices</button>
+    </header>
+    <main>
+      <section class="device-view" aria-label="Virtual device">
+        <div class="device-picker">
+          <label for="device">Local device</label>
+          <div class="line">
+            <select class="desk-field" id="device"></select>
+            <button class="desk-btn desk-btn-primary" id="connect" disabled>Connect</button>
+          </div>
+          <p id="connection" role="status">Refresh devices to find local emulators.</p>
+          <p id="discovery-error" class="desk-error" hidden></p>
+        </div>
+        <div class="stage">
+          <p class="desk-empty" id="display-message">
+            The device screen appears here when connected.
+          </p>
+          <canvas
+            id="display"
+            role="group"
+            aria-label="Android screen. Tap or drag to touch. Focus to send keys."
+            tabindex="0"
+            hidden
+          ></canvas>
+        </div>
+        <fieldset class="navigation" id="navigation" aria-label="Android controls" disabled>
+          <button class="desk-btn desk-btn-quiet" data-key="Back">Back</button>
+          <button class="desk-btn desk-btn-quiet" data-key="Home">Home</button>
+          <button class="desk-btn desk-btn-quiet" data-key="Recents">Recent apps</button>
+          <button class="desk-btn desk-btn-quiet" id="rotate">Rotate</button>
+          <button class="desk-btn desk-btn-quiet" id="pause">Pause preview</button>
+        </fieldset>
+      </section>
+      <aside aria-label="Emulator tools">
+        <div class="desk-tabs" aria-label="Tools" role="group">
+          <button
+            class="desk-tab"
+            data-panel="conditions"
+            aria-controls="conditions"
+            aria-pressed="true"
+          >
+            Conditions
+          </button>
+          <button class="desk-tab" data-panel="apps" aria-controls="apps" aria-pressed="false">
+            Apps
+          </button>
+          <button class="desk-tab" data-panel="tools" aria-controls="tools" aria-pressed="false">
+            Device
+          </button>
+          <button class="desk-tab" data-panel="logs" aria-controls="logs" aria-pressed="false">
+            Logcat
+          </button>
+        </div>
+        <section id="conditions">
+          <form id="environment">
+            <h2>Test conditions</h2>
+            <label>Preset<select class="desk-field" id="preset"></select></label>
+            <div class="pair">
+              <label
+                >Battery (%)<input
+                  class="desk-field"
+                  name="battery"
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="Unchanged"
+                ></label
+              >
+              <label
+                >Charger<select class="desk-field" name="charging">
+                  <option value="">Unchanged</option>
+                  <option value="on">Connected</option>
+                  <option value="off">Unplugged</option>
+                </select></label
+              >
+            </div>
+            <label
+              >Mobile network<select class="desk-field" name="network">
+                <option value="">Unchanged</option>
+                <option value="full">Full speed</option>
+                <option value="lte">LTE</option>
+                <option value="umts">3G (UMTS)</option>
+                <option value="edge">EDGE</option>
+                <option value="gprs">GPRS</option>
+              </select></label
+            >
+            <div class="pair">
+              <label
+                >Latitude<input
+                  class="desk-field"
+                  name="latitude"
+                  type="number"
+                  min="-90"
+                  max="90"
+                  step="any"
+                  placeholder="37.5665"
+                ></label
+              >
+              <label
+                >Longitude<input
+                  class="desk-field"
+                  name="longitude"
+                  type="number"
+                  min="-180"
+                  max="180"
+                  step="any"
+                  placeholder="126.9780"
+                ></label
+              >
+            </div>
+            <div class="pair">
+              <label
+                >Appearance<select class="desk-field" name="appearance">
+                  <option value="">Unchanged</option>
+                  <option value="yes">Dark</option>
+                  <option value="no">Light</option>
+                  <option value="auto">Automatic</option>
+                </select></label
+              >
+              <label
+                >Font scale<select class="desk-field" name="font">
+                  <option value="">Unchanged</option>
+                  <option value="1.0">100%</option>
+                  <option value="1.3">130%</option>
+                  <option value="1.5">150%</option>
+                  <option value="2.0">200%</option>
+                </select></label
+              >
+            </div>
+            <button class="desk-btn desk-btn-primary" data-online type="submit" disabled>
+              Apply conditions
+            </button>
+          </form>
+          <form id="save-preset">
+            <label
+              >Preset name<input
+                class="desk-field"
+                name="name"
+                maxlength="60"
+                placeholder="Commute test"
+                required
+              ></label
+            >
+            <button class="desk-btn" type="submit">Save preset</button>
+          </form>
+        </section>
+        <section id="apps" hidden>
+          <h2>App testing</h2>
+          <div class="actions">
+            <button class="desk-btn" id="install" data-online disabled>Install APK…</button>
+            <button class="desk-btn" id="list-apps" data-online disabled>Refresh apps</button>
+          </div>
+          <label>Installed user apps<select class="desk-field" id="packages"></select></label>
+          <div class="actions">
+            <button class="desk-btn" data-inspect="launch" data-online disabled>
+              Launch and time
+            </button>
+            <button class="desk-btn" data-inspect="memory" data-online disabled>Read memory</button>
+            <button class="desk-btn" data-inspect="frames" data-online disabled>
+              Read frame timing
+            </button>
+          </div>
+          <pre id="app-output" tabindex="0" aria-label="App diagnostics"></pre>
+        </section>
+        <section id="tools" hidden>
+          <h2>Screen capture</h2>
+          <div class="actions">
+            <button class="desk-btn" id="screenshot" data-online disabled>Save screenshot…</button>
+          </div>
+          <h2>Snapshots</h2>
+          <form id="save-snapshot">
+            <label
+              >New snapshot<input
+                class="desk-field"
+                name="name"
+                placeholder="clean-install"
+                maxlength="128"
+                required
+              ></label
+            >
+            <button class="desk-btn" type="submit" data-online disabled>Save snapshot</button>
+          </form>
+          <label>Saved snapshots<select class="desk-field" id="snapshots"></select></label>
+          <div class="actions">
+            <button class="desk-btn" id="list-snapshots" data-online disabled>
+              Refresh snapshots
+            </button>
+            <button class="desk-btn" id="restore" data-online disabled>Restore…</button>
+          </div>
+          <h2>Power</h2>
+          <button class="desk-btn desk-btn-danger" id="power" data-online disabled>
+            Shut down…
+          </button>
+        </section>
+        <section id="logs" hidden>
+          <h2>Recent device logs</h2>
+          <div class="pair">
+            <label
+              >Minimum priority<select class="desk-field" id="priority">
+                <option value="V">Verbose</option>
+                <option value="D">Debug</option>
+                <option value="I" selected>Info</option>
+                <option value="W">Warning</option>
+                <option value="E">Error</option>
+                <option value="F">Fatal</option>
+              </select></label
+            >
+            <label
+              >Filter text<input
+                class="desk-field"
+                id="log-filter"
+                type="search"
+                placeholder="ActivityManager"
+              ></label
+            >
+          </div>
+          <button class="desk-btn" id="read-logs" data-online disabled>Read logcat</button>
+          <pre id="log-output" tabindex="0" aria-label="Logcat output"></pre>
+        </section>
+        <p class="feedback" id="feedback" role="status"></p>
+        <details>
+          <summary>SDK directory</summary>
+          <form id="sdk">
+            <label
+              >Absolute path<input
+                class="desk-field"
+                name="root"
+                placeholder="Use the installed SDK"
+              ></label
+            >
+            <button class="desk-btn" type="submit">Use directory</button>
+          </form>
+        </details>
+      </aside>
+    </main>
+    <dialog
+      class="desk-dialog"
+      id="confirm"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+    >
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-message"></p>
+      <div class="actions">
+        <button class="desk-btn" type="button" id="confirm-cancel">Cancel</button>
+        <button class="desk-btn desk-btn-danger" type="button" id="confirm-action"></button>
+      </div>
+    </dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

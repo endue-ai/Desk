@@ -1,8 +1,8 @@
 # endue AI platform API v0: the desk's subset
 
 `openapi.yaml` (OpenAPI 3.1) writes down the part of endue AI's own platform API (`/api/v1`, what
-endue.ai's web calls) that Desk uses to create and manage the person's endue AI agents (ADR 0122)
-and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is Desk's
+endue.ai's web calls) that endue uses to create and manage the person's endue AI agents (ADR 0122)
+and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is endue's
 client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/studio.schema.json`,
 `studio-spaces.schema.json`) under `studio:manage`. The person's own account settings (ADR 0130) are
 served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `account:manage`.
@@ -13,27 +13,27 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 | Studio facets | `getAgentIdentity`, `getAgentSettings`, `updateAgentSettings`, `getAgentPrompt`, `saveAgentPrompt`, `listPromptRevisions`, `restorePromptRevision`, `listAgentSkills`, `listAgentConnectors`, `listAgentTraits` |
 | Studio's board (ADR 0232) | `listChannelPairings`, `listAgentOsDevices`, `listAgentWorkspaces`, `getAgentTheme`, `listAgentMemories` (counted), `listApiKeys` (the agent's own), `listArtifacts` (counted) |
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
-| Conversations | `listConversations` (the Home board) |
-| Spaces (read only) | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms` |
+| Conversations | `listConversations` (the Home board), `createAgentConversation`, `runAgentConversation` |
+| Spaces | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms`, `ensureSpaceConversation` |
 | Account | `getMe`, `updateMe`, `getMyPreferences`, `updateMyPreferences` (language, time zone), `getNotificationPreferences`, `updateNotificationPreferences` |
 
 ## Base, token and envelopes
 
 - The base is `https://platform.endue.ai`; `https://platform.dev.endue.ai` is endue AI's development
   platform, and `DESK_ENDUE_PLATFORM_URL` overrides both.
-- Every call carries `Authorization: Bearer <endue ID access token>` from the core's account. Desk
-  sends no `Origin` header (no browser session), waits 15 s at most (30 s for `useCatalogAgent`), and
-  after a 401 refreshes the token once and tries once more.
+- Every call carries `Authorization: Bearer <endue ID access token>` from the core's account. endue
+  uses its own HTTP client. It waits 15 s for most calls, 30 s for `useCatalogAgent` and up to
+  90 s for a run. A 401 can renew the token once and retry the same body.
 - agent-service answers the bare body for agents, identity, prompt, skills, connectors and traits, and
   `{ data, meta }` for settings. The catalog answers `{ data, meta }`; ai-agent-service (`/api/v1/ai`)
   answers `{ success: true, data }`. user-service answers the bare body; notification-service answers
   `{ data, meta }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
   The space list and one space answer the bare body; a space's overview and rooms `{ data, meta }`.
   Channel pairings, devices and workspaces answer the bare body; an agent's theme the bare body or
-  `{ data }`; artifact-service `{ data, meta: { pagination } }`, whose total Desk counts. Workspaces
-  answer 404 `FEATURE_DISABLED` while endue AI has them turned off, which Desk reads as none.
+  `{ data }`; artifact-service `{ data, meta: { pagination } }`, whose total endue counts. Workspaces
+  answer 404 `FEATURE_DISABLED` while endue AI has them turned off, which endue reads as none.
 - Bodies are snake_case. Readers ignore fields this document does not name and read `null` as absent,
-  so endue AI can add fields without breaking Desk.
+  so endue AI can add fields without breaking endue.
 - Only what a card shows is named. People's ids, room members, a viewer's capabilities, attention
   items' reasons and anything about billing stay unnamed and unread, and nothing here names a host or
   a route other than the public gateway's.
@@ -49,6 +49,14 @@ served as `account.settings.*` (`specs/bridge/v0/account.schema.json`) under `ac
 | 400, 422 | `invalid_params` |
 | 409 on set status (it already has it) | none: the call succeeds |
 | anything else | `io_error` |
+
+## Questions
+
+One agent question opens a conversation with the agent and requests the `ask` approval level.
+A space question uses the server's existing Front Desk conversation and its bound agent. The
+Desk checks the binding before sending. Each text run carries one `client_message_id` across an
+auth retry. The completed `done` event supplies the final assistant message. Partial events,
+interactive stops and transport failures produce a status and a conversation reference.
 
 ## Vectors
 

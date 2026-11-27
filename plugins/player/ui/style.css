@@ -2,12 +2,12 @@
    here; the runtime redefines them for the theme in force. The stage and subtitle colours are the
    player's: video is shown on black, and subtitles are white on a shadow whatever the theme. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
+  --desk-background: #141311;
+  --desk-card: #1d1c19;
+  --desk-border: #32302b;
+  --desk-text: #f3f1ec;
+  --desk-text-muted: #b3afa5;
+  --desk-accent: #f3f1ec;
   --player-stage: #000;
   --player-subtitle: #fff;
 }

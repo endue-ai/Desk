@@ -5,7 +5,7 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "autoload": true,
-  "description": "Eris uses your computer (ADR 0123): her tools to look, find, click, type, press keys and open apps, each act waiting for your approval, with the OS permissions it takes, the apps she may operate and Stop.",
+  "description": "Eris uses your computer (ADR 0123): tools for reading the screen and operating apps, with approval for input, macOS permission status and Stop.",
   "permissions": [{ "permission": "computer:see" }, { "permission": "computer:control" }],
   "surfaces": [{ "id": "main", "title": "Computer", "placement": "center" }],
   "contributes": {
@@ -62,7 +62,7 @@
       {
         "id": "endue.computer.click",
         "title": "Computer: Click",
-        "description": "Click at a point (x, y in screen points), or press an element found with look or find (element: { pid, path, role }). button is left, right or middle; count 2 double-clicks. The person approves each click.",
+        "description": "Click at a point (x, y in screen points), or press an element found with look or find (element: { pid, path, role }). button is left, right or middle; count 2 double-clicks. The person approves clicks unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": {
@@ -87,7 +87,7 @@
       {
         "id": "endue.computer.type",
         "title": "Computer: Type",
-        "description": "Type text into the frontmost app as it is written, in any language; a line break presses Return. Click the field first. The person approves it.",
+        "description": "Type text into the frontmost app as it is written, in any language; a line break presses Return. Click the field first. The person approves it unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 10000 } },
@@ -98,7 +98,7 @@
       {
         "id": "endue.computer.keys",
         "title": "Computer: Press keys",
-        "description": "Press key chords in the frontmost app, one after another: cmd+t, cmd+shift+n, return, tab, down. Escape is the stop key while you act: to dismiss a dialog, press its Cancel button. The person approves it.",
+        "description": "Press key chords in the frontmost app, one after another: cmd+t, cmd+shift+n, return, tab, down. Escape is the stop key while you act: to dismiss a dialog, press its Cancel button. The person approves it unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": {
@@ -121,7 +121,7 @@
       {
         "id": "endue.computer.scroll",
         "title": "Computer: Scroll",
-        "description": "Scroll by lines at a point (x, y), or where the pointer is: dy above 0 scrolls down, below 0 up; dx sideways. The person approves it.",
+        "description": "Scroll by lines at a point (x, y), or where the pointer is: dy above 0 scrolls down, below 0 up; dx sideways. The person approves it unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": {
@@ -135,9 +135,97 @@
         "agent": true
       },
       {
+        "id": "endue.computer.move",
+        "title": "Computer: Move the pointer",
+        "description": "Move the pointer to screen coordinates x and y with no click or approval card.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["x", "y"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.drag",
+        "title": "Computer: Drag",
+        "description": "Drag from one screen point to another. Give from and to as objects with x and y. Approval is scoped to the reached apps.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "to": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false,
+          "required": ["from", "to"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.quit",
+        "title": "Computer: Quit an app",
+        "description": "Quit a running app by name, bundle id or pid. The person approves every quit.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "app": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          },
+          "additionalProperties": false,
+          "required": ["app"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.status",
+        "title": "Computer: Check permissions",
+        "description": "Report macOS Accessibility and Screen Recording permissions, whether input is stopped, and the apps the person currently allows.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
         "id": "endue.computer.open",
         "title": "Computer: Open an app",
-        "description": "Open an app, or bring it forward when it runs: by bundle id (com.apple.Safari) or by the name of a running app. The person approves it.",
+        "description": "Open an app, or bring it forward when it runs: by bundle id (com.apple.Safari) or by the name of a running app. The person approves it unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": { "app": { "type": "string", "minLength": 1, "maxLength": 255 } },
@@ -148,7 +236,7 @@
       {
         "id": "endue.computer.switch",
         "title": "Computer: Switch to an app",
-        "description": "Bring a running app to the front, by its name, bundle id or pid, so keys and typing go to it. The person approves it.",
+        "description": "Bring a running app to the front, by its name, bundle id or pid, so keys and typing go to it. The person approves it unless this app has an allowance.",
         "args": {
           "type": "object",
           "properties": { "app": { "type": "string", "minLength": 1, "maxLength": 255 } },

@@ -218,6 +218,15 @@ describe("Eris at rest", () => {
     expect(resting(el)).toBe(true);
   });
 
+  it("a visible idle figure keeps rotating past the docking timeout", () => {
+    const { el, frame } = track(mount({ place: { x: 40, y: 80 } }));
+    frame(11000);
+    const mesh = el.querySelector<HTMLElement>(".eris-mesh");
+    const before = mesh?.dataset.mesh;
+    for (let i = 0; i < 10; i++) frame(100);
+    expect(mesh?.dataset.mesh).not.toBe(before);
+  });
+
   it("dragging her out of the pill places her as now", () => {
     const { el, eris, edits, frame } = track(mount());
     eris.setState("done");

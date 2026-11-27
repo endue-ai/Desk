@@ -73,6 +73,7 @@ describe("the theme gate", () => {
       primary: "#1f3a93",
       primaryForeground: "#e8ecff",
       primaryText: "#2a4bb0",
+      primarySoft: "rgba(31, 58, 147, 0.12)",
     };
     const { tokens } = gate(paper, { high: true });
     for (const surface of SURFACES)

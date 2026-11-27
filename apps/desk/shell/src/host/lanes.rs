@@ -69,7 +69,7 @@ impl<K: Eq + Hash + Clone + Send + 'static> Lanes<K> {
         if let Err(why) = spawned {
             let dropped = self.shared.lock().remove(&key).map_or(0, |q| q.len());
             eprintln!(
-                "endue Desk: no thread for a lane of {} ({why}); {dropped} dropped",
+                "endue: no thread for a lane of {} ({why}); {dropped} dropped",
                 self.shared.name
             );
         }
@@ -125,7 +125,7 @@ impl<K: Eq + Hash> Shared<K> {
                     let _ = watched.recv_timeout(hold);
                 }
             }
-            Err(why) => eprintln!("endue Desk: no thread for a job of {} ({why})", self.name),
+            Err(why) => eprintln!("endue: no thread for a job of {} ({why})", self.name),
         }
     }
 }

@@ -14,6 +14,7 @@ import { createRunner, systemTimers } from "./run.js";
 import { createRuns } from "./runs.js";
 import { DEFAULTS, inside, loadSettings } from "./settings.js";
 import { load, save } from "./store.js";
+import { createNativeHistory } from "./workspace-native.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} Ctx
@@ -58,6 +59,11 @@ export function createApp(ctx, view, options = {}) {
   /** Agents the person agreed to run although nothing holds them read-only, this session. */
   const confirmed = new Set();
   const chats = createChats(bridge, { now, id });
+  let index;
+  const loadConversations = () => {
+    index ??= Promise.all(AGENTS.map((a) => chats.open(a.id))).then(paint);
+    return index;
+  };
   const board = createBoard(bridge, { now, id });
   const reports = createReports(bridge);
   const runs = createRuns(runner, {
@@ -88,6 +94,7 @@ export function createApp(ctx, view, options = {}) {
     now,
     ui,
     chats,
+    native: createNativeHistory(bridge, paint),
     board,
     runs,
     cancelled,
@@ -148,6 +155,7 @@ export function createApp(ctx, view, options = {}) {
   function show(/** @type {ViewName} */ name) {
     if (!VIEWS.includes(name)) throw new Error(`No view called ${name}: ${VIEWS.join(", ")}.`);
     ui.view = name;
+    if (name === "chat") void loadConversations();
     keepPrefs();
     paint();
     return name;
@@ -248,6 +256,7 @@ export function createApp(ctx, view, options = {}) {
     if (agentById(prefs?.chatAgent)) ui.chatAgent = /** @type {string} */ (prefs?.chatAgent);
     if (Array.isArray(prefs?.compare)) ui.compare = prefs.compare.filter((a) => agentById(a));
     await board.ready;
+    if (ui.view === "chat") await loadConversations();
     paint();
     await detect();
   })();

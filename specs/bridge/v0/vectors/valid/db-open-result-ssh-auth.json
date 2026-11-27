@@ -1,0 +1,11 @@
+{
+  "target": "DbOpenResult",
+  "description": "the jump host refused the sign-in",
+  "instance": {
+    "ssh": {
+      "hop": "jump",
+      "stage": "auth",
+      "message": "The jump host gate.example.test:22 refused deploy's key."
+    }
+  }
+}

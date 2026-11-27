@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/account.schema.json",
-  "title": "Desk bridge v0: account",
+  "title": "endue bridge v0: account",
   "description": "The person's endue ID on this desk (ADR 0089, ADR 0111). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628) with PKCE (RFC 7636, S256) through the endue AI platform's auth endpoints: the desk asks for a code, opens the endue ID page at auth.endue.ai where the person signs in or creates an account and confirms the code, and waits for the session in the background. The core keeps the session, renews it and sends the access token to the brain as its bearer token; no token crosses the bridge. Every call needs account:manage. account.status, account.signIn and account.signOut answer the same AccountStatus, and changes arrive as account.changed. account.settings.get and account.settings.update read and change the signed-in account's own settings on endue, the ones endue.ai's Account and General settings show (ADR 0130): the name and the picture's address, the display language and the time zone, and which notifications reach the person in endue's inbox. Signed out they are signed_out; endue out of reach is offline.",
   "$defs": {
     "AccountState": {

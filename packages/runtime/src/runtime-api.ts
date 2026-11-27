@@ -1,5 +1,5 @@
 /** The runtime's public services, independent of its mounting and lifecycle wiring. */
-import type { ProfileContribution } from "@endue-ai/bridge";
+import type { PluginInfo, ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import type { Commands } from "./commands";
 import type { Preferences } from "./core/preferences";
@@ -37,10 +37,19 @@ export interface RuntimePlugins {
   /** Open the surface of a plugin that started asleep (#590), as a window placing it asks. */
   wake(id: string): void;
   /**
+   * Another window of a running plugin (ADR 0212): its key. `before` hears the key before the
+   * window opens, to ask the window manager for the tab that takes it (ADR 0270).
+   */
+  another?(id: string, before?: (key: string) => void): string;
+  /**
    * Ask a plugin for its surface's state and keep it for its next page, as an unload does: before
    * its window moves into or out of an OS window (issue 235), which loads its page again.
    */
   keep?(id: string, surface?: string): Promise<void>;
+  /** The installed plugins as plugin.list said last: empty until it first answers. */
+  listed?(): readonly PluginInfo[];
+  /** Hear each new list of the installed plugins. */
+  onListed?(listener: () => void): () => void;
 }
 
 export interface Runtime {
@@ -69,6 +78,8 @@ export interface Runtime {
   policy(): PolicySet;
   /** Show a notice in the status line, as desk.notify says; it goes to the history too. */
   notify(input: NoticeInput): Notice;
+  /** The notices that show, and what a click elsewhere (an OS notification, #306) does to one. */
+  readonly notices: RuntimeNotices;
   /** The theme in force. */
   theme(): ThemeState;
   /** The theme system: installed themes, the one in force, preview and apply (ADR 0056). */
@@ -87,4 +98,12 @@ export interface Runtime {
   /** The status line text. */
   status(): string;
   dispose(): void;
+}
+
+/** desk.notify's notices for hosts outside the page (#306). */
+export interface RuntimeNotices {
+  /** Hear every notice that shows: not one do not disturb holds back. Returns what stops it. */
+  onShown(listener: (notice: Notice) => void): () => void;
+  /** Act on notice `id` as a click would: its first action with `action`, else open its source. */
+  activate(id: string, action: boolean): Promise<void>;
 }

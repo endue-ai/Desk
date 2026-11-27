@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/studio-chat.schema.json",
+  "title": "endue bridge v0: Studio agent questions",
+  "description": "The runtime sends one reviewed question to the selected endue AI agent or space Front Desk using the signed-in account.",
+  "$defs": {
+    "StudioChatAskRequest": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "studio.chat.ask" },
+        "params": { "$ref": "#/$defs/StudioChatAskParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioChatAskParams": {
+      "type": "object",
+      "properties": {
+        "agentId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "spaceId": { "$ref": "studio-spaces.schema.json#/$defs/StudioSpaceId" },
+        "question": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission" }
+      },
+      "required": ["agentId", "question", "scope"],
+      "additionalProperties": false
+    },
+    "StudioChatState": {
+      "type": "string",
+      "enum": ["done", "needsInput", "interrupted", "failed"]
+    },
+    "StudioChatAskResult": {
+      "type": "object",
+      "properties": {
+        "agentId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "spaceId": { "$ref": "studio-spaces.schema.json#/$defs/StudioSpaceId" },
+        "conversationId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "runId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "state": { "$ref": "#/$defs/StudioChatState" },
+        "text": { "type": "string", "maxLength": 12000 }
+      },
+      "required": ["agentId", "conversationId", "state"],
+      "additionalProperties": false
+    }
+  }
+}

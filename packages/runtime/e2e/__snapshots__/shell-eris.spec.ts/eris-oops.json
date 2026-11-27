@@ -2,7 +2,7 @@
  "tag": "div",
  "class": "eris",
  "role": "button",
- "aria-label": "Eris",
+ "aria-label": "Eris: 크리티컬",
  "data-state": "oops",
  "box": [
   656,
@@ -15,8 +15,8 @@
    "tag": "span",
    "class": "eris-ring",
    "style": {
-    "color": "rgb(242, 240, 245)",
-    "border": "dashed rgb(131, 121, 145)",
+    "color": "rgb(243, 241, 236)",
+    "border": "dashed rgb(133, 129, 119)",
     "opacity": "0",
     "transform": "matrix(1, 0, 0, 1, -74, -74)"
    }
@@ -25,7 +25,7 @@
    "tag": "div",
    "class": "eris-body",
    "style": {
-    "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    "transform": "matrix(1, 0, 0, 1, 0.39, 0)"
    },
    "children": [
     {
@@ -34,75 +34,48 @@
      "hidden": "",
      "style": {
       "display": "none",
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "canvas",
      "class": "eris-mesh",
-     "data-mesh": "faces=528 back=248 dots=182 h=85adbb8b",
+     "data-mesh": "faces=528 back=248 dots=201 h=40d5c4a0",
      "data-rings": "1.80 1.79 1.76 1.71 1.65 1.57 1.47 1.37 1.25",
      "data-voice": "idle",
      "style": {
-      "color": "rgb(242, 240, 245)"
+      "color": "rgb(243, 241, 236)"
      }
     },
     {
      "tag": "span",
      "class": "eris-core",
      "style": {
-      "color": "rgb(242, 240, 245)",
+      "color": "rgb(243, 241, 236)",
       "opacity": "0.3",
       "transform": "matrix(1, 0, 0, 1, -24, -24)"
      }
     },
     {
      "tag": "span",
-     "class": "eris-tail eris-tail-1",
-     "hidden": "",
-     "style": {
-      "display": "none",
-      "background": "rgb(167, 177, 195)",
-      "color": "rgb(242, 240, 245)",
-      "opacity": "0.5"
-     }
-    },
-    {
-     "tag": "span",
-     "class": "eris-tail eris-tail-2",
-     "hidden": "",
-     "style": {
-      "display": "none",
-      "background": "rgb(167, 177, 195)",
-      "color": "rgb(242, 240, 245)",
-      "opacity": "0.3"
-     }
-    },
-    {
-     "tag": "span",
      "class": "eris-moon-box",
      "style": {
-      "transform": "matrix(1, 0, 0, 1, -9, -5.54)"
+      "transform": "matrix(0.967411, -0.253213, 0.253213, 0.967411, -9, -9)"
      },
      "children": [
       {
        "tag": "canvas",
        "class": "eris-moon",
        "style": {
-        "color": "rgb(242, 240, 245)"
-       }
-      },
-      {
-       "tag": "span",
-       "class": "eris-spark",
-       "hidden": "",
-       "style": {
-        "display": "none",
-        "background": "rgb(232, 201, 138)",
-        "color": "rgb(242, 240, 245)"
+        "color": "rgb(243, 241, 236)"
        }
       }
      ]
+    },
+    {
+     "tag": "svg",
+     "class": "eris-mind",
+     "icon": null
     }
    ]
   }

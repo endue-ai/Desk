@@ -15,7 +15,7 @@ pub struct OutWindow {
     pub desktop: String,
     /// Its OS window's frame, in points of the OS's desktop.
     pub frame: Rect,
-    /// The plugins it shows, first pane first.
+    /// The plugins it shows, first tab first.
     pub plugins: Vec<String>,
     /// Its title: its first plugin's, else its id.
     pub title: String,

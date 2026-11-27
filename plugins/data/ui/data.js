@@ -6,12 +6,13 @@
 // how each was shown and their unsaved values, and comes back to them (keep.js, wake.js). It only
 // talks to ctx and a view, so the SDK's test host runs it with a recording view.
 
+import { answerAgents } from "./agent.js";
 import { createEditing } from "./edit/editing.js";
 import { createSession } from "./edit/session.js";
 import { bytesSum } from "./edit/sum.js";
 import { openFile } from "./formats.js";
 import { createSchemaCheck } from "./schema-check.js";
-import { CHECKED, folderOf, nameOf } from "./schemas.js";
+import { CHECKED, nameOf } from "./schemas.js";
 import { createValidateWith } from "./validate-with.js";
 import { createWake } from "./wake.js";
 import { openWorker } from "./worker-client.js";
@@ -40,7 +41,7 @@ const WORKER_THRESHOLD = 1024 * 1024;
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 export const scopeOf = (/** @type {string} */ path) =>
-  /** @type {const} */ ({ permission: "fs:read", paths: [`${folderOf(path)}/**`] });
+  /** @type {const} */ ({ permission: "fs:read", paths: [path] });
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -109,8 +110,9 @@ export function createData({ bridge, commands, settings, surface }, view, option
     files.delete(buffer);
   };
 
-  /** Read a file's bytes. When the grants do not cover it, ask once for its folder and try again. */
+  /** Read a file's bytes. If needed, ask for that file and try again. */
   const read = async (/** @type {string} */ path, ask = true, readOptions = {}) => {
+    if (/[*?]/u.test(path)) throw new Error("Give an exact file path to read.");
     const scope = scopeOf(path);
     const refused = new Error(`Not allowed to read ${path}.`);
     const call = () => options.readBytes({ bridge }, { path, scope }, readOptions);
@@ -350,6 +352,13 @@ export function createData({ bridge, commands, settings, surface }, view, option
     view.show(null);
   });
 
+  answerAgents(commands, {
+    open: () => [...files.values()],
+    shown: () => shown,
+    edit: editing.editFile,
+    where: view.where,
+  });
+
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;
     const buffer = watches.get(event.data.watchId);
@@ -369,7 +378,6 @@ export function createData({ bridge, commands, settings, surface }, view, option
       view,
       say,
       check: runSchema,
-      scopeOf,
     },
   );
 

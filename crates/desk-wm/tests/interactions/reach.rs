@@ -11,7 +11,7 @@ use super::support::*;
 /// The dock on a 1440 × 900 app, as the page lays it out at the bottom edge.
 const DOCK: Rect = Rect::new(13.0, 801.0, 1414.0, 58.0);
 /// A title bar's top to its bottom line.
-const BAR: f64 = 41.0;
+const BAR: f64 = 37.0;
 
 /// Whether a window drawn at `r` has its title bar where the pointer can take it.
 fn reachable(r: Rect) -> bool {

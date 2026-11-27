@@ -1,7 +1,7 @@
 //! An agent controls plugins through their commands (ADR 0088), against examples/brain-echo: the
 //! desk's turns offer desk-tools, desk-run and every agent command by name; a tool call by a
-//! command's name, by desk-run or by its id runs the command as `agent:<id>`, asking the person
-//! for that one command and answering what the provider answers; desk-tools answers cmd.tools.
+//! command's name, by desk-run or by its id runs the command as `agent:<id>`, without a question
+//! (ADR 0268) and answering what the provider answers; desk-tools answers cmd.tools.
 
 mod common;
 mod support;
@@ -125,6 +125,18 @@ fn answer(
     result: Value,
     invoked: &mut Vec<Value>,
 ) -> String {
+    answer_as(core, GIT, deliveries, turn, result, invoked)
+}
+
+/// `answer`, with `provider` answering every invocation.
+fn answer_as(
+    core: &Core,
+    provider: &str,
+    deliveries: &Receiver<Delivery>,
+    turn: &str,
+    result: Value,
+    invoked: &mut Vec<Value>,
+) -> String {
     let mut text = String::new();
     loop {
         let delivery = deliveries
@@ -135,7 +147,7 @@ fn answer(
         if name == "cmd.invoked" {
             invoked.push(data.clone());
             let answered = json!({ "invocationId": data["invocationId"], "result": result });
-            call(core, GIT, "cmd.answer", answered).unwrap();
+            call(core, provider, "cmd.answer", answered).unwrap();
         }
         if name != "brain.turn" || data["turnId"] != turn {
             continue;
@@ -182,23 +194,17 @@ fn a_desk_turn_offers_the_desks_tools_once_a_plugin_has_agent_commands() {
 }
 
 #[test]
-fn an_agent_runs_a_command_by_its_tool_name_after_the_person_allows_that_command() {
+fn an_agent_runs_an_installed_plugins_command_by_its_tool_name_without_a_question() {
     let echo = Echo::start();
     let home = home("agent-tools-name");
+    // NeverAsk is the prompter, and no perm:manage holder answers a prompt here: the call passes
+    // because the person installed the plugin (ADR 0268).
     let (core, _brain, deliveries) = core(&echo, &home);
     git_plugin(&core, &home);
     let turn = say(
         &core,
         r#"tool example_git_state as mira: {"path": "~/repo"}"#,
     );
-
-    let prompt = wait_for(&deliveries, "perm.prompt");
-    assert_eq!(prompt.data()["caller"], "agent:mira");
-    let scope = json!({ "permission": "cmd:invoke", "ids": ["example.git.state"] });
-    assert_eq!(prompt.data()["permission"], scope);
-    let params = json!({ "promptId": prompt.data()["promptId"], "granted": true,
-        "duration": "session", "scope": manage() });
-    call(&core, "desk", "perm.answer", params).unwrap();
 
     let mut invoked = Vec::new();
     let state = json!({ "branch": "main", "changed": 2 });
@@ -208,6 +214,23 @@ fn an_agent_runs_a_command_by_its_tool_name_after_the_person_allows_that_command
     assert_eq!(invoked[0]["args"], json!({ "path": "~/repo" }));
     assert!(said.contains("The example_git_state tool said:"), "{said}");
     assert!(said.contains(r#""branch":"main""#), "{said}");
+    // Nothing was granted: the install, not a grant, let the call through.
+    assert!(query(&core, "agent:mira").is_empty());
+}
+
+#[test]
+fn the_allowlist_still_caps_an_installed_plugins_command() {
+    let echo = Echo::start();
+    let home = home("agent-tools-capped");
+    let (core, _brain, deliveries) = core(&echo, &home);
+    git_plugin(&core, &home);
+    let capped = "agents:\n  mira:\n    allow:\n      - { permission: cmd:invoke, ids: [\"example.notes.*\"] }\n";
+    fs::write(home.join("init.yaml"), capped).unwrap();
+    let turn = say(&core, r#"tool example_git_state as mira: {}"#);
+    let mut invoked = Vec::new();
+    let said = answer(&core, &deliveries, &turn, json!({}), &mut invoked);
+    assert!(invoked.is_empty(), "{invoked:?}");
+    assert!(said.contains("outside-allowlist"), "{said}");
 }
 
 #[test]
@@ -260,12 +283,60 @@ fn a_tool_call_naming_no_command_fails_with_what_desk_has() {
     let said = answer(&core, &deliveries, &turn, json!(null), &mut invoked);
     assert!(invoked.is_empty());
     assert!(
-        said.contains("Desk has no command example.git.nothing"),
+        said.contains("endue has no command example.git.nothing"),
         "{said}"
     );
     assert!(said.contains("desk-run takes { command, args? }"), "{said}");
     assert!(
-        said.contains("Desk has no tool named example_git_nothing"),
+        said.contains("endue has no tool named example_git_nothing"),
         "{said}"
     );
+}
+
+/// The desk's own `desk.windows.new-tab`, as the runtime registers it for agents.
+fn desk_new_tab(core: &Core) {
+    let registered = json!({ "id": "desk.windows.new-tab", "title": "New tab", "agent": true,
+        "description": "Open a new tab in a window." });
+    call(core, "desk", "cmd.register", registered).unwrap();
+}
+
+#[test]
+fn eris_runs_the_desks_window_commands_without_a_question() {
+    let echo = Echo::start();
+    let home = home("agent-tools-eris-desk");
+    // NeverAsk is the prompter: a question would refuse the call (ADR 0296).
+    let (core, _brain, deliveries) = core(&echo, &home);
+    desk_new_tab(&core);
+    let turn = say(&core, r#"tool desk.windows.new-tab as eris: {}"#);
+    let mut invoked = Vec::new();
+    let ok = json!({ "ok": true });
+    let said = answer_as(&core, "desk", &deliveries, &turn, ok, &mut invoked);
+    assert_eq!(invoked.len(), 1, "{said}");
+    assert_eq!(invoked[0]["caller"], "agent:eris");
+    assert!(query(&core, "agent:eris").is_empty(), "nothing was granted");
+}
+
+#[test]
+fn another_agent_is_still_asked_for_the_desks_window_commands() {
+    let echo = Echo::start();
+    let home = home("agent-tools-mira-desk");
+    let (core, _brain, deliveries) = core(&echo, &home);
+    desk_new_tab(&core);
+    say(&core, r#"tool desk.windows.new-tab as mira: {}"#);
+    // The person (perm:manage) hears the question; nothing runs while it waits.
+    loop {
+        let delivery = deliveries
+            .recv_timeout(Duration::from_secs(10))
+            .expect("a question within 10 s");
+        let event = serde_json::to_value(delivery.event).unwrap();
+        assert_ne!(event["event"], "cmd.invoked", "{event}");
+        if event["event"] == "perm.prompt" {
+            assert_eq!(event["data"]["caller"], "agent:mira", "{event}");
+            assert!(
+                event.to_string().contains("desk.windows.new-tab"),
+                "{event}"
+            );
+            break;
+        }
+    }
 }

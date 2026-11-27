@@ -50,7 +50,7 @@ wrap_display_handler! {
         fn on_cursor_change(
             &self,
             _browser: Option<&mut Browser>,
-            _cursor: *mut u8,
+            _cursor: crate::cef_input::CursorHandle,
             type_: CursorType,
             custom_cursor_info: Option<&CursorInfo>,
         ) -> ::std::os::raw::c_int {
@@ -186,7 +186,7 @@ wrap_resource_request_handler! {
                 ReturnValue::CONTINUE
             } else {
                 if cfg!(debug_assertions) {
-                    eprintln!("endue Desk: a web view was refused a load of {url}");
+                    eprintln!("endue: a web view was refused a load of {url}");
                 }
                 ReturnValue::CANCEL
             }
@@ -244,7 +244,7 @@ wrap_request_handler! {
             _error_code: ::std::os::raw::c_int,
             _error_string: Option<&CefString>,
         ) {
-            eprintln!("endue Desk: the renderer of {} stopped", self.surface);
+            eprintln!("endue: the renderer of {} stopped", self.surface);
             self.host.web_state(&self.surface, |state| {
                 state.loading = false;
                 state.title = "This page stopped".to_owned();

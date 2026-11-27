@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Database</title>
+    <title data-message="index.database"></title>
     <script type="importmap">
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
@@ -11,82 +11,104 @@
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./frame.css" />
     <link rel="stylesheet" href="./work.css" />
-    <link rel="stylesheet" href="./diagram.css" />
+    <link rel="stylesheet" href="./colors.css" />
     <link rel="stylesheet" href="./import.css" />
+    <link rel="stylesheet" href="./cell-editors/cell-editors.css" />
+    <link rel="stylesheet" href="./plan.css" />
   </head>
   <body>
     <header>
-      <h1 id="title">Database</h1>
+      <h1 id="title" data-message="index.database"></h1>
       <span id="badge" class="tag" hidden></span>
-      <nav id="actions" aria-label="Run" hidden>
-        <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)" class="desk-btn desk-btn-quiet">Run</button>
-        <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)" class="desk-btn desk-btn-quiet">Run all</button>
-        <button type="button" data-act="runTransaction" title="The whole script in one transaction: all or nothing" class="desk-btn desk-btn-quiet">In a transaction</button>
-        <button type="button" data-act="dryRun" title="The whole script, then ROLLBACK" class="desk-btn desk-btn-quiet">Dry run</button>
-        <button type="button" data-act="explain" title="The plan of the statement at the caret" class="desk-btn desk-btn-quiet">Explain</button>
-        <button type="button" data-act="explainAnalyze" title="Run the statement and show its plan with timings (a write is rolled back)" class="desk-btn desk-btn-quiet">Analyze</button>
-        <button type="button" data-act="format" title="Format the selection or the script (Mod+Shift+F)" class="desk-btn desk-btn-quiet">Format</button>
-        <button type="button" data-act="cancel" class="desk-btn desk-btn-quiet cancel" title="Stop the run (Escape in the editor)">Cancel</button>
-        <button type="button" data-act="history" title="Earlier statements of this connection" class="desk-btn desk-btn-quiet">History</button>
-        <button type="button" data-act="star" title="Star the statement at the caret" class="desk-btn desk-btn-quiet">Star</button>
-        <button type="button" data-act="starred" title="Starred queries of this connection" class="desk-btn desk-btn-quiet">Starred</button>
-        <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown, SQL INSERT or SQL UPDATE" class="desk-btn desk-btn-quiet">Copy as…</button>
-        <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
-        <button type="button" id="actions-more" title="The actions that do not fit in this row" class="desk-btn desk-btn-quiet" hidden>More</button>
+      <span id="session" role="status" hidden><span id="session-label"></span><span class="desk-dot"></span></span>
+      <button type="button" id="session-reconnect" data-act="reconnectSession" data-message-title="index.openANewSessionNowNothing" class="desk-btn desk-btn-quiet" hidden data-message="index.reconnect"></button>
+      <span id="transaction-bar" hidden>
+        <button type="button" id="tx-mode" data-act="toggleTransactionMode" data-message-title="index.autoCommitEachStatementCommitsBy" class="desk-btn desk-btn-quiet" data-message="index.autoCommit"></button>
+        <span id="transaction" hidden></span>
+        <button type="button" id="tx-commit" data-act="commitTransaction" data-message-title="index.commitTheConsoleSTransactionMod" class="desk-btn desk-btn-quiet" hidden data-message="index.commit"></button>
+        <button type="button" id="tx-rollback" data-act="rollbackTransaction" data-message-title="index.rollBackTheConsoleSTransaction" class="desk-btn desk-btn-quiet" hidden data-message="index.rollback"></button>
+      </span>
+      <button type="button" id="database" data-act="switchDatabase" data-message-title="index.theDatabaseItRunsOnPick" class="desk-btn desk-btn-quiet" hidden></button>
+      <span id="session-options" data-message-title="index.theRoleAndTheSearchPath" hidden></span>
+      <nav id="actions" data-message-aria-label="index.run" hidden>
+        <button type="button" data-act="run" data-message-title="index.theStatementAtTheCaretOr" class="desk-btn desk-btn-quiet" data-message="index.run"></button>
+        <button type="button" data-act="runAll" data-message-title="index.theWholeScriptModShiftEnter" class="desk-btn desk-btn-quiet" data-message="index.runAll"></button>
+        <button type="button" data-act="runTransaction" data-message-title="index.theWholeScriptInOneTransaction" class="desk-btn desk-btn-quiet" data-message="index.inATransaction"></button>
+        <button type="button" data-act="dryRun" data-message-title="index.theWholeScriptThenRollback" class="desk-btn desk-btn-quiet" data-message="index.dryRun"></button>
+        <button type="button" data-act="explain" data-message-title="index.thePlanOfTheStatementAt" class="desk-btn desk-btn-quiet" data-message="index.explain"></button>
+        <button type="button" data-act="explainAnalyze" data-message-title="index.runTheStatementAndShowIts" class="desk-btn desk-btn-quiet" data-message="index.analyze"></button>
+        <button type="button" data-act="format" data-message-title="index.formatTheSelectionOrTheScript" class="desk-btn desk-btn-quiet" data-message="index.format"></button>
+        <button type="button" data-act="cancel" class="desk-btn desk-btn-quiet cancel" data-message-title="index.stopTheRunEscapeInThe" data-message="index.cancel"></button>
+        <button type="button" data-act="history" data-message-title="index.earlierStatementsOfThisConnection" class="desk-btn desk-btn-quiet" data-message="index.history"></button>
+        <button type="button" data-act="star" data-message-title="index.starTheStatementAtTheCaret" class="desk-btn desk-btn-quiet" data-message="index.star"></button>
+        <button type="button" data-act="starred" data-message-title="index.starredQueriesOfThisConnection" class="desk-btn desk-btn-quiet" data-message="index.starred"></button>
+        <button type="button" data-act="copy" data-message-title="index.copyTheResultAsTsvCsv" class="desk-btn desk-btn-quiet" data-message="index.copyAs"></button>
+        <button type="button" data-act="exportTo" data-message-title="index.exportTheResultToAFile" class="desk-btn desk-btn-quiet" data-message="index.export"></button>
+        <button type="button" data-act="chart" data-message-title="index.drawTheResultAsAChart" class="desk-btn desk-btn-quiet" data-message="index.chart"></button>
+        <button type="button" id="actions-more" data-message-title="index.theActionsThatDoNotFit" class="desk-btn desk-btn-quiet" hidden data-message="index.more"></button>
       </nav>
-      <desk-menu id="actions-menu" label="More actions"></desk-menu>
-      <span id="busy" role="img" aria-label="Running" hidden>…</span>
-      <desk-progress id="reading" label="Reading the results" cancelable hidden></desk-progress>
+      <desk-menu id="actions-menu" data-message-label="index.moreActions"></desk-menu>
+      <span id="busy" role="img" data-message-aria-label="index.running" hidden>…</span>
+      <desk-progress id="reading" data-message-label="index.readingTheResults" cancelable hidden></desk-progress>
+      <desk-progress id="copying" data-message-label="index.copying" cancelable hidden></desk-progress>
     </header>
     <main>
-      <aside id="side" aria-label="Connections">
+      <aside id="side" data-message-aria-label="index.connections">
         <div class="side-head">
-          <h2>Connections</h2>
-          <button type="button" data-act="create" title="New connection (n)" class="desk-btn desk-btn-quiet">New</button>
-          <button type="button" data-act="importUri" title="New connection from a URI (u)" class="desk-btn desk-btn-quiet">URI</button>
+          <h2 data-message="index.connections"></h2>
+          <button type="button" data-act="create" data-message-title="index.newConnectionN" class="desk-btn desk-btn-quiet" data-message="index.new"></button>
+          <button type="button" data-act="importUri" data-message-title="index.newConnectionFromAUriU" class="desk-btn desk-btn-quiet" data-message="index.uri"></button>
         </div>
-        <label class="filter"><span class="sr-only">Filter objects</span><input id="filter" type="search" placeholder="Filter objects (/)" spellcheck="false" class="desk-field" /></label>
-        <div id="tree" role="tree" aria-label="Connections" tabindex="0"></div>
+        <label class="filter"><span class="sr-only" data-message="index.filterObjects"></span><input id="filter" type="search" data-message-placeholder="index.filterObjects2" spellcheck="false" class="desk-field" /></label>
+        <div id="tree" role="tree" data-message-aria-label="index.connections" tabindex="0"></div>
       </aside>
-      <section id="work" aria-label="Console">
-        <p id="empty">Pick a connection on the left, or add one with New.</p>
-        <form id="table-bar" hidden aria-label="Rows">
-          <label>Filter <input id="where" placeholder="WHERE …" spellcheck="false" class="desk-field" /></label>
-          <label>Order by <input id="order" placeholder="ORDER BY …" spellcheck="false" class="desk-field" /></label>
-          <button type="submit" class="desk-btn desk-btn-primary">Apply</button>
+      <section id="work" data-message-aria-label="index.console">
+        <p id="empty" data-message="index.pickAConnectionOnTheLeft"></p>
+        <form id="table-bar" hidden data-message-aria-label="index.rows">
+          <label><span data-message="index.filter"></span> <input id="where" data-message-placeholder="index.where" spellcheck="false" class="desk-field" /></label>
+          <label><span data-message="index.orderBy"></span> <input id="order" data-message-placeholder="index.orderBy2" spellcheck="false" class="desk-field" /></label>
+          <button type="submit" class="desk-btn desk-btn-primary" data-message="index.apply"></button>
           <span class="pager">
-            <button type="button" data-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+            <button type="button" data-page="-1" data-message-aria-label="index.previousPage" class="desk-icon-btn">‹</button>
             <span id="page"></span>
-            <button type="button" data-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
-            <button type="button" id="count" class="desk-btn desk-btn-quiet">Count</button>
+            <button type="button" data-page="1" data-message-aria-label="index.nextPage" class="desk-icon-btn">›</button>
+            <button type="button" id="count" class="desk-btn desk-btn-quiet" data-message="index.count"></button>
           </span>
         </form>
         <div id="editor-box" hidden>
           <pre id="highlight" aria-hidden="true"></pre>
           <!-- ds: own (the SQL the person writes, as a code editor) -->
-          <textarea id="editor" spellcheck="false" aria-label="SQL" aria-autocomplete="list" aria-controls="complete" placeholder="SELECT … — Mod+Enter runs the statement at the caret, Ctrl+Space completes"></textarea>
-          <ul id="complete" role="listbox" aria-label="Completions" hidden></ul>
+          <textarea id="editor" spellcheck="false" data-message-aria-label="index.sql" aria-autocomplete="list" aria-controls="complete" data-message-placeholder="index.selectModEnterRunsTheStatement"></textarea>
+          <ul id="complete" role="listbox" data-message-aria-label="index.completions" hidden></ul>
         </div>
-        <div id="diagram-box" hidden aria-label="ER diagram"></div>
+        <div id="panel-box" hidden></div>
         <div id="results" hidden>
           <div class="results-head">
-            <div id="tabs" role="tablist" aria-label="Results"></div>
-            <div id="grid-bar" role="toolbar" aria-label="Result" hidden>
-              <label class="quick"><span class="sr-only">Filter rows</span><input id="quick" type="search" placeholder="Filter rows (/)" spellcheck="false" class="desk-field" /></label>
-              <button type="button" id="record" aria-pressed="false" title="One row as a record (t)" class="desk-btn desk-btn-quiet">Record</button>
-              <button type="button" id="value-open" title="The whole value under the cursor (v)" class="desk-btn desk-btn-quiet">Value</button>
+            <div id="tabs" role="tablist" data-message-aria-label="index.results"></div>
+            <div id="grid-bar" role="toolbar" data-message-aria-label="index.result" hidden>
+              <label class="quick"><span class="sr-only" data-message="index.filterRows"></span><input id="quick" type="search" data-message-placeholder="index.filterRows2" spellcheck="false" class="desk-field" /></label>
+              <button type="button" id="record" aria-pressed="false" data-message-title="index.oneRowAsARecordT" class="desk-btn desk-btn-quiet" data-message="index.record"></button>
+              <button type="button" id="value-open" data-message-title="index.theWholeValueUnderTheCursor" class="desk-btn desk-btn-quiet" data-message="index.value"></button>
+              <button type="button" id="pin" data-act="togglePin" data-message-title="index.keepThisResultThroughLaterRuns" class="desk-btn desk-btn-quiet" data-message="index.pin"></button>
+              <button type="button" data-act="compareResults" data-message-title="index.compareTwoResultsTheRowsAdded" class="desk-btn desk-btn-quiet" data-message="index.compare"></button>
               <span id="console-pages" hidden>
-                <button type="button" data-console-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+                <button type="button" data-console-page="-1" data-message-aria-label="index.previousPage" class="desk-icon-btn">‹</button>
                 <span id="console-page"></span>
-                <button type="button" data-console-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
+                <button type="button" data-console-page="1" data-message-aria-label="index.nextPage" class="desk-icon-btn">›</button>
               </span>
               <span class="grow"></span>
-              <button type="button" data-act="addRow" title="Add a row (+)" class="desk-btn desk-btn-quiet edit-only">Add row</button>
+              <span id="notifications-bar" hidden>
+                <button type="button" id="listen-again" data-act="listenAgain" data-message-title="index.runListenInThisConsoleOn" class="desk-btn desk-btn-quiet" hidden data-message="index.listenAgain"></button>
+                <button type="button" data-act="exportNotifications" data-message-title="index.exportTheNotificationsAsAResult" class="desk-btn desk-btn-quiet" data-message="index.export2"></button>
+                <button type="button" data-act="clearNotifications" data-message-title="index.clearTheNotifications" class="desk-btn desk-btn-quiet" data-message="index.clear"></button>
+              </span>
+              <button type="button" data-act="addRow" data-message-title="index.addARow" class="desk-btn desk-btn-quiet edit-only" data-message="index.addRow"></button>
               <span id="changes" role="status" hidden>
                 <span id="changes-count"></span>
-                <button type="button" data-act="previewChanges" title="The SQL a submit runs (p)" class="desk-btn desk-btn-quiet">Preview</button>
-                <button type="button" data-act="revertRows" title="Drop every pending change" class="desk-btn desk-btn-quiet">Revert</button>
-                <button type="button" data-act="submitChanges" title="Apply in one transaction (Mod+Enter in the grid)" class="desk-btn desk-btn-primary">Submit</button>
+                <button type="button" data-act="undoChange" data-message-title="index.takeBackTheLastPendingChange" class="desk-btn desk-btn-quiet" data-message="index.undo"></button>
+                <button type="button" data-act="previewChanges" data-message-title="index.theSqlASubmitRunsP" class="desk-btn desk-btn-quiet" data-message="index.preview"></button>
+                <button type="button" data-act="revertRows" data-message-title="index.dropEveryPendingChange" class="desk-btn desk-btn-quiet" data-message="index.revert"></button>
+                <button type="button" data-act="submitChanges" data-message-title="index.applyInOneTransactionModEnter" class="desk-btn desk-btn-primary" data-message="index.submit"></button>
               </span>
             </div>
           </div>
@@ -96,92 +118,172 @@
       </section>
       <form id="form" class="dialog" hidden aria-labelledby="form-title">
         <h2 id="form-title"></h2>
-        <label>Name <input id="f-name" autocomplete="off" placeholder="user@host/database when empty" class="desk-field" /></label>
-        <label>Engine
+        <label><span data-message="index.name"></span> <input id="f-name" autocomplete="off" data-message-placeholder="index.userHostDatabaseWhenEmpty" class="desk-field" /></label>
+        <label><span data-message="index.engine"></span>
           <select id="f-engine" class="desk-field">
-            <option value="postgresql">PostgreSQL</option>
-            <option value="mysql">MySQL / MariaDB</option>
-            <option value="sqlite">SQLite</option>
+            <option value="postgresql" data-message="index.postgresql"></option>
+            <option value="mysql" data-message="index.mysqlMariadb"></option>
+            <option value="sqlite" data-message="index.sqlite"></option>
           </select>
         </label>
-        <label data-for="sqlite">File <input id="f-file" placeholder="~/data/app.db" spellcheck="false" class="desk-field" /></label>
-        <label data-for="server">Host <input id="f-host" placeholder="localhost" spellcheck="false" class="desk-field" /></label>
-        <label data-for="server">Port <input id="f-port" inputmode="numeric" class="desk-field" /></label>
-        <label data-for="server">Database <input id="f-database" spellcheck="false" class="desk-field" /></label>
-        <label data-for="server">User <input id="f-user" autocomplete="off" spellcheck="false" class="desk-field" /></label>
-        <label data-for="server">TLS <select id="f-ssl" class="desk-field"></select></label>
-        <label data-for="server">CA file <input id="f-sslCa" placeholder="~/certs/ca.pem" spellcheck="false" class="desk-field" /></label>
-        <label>Environment <select id="f-tag" class="desk-field"></select></label>
-        <label>Group <input id="f-group" autocomplete="off" placeholder="Shop, Analytics … (optional)" class="desk-field" /></label>
-        <label>Colour <select id="f-color" class="desk-field"></select></label>
-        <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
-        <p class="hint">No password is kept here: the client's own files (~/.pgpass, ~/.my.cnf) are used, and when the server asks, you type it once per session.</p>
+        <label data-for="sqlite"><span data-message="index.file"></span> <input id="f-file" data-message-placeholder="index.dataAppDb" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server"><span data-message="index.host"></span> <input id="f-host" data-message-placeholder="index.localhost" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server"><span data-message="index.port"></span> <input id="f-port" inputmode="numeric" class="desk-field" /></label>
+        <label data-for="server"><span data-message="index.database"></span> <input id="f-database" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server"><span data-message="index.user"></span> <input id="f-user" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server"><span data-message="index.tls"></span> <select id="f-ssl" class="desk-field"></select></label>
+        <label data-for="server"><span data-message="index.caFile"></span> <input id="f-sslCa" data-message-placeholder="index.certsCaPem" spellcheck="false" class="desk-field" /></label>
+        <label data-for="postgresql"><span data-message="index.certificateFile"></span> <input id="f-sslCert" data-message-placeholder="index.postgresqlPostgresqlCrt" spellcheck="false" class="desk-field" /></label>
+        <label data-for="postgresql"><span data-message="index.keyFile"></span> <input id="f-sslKey" data-message-placeholder="index.postgresqlPostgresqlKey" spellcheck="false" class="desk-field" /></label>
+        <label><span data-message="index.environment"></span> <select id="f-tag" class="desk-field"></select></label>
+        <label><span data-message="index.group"></span> <input id="f-group" autocomplete="off" data-message-placeholder="index.shopAnalyticsOptional" class="desk-field" /></label>
+        <label><span data-message="index.colour"></span> <select id="f-color" class="desk-field"></select></label>
+        <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> <span data-message="index.readOnlyRefuseStatementsThatChange"></span></label>
+        <label class="check" data-for="postgresql"><input type="checkbox" id="f-keychain" class="desk-check" /> <span data-message="index.rememberThePasswordInTheKeychain"></span></label>
+        <label data-for="postgresql"><span data-message="index.passwordCommand"></span> <input id="f-passwordCommand" data-message-placeholder="index.usrLocalBinDbTokenUser" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+        <label class="check" data-for="postgresql"><input type="checkbox" id="f-pooler" class="desk-check" /> <span data-message="index.throughAPoolerInTransactionMode"></span></label>
+        <details id="f-tunnel" data-for="postgresql">
+          <summary data-message="index.sshTunnel"></summary>
+          <div class="options">
+            <label><span data-message="index.sshHost"></span> <input id="f-sshHost" data-message-placeholder="index.bastionExampleComEmptyNoTunnel" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.sshPort"></span> <input id="f-sshPort" inputmode="numeric" placeholder="22" class="desk-field" /></label>
+            <label><span data-message="index.sshUser"></span> <input id="f-sshUser" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.signInWith"></span>
+              <select id="f-sshAuth" class="desk-field">
+                <option value="key" data-message="index.aKeyFile"></option>
+                <option value="agent" data-message="index.theSshAgent"></option>
+                <option value="password" data-message="index.aPasswordAskedWhenConnecting"></option>
+              </select>
+            </label>
+            <label><span data-message="index.sshKeyFile"></span> <input id="f-sshKey" data-message-placeholder="index.sshIdEd25519" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.jumpHost"></span> <input id="f-sshJump" data-message-placeholder="index.deployGateExampleComOptional" spellcheck="false" class="desk-field" /></label>
+            <p class="hint" data-message="index.theDeskOpensTheTunnelItself"></p>
+          </div>
+        </details>
+        <details id="f-options" data-for="postgresql">
+          <summary data-message="index.sessionOptions"></summary>
+          <div class="options">
+            <label><span data-message="index.searchPath"></span> <input id="f-searchPath" data-message-placeholder="index.appPublic" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.role"></span> <input id="f-role" data-message-placeholder="index.reporting" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.timeZone"></span> <input id="f-timeZone" data-message-placeholder="index.utc" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.lockTimeout"></span> <input id="f-lockTimeout" data-message-placeholder="index.s" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.idleInTransaction"></span> <input id="f-idleTimeout" data-message-placeholder="index.min" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.applicationName"></span> <input id="f-applicationName" data-message-placeholder="index.endue" spellcheck="false" class="desk-field" /></label>
+            <label><span data-message="index.startupScript"></span> <textarea id="f-startup" rows="3" data-message-placeholder="index.setWorkMemMb" spellcheck="false" class="desk-field"></textarea></label>
+            <p class="hint" data-message="index.everySessionOfThisConnectionSigns"></p>
+          </div>
+        </details>
+        <p class="hint" data-message="index.noPasswordIsKeptWithThe"></p>
         <p id="form-error" class="error" role="alert"></p>
         <p id="form-note" class="note" role="status"></p>
         <p class="buttons">
-          <button type="button" id="form-test" class="desk-btn desk-btn-quiet">Test</button>
-          <button type="button" id="form-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
-          <button type="submit" class="desk-btn desk-btn-primary">Save</button>
+          <button type="button" id="form-test" class="desk-btn desk-btn-quiet" data-message="index.test"></button>
+          <button type="button" id="form-cancel" class="desk-btn desk-btn-quiet" data-message="index.cancel"></button>
+          <button type="submit" class="desk-btn desk-btn-primary" data-message="index.save"></button>
         </p>
       </form>
       <form id="password" class="dialog" hidden aria-labelledby="password-title">
-        <h2 id="password-title">Password</h2>
+        <h2 id="password-title" data-message="index.password"></h2>
         <p id="password-text"></p>
-        <label>Password <input type="password" id="password-value" autocomplete="off" class="desk-field" /></label>
-        <p class="hint">Kept in memory until you disconnect or quit; never written down.</p>
+        <label><span data-message="index.password"></span> <input type="password" id="password-value" autocomplete="off" class="desk-field" /></label>
+        <label class="check" hidden><input type="checkbox" id="password-keychain" class="desk-check" /> <span data-message="index.rememberThePasswordInTheKeychain"></span></label>
+        <p class="hint" data-message="index.keptInMemoryUntilYouDisconnect"></p>
         <p class="buttons">
-          <button type="button" id="password-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
-          <button type="submit" class="desk-btn desk-btn-primary">Connect</button>
+          <button type="button" id="password-cancel" class="desk-btn desk-btn-quiet" data-message="index.cancel"></button>
+          <button type="submit" class="desk-btn desk-btn-primary" data-message="index.connect"></button>
         </p>
       </form>
       <form id="value" class="dialog wide" hidden aria-labelledby="value-title">
-        <h2 id="value-title">Value</h2>
+        <h2 id="value-title" data-message="index.value"></h2>
         <p id="value-meta" class="hint"></p>
-        <div id="value-tabs" class="desk-tabs" role="tablist" aria-label="Show the value as"></div>
+        <div id="value-tabs" class="desk-tabs" role="tablist" data-message-aria-label="index.showTheValueAs"></div>
         <textarea id="value-text" spellcheck="false" aria-labelledby="value-title" class="desk-field"></textarea>
+        <p id="value-error" class="desk-error" role="alert" hidden></p>
         <p class="buttons">
-          <button type="button" id="value-copy" class="desk-btn desk-btn-quiet">Copy</button>
-          <button type="button" id="value-null" class="desk-btn desk-btn-quiet">Set NULL</button>
-          <button type="button" id="value-close" class="desk-btn desk-btn-quiet">Close</button>
-          <button type="submit" id="value-save" class="desk-btn desk-btn-primary">Change</button>
+          <button type="button" id="value-copy" class="desk-btn desk-btn-quiet" data-message="index.copy"></button>
+          <button type="button" id="value-null" class="desk-btn desk-btn-quiet" data-message="index.setNull"></button>
+          <button type="button" id="value-default" class="desk-btn desk-btn-quiet" hidden data-message="index.setDefault"></button>
+          <button type="button" id="value-close" class="desk-btn desk-btn-quiet" data-message="index.close"></button>
+          <button type="submit" id="value-save" class="desk-btn desk-btn-primary" data-message="index.change"></button>
         </p>
       </form>
       <form id="preview" class="dialog wide" hidden aria-labelledby="preview-title">
-        <h2 id="preview-title">Pending changes</h2>
-        <p class="hint">These statements run in one transaction; if one fails, none is kept.</p>
+        <h2 id="preview-title" data-message="index.pendingChanges"></h2>
+        <p class="hint" data-message="index.theseStatementsRunInOneTransaction"></p>
         <pre id="preview-sql" tabindex="0"></pre>
         <p class="buttons">
-          <button type="button" id="preview-close" class="desk-btn desk-btn-quiet">Close</button>
-          <button type="submit" class="desk-btn desk-btn-primary">Submit</button>
+          <button type="button" id="preview-close" class="desk-btn desk-btn-quiet" data-message="index.close"></button>
+          <button type="submit" class="desk-btn desk-btn-primary" data-message="index.submit"></button>
         </p>
       </form>
       <form id="import" class="dialog wide" hidden aria-labelledby="import-title">
-        <h2 id="import-title">Import</h2>
+        <h2 id="import-title" data-message="index.import"></h2>
         <p id="import-file" class="hint"></p>
         <div class="import-into">
-          <label>Connection <select id="i-connection" class="desk-field"></select></label>
-          <label>Schema <select id="i-schema" class="desk-field"></select></label>
-          <label>Table <select id="i-table" class="desk-field"></select></label>
+          <label><span data-message="index.connection"></span> <select id="i-connection" class="desk-field"></select></label>
+          <label><span data-message="index.schema"></span> <select id="i-schema" class="desk-field"></select></label>
+          <label><span data-message="index.table"></span> <select id="i-table" class="desk-field"></select></label>
         </div>
         <p class="import-options">
-          <label class="check"><input type="checkbox" id="i-header" class="desk-check" /> The first line names the columns</label>
-          <label class="check"><input type="checkbox" id="i-empty" class="desk-check" /> Empty fields are NULL</label>
+          <label class="check"><input type="checkbox" id="i-header" class="desk-check" /> <span data-message="index.theFirstLineNamesTheColumns"></span></label>
+          <label class="check"><input type="checkbox" id="i-empty" class="desk-check" /> <span data-message="index.emptyFieldsAreNull"></span></label>
         </p>
-        <h3>Columns</h3>
-        <div class="import-scroll"><table id="import-map" class="import-map" aria-label="Which table column each column of the file goes to"></table></div>
-        <h3>Preview</h3>
-        <div class="import-scroll" tabindex="0"><table id="import-preview" class="import-preview" aria-label="The first rows as they will be inserted"></table></div>
+        <div id="import-copy" class="import-copy" hidden>
+          <p class="import-target" role="radiogroup" data-message-aria-label="index.whereTheRowsGo">
+            <label class="check"><input type="radio" name="i-target" id="i-target-existing" value="existing" class="desk-check" /> <span data-message="index.intoTheTable"></span></label>
+            <label class="check"><input type="radio" name="i-target" id="i-target-new" value="new" class="desk-check" /> <span data-message="index.intoANewTable"></span></label>
+            <label><span data-message="index.name"></span> <input id="i-new-table" class="desk-field" autocomplete="off" spellcheck="false" /></label>
+          </p>
+          <details class="import-read"><summary data-message="index.howTheFileReads"></summary>
+            <div class="import-fields">
+              <label><span data-message="index.encoding"></span> <input id="i-encoding" class="desk-field" list="i-encodings" autocomplete="off" spellcheck="false" /></label>
+              <label><span data-message="index.delimiter"></span> <input id="i-delimiter" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label><span data-message="index.quote"></span> <input id="i-quote" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label><span data-message="index.escape"></span> <input id="i-escape" class="desk-field" maxlength="1" autocomplete="off" spellcheck="false" /></label>
+              <label><span data-message="index.nullIs"></span> <input id="i-null" class="desk-field" data-message-placeholder="index.anEmptyField" autocomplete="off" spellcheck="false" /></label>
+              <label><span data-message="index.rowsToSkip"></span> <input id="i-skip" class="desk-field" type="number" min="0" step="1" /></label>
+              <label><span data-message="index.dates"></span> <select id="i-dates" class="desk-field">
+                <option value="" data-message="index.yearMonthDayOnly"></option>
+                <option value="DMY" data-message="index.dayFirst"></option>
+                <option value="MDY" data-message="index.monthFirst"></option>
+                <option value="YMD" data-message="index.yearFirst"></option>
+              </select></label>
+              <label class="check"><input type="checkbox" id="i-trim" class="desk-check" /> <span data-message="index.trimSpacesAroundValues"></span></label>
+            </div>
+            <datalist id="i-encodings"></datalist>
+            <datalist id="i-types"></datalist>
+          </details>
+          <p class="import-options">
+            <label><span data-message="index.onAnError"></span> <select id="i-on-error" class="desk-field">
+              <option value="stop" data-message="index.stopAndRollBack"></option>
+              <option value="skip" data-message="index.skipTheRowIntoAReject"></option>
+            </select></label>
+            <label><span data-message="index.rowsPerTransaction"></span> <input id="i-batch" class="desk-field" type="number" min="0" step="1000" data-message-placeholder="index.allInOne" /></label>
+          </p>
+        </div>
+        <h3 data-message="index.columns"></h3>
+        <div class="import-scroll"><table id="import-map" class="import-map" data-message-aria-label="index.whichTableColumnEachColumnOf"></table></div>
+        <h3 data-message="index.preview"></h3>
+        <div class="import-scroll" tabindex="0"><table id="import-preview" class="import-preview" data-message-aria-label="index.theFirstRowsAsTheyWill"></table></div>
+        <p id="import-checks" class="import-checks" hidden>
+          <button type="button" id="import-check" class="desk-btn desk-btn-quiet" data-message="index.checkOnTheServer"></button>
+          <span class="hint" data-message="index.copiesTheFirstRowsIntoA"></span>
+        </p>
+        <div id="import-server-box" class="import-scroll" tabindex="0" hidden><table id="import-server" class="import-preview" data-message-aria-label="index.theFirstRowsAsTheServer"></table></div>
+        <p id="import-server-error" class="error"></p>
+        <desk-progress id="import-progress" data-message-label="index.importing" cancelable hidden></desk-progress>
         <p id="import-summary" class="hint"></p>
-        <details class="import-sql"><summary>SQL</summary><pre id="import-sql"></pre></details>
+        <details class="import-sql"><summary data-message="index.sql"></summary><pre id="import-sql"></pre></details>
         <p id="import-problem" class="error" role="alert"></p>
         <p class="buttons">
-          <button type="button" id="import-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
-          <button type="submit" id="import-run" class="desk-btn desk-btn-primary">Import</button>
+          <button type="button" id="import-cancel" class="desk-btn desk-btn-quiet" data-message="index.cancel"></button>
+          <button type="submit" id="import-run" class="desk-btn desk-btn-primary" data-message="index.import"></button>
         </p>
       </form>
     </main>
     <footer>
       <p id="hints"></p>
+      <p id="totals"></p>
       <p id="summary" aria-live="polite"></p>
       <p id="status" role="status"></p>
     </footer>

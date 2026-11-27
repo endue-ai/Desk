@@ -15,7 +15,7 @@ mod support;
 use std::collections::BTreeSet;
 
 use common::{EPOCH, adopt};
-use desk_wm::host::{BORDER, PANE_HEAD, TITLE, TITLE_END, TITLE_START};
+use desk_wm::host::{BORDER, TAB_STRIP, TITLE, TITLE_END, TITLE_START};
 use desk_wm::{
     Desk, FREE, Fill, FrameState, LiveBudget, Offset, Rect, SAFE, Step, Surfaces, TopChrome,
     Unseen, free_area, free_top,
@@ -112,24 +112,22 @@ mod windows_at_their_rectangles {
             )
         );
         assert_eq!(p.focused_plugin.as_deref(), Some("endue.notes"));
-        assert_eq!(p.seat("endue.notes").size, Some((598.0, 358.0)));
+        assert_eq!(p.seat("endue.notes").size, Some((598.0, 362.0)));
     }
 
     #[test]
-    fn a_split_shows_two_panes_and_the_page_draws_its_own_with_their_window() {
+    fn the_page_draws_a_window_of_its_own_view_whole() {
         let mut desk = Desk::default();
         let id = desk.new_window();
-        desk.split(desk_wm::SplitDir::Row);
         let p = plan(&desk);
         let w = p.window(&id).unwrap();
-        assert_eq!((w.panes.len(), w.dividers.len()), (2, 1));
-        assert!(w.panes.iter().all(|pane| pane.plugin.is_none()));
-        assert!(w.panes[1].focused, "the new pane takes the focus");
-        // The launcher panes and the title bar's icon and tools are the page's; with no window
-        // over them, the system layer drawn above the windows is the whole page but the title's
-        // text, which the compositor draws.
+        assert_eq!((w.panes.len(), w.dividers.len()), (1, 0));
+        assert!(w.panes[0].plugin.is_none() && w.panes[0].focused);
+        // The launcher and the title bar's icon and tools are the page's; with no window over
+        // them, the system layer drawn above the windows is the whole page but the title's text,
+        // which the compositor draws.
         let own = w.drawn_by_page();
-        assert_eq!(own.len(), 3, "the title bar and both panes");
+        assert_eq!(own.len(), 2, "the title bar and the launcher");
         let text = w.title_text();
         assert!(p.page.iter().all(|piece| !piece.overlaps(&text)));
         let area: f64 = p.page.iter().map(|r| r.w * r.h).sum();
@@ -139,27 +137,38 @@ mod windows_at_their_rectangles {
     }
 
     #[test]
-    fn a_split_plugin_pane_shows_its_surface_under_the_header_the_page_draws() {
+    fn a_window_of_several_tabs_shows_one_under_the_strip_the_page_draws() {
         let mut desk = Desk::default();
         adopt(&mut desk, &["e2e.hello"]);
         let alone = plan(&desk).window("e2e.hello").unwrap().panes[0].clone();
         assert_eq!(
             (alone.head, alone.body),
             (None, alone.rect),
-            "one pane: no header"
+            "one tab: no strip"
         );
         desk.focus("e2e.hello");
-        desk.split(desk_wm::SplitDir::Row);
+        desk.adopt("e2e.hello@2", "Hello", FREE);
+        desk.add_tab("e2e.hello", "plugin:e2e.hello@2").unwrap();
         let p = plan(&desk);
-        let hello = &p.window("e2e.hello").unwrap().panes[0];
-        let head = hello.head.unwrap();
-        assert_eq!((head.y, head.h), (hello.rect.y, PANE_HEAD));
-        assert_eq!(hello.body.y, hello.rect.y + PANE_HEAD);
-        assert_eq!(p.seat("e2e.hello").size, Some((hello.body.w, hello.body.h)));
-        // The page draws the header, never the surface.
         let w = p.window("e2e.hello").unwrap();
+        assert_eq!(w.panes.len(), 1, "the tab it shows");
+        let shown = &w.panes[0];
+        assert_eq!(shown.plugin.as_deref(), Some("e2e.hello@2"));
+        let head = shown.head.unwrap();
+        assert_eq!((head.y, head.h), (shown.rect.y, TAB_STRIP));
+        assert_eq!(shown.body.y, shown.rect.y + TAB_STRIP);
+        assert_eq!(
+            p.seat("e2e.hello@2").size,
+            Some((shown.body.w, shown.body.h))
+        );
+        assert_eq!(p.focused_plugin.as_deref(), Some("e2e.hello@2"));
+        // The tab out of sight has no seat and is not shown; no window of its own opens for it.
+        assert_eq!(p.seat("e2e.hello").size, None);
+        assert!(!p.shown.contains("e2e.hello") && p.shown.contains("e2e.hello@2"));
+        assert_eq!(p.windows.len(), 1);
+        // The page draws the strip, never the surface.
         assert!(w.drawn_by_page().contains(&head));
-        assert!(!w.drawn_by_page().contains(&hello.body));
+        assert!(!w.drawn_by_page().contains(&shown.body));
     }
 
     #[test]
@@ -174,10 +183,10 @@ mod windows_at_their_rectangles {
         let mail = p.window("endue.mail").unwrap();
         // Notes's title bar under Mail: that part is drawn with Notes, so Mail covers it.
         let covered = desk_wm::host::intersect(notes.title_bar, mail.rect).unwrap();
-        assert_eq!(covered, Rect::new(300.0, 220.0, 299.0, 21.0));
+        assert_eq!(covered, Rect::new(300.0, 220.0, 299.0, 17.0));
         assert!(p.page.iter().all(|piece| !piece.overlaps(&covered)));
         // Its icon in the open, and Mail's own title bar, are in the layer above every window.
-        let open = Rect::new(201.0, 201.0, TITLE_START, 40.0);
+        let open = Rect::new(201.0, 201.0, TITLE_START, 36.0);
         let shown: f64 = (p.page.iter())
             .filter_map(|piece| desk_wm::host::intersect(*piece, open))
             .map(|r| r.w * r.h)
@@ -212,7 +221,7 @@ mod windows_at_their_rectangles {
             steps
                 .iter()
                 .any(|s| matches!(s, Step::Resize { surface, size, scale }
-            if *surface == host_of("endue.mail") && *size == (1438, 858) && *scale == 2.0))
+            if *surface == host_of("endue.mail") && *size == (1438, 862) && *scale == 2.0))
         );
     }
 }
@@ -221,7 +230,7 @@ mod never_a_reload {
     use super::*;
 
     #[test]
-    fn a_split_the_drawer_and_a_desktop_switch_move_resize_hide_and_show_only() {
+    fn a_tab_the_drawer_and_a_desktop_switch_move_resize_hide_and_show_only() {
         let mut desk = Desk::default();
         adopt(&mut desk, &["e2e.hello"]);
         let mut surfaces = Surfaces::new();
@@ -231,10 +240,13 @@ mod never_a_reload {
             ["load", "create"]
         );
         let mut seen = Vec::new();
-        // Split its window: the page moves the surface's place, and its holder counts no new page
-        // (ADR 0160); the surface resizes.
+        // A second tab and back to the first: the surface hides and shows again where it was, and
+        // its holder counts no new page (ADR 0160).
         desk.focus("e2e.hello");
-        desk.split(desk_wm::SplitDir::Row);
+        desk.adopt("e2e.hello@2", "Hello", FREE);
+        desk.add_tab("e2e.hello", "plugin:e2e.hello@2").unwrap();
+        seen.extend(look(&mut surfaces, &desk, &frames));
+        desk.step_tab(1);
         seen.extend(look(&mut surfaces, &desk, &frames));
         // Into the drawer and back, each time moved in the page.
         desk.put_away("e2e.hello", "Hello", EPOCH);
@@ -249,7 +261,7 @@ mod never_a_reload {
         seen.extend(look(&mut surfaces, &desk, &frames));
         assert_eq!(
             kinds(&seen),
-            ["resize", "hide", "show", "hide", "show"],
+            ["hide", "resize", "show", "hide", "show", "hide", "show"],
             "{seen:?}"
         );
     }

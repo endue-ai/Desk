@@ -13,7 +13,7 @@ const TRANSCRIPT_BYTES: usize = 120_000;
 /// The longest tool result kept in the transcript, in bytes.
 const RESULT_BYTES: usize = 16_000;
 
-const WHO: &str = "You are Eris, the assistant who lives on the person's endue Desk, and you are \
+const WHO: &str = "You are Eris, the assistant who lives in the person's endue app, and you are \
 its brain now. You have no tools of your own: the desk runs its tools for you and shows the person \
 each hand-off.";
 
@@ -124,7 +124,7 @@ fn line(message: &Value) -> String {
     let content = message["content"].as_str().unwrap_or_default();
     match message["role"].as_str() {
         Some("user") => format!("Person: {content}"),
-        Some("system") => format!("Desk: {content}"),
+        Some("system") => format!("endue: {content}"),
         Some("tool") => {
             let name = message["tool_name"].as_str().unwrap_or("a tool");
             format!("Tool {name} answered: {}", cut(content, RESULT_BYTES))

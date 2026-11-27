@@ -1,6 +1,6 @@
 > Dies ist eine Übersetzung. Bei Abweichungen ist die [englische Fassung](../../../CONTRIBUTING.md) maßgeblich.
 
-# Zu endue Desk beitragen
+# Zu endue beitragen
 
 Danke für die Unterstützung. Der Einstieg ist `AGENTS.md`: Dort stehen die Übersicht über das
 Repository, die Befehle und die Regeln, die für Menschen und KI-Agenten gleichermaßen gelten.

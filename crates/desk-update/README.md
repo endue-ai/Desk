@@ -1,15 +1,15 @@
 # desk-update
 
-The decisions of Desk's updater (ADR 0054), apart from Tauri: read the channel's signed index from
-the release origin, choose the next build on the device, download and verify it at once, keep it on
-disk, and install it only when asked; and, without Tauri, the install itself (ADR 0147).
+endue reads signed upgrade paths on GitHub Releases and stages the highest compatible package for
+this installation. It verifies the package again when the person installs it immediately or at
+their next endue start (ADR 0054, ADR 0147, ADR 0291).
 
 ## Public API
 
 - `Updater::new(Config, Transport, Installer, Prefs)`: the state machine (idle, checking, up-to-date,
   available, downloading, staged, applying, failed). `check`, `download` and `apply` run in the
   background and answer at once; `*_now` run on the caller's thread. `start` checks by the schedule;
-  `listen` hears every `Status`.
+  `listen` hears every `Status`. `apply_on_start(version)` consumes the caller's exact-version choice.
 - `Transport` (fetch documents, download artifacts with progress) and `Installer` (install the staged
   bytes and restart) are what the app supplies.
 - `Channel::followed`: the channel `desk.update.channel` names, else the build's own

@@ -1,6 +1,6 @@
 // plugin.json as specs/plugin/v0 reads it: a UI plugin off until opened, one centre surface, its
-// three commands, and no permission of its own: each computer's net:connect is asked for at its
-// first connection. The page loads the vendored noVNC from its own folder.
+// three commands, and net:connect of any computer, which holds none: each computer's net:connect is
+// asked for at its first connection. The page loads the vendored noVNC from its own folder.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -28,7 +28,7 @@ function manifestValidator() {
 const manifest = () => readJson(join(folder, "plugin.json")) as PluginManifest;
 
 describe("plugin.json", () => {
-  it("is a UI plugin, off until opened, with one centre surface and no permission of its own", () => {
+  it("is a UI plugin, off until opened, with one centre surface, that may be asked for any computer", () => {
     const validate = manifestValidator();
     const screens = manifest();
     expect(validate(screens), JSON.stringify(validate.errors)).toBe(true);
@@ -42,15 +42,20 @@ describe("plugin.json", () => {
     expect(screens.surfaces).toEqual([
       { id: "main", title: "Screen Sharing", placement: "center" },
     ]);
-    expect(screens.permissions).toBeUndefined();
+    // `*` holds no host: each computer is still asked for at its first connection (ADR 0260).
+    expect(screens.permissions).toEqual([{ permission: "net:connect", hosts: ["*"] }]);
   });
 
-  it("contributes open, connect and disconnect under its own id", () => {
+  it("contributes saved-computer and session commands under its own id", () => {
     const commands = manifest().contributes?.commands ?? [];
     expect(commands.map((c) => c.id)).toEqual([
       "endue.screens.open",
       "endue.screens.connect",
       "endue.screens.disconnect",
+      "endue.screens.computers",
+      "endue.screens.state",
+      "endue.screens.view-only",
+      "endue.screens.fit",
     ]);
     expect(commands[0]).toMatchObject({
       runs: { command: "desk.plugins.open", args: { plugin: "endue.screens" } },

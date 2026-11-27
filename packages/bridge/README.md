@@ -1,7 +1,7 @@
 # @endue-ai/bridge
 
-TypeScript client for the Desk bridge, typed from `specs/` (bridge, plugin, item, view, connector, init,
-brain and the surface protocol). Layer: Desk bridge (`docs/architecture.md`).
+TypeScript client for the endue bridge, typed from `specs/` (bridge, plugin, item, view, connector, init,
+brain and the surface protocol). Layer: endue bridge (`docs/architecture.md`).
 
 ## Public API
 
@@ -10,7 +10,7 @@ brain and the surface protocol). Layer: Desk bridge (`docs/architecture.md`).
 - `cefAdapter(cefHost(deskNative()))`: the app adapter over the CEF shell's `__deskNative`; `bridge_call`.
 - `browserStub(handlers, observe?)`: answers the methods it is given, any other `unsupported`; `emit`
   sends events; handlers throw `StubError(code, message, permission?)`; `observe` hears calls. For tests.
-- `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open? })`: the core's rules, per
+- `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open?, db? })`: the core's rules, per
   caller. Its `handlers` serve `cmd.*` (`cmd.undo`, `cmd.redo`: stub-undo.ts; `cmd.list`, `cmd.tools`: stub-tools.ts), `perm.*`, `settings.*`,
   `log.*`, `events.*`, `ui.surface.*`, `plugin.stats` (`observe` counts calls) and `shell.open` (asking
   without a grant, refusing what the core refuses, recorded in `state().opened`, handed to `open`). A plugin's
@@ -18,11 +18,12 @@ brain and the surface protocol). Layer: Desk bridge (`docs/architecture.md`).
   `cmd.list`/`cmd.invoke` check no grants. `perm.prompt` goes to `perm:manage` holders and the first
   `perm.answer` decides; without one, `prompt` does (granted by default). `once` grants expire after
   the call they allow. `audience(event)` names the plugins the core would deliver an event to;
-  `drop(caller)` ends its commands, surfaces, subscriptions and prompts; `state()` what it holds.
+  `drop(caller)` ends its commands, surfaces, subscriptions, prompts and sessions; `state()` what it holds.
   `data.*`, `connector.*`, `view.*` and `catalog.get` run over the fixture connector `desk.fixtures`
   (`fixtureItems()`); `upsert(item)` and `remove(source, id)` change it and fire `data.changed`. With
   `files`, `fs.read` (ranges too), `fs.url` (a `data:` URL), `fs.write`, `fs.history` and `fs.restore`
-  serve them, a write keeping what it replaces (ADR 0076). `fs.list`, `fs.watch`, `proc.*`, `net.*`,
+  serve them, a write keeping what it replaces (ADR 0076). A `db` script (`StubDatabase`) serves `db.*`
+  as the core does (ADR 0281), else `db.open` is `io_error`. `fs.list`, `fs.watch`, `proc.*`, `net.*`,
   `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say`, `ui.notify` are not.
 - `messageText(catalogs, language, id, params?)`: a message from catalogs (`messages.schema.json`, ADR
   0250) in a language, else English, else its id; `resolveLanguage(choice, navigator.languages)`.

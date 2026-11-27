@@ -1,4 +1,5 @@
 {
+  "untilStopApp": "Safari",
   "target": "BridgeEvent",
   "description": "an agent's click waits for the person, with the app as its target",
   "instance": {
@@ -11,6 +12,7 @@
         "permission": "computer:control",
         "apps": ["com.apple.Safari"]
       },
+      "untilStopApp": "Safari",
       "target": "Safari (com.apple.Safari)",
       "preview": {
         "kind": "input",

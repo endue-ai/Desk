@@ -1,6 +1,6 @@
 {
   "target": "UserPreferenceResponse",
-  "description": "preferences with a language and a time zone, and endue.ai's own keys Desk ignores",
+  "description": "preferences with a language and a time zone, and endue.ai's own keys endue ignores",
   "instance": {
     "window_layout": null,
     "locale": "en-US",

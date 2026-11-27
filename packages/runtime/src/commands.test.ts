@@ -66,6 +66,59 @@ describe("Commands", () => {
     ]);
   });
 
+  it("registers an irreversible desk command independently of agent metadata", async () => {
+    const { commands, client } = setup();
+    commands.define("desk.example.clear", {
+      title: "Clear examples",
+      owner: "desk",
+      run: () => undefined,
+      irreversible: true,
+    });
+    commands.define("desk.example.archive", {
+      title: "Archive examples",
+      owner: "desk",
+      run: () => undefined,
+      agent: { description: "Archive the examples.", irreversible: true },
+    });
+    await commands.settled();
+    expect(commands.list()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "desk.example.clear", irreversible: true }),
+        expect.objectContaining({ id: "desk.example.archive", irreversible: true }),
+      ]),
+    );
+    const { tools } = await client.call("cmd.tools", {});
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({ command: "desk.example.archive", irreversible: true });
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.share", title: "Share", irreversible: true },
+      { caller: "example.notes" },
+    );
+    const { commands: plugin } = await client.call("cmd.list", {
+      scope: { permission: "cmd:invoke", ids: ["example.notes.share"] },
+    });
+    expect(plugin).toHaveLength(1);
+    expect(plugin[0]?.irreversible).toBeUndefined();
+  });
+
+  it("knows which registered commands only read, as a proposed view's source must (ADR 0367)", async () => {
+    const { commands, client } = setup();
+    const notes = { caller: "example.notes" };
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.list", title: "List", readOnly: true },
+      notes,
+    );
+    await client.call("cmd.register", { id: "example.notes.send", title: "Send" }, notes);
+    commands.retitle();
+    await commands.settled();
+    expect(commands.has("example.notes.send")).toBe(true);
+    expect(commands.readOnly("example.notes.list")).toBe(true);
+    expect(commands.readOnly("example.notes.send")).toBe(false);
+    expect(commands.readOnly("example.notes.gone")).toBe(false);
+  });
+
   it("registers a built-in while its owner is on, and runs it through the registry", async () => {
     const { commands, registry } = setup();
     commands.define("desk.buffers.next", { title: "Next", owner: "desk.buffers", run: () => 1 });
@@ -119,6 +172,48 @@ describe("Commands", () => {
     const answer = answers[0];
     expect(answer?.invocationId).toBe(invocationId);
     expect(answer).toMatchObject({ ok: true, result: "example.notes", caller: "example.notes" });
+  });
+
+  it("tells a watcher of each built-in the core asks it to run, who asked, and what it answered", async () => {
+    const { commands, client } = setup();
+    commands.define("desk.windows.move", {
+      title: "Move",
+      owner: "desk",
+      run: (args) => ({ window: (args as { window?: string }).window ?? "in-use", x: 40 }),
+    });
+    commands.define("desk.files.save", {
+      title: "Save",
+      owner: "desk",
+      run: () => {
+        throw new Error("disk full");
+      },
+    });
+    await commands.settled();
+    const seen: unknown[] = [];
+    const off = commands.watchRuns((run) => {
+      seen.push(run);
+      return (result) => seen.push(result);
+    });
+    const all = { permission: "cmd:invoke" as const, ids: ["*"] };
+    const ask = (id: string, args: Record<string, unknown>, caller: string) =>
+      client.call("cmd.invoke", { id, args, scope: all }, { caller });
+    await ask("desk.windows.move", { window: "w1", x: 40 }, "agent:eris");
+    await expect.poll(() => seen.length).toBe(2);
+    expect(seen).toEqual([
+      { id: "desk.windows.move", args: { window: "w1", x: 40 }, caller: "agent:eris" },
+      { window: "w1", x: 40 },
+    ]);
+    // The person's own run is heard too, as the desk's; a command that fails answers nothing.
+    await commands.run("desk.windows.move");
+    await commands.run("desk.files.save").catch(() => undefined);
+    expect(seen.slice(2)).toEqual([
+      { id: "desk.windows.move", args: undefined, caller: "desk" },
+      { window: "in-use", x: 40 },
+      { id: "desk.files.save", args: undefined, caller: "desk" },
+    ]);
+    off();
+    await commands.run("desk.windows.move");
+    expect(seen).toHaveLength(5);
   });
 
   it("turns a failed or cancelled answer into a CommandError with its code", async () => {

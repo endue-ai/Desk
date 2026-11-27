@@ -1,4 +1,4 @@
-# Desk memory v0
+# endue memory v0
 
 Eris's memory on this computer (ADR 0095). Three layers: **facts and preferences** (words a person can
 read and edit, kept by people and by Eris), **episodes** (what was asked, done and answered in a turn,

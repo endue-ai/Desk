@@ -1,40 +1,40 @@
-# desk-cli
+# endue CLI
 
-The `desk` CLI, the hands AI agents use: plugin validate and test, doctor, export and import, a running
-desk's commands, plugins, grants, logs and files, and `desk mcp` for other apps (`cargo run -p desk-cli`).
+The public `desk-cli` crate builds `endue` and its compatibility command `desk` from the same implementation and release. Both accept the existing `desk` commands and share their socket protocol, overrides and exit codes. The `desk` entry point stays available throughout the current major release line (ADR 0333).
+
+## Installation
+
+Desktop packages include both commands in their own `cli` directory. On macOS use the installed app's `Contents/Resources/cli`. A Debian installation uses `/usr/lib/endue-desk/cli`. On Windows use `cli` inside the installed app directory. Run the packaged executable directly at any time.
+
+On macOS and Linux run the packaged `cli/activate` to link both commands into `~/.local/bin`, or pass your preferred bin directory and put it on PATH. On Windows run the packaged `cli/activate.ps1` in PowerShell to use both commands in that session. Activation checks both names before making changes. If another program owns either name, use the packaged CLI's absolute path. Repeating activation recognizes the existing installation.
+
+On releases that list **endue CLI for Linux x86_64**, download the archive, its signature and `SHA256SUMS-cli`. Verify them with the [release guide](../../docs/releasing.md#verify-a-linux-cli-download), extract the archive in an empty directory and run its `bin/endue` or `bin/activate`. v0.3.0 predates this download.
+
+## Run on a server
+
+Set `ENDUE_BRAIN_URL` to the HTTP or HTTPS base URL of a service implementing the public brain v0 contract, including its path (typically `/v0`). The existing `DESK_BRAIN_URL` override is also supported. When the service requires a bearer token, provide `ENDUE_BRAIN_TOKEN` through the process environment. Use HTTPS for remote credentials. Local development can use loopback HTTP.
+
+Run `endue run "hello from SSH"` for one text turn. The answer goes to stdout, errors to stderr. Exit codes are 0 for success, 1 for a runtime failure and 2 for incorrect input. The command takes one quoted argument, accepts closed stdin and works without a desktop. Use `--json` for a JSON result or `run -- "--json"` for literal text. The turn has a two-minute limit. For a local example start `node examples/brain-echo/server.mjs` and set `ENDUE_BRAIN_URL=http://127.0.0.1:8787/v0`.
 
 ## Commands
-```bash
-desk plugin validate <dir>             # plugin.json against specs/plugin v0; entry and view files exist
-desk doctor [--data <dir>]             # quarantined, .broken, then file<TAB>path<TAB>owner<TAB>size<TAB>state
-desk export|import <dir|file.zip> [--with-data]   # a desk as files; import keeps an existing init.yaml
-desk plugin test <dir>                 # the folder's tests/ on the host for its kind
-desk ping                              # a round trip to the running desk; prints ok
-desk cmd list | tools [<words>]        # id<TAB>provider<TAB>title; tools: agents' (ADR 0088), reads|acts|irreversible
-desk cmd run <id> [--args <json>] [--timeout <s>]   # waits for cmd.answered (at most <s> s: exit 1); prints the result as JSON
-desk plugin list [--lock]              # id<TAB>status<TAB>enabled|disabled; --lock: ~/.desk/plugins.lock
-desk plugin enable|disable <id> | sync # ok; sync: on and off as plugins.lock says, missing ones exit 1
-desk perm list | revoke <grantId>      # grantId<TAB>caller<TAB>permission per grant; revoke prints ok
-desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
-desk describe key|command|setting|plugin|grant <x>   # desk.describe.open's answer, as text (ADR 0075)
-desk inspect [tree|surfaces|commands|grants|settings|plugins|calls]   # the inspector's Export JSON
-desk fs history|restore <path> ...    # [--limit <n>]: id, at, caller, size per version; <version>: ok
-desk log [--count <n>] | undo | redo  # the log, oldest first; or what was undone or redone (ADR 0077)
-desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
-desk mcp [--agent <id>] [--plugin <id>]...   # an MCP server on stdio as agent:<id> (crates/desk-mcp)
-desk open <path|endue://v1/…>          # start the desk with it (DESK_APP: its executable); a running one takes it (ADR 0244)
+
+```sh
+endue --help                              # complete command reference
+endue --version                           # tagged release version
+endue plugin validate <dir>               # check plugin.json and declared files locally
+endue plugin test <dir>                   # run the plugin's tests
+endue doctor [--data <dir>]               # inspect local state; --last-crash or --trace <file>
+endue export <dir|file.zip> [--with-data] # export a profile; import restores it
+endue plugin list --lock                  # read ~/.desk/plugins.lock locally
+endue ping                                # round trip to the running app
+endue cmd list                            # list the app's commands
+endue cmd run <id> [--args <json>]        # invoke an existing command and print its result
+endue mcp [--agent <id>] [--plugin <id>]  # serve the running app over stdio
+endue open <path|endue://v1/…>            # open in the app, starting it if needed
 ```
 
-All but `plugin validate`, `plugin test`, `plugin list --lock`, `doctor`, `export`, `import` and `open` reach the running desk over its
-socket (`crates/desk-ipc`, ADR 0030) as `cli`; `mcp` runs its client's calls as an agent (ADR 0086). `DESK_SOCKET` names another
-socket. `--json` prints the answer as it came (`cmd run`, `describe`: `cmd.answered`; `perm log`: each entry; `doctor`, `plugin
-validate`: JSON) or, when none came, `{ ok: false, error: { code, message } }`; `inspect` prints JSON either way. Exit codes: 0
-ok, also a `cmd run` that restarted the desk; 1 a failed check or test, an invalid desk file, a refused import, a bridge error
-(`desk: <code>: <message>`), a failed command, no answer within `--timeout`, no desk at the socket or no `--data` folder; 2 usage:
-what was wrong, then that command's usage lines. `plugin validate` prints `ok <id> <version> (<kind> plugin)` or every problem.
-`plugin test` runs a valid plugin's tests: `tests/<name>.test.json` on the desk-plugin-host harness for logic plugins and Wasm
-connectors, `tests/*.test.{js,ts}` with vitest on the SDK's test host for the others (`packages/plugin-sdk/vitest.plugin.config.ts`,
-or in `DESK_REPO`). An export is `~/.desk` with `desk.json` (`{ version: 0, os, exportedAt }`, this CLI's own manifest) at its root
-and, with `--with-data`, `data/` (store, grants, settings, plugins, brain: never secrets or account).
+Live commands use the app's socket as `cli`; `DESK_SOCKET` selects another socket. `DESK_APP` selects an absolute app executable for `open`. MCP acts as its client agent. For JavaScript plugin tests with an installed binary, point `DESK_REPO` at the SDK checkout where you ran `pnpm install`. `--json` returns the documented machine-readable command result. Both executables exit 0 on success, 1 on a failed check or call, and 2 for usage errors.
+
 ## Testing
-`cargo test -p desk-cli`: a scripted server (`socket.rs`, `perm_log.rs`, `describe.rs`, `inspect.rs`), a real socket and `Core` (`round_trip.rs`, `mcp.rs`), the rest on files.
+
+Run `cargo test -p desk-cli` for local files, scripted replies and live commands against a real core and socket. `cargo run -p desk-cli -- --help` runs the canonical entry point from source.

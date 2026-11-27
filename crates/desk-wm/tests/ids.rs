@@ -7,7 +7,7 @@
 mod common;
 
 use common::*;
-use desk_wm::{Desk, PaneNode, Placement, Rect};
+use desk_wm::{Desk, Placement, Rect, Tab};
 
 /// Every window id the desk holds: each desktop's windows, then the drawer's.
 fn all_ids(c: &Desk) -> Vec<String> {
@@ -59,7 +59,7 @@ fn a_window_placed_but_not_drawn_keeps_its_id() {
         "endue.window",
         Rect::new(0.0, 0.0, 480.0, 320.0),
     );
-    gone.panes = Some(PaneNode::view("p1", "plugin:p.gone"));
+    gone.tabs = Some(vec![Tab::new("p1", "plugin:p.gone")]);
     c.edit(|l| l.surfaces.push(gone));
     assert!(c.window("window-1").is_none(), "its plugin is away");
     c.set_desktop("2");
@@ -70,10 +70,10 @@ fn a_window_placed_but_not_drawn_keeps_its_id() {
 fn put_away_on_desktop_2_a_window_stays_in_the_drawer_and_comes_back_on_desktop_1() {
     let mut c = sample(EPOCH);
     let one = c.new_window();
-    c.show_in_pane(&one, "p1", "notes");
+    c.show_in_tab(&one, "p1", "notes");
     c.set_desktop("2");
     let two = c.new_window();
-    c.show_in_pane(&two, "p1", "calendar");
+    c.show_in_tab(&two, "p1", "calendar");
     c.put_away(&two, "Calendar", EPOCH + 1000);
     let item = c
         .drawer
@@ -82,24 +82,19 @@ fn put_away_on_desktop_2_a_window_stays_in_the_drawer_and_comes_back_on_desktop_
         .cloned()
         .expect("in the drawer");
     assert_eq!(
-        item.placement.as_ref().map(|p| p.panes()),
-        Some(PaneNode::view("p1", "calendar"))
+        item.placement.as_ref().map(|p| p.tabs()),
+        Some(vec![Tab::new("p1", "calendar")])
     );
     assert!(layout_ids(&c, "2").is_empty());
     c.set_desktop("1");
     c.bring_back(&item.id);
     assert_eq!(layout_ids(&c, "1"), [one.clone(), two.clone()]);
-    let panes: Vec<PaneNode> = c
-        .layout_of("1")
-        .surfaces
-        .iter()
-        .map(|p| p.panes())
-        .collect();
+    let tabs: Vec<Vec<Tab>> = c.layout_of("1").surfaces.iter().map(|p| p.tabs()).collect();
     assert_eq!(
-        panes,
+        tabs,
         [
-            PaneNode::view("p1", "notes"),
-            PaneNode::view("p1", "calendar")
+            vec![Tab::new("p1", "notes")],
+            vec![Tab::new("p1", "calendar")]
         ]
     );
     assert!(c.drawer.iter().all(|d| d.placement.is_none()));
@@ -109,12 +104,12 @@ fn put_away_on_desktop_2_a_window_stays_in_the_drawer_and_comes_back_on_desktop_
 fn put_away_on_desktop_1_while_desktop_2_is_in_front_a_new_window_does_not_take_its_id() {
     let mut c = sample(EPOCH);
     let one = c.new_window();
-    c.show_in_pane(&one, "p1", "notes");
+    c.show_in_tab(&one, "p1", "notes");
     c.put_away(&one, "Notes", EPOCH + 1000);
     c.set_desktop("2");
     let two = c.new_window();
     assert_ne!(two, one);
-    c.show_in_pane(&two, "p1", "calendar");
+    c.show_in_tab(&two, "p1", "calendar");
     c.bring_back(&format!("surface-{one}"));
     let mut back = layout_ids(&c, "2");
     back.sort();
