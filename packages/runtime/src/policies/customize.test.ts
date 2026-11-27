@@ -60,7 +60,9 @@ async function desk(stored: Record<string, unknown> = {}, safe = false) {
   const account = async (next: AccountStatus) => {
     status = next;
     core.stub.emit({ event: "account.changed", data: next });
-    await new Promise((done) => setTimeout(done, 10));
+    // Each swap sends the new set: wait for it rather than for a fixed time, which load outlasts.
+    const before = shared.length;
+    await expect.poll(() => shared.length).toBeGreaterThan(before);
   };
   const last = (plugin: string) => shared.filter((s) => s.plugin === plugin).at(-1);
   return { data, hub, bridge, shared, last, account, asked };
