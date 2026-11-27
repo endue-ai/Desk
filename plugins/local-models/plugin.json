@@ -16,7 +16,7 @@
     },
     {
       "permission": "proc:spawn",
-      "commands": ["llama-server", "curl", "sysctl", "nvidia-smi"]
+      "commands": ["llama-server", "curl", "git", "sysctl", "nvidia-smi"]
     },
     {
       "permission": "fs:read",
