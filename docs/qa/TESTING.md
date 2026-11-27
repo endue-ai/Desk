@@ -499,6 +499,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `chat` | Messages (≤ 500 a page), markup cached per message | Frame | Stays: a 2 KB message parses in 0.1 ms; an `Intl.DateTimeFormat` per message per render costs 32 ms at 500 (follow-up) | 500 messages (Node) |
 | `chat-digest` | None: a data-only view plugin | — | — | — |
 | `computer` | Accessibility tree ≤ 300 nodes; screenshots passed on as base64, never decoded | Frame | Stays: bounded | Read, not run |
+| `customize` | None: a policy, no frame (the SDK applies its style and script in each plugin's own frame) | — | — | — |
 | `data` | JSON, YAML, TOML, XML and nine more parsed; tree, raw, search | Worker over 1 MiB, frame below | Unchanged (confirmed; out of scope) | 50 MiB JSON (PR #229) |
 | `database` | Client output (psql CSV, mysql XML, sqlite3 quote mode) decoded and parsed, up to 64 MiB; a dropped CSV or JSON parsed for an import (≤ 16 MiB); sort and filter over up to 100k kept rows | Frame | Output: `ui/output-worker.js`, the runner's bytes go there and sets come back cut to the row limit; bar after 300 ms with Cancel, which stops the worker. The import's parse and the grid's sort and filter stay (follow-up) | 50 MiB psql output: frame 0.1 ms, worker 0.9 s (Node) |
 | `design` | None: a policy, no frame | — | — | — |

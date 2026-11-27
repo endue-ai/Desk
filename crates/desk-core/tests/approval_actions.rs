@@ -307,12 +307,19 @@ fn eris_can_change_reversible_desk_preferences_but_clear_and_remove_wait() {
         "desk.notify.dismiss",
         "desk.profiles.switch",
         "desk.profiles.save",
+        "desk.customize.style",
+        "desk.customize.clear",
+        "desk.customize.restore-style",
     ];
     let ask = |id: &str| {
         let params = json!({ "id": id, "scope": { "permission": "cmd:invoke", "ids": [id] } });
         call(&core, "agent:eris", "cmd.invoke", params)
     };
-    let irreversible = ["desk.notify.clear", "desk.profiles.remove"];
+    let irreversible = [
+        "desk.notify.clear",
+        "desk.profiles.remove",
+        "desk.customize.script",
+    ];
     for (ids, irreversible) in [(&reversible[..], false), (&irreversible[..], true)] {
         for id in ids {
             call(
