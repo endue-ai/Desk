@@ -47,6 +47,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
 | `design/` (`desk.design`) | `defface` per widget | Which design system the components are made of (`desk.design.active`, ADR 0090) |
+| `customize/` (`desk.customize`) | Emacs's `custom.el` | The person's own style and script on any plugin's page, per endue account (ADR 0398) |
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
 | `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 
