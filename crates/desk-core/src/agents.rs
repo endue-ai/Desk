@@ -37,6 +37,10 @@ const ERIS_DESK_COMMANDS: &[&str] = &[
     "desk.frames.wait",
     "desk.frames.reload",
     "desk.design.use",
+    // A plugin page's style is reversible; its script (`desk.customize.script`) waits (ADR 0398).
+    "desk.customize.style",
+    "desk.customize.clear",
+    "desk.customize.restore-style",
     "desk.settings.set",
     "desk.theme.use",
     "desk.theme.set",

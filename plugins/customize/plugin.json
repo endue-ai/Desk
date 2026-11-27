@@ -1,0 +1,16 @@
+{
+  "id": "desk.customize",
+  "name": "Customize",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Every plugin's page takes the person's own style and script (ADR 0398): asked of Eris or run from the palette as desk.customize.*, kept for the endue account signed in (this computer's set while nobody is) and applied again at every start and sign-in.",
+  "contributes": {
+    "settings": {
+      "desk.customize.enabled": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Whether plugin pages get the person's styles and scripts. Turn it off to see every page as its plugin draws it; nothing kept is lost. Safe mode never applies them."
+      }
+    }
+  }
+}

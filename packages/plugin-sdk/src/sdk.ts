@@ -17,6 +17,7 @@ import {
   SURFACE,
   type SurfaceOptions,
 } from "./context";
+import { OUTLINE } from "./custom";
 import { dataFor, type PluginData, type PluginViews } from "./data";
 import { dndFor } from "./dnd";
 import type { PluginDnd } from "./dnd/types";
@@ -258,7 +259,12 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           break;
         case "desk:command": {
           const { name, args, call } = message;
-          void commands.request(name, args).then((outcome) => {
+          // The desk reads the page's elements for the person's changes (ADR 0398).
+          const asked =
+            name === OUTLINE && transport.outline
+              ? Promise.resolve({ ok: true, result: transport.outline() })
+              : commands.request(name, args);
+          void asked.then((outcome) => {
             if (call !== undefined) transport.send({ type: "desk:reply", call, ...outcome });
           });
           break;
@@ -270,6 +276,9 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           theme = message.theme;
           transport.theme?.(message.theme);
           for (const listener of themeListeners) listener(message.theme);
+          break;
+        case "desk:custom":
+          transport.custom?.(message.custom, mounted);
           break;
       }
     });

@@ -17,6 +17,7 @@ import { anotherWindow, defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
+import { installCustomize } from "./policies/customize";
 import { keepLooks } from "./policies/design";
 import { deskFolder } from "./policies/desk-folder";
 import { installDisplay } from "./policies/display";
@@ -130,7 +131,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     bridge,
     shortcuts,
     surfaces,
-    share: (message) => pluginHost?.share(message),
+    share: (message, plugin, drop) => pluginHost?.share(message, plugin, drop),
     request: (plugin, command, args) =>
       pluginHost
         ? pluginHost.request(plugin, command, args)
@@ -150,6 +151,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     inUse: (plugin) => pluginHost?.inUse(plugin),
   };
   const theme = installTheme(ctx, options.themeRoot, options.plugins?.url);
+  const customize = installCustomize(ctx, !!options.start?.safe);
   const notify = installNotify(ctx, statusLine);
   const speech = installLanguage(ctx, options.language);
   const keys = installKeys(ctx, speech.current(), notify.notify);
@@ -374,20 +376,11 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       preferences.dispose();
       frames.dispose();
       routing.dispose();
-      const policies = [
-        speech,
-        start,
-        profiles,
-        keysFile,
-        folder,
-        session,
-        files,
-        buffers,
-        display,
-      ];
-      for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme, notify]) {
+      const policies = [speech, start, profiles, keysFile, folder, session, files, buffers];
+      for (const policy of [about, inspect, ...policies, display, customize, palette, aliases]) {
         policy.dispose();
       }
+      for (const policy of [keys, theme, notify]) policy.dispose();
       pluginHost?.stop();
       commands.dispose();
       offKeys();
