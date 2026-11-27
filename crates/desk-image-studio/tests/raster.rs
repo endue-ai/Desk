@@ -13,7 +13,7 @@ fn edits_keep_alpha_and_png_round_trips_the_result() {
                 width: 1,
                 height: 1,
             },
-            Operation::Invert,
+            Operation::Invert { layer: None },
         ])
         .unwrap();
     assert_eq!(document.image().pixels(), [0, 255, 255, 128]);
@@ -32,10 +32,20 @@ fn edits_keep_alpha_and_png_round_trips_the_result() {
 fn filter_batches_are_atomic_and_blur_ignores_fully_transparent_colors() {
     let mut doc = Document::new(Image::new(2, 1, vec![255, 0, 0, 255, 0, 0, 255, 0]).unwrap());
     assert!(
-        doc.apply(&[Operation::Invert, Operation::Blur { radius: 0 }])
-            .is_err()
+        doc.apply(&[
+            Operation::Invert { layer: None },
+            Operation::Blur {
+                radius: 0,
+                layer: None
+            }
+        ])
+        .is_err()
     );
     assert!(doc.undo().is_err());
-    doc.apply(&[Operation::Blur { radius: 1 }]).unwrap();
+    doc.apply(&[Operation::Blur {
+        radius: 1,
+        layer: None,
+    }])
+    .unwrap();
     assert_eq!(doc.image().pixels(), [255, 0, 0, 170, 255, 0, 0, 85]);
 }

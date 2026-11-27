@@ -1,8 +1,10 @@
 import { byteSource, defineUiPlugin, startWorker } from "@endue-ai/plugin-sdk";
 import "@endue-ai/ui";
+import { createBrush } from "./brush.js";
 import { createClient } from "./client.js";
 import { createControls } from "./controls.js";
 import { createFiles, nameOf } from "./files.js";
+import { createLayerPanel } from "./layer-panel.js";
 import { createSession } from "./session.js";
 
 defineUiPlugin({
@@ -14,6 +16,8 @@ defineUiPlugin({
     const discard = byId("discard");
     const exportPng = byId("export");
     const preview = byId("preview");
+    const bitmap = byId("bitmap");
+    const guide = byId("stroke-preview");
     const empty = byId("empty");
     const edit = byId("edit");
     const operation = byId("operation");
@@ -26,12 +30,14 @@ defineUiPlugin({
     let discardTarget;
 
     const paint = (frame) => {
-      preview.hidden = !frame;
+      bitmap.hidden = !frame;
       empty.hidden = Boolean(frame);
       if (frame) {
         const { width, height } = frame.preview;
         preview.width = width;
         preview.height = height;
+        guide.width = width;
+        guide.height = height;
         preview
           .getContext("2d")
           .putImageData(
@@ -44,7 +50,26 @@ defineUiPlugin({
         preview.height = 0;
       }
     };
-    const session = createSession(createFiles(ctx, byteSource), createClient(startWorker), paint);
+    const restored = ctx.state.get()?.draft ?? ctx.surface.restored;
+    const session = createSession(
+      createFiles(ctx, byteSource),
+      createClient(startWorker),
+      paint,
+      (draft) => {
+        ctx.state.set(draft ? { draft } : {});
+      },
+    );
+    const apply = (operation, target = session.inspect()) =>
+      act(() => session.edit("apply", { ...target, operations: [operation] }));
+    const layers = createLayerPanel(byId("layers"), apply);
+    const brush = createBrush(
+      byId("brush"),
+      preview,
+      guide,
+      session.inspect,
+      layers.selected,
+      apply,
+    );
     const update = () => {
       const info = session.inspect();
       open.disabled = busy;
@@ -53,8 +78,10 @@ defineUiPlugin({
       discard.hidden = !info.dirty;
       discard.disabled = busy;
       exportPng.disabled = busy || !info.document;
-      edit.hidden = !info.document;
+      byId("tools").hidden = !info.document;
       for (const control of edit.elements) control.disabled = busy;
+      layers.busy(busy);
+      brush.busy(busy);
       status.textContent = info.document
         ? `${nameOf(info.path)} · ${info.width} × ${info.height} px${info.dirty ? " · Unexported edits" : ""}`
         : "";
@@ -67,7 +94,9 @@ defineUiPlugin({
       update();
       try {
         const result = await operation();
-        controls.render(session.inspect());
+        const info = session.inspect();
+        controls.render(info);
+        layers.render(info);
         return result;
       } catch (reason) {
         error.textContent = reason.message;
@@ -97,7 +126,11 @@ defineUiPlugin({
     operation.addEventListener("change", () => controls.render(session.inspect()));
     edit.addEventListener("submit", (event) => {
       event.preventDefault();
-      act(() => session.edit("apply", { ...session.inspect(), operations: [controls.read()] }));
+      const operation = controls.read();
+      if (["adjust", "invert", "blur", "sharpen"].includes(operation.op)) {
+        operation.layer = layers.selected().id;
+      }
+      apply(operation);
     });
 
     const on = (name, handler) => ctx.commands.on(`endue.image-studio.${name}`, handler);
@@ -111,9 +144,7 @@ defineUiPlugin({
         throw new Error("Choose the export destination in Image Studio.");
       return run(() => session.export());
     });
-    ctx.surface.onUnload(session.snapshot);
     update();
-    if (ctx.surface.restored)
-      await run(() => session.restore(ctx.surface.restored)).catch(() => {});
+    if (restored) await run(() => session.restore(restored)).catch(() => {});
   },
 });

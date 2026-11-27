@@ -1,6 +1,7 @@
-const MAX_OPERATIONS = 256;
+const MAX_OPERATIONS = 2048;
+const MAX_DRAFT_BYTES = 1024 * 1024 - 4096;
 
-export function createSession(files, engine, paint) {
+export function createSession(files, engine, paint, remember = () => {}) {
   let current;
   let details;
 
@@ -37,6 +38,7 @@ export function createSession(files, engine, paint) {
       saved: 0,
     };
     details = result.details;
+    remember(current);
     paint(result);
     return inspect();
   }
@@ -54,7 +56,6 @@ export function createSession(files, engine, paint) {
 
   return {
     inspect,
-    snapshot: () => current,
     restore: (saved) => load(saved.path, saved),
     async open(path) {
       if (current?.path === path && path !== undefined) return inspect();
@@ -66,6 +67,7 @@ export function createSession(files, engine, paint) {
     async edit(type, args) {
       checked(args);
       const operations = args.operations;
+      let next = { ...current, revision: current.revision + 1 };
       if (type === "apply") {
         const earlier = current.steps.slice(0, current.cursor);
         const count = earlier.reduce((total, step) => total + step.operations.length, 0);
@@ -73,22 +75,26 @@ export function createSession(files, engine, paint) {
           throw new Error("Apply one to sixteen operations in a batch.");
         }
         if (count + operations.length > MAX_OPERATIONS) {
-          throw new Error("Export and reopen the image to continue after 256 operations.");
+          throw new Error("Export and reopen the image to continue after 2,048 operations.");
         }
+        const id = current.next + 1;
+        next = {
+          ...next,
+          steps: [...earlier, { id, operations }],
+          cursor: earlier.length + 1,
+          next: id,
+        };
+        const bytes = new TextEncoder().encode(JSON.stringify(next)).length;
+        if (bytes > MAX_DRAFT_BYTES)
+          throw new Error("Export and reopen the image to continue after the draft reaches 1 MiB.");
+      } else {
+        next.cursor += type === "undo" ? -1 : 1;
       }
       await recover();
       const result = await engine.call(type === "apply" ? { type, operations } : { type });
-      if (type === "apply") {
-        current.steps.splice(current.cursor, current.steps.length - current.cursor, {
-          id: ++current.next,
-          operations,
-        });
-        current.cursor++;
-      } else {
-        current.cursor += type === "undo" ? -1 : 1;
-      }
-      current.revision++;
+      current = next;
       details = result.details;
+      remember(current);
       paint(result);
       return inspect();
     },
@@ -99,13 +105,15 @@ export function createSession(files, engine, paint) {
       await recover();
       const { data } = await engine.call({ type: "export" });
       await files.save(path, data);
-      current.saved = position();
+      current = { ...current, saved: position() };
+      remember(current);
       return { path, bytes: data.length };
     },
     discard(target) {
       checked(target);
       current = undefined;
       details = undefined;
+      remember(undefined);
       engine.reset();
       paint();
     },

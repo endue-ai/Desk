@@ -1,18 +1,19 @@
 //! Bounded RGBA editing. The worker supplies decoded pixels and an ordered list of edit operations.
 
+mod brush;
+mod document;
 mod filters;
 mod geometry;
+mod layers;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-use std::collections::VecDeque;
-
-use serde::{Deserialize, Serialize};
+pub use brush::{Point, StrokeMode};
+pub use document::Document;
+use serde::Deserialize;
 
 pub const MAX_PIXELS: usize = 16_000_000;
 const MAX_DIMENSION: usize = 16_384;
-const HISTORY_BYTES: usize = 128 * 1024 * 1024;
-const HISTORY_STEPS: usize = 12;
 pub const MAX_BATCH: usize = 16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,7 +24,7 @@ pub struct Image {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
+#[serde(tag = "op", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Operation {
     Crop {
         x: usize,
@@ -45,13 +46,49 @@ pub enum Operation {
         brightness: i32,
         contrast: i32,
         saturation: i32,
+        layer: Option<u32>,
     },
-    Invert,
+    Invert {
+        layer: Option<u32>,
+    },
     Blur {
         radius: usize,
+        layer: Option<u32>,
     },
     Sharpen {
         amount: usize,
+        layer: Option<u32>,
+    },
+    AddLayer {
+        name: String,
+    },
+    DuplicateLayer {
+        layer: u32,
+        name: Option<String>,
+    },
+    SetLayer {
+        layer: u32,
+        name: Option<String>,
+        opacity: Option<u8>,
+        visible: Option<bool>,
+    },
+    MoveLayer {
+        layer: u32,
+        index: usize,
+    },
+    RemoveLayer {
+        layer: u32,
+    },
+    ResetMask {
+        layer: u32,
+    },
+    Stroke {
+        layer: u32,
+        mode: StrokeMode,
+        radius: u16,
+        strength: u8,
+        color: Option<[u8; 3]>,
+        points: Vec<Point>,
     },
 }
 
@@ -92,27 +129,23 @@ impl Image {
         &self.pixels
     }
 
-    fn apply(&mut self, operation: &Operation) -> Result<(), &'static str> {
+    fn transformed(&self, operation: &Operation) -> Result<Self, &'static str> {
         match *operation {
             Operation::Crop {
                 x,
                 y,
                 width,
                 height,
-            } => *self = self.crop(x, y, width, height)?,
-            Operation::Resize { width, height } => *self = self.resize(width, height)?,
-            Operation::Rotate { degrees } => *self = self.rotate(degrees)?,
-            Operation::Flip { ref axis } => self.flip(axis),
-            Operation::Adjust {
-                brightness,
-                contrast,
-                saturation,
-            } => self.adjust(brightness, contrast, saturation)?,
-            Operation::Invert => self.invert(),
-            Operation::Blur { radius } => self.blur(radius)?,
-            Operation::Sharpen { amount } => self.sharpen(amount)?,
+            } => self.crop(x, y, width, height),
+            Operation::Resize { width, height } => self.resize(width, height),
+            Operation::Rotate { degrees } => self.rotate(degrees),
+            Operation::Flip { ref axis } => {
+                let mut image = self.clone();
+                image.flip(axis);
+                Ok(image)
+            }
+            _ => unreachable!("only canvas geometry operations reach this method"),
         }
-        Ok(())
     }
 
     pub fn png(&self) -> Result<Vec<u8>, png::EncodingError> {
@@ -126,87 +159,5 @@ impl Image {
         writer.write_image_data(&self.pixels)?;
         writer.finish()?;
         Ok(bytes)
-    }
-}
-
-pub struct Document {
-    image: Image,
-    past: VecDeque<Image>,
-    future: Vec<Image>,
-    history_bytes: usize,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Details {
-    width: usize,
-    height: usize,
-    can_undo: bool,
-    can_redo: bool,
-}
-
-impl Document {
-    pub fn new(image: Image) -> Self {
-        Self {
-            image,
-            past: VecDeque::new(),
-            future: Vec::new(),
-            history_bytes: 0,
-        }
-    }
-
-    pub fn image(&self) -> &Image {
-        &self.image
-    }
-
-    pub fn details(&self) -> Details {
-        Details {
-            width: self.image.width,
-            height: self.image.height,
-            can_undo: !self.past.is_empty(),
-            can_redo: !self.future.is_empty(),
-        }
-    }
-
-    pub fn apply(&mut self, operations: &[Operation]) -> Result<(), &'static str> {
-        if !(1..=MAX_BATCH).contains(&operations.len()) {
-            return Err("Apply one to sixteen operations in a batch.");
-        }
-        let mut image = self.image.clone();
-        for operation in operations {
-            image.apply(operation)?;
-        }
-        let previous = std::mem::replace(&mut self.image, image);
-        self.future.clear();
-        self.history_bytes += previous.pixels.len();
-        self.past.push_back(previous);
-        while self.history_bytes > HISTORY_BYTES || self.past.len() > HISTORY_STEPS {
-            if let Some(oldest) = self.past.pop_front() {
-                self.history_bytes -= oldest.pixels.len();
-            }
-        }
-        Ok(())
-    }
-
-    pub fn undo(&mut self) -> Result<(), &'static str> {
-        let previous = self
-            .past
-            .pop_back()
-            .ok_or("There are no earlier edits to undo.")?;
-        self.history_bytes -= previous.pixels.len();
-        self.future
-            .push(std::mem::replace(&mut self.image, previous));
-        Ok(())
-    }
-
-    pub fn redo(&mut self) -> Result<(), &'static str> {
-        let next = self
-            .future
-            .pop()
-            .ok_or("There are no later edits to redo.")?;
-        let previous = std::mem::replace(&mut self.image, next);
-        self.history_bytes += previous.pixels.len();
-        self.past.push_back(previous);
-        Ok(())
     }
 }

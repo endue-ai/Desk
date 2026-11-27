@@ -27,11 +27,12 @@ it("ships a runnable Rust module that rotates pixels, undoes, redoes and exports
   const b = [0, 255, 0, 127];
   const c = [0, 0, 255, 255];
   const d = [255, 255, 255, 255];
-  expect(wasm.load(2, 2, new Uint8Array([...a, ...b, ...c, ...d])).details).toEqual({
+  expect(wasm.load(2, 2, new Uint8Array([...a, ...b, ...c, ...d])).details).toMatchObject({
     width: 2,
     height: 2,
     canUndo: false,
     canRedo: false,
+    layers: [{ id: 1, name: "Background", visible: true, hasMask: false, opacity: 100 }],
   });
   const rotated = wasm.call({ type: "apply", operations: [{ op: "rotate", degrees: 90 }] });
   expect([...rotated.data]).toEqual([...c, ...a, ...d, ...b]);

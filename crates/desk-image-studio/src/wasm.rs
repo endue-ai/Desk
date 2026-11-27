@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use super::{Document, Image, MAX_PIXELS, Operation};
 
 const PREVIEW_EDGE: usize = 1200;
-const REQUEST_LIMIT: usize = 64 * 1024;
+const REQUEST_LIMIT: usize = 1024 * 1024;
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase", deny_unknown_fields)]
@@ -55,17 +55,7 @@ impl State {
         let document = self.document.as_mut().ok_or("Open an image first.")?;
         match request {
             Request::Apply { operations } => document.apply(&operations)?,
-            Request::Replay { batches, undo } => {
-                if batches.iter().map(Vec::len).sum::<usize>() > 256 || undo > batches.len() {
-                    return Err("The draft's edit history is invalid.".into());
-                }
-                for operations in batches {
-                    document.apply(&operations)?;
-                }
-                for _ in 0..undo {
-                    document.undo()?;
-                }
-            }
+            Request::Replay { batches, undo } => document.replay(&batches, undo)?,
             Request::Undo => document.undo()?,
             Request::Redo => document.redo()?,
             Request::Preview => {}
