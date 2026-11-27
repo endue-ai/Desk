@@ -1,0 +1,47 @@
+body {
+  margin: 0;
+  padding: var(--desk-space-4);
+  color: var(--desk-text);
+  background: var(--desk-background);
+  font-family: var(--desk-font-sans);
+}
+.desk-header { align-items: center; }
+#map:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  border-top: 1px solid var(--desk-border);
+  margin-top: var(--desk-space-4);
+}
+#hierarchy, #details { min-width: 0; padding-block: var(--desk-space-4); }
+#hierarchy { padding-right: var(--desk-space-3); }
+#details {
+  border-left: 1px solid var(--desk-border);
+  padding-left: var(--desk-space-5);
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: 90vh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+ul { list-style: none; margin: 0; padding: 0; }
+li > ul { margin-left: var(--desk-space-3); padding-left: var(--desk-space-1); border-left: 1px solid var(--desk-border); }
+.node {
+  display: flex; width: 100%; justify-content: start; gap: var(--desk-space-2);
+  min-height: var(--desk-control-sm); height: auto; text-align: start;
+}
+.node[aria-current="true"] { background: var(--desk-hover); font-weight: 600; }
+.marker, .count, dt, #path { color: var(--desk-text-muted); }
+.marker { width: var(--desk-space-3); flex-shrink: 0; }
+.node-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+#path { font-size: var(--desk-text-xs); margin-block: 0 var(--desk-space-2); }
+h2 { font-size: var(--desk-text-xl); margin: 0 0 var(--desk-space-3); }
+dl { margin: 0; }
+.field { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--desk-space-3); border-top: 1px solid var(--desk-border); padding-block: var(--desk-space-2); }
+dd { margin: 0; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  #map:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+  #hierarchy { max-height: 42vh; overflow: auto; padding-right: 0; }
+  #details { position: static; max-height: none; border-left: 0; border-top: 1px solid var(--desk-border); padding-left: 0; }
+}

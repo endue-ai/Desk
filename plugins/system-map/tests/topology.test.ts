@@ -77,3 +77,14 @@ it("distinguishes unavailable observations from a successful empty result", () =
   expect(data).toContain("status.empty");
   expect(data).toContain("Office Wi-Fi");
 });
+
+it("keeps USB hubs and attached devices nested and preserves hardware sensor units", () => {
+  const root = snapshot({
+    usb: "+-o Root  <class IORegistryEntry, id 0x1, active>\n  +-o Hub@01  <class IOUSBHostDevice, id 0x2, active>\n    +-o Keyboard@02  <class IOUSBHostDevice, id 0x3, active>",
+    physicalSensors:
+      '+-o Core sensor  <class IOHWSensor, id 0x9, active>\n  "current-value" = 4200\n  "type" = "temperature"',
+  });
+  const hub = root.children.find((n) => n.id === "usb")?.children[0];
+  expect(hub?.children[0]?.label).toBe("Keyboard");
+  expect(JSON.stringify(root)).toContain('"nativeValue":"4200"');
+});

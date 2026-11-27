@@ -1,0 +1,57 @@
+{
+  "id": "endue.system-map",
+  "name": "System map",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "messages": "messages",
+  "description": "Inspect local sensors, running applications, network connections and nearby devices in a selectable hierarchy.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": [
+        "/usr/sbin/system_profiler",
+        "/usr/bin/pmset",
+        "/usr/sbin/ioreg",
+        "/sbin/ifconfig",
+        "/usr/sbin/scutil",
+        "/usr/sbin/arp",
+        "/usr/sbin/ndp",
+        "/bin/ps",
+        "/usr/sbin/lsof"
+      ]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "System map",
+      "titleMessage": "title",
+      "placement": "center",
+      "window": { "size": { "width": 940, "height": 660 } }
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.system-map.open",
+        "title": "Open system map",
+        "titleMessage": "open",
+        "keywords": [
+          "sensors",
+          "apps",
+          "connections",
+          "network",
+          "VPN",
+          "Wi-Fi",
+          "Bluetooth",
+          "센서",
+          "시스템 지도",
+          "연결"
+        ],
+        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.system-map" } }
+      }
+    ]
+  }
+}
