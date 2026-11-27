@@ -8,7 +8,7 @@ import type { SurfacePlacement } from "../modes/types";
 import { layoutOf, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import type { DeskState } from "../shell/state";
-import { tabsOf } from "./tree";
+import { shownTab, tabsOf } from "./tree";
 
 const VIEW = "plugin:";
 
@@ -31,6 +31,18 @@ export function windowPlugins(s: DeskState, id: string): string[] {
     return view.startsWith(VIEW) ? [view.slice(VIEW.length)] : [];
   });
   return [...new Set(ids)];
+}
+
+/**
+ * The plugin whose window the tab window `id` shows is (ADR 0270), on the desktop in front or out
+ * of the canvas: the page an OS window of it shows (issue 235). None for a view of the shell's own.
+ */
+export function shownPlugin(s: DeskState, id: string): string | undefined {
+  const p = windowsOf(s).find((w) => w.id === id) ?? outWindows(s).find((w) => w.id === id);
+  if (!p) return undefined;
+  const { view } = shownTab(p);
+  if (view === p.id && p.plugin) return p.plugin;
+  return view.startsWith(VIEW) ? view.slice(VIEW.length) : undefined;
 }
 
 /** The plugins the layout of the desktop in front places, each once. */

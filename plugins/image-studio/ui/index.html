@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Image Studio</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+  </head>
+  <body>
+    <header class="desk-bar toolbar">
+      <button class="desk-btn" id="open" type="button">Open image</button>
+      <button class="desk-btn desk-btn-quiet" id="undo" type="button" disabled>Undo</button>
+      <button class="desk-btn desk-btn-quiet" id="redo" type="button" disabled>Redo</button>
+      <span class="desk-bar-spacer"></span>
+      <button class="desk-btn desk-btn-quiet" id="discard" type="button" hidden>Discard draft</button>
+      <button class="desk-btn desk-btn-primary" id="export" type="button" disabled>Export PNG</button>
+    </header>
+    <p class="desk-error" id="error" role="alert" hidden></p>
+    <main class="workspace">
+      <section class="stage" aria-label="Image preview">
+        <div class="desk-empty" id="empty"><p class="desk-empty-title">Open a PNG, JPEG or WebP to edit it.</p></div>
+        <div class="bitmap" id="bitmap" hidden>
+          <canvas id="preview" role="img" aria-label="Edited image preview"></canvas>
+          <canvas id="stroke-preview" aria-hidden="true"></canvas>
+        </div>
+      </section>
+      <aside id="tools" class="desk-details controls" aria-label="Editing controls" hidden>
+      <form id="layers">
+        <h1>Layers</h1>
+        <label for="layer">Layer</label>
+        <select class="desk-field" id="layer"></select>
+        <div class="actions">
+          <button class="desk-btn" type="button" id="new-layer">Add layer</button>
+          <button class="desk-btn" type="button" id="duplicate-layer">Duplicate</button>
+          <button class="desk-btn desk-btn-quiet" type="button" id="raise-layer">Raise</button>
+          <button class="desk-btn desk-btn-quiet" type="button" id="lower-layer">Lower</button>
+        </div>
+        <div class="fields">
+          <label>Layer name <input class="desk-field" id="layer-name" maxlength="80" required /></label>
+          <label>Opacity (%) <input class="desk-field" id="layer-opacity" type="number" min="0" max="100" required /></label>
+        </div>
+        <label><input class="desk-check" id="layer-visible" type="checkbox" /> Show layer</label>
+        <div class="actions">
+          <button class="desk-btn" type="submit">Update layer</button>
+          <button class="desk-btn desk-btn-quiet" type="button" id="reset-mask">Clear mask</button>
+          <button class="desk-btn desk-btn-danger" type="button" id="remove-layer">Remove layer</button>
+        </div>
+      </form>
+      <form id="brush">
+        <h1>Brush</h1>
+        <label for="brush-mode">Mode</label>
+        <select class="desk-field" id="brush-mode">
+          <option value="">Off</option>
+          <option value="paint">Paint</option>
+          <option value="erase">Erase pixels</option>
+          <option value="mask-hide">Hide with mask</option>
+          <option value="mask-reveal">Reveal with mask</option>
+        </select>
+        <div id="brush-fields" class="fields" hidden>
+          <label id="color-field">Color <input class="desk-field" type="color" id="brush-color" /></label>
+          <label>Radius (px) <input class="desk-field" type="number" id="brush-radius" min="1" max="256" value="12" required /></label>
+          <label>Strength (%) <input class="desk-field" type="number" id="brush-strength" min="1" max="100" value="100" required /></label>
+          <label>X (px) <input class="desk-field" type="number" id="brush-x" min="0" value="0" required /></label>
+          <label>Y (px) <input class="desk-field" type="number" id="brush-y" min="0" value="0" required /></label>
+          <button class="desk-btn" type="submit">Stamp brush</button>
+        </div>
+      </form>
+      <form id="edit">
+        <h1>Adjust image</h1>
+        <label for="operation">Edit</label>
+        <select class="desk-field" id="operation">
+          <option value="crop">Crop</option>
+          <option value="resize">Resize</option>
+          <option value="rotate">Rotate</option>
+          <option value="flip">Flip</option>
+          <option value="adjust">Brightness, contrast and saturation</option>
+          <option value="invert">Invert colors</option>
+          <option value="blur">Blur</option>
+          <option value="sharpen">Sharpen</option>
+        </select>
+        <div id="values"></div>
+        <button class="desk-btn" type="submit">Apply edit</button>
+      </form>
+      </aside>
+    </main>
+    <footer>
+      <p class="desk-muted" id="status" role="status"></p>
+      <desk-progress label="Processing image" hidden></desk-progress>
+    </footer>
+    <dialog class="desk-dialog" id="confirm-discard" aria-labelledby="discard-title">
+      <h2 id="discard-title">Discard the current draft?</h2>
+      <p>Edits since the last export will be lost.</p>
+      <form method="dialog" class="desk-bar">
+        <button class="desk-btn" value="cancel" autofocus>Keep editing</button>
+        <button class="desk-btn desk-btn-danger" value="discard">Discard draft</button>
+      </form>
+    </dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
