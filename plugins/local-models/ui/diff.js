@@ -7,7 +7,8 @@
  */
 
 /** @param {string} text */
-const split = (text) => (text === "" ? [] : text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n"));
+const split = (text) =>
+  text === "" ? [] : text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
 
 /**
  * Every line of both texts in order, each the same, added or removed.
@@ -77,7 +78,11 @@ export function hunks(lines, context = 3) {
     const from = Math.max(0, i - context);
     if (!current || from > lastChange + context + 1) {
       const first = lines[from];
-      current = { aStart: first.a ?? first.b ?? 1, bStart: first.b ?? first.a ?? 1, lines: lines.slice(from, i) };
+      current = {
+        aStart: first.a ?? first.b ?? 1,
+        bStart: first.b ?? first.a ?? 1,
+        lines: lines.slice(from, i),
+      };
       out.push(current);
     } else current.lines.push(...lines.slice(lastChange + 1, i));
     current.lines.push(line);
@@ -103,7 +108,10 @@ export function unified(path, hs) {
   const body = hs.flatMap((h) => {
     const a = h.lines.filter((l) => l.type !== "add").length;
     const b = h.lines.filter((l) => l.type !== "del").length;
-    return [`@@ -${h.aStart},${a} +${h.bStart},${b} @@`, ...h.lines.map((l) => `${l.type === "add" ? "+" : l.type === "del" ? "-" : " "}${l.text}`)];
+    return [
+      `@@ -${h.aStart},${a} +${h.bStart},${b} @@`,
+      ...h.lines.map((l) => `${l.type === "add" ? "+" : l.type === "del" ? "-" : " "}${l.text}`),
+    ];
   });
   return [`--- a/${path}`, `+++ b/${path}`, ...body].join("\n");
 }

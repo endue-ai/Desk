@@ -3,7 +3,24 @@
 // folder keeps for models (AGENTS.md, .endue/rules/*.md), which go in the system prompt.
 import { docOf, TEXT_EXT } from "./attach.js";
 
-const SKIP = new Set([".git", "node_modules", "dist", "build", "target", ".next", ".venv", "venv", "__pycache__", ".cache", "coverage", "vendor", ".idea", ".gradle", "out", "Pods"]);
+const SKIP = new Set([
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  "target",
+  ".next",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".cache",
+  "coverage",
+  "vendor",
+  ".idea",
+  ".gradle",
+  "out",
+  "Pods",
+]);
 const LIMIT = 4000;
 const FILE_LIMIT = 300_000;
 const CODEBASE_LIMIT = 3_000_000;
@@ -31,13 +48,20 @@ export function createWorkspace(bridge, procs) {
     const walk = async (dir, rel, depth) => {
       if (out.length >= LIMIT || depth > 12) return;
       const answer = await bridge.call("fs.list", { path: dir }).catch(() => undefined);
-      const entries = [...(answer?.entries ?? [])].sort((x, y) => String(x.name).localeCompare(String(y.name)));
+      const entries = [...(answer?.entries ?? [])].sort((x, y) =>
+        String(x.name).localeCompare(String(y.name)),
+      );
       for (const e of entries) {
         if (out.length >= LIMIT) return;
         const childRel = rel ? `${rel}/${e.name}` : e.name;
         if (e.kind === "dir") {
-          if (!SKIP.has(e.name) && !(e.name.startsWith(".") && e.name !== ".endue" && e.name !== ".github")) await walk(`${dir}/${e.name}`, childRel, depth + 1);
-        } else if (e.kind === "file") out.push({ path: `${dir}/${e.name}`, rel: childRel, size: e.size ?? 0 });
+          if (
+            !SKIP.has(e.name) &&
+            !(e.name.startsWith(".") && e.name !== ".endue" && e.name !== ".github")
+          )
+            await walk(`${dir}/${e.name}`, childRel, depth + 1);
+        } else if (e.kind === "file")
+          out.push({ path: `${dir}/${e.name}`, rel: childRel, size: e.size ?? 0 });
       }
     };
     await walk(root.replace(/\/+$/, ""), "", 0);
@@ -54,7 +78,14 @@ export function createWorkspace(bridge, procs) {
     const score = (s) => {
       const hay = s.toLowerCase();
       const direct = hay.indexOf(needle);
-      if (direct >= 0) return 1000 - direct - hay.length / 10 + (hay.endsWith(needle) ? 50 : 0) + (hay.split("/").pop()?.startsWith(needle) ? 200 : 0);
+      if (direct >= 0)
+        return (
+          1000 -
+          direct -
+          hay.length / 10 +
+          (hay.endsWith(needle) ? 50 : 0) +
+          (hay.split("/").pop()?.startsWith(needle) ? 200 : 0)
+        );
       let at = 0;
       for (const ch of needle) {
         at = hay.indexOf(ch, at);
@@ -82,28 +113,44 @@ export function createWorkspace(bridge, procs) {
   /** A folder's files as a tree of names. @param {string} root @param {string} [rel] */
   async function tree(root, rel = "") {
     const all = (await files(root)).filter((f) => !rel || f.rel.startsWith(`${rel}/`));
-    const lines = all.slice(0, 400).map((f) => `${"  ".repeat(f.rel.split("/").length - 1 - (rel ? rel.split("/").length : 0))}${f.rel.split("/").pop()}`);
-    return docOf(`${rel || folderName(root)}/ (tree)`, lines.join("\n") + (all.length > 400 ? `\n… ${all.length - 400} more` : ""));
+    const lines = all
+      .slice(0, 400)
+      .map(
+        (f) =>
+          `${"  ".repeat(f.rel.split("/").length - 1 - (rel ? rel.split("/").length : 0))}${f.rel.split("/").pop()}`,
+      );
+    return docOf(
+      `${rel || folderName(root)}/ (tree)`,
+      lines.join("\n") + (all.length > 400 ? `\n… ${all.length - 400} more` : ""),
+    );
   }
 
   /** What git sees changed, staged or not. @param {string} root */
   async function gitDiff(root) {
     const run = (/** @type {string[]} */ args) => procs.runIn("git", args, root);
-    const [unstaged, staged] = await Promise.all([run(["diff", "--no-color", "--no-ext-diff"]), run(["diff", "--cached", "--no-color", "--no-ext-diff"])]);
-    if (unstaged.code !== 0 && staged.code !== 0) throw new Error(unstaged.stderr.trim() || "This folder is not a git repository");
+    const [unstaged, staged] = await Promise.all([
+      run(["diff", "--no-color", "--no-ext-diff"]),
+      run(["diff", "--cached", "--no-color", "--no-ext-diff"]),
+    ]);
+    if (unstaged.code !== 0 && staged.code !== 0)
+      throw new Error(unstaged.stderr.trim() || "This folder is not a git repository");
     const text = [staged.stdout, unstaged.stdout].filter((t) => t.trim()).join("\n");
     return docOf("git diff", text.trim() || "(no changes)");
   }
 
   /** The text files of a folder, as documents to search. @param {string} root */
   async function codebase(root) {
-    const all = (await files(root)).filter((f) => TEXT_EXT.test(f.rel) && f.size < FILE_LIMIT && !/lock|\.min\./i.test(f.rel));
+    const all = (await files(root)).filter(
+      (f) => TEXT_EXT.test(f.rel) && f.size < FILE_LIMIT && !/lock|\.min\./i.test(f.rel),
+    );
     /** @type {import("./attach.js").Doc[]} */
     const docs = [];
     let total = 0;
     for (const f of all) {
       if (total + f.size > CODEBASE_LIMIT) break;
-      const answer = await bridge.call("fs.read", { path: f.path, encoding: "utf8" }).catch(() => undefined);
+      const answer = await bridge
+        .call("fs.read", { path: f.path, encoding: "utf8" })
+        .catch(() => undefined);
       if (!answer) continue;
       total += f.size;
       docs.push(docOf(f.rel, answer.content, f.path));
@@ -116,11 +163,19 @@ export function createWorkspace(bridge, procs) {
     const base = root.replace(/\/+$/, "");
     /** @type {{ name: string, text: string }[]} */
     const out = [];
-    const agents = await bridge.call("fs.read", { path: `${base}/AGENTS.md`, encoding: "utf8" }).catch(() => undefined);
+    const agents = await bridge
+      .call("fs.read", { path: `${base}/AGENTS.md`, encoding: "utf8" })
+      .catch(() => undefined);
     if (agents?.content) out.push({ name: "AGENTS.md", text: agents.content.slice(0, 12000) });
-    const listed = await bridge.call("fs.list", { path: `${base}/.endue/rules` }).catch(() => undefined);
-    for (const e of (listed?.entries ?? []).filter((x) => /\.md$/i.test(x.name)).sort((x, y) => String(x.name).localeCompare(String(y.name)))) {
-      const r = await bridge.call("fs.read", { path: `${base}/.endue/rules/${e.name}`, encoding: "utf8" }).catch(() => undefined);
+    const listed = await bridge
+      .call("fs.list", { path: `${base}/.endue/rules` })
+      .catch(() => undefined);
+    for (const e of (listed?.entries ?? [])
+      .filter((x) => /\.md$/i.test(x.name))
+      .sort((x, y) => String(x.name).localeCompare(String(y.name)))) {
+      const r = await bridge
+        .call("fs.read", { path: `${base}/.endue/rules/${e.name}`, encoding: "utf8" })
+        .catch(() => undefined);
       if (r?.content) out.push({ name: e.name, text: r.content.slice(0, 6000) });
     }
     return out;
@@ -132,7 +187,17 @@ export function createWorkspace(bridge, procs) {
     lists.clear();
   }
 
-  return { files, find, readFile, tree, gitDiff, codebase, rules, write, forget: () => lists.clear() };
+  return {
+    files,
+    find,
+    readFile,
+    tree,
+    gitDiff,
+    codebase,
+    rules,
+    write,
+    forget: () => lists.clear(),
+  };
 }
 
 /** @typedef {ReturnType<typeof createWorkspace>} Workspace */
