@@ -12,7 +12,7 @@
   "arrange.dock": "Move window back to the desk",
   "arrange.putAway": "Put window in the drawer",
   "arrange.notOut": "That window is not popped out",
-  "arrange.notOne": "Only a window that shows one plugin pops out",
+  "arrange.notOne": "Only a window that shows a plugin pops out; the desk's own views stay on the canvas",
   "arrange.restore": "Restore previous layout",
   "arrange.nothingToArrange": "No normal window on this desktop to arrange",
   "arrange.nothingToRestore": "No earlier layout to restore",
