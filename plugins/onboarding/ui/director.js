@@ -249,11 +249,17 @@ export class Director {
    * Put an input under Eris's question and call `answer(value)` on Enter. `question` is the line's
    * handle, or a function giving the one standing now. While the microphone listens the input comes
    * 1.6 s later with a hint, and 8 s of silence bring "Still there?" once per first run, after
-   * which she asks again (issue 161, finding 19). Returns the question's token.
+   * which she asks again (issue 161, finding 19). Edge choices belong to the same question as the
+   * field, even when the person submits before the choices are due.
    */
-  ask(at, { question, label, placeholder, autocomplete = "off", answer }) {
+  ask(at, { question, label, placeholder, autocomplete = "off", answer, choices, choiceClass }) {
     const current = typeof question === "function" ? question : () => question;
     const token = ++this.waiting;
+    if (choices) {
+      this.timeline.at(at + 600, () => {
+        if (this.waiting === token) this.edge(choices, choiceClass);
+      });
+    }
     const formAt = this.state.listening ? at + TIMES.formDelay : at;
     this.timeline.at(formAt, () => {
       if (this.waiting !== token) return;
@@ -318,22 +324,22 @@ export class Director {
     return buttons;
   }
 
-  /**
-   * Run `fn(at, waited)` once endue can be reached: now (`waited` false), or after saying it cannot
-   * and the connection is back (`waited` true), so the scene picks up where it was.
-   */
-  whenOnline(at, fn) {
-    if (navigator.onLine) return fn(at, false);
-    const line = this.say(SAY.offline, at, { stay: true });
+  /** Reconnect once. Choosing a local action aborts both the notice and the pending network action. */
+  waitForConnection(text, resume) {
+    const wait = new AbortController();
+    const notice = this.say(text, this.timeline.time, { stay: true });
+    wait.signal.addEventListener("abort", () => this.drop(notice, this.timeline.time), {
+      once: true,
+    });
     window.addEventListener(
       "online",
       () => {
-        const now = this.timeline.time;
-        this.drop(line, now);
-        fn(now + 1200, true);
+        wait.abort();
+        resume();
       },
-      { once: true },
+      { once: true, signal: wait.signal },
     );
+    return wait;
   }
 
   finish() {

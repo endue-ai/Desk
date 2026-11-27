@@ -6,12 +6,16 @@
 // and a status live region at the bottom. Mod chords other than the surface's own are never
 // prevented, so the desk's keymap gets them.
 
+import { createCharts } from "./chart/view.js";
 import { copyText } from "./clipboard.js";
 import { engineOf } from "./engines/index.js";
 import { dialogsOf, panelsOf } from "./feature-host.js";
 import * as all from "./features/index.js";
 import { formatCount } from "./format.js";
 import { hints } from "./keys.js";
+import { rowsLine, whole } from "./rows/window.js";
+import { t } from "./strings/index.js";
+import { renderStaticMessages } from "./strings/markup.js";
 import { createActions } from "./view-actions.js";
 import { createBars } from "./view-bars.js";
 import { createDialogs } from "./view-dialog.js";
@@ -39,6 +43,7 @@ import { createValueViewer } from "./view-value.js";
  * @returns {View}
  */
 export function createView(doc, act, features = Object.values(all), options = {}) {
+  renderStaticMessages(doc);
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const input = (/** @type {string} */ id) => /** @type {HTMLInputElement} */ (byId(id));
   const editorEl = /** @type {HTMLTextAreaElement} */ (byId("editor"));
@@ -61,10 +66,19 @@ export function createView(doc, act, features = Object.values(all), options = {}
   /** The results whose editability was asked for, so it is asked once. */
   let asked = "";
 
-  const tree = createTree(doc, byId("tree"), (action, ...args) =>
-    action === "filter" ? filter.focus() : act(action, ...args),
+  // With nothing open the work pane names the connection the explorer's cursor is in.
+  const empty = byId("empty");
+  const pick = empty.textContent ?? "";
+  const tree = createTree(
+    doc,
+    byId("tree"),
+    (action, ...args) => (action === "filter" ? filter.focus() : act(action, ...args)),
+    (row) => {
+      empty.textContent = row ? t("view.noConsole", { name: row.label }) : pick;
+    },
   );
-  const copy = (/** @type {string} */ text) => copyText(doc, text);
+  const copy = (/** @type {string} */ text, /** @type {string | undefined} */ html) =>
+    copyText(doc, text, html);
   const grid = createGrid(
     doc,
     byId("result"),
@@ -73,7 +87,9 @@ export function createView(doc, act, features = Object.values(all), options = {}
       else if (action === "editor") editorEl.focus();
       else if (action === "previousTab" || action === "nextTab")
         act("tab", (shown?.tab ?? 0) + (action === "nextTab" ? 1 : -1));
-      else if (action === "value") values.open(/** @type {never} */ (args[0]));
+      else if (action === "value") openValue(/** @type {never} */ (args[0]));
+      else if (action === "showSet")
+        act("tab", shown?.shown?.tabs.findIndex((t) => t.set === args[0]) ?? -1);
       else if (action === "quick") quick.focus();
       else if (action === "sort") act("page", { sort: args[0] });
       else if (action === "filters") act("page", { filters: args[0] });
@@ -83,13 +99,17 @@ export function createView(doc, act, features = Object.values(all), options = {}
     },
     options,
   );
-  const values = createValueViewer(doc, act, copy, () => grid.focus());
+  const values = createValueViewer(doc, act, () => grid.focus(), options.startWorker);
+  /** The value viewer on a cell, with its column's type OID (a built-in geometric type's shape). */
+  const openValue = (/** @type {ReturnType<typeof grid.cursorCell>} */ cell) =>
+    values.open(cell && { ...cell, oid: shown?.shown?.tabs[shown.tab]?.set?.types?.[cell.col] });
   const editor = createEditor(
     doc,
     { box: editorBox, editor: editorEl, layer: byId("highlight"), list: byId("complete") },
     (action, ...args) => (action === "say" ? say(String(args[0])) : act(action, ...args)),
     () => shown?.running ?? false,
   );
+  const charts = createCharts(doc, act, options.startWorker);
   const forms = createForms(doc, act);
   const imports = createImportView(doc, act);
   const bars = createBars(doc);
@@ -108,6 +128,8 @@ export function createView(doc, act, features = Object.values(all), options = {}
   );
   // Reading a large output in the result worker shows a bar after 300 ms, with Cancel (#38).
   byId("reading")?.addEventListener("desk-cancel", () => act("cancel"));
+  // A COPY through standard input or output shows its bytes, with Cancel (copy/console.js).
+  byId("copying")?.addEventListener("desk-cancel", () => act("cancel"));
   for (const button of doc.querySelectorAll("[data-page]"))
     button.addEventListener("click", () =>
       act("page", { delta: Number(/** @type {HTMLElement} */ (button).dataset.page) }),
@@ -144,7 +166,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
     }
   });
   record.addEventListener("click", () => grid.toggleRecord());
-  byId("value-open").addEventListener("click", () => values.open(grid.cursorCell()));
+  byId("value-open").addEventListener("click", () => openValue(grid.cursorCell()));
   previewForm.addEventListener("submit", (event) => {
     event.preventDefault();
     previewForm.hidden = true;
@@ -181,7 +203,7 @@ export function createView(doc, act, features = Object.values(all), options = {}
   const draw = (/** @type {Console | null} */ model, /** @type {Connection | null} */ conn) => {
     const previous = shown;
     shown = model;
-    byId("empty").hidden = model !== null;
+    empty.hidden = model !== null;
     byId("actions").hidden = model === null;
     editorBox.hidden = model?.kind !== "console" && model?.kind !== "ddl";
     tableBar.hidden = model?.kind !== "table";
@@ -192,17 +214,20 @@ export function createView(doc, act, features = Object.values(all), options = {}
     const typing = doc.activeElement === editorEl && previous?.id === model?.id;
     if (model && conn && (model.kind === "console" || model.kind === "ddl") && !typing)
       editor.show(model.text, engineOf(conn.engine).dialect, model.kind === "ddl", model.id);
+    if (model?.kind === "console" && model.execution) editor.ran(model.execution);
     if (model?.kind === "table" && model.table) {
       if (doc.activeElement !== where) where.value = model.table.where;
       if (doc.activeElement !== order) order.value = model.table.order;
       const rows = model.shown?.tabs[0]?.set?.rows.length ?? 0;
       const from = rows ? model.table.offset + 1 : 0;
-      const count = model.table.count === null ? "" : ` of ${formatCount(model.table.count)}`;
+      const to = model.table.offset + rows;
       byId("page").textContent =
-        `${formatCount(from)}–${formatCount(model.table.offset + rows)}${count}`;
+        model.table.count === null
+          ? t("view.page", { from, to })
+          : t("view.pageOf", { from, to, total: model.table.count });
     }
     const summary = byId("summary");
-    summary.textContent = model?.running ? "Running…" : (model?.shown?.summary ?? "");
+    summary.textContent = model?.running ? t("view.running") : (model?.shown?.summary ?? "");
     summary.title = summary.textContent;
     if (!model?.shown) {
       bars.tabs(null);
@@ -217,26 +242,39 @@ export function createView(doc, act, features = Object.values(all), options = {}
     const fresh = key !== drawn;
     if (fresh && quick.value) quick.value = "";
     const page = model.kind === "table" ? model.table : null;
-    grid.render(model.shown.tabs[model.tab] ?? null, fresh, {
-      edit: model.edit,
-      server: Boolean(page),
-      ordered: Boolean(page?.order),
-      // A table view's columns are the table's (kept across restarts), a result's its own.
-      key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
-      sort: page?.sort ?? [],
-      filters: page?.filters ?? [],
-    });
+    const tab = model.shown.tabs[model.tab];
+    // A read its cursor keeps, not fully held, sorts and filters on the server (PG-22).
+    const held = tab?.set?.window && !whole(tab.set) ? tab.set.window : null;
+    if (tab?.set?.window && !model.running)
+      summary.textContent = `${model.shown.summary} · ${rowsLine(tab.set, formatCount)}`;
+    // A Chart tab (chart/view.js) takes the result's box from the grid, and keeps it while shown.
+    const charted = tab?.kind === "chart";
+    if (!charted || !charts.showing(tab))
+      grid.render(charted ? null : (tab ?? null), fresh, {
+        edit: model.edit,
+        server: Boolean(page ?? held),
+        ordered: Boolean(page?.order),
+        // A table view's columns are the table's (kept across restarts), a result's its own.
+        key: page ? `table:${model.connection}:${page.schema}.${page.name}` : `result:${key}`,
+        sort: page?.sort ?? held?.sort ?? [],
+        filters: page?.filters ?? held?.filters ?? [],
+      });
+    if (charted) charts.show(byId("result"), tab);
     drawn = key;
     if (fresh) record.setAttribute("aria-pressed", String(grid.recording()));
-    const tab = model.shown.tabs[model.tab];
-    if (tab?.set && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
+    // What a session heard is no table's rows: nothing to edit (PG-25).
+    const rows = tab?.set && tab.kind !== "notifications";
+    if (rows && !model.edit && asked !== key && model.kind !== "ddl" && !model.running) {
       asked = key;
       act("canEdit");
     }
   };
 
   return {
-    explorer: (rows) => tree.render(rows),
+    explorer: (rows) => {
+      tree.render(rows);
+      editor.recheck();
+    },
     console: draw,
     closed: (id) => panels.closed(id),
     form: forms.form,
@@ -249,6 +287,17 @@ export function createView(doc, act, features = Object.values(all), options = {}
     reading(reads) {
       const bar = byId("reading");
       if (bar) bar.hidden = reads === 0;
+    },
+    copying(bar) {
+      const el = byId("copying");
+      if (!el) return;
+      el.hidden = !bar;
+      if (!bar) return;
+      el.setAttribute("label", bar.label);
+      el.setAttribute("detail", bar.detail);
+      if (bar.max) el.setAttribute("max", String(bar.max));
+      if (bar.value !== undefined) el.setAttribute("value", String(bar.value));
+      else el.removeAttribute("value");
     },
     editor: () => ({
       text: editorEl.value,
@@ -290,5 +339,12 @@ export function createView(doc, act, features = Object.values(all), options = {}
     /** An operation of the grid on screen by name, for the grid's commands (features/grid/). */
     grid: (op, args) => grid.command(op, args),
     cell: () => grid.cursorCell(),
+    /** The SQL problems of the console on screen: list them, or go to the next or previous. */
+    problems: (/** @type {"list" | "next" | "previous"} */ what) => editor.problems(what),
+    /** The signature help and `*` written out in the console on screen (features/completion/). */
+    signatures: () => editor.signatures(),
+    expandStar: () => editor.expandStar(),
+    /** From the name at the caret to its definition, card or usages (features/navigate/). */
+    navigate: (/** @type {"definition" | "card" | "usages"} */ what) => editor.navigate(what),
   };
 }

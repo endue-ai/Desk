@@ -1,8 +1,10 @@
 // Drag and drop for the plugin host (ADR 0119): the broker over the desk's page and its drag layer.
 // The page's DOM is touched on the first drag only, so a host without a document (unit tests) still
 // routes the messages. Drags from the OS reach the desk through the compositor's input (#56, #83).
+import type { BridgeClient, PluginInfo } from "@endue-ai/bridge";
 import { DragBroker } from "./broker";
 import { frameGeometry } from "./frames";
+import { dropGrants } from "./grants";
 import { dragLayer } from "./layer";
 import type { DndHostMessage } from "./types";
 
@@ -16,8 +18,9 @@ export interface Dnd {
 
 /** `deps.frame` finds a plugin's frame window; `mounted` lists the plugins that have one. */
 export function installDnd(
-  deps: { win: Window; frame(id: string): Window | null },
+  deps: { win: Window; frame(id: string): Window | null; bridge: BridgeClient },
   mounted: () => string[],
+  installed: ReadonlyMap<string, PluginInfo>,
 ): Dnd {
   let page: { geometry: ReturnType<typeof frameGeometry>; layer: ReturnType<typeof dragLayer> };
   const dom = () => {
@@ -25,7 +28,7 @@ export function installDnd(
       geometry: frameGeometry(deps.win.document, (id) => deps.frame(id), mounted),
       layer: dragLayer(deps.win.document, {
         move: (at, keys) => broker.pointer(at, keys),
-        up: (at, keys) => void broker.release(at, keys),
+        up: (at, keys, trusted) => void broker.release(at, keys, trusted),
         cancel: () => broker.cancel(),
       }),
     };
@@ -37,6 +40,7 @@ export function installDnd(
     toPage: (id, at) => dom().geometry.toPage(id, at),
     post: (id, message: DndHostMessage) => deps.frame(id)?.postMessage(message, "*"),
     gesture: () => deps.win.navigator?.userActivation?.isActive,
+    grantDrop: dropGrants(deps.bridge, (id) => installed.get(id)?.builtIn === true),
     layer: {
       show: (image, at, shield) => dom().layer.show(image, at, shield),
       move: (at, effect) => page?.layer.move(at, effect),

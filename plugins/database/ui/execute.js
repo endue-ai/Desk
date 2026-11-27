@@ -1,14 +1,21 @@
 // Running SQL on a connection: cut it into statements, check them (what no client may run here,
-// writes on a read-only connection, a dry run that could not roll back), ask the person before what
-// is hard to undo, run the engine's client, read what it printed (in the result worker, #38), and
-// when the client says a password is missing or wrong, ask for one once and run again. No DOM.
+// writes on a read-only connection, a dry run that could not roll back, session state through a
+// pooler), ask the person before what is hard to undo, then run them (a COPY through standard input
+// or output with its file, copy/, PG-23): PostgreSQL on a session of the core's
+// (engines/pg-session.js, ADR 0281), the other engines by their client, whose output the result
+// worker reads (#38). When the server or the client says a password is missing or wrong, ask for one
+// once and run again. The "describe" mode runs nothing: PostgreSQL says what each statement takes
+// and returns (ADR 0353), asking no one and on any connection, a read-only one too. No DOM.
 
+import { pooledRefusal } from "./auth/pooler.js";
+import { COPY_UNCHECKED, copyStep } from "./copy/plan.js";
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
 import { nonce as makeNonce } from "./engines/text.js";
 import { formatCount } from "./format.js";
 import { classify, readsOnly } from "./sql/classify.js";
 import { split } from "./sql/split.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -17,19 +24,29 @@ import { split } from "./sql/split.js";
  * @typedef {import("./sql/split.js").Statement} Statement
  * @typedef {import("./sql/classify.js").Class} Class
  * @typedef {import("./settings.js").Settings} Settings
- * @typedef {"run" | "transaction" | "dry-run"} Mode
+ * @typedef {"run" | "transaction" | "dry-run" | "describe"} Mode
+ *   `describe` runs nothing: PostgreSQL answers what each statement takes and returns (ADR 0353).
  * @typedef {{ conn: Connection, sql: string, statements: Statement[], classes: Class[], mode: Mode, result: RunResult, at: number }} Execution
- * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, statements?: Statement[] }} ExecuteOptions
+ * @typedef {{ mode?: Mode, maxRows?: number, interactive?: boolean, agent?: boolean, catalog?: boolean, asked?: boolean, statements?: Statement[], session?: import("./session/keeper.js").Owner, signal?: AbortSignal, shown?: string[], background?: boolean, permissionsReviewed?: boolean, copy?: import("./copy/stream.js").Copy }} ExecuteOptions
  *   `interactive: false` never asks for a password; `agent` asks before any write; `catalog` is the
- *   plugin's own reading and asks nothing.
+ *   plugin's own reading and asks nothing; `asked` says the caller put its own question to the person
+ *   (the guards still refuse); `session` runs PostgreSQL on the session that console or table view
+ *   keeps (PG-02, ADR 0320), else on a short one of the run's own; `signal` cancels this run alone,
+ *   as Cancel does every run; `shown` is what a question shows of the statements instead of their
+ *   text (a role's password masked); `background` is a read the plugin starts on its own (a
+ *   panel's period), refused on a connection the person disconnected (ADR 0339);
+ *   `permissionsReviewed` keeps a form's Test from asking again after its review; `copy` is where a
+ *   COPY ... TO STDOUT writes or a COPY ... FROM STDIN reads (copy/index.js), else `copies` asks.
  * @typedef {{
- *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> },
+ *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number, signal?: AbortSignal, quiet?: boolean }): Promise<import("./engines/common.js").Outcome> },
  *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "run">,
  *   settings(): Settings,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   passwords: { get(id: string): string | undefined, set(id: string, value: string): void, ask(conn: Connection, why: string): Promise<string | undefined> },
  *   cancelled(message: string): Error,
+ *   copies?: { ask(conn: Connection, statement: Statement, direction: "in" | "out"): Promise<import("./copy/stream.js").Copy | undefined> },
  *   now?(): number,
  *   random?(): number,
  * }} Deps
@@ -57,11 +74,29 @@ export function createExecutor(deps) {
     const engine = engineOf(conn.engine);
     const mode = options.mode ?? "run";
     const statements = options.statements ?? split(sql, engine.dialect);
-    if (statements.length === 0)
-      throw new Refusal("Nothing to run: the editor holds no statement.");
+    if (statements.length === 0) throw new Refusal(t("execute.nothingToRunTheEditorHolds"));
     const classes = statements.map((statement) => classify(statement, engine.dialect));
-    check(conn, engine.ddlCommits, classes, mode);
-    if (!options.catalog) await confirm(conn, statements, classes, mode, options.agent === true);
+    const describe = mode === "describe";
+    if (describe && !("session" in engine))
+      throw new Refusal(t("execute.onlyPostgresqlChecksAStatementWithout"));
+    const step = copyStep(engine.dialect, statements, options);
+    if (typeof step === "string") throw new Refusal(step);
+    // A check streams nothing, so a COPY's is refused before any file is asked for (copy/plan.js).
+    if (step && describe) throw new Refusal(COPY_UNCHECKED);
+    // The COPY this run streams is let through; every other guard holds.
+    check(
+      conn,
+      engine.ddlCommits,
+      step ? classes.map((c) => ({ ...c, refused: "" })) : classes,
+      mode,
+    );
+    const pooledWhy = pooledRefusal(conn, statements); // through a pooler (ADR 0354)
+    if (pooledWhy) throw new Refusal(pooledWhy);
+    if (!options.catalog && !options.asked && !describe)
+      await confirm(conn, statements, classes, mode, options.agent === true, options.shown);
+    const copy =
+      step && (options.copy ?? (await deps.copies?.ask(conn, step.statement, step.direction)));
+    if (step && !copy) throw deps.cancelled(t("execute.notCopied"));
     const settings = deps.settings();
     const maxRows = options.maxRows ?? settings.maxRows;
     const timeoutMs = settings.timeoutSeconds * 1000;
@@ -69,6 +104,33 @@ export function createExecutor(deps) {
     const at = now();
 
     const attempt = async (/** @type {string | undefined} */ password) => {
+      if (options.signal?.aborted)
+        return failedRun(statements, { kind: "cancelled", message: t("execute.cancelled") });
+      const signal = options.signal ? { signal: options.signal } : {};
+      if ("session" in engine) {
+        if (!deps.sessions)
+          return failedRun(statements, {
+            kind: "client",
+            message: t("execute.noDatabaseSessionsHere"),
+          });
+        const typed = password !== undefined ? { password } : {};
+        // A check on a session of its own opens it read-only: nothing it does can write.
+        const on = describe && !options.session ? { ...conn, readOnly: true } : conn;
+        return deps.sessions.run(on, {
+          statements,
+          maxRows,
+          timeoutMs,
+          mode,
+          ...typed,
+          ...(options.session ? { session: options.session } : {}),
+          ...(options.agent ? { agent: true } : {}),
+          ...signal,
+          ...(options.interactive === false ? { quiet: true } : {}),
+          ...(options.permissionsReviewed ? { permissionsReviewed: true } : {}),
+          ...(options.background ? { background: true } : {}),
+          ...(copy ? { copy } : {}),
+        });
+      }
       try {
         const client = await deps.clients.get(conn.engine);
         const invocation = engine.plan(conn, {
@@ -82,20 +144,19 @@ export function createExecutor(deps) {
           single,
         });
         invocation.command = client.command;
-        // PostgreSQL ends a statement on the server (statement_timeout); the client's own limit is
-        // the backstop. The other two have only the client's.
-        const limit = timeoutMs > 0 ? timeoutMs + (engine.id === "postgresql" ? 5000 : 0) : 0;
-        const outcome = await deps.runner.run(invocation, { timeoutMs: limit });
+        const outcome = await deps.runner.run(invocation, {
+          timeoutMs,
+          ...signal,
+          quiet: options.agent === true || options.permissionsReviewed === true,
+        });
         // Read in the result worker: what the client printed is never parsed on this thread (#38).
         const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))
-          result.notices.push(
-            "Cancelled: the statements shown had finished before the cancel reached them.",
-          );
+          result.notices.push(t("execute.cancelledTheStatementsShownHadFinished"));
         return result;
       } catch (error) {
         if (/** @type {{ name?: string }} */ (error)?.name === "AbortError")
-          return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
+          return failedRun(statements, { kind: "cancelled", message: t("execute.cancelled") });
         const kind =
           /** @type {{ kind?: string }} */ (error)?.kind === "missing" ? "missing" : "client";
         const message = error instanceof Error ? error.message : String(error);
@@ -123,8 +184,9 @@ export function createExecutor(deps) {
    * @param {Class[]} classes
    * @param {Mode} mode
    * @param {boolean} agent
+   * @param {string[]} [shown] What to show of the statements instead of their text.
    */
-  const confirm = async (conn, statements, classes, mode, agent) => {
+  const confirm = async (conn, statements, classes, mode, agent, shown) => {
     if (mode === "dry-run") return;
     const writes = classes.some((c) => c.kind === "write" || c.kind === "ddl" || c.opensWrite);
     const dangerous = classes.flatMap((c, i) =>
@@ -134,25 +196,31 @@ export function createExecutor(deps) {
     const asked = deps.settings().confirm && (production || dangerous.length > 0);
     if (!asked && !(agent && writes)) return;
     const reasons = [
-      ...(agent && writes ? ["An agent asks to change data."] : []),
-      ...(production ? [`${conn.name} is tagged production.`] : []),
+      ...(agent && writes ? [t("execute.anAgentAsksToChangeData")] : []),
+      ...(production ? [t("execute.isTaggedProduction", { name: String(conn.name) })] : []),
       ...dangerous,
-      ...statements.slice(0, 3).map((s) => oneLine(s.text)),
+      ...(shown ?? statements.map((s) => s.text)).slice(0, 3).map(oneLine),
       ...(statements.length > 3
         ? [`and ${formatCount(statements.length - 3)} more statements`]
         : []),
     ];
     const count =
       statements.length === 1 ? "this statement" : `${formatCount(statements.length)} statements`;
-    if (!(await deps.confirm(`Run ${count} on ${conn.name}?`, reasons)))
-      throw deps.cancelled("Not run.");
+    if (
+      !(await deps.confirm(
+        t("execute.runOn", { count: String(count), name: String(conn.name) }),
+        reasons,
+      ))
+    )
+      throw deps.cancelled(t("execute.notRun"));
   };
 
   return { execute };
 }
 
 /**
- * What no run may do: a statement a client must not see, a write on a read-only connection, a dry
+ * What no run may do (a check, which executes nothing, only the first): a statement a client must
+ * not see, a write on a read-only connection, a dry
  * run holding its own transaction (or DDL that commits at once), a transaction run holding its own.
  * @param {Connection} conn
  * @param {boolean} ddlCommits
@@ -163,21 +231,27 @@ export function check(conn, ddlCommits, classes, mode) {
   const at = (/** @type {(c: Class) => unknown} */ test) => classes.findIndex(test);
   const refused = at((c) => c.refused !== "");
   if (refused >= 0) throw new Refusal(`Statement ${refused + 1}: ${classes[refused]?.refused}`);
+  // A check executes nothing, so a read-only connection checks a write as well as a read.
+  if (mode === "describe") return;
   if (conn.readOnly && !readsOnly(classes)) {
     const index = at((c) => c.kind === "write" || c.kind === "ddl" || c.opensWrite);
     const verb = classes[index]?.verb ?? "it";
-    throw new Refusal(`${conn.name} is read-only: statement ${index + 1} (${verb}) may change it.`);
+    throw new Refusal(
+      t("execute.isReadOnlyStatementMayChange", {
+        name: String(conn.name),
+        value: String(index + 1),
+        verb: String(verb),
+      }),
+    );
   }
   const own = at((c) => c.kind === "transaction");
   if (mode !== "run" && own >= 0) {
     throw new Refusal(
-      mode === "dry-run"
-        ? "A dry run rolls back at the end, so it cannot hold BEGIN, COMMIT or ROLLBACK."
-        : "Run in a transaction holds its own BEGIN and COMMIT: take them out of the script.",
+      mode === "dry-run" ? t("execute.aDryRunRollsBackAt") : t("execute.runInATransactionHoldsIts"),
     );
   }
   if (mode === "dry-run" && ddlCommits && at((c) => c.kind === "ddl") >= 0)
-    throw new Refusal("MySQL commits DDL at once, so a dry run cannot hold CREATE, ALTER or DROP.");
+    throw new Refusal(t("execute.mysqlCommitsDdlAtOnceSo"));
 }
 
 /** The authentication failure a run ended with, if any. */

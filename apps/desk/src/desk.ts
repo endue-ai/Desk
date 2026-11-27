@@ -23,6 +23,7 @@ import { shellSurfaces } from "./compositor-surfaces";
 import { cardCommand, type HeldPayload, type RunPayload, wmSeam } from "./compositor-wm";
 import "./compositor.css";
 import { reportCrashes, showLastCrash } from "./crashes";
+import { installEditCommands } from "./edit-commands";
 import "./crashes.css";
 import { installFrameSignals } from "./frame-signals";
 import { adapter, invoke, listen } from "./host";
@@ -38,8 +39,16 @@ import { nextPaint, reportStartup } from "./startup";
 import { followSystemNotices } from "./system-notices";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
-// The shell window's uncaught errors become local crash reports from here on (#322).
-const stopCrashReports = reportCrashes(window, (command, args) => invoke(command, args));
+// The shell window's uncaught errors become local crash reports once the desk is ready (#322, #566).
+let deskReady = () => {};
+const reportsStart = new Promise<void>((resolve) => {
+  deskReady = resolve;
+});
+const stopCrashReports = reportCrashes(
+  window,
+  (command, args) => invoke(command, args),
+  reportsStart,
+);
 window.addEventListener("pagehide", stopCrashReports, { once: true });
 
 // Start-up phases for the app's trace (DESK_TRACE=1): from the page's time origin to this code.
@@ -242,6 +251,10 @@ window.addEventListener("pagehide", stopCompositor, { once: true });
 const offFrameSignals = installFrameSignals(desk.runtime.frames);
 window.addEventListener("pagehide", offFrameSignals, { once: true });
 
+// The Edit menu as desk.edit.* commands, for any key a person binds to them (ADR 0296).
+const disposeEdit = installEditCommands(desk.runtime.commands, invoke);
+window.addEventListener("pagehide", disposeEdit, { once: true });
+
 // The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
 const disposeUpdates = installUpdates({
   core,
@@ -261,6 +274,7 @@ const disposeUpdates = installUpdates({
 window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
+deskReady();
 const ready = performance.now();
 const painted = nextPaint();
 // The native palette window has no runtime of its own: it follows the theme in force here (TH-08).

@@ -11,8 +11,14 @@
       "permission": "cmd:invoke",
       "ids": ["desk.files.changed"]
     },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] }
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["http", "https", "mailto"]
+    }
   ],
   "surfaces": [
     {
@@ -82,6 +88,207 @@
       {
         "pattern": "*.djv",
         "plugin": "endue.reader"
+      }
+    ],
+    "commands": [
+      {
+        "id": "endue.reader.go",
+        "title": "Reader: Go to a page or chapter",
+        "description": "Move to the one-based page or chapter of the book open in Reader.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": ["at"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.zoom",
+        "title": "Reader: Set book zoom",
+        "description": "Set the magnification of the open book, where 1 is 100%. Fit fits a page or resets reflowed text to its natural size.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 5
+                },
+                {
+                  "const": "fit"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["level"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.marks",
+        "title": "Reader: Read bookmarks and notes",
+        "description": "List bookmarks and notes in the open book, with their one-based page or chapter numbers.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.reader.bookmark",
+        "title": "Reader: Add a bookmark",
+        "description": "Add a bookmark to the named one-based page or chapter. Omitting at bookmarks the current reading position.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false,
+          "required": ["label"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.note",
+        "title": "Reader: Add a note",
+        "description": "Keep a note at the named one-based page or chapter of the open book.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "additionalProperties": false,
+          "required": ["at", "text"]
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.reader.read",
+        "title": "Reader: the open book as text",
+        "keywords": ["reader", "pdf", "epub", "book", "read", "pages", "chapters"],
+        "description": "Read the open book's pages or chapters and its current one-based reading position in at. Give path for another open book. Use from and count to read a run of pages or chapters. From the first one the answer includes its contents. A locked book waits for the person to type its password.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "units": {
+              "type": "integer"
+            },
+            "pages": {
+              "type": "array"
+            },
+            "chapters": {
+              "type": "array"
+            },
+            "contents": {
+              "type": "array"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.reader.find",
+        "title": "Reader: find words in the open book",
+        "keywords": ["reader", "find", "search", "pdf", "book"],
+        "description": "The pages or chapters of the book on screen in Reader (or the open one named by path) whose text holds query, any case, each with its number and the words around the first match, up to 50. It leaves the screen as it is; read one with endue.reader.read from that number.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "found": {
+              "type": "array"
+            },
+            "more": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
       }
     ]
   }

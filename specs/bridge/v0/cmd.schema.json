@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/cmd.schema.json",
-  "title": "Desk bridge v0: cmd",
+  "title": "endue bridge v0: cmd",
   "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke. Commands marked agent are offered to agents as tools (cmd.tools, ADR 0088). Commands that name an `undo` land on the desk's undo stack, which cmd.undo and cmd.redo walk (ADR 0077).",
   "$defs": {
     "CommandInfo": {
@@ -131,7 +131,11 @@
           "type": "boolean"
         },
         "readOnly": {
-          "description": "The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only.",
+          "description": "The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. An irreversible command is never read-only.",
+          "type": "boolean"
+        },
+        "irreversible": {
+          "description": "The desk provider may mark its own command for approval on each agent invocation. Plugin commands use the manifest declaration. MCP commands use the server's read-only policy.",
           "type": "boolean"
         }
       },
@@ -577,6 +581,14 @@
         },
         "caller": {
           "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "approved": {
+          "description": "True when the pending invocation carries approval of its provider operation. Pass its invocationId only to the matching provider request.",
+          "type": "boolean"
+        },
+        "fileOpenGranted": {
+          "description": "Set by the core when a person's turn lets Eris pass its readable file to the desk-selected opener. The caller cannot set it.",
+          "type": "boolean"
         }
       },
       "required": ["invocationId", "id", "caller"],

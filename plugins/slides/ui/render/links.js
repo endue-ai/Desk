@@ -1,7 +1,6 @@
 // Links on a slide: the renderer marks a linked run or shape (data-link, role link, its target as
 // its title), and the view follows a mark: a jump to a slide stays in the deck, an http, https or
-// mailto URL leaves the desk through shell.open, which checks the scheme and the grant in the core
-// and asks the person once by itself. Anything else opens nothing; a refusal is final for that click.
+// mailto URL leaves the desk through shell.open under its install grant.
 
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 export const SHELL_SCOPE = { permission: "shell:open", schemes: ["http", "https", "mailto"] };

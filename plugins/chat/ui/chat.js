@@ -4,6 +4,7 @@
 // them runs the connector's commands (writing.js); the commands are commands.js. It talks only to
 // ctx.bridge, ctx.commands, ctx.settings, ctx.surface and a view, so the SDK's test host runs it.
 import { createActions } from "./actions.js";
+import { answerAgents } from "./agent.js";
 import { registerCommands } from "./commands.js";
 import { quickReactions } from "./emoji.js";
 import { createLoad } from "./load.js";
@@ -16,6 +17,7 @@ import {
   asArgs,
   asString,
   asStrings,
+  conversationTarget,
   DEFAULTS,
   DENSITIES,
   emptyStream,
@@ -23,6 +25,7 @@ import {
   NOTIFY,
   pageOf,
   SAVED_MAX,
+  threadTarget,
 } from "./state.js";
 import { createSync } from "./sync.js";
 import { MAX_COLUMNS } from "./timeline.js";
@@ -101,7 +104,7 @@ export function createChat({ bridge, commands, settings, surface }, view, option
   const { message, lastOwn, find, keysOnScreen } = createLookup({ state: s, actions });
 
   /** Open a conversation, with one of its messages selected. @param {string} key @param {string} [select] */
-  const openConversation = async (key, select) => {
+  const openConversation = async (key, select, markRead = true) => {
     if (!load.refOf(key)) throw new Error(`${key} is not a conversation.`);
     const changed = s.current !== key;
     s.current = key;
@@ -113,13 +116,31 @@ export function createChat({ bridge, commands, settings, surface }, view, option
       s.open = null;
       await load.conversation(key);
     } else render();
-    if (s.conf.markRead === "open") await writing.markRead(key, true).catch(() => 0);
+    if (markRead && s.conf.markRead === "open") await writing.markRead(key, true).catch(() => 0);
     return key;
   };
   const openThread = async (/** @type {ChatMessage} */ root) => {
     if (s.current !== root.conversation) await openConversation(root.conversation, root.key);
     s.selected = root.key;
     await load.thread(root);
+  };
+  const draft = async (
+    /** @type {string} */ key,
+    /** @type {ChatMessage | undefined} */ root,
+    /** @type {string} */ text,
+  ) => {
+    if (!root && !s.byKey.has(key)) throw new Error("There is no such conversation to draft in.");
+    await openConversation(key, root?.key, false);
+    if (s.current !== key || s.layout !== "conversation")
+      throw new Error("The open conversation changed.");
+    if (root) {
+      await openThread(root);
+      if (s.thread?.root.key !== root.key || s.layout !== "conversation")
+        throw new Error("The open thread changed.");
+    }
+    const target = root ? threadTarget(root.key) : conversationTarget(key);
+    writing.draft(target, text);
+    return target;
   };
 
   const setLayout = async (/** @type {string} */ id) => {
@@ -192,7 +213,7 @@ export function createChat({ bridge, commands, settings, surface }, view, option
     else render();
     return pinned;
   };
-  const { command } = registerCommands({
+  const { command, answer } = registerCommands({
     commands,
     surface,
     view,
@@ -202,11 +223,17 @@ export function createChat({ bridge, commands, settings, surface }, view, option
     app: {
       layout: () => s.layout,
       current: () => s.current,
-      conversations: () => visible(s),
+      conversations: (platform) => {
+        if (!platform) return visible(s);
+        if (platform === "all") return s.conversations;
+        const id = platformOf(platform).id;
+        return s.conversations.filter((c) => c.platform.id === id);
+      },
       message,
       lastOwn,
       openConversation,
       openThread,
+      draft,
       setLayout,
       setFilter,
       setPlatform,
@@ -219,6 +246,8 @@ export function createChat({ bridge, commands, settings, surface }, view, option
       connect: actions.connect,
     },
   });
+
+  answerAgents(answer, { state: s, query: actions.query, message, saved: load.saved });
 
   settings.onChange(({ key: name, value }) => {
     if (name === "page") s.conf.page = pageOf(value);

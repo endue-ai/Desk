@@ -1,7 +1,8 @@
 # plugins/images
 
-`endue.images` ("Images") opens each still image in a viewer window of its own (`instances: "per-file"`,
-ADR 0212; walking a folder stays in it), in the community folder format and on the public SDK only. It shows; it never writes a file (`desk.files.save` is refused).
+`endue.images` opens still images in per-file windows (ADR 0212) through the public SDK. It reads
+files without writing them. Agents use `details`, `zoom`, `turn`, `pan`, `show-details`, `slice`,
+`step` and `compare` on the current pane or exact `panes[].view` (ADR 0392, ADR 0394).
 
 - This build's engine (Chromium, ADR 0143) decodes PNG, APNG, JPEG, GIF, WebP, AVIF, JPEG XL, BMP,
   ICO, CUR and SVG (SVGZ is gunzipped first; SVG goes into an `<img>`, so its scripts never run).
@@ -19,20 +20,19 @@ ADR 0212; walking a folder stays in it), in the community folder format and on t
 - Asleep out of sight (ADR 0070, ADR 0176), the SDK's `keepFiles` keeps its files, watches and the
   view on screen; back, that image opens so, unasked and unfocused, the others when shown.
 
-It reads with the SDK's `readBytes` (`fs.url` ranges, else `fs.read`), with a `<desk-progress>` bar
-after 300 ms whose Cancel stops the read and the decoder. Over 8 MiB it decodes in a worker; webview
-images get a `blob:` URL. Outside its grants it asks once for the file's folder (`<folder>/**`).
+The SDK's `readBytes` uses `fs.url` ranges or `fs.read`, showing a cancelable progress bar after 300 ms.
+Above 8 MiB decoding uses a worker. A person's read can ask for the folder; comparisons by an agent use existing grants.
 
 | Permission | Why |
 | --- | --- |
 | `cmd:invoke` (`desk.files.changed`, `desk.files.open`, `desk.buffers.close`) | Report changes on disk; walk the folder |
-| `shell:open` (`${home}/**`) | Show in Finder on a details card (`ui/reveal.js`); elsewhere the core asks first |
+| `shell:open` (`${home}/**`) | Reveal the exact file in the file manager. Away from home, group the question by its immediate folder |
 
 | File | Purpose |
 | --- | --- |
 | `ui/images.js`, `opening.js`, `folder.js`, `keep.js` | Requests, compare; reads, one ask; the folder; a sleep |
 | `ui/decode.js`, `sniff.js`, `decoding.js`, `worker.js` | Format by first bytes, one file to a model; a worker above 8 MiB |
-| `ui/formats/` | The own decoders, EXIF, RAW previews, TIFF and ISO BMFF readers, header probes |
+| `ui/formats/` | Decoders, EXIF, RAW previews and header probes |
 | `ui/view.js`, `viewer.js`, `compare.js`, `strip.js`, `paint.js`, `cards.js` | The DOM, keys, progress; zoom, pan, turn; Compare's chooser; the toolbar; bands; cards |
 
 ```bash

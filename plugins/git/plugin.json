@@ -17,7 +17,8 @@
         "desk.palette.pick",
         "desk.buffers.open",
         "desk.buffers.update",
-        "endue.git.discard-patch"
+        "endue.git.discard-patch",
+        "endue.git.discard-files"
       ]
     }
   ],
@@ -33,7 +34,9 @@
       {
         "id": "endue.git.status",
         "title": "Git: status",
-        "keywords": ["repository", "stage", "vc", "version control"]
+        "keywords": ["repository", "stage", "vc", "version control"],
+        "agent": true,
+        "description": "Open the Git repository containing the given folder and show its status."
       },
       {
         "id": "endue.git.state",
@@ -152,7 +155,7 @@
         "id": "endue.git.stage",
         "title": "Git: stage",
         "keywords": ["add", "index"],
-        "description": "Stage a file of the open repository, or every change with all.",
+        "description": "Stage a file of the open repository, or every change with all. A supplied patch stages or unstages just its changes.",
         "args": {
           "type": "object",
           "properties": {
@@ -163,6 +166,12 @@
             },
             "all": {
               "type": "boolean"
+            },
+            "patch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576,
+              "description": "A Git diff patch to apply to the index"
             }
           }
         },
@@ -172,7 +181,7 @@
         "id": "endue.git.unstage",
         "title": "Git: unstage",
         "keywords": ["reset", "index"],
-        "description": "Take a file of the open repository out of the index, or every staged change with all.",
+        "description": "Take a file of the open repository out of the index, or every staged change with all. A supplied patch stages or unstages just its changes.",
         "args": {
           "type": "object",
           "properties": {
@@ -183,6 +192,12 @@
             },
             "all": {
               "type": "boolean"
+            },
+            "patch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576,
+              "description": "A Git diff patch to apply to the index"
             }
           }
         },
@@ -192,7 +207,7 @@
         "id": "endue.git.discard",
         "title": "Git: discard changes",
         "keywords": ["restore", "checkout", "clean"],
-        "description": "Throw away the unstaged changes of the file at path in the open repository. Asks first.",
+        "description": "Discard the named file's unstaged changes after review. Undo restores the saved content.",
         "args": {
           "type": "object",
           "properties": {
@@ -203,8 +218,7 @@
             }
           }
         },
-        "agent": true,
-        "irreversible": true
+        "agent": true
       },
       {
         "id": "endue.git.discard-patch",
@@ -230,7 +244,8 @@
             }
           }
         },
-        "undo": "endue.git.restore-patch"
+        "undo": "endue.git.restore-patch",
+        "agent": true
       },
       {
         "id": "endue.git.restore-patch",
@@ -336,7 +351,23 @@
         "id": "endue.git.branches",
         "title": "Git: find a branch",
         "keywords": ["branch", "switch", "palette"],
-        "description": "The palette's Branches group: the open repository's local and remote branches whose names hold the typed words; picking one runs Git: switch branch with it."
+        "description": "Read the open repository's local and remote branch data.",
+        "agent": true,
+        "readOnly": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.git.visit",
@@ -347,6 +378,140 @@
         "id": "endue.git.cancel",
         "title": "Git: cancel the running operation",
         "keywords": ["kill"]
+      },
+      {
+        "id": "endue.git.commits",
+        "title": "Git: read commits",
+        "description": "Read a bounded page of commit history, optionally across all branches.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "skip": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "all": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git.diff-text",
+        "title": "Git: read diff text",
+        "description": "Read a working, staged or commit diff as bounded plain text.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "staged": {
+              "type": "boolean"
+            },
+            "sha": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{4,64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git.stash",
+        "title": "Git: stash pending changes",
+        "description": "Save tracked pending changes in a new local stash, optionally with a message.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.stash-pop",
+        "title": "Git: pop a stash",
+        "description": "Reapply the named stash and its staged state, then drop it on success.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^stash@\\{[0-9]{1,9}\\}$"
+            }
+          },
+          "required": ["ref"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.stash-drop",
+        "title": "Git: delete a stash",
+        "description": "Permanently delete the specified local stash.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^stash@\\{[0-9]{1,9}\\}$"
+            }
+          },
+          "required": ["ref"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git.discard-files",
+        "title": "Git: apply a reviewed file discard",
+        "description": "Save the inverse of the selected file changes and discard them.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "root": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "untracked": {
+              "type": "boolean"
+            },
+            "all": {
+              "type": "boolean"
+            }
+          },
+          "required": ["root", "path", "untracked", "all"],
+          "additionalProperties": false
+        },
+        "undo": "endue.git.restore-files"
+      },
+      {
+        "id": "endue.git.restore-files",
+        "title": "Git: restore discarded files",
+        "description": "Restore the saved changes of a reviewed file discard."
       }
     ],
     "keys": [

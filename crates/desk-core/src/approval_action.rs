@@ -13,6 +13,7 @@ use serde_json::{Map, Value};
 use crate::approval_preview::{
     args_preview, command_preview, fact_preview, url_preview, write_preview,
 };
+use crate::approval_provider::TERMINAL_RUN;
 use crate::perm::Target;
 
 /// An agent's call that may need the person's approval, with what its preview is made of.
@@ -38,17 +39,63 @@ pub(crate) enum Action<'a> {
     Remember {
         text: &'a str,
     },
+    Web {
+        view: &'a str,
+        site: &'a str,
+        summary: &'a str,
+        once: bool,
+    },
     /// An act on the computer (ADR 0123): its method, the app it reaches (`app`, its bundle id when
     /// known; `label`, its name in words) and what it does in words.
     Computer {
         method: ApprovalAction,
         app: Option<&'a str>,
+        name: Option<&'a str>,
         label: &'a str,
         summary: &'a str,
     },
 }
 
 impl<'a> Action<'a> {
+    /// Whether a `task` answer can be narrowed to this act's one target (`task_scope`): a computer
+    /// act that reaches no known app cannot, so it is offered and approved once at a time, and a
+    /// task answer never covers every app (ADR 0367).
+    pub(crate) fn narrows(&self) -> bool {
+        !matches!(
+            self,
+            Self::Computer { app: None, .. }
+                | Self::Computer {
+                    method: ApprovalAction::ComputerAppsQuit,
+                    ..
+                }
+                | Self::Invoke {
+                    id: TERMINAL_RUN,
+                    ..
+                }
+        ) && !matches!(
+            self,
+            Self::Web { site: "", .. } | Self::Web { once: true, .. }
+        )
+    }
+
+    pub(crate) fn page(&self) -> Option<(&'a str, &'a str)> {
+        match *self {
+            Self::Web { view, site, .. } => Some((view, site)),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn allowance_app(&self) -> Option<(&'a str, &'a str)> {
+        match *self {
+            Self::Computer {
+                app: Some(app),
+                name: Some(name),
+                ..
+            } if self.narrows() => Some((app, name)),
+            _ => None,
+        }
+    }
+
     pub(crate) fn kind(&self) -> ApprovalAction {
         match self {
             Self::Write { .. } => ApprovalAction::FsWrite,
@@ -56,6 +103,7 @@ impl<'a> Action<'a> {
             Self::Fetch { .. } => ApprovalAction::NetFetch,
             Self::Invoke { .. } => ApprovalAction::CmdInvoke,
             Self::Remember { .. } => ApprovalAction::MemoryRemember,
+            Self::Web { .. } => ApprovalAction::WebAct,
             Self::Computer { method, .. } => *method,
         }
     }
@@ -67,6 +115,7 @@ impl<'a> Action<'a> {
             Self::Fetch { url, .. } => Target::Url(url),
             Self::Invoke { id, .. } => Target::CommandId(id),
             Self::Remember { .. } => Target::None,
+            Self::Web { site, .. } => Target::Url(site),
             Self::Computer { app, .. } => Target::App(app),
         }
     }
@@ -78,6 +127,13 @@ impl<'a> Action<'a> {
             Self::Fetch { url, .. } => url,
             Self::Invoke { id, .. } => id,
             Self::Remember { text } => text,
+            Self::Web { site, .. } => {
+                if site.is_empty() {
+                    "the current page"
+                } else {
+                    site
+                }
+            }
             Self::Computer { label, .. } => label,
         }
     }
@@ -89,6 +145,7 @@ impl<'a> Action<'a> {
             ApprovalAction::ProcSpawn => "proc.spawn",
             ApprovalAction::NetFetch => "net.fetch",
             ApprovalAction::CmdInvoke => "cmd.invoke",
+            ApprovalAction::WebAct => "web.act",
             ApprovalAction::MemoryRemember => "memory.remember",
             ApprovalAction::ComputerInputClick => "computer.input.click",
             ApprovalAction::ComputerInputMove => "computer.input.move",
@@ -140,7 +197,7 @@ impl<'a> Action<'a> {
             Self::Fetch { method, url } => (Some(url_preview(method, url)), None),
             Self::Invoke { args, .. } => (Some(args_preview(args)), None),
             Self::Remember { text } => (Some(fact_preview(text)), None),
-            Self::Computer { summary, .. } => {
+            Self::Computer { summary, .. } | Self::Web { summary, .. } => {
                 let input = ApprovalPreview {
                     kind: ApprovalPreviewKind::Input,
                     text: summary.to_owned(),
@@ -158,6 +215,7 @@ impl<'a> Action<'a> {
             preview,
             size,
             task: task.map(str::to_owned),
+            until_stop_app: None,
         }
     }
 }

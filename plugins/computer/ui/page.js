@@ -148,7 +148,7 @@ export function createPage(ctx, view, now = () => new Date().toLocaleTimeString(
     openSettings: (permission) =>
       doing(
         () => bridge.call("computer.permissions.open", { permission, scope: SEE }),
-        "System Settings is open. Turn on endue Desk there, then come back.",
+        "System Settings is open. Turn on endue there, then come back.",
       ),
     stop: () =>
       doing(

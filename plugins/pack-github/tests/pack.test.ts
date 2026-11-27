@@ -41,6 +41,7 @@ describe("desk.pack-github", () => {
     const view = (id: string) => {
       const command = commands.find((c) => c.id === id);
       expect(command?.runs?.command).toBe("desk.universal.open");
+      expect(command).toMatchObject({ agent: true, description: expect.any(String) });
       const args = command?.runs?.args as { view: UniversalView } | undefined;
       if (!args) throw new Error(`${id} opens nothing`);
       return args.view;

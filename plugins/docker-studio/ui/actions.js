@@ -55,8 +55,12 @@ export function createActions(app) {
   };
 
   /** Run one operation on some containers, one docker call each, side by side. */
-  const container = async (/** @type {ContainerOp} */ op, /** @type {Target[]} */ list) => {
-    if (list.length === 0 || !(await sure(op, list))) return false;
+  const container = async (
+    /** @type {ContainerOp} */ op,
+    /** @type {Target[]} */ list,
+    reviewed = false,
+  ) => {
+    if (list.length === 0 || (!reviewed && !(await sure(op, list)))) return false;
     const failed = [];
     await Promise.all(
       list.map(async (t) => {
@@ -81,10 +85,11 @@ export function createActions(app) {
   const compose = async (
     /** @type {"start" | "stop" | "restart" | "down" | "up" | "pull"} */ op,
     /** @type {string} */ name,
+    reviewed = false,
   ) => {
     const project = projectName(name);
     const stack = app.stacks().find((s) => s.name === project);
-    if (op === "down" && app.settings.confirm) {
+    if (op === "down" && !reviewed && app.settings.confirm) {
       const yes = await app.overlay.confirm({
         title: `Take ${project} down?`,
         text: "Its containers stop and are removed, with the networks Compose made for it. Named volumes stay.",
@@ -147,6 +152,7 @@ export function createActions(app) {
           app.settings.shell,
         ],
         title: t.name,
+        dockerShell: true,
       });
     } catch (error) {
       say(`Could not open a terminal: ${/** @type {any} */ (error)?.message ?? error}`);

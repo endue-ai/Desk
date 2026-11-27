@@ -14,6 +14,8 @@ use desk_bridge::{
 use desk_sys::fs as sysfs;
 
 use crate::approval_action::Action;
+use crate::approval_versions::AgentChange;
+use crate::core_fs::FileChange;
 use crate::handler::{Answer, Core, error, io_error, json};
 use crate::history::{History, Kept, Limits, real_path};
 
@@ -46,47 +48,75 @@ impl Core {
         create_dirs: bool,
     ) -> Result<(u64, Option<String>), BridgeError> {
         let limits = self.history_limits();
-        let now = self.clock.now();
-        let real = real_path(path);
-        let mut warning = None;
-        let result = {
-            let mut guard = self.history();
-            let kept = match guard.as_mut() {
-                None => Ok(Kept::Nothing),
-                Some(history) => history.keep(&real, path, bytes, caller, now, limits),
-            };
-            let version = match kept {
-                Ok(Kept::Version(id)) => Some(id),
-                Ok(Kept::Nothing) => None,
-                Ok(Kept::TooLarge(size)) => {
-                    warning = Some(format!(
-                        "fs history: {} is {size} bytes, more than {OWNER}.history-max-bytes; written without a version",
-                        path.display()
-                    ));
-                    None
-                }
-                Err(why) => {
-                    warning = Some(format!(
-                        "fs history: could not keep the bytes of {} before a write: {why}",
-                        path.display()
-                    ));
-                    None
-                }
-            };
-            match sysfs::write(path, bytes, create_dirs) {
-                Ok(written) => Ok((written, version)),
-                Err(why) => {
-                    if let (Some(history), Some(id)) = (guard.as_mut(), &version) {
-                        history.take_back(&real, id);
-                    }
-                    Err(io_error(why))
-                }
-            }
+        let mut guard = self.history();
+        let version = self.keep_before_write(guard.as_mut(), caller, path, bytes, limits);
+        let written =
+            write_after_keep(guard.as_mut(), path, bytes, create_dirs, version.as_deref())?;
+        Ok((written, version))
+    }
+
+    /// Replace only if the current bytes can actually be retained. The history lock keeps that
+    /// decision and the write together. The caller can ask for approval if keeping bytes failed.
+    pub(crate) fn write_if_version_kept(
+        &self,
+        caller: &str,
+        path: &Path,
+        bytes: &[u8],
+    ) -> Result<Option<(u64, String)>, BridgeError> {
+        let limits = self.history_limits();
+        let mut guard = self.history();
+        let Some(version) = self.keep_before_write(guard.as_mut(), caller, path, bytes, limits)
+        else {
+            return Ok(None);
         };
-        if let Some(warning) = warning {
-            self.log(LogLevel::Warn, warning, None);
+        let written = write_after_keep(guard.as_mut(), path, bytes, false, Some(&version))?;
+        Ok(Some((written, version)))
+    }
+
+    fn keep_before_write(
+        &self,
+        history: Option<&mut History>,
+        caller: &str,
+        path: &Path,
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Option<String> {
+        let history = history?;
+        let real = real_path(path);
+        let warning = match history.keep(&real, path, bytes, caller, self.clock.now(), limits) {
+            Ok(Kept::Version(id)) => return Some(id),
+            Ok(Kept::Nothing) => return None,
+            Ok(Kept::TooLarge(size)) => format!(
+                "fs history: {} is {size} bytes, more than {OWNER}.history-max-bytes; not kept",
+                path.display()
+            ),
+            Err(why) => format!(
+                "fs history: could not keep the bytes of {}: {why}",
+                path.display()
+            ),
+        };
+        self.log(LogLevel::Warn, warning, None);
+        None
+    }
+
+    pub(crate) fn undo_file_change(
+        &self,
+        caller: &str,
+        change: &FileChange,
+    ) -> Result<(), BridgeError> {
+        let path = self.resolve(&change.path)?;
+        let limits = self.history_limits();
+        let mut history = self.history();
+        change.verify(&path)?;
+        if let Some(version) = &change.version {
+            let restore = read_version(history.as_ref(), &path, version)?;
+            let kept = self.keep_before_write(history.as_mut(), caller, &path, &restore, limits);
+            write_after_keep(history.as_mut(), &path, &restore, false, kept.as_deref())?;
+        } else {
+            self.trash_path(&path)?;
+            change.remove_empty_parents();
         }
-        result
+        Ok(())
     }
 
     pub(crate) fn fs_history(&self, caller: &str, params: FsHistoryParams) -> Answer {
@@ -104,7 +134,13 @@ impl Core {
 
     pub(crate) fn fs_restore(&self, caller: &str, params: FsRestoreParams) -> Answer {
         let scope = Permission::FsWrite(params.scope);
-        let path = self.authorize(caller, &scope, &params.path)?;
+        let path = self.resolve(&params.path)?;
+        let target = Action::Write {
+            path: &params.path,
+            file: &path,
+            bytes: &[],
+        };
+        let held = self.check_action_scope(caller, &scope, &target)?;
         let bytes = self.version_bytes(&path, &params.version)?;
         // A restore writes over the file: an agent's waits for the person as its writes do.
         let write = Action::Write {
@@ -112,10 +148,19 @@ impl Core {
             file: &path,
             bytes: &bytes,
         };
-        self.hold(caller, &scope, write)?;
+        self.hold_checked(caller, &scope, write, held)?;
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, false)?;
         if let Some(version) = &version {
             self.push_write(caller, "fs.restore", &params.path, version.clone());
+            self.reversible_change(caller, || {
+                AgentChange::File(FileChange::new(
+                    &params.path,
+                    &path,
+                    &bytes,
+                    Some(version.clone()),
+                    Vec::new(),
+                ))
+            });
         }
         json(FsRestoreResult {
             bytes_written,
@@ -148,17 +193,7 @@ impl Core {
     /// The bytes of version `id` of `path`: `not_found` when its history does not hold them,
     /// `io_error` when they no longer match their sha256.
     fn version_bytes(&self, path: &Path, id: &str) -> Result<Vec<u8>, BridgeError> {
-        self.history()
-            .as_ref()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "this desk keeps no history"))
-            .and_then(|history| history.read(&real_path(path), id))
-            .map_err(|why| match why.kind() {
-                io::ErrorKind::NotFound => error(
-                    ErrorCode::NotFound,
-                    format!("{} has no version {id}", path.display()),
-                ),
-                _ => io_error(why),
-            })
+        read_version(self.history().as_ref(), path, id)
     }
 
     /// The bounds in force: desk.files' settings, or their defaults when unset or not a count.
@@ -175,9 +210,37 @@ impl Core {
         }
     }
 
-    fn history(&self) -> MutexGuard<'_, Option<History>> {
+    pub(crate) fn history(&self) -> MutexGuard<'_, Option<History>> {
         self.history
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
+}
+
+fn read_version(history: Option<&History>, path: &Path, id: &str) -> Result<Vec<u8>, BridgeError> {
+    history
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "this desk keeps no history"))
+        .and_then(|history| history.read(&real_path(path), id))
+        .map_err(|why| match why.kind() {
+            io::ErrorKind::NotFound => error(
+                ErrorCode::NotFound,
+                format!("{} has no version {id}", path.display()),
+            ),
+            _ => io_error(why),
+        })
+}
+
+fn write_after_keep(
+    history: Option<&mut History>,
+    path: &Path,
+    bytes: &[u8],
+    create_dirs: bool,
+    version: Option<&str>,
+) -> Result<u64, BridgeError> {
+    sysfs::write(path, bytes, create_dirs).map_err(|why| {
+        if let (Some(history), Some(version)) = (history, version) {
+            history.take_back(&real_path(path), version);
+        }
+        io_error(why)
+    })
 }

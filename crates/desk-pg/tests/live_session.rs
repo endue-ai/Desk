@@ -1,5 +1,5 @@
-//! Sessions against a real server, as `live.rs`: what arrives unasked, cancel, COPY, the password
-//! file, and how results and sessions end.
+//! Sessions against a real server, as `live.rs`: what arrives unasked (notices are in
+//! `live_notices.rs`), cancel, COPY, the password file, and how results and sessions end.
 
 #[macro_use]
 mod common;
@@ -13,22 +13,9 @@ use desk_pg::{CloseReason, CopyInput, Direction, Error, Event, Limits, Transacti
 const VAR: &str = "ENDUE_DB_TEST_POSTGRES";
 
 #[test]
-fn notices_and_notifications_arrive_as_they_come() {
+fn notifications_and_parameters_arrive_as_they_come() {
     let config = live!(VAR);
     let (listener, events) = open(&config);
-    let notices = "DO $$ BEGIN RAISE NOTICE 'first'; RAISE WARNING 'second'; END $$";
-    run(&listener.session, notices);
-    let said: Vec<(String, String)> = events
-        .all()
-        .iter()
-        .filter_map(|e| match e {
-            Event::Notice(n) => Some((n.severity().to_owned(), n.message().to_owned())),
-            _ => None,
-        })
-        .collect();
-    let said: Vec<(&str, &str)> = said.iter().map(|(s, m)| (s.as_str(), m.as_str())).collect();
-    assert_eq!(said, [("NOTICE", "first"), ("WARNING", "second")]);
-
     run(&listener.session, "LISTEN t440_channel");
     let (sender, _) = open(&config);
     run(

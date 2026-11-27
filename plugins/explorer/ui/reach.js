@@ -1,7 +1,7 @@
 // Reaching a path in the explorer: expanding down to it and selecting it (reveal), and the folders
 // the tree starts from (add, remove), kept as the `folders` setting. A folder that cannot be listed
 // does not stay a root.
-import { foldersBetween, joinPath, normalizePath } from "./tree.js";
+import { foldersBetween, joinPath, normalizePath, patternOf } from "./tree.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -11,7 +11,7 @@ import { foldersBetween, joinPath, normalizePath } from "./tree.js";
 const NAME = "the explorer";
 
 /**
- * @param {{ desk: ReturnType<typeof import("./desk.js").createDeskLink>, surface: PluginContext["surface"],
+ * @param {{ bridge: PluginContext["bridge"], desk: ReturnType<typeof import("./desk.js").createDeskLink>, surface: PluginContext["surface"],
  *   settings: PluginContext["settings"], rootOf(path: string): string | undefined,
  *   rowOf(id: string): unknown, expand(path: string): Promise<boolean>, select(id: string): void,
  *   setRoots(next: string[]): void, roots(): string[], expanded: Set<string>,
@@ -19,6 +19,7 @@ const NAME = "the explorer";
  */
 export function createReach(deps) {
   const {
+    bridge,
     desk,
     surface,
     settings,
@@ -52,11 +53,28 @@ export function createReach(deps) {
 
   const keepRoots = () => settings.set("folders", roots()).catch(() => {});
 
+  const chooseFolder = async (/** @type {string | undefined} */ startIn) => {
+    const answer = await bridge
+      .call("dialog.open", {
+        kind: "folders",
+        intent: "destination",
+        title: "Add a folder to Explorer",
+        ...(startIn ? { startIn } : {}),
+      })
+      .catch((error) => {
+        if (/** @type {{ code?: string }} */ (error)?.code !== "unsupported") throw error;
+        return undefined;
+      });
+    if (!answer) return startIn ?? desk.pick("Add a folder", "~/path/to/folder");
+    return answer.cancelled ? undefined : answer.paths[0];
+  };
+
   const addFolder = async (/** @type {string | undefined} */ given) => {
-    const typedPath = given ?? (await desk.pick("Add a folder", "~/path/to/folder"));
+    const typedPath = given ?? (await chooseFolder(undefined));
     if (typedPath === undefined) return null;
     const path = normalizePath(typedPath);
     if (path === undefined) throw new Error(`${typedPath} is not a folder path.`);
+    if (/[*?]/u.test(path)) throw new Error("Choose an exact Explorer folder path.");
     const root = rootOf(path);
     if (root) {
       if (await uncover(root, joinPath(path, "."))) {
@@ -64,6 +82,22 @@ export function createReach(deps) {
         surface.show();
       }
       return path;
+    }
+    if (given !== undefined) {
+      const paths = [patternOf(path)];
+      const held = await Promise.all(
+        /** @type {const} */ (["fs:read", "fs:write"]).map((permission) =>
+          bridge.call("perm.query", { permission: { permission, paths } }).then(
+            ({ grants }) => grants.some((grant) => grant.duration !== "once"),
+            () => false,
+          ),
+        ),
+      );
+      if (!held.every(Boolean)) {
+        const chosen = await chooseFolder(path);
+        if (!chosen) return null;
+        if (normalizePath(chosen) !== path) throw new Error("Choose the named Explorer folder.");
+      }
     }
     setRoots([...roots(), path]);
     if (!(await expand(path))) {

@@ -11,7 +11,8 @@ import { containerTarget, objectRef } from "./refs.js";
  * @typedef {ReturnType<typeof import("./docker.js").createDocker>} App
  * @typedef {import("./docker.js").ListName} ListName
  * @typedef {Record<string, unknown>} Args
- * @typedef {(name: string, handler: (args: Args) => unknown) => unknown} Answer
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
+ * @typedef {(name: string, handler: (args: Args, invocation?: Invocation) => unknown) => unknown} Answer
  */
 
 const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} */ (error)?.code;
@@ -48,7 +49,7 @@ export function wireMore({ bridge }, app, answer) {
   };
 
   /** Open a container's published port in the browser: the one named, or the first, or one picked. */
-  const openPort = async (/** @type {Args} */ args = {}) => {
+  const openPort = async (/** @type {Args} */ args = {}, agent = false) => {
     const { ref, name } = containerTarget(args, app.selection(), app.shown());
     const model = app.model("containers") ?? app.model("overview");
     const known = model?.containers?.find((/** @type {any} */ c) => c.id === ref || c.name === ref);
@@ -66,6 +67,7 @@ export function wireMore({ bridge }, app, answer) {
         (o) => o.port.host === String(args.port) || o.port.container === String(args.port),
       );
     else if (open.length > 1) {
+      if (agent) throw new Error(`Name the port: ${open.map(({ port }) => port.host).join(", ")}.`);
       const picked = await app.pick(
         `Docker: open which port of ${name}?`,
         open.map((o) => ({
@@ -102,12 +104,19 @@ export function wireMore({ bridge }, app, answer) {
     });
 
   /** A folder of a container in the Files tab; its entries are the answer. */
-  const files = async (/** @type {Args} */ args = {}) => {
+  const files = async (/** @type {Args} */ args = {}, agent = false) => {
     const shown = app.pane.containerId();
     const wanted = args.container === undefined ? shown : objectRef(args.container);
     if (!wanted) throw new Error("Select a container, or name one with container.");
     const model = app.pane.model();
     const same = shown !== undefined && (shown === wanted || model?.title === wanted);
+    if (agent)
+      return (
+        await app.pane.readFiles(
+          wanted,
+          args.path ?? (same ? model?.files?.path : undefined) ?? "/",
+        )
+      ).slice(0, 500);
     if (!same) await app.inspect({ container: wanted }, "files");
     else app.pane.tab("files");
     const entries = await app.pane.listFiles(args.path ?? app.pane.model()?.files?.path ?? "/");
@@ -118,10 +127,14 @@ export function wireMore({ bridge }, app, answer) {
   answer("endue.docker.overview", () => app.showList("overview"));
   answer("endue.docker.filter", filter);
   answer("endue.docker.sort", sort);
-  answer("endue.docker.open-port", openPort);
+  answer("endue.docker.open-port", (args, invocation) =>
+    openPort(args, invocation?.caller.startsWith("agent:") ?? false),
+  );
   answer("endue.docker.history", (args) => history(args));
   answer("endue.docker.build", actions.build);
-  answer("endue.docker.files", files);
+  answer("endue.docker.files", (args, invocation) =>
+    files(args, invocation?.caller.startsWith("agent:") ?? false),
+  );
   answer("endue.docker.copy-out", actions.copyOut);
   answer("endue.docker.copy-in", actions.copyIn);
 

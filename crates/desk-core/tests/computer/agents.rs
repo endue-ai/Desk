@@ -160,6 +160,62 @@ fn allow_for_this_task_lets_the_same_app_through_until_the_turn_ends() {
 }
 
 #[test]
+fn an_act_on_no_app_is_not_offered_for_the_task_and_lets_nothing_else_through() {
+    let echo = Echo::start();
+    let (home, fake) = (home("computer-task-no-app"), fake());
+    let options = BrainOptions {
+        retry: Duration::from_millis(50),
+        ..BrainOptions::default()
+    };
+    let brain = Arc::new(HttpBrain::new(echo.url()).unwrap());
+    let core = Arc::new(core(&home, &fake).with_brain(brain, options));
+    core.route_tools();
+    grant(&core, "desk", json!({ "permission": "brain:converse" }));
+    grant(&core, MIRA, control(None));
+    let deliveries = core.events().subscribe_addressed();
+    let line = |x: f64| {
+        let args = json!({ "x": x, "y": 100.0, "scope": control(None) });
+        format!("tool computer.input.click as mira: {args}")
+    };
+    // Between Safari (0 to 700) and TextEdit (720 to 1420): the click reaches no app.
+    let text = [line(710.0), line(100.0)].join("\n");
+    let said = call(
+        &core,
+        "desk",
+        "brain.say",
+        json!({ "text": text, "scope": { "permission": "brain:converse" } }),
+    );
+    let turn = said.unwrap()["turnId"].clone();
+    let first = wait_for(&deliveries, "perm.approval");
+    assert_eq!(first.data()["task"], Value::Null, "nothing to narrow it to");
+    // It takes no answer for the task, and keeps waiting for one it can take (ADR 0367).
+    let task = json!({ "approvalId": first.data()["approvalId"], "answer": "task",
+        "scope": manage() });
+    let refused = call(&core, "desk", "perm.approve", task).unwrap_err();
+    assert_eq!(refused.code, ErrorCode::InvalidParams);
+    approve_as_desk(&core, &first, "once");
+    let second = wait_for(&deliveries, "perm.approval");
+    assert_eq!(second.data()["target"], "Safari (com.apple.Safari)");
+    assert_eq!(
+        second.data()["task"],
+        turn,
+        "an act on an app is offered for the task"
+    );
+    approve_as_desk(&core, &second, "deny");
+    loop {
+        let seen = wait_for(&deliveries, "brain.turn");
+        if seen.data()["turnId"] == turn && seen.data()["kind"] == "completed" {
+            break;
+        }
+    }
+    assert_eq!(
+        fake.posted().len(),
+        3,
+        "the one click on no app, none in Safari"
+    );
+}
+
+#[test]
 fn a_plugins_acts_for_an_agent_in_one_turn_share_its_allow_for_this_task() {
     let echo = Echo::start();
     let (home, fake) = (home("computer-turn"), fake());
@@ -230,7 +286,7 @@ fn no_agent_operates_the_desk_itself() {
     let desk = std::process::id() as i32;
     let fake = Arc::new(desk_computer::fake::FakeComputer::new().with_apps(vec![app(
         desk,
-        "endue Desk",
+        "endue",
         "ai.endue.desk",
         true,
     )]));

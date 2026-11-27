@@ -57,4 +57,4 @@ const runtime = createRuntime({
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });
 
-window.__desk = { clock, runtime, stub: core.stub, commands: [] };
+window.__desk = { clock, runtime, stub: core.stub, commands: [], client: core.client };

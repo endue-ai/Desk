@@ -6,6 +6,7 @@
 // and the frame lost (it slept, or its page loaded again) opens again, on the slide it was on when a
 // sleep kept it (keep.js). It only talks to ctx.commands, ctx.bridge, ctx.surface and a view, so the
 // SDK's test host runs it.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { openFile } from "./open.js";
 import { codeOf, openInWorker, readWhole, scopeOf } from "./reading.js";
@@ -20,7 +21,8 @@ import { createLinks } from "./render/links.js";
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
  * @typedef {{ show(model: Shown | null, slide?: number): void, status(text: string): void,
  *   focus(): void, slideOf?(buffer: string): number | undefined,
- *   progress?(value: Progress | null): void }} View
+ *   progress?(value: Progress | null): void,
+ *   showSlide?(slide: number): void, play?(slide: number): void, stop?(): void }} View
  * @typedef {Shown & { watchId?: string, close?: () => void }} OpenFile
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
  *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker,
@@ -326,6 +328,8 @@ export function createSlides({ bridge, commands, surface }, view, options) {
     }
     return "";
   });
+
+  answerAgents(commands, { open: () => [...files.values()], shown: () => shown, view });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
     if (event.event !== "fs.changed") return;

@@ -1,6 +1,7 @@
 //! The brains a desk chooses from (ADR 0094): endue AI, the local brain on Ollama,
 //! examples/brain-echo and the person's own Claude Code (ADR 0109). The runtime's own setting `brain.use` picks one for every turn (init.yaml:
-//! `desk.brain.use`) and `brain.model` names the local model. A remote brain that cannot be reached
+//! `desk.brain.use`), `brain.model` names the local model and `brain.claude-model` Claude Code's
+//! (ADR 0296; empty: Claude Code's own). A remote brain that cannot be reached
 //! hands its turns to the local brain; a local choice never reaches out. Each brain keeps its
 //! sessions in a file of its own, and they share turn numbers so turn ids never repeat.
 
@@ -22,6 +23,7 @@ pub const DEFAULT_LOCAL_MODEL: &str = "llama3.2";
 const OWNER: &str = "desk";
 const USE: &str = "brain.use";
 const MODEL: &str = "brain.model";
+const CLAUDE_MODEL: &str = "brain.claude-model";
 
 /// Makes the local brain for a model (the app: `LocalBrain` on Ollama).
 pub type LocalBrains = Arc<dyn Fn(&str) -> Result<Arc<dyn Brain>, String> + Send + Sync>;
@@ -33,6 +35,7 @@ pub struct Brains {
     endue: Option<Arc<dyn Brain>>,
     echo: Option<Arc<dyn Brain>>,
     claude: Option<Arc<dyn Brain>>,
+    claude_models: Option<LocalBrains>,
     local: Option<LocalBrains>,
     folder: Option<PathBuf>,
     options: BrainOptions,
@@ -55,6 +58,16 @@ impl Brains {
     /// endue, a turn it cannot answer goes to the local brain.
     pub fn with_claude(mut self, brain: Arc<dyn Brain>) -> Self {
         self.claude = Some(brain);
+        self
+    }
+
+    /// Claude Code with a model of the person's choice (`brain.claude-model`), made once per model;
+    /// without a model the one `with_claude` gave answers.
+    pub fn with_claude_models(
+        mut self,
+        make: impl Fn(&str) -> Result<Arc<dyn Brain>, String> + Send + Sync + 'static,
+    ) -> Self {
+        self.claude_models = Some(Arc::new(make));
         self
     }
 
@@ -109,11 +122,18 @@ pub(crate) struct BrainChoice {
 }
 
 impl BrainChoice {
-    fn pick(&self, chosen: BrainName, model: &str) -> Option<Picked> {
+    fn pick(&self, chosen: BrainName, model: &str, claude_model: &str) -> Option<Picked> {
         let name = [chosen, BrainName::Endue, BrainName::Echo, BrainName::Local]
             .into_iter()
             .find(|name| self.brains.has(*name))?;
-        let conversation = self.conversation(name, model)?;
+        let conversation = match name {
+            BrainName::Claude
+                if !claude_model.is_empty() && self.brains.claude_models.is_some() =>
+            {
+                self.claude_with(claude_model)?
+            }
+            _ => self.conversation(name, model)?,
+        };
         let fallback = (name != BrainName::Local)
             .then(|| self.conversation(BrainName::Local, model))
             .flatten()
@@ -163,6 +183,28 @@ impl BrainChoice {
             BrainName::Claude => self.brains.claude.clone()?,
             BrainName::Local => (self.brains.local.as_ref()?)(model).ok()?,
         };
+        Some(self.keep(key, file, mode, brain))
+    }
+
+    /// The conversation with Claude Code on `model`, made the first time it is asked for.
+    fn claude_with(&self, model: &str) -> Option<Arc<Conversation>> {
+        let key = format!("claude:{model}");
+        if let Some(made) = self.lock().get(&key) {
+            return Some(Arc::clone(made));
+        }
+        let brain = (self.brains.claude_models.as_ref()?)(model).ok()?;
+        let file = format!("brain-claude-{}.json", file_safe(model));
+        Some(self.keep(key, file, BrainMode::Cloud, brain))
+    }
+
+    /// A conversation with `brain`, its sessions in `file`, kept under `key` (the first one made wins).
+    fn keep(
+        &self,
+        key: String,
+        file: String,
+        mode: BrainMode,
+        brain: Arc<dyn Brain>,
+    ) -> Arc<Conversation> {
         let options = BrainOptions {
             state_file: self.brains.folder.as_ref().map(|folder| folder.join(file)),
             mode,
@@ -175,7 +217,7 @@ impl BrainChoice {
             made.route(tools.clone());
         }
         let mut all = self.lock();
-        Some(Arc::clone(all.entry(key).or_insert(made)))
+        Arc::clone(all.entry(key).or_insert(made))
     }
 
     fn route(&self, tools: Weak<dyn Tools>) {
@@ -242,7 +284,11 @@ impl Core {
             .and_then(|value| value.as_str().map(str::trim).map(str::to_owned))
             .filter(|model| !model.is_empty())
             .unwrap_or_else(|| DEFAULT_LOCAL_MODEL.to_owned());
-        self.choice.as_ref()?.pick(chosen, &model)
+        let claude_model = self
+            .setting_in_force(OWNER, CLAUDE_MODEL)
+            .and_then(|value| value.as_str().map(str::trim).map(str::to_owned))
+            .unwrap_or_default();
+        self.choice.as_ref()?.pick(chosen, &model, &claude_model)
     }
 
     /// Route the brains' tool calls through this core (agent_tools.rs).

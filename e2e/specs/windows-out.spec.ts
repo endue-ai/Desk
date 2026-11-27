@@ -223,7 +223,7 @@ const mac = process.platform === "darwin";
       await toggle();
       const listed = await windowMenu();
       await toggle();
-      expect(listed).not.toContain("Search Desk");
+      expect(listed).not.toContain("Search endue");
       expect(listed).not.toContain("Eris is using your computer");
     });
 

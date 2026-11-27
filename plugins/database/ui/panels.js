@@ -1,3 +1,4 @@
+import { t } from "./strings/index.js";
 // The features' panels as desk buffers (feature-host.js): one buffer per type and name, opened
 // again with its new state when it is there, given a new state in place, and kept for a restart
 // when its type's keep says what of its state to keep. The surface state then holds the panel's
@@ -30,7 +31,7 @@ export function createPanels(buffers, deps) {
    * @param {boolean} [shown]
    */
   const open = async (conn, type, name, state, shown = true) => {
-    if (!isPanel(type)) throw new Error(`No feature draws a ${type} panel.`);
+    if (!isPanel(type)) throw new Error(t("panels.noFeatureDrawsAPanel", { type: String(type) }));
     const found = buffers.find((b) => b.kind === type && b.name === name);
     if (found) {
       found[type] = state;

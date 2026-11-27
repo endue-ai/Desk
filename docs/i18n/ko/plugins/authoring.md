@@ -1,14 +1,14 @@
 > 이 문서는 [영문판](../../../plugins/authoring.md)을 옮긴 번역본이며, 내용이 다르면 영문판이 우선합니다.
 
-# Desk 플러그인 작성하기
+# endue 플러그인 작성하기
 
-Desk 플러그인은 폴더 하나입니다. 내장 기능도 똑같은 형식을 쓰므로, Desk 자신이 화면에서 하는 일은 무엇이든
+endue 플러그인은 폴더 하나입니다. 내장 기능도 똑같은 형식을 쓰므로, endue 자신이 화면에서 하는 일은 무엇이든
 직접 만든 플러그인도 할 수 있습니다. 이 문서는 플러그인의 종류와 템플릿에서 시작해, UI 플러그인을 자세히
 다룬 뒤 네이티브 플러그인을, 마지막으로 테마를 다룹니다. 도구(MCP) 플러그인은 나중에 추가됩니다.
 
 ## 템플릿에서 시작하기
 
-`create-plugin`은 한 종류의 플러그인 폴더를 만듭니다. 이 폴더는 `desk plugin validate`를 통과하고 테스트를
+`create-plugin`은 한 종류의 플러그인 폴더를 만듭니다. 이 폴더는 `endue plugin validate`를 통과하고 테스트를
 하나 갖고 있습니다(패키지가 배포되면 `pnpm create @endue-ai/plugin`).
 
 ```bash
@@ -31,19 +31,19 @@ Rust 종류는 언어 자체의 명령으로 빌드합니다. 폴더에서 `wasm
 실행합니다(처음 한 번 `rustup target add wasm32-wasip2`). 컴포넌트는 `plugin.json`의 `entry`가 가리키는
 곳에 만들어집니다.
 
-작업 중인 플러그인을 Desk에서 보려면, 그 폴더를 개발용 플러그인으로 지정해 Desk를 실행합니다.
+작업 중인 플러그인을 endue에서 보려면, 그 폴더를 개발용 플러그인으로 지정해 endue를 실행합니다.
 
 ```bash
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-폴더 안의 파일을 저장하면 해당 플러그인만 1초 안에 다시 로드됩니다. Desk의 나머지 부분과 플러그인의 상태는
-그대로 유지됩니다. Desk가 시작할 때 비어 있거나 깨져 있던 폴더도 파일이 들어오거나 고쳐지는 즉시, 다시
+폴더 안의 파일을 저장하면 해당 플러그인만 1초 안에 다시 로드됩니다. endue의 나머지 부분과 플러그인의 상태는
+그대로 유지됩니다. endue가 시작할 때 비어 있거나 깨져 있던 폴더도 파일이 들어오거나 고쳐지는 즉시, 다시
 시작하지 않아도 나타납니다.
 
-### `desk plugin test`로 테스트하기
+### `endue plugin test`로 테스트하기
 
-`desk plugin test <folder>`는 `validate`처럼 폴더를 검사한 뒤, 종류에 맞는 호스트에서 `tests/`를 실행합니다.
+`endue plugin test <folder>`는 `validate`처럼 폴더를 검사한 뒤, 종류에 맞는 호스트에서 `tests/`를 실행합니다.
 
 - `ui`, `view`, `policy`, `theme`과 Wasm이 없는 나머지 종류: `tests/*.test.js` 또는 `*.test.ts`를 jsdom 페이지
   안에서 SDK의 테스트 호스트(`@endue-ai/plugin-sdk/testing`, 아래 "테스트" 참고) 위의 vitest로 실행합니다.
@@ -80,7 +80,7 @@ DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 | 경로 | 필수 여부 | 용도 |
 | --- | --- | --- |
 | `plugin.json` | 예 | 매니페스트: id, version, kind, entry, permissions, surfaces |
-| `ui/index.html` | 예 (`entry`) | Desk가 샌드박스 프레임에 로드하는 페이지 |
+| `ui/index.html` | 예 (`entry`) | endue가 샌드박스 프레임에 로드하는 페이지 |
 | `ui/*.js`, `ui/*.css` | 아니요 | 플러그인 코드와 스타일. 엔트리 기준 상대 경로로 로드됩니다 |
 | `README.md` | 권장 | 플러그인이 하는 일, 요청하는 권한과 그 이유 |
 
@@ -101,7 +101,7 @@ id는 소문자로 쓰고 역도메인 형식을 따릅니다(`example.my-plugin
 
 ## SDK
 
-엔트리 페이지에서 import map으로 SDK를 가져옵니다. Desk는 SDK를 `/_desk/plugin-sdk.js`에서 제공합니다.
+엔트리 페이지에서 import map으로 SDK를 가져옵니다. endue는 SDK를 `/_desk/plugin-sdk.js`에서 제공합니다.
 
 ```html
 <script type="importmap">
@@ -187,7 +187,7 @@ OS 창에 열립니다 (ADR 0205). 페이지와 그 호출은 양쪽에서 같�
 
 이것들은 힌트입니다. 프로필이나 세션이 저장한 자리, 그리고 사람이 직접 한 배치(채우기 · 스냅 · 타일)는
 힌트와 상관없이 캔버스의 창 크기를 정하고, 여러 페인으로 나뉜 창은 페인을 따릅니다. 사람은 어느 창이든
-밖으로 꺼내고 되돌릴 수 있습니다 (팔레트의 "창으로 꺼내기", Window > Move to Desk). `DESK_APP_WINDOWS` 는 한 번의
+밖으로 꺼내고 되돌릴 수 있습니다 (팔레트의 "창으로 꺼내기", Window > endue로 되돌리기(v0.3.0에서는 Move to Desk)). `DESK_APP_WINDOWS` 는 한 번의
 실행 동안 매니페스트를 덮어씁니다. `off` 는 모든 창을 캔버스에 두고, `on` 은 모든 앱을 밖에 열며, 플러그인 id
 목록은 그 플러그인들을 밖에 엽니다. `examples/plugin-hello-window` 는 두 방식을 각각 명령 하나로 실행합니다.
 
@@ -212,7 +212,7 @@ OS 창이 있는 그 자리로 가서 그 창을 사용 중인 창으로 만듭�
 
 ## 권한
 
-플러그인 프레임은 스크립트만 허용된 샌드박스에서 실행됩니다. Desk 페이지에 접근할 수 없고, 최상위 내비게이션도,
+플러그인 프레임은 스크립트만 허용된 샌드박스에서 실행됩니다. endue 페이지에 접근할 수 없고, 최상위 내비게이션도,
 폼이나 팝업도, 자체 네트워크 연결도 쓸 수 없습니다. 모든 기능은 브리지를 거치며, `perm.*` 이외의 모든 브리지
 호출에는 그 호출에 필요한 권한 범위(`params.scope`)가 담깁니다. 코어는 사용자가 그 범위를 포함하는 권한을
 부여했을 때만 응답합니다.
@@ -227,7 +227,7 @@ OS 창이 있는 그 자리로 가서 그 창을 사용 중인 창으로 만듭�
 
 ## 자기 프로세스와 자기 origin
 
-지금은 모든 플러그인 프레임이 Desk의 한 페이지와 한 프로세스를 나눠 씁니다. Desk는 Chromium으로 옮겨 가는
+지금은 모든 플러그인 프레임이 endue의 한 페이지와 한 프로세스를 나눠 씁니다. endue는 Chromium으로 옮겨 가는
 중이며, 거기서는 표면마다 자기 프로세스에서 돕니다(ADR 0140). 플러그인 코드는 바뀌지 않습니다. 매니페스트,
 import map, `@endue-ai/plugin-sdk`, 브리지와 CSP는 이 문서가 설명하는 그대로입니다.
 
@@ -313,6 +313,12 @@ endue AI 의 에이전트나 로컬 두뇌는 사람이 실행하는 것과 같�
 `cmd.register` 로 같은 필드(`description`, `argsSchema`, `resultSchema`, `agent`, `readOnly`)를 받고,
 `ctx.commands.tools()` 는 내 권한이 닿는 에이전트 커맨드를 나열합니다. 내장 git, terminal, docker,
 calendar, database 플러그인이 예시입니다.
+
+`agent` 를 표시한 커맨드는 에이전트가 사람에게 묻지 않고 실행합니다. 플러그인을 설치한 것이 그 플러그인이
+내놓는 것에 대한 사람의 동의이기 때문입니다(ADR 0268). 표시하지 않은 커맨드는 에이전트가 실행하기 전에 사람에게
+묻고, `perm:manage` 를 선언한 플러그인의 커맨드는 어느 것도 에이전트가 실행하지 않습니다(ADR 0367). 핸들러는
+두 번째 인자로 호출한 쪽 `{ invocationId, caller }` 를 받습니다. 에이전트의 호출자는 `agent:` 나 `mcp:` 로
+시작하므로, 사람만 할 수 있는 일을 커맨드가 에이전트에게 거절할 수 있습니다.
 
 ## 파일 편집: 편집 등급
 
@@ -456,12 +462,12 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-공개하기 전에 `desk plugin validate <folder>`를 통과해야 합니다. CI는 `plugins/`와 `examples/` 안의 모든 폴더에
+공개하기 전에 `endue plugin validate <folder>`를 통과해야 합니다. CI는 `plugins/`와 `examples/` 안의 모든 폴더에
 대해 이 명령을 실행합니다.
 
 ## 네이티브 플러그인
 
-네이티브 플러그인(종류 `native`)은 어떤 언어로든 직접 만든 프로그램으로, Desk가 별도의 프로세스로 실행합니다
+네이티브 플러그인(종류 `native`)은 어떤 언어로든 직접 만든 프로그램으로, endue가 별도의 프로세스로 실행합니다
 (ADR 0154). 원하는 GPU API로 창을 그려 데스크와 공유하는 텍스처에 담고, UI 플러그인과 똑같은 브리지를
 호출합니다. 데스크의 컴포지터가 다른 창과 똑같이 그 창을
 그리며(ADR 0156), `just example plugin-native-wgpu`가 예제를 빌드해 데스크에서 실행합니다.
@@ -533,7 +539,7 @@ cargo run -p desk-cli -- theme apply local.my-theme
 두 scheme 의 모든 역할 색, 기본값에 둔 나머지 층, 각 값이 무엇을 칠하는지 설명하는 README 가 들어 있습니다.
 `examples/plugin-hello-theme` 은 글꼴 하나와 배경 하나를 가진 가장 작은 테마입니다. 테마를 설치해도 적용되지는
 않습니다. 적용 중인 테마는 설정 `desk.theme.active` 가 가리키며, 테마 스튜디오(오른쪽 위의 팔레트 버튼, 또는
-커맨드 팔레트의 Themes), `desk.theme.use`, `desk theme apply` 로 고릅니다.
+커맨드 팔레트의 Themes), `desk.theme.use`, `endue theme apply` 로 고릅니다.
 
 스튜디오에서도 테마를 만듭니다. "Tune a copy"(또는 `desk.theme.edit`)는 고른 테마의 사본으로, "New theme" 은 endue
 테마로 편집기를 엽니다. 글꼴과 배경 이미지까지 모든 층에 조작 요소가 있고, 데스크 전체가 바뀌는 초안을 그대로 보여
@@ -609,7 +615,7 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` 는 블록을 스키마에, 파일을 한도에 비추어 검사합니다. `desk plugin test` 는 템플릿의
+`endue plugin validate` 는 블록을 스키마에, 파일을 한도에 비추어 검사합니다. `endue plugin test` 는 템플릿의
 `tests/theme.test.ts` 를 SDK의 테스트 호스트 위의 vitest로 실행합니다. 이 테스트는 데스크가 테마를 적용하기
 전에 하듯 두 scheme 을 `compileTheme` 으로 컴파일하고 endue 팔레트 위에서 `gate` 로 검사하며, 게이트가
 고칠 것이 있으면 그 내역을 모두 보이며 실패합니다.
@@ -623,21 +629,21 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 
 `.desk-theme` 은 JSON 파일 하나입니다. `format` 은 `desk-theme/1`, `manifest` 는 테마의 `plugin.json`, `files` 는
 블록이 가리키는 파일들의 base64 이며, 16 MiB 를 넘지 않습니다(ADR 0058). 가져오면 테마 플러그인으로 검사한 뒤
-사용자의 테마 폴더에 설치하고, id 가 `local.` 과 `market.` 밖이면 `local.<이름>` 으로 바꿉니다. `desk theme list`
-가 보여 주고 `desk theme remove` 가 지웁니다. 스튜디오의 Export 와 Import 도 같은 일을 하고, 스튜디오에 끌어다
+사용자의 테마 폴더에 설치하고, id 가 `local.` 과 `market.` 밖이면 `local.<이름>` 으로 바꿉니다. `endue theme list`
+가 보여 주고 `endue theme remove` 가 지웁니다. 스튜디오의 Export 와 Import 도 같은 일을 하고, 스튜디오에 끌어다
 놓은 `.desk-theme` 도 받습니다.
 
 ### 마켓
 
 스튜디오의 Market 탭은 설정 `desk.theme.markets` 가 색인의 https URL 로 가리키는 마켓들의 테마를 보여 줍니다
 (ADR 0060). 기본값은 이 저장소 `main` 의 `market/themes/index.json` 이고,
-`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 에서 읽습니다. 다른 마켓의
+`https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json` 에서 읽습니다. 다른 마켓의
 색인은 `init.yaml` 에서 그 뒤에 덧붙입니다. 두 마켓이 같은 id 를 실으면 앞의 마켓이 이깁니다.
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
@@ -649,7 +655,7 @@ Apply 가 그 테마를 적용합니다. 업데이트는 내가 고치지 않은
 
 테마를 올리려면 묶음과 색인 항목을 `market/themes/` 에 더하는 풀 리퀘스트를 엽니다.
 
-1. 테마를 내보냅니다(`desk theme export <id> <file>`, 또는 스튜디오의 Export). id 는 `market.` 아래로 하고,
+1. 테마를 내보냅니다(`endue theme export <id> <file>`, 또는 스튜디오의 Export). id 는 `market.` 아래로 하고,
    버전과 `theme.author`, `theme.license`(글꼴과 이미지까지 덮는 SPDX 식)를 붙입니다.
 2. 파일을 `market/themes/` 에 `<name>.desk-theme` 으로 두고 `index.json`
    (`specs/plugin/v0/theme-index.schema.json`)에 항목을 더합니다. `id`, `name`, `version`, `description`,

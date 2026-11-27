@@ -3,6 +3,7 @@
 // a moment's AccessShareLock on each relation and nothing more; a database the role may not
 // connect to has no size (pg_database_size refuses it). No DOM.
 
+import { t } from "../../strings/index.js";
 import { LIMIT, lines, USER_SCHEMA } from "./sql.js";
 
 /** @typedef {import("./sql.js").Section} Section */
@@ -19,10 +20,10 @@ const RELATIONS = lines(
 );
 
 const BYTES = /** @type {const} */ ([
-  { key: "total_bytes", label: "Total", format: "bytes" },
-  { key: "table_bytes", label: "Table", format: "bytes" },
-  { key: "index_bytes", label: "Indexes", format: "bytes" },
-  { key: "toast_bytes", label: "TOAST", format: "bytes" },
+  { key: "total_bytes", label: t("features.overview.sizes.total"), format: "bytes" },
+  { key: "table_bytes", label: t("features.overview.sizes.table"), format: "bytes" },
+  { key: "index_bytes", label: t("features.overview.sizes.indexes"), format: "bytes" },
+  { key: "toast_bytes", label: t("features.overview.sizes.toast"), format: "bytes" },
 ]);
 
 /** @returns {Section[]} */
@@ -30,15 +31,15 @@ export function sizeSections() {
   return [
     {
       id: "databases",
-      title: "Databases",
+      title: t("features.overview.sizes.databases"),
       source: "pg_database_size(), pg_stat_database",
       counters: "none",
       columns: [
-        { key: "database", label: "Database" },
-        { key: "size_bytes", label: "Size", format: "bytes" },
-        { key: "connections", label: "Connections", format: "count" },
+        { key: "database", label: t("features.overview.sizes.database") },
+        { key: "size_bytes", label: t("features.overview.sizes.size"), format: "bytes" },
+        { key: "connections", label: t("features.overview.sizes.connections"), format: "count" },
       ],
-      empty: "No database is listed.",
+      empty: t("features.overview.sizes.noDatabaseIsListed"),
       sql: lines(
         "SELECT d.datname AS database,",
         "  CASE WHEN has_database_privilege(d.oid, 'CONNECT') OR pg_has_role('pg_read_all_stats', 'USAGE')",
@@ -51,15 +52,15 @@ export function sizeSections() {
     },
     {
       id: "schemas",
-      title: "Schemas",
+      title: t("features.overview.sizes.schemas"),
       source: "pg_total_relation_size(), pg_table_size(), pg_indexes_size()",
       counters: "none",
       columns: [
-        { key: "schema", label: "Schema" },
-        { key: "tables", label: "Tables", format: "count" },
+        { key: "schema", label: t("features.overview.sizes.schema") },
+        { key: "tables", label: t("features.overview.sizes.tables"), format: "count" },
         ...BYTES,
       ],
-      empty: "No table outside the system schemas.",
+      empty: t("features.overview.sizes.noTableOutsideTheSystemSchemas"),
       sql: lines(
         `WITH r AS (${RELATIONS})`,
         "SELECT nspname AS schema, count(*) AS tables, sum(total) AS total_bytes,",
@@ -70,16 +71,20 @@ export function sizeSections() {
     },
     {
       id: "tables",
-      title: "Tables",
+      title: t("features.overview.sizes.tables"),
       source: "pg_total_relation_size(), pg_table_size(), pg_indexes_size(), pg_class.reltuples",
       counters: "none",
       columns: [
-        { key: "schema", label: "Schema" },
-        { key: "table", label: "Table" },
-        { key: "rows_estimate", label: "Rows (estimate)", format: "estimate" },
+        { key: "schema", label: t("features.overview.sizes.schema") },
+        { key: "table", label: t("features.overview.sizes.table") },
+        {
+          key: "rows_estimate",
+          label: t("features.overview.sizes.rowsEstimate"),
+          format: "estimate",
+        },
         ...BYTES,
       ],
-      empty: "No table outside the system schemas.",
+      empty: t("features.overview.sizes.noTableOutsideTheSystemSchemas"),
       sql: lines(
         `WITH r AS (${RELATIONS})`,
         'SELECT nspname AS schema, relname AS "table", reltuples::bigint AS rows_estimate,',
@@ -90,17 +95,17 @@ export function sizeSections() {
     },
     {
       id: "indexes",
-      title: "Indexes",
+      title: t("features.overview.sizes.indexes"),
       source: "pg_relation_size(), pg_stat_all_indexes (idx_scan)",
       counters: "database",
       columns: [
-        { key: "schema", label: "Schema" },
-        { key: "table", label: "Table" },
-        { key: "index", label: "Index" },
-        { key: "size_bytes", label: "Size", format: "bytes" },
-        { key: "scans", label: "Scans", format: "count" },
+        { key: "schema", label: t("features.overview.sizes.schema") },
+        { key: "table", label: t("features.overview.sizes.table") },
+        { key: "index", label: t("features.overview.sizes.index") },
+        { key: "size_bytes", label: t("features.overview.sizes.size"), format: "bytes" },
+        { key: "scans", label: t("features.overview.sizes.scans"), format: "count" },
       ],
-      empty: "No index outside the system schemas.",
+      empty: t("features.overview.sizes.noIndexOutsideTheSystemSchemas"),
       sql: lines(
         'SELECT n.nspname AS schema, t.relname AS "table", c.relname AS index,',
         "  pg_relation_size(c.oid) AS size_bytes, s.idx_scan AS scans",

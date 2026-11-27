@@ -25,7 +25,7 @@ type Tree = BTreeMap<String, Vec<u8>>;
 
 pub fn export(target: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode {
     let (Some(home), Some(data)) = (home(), data.or_else(desk_ipc::data_dir)) else {
-        return fail("desk export: no home folder; set HOME");
+        return fail("export: no home folder; set HOME");
     };
     let desk = home.join(".desk");
     let mut tree = Tree::new();
@@ -40,7 +40,7 @@ pub fn export(target: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
             Ok(bytes) => {
                 tree.insert(slashed(&rel), bytes);
             }
-            Err(e) => return fail(&format!("desk export: {}: {e}", desk.join(&rel).display())),
+            Err(e) => return fail(&format!("export: {}: {e}", desk.join(&rel).display())),
         }
     }
     if with_data {
@@ -60,35 +60,33 @@ pub fn export(target: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
             println!("exported {} to {}", counted(&tree), target.display());
             ExitCode::SUCCESS
         }
-        Err(e) => fail(&format!("desk export: {}: {e}", target.display())),
+        Err(e) => fail(&format!("export: {}: {e}", target.display())),
     }
 }
 
 pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode {
     let (Some(home), Some(data)) = (home(), data.or_else(desk_ipc::data_dir)) else {
-        return fail("desk import: no home folder; set HOME");
+        return fail("import: no home folder; set HOME");
     };
     let tree = match read_export(source) {
         Ok(tree) => tree,
-        Err(e) => return fail(&format!("desk import: {}: {e}", source.display())),
+        Err(e) => return fail(&format!("import: {}: {e}", source.display())),
     };
     let Some(manifest) = tree
         .get(MANIFEST)
         .and_then(|bytes| serde_json::from_slice::<Value>(bytes).ok())
     else {
-        return fail("desk import: no desk.json: this is not a desk export");
+        return fail("import: no desk.json: this is not a desk export");
     };
     let version = manifest["version"].as_u64().unwrap_or(u64::MAX);
     if version > VERSION {
         return fail(&format!(
-            "desk import: this export is version {version}; this desk reads version {VERSION} and older"
+            "import: this export is version {version}; this desk reads version {VERSION} and older"
         ));
     }
     let carries_data = tree.keys().any(|path| path.starts_with("data/"));
     if with_data && carries_data && desk_answers() {
-        return fail(
-            "desk import: a desk is running on this computer; quit Desk first to import its data",
-        );
+        return fail("import: quit endue first to import its data");
     }
     let desk = home.join(".desk");
     let mut lines = Vec::new();
@@ -133,7 +131,7 @@ pub fn import(source: &Path, with_data: bool, data: Option<PathBuf>) -> ExitCode
             lines.push(format!("replaced {}", target.display()));
         }
         if let Err(e) = write(&target, &bytes) {
-            return fail(&format!("desk import: {path}: {e}"));
+            return fail(&format!("import: {path}: {e}"));
         }
     }
     for line in lines {
@@ -327,6 +325,6 @@ fn home() -> Option<PathBuf> {
 }
 
 fn fail(line: &str) -> ExitCode {
-    eprintln!("{line}");
+    eprintln!("{} {line}", crate::name());
     ExitCode::from(1)
 }

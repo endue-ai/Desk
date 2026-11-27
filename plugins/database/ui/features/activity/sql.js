@@ -1,3 +1,4 @@
+import { t } from "../../strings/index.js";
 // The server's activity in SQL, PostgreSQL 13 and later: the server's version and the session that
 // reads (the head), the sessions with who blocks each (pg_stat_activity, pg_blocking_pids), the
 // locks (pg_locks), and the two signals. What differs by version: a lock's wait start
@@ -8,8 +9,8 @@
 export const FLOOR = 130000;
 /** From this one on, a lock says when its wait began and an end can be waited for. */
 const FOURTEEN = 140000;
-/** What psql runs the plugin's sessions as (engines/postgres.js, PGAPPNAME). */
-export const OWN_APPLICATION = "endue Desk";
+/** The plugin's own sessions' application_name (engines/pg-session.js's APPLICATION). */
+export const OWN_APPLICATION = "endue";
 /** At most this many rows of each read; the waiting locks come first. */
 export const LOCK_ROWS = 5000;
 /** How long an end waits for the session to be gone (14 and later). */
@@ -60,7 +61,7 @@ export function locksSql(version) {
  */
 export function signalSql(how, pid, version) {
   if (!Number.isSafeInteger(pid) || pid <= 0)
-    throw new Error("A session is named by its process id, a whole number.");
+    throw new Error(t("features.activity.sql.aSessionIsNamedByIts"));
   if (how === "cancel") return `SELECT pg_catalog.pg_cancel_backend(${pid})`;
   return version >= FOURTEEN
     ? `SELECT pg_catalog.pg_terminate_backend(${pid}, ${END_WAIT_MS})`
@@ -76,5 +77,8 @@ export function signalSql(how, pid, version) {
 export function tooOld(name, version, server) {
   return version >= FLOOR
     ? ""
-    : `${name} runs PostgreSQL ${server}: the activity view reads PostgreSQL 13 and later.`;
+    : t("features.activity.sql.runsPostgresqlTheActivityViewReads", {
+        name: String(name),
+        server: String(server),
+      });
 }

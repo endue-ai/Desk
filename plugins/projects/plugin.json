@@ -6,15 +6,29 @@
   "entry": "ui/index.html",
   "description": "Shows the person's tasks from Jira, Linear, Asana and every other task connector in the desk's index as one set of work, in Kanban, Swimlane, List, Database, Timeline and Calendar views, and moves, reschedules and reprioritizes them through the connectors' commands.",
   "permissions": [
-    { "permission": "data:read", "kinds": ["task"] },
+    {
+      "permission": "data:read",
+      "kinds": ["task"]
+    },
     {
       "permission": "cmd:invoke",
       "ids": ["*.task.move", "*.task.update", "desk.palette.pick", "desk.connectors.open"]
     },
-    { "permission": "shell:open", "schemes": ["https"] },
-    { "permission": "connector:manage" }
+    {
+      "permission": "shell:open",
+      "schemes": ["https"]
+    },
+    {
+      "permission": "connector:manage"
+    }
   ],
-  "surfaces": [{ "id": "main", "title": "Projects", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Projects",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "commands": [
       {
@@ -34,42 +48,122 @@
           "timeline",
           "gantt",
           "calendar"
-        ]
+        ],
+        "description": "Show Projects in a view: kanban, swimlane, list, table, timeline or calendar; without view, the next one.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "view": {
+              "enum": ["kanban", "swimlane", "list", "table", "timeline", "calendar"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.group",
         "title": "Group tasks by a field",
-        "keywords": ["projects", "group", "lanes", "assignee", "priority", "sprint"]
+        "keywords": ["projects", "group", "lanes", "assignee", "priority", "sprint"],
+        "description": "Group tasks by the given field in views that support grouping. Use none to clear it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "by": {
+              "type": "string",
+              "enum": [
+                "status",
+                "category",
+                "assignee",
+                "priority",
+                "project",
+                "sprint",
+                "type",
+                "source",
+                "none"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.search",
         "title": "Search tasks",
-        "keywords": ["projects", "find", "filter", "search"]
+        "keywords": ["projects", "find", "filter", "search"],
+        "description": "Narrow the tasks Projects shows to those holding text; an empty text shows them all again. Answers the search shown. To read tasks as data use endue.projects.tasks.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.source",
         "title": "Show one source's tasks",
-        "keywords": ["projects", "source", "jira", "linear", "asana", "filter"]
+        "keywords": ["projects", "source", "jira", "linear", "asana", "filter"],
+        "description": "Show tasks from one source by its connector/instance key. Use null to show all connected sources.",
+        "args": {
+          "type": "object",
+          "properties": { "source": { "type": ["string", "null"], "maxLength": 1000 } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.show-done",
         "title": "Show or hide finished tasks",
-        "keywords": ["projects", "done", "completed", "closed"]
+        "keywords": ["projects", "done", "completed", "closed"],
+        "description": "Set whether finished tasks are shown. Omit on to toggle the current setting.",
+        "args": {
+          "type": "object",
+          "properties": { "on": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.zoom",
         "title": "Zoom the timeline",
-        "keywords": ["projects", "timeline", "week", "month", "quarter"]
+        "keywords": ["projects", "timeline", "week", "month", "quarter"],
+        "description": "Set the timeline's zoom to week, month or quarter.",
+        "args": {
+          "type": "object",
+          "properties": { "zoom": { "type": "string", "enum": ["week", "month", "quarter"] } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.go",
         "title": "Go to today, or a period back or ahead",
-        "keywords": ["projects", "today", "next", "previous", "timeline", "calendar"]
+        "keywords": ["projects", "today", "next", "previous", "timeline", "calendar"],
+        "description": "Move the timeline or calendar to today or one period forward or back. The answer is the period shown.",
+        "args": {
+          "type": "object",
+          "properties": { "to": { "type": "string", "enum": ["today", "next", "previous"] } },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.refresh",
         "title": "Refresh tasks",
-        "keywords": ["projects", "reload", "sync"]
+        "keywords": ["projects", "reload", "sync"],
+        "description": "Read the trackers' tasks again from the index.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.connect",
@@ -79,25 +173,336 @@
       {
         "id": "endue.projects.show",
         "title": "Open a task",
-        "keywords": ["projects", "task", "issue", "details"]
+        "keywords": ["projects", "task", "issue", "details"],
+        "description": "Open a task in Projects' detail and bring the window up. The task is { source, id } as endue.projects.tasks answers them; without them, the task open or selected.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.move",
         "title": "Move the open task to a status",
-        "keywords": ["projects", "status", "move", "transition", "done", "progress"]
+        "keywords": ["projects", "status", "move", "transition", "done", "progress"],
+        "description": "Move the named task to a new status in its tracker after review. Give source, id and a status listed by endue.projects.tasks. Answers the status it has now.",
+        "irreversible": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.update",
         "title": "Change the open task's dates, priority or assignee",
-        "keywords": ["projects", "due", "start", "schedule", "priority", "assign"]
+        "keywords": ["projects", "due", "start", "schedule", "priority", "assign"],
+        "description": "After review, change the named task in its tracker. Give source and id from endue.projects.tasks. Set the due or start date (YYYY-MM-DD), priority (1 urgent to 4 low) or assignee (a name or address). Use null to clear a field. Answers the fields changed.",
+        "irreversible": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "due": {
+              "type": ["string", "null"],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "start": {
+              "type": ["string", "null"],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "priority": {
+              "type": ["integer", "null"],
+              "minimum": 1,
+              "maximum": 4
+            },
+            "assignee": {
+              "type": ["string", "null"],
+              "maxLength": 300
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.projects.open-original",
         "title": "Open the task in its original app",
-        "keywords": ["projects", "jira", "linear", "asana", "link", "browser"]
+        "keywords": ["projects", "jira", "linear", "asana", "link", "browser"],
+        "description": "Open a task in its tracker's own page in the browser. The task is { source, id } as endue.projects.tasks answers them; without them, the task open or selected. Answers the link.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.projects.tasks",
+        "title": "Projects: tasks as data",
+        "keywords": ["projects", "tasks", "issues", "tickets", "todo", "jira", "linear"],
+        "description": "Read tasks across connected trackers and the current Projects view, group, search, source, zoom, period and show-done setting. Each task includes source and id for follow-up calls. Filter by query, source, status, assignee or dueBefore. Open tasks only unless done is true. Soonest due first, up to limit (50, at most 200).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "status": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "assignee": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "dueBefore": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "done": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "connector": {
+                        "type": "string"
+                      },
+                      "instance": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["connector", "instance"],
+                    "additionalProperties": false
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": ["string", "null"]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": ["integer", "null"]
+                  },
+                  "assignee": {
+                    "type": ["string", "null"]
+                  },
+                  "due": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "total": {
+              "type": "integer"
+            },
+            "more": {
+              "type": "boolean"
+            },
+            "statuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.projects.task",
+        "title": "Projects: a task as data",
+        "keywords": ["projects", "task", "issue", "detail"],
+        "description": "One task as data with its text (to 20000 characters), type, parent, estimate and link, leaving the screen as it is. The task is { source, id } as endue.projects.tasks answers them; without them, the task open or selected.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "connector": {
+                  "type": "string"
+                },
+                "instance": {
+                  "type": "string"
+                }
+              },
+              "required": ["connector", "instance"],
+              "additionalProperties": false
+            },
+            "id": {
+              "type": "string"
+            },
+            "ref": {
+              "type": ["string", "null"]
+            },
+            "title": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "priority": {
+              "type": ["integer", "null"]
+            },
+            "assignee": {
+              "type": ["string", "null"]
+            },
+            "due": {
+              "type": "string"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
       }
     ],
-    "keys": [{ "key": "Mod+Shift+U", "command": "endue.projects.open" }],
+    "keys": [
+      {
+        "key": "Mod+Shift+U",
+        "command": "endue.projects.open"
+      }
+    ],
     "settings": {
       "endue.projects.view": {
         "kind": "string",

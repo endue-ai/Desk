@@ -3,20 +3,62 @@
 //! holds anything: the cap holds at use time, so a grant the agent kept from a wider list allows
 //! nothing outside the current one. Inside it, or with an empty list, a call no grant covers asks
 //! the person for its scope, remembered per agent by the prompt policy; a command an installed
-//! plugin provides runs without the question, since installing the plugin was the person's yes to
-//! what it offers (ADR 0268). Every agent call is logged on the `perm` channel (`perm_log`).
+//! plugin offers agents runs without the question, since installing the plugin was the person's yes
+//! to what it offers (ADR 0268), and no agent runs a command of a plugin that answers the person's
+//! questions (ADR 0367). Every agent call is logged on the `perm` channel (`perm_log`).
 
-use desk_bridge::{BridgeError, GrantDuration, Permission, RefusalReason};
+use desk_bridge::{
+    BridgeError, CommandInfo, ErrorCode, GrantDuration, Permission, PluginKind, PluginStatus,
+    RefusalReason,
+};
+use serde_json::{Map, Value};
 
+use crate::agent_tools::ERIS;
 use crate::core_perm::{Decision, refusal};
-use crate::handler::{Core, denied};
+use crate::handler::{Core, denied, error};
 use crate::init::Init;
+use crate::paths::star_match;
 use crate::perm::{Denied, Target, covers, scope_allows};
 use crate::perm_log::{Verdict, target_text};
 use crate::sync::lock;
 
 /// What an agent's caller id starts with.
 pub(crate) const AGENT: &str = "agent:";
+
+/// The runtime, which provides the desk's own commands.
+const DESK: &str = "desk";
+/// The desk's own commands Eris runs without a scope prompt (ADR 0296, ADR 0369).
+const ERIS_DESK_COMMANDS: &[&str] = &[
+    "desk.windows.*",
+    "desk.eris.*",
+    "desk.sweep.*",
+    "desk.capabilities",
+    "desk.files.open",
+    "desk.frames.wait",
+    "desk.frames.reload",
+    "desk.design.use",
+    // A plugin page's style is reversible; its script (`desk.customize.script`) waits (ADR 0398).
+    "desk.customize.style",
+    "desk.customize.clear",
+    "desk.customize.restore-style",
+    "desk.settings.set",
+    "desk.theme.use",
+    "desk.theme.set",
+    "desk.notify.dnd",
+    "desk.notify.dismiss",
+    "desk.profiles.switch",
+    "desk.profiles.save",
+    "desk.shell.desktop-new",
+    "desk.shell.desktop-go",
+    "desk.shell.desktop-rename",
+    "desk.shell.desktop-remove",
+    "desk.buffers.switch",
+    "desk.buffers.close",
+    "desk.files.save",
+    "desk.session.save",
+    "desk.undo",
+    "desk.redo",
+];
 
 /// The longest agent id, so that `agent:<id>` stays within the 128 characters of a caller id.
 const MAX_ID: usize = 122;
@@ -58,35 +100,200 @@ impl Core {
         outside.then_some(RefusalReason::OutsideAllowlist)
     }
 
-    /// Whether `scope` on `target` runs a command an installed plugin provides: the person
-    /// installed the plugin, so an agent runs what it offers without being asked about (ADR 0268).
-    /// The desk's own commands and an MCP server's are not a plugin's.
+    /// Whether `scope` on `target` runs a command an installed plugin provides and offers agents
+    /// (`agent`): the person installed the plugin, so an agent runs what it offers agents without
+    /// being asked about (ADR 0268, ADR 0367). A command the plugin keeps for the person, the
+    /// desk's own commands and an MCP server's are not offered that way: they ask.
     pub(crate) fn installed_command(&self, scope: &Permission, target: &Target<'_>) -> bool {
         let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
             return false;
         };
-        let provider = self.command(id).map(|info| info.provider);
-        provider.is_some_and(|plugin| self.registry().get(&plugin).is_some())
+        let Some(info) = self.command(id) else {
+            return false;
+        };
+        info.agent == Some(true) && self.registry().get(&info.provider).is_some()
     }
 
-    /// The check of an agent's call: refused outside its allowlist whatever it holds, allowed for
-    /// an installed plugin's command or by a grant of its own, or else the person is asked for the
-    /// scope, for the session, as shell.open asks. Each call is one `perm` log entry.
-    pub(crate) fn check_agent(
+    /// Whether `scope` on `target` runs a command of a plugin that answers the person's questions
+    /// (its manifest declares `perm:manage`, as the Permissions plugin's does): no agent runs one,
+    /// whatever it holds, so an agent never answers an approval or a prompt, its own or another's
+    /// (ADR 0367).
+    pub(crate) fn answers_for_the_person(&self, scope: &Permission, target: &Target<'_>) -> bool {
+        let (Permission::CmdInvoke(_), Target::CommandId(id)) = (scope, target) else {
+            return false;
+        };
+        self.command(id)
+            .is_some_and(|info| self.manages_permissions(&info.provider))
+    }
+
+    /// Whether `provider` is a plugin whose manifest declares `perm:manage`: it answers the
+    /// person's questions, so none of its commands is an agent's tool (ADR 0367).
+    pub(crate) fn manages_permissions(&self, provider: &str) -> bool {
+        let registry = self.registry();
+        let declared = registry.declared(provider).unwrap_or_default();
+        declared
+            .iter()
+            .any(|p| matches!(p, Permission::PermManage(_)))
+    }
+
+    /// Whether Eris may run this registered desk command without asking for its scope (ADR 0369).
+    pub(crate) fn eris_desk_command(
+        &self,
+        caller: &str,
+        info: &CommandInfo,
+        args: Option<&Map<String, Value>>,
+    ) -> bool {
+        if agent_of(caller) != Some(ERIS)
+            || info.provider != DESK
+            || info.irreversible == Some(true)
+        {
+            return false;
+        }
+        match info.id.as_str() {
+            "desk.agents.transcript" => false,
+            "desk.plugins.open" => args
+                .and_then(|args| args.get("plugin"))
+                .and_then(Value::as_str)
+                .is_some_and(|id| self.eris_opens_plugin(id)),
+            id => {
+                info.read_only == Some(true) || ERIS_DESK_COMMANDS.iter().any(|p| star_match(p, id))
+            }
+        }
+    }
+
+    /// Opening a UI plugin shows its frame. Only built-in data views have trusted openers.
+    fn eris_opens_plugin(&self, id: &str) -> bool {
+        let Some(plugin) = self.registry().get(id) else {
+            return false;
+        };
+        if !plugin.enabled || plugin.status != PluginStatus::Ready {
+            return false;
+        }
+        let Some(manifest) = plugin.manifest else {
+            return false;
+        };
+        if manifest.kind == PluginKind::Ui {
+            return true;
+        }
+        let opener = format!("{id}.open");
+        plugin.built_in
+            && manifest
+                .contributes
+                .and_then(|c| c.commands)
+                .is_some_and(|commands| {
+                    commands.iter().any(|command| {
+                        command.id == opener
+                            && command
+                                .runs
+                                .as_ref()
+                                .is_some_and(|call| self.trusted_view_opener(&call.command))
+                    })
+                })
+    }
+
+    fn trusted_view_opener(&self, id: &str) -> bool {
+        let provider = match id {
+            "desk.views.open" => "desk.views",
+            "desk.universal.open" => "desk.universal",
+            _ => return false,
+        };
+        self.command(id)
+            .is_some_and(|info| info.provider == provider && info.irreversible != Some(true))
+    }
+
+    /// A direct invocation's scope applies to the registration checked before any prompt.
+    pub(crate) fn checked_command(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        id: &str,
+        args: Option<&Map<String, Value>>,
+    ) -> Result<(Option<CommandInfo>, bool), BridgeError> {
+        let target = Target::CommandId(id);
+        let checked = self.command(id);
+        let held = agent_of(caller).is_some()
+            && checked
+                .as_ref()
+                .is_some_and(|info| info.irreversible == Some(true));
+        if held {
+            self.check_approval_scope(caller, scope, &target)?;
+        } else if agent_of(caller).is_some() {
+            self.check_agent(caller, scope, &target, checked.as_ref(), args)?;
+        } else {
+            self.check(caller, scope, &target)?;
+        }
+        let current = self.command(id);
+        if checked != current {
+            return Err(error(
+                ErrorCode::Cancelled,
+                format!("{id} changed before it ran"),
+            ));
+        }
+        Ok((current, held))
+    }
+
+    /// Fixed limits a person's approval cannot lift.
+    fn agent_limits(
         &self,
         caller: &str,
         scope: &Permission,
         target: &Target<'_>,
     ) -> Result<(), BridgeError> {
+        if let Some(reason) = self.capped(caller, scope) {
+            self.refused(caller, scope, Some(target), Some(reason));
+            return Err(denied(Denied {
+                permission: scope.clone(),
+                reason: refusal(caller, Some(reason)),
+            }));
+        }
+        if self.answers_for_the_person(scope, target) {
+            self.refused(caller, scope, Some(target), None);
+            let reason =
+                format!("{caller} may not run a command that answers the person's questions");
+            return Err(denied(Denied {
+                permission: scope.clone(),
+                reason,
+            }));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn check_approval_scope(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        if !scope_allows(scope, target) {
+            return self.allow_call(caller, scope, target);
+        }
+        self.agent_limits(caller, scope, target)
+    }
+
+    /// The check of an agent's call: refused outside its allowlist whatever it holds and for a
+    /// command of a plugin that answers the person's questions, allowed for a command an installed
+    /// plugin offers agents, Eris's desk commands or by a grant of its own, or else the person is
+    /// asked for the scope, for the session, as shell.open asks. Each call is one `perm` log entry.
+    pub(crate) fn check_agent(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+        info: Option<&CommandInfo>,
+        args: Option<&Map<String, Value>>,
+    ) -> Result<(), BridgeError> {
         if scope_allows(scope, target) {
-            if let Some(reason) = self.capped(caller, scope) {
-                self.refused(caller, scope, Some(target), Some(reason));
-                return Err(denied(Denied {
-                    permission: scope.clone(),
-                    reason: refusal(caller, Some(reason)),
-                }));
-            }
-            if self.installed_command(scope, target) {
+            self.agent_limits(caller, scope, target)?;
+            let free = match (scope, target, info) {
+                (Permission::CmdInvoke(_), Target::CommandId(_), Some(info)) => {
+                    self.eris_desk_command(caller, info, args)
+                }
+                (Permission::CmdInvoke(_), Target::CommandId(id), None) => self
+                    .command(id)
+                    .is_some_and(|info| self.eris_desk_command(caller, &info, None)),
+                _ => false,
+            };
+            if self.installed_command(scope, target) || free {
                 self.log_perm(caller, scope, Some(target), Verdict::Allowed, None);
                 return Ok(());
             }

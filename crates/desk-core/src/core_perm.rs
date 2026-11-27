@@ -92,7 +92,7 @@ impl Core {
         target: &Target<'_>,
     ) -> Result<(), BridgeError> {
         if agent_of(caller).is_some() {
-            return self.check_agent(caller, scope, target);
+            return self.check_agent(caller, scope, target, None, None);
         }
         if self.undeclared(caller, scope) {
             return Err(denied(Denied {
@@ -139,8 +139,24 @@ impl Core {
 
     /// Ask the person; the call waits for the answer. A refusal is a result, not an error. A request
     /// one of the caller's lasting grants covers is answered with that grant, without asking; one
-    /// outside an agent's allowlist, or a plugin's declarations, is refused at once.
+    /// outside an agent's allowlist, or a plugin's declarations, is refused at once. With `again` (the
+    /// person pressed the caller's Allow, ADR 0335) a refusal earlier in the session is forgotten
+    /// first, so the person is asked once more.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
+        if let Some(invocation) = &params.invocation_id {
+            let granted = !self.undeclared(caller, &params.permission)
+                && self.with_provider_approval(caller, invocation, |approval| {
+                    approval.covers(&params.permission)
+                });
+            return json(PermRequestResult {
+                granted,
+                grant: None,
+                reason: None,
+            });
+        }
+        if params.again == Some(true) {
+            self.forget_refusals(caller, &params.permission);
+        }
         let lasting = || self.lasting_grant(caller, &params.permission);
         let decided = match (self.capped(caller, &params.permission), lasting()) {
             (Some(reason), _) => Decision::Refused(Some(reason)),

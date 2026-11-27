@@ -2,7 +2,9 @@
 // desk_crash command, which writes a redacted report in the data folder (crates/desk-crash); the
 // same message once, five at most per run. At start the newest report not shown yet comes back from
 // take_last_crash, and one card says so: Show report, Copy, close. Plugin frames are sandboxed and
-// cross-origin, so only the shell's own errors are seen. Nothing is uploaded (ADR 0007).
+// cross-origin, so only the shell's own errors are seen. Nothing is uploaded (ADR 0007). An error
+// before the desk is ready is not a crash (#566): it goes to the console, the app's dev log; a start
+// that never gets ready says so itself, and a process that dies leaves its exit report.
 
 /** The app commands this module calls. */
 export type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -16,10 +18,21 @@ function text(value: unknown): { message: string; stack: string } {
   return { message: String(value), stack: "" };
 }
 
-/** Send the window's uncaught errors and rejections to desk_crash; returns the function that stops. */
-export function reportCrashes(win: Window, invoke: Invoke): () => void {
+/**
+ * Send the window's uncaught errors and rejections to desk_crash, from the time `ready` settles
+ * when one is given; returns the function that stops.
+ */
+export function reportCrashes(win: Window, invoke: Invoke, ready?: Promise<unknown>): () => void {
   const sent = new Set<string>();
+  let started = ready === undefined;
+  void ready?.finally(() => {
+    started = true;
+  });
   const send = (message: string, stack: string) => {
+    if (!started) {
+      console.warn(`endue startup warning — ${message}`);
+      return;
+    }
     if (!message || sent.has(message) || sent.size >= MAX_REPORTS) return;
     sent.add(message);
     void invoke("desk_crash", { message, stack }).catch(() => {});

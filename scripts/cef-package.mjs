@@ -2,7 +2,7 @@
 // Package the CEF desk for one target with cargo-packager (#46, ADR 0145), from binaries already built
 // (`cargo build -p desk-shell --bins --release --target T` against the CEF that scripts/cef-fetch.mjs
 // fetched) and the built shell (apps/desk/dist):
-// - macOS: `endue Desk.app` with the CEF framework and the five helper apps in Contents/Frameworks,
+// - macOS: `endue.app` with the CEF framework and the five helper apps in Contents/Frameworks,
 //   signed inside out by scripts/cef-sign-macos.sh (ad-hoc without APPLE_SIGNING_IDENTITY) before the
 //   .dmg is made, notarised and stapled when the Apple credentials are set; then the .app.tar.gz.
 // - Windows: CEF's files beside endue-desk.exe, an NSIS installer and an MSI; every PE file
@@ -45,6 +45,7 @@ import {
   pluginFiles,
   ROOT,
 } from "./cef-package/config.mjs";
+import { stageWindowsTemplates } from "./cef-package/windows.mjs";
 
 const SIGN_MACOS = join(ROOT, "scripts/cef-sign-macos.sh");
 
@@ -84,11 +85,9 @@ export function resolveRun(args, env = process.env) {
     paths.out,
     `${JSON.parse(readFileSync(join(PACKAGER, "packager.json"), "utf8")).productName}.app`,
   );
-  if ([SIGN_MACOS, app].some((path) => path.includes("'"))) throw new Error("a path holds a quote");
-  const hook = os === "macos" ? `bash '${SIGN_MACOS}' hook '${app}'` : undefined;
   const signCommand = os === "windows" ? env.DESK_WINDOWS_SIGN_COMMAND || undefined : undefined;
   const base = JSON.parse(readFileSync(join(PACKAGER, "packager.json"), "utf8"));
-  const config = packagerConfig({ base, pin, target, version, paths, hook, signCommand });
+  const config = packagerConfig({ base, pin, target, version, paths, signCommand });
   const formats = value("--formats");
   if (formats) config.formats = pickFormats(config.formats, formats);
   return {
@@ -220,10 +219,30 @@ function collectOutputs(r) {
   return moved;
 }
 
+/** Write the updater archive beside the sealed macOS app. */
+export function archiveMacApp(app) {
+  const name = basename(app);
+  // macOS bsdtar drops account names with --numeric-owner. The bundle keeps modes and links.
+  run(
+    "/usr/bin/tar",
+    ["--uid", "0", "--gid", "0", "--numeric-owner", "-czf", `${name}.tar.gz`, name],
+    {
+      cwd: dirname(app),
+      env: { ...process.env, COPYFILE_DISABLE: "1" },
+    },
+  );
+}
+
 export function packageCef(r) {
   for (const [path, what] of [
     [r.paths.cef, `the pinned CEF (node scripts/cef-fetch.mjs --target ${r.target})`],
-    [join(r.paths.binaries, MAIN), "the shell's release build"],
+    [
+      join(r.paths.binaries, r.os === "windows" ? `${MAIN}.exe` : MAIN),
+      "the shell's release build",
+    ],
+    ...r.config.resources
+      .filter(({ target }) => target.startsWith("cli/"))
+      .map(({ src, target }) => [src, `packaged ${target}`]),
     [join(r.paths.dist, "index.html"), "the built shell (pnpm --filter @endue-ai/desk-app build)"],
   ]) {
     need(path, what);
@@ -235,31 +254,61 @@ export function packageCef(r) {
   if (r.os === "macos") {
     need(join(r.paths.binaries, HELPER), "the helper's release build");
     stageHelpers(r);
+    run("xcrun", [
+      "clang",
+      "-arch",
+      r.target.startsWith("aarch64") ? "arm64" : "x86_64",
+      `-mmacosx-version-min=${r.config.macos.minimumSystemVersion}`,
+      "-fobjc-arc",
+      "-framework",
+      "Foundation",
+      "-framework",
+      "Security",
+      join(PACKAGER, "macos/install.m"),
+      "-o",
+      join(r.paths.stage, "install-endue"),
+    ]);
   } else {
     stageCef(r);
+    if (r.os === "windows") stageWindowsTemplates(r.paths.stage);
   }
   const configFile = join(r.paths.stage, "packager.json");
-  writeFileSync(configFile, `${JSON.stringify(r.config, null, 2)}\n`);
+  // Build the signed app first. Our disk image puts its collision-aware installer beside it.
+  const config = r.os === "macos" ? { ...r.config, formats: ["app"] } : r.config;
+  writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
   const packager = process.env.CARGO_PACKAGER
     ? [process.env.CARGO_PACKAGER, []]
     : ["cargo", ["packager"]];
   run(packager[0], [...packager[1], "--config", configFile, "-v"], { cwd: ROOT });
-  if (r.os === "macos" && r.config.formats.includes("dmg")) {
-    // The hook signed the app before the .dmg was made; the .dmg is signed and notarised after it.
-    const dmg = readdirSync(r.paths.out).find((name) => name.endsWith(".dmg"));
-    if (!dmg) throw new Error(`cargo-packager left no .dmg in ${r.paths.out}`);
-    run("bash", [SIGN_MACOS, "dmg", join(r.paths.out, dmg)]);
-  } else if (r.os === "macos") {
-    // No .dmg, so no hook ran before it: sign the app here.
-    run("bash", [SIGN_MACOS, "app", r.app]);
-  }
   if (r.os === "macos") {
-    const app = basename(r.app);
-    // COPYFILE_DISABLE: no AppleDouble ._ entries for the updater to unpack.
-    run("tar", ["-czf", `${app}.tar.gz`, app], {
-      cwd: r.paths.out,
-      env: { ...process.env, COPYFILE_DISABLE: "1" },
-    });
+    run("bash", [SIGN_MACOS, "app", r.app]);
+    if (r.config.formats.includes("dmg")) {
+      const image = join(r.paths.stage, "image");
+      mkdirSync(image);
+      run("ditto", [r.app, join(image, basename(r.app))]);
+      copyFileSync(
+        join(PACKAGER, "macos/Install-endue.command"),
+        join(image, "Install endue.command"),
+      );
+      chmodSync(join(image, "Install endue.command"), 0o755);
+      const arch = r.target.startsWith("aarch64") ? "aarch64" : "x64";
+      const dmg = join(r.paths.out, `endue_${r.version}_${arch}.dmg`);
+      run("hdiutil", [
+        "create",
+        "-quiet",
+        "-fs",
+        "HFS+",
+        "-format",
+        "UDZO",
+        "-volname",
+        "endue",
+        "-srcfolder",
+        image,
+        dmg,
+      ]);
+      run("bash", [SIGN_MACOS, "dmg", dmg]);
+    }
+    archiveMacApp(r.app);
   }
   const outputs = collectOutputs(r);
   const installed = r.os === "macos" ? treeSize(r.app) : treeSize(r.paths.stage);

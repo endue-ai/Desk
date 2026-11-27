@@ -1,3 +1,4 @@
+import { t } from "../strings/index.js";
 // What every engine shares: the shapes a run plans and returns, and the steps of turning a client's
 // outcome into statement outcomes (rows kept up to the limit, the first statement without its
 // marker as the one that failed or was stopped, those after it as not run).
@@ -11,9 +12,29 @@
  * @typedef {{
  *   id: string, name: string, engine: EngineId, host: string, port: number | null,
  *   database: string, user: string, ssl: SslMode, sslCa: string, file: string,
- *   tag: Tag, readOnly: boolean, group?: string, color?: string,
+ *   tag: Tag, readOnly: boolean, group?: string, color?: string, sslCert?: string, sslKey?: string,
+ *   searchPath?: string, role?: string, timeZone?: string, lockTimeout?: string,
+ *   idleTimeout?: string, applicationName?: string, startup?: string,
+ *   passwordCommand?: string, pooler?: boolean,
+ *   sshHost?: string, sshPort?: number, sshUser?: string, sshAuth?: "key" | "agent" | "password",
+ *   sshKey?: string, sshJump?: string,
  * }} Connection
- * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean }} ResultSet
+ *   `sslCert` and `sslKey`: the client certificate and key files a PostgreSQL connection presents
+ *   (ADR 0331); paths only. `searchPath` to `startup`: a PostgreSQL connection's session options,
+ *   each only when set (pg-options.js). `passwordCommand` and `pooler`: PG-14's (auth/fields.js).
+ *   `sshHost` to `sshJump`: its SSH tunnel, kept only when it has one (tunnel/fields.js, ADR 0359).
+ * @typedef {{ columns: string[], rows: (string | null)[][], truncated: boolean, types?: number[], origins?: { table: number, column: number }[], window?: Window }} ResultSet
+ *   `types`: each column's type OID, on PostgreSQL (a session's RowDescription); `origins` each
+ *   column's table OID and column number there (0 and 0 for an expression; ctid is column -1);
+ *   `window` the rows held of a read its cursor still holds (PG-22, engines/pg-cursor.js).
+ * @typedef {{
+ *   id: string, first: number, known: number, done: boolean, page: number,
+ *   base?: string, sort?: import("../grid/filters.js").SortKey[], filters?: import("../grid/filters.js").Filter[],
+ *   gone?: string, widths?: { ch: number, px: number[] },
+ * }} Window
+ *   `first` is the row number of the first row held; `known` the rows the server gave so far (all of
+ *   them when `done`); `base` the statement before the grid's ORDER BY or WHERE went around it; `gone`
+ *   why the rest cannot be read.
  * @typedef {"sql" | "auth" | "connect" | "client" | "timeout" | "cancelled" | "missing" | "refused"} ErrorKind
  * @typedef {{ kind: ErrorKind, message: string, code?: string, detail?: string, position?: number }} DbError
  *   `position` is an offset in the statement's text.
@@ -27,9 +48,10 @@
  * @typedef {{
  *   command: string, args: string[], env: Record<string, string>, cwd?: string,
  *   nonce: string, statements: Statement[], maxRows: number,
- *   counter?: Counter, stopAfter: number,
+ *   counter?: Counter, stopAfter: number, reason?: string,
  * }} Invocation
- *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows).
+ *   `stopAfter` > 0 stops the client once the counter reaches it (a single read, enough rows);
+ *   `reason` is what the desk's ask for the program says, when not the client's words.
  * @typedef {{
  *   code: number | null, signal: string | null, stdout: string, stderr: string,
  *   stopped: boolean, cancelled: boolean, timedOut: boolean, overflow: boolean, ms: number,
@@ -76,16 +98,18 @@ export function resultSet(columns, rows, maxRows, stopped = false) {
 /** Why the client ended without finishing, when it was not a failure of the statement. */
 export function endedBy(/** @type {Outcome} */ outcome, /** @type {number} */ timeoutMs) {
   if (outcome.cancelled)
-    return /** @type {DbError} */ ({ kind: "cancelled", message: "Cancelled." });
+    return /** @type {DbError} */ ({ kind: "cancelled", message: t("engines.common.cancelled") });
   if (outcome.timedOut)
     return /** @type {DbError} */ ({
       kind: "timeout",
-      message: `Stopped after ${Math.round(timeoutMs / 1000)} s (the statement timeout).`,
+      message: t("engines.common.stoppedAfterSTheStatementTimeout", {
+        value: String(Math.round(timeoutMs / 1000)),
+      }),
     });
   if (outcome.overflow)
     return /** @type {DbError} */ ({
       kind: "client",
-      message: "The client wrote more than 64 MiB; add a LIMIT or export from the terminal.",
+      message: t("engines.common.theClientWroteMoreThanMib"),
     });
   return undefined;
 }
@@ -99,9 +123,7 @@ export const linesOf = (/** @type {string} */ text) =>
 
 /** Whether a client's words say a password is missing or wrong. */
 export function authFailed(/** @type {string} */ text) {
-  return /password authentication failed|no password supplied|fe_sendauth|28P01|Access denied for user|ERROR 1045|ERROR 1698/iu.test(
-    text,
-  );
+  return /Access denied for user|ERROR 1045|ERROR 1698/iu.test(text);
 }
 
 /** The environment's PATH-free part, without empty values. */

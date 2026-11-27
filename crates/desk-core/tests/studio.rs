@@ -3,10 +3,13 @@
 //! reach and refused are typed errors; agents go round trip from create to remove; facets, the
 //! catalog and the conversations of the Home board answer in the bridge's shapes.
 
+mod common;
 mod support;
 
 #[path = "studio/board.rs"]
 mod board;
+#[path = "studio/chat.rs"]
+mod chat;
 #[path = "studio/faces.rs"]
 mod faces;
 #[path = "studio/rows.rs"]

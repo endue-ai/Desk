@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "a surface label message is a catalog key, not a path",
+  "instance": {
+    "id": "example.greeter",
+    "name": "Greeter",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "messages": "messages",
+    "surfaces": [
+      { "id": "main", "title": "Greeter", "titleMessage": "../file", "placement": "center" }
+    ]
+  }
+}

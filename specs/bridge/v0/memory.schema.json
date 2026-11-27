@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/memory.schema.json",
-  "title": "Desk bridge v0: memory",
+  "title": "endue bridge v0: memory",
   "description": "Eris's memory on this computer (specs/memory/v0, ADR 0095): list, get and search it under memory:read; remember a fact or edit one, and forget entries, under memory:write. A forgotten entry leaves the disk and the search index in the same call. Changes arrive as memory.changed.",
   "$defs": {
     "MemoryListRequest": {

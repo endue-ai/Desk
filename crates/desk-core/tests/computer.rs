@@ -6,6 +6,8 @@
 
 #[path = "computer/agents.rs"]
 mod agents;
+#[path = "computer/app_approvals.rs"]
+mod app_approvals;
 mod common;
 #[path = "computer/fake.rs"]
 mod fake;
@@ -175,6 +177,8 @@ fn stop_ends_the_running_and_queued_input_until_the_person_resumes() {
     };
     let long = "a".repeat(3000);
     std::thread::scope(|s| {
+        let queued = s.spawn(|| click(&core, MIRA, 100.0, control(None)));
+        wait_for(&deliveries, "perm.approval");
         let typing = s.spawn(|| {
             call(
                 &core,
@@ -187,6 +191,10 @@ fn stop_ends_the_running_and_queued_input_until_the_person_resumes() {
             std::thread::sleep(Duration::from_millis(5));
         }
         assert_eq!(stop(PLUGIN, false).unwrap()["stopped"], true);
+        assert_eq!(
+            queued.join().unwrap().unwrap_err().code,
+            ErrorCode::Cancelled
+        );
         let cancelled = typing.join().unwrap().unwrap_err();
         assert_eq!(cancelled.code, ErrorCode::Cancelled);
         assert!(
@@ -197,14 +205,12 @@ fn stop_ends_the_running_and_queued_input_until_the_person_resumes() {
     });
     assert!(fake.typed().len() < 3000, "the rest never went out");
     let posted = fake.posted().len();
-    let (_, queued) = held(&core, &deliveries, "once", || {
-        click(&core, MIRA, 100.0, control(None))
-    });
     assert_eq!(
-        queued.unwrap_err().code,
+        click(&core, MIRA, 100.0, control(None)).unwrap_err().code,
         ErrorCode::Cancelled,
-        "approved while stopped"
+        "new acts are refused while stopped"
     );
+    assert!(named(&deliveries, "perm.approval").is_empty());
     assert_eq!(
         click(&core, PLUGIN, 100.0, control(None)).unwrap_err().code,
         ErrorCode::Cancelled
@@ -234,7 +240,7 @@ fn stop_ends_the_running_and_queued_input_until_the_person_resumes() {
     // The stop and the typing it ends race; the rest comes in order.
     let count = |state: &str| activity.iter().filter(|s| *s == state).count();
     let counts = ["acting", "failed", "stopped", "resumed", "done"].map(count);
-    assert_eq!(counts, [4, 3, 1, 1, 1], "{activity:?}");
+    assert_eq!(counts, [3, 2, 1, 1, 1], "{activity:?}");
     let last = [json!("resumed"), json!("acting"), json!("done")];
     assert_eq!(activity[activity.len() - 3..], last, "{activity:?}");
 }

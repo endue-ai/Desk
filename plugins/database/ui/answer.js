@@ -1,10 +1,12 @@
+import { t } from "./strings/index.js";
 // How the plugin's commands and the view's actions meet a failure: its words go to the status line
 // and a cancel stays quiet. A command's failure still ends its request (the palette or the agent
 // hears it); an action's never reaches the DOM. Each command id is answered once. No DOM.
 
 /**
  * @typedef {{ say(text: string): void }} Said
- * @typedef {(name: string, handler: (args: any) => unknown) => void} Answer
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
+ * @typedef {(name: string, handler: (args: any, invocation?: Invocation) => unknown) => void} Answer
  */
 
 /** The bridge or command code an error carries, if any. */
@@ -17,7 +19,7 @@ const words = (/** @type {unknown} */ error) =>
 /**
  * The plugin's way of answering a command: the handler gets its arguments (`{}` when none) and a
  * failure is said before it ends the request.
- * @param {{ on(name: string, handler: (args: unknown) => unknown): void }} commands
+ * @param {{ on(name: string, handler: (args: unknown, invocation?: Invocation) => unknown): void }} commands
  * @param {Said} view
  * @returns {Answer}
  */
@@ -25,11 +27,11 @@ export function answerer(commands, view) {
   /** @type {Set<string>} */
   const answered = new Set();
   return (name, handler) => {
-    if (answered.has(name)) throw new Error(`${name} is answered twice.`);
+    if (answered.has(name)) throw new Error(t("answer.isAnsweredTwice", { name: String(name) }));
     answered.add(name);
-    commands.on(name, async (args) => {
+    commands.on(name, async (args, invocation) => {
       try {
-        return await handler(args ?? {});
+        return await handler(args ?? {}, invocation);
       } catch (error) {
         if (codeOf(error) !== "cancelled") view.say(words(error));
         throw error;

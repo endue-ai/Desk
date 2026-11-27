@@ -3,6 +3,7 @@
 // No DOM.
 
 import { codeOf } from "./answer.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{ id: string, label: string, detail?: string }} Item
@@ -22,15 +23,15 @@ export function createAsk(commands) {
       return typeof picked === "string" && picked !== "" ? picked : undefined;
     } catch (error) {
       if (codeOf(error) === "cancelled") return undefined;
-      throw new Error("Cannot ask: the palette is off.");
+      throw new Error(t("ask.cannotAskThePaletteIsOff"));
     }
   };
   const confirm = async (/** @type {string} */ title, /** @type {string[]} */ reasons) => {
     const [first, ...rest] = reasons;
     const items = [
-      { id: "yes", label: "Yes", ...(first ? { detail: first } : {}) },
+      { id: "yes", label: t("ask.yes"), ...(first ? { detail: first } : {}) },
       ...rest.map((reason, i) => ({ id: `why-${i}`, label: reason })),
-      { id: "no", label: "No" },
+      { id: "no", label: t("ask.no") },
     ];
     return (await pick(title, items)) === "yes";
   };

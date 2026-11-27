@@ -71,11 +71,23 @@ pub(crate) fn open_options(
     home: &std::path::Path,
     language: Language,
 ) -> Options {
-    let open = text(language, "desk.dialog.open");
+    let destination = params.intent == Some(desk_bridge::DialogOpenIntent::Destination);
+    let open = text(
+        language,
+        if destination {
+            "desk.dialog.save"
+        } else {
+            "desk.dialog.open"
+        },
+    );
     Options {
         multiple: params.multiple == Some(true),
         directory: params.kind == Some(DialogOpenKind::Folders),
-        title: Some(titled(asker, params.title.as_deref(), &open)),
+        title: Some(titled(
+            asker,
+            params.title.as_deref().filter(|_| !destination),
+            &open,
+        )),
         default_path: (params.start_in.as_deref()).map(|p| local(p, home).to_string_lossy().into()),
         filters: filters(params.filters.as_ref()),
     }
@@ -168,6 +180,10 @@ mod tests {
         }
     }
 
+    fn fixture_home() -> &'static Path {
+        Path::new(if cfg!(windows) { r"C:\endue" } else { "/endue" })
+    }
+
     fn markdown() -> Filter {
         Filter {
             name: "Markdown".into(),
@@ -182,15 +198,18 @@ mod tests {
             "filters": [{ "name": "Markdown", "extensions": ["md"] }],
         }))
         .unwrap();
-        let options = open_options(&notes(), &params, Path::new("/Users/person"), Language::En);
+        let options = open_options(&notes(), &params, fixture_home(), Language::En);
         assert!(options.multiple && options.directory);
         assert_eq!(options.title.as_deref(), Some("Notes: Pick"));
-        assert_eq!(options.default_path.as_deref(), Some("/Users/person/Notes"));
+        assert_eq!(
+            options.default_path.as_deref().map(Path::new),
+            Some(fixture_home().join("Notes").as_path())
+        );
         assert_eq!(options.filters, [markdown()]);
         let none: DialogOpenParams = serde_json::from_value(json!({})).unwrap();
-        let korean = open_options(&notes(), &none, Path::new("/h"), Language::Ko);
+        let korean = open_options(&notes(), &none, fixture_home(), Language::Ko);
         assert_eq!(korean.title.as_deref(), Some("Notes: 열기"));
-        let none = open_options(&notes(), &none, Path::new("/h"), Language::En);
+        let none = open_options(&notes(), &none, fixture_home(), Language::En);
         assert!(!none.multiple && !none.directory && none.default_path.is_none());
         assert_eq!(none.title.as_deref(), Some("Notes: Open"));
     }
@@ -203,18 +222,18 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(
-            save_options(&notes(), &params, Path::new("/Users/person"), Language::Ko),
+            save_options(&notes(), &params, fixture_home(), Language::Ko),
             SaveOptions {
                 title: "Notes: Save the note as".into(),
-                directory: Some(PathBuf::from("/Users/person/Notes")),
+                directory: Some(fixture_home().join("Notes")),
                 file_name: Some("a.md".into()),
                 filters: vec![markdown()],
             }
         );
         let none: DialogSaveParams = serde_json::from_value(json!({})).unwrap();
-        let korean = save_options(&notes(), &none, Path::new("/h"), Language::Ko);
+        let korean = save_options(&notes(), &none, fixture_home(), Language::Ko);
         assert_eq!(korean.title, "Notes: 저장");
-        let none = save_options(&notes(), &none, Path::new("/h"), Language::En);
+        let none = save_options(&notes(), &none, fixture_home(), Language::En);
         assert_eq!(none.title, "Notes: Save");
         assert!(none.directory.is_none() && none.file_name.is_none() && none.filters.is_empty());
     }
@@ -233,12 +252,9 @@ mod tests {
 
     #[test]
     fn home_paths_are_the_home_folder() {
-        let home = Path::new("/Users/person");
-        assert_eq!(local("~", home), PathBuf::from("/Users/person"));
-        assert_eq!(
-            local("${home}/Notes", home),
-            PathBuf::from("/Users/person/Notes")
-        );
+        let home = fixture_home();
+        assert_eq!(local("~", home), fixture_home());
+        assert_eq!(local("${home}/Notes", home), fixture_home().join("Notes"));
         assert_eq!(local("/tmp/x", home), PathBuf::from("/tmp/x"));
         assert_eq!(local("~other/x", home), PathBuf::from("~other/x"));
     }

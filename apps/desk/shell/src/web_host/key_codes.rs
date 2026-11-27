@@ -8,6 +8,11 @@ use winit::platform::scancode::PhysicalKeyExtScancode;
 
 use KeyCode as K;
 
+/// The CEF enum is signed on Windows. Keyboard and mouse events store its bits as an unsigned mask.
+pub(crate) fn modifier_bits(flag: cef::sys::cef_event_flags_t) -> u32 {
+    u32::from_ne_bytes(flag.0.to_ne_bytes())
+}
+
 /// (DOM code, winit key, Windows virtual key).
 const KEYS: &[(&str, KeyCode, u8)] = &[
     ("KeyA", K::KeyA, 0x41),

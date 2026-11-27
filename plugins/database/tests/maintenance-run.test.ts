@@ -3,7 +3,7 @@
 // block, the server's output and the statistics before and after, the guards (read-only,
 // production, an agent), the progress views while a run is held open, and the cancel of its
 // session on the server.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RAN_AT } from "./maintenance-fixture";
 import { acts, MAINTENANCE, node, ORDERS, start, statementsOf } from "./maintenance-host";
 
@@ -116,8 +116,8 @@ describe("running", () => {
     const id = m.shown()?.id as string;
     await acts(m).maintenanceView?.(id, { options: { full: true } });
     const running = acts(m).maintenanceRun?.(id);
-    await m.settle();
-    expect(held).toHaveLength(1);
+    // Its db.run is held open, as a long statement on a real server: the host does not settle.
+    await vi.waitFor(() => expect(held).toHaveLength(1));
     expect(m.shown()?.maintenance.run).toMatchObject({
       status: "running",
       sql: "VACUUM (FULL, VERBOSE) public.orders",
@@ -139,7 +139,9 @@ describe("running", () => {
       },
     });
     const read = sent.at(-1)?.find((a) => a.includes("pg_stat_progress_cluster")) ?? "";
-    expect(read).toContain("a.application_name = 'endue Desk' AND a.usename = current_user");
+    expect(read).toContain(
+      "a.application_name = pg_catalog.current_setting('application_name') AND a.usename = session_user",
+    );
     expect(read).toContain("starts_with('VACUUM (FULL, VERBOSE) public.orders', a.query)");
     // Then writing the table anew (VACUUM FULL reports in pg_stat_progress_cluster).
     server.progress = [

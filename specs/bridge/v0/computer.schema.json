@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/computer.schema.json",
-  "title": "Desk bridge v0: computer",
+  "title": "endue bridge v0: computer",
   "description": "Computer use (ADR 0120, ADR 0123): see the screen and every app's interface, and operate them, through desk-computer. computer.permissions.* reports and asks for the OS permissions (Accessibility, Screen Recording); computer.screenshot, computer.windows, computer.apps.list and computer.ax.tree|find read under computer:see; computer.input.*, computer.ax.perform and computer.apps.launch|activate|quit act under computer:control, one act at a time, rate-limited, each stoppable by computer.stop. A scope's apps limit the call to those apps: the app under the pointer for the mouse, the frontmost one for the keyboard, the app named for the rest. Every act of an agent (agent:<id>, or a plugin acting on an agent's invocation) waits for the person's approval on a perm.approval card (ADR 0078) and is a run on the desk's runs board with a screenshot after it (ADR 0100). A desk without a driver, or a platform without one (anything but macOS today), answers unsupported; a missing OS permission is permission_denied naming the System Settings pane; an act the stop ended, or one asked while stopped, is cancelled. Coordinates are global points, the origin at the top left of the main display.",
   "$defs": {
     "ComputerPoint": {
@@ -155,9 +155,19 @@
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
         "method": { "const": "computer.permissions.status" },
-        "params": { "$ref": "#/$defs/ComputerSeeParams" }
+        "params": { "$ref": "#/$defs/ComputerStatusParams" }
       },
       "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerStatusParams": {
+      "description": "The computer status call, optionally for the agent that invoked the built-in Computer status command.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" },
+        "invocationId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["scope"],
       "additionalProperties": false
     },
     "ComputerPermissionsStatusResult": {
@@ -167,7 +177,13 @@
         "accessibility": { "type": "boolean" },
         "screenRecording": { "type": "boolean" },
         "bundleId": { "type": "string" },
-        "stopped": { "type": "boolean" }
+        "stopped": { "type": "boolean" },
+        "allowedApps": {
+          "description": "Bundle IDs the agent can act in until computer use stops or the conversation changes.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
       },
       "required": ["accessibility", "screenRecording", "stopped"],
       "additionalProperties": false

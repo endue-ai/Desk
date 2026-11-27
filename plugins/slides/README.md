@@ -2,7 +2,7 @@
 
 `endue.slides` ("Slides") opens every presentation in one viewer: a thumbnail rail, the slide scaled to
 fit as real, selectable HTML, its speaker notes under it, and play mode. It reads; it never edits. The
-community folder format on the public SDK only, like `plugins/notes`.
+community folder format on the public SDK. Eris reads slide text, notes and the current slide with `endue.slides.read`, and uses `show`, `play` and `stop` to present the deck (ADR 0391).
 
 | Files | What it shows |
 | --- | --- |
@@ -33,7 +33,7 @@ Chords always reach the desk.
 | Folder | Purpose |
 | --- | --- |
 | `ui/pptx/`, `ui/odp/`, `ui/ppt/`, `ui/other.js` | The readers, on `ui/zip.js`, `ui/cfb.js` and `DOMParser` |
-| `ui/slides.js`, `reading.js`, `keep.js`, `worker.js`, `view.js`, `play.js`, `style.css` | Desk requests, ranged reads, progress, links, sleep; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
+| `ui/slides.js`, `reading.js`, `keep.js`, `worker.js`, `view.js`, `play.js`, `style.css` | endue requests, ranged reads, progress, links, sleep; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
 
 `pnpm exec vitest run plugins/slides` · `cargo run -p desk-cli -- plugin validate plugins/slides` ·
 `plugins/slides/tests/fixtures/make.sh` (real-world fixtures, Docker; `ppt/make.sh`: the .ppt deck)

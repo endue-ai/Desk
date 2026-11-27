@@ -6,7 +6,9 @@
 // fields, and the footer shows them. Layout and colours: activity.css.
 
 import { el } from "../../dom.js";
-import { databasesOf, hiddenOf, PERIODS, sorted, visible } from "./model.js";
+import { readAtText } from "../../schema-cache/view.js";
+import { t } from "../../strings/index.js";
+import { databasesOf, hiddenOf, PERIODS, saidOf, sorted, visible } from "./model.js";
 import { LOCK_ROWS } from "./sql.js";
 import { locksSection, sessionsSection, treeSection } from "./tables.js";
 
@@ -36,7 +38,12 @@ const FIELDS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 
 /** The status line: when it was read, what, and how it refreshes. */
 function statusOf(/** @type {ActivityState} */ s) {
-  if (!s.read) return s.reading ? "Reading the server's activity…" : s.error ? "Not read." : "";
+  if (!s.read)
+    return s.reading
+      ? t("features.activity.panel.readingTheServerSActivity")
+      : s.error
+        ? t("features.activity.panel.notRead")
+        : "";
   const waiting = s.read.sessions.filter((x) => x.blockedBy.length).length;
   const refresh = s.reading
     ? "reading…"
@@ -46,7 +53,7 @@ function statusOf(/** @type {ActivityState} */ s) {
         ? "Refresh stopped"
         : `every ${s.period} s`;
   return [
-    `Read at ${new Date(s.read.at).toLocaleTimeString()}`,
+    readAtText(s.read.at, Date.now(), true),
     `PostgreSQL ${s.read.server}`,
     `${s.read.sessions.length} sessions, ${waiting} waiting`,
     refresh,
@@ -94,29 +101,39 @@ export function activityPanel(doc, first, act, buffer) {
       doc,
       "select",
       { class: "desk-field", "data-ctl": "period" },
-      ...PERIODS.map((p) => el(doc, "option", { value: String(p) }, `${p} s`)),
+      ...PERIODS.map((p) =>
+        el(doc, "option", { value: String(p) }, t("features.activity.panel.s", { p: String(p) })),
+      ),
     )
   );
   const database = /** @type {HTMLSelectElement} */ (
     el(
       doc,
       "select",
-      { class: "desk-field", "data-ctl": "database", "aria-label": "Database" },
-      el(doc, "option", { value: "" }, "All databases"),
+      {
+        class: "desk-field",
+        "data-ctl": "database",
+        "aria-label": t("features.activity.panel.database"),
+      },
+      el(doc, "option", { value: "" }, t("features.activity.panel.allDatabases")),
     )
   );
   const [idle, own, system] = [
     check("idle", "Hide idle"),
-    check("own", "Hide this view's session"),
+    check("own", "Hide the view's reads"),
     check("system", "Background processes"),
   ];
   const bar = el(
     doc,
     "div",
-    { class: "activity-bar", role: "toolbar", "aria-label": "Server activity" },
+    {
+      class: "activity-bar",
+      role: "toolbar",
+      "aria-label": t("features.activity.panel.serverActivity"),
+    },
     button("refresh", "Refresh", "Read again (g)"),
     pause,
-    el(doc, "label", { class: "activity-field" }, "Every ", period),
+    el(doc, "label", { class: "activity-field" }, t("features.activity.panel.every"), period),
     database,
     idle.label,
     own.label,
@@ -200,7 +217,7 @@ export function activityPanel(doc, first, act, buffer) {
       if (!root.isConnected) return;
       if (root.closest("[hidden]") || doc.visibilityState === "hidden")
         timer = setTimeout(tick, ms);
-      else act("activityRefresh", id);
+      else act("activityRefresh", id, "timer");
     };
     timer = setTimeout(tick, ms);
   };
@@ -209,7 +226,9 @@ export function activityPanel(doc, first, act, buffer) {
   const tell = (/** @type {ActivityState} */ s) => {
     const hidden = s.read ? hiddenOf(s.read.sessions) : "";
     const more = s.read?.more
-      ? `Only the first ${LOCK_ROWS.toLocaleString("en-US")} locks were read, the waiting ones first.`
+      ? t("features.activity.panel.onlyTheFirstLocksWereRead", {
+          value: String(LOCK_ROWS.toLocaleString("en-US")),
+        })
       : "";
     const key = [s.error, hidden, more].join("\n");
     if (key === told) return;
@@ -233,7 +252,7 @@ export function activityPanel(doc, first, act, buffer) {
                 doc,
                 "button",
                 { type: "button", class: "desk-btn", "data-ctl": "refresh" },
-                "Try again",
+                t("features.activity.panel.tryAgain"),
               ),
             ),
           ]
@@ -244,7 +263,9 @@ export function activityPanel(doc, first, act, buffer) {
 
   const draw = () => {
     const s = state;
-    pause.textContent = s.paused ? "Resume" : "Pause";
+    pause.textContent = s.paused
+      ? t("features.activity.panel.resume")
+      : t("features.activity.panel.pause");
     pause.setAttribute("aria-pressed", String(s.paused));
     period.value = String(s.period);
     const names = s.read ? databasesOf(s.read.sessions) : [];
@@ -287,14 +308,29 @@ export function activityPanel(doc, first, act, buffer) {
     arm();
   };
 
+  /**
+   * The footer's sentence about a read (the open command's) follows each read while the footer
+   * still shows it; anything said since stays.
+   * @param {NonNullable<ActivityState["read"]>} before
+   * @param {NonNullable<ActivityState["read"]>} now
+   */
+  const follow = (before, now) => {
+    const line = doc.getElementById("status");
+    if (!line || line.textContent !== saidOf(state.conn.name, before)) return;
+    line.textContent = saidOf(state.conn.name, now);
+    line.title = line.textContent;
+  };
+
   draw();
   hints();
   if (!state.read && !state.reading && !state.error) act("activityRefresh", id);
   return {
     el: root,
     update(/** @type {ActivityState} */ next) {
+      const before = state.read;
       state = next;
       draw();
+      if (before && next.read && before !== next.read) follow(before, next.read);
     },
     destroy() {
       clearTimeout(timer);

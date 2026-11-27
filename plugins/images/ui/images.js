@@ -4,6 +4,8 @@
 // for large files), follows them on disk, lists their folder for Left and Right (folder.js), keeps
 // them across a sleep (keep.js), and loads a second image to compare. It only talks to
 // ctx.commands, ctx.bridge, ctx.surface and a view, so the SDK's test host runs it.
+import { installAgentCommands } from "./agent.js";
+import { createComparison } from "./compare.js";
 import { webviewReason } from "./decode.js";
 import { release } from "./decoding.js";
 import { modelOf, rowsOf } from "./details.js";
@@ -11,6 +13,7 @@ import { createWalk, folderOf, listFolder, nameOf } from "./folder.js";
 import { readPlace } from "./keep.js";
 import { createOpening, scopeOf } from "./opening.js";
 import { reveal as showInFolder } from "./reveal.js";
+import { volumeSlices } from "./slices.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -24,7 +27,9 @@ import { reveal as showInFolder } from "./reveal.js";
  *   position: { index: number, count: number } | null, choices: Choice[] }} ImagesState
  * @typedef {{ render(state: ImagesState): void, status(text: string): void, focus(): void,
  *   progress?(value: import("./opening.js").Progress | null): void,
- *   place?(): ViewPlace | null, restore?(place: ViewPlace): void }} View
+ *   place?(): ViewPlace | null, restore?(place: ViewPlace): void, setZoom?(level: number | "fit"): void,
+ *   turn?(degrees?: number, flip?: boolean): void, pan?(dx: number, dy: number): void,
+ *   showDetails?(shown: boolean): void, detailsShown?(): boolean }} View
  *   place and restore: the zoom, pan and turn of the image on screen, kept across a sleep.
  * @typedef {{ buffer: string, path: string, name: string, size: number, decoded: Decoded,
  *   model: ImageModel, watchId?: string, slice?: number }} Entry
@@ -59,8 +64,6 @@ export function createImages({ bridge, commands, surface }, view, options) {
   const watches = new Map();
   /** @type {string | null} */
   let shown = null;
-  /** @type {Entry | null} */
-  let partner = null;
   /** The shown image's folder: its path and its images in natural order. */
   /** @type {{ dir: string, names: string[] } | null} */
   let folder = null;
@@ -106,7 +109,7 @@ export function createImages({ bridge, commands, surface }, view, options) {
     if (folder) for (const name of folder.names) offer(`${folder.dir}/${name}`);
     return {
       image: entry?.model ?? null,
-      partner: entry ? (partner?.model ?? null) : null,
+      partner: entry ? (comparison.current()?.model ?? null) : null,
       position: index >= 0 ? { index: index + 1, count: names.length } : null,
       choices,
     };
@@ -130,9 +133,17 @@ export function createImages({ bridge, commands, surface }, view, options) {
   };
   /** Let go of an entry's blob: URL and worker once no buffer and no comparison shows it. */
   const drop = (/** @type {Entry | null | undefined} */ entry) => {
-    if (!entry || partner === entry || [...images.values()].includes(entry)) return;
+    if (!entry || comparison.current() === entry || [...images.values()].includes(entry)) return;
     release(entry.decoded);
   };
+  const comparison = createComparison({
+    current,
+    load,
+    render,
+    drop,
+    say,
+    held: (path) => [...images.values()].find((entry) => entry.path === path),
+  });
 
   const follow = (/** @type {Entry} */ entry, /** @type {string} */ watchId) => {
     entry.watchId = watchId;
@@ -313,60 +324,39 @@ export function createImages({ bridge, commands, surface }, view, options) {
     current,
     folder: () => folder,
     left: (buffer) => images.has(buffer) && shown !== buffer,
-    say,
   });
+  const walk = (/** @type {Parameters<typeof go>[0]} */ where) =>
+    go(where).catch((error) => say(text(error)));
 
   /** Rebuild an entry's model after its decoded image changed. */
   const remodel = (/** @type {Entry} */ entry, /** @type {Decoded} */ decoded) => {
     entry.decoded = decoded;
     entry.model = modelOf(entry, decoded);
   };
-  const owners = (/** @type {ImageModel} */ model) =>
-    [...images.values(), ...(partner ? [partner] : [])].filter((e) => e.model === model);
+  const slices = volumeSlices({ current, remodel, render, say });
+  installAgentCommands(commands, {
+    ready: () => waking?.done,
+    state,
+    go,
+    view,
+    compare: comparison.show,
+    slice: slices.show,
+    exif: () => current()?.decoded.exif?.fields ?? [],
+  });
+  const owners = (/** @type {ImageModel} */ model) => {
+    const partner = comparison.current();
+    return [...images.values(), ...(partner ? [partner] : [])].filter((e) => e.model === model);
+  };
 
   return {
-    next: () => go((i) => i + 1),
-    previous: () => go((i) => i - 1),
-    first: () => go(() => 0),
-    last: () => go((_, n) => n - 1),
-    /** Move through a volume's slices; a large volume's worker decodes them. */
-    async slice(/** @type {number} */ delta) {
-      const entry = current();
-      const slices = entry?.decoded.slices;
-      if (!entry || !slices) return;
-      const from = entry.slice ?? slices.index;
-      const index = Math.max(0, Math.min(slices.count - 1, from + delta));
-      if (index === from) return;
-      entry.slice = index;
-      try {
-        const rgba = await slices.at(index);
-        // A later key press, or another image, won while this slice decoded.
-        if (entry.slice !== index || !entry.decoded.slices) return;
-        remodel(entry, { ...entry.decoded, rgba, slices: { ...entry.decoded.slices, index } });
-        if (current() === entry) render();
-        say(`Slice ${index + 1} of ${slices.count}.`);
-      } catch (error) {
-        say(text(error));
-      }
-    },
+    next: () => walk((i) => i + 1),
+    previous: () => walk((i) => i - 1),
+    first: () => walk(() => 0),
+    last: () => walk((_, n) => n - 1),
+    slice: (/** @type {number} */ delta) => slices.move(delta)?.catch((error) => say(text(error))),
     /** Split the surface with another image, by path; null ends the comparison. */
-    async compare(/** @type {string | null} */ path) {
-      const before = partner;
-      if (!path) {
-        partner = null;
-        render();
-        drop(before);
-        return;
-      }
-      try {
-        partner = [...images.values()].find((e) => e.path === path) ?? (await load("", path));
-        render();
-        drop(before);
-        say(`Comparing with ${partner.name}.`);
-      } catch (error) {
-        say(text(error));
-      }
-    },
+    compare: (/** @type {string | null} */ path) =>
+      comparison.show(path).catch((error) => say(text(error))),
     /** The webview could not decode an image: show its details with that reason. */
     failed(/** @type {ImageModel} */ model) {
       for (const entry of owners(model)) {

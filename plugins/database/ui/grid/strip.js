@@ -3,6 +3,7 @@
 // keep the rows it holds), and Clear for all of them. Hidden while there is none.
 
 import { el } from "../dom.js";
+import { t } from "../strings/index.js";
 import { filterLabel } from "./filters.js";
 
 /**
@@ -13,7 +14,7 @@ export function createStrip(doc, acts) {
   const strip = el(doc, "div", {
     class: "grid-strip desk-chips",
     role: "group",
-    "aria-label": "Quick filters",
+    "aria-label": t("grid.strip.quickFilters"),
     hidden: "",
   });
   strip.addEventListener("click", (event) => {
@@ -45,15 +46,20 @@ export function createStrip(doc, acts) {
               type: "button",
               class: "desk-icon-btn",
               "data-remove": String(i),
-              "aria-label": `Remove the filter ${label}`,
-              title: "Remove",
+              "aria-label": t("grid.strip.removeTheFilter", { label: String(label) }),
+              title: t("grid.strip.remove"),
             },
             "×",
           ),
         );
       });
       strip.replaceChildren(
-        el(doc, "span", { class: "where" }, server ? "On the server" : "On these rows"),
+        el(
+          doc,
+          "span",
+          { class: "where" },
+          server ? t("grid.strip.onTheServer") : t("grid.strip.onTheseRows"),
+        ),
         ...chips,
         ...(filters.length > 1
           ? [
@@ -61,7 +67,7 @@ export function createStrip(doc, acts) {
                 doc,
                 "button",
                 { type: "button", class: "desk-btn desk-btn-quiet", "data-clear": "" },
-                "Clear",
+                t("grid.strip.clear"),
               ),
             ]
           : []),

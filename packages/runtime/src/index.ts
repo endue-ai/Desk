@@ -75,6 +75,8 @@ export {
   type Grab,
   heldWindows,
   noWindowManager,
+  type OutAsk,
+  type OutFrame,
   type WindowManagerHost,
   type WindowOp,
 } from "./wm/host";

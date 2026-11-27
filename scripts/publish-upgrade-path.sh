@@ -14,10 +14,16 @@ case "$1" in
     dist="$2"
     version="$3"
     tag="v$version"
+    node scripts/release-manifest.mjs check-files "$dist" --version "$version"
+    prefix="$(node scripts/release-assets.mjs desktop-prefix "$version")"
     node scripts/github-upgrade-path.mjs manifest "$dist" "$version" "$4" "${5:-}" > "$work/release.json"
     sign "$work/release.json"
     files=()
-    for sig in "$dist"/endue-desk_*.sig; do files+=("${sig%.sig}" "$sig"); done
+    for sig in "$dist"/"$prefix"*.sig; do files+=("${sig%.sig}" "$sig"); done
+    if [[ "$1" == packages && -f "$dist/endue-cli_${version}_linux-x86_64.tar.gz" ]]; then
+      cli="$dist/endue-cli_${version}_linux-x86_64.tar.gz"
+      files+=("$cli" "$cli.sig" "$dist/SHA256SUMS-cli")
+    fi
     upload "${files[@]}"
     upload "$work/release.json.sig"
     upload "$work/release.json"
@@ -34,7 +40,7 @@ case "$1" in
       node scripts/github-upgrade-path.mjs preview "$2" "${BASE:?missing preview artifact origin}" > "$path"
       if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null; then
         gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-          --title "Desk $channel updates" --notes "Signed upgrade path for the $channel channel." --prerelease --latest=false
+          --title "endue $channel updates" --notes "Signed upgrade path for the $channel channel." --prerelease --latest=false
       fi
     fi
     ;;

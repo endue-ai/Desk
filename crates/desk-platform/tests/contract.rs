@@ -14,7 +14,7 @@ use desk_platform::wire_account::{
 };
 use desk_platform::wire_catalog::{CatalogAgent, ConversationPage, Recommended, Used};
 use desk_platform::wire_spaces::{Room, Space, SpaceOverview};
-use desk_platform::{ErrorKind, PlatformError};
+use desk_platform::{ChatDone, ErrorKind, PlatformError};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -124,6 +124,7 @@ fn valid_answers_read_into_the_client_types() {
             "RecommendEnvelope" => reads::<Envelope<Recommended>>(vector),
             "UseCatalogEnvelope" => reads::<Envelope<Used>>(vector),
             "ConversationListEnvelope" => reads::<Envelope<ConversationPage>>(vector),
+            "AgentConversationDone" => reads::<ChatDone>(vector),
             "SpaceListResponse" => reads::<Vec<Space>>(vector),
             "SpaceOverviewEnvelope" => reads::<Envelope<SpaceOverview>>(vector),
             "SpaceRoomListEnvelope" => reads::<Envelope<Vec<Room>>>(vector),

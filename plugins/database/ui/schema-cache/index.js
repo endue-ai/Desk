@@ -4,15 +4,19 @@
 // start. The first use in a session answers from the store at once and checks each schema's
 // fingerprint behind it; a DDL statement run from the plugin checks again; only the schemas whose
 // fingerprint moved are read. An explicit reload reads every chosen schema. One pass at a time per
-// connection; requests made meanwhile run once after it. Other engines are not cached. No DOM.
+// connection; requests made meanwhile run once after it. Other engines are not cached. Each
+// database of a connection's server has a cache of its own, under its reference (databases.js,
+// PG-13); the connection lists the ones it wrote, so removing it clears them. No DOM.
 
-import { isSystem, marksSql, POSTGRES_KINDS, signature } from "./kinds.js";
+import { baseOf, storeIdOf } from "../databases.js";
+import { t } from "../strings/index.js";
+import { DATABASE, isSystem, marksSql, POSTGRES_KINDS, signature } from "./kinds.js";
 import { staleReferences } from "./model.js";
 import { Cancelled, runPass } from "./pass.js";
-import { clear, persist, restore } from "./store.js";
+import { clear, databasesKey, persist, restore } from "./store.js";
 import { isChosen, readAtText, viewOf } from "./view.js";
 
-export { isSystem, readAtText };
+export { DATABASE, isSystem, readAtText };
 
 /**
  * @typedef {import("../engines/common.js").Connection} Connection
@@ -23,7 +27,8 @@ export { isSystem, readAtText };
  * @typedef {{ all?: boolean, schemas?: string[], quiet?: boolean }} Request
  *   `all` reads every chosen schema; `schemas` those whatever their fingerprint; `quiet` never asks
  *   for a password.
- * @typedef {{ statements: number, read: string[] }} Report
+ * @typedef {{ statements: number, read: string[], database?: true }} Report
+ *   `read` names the schemas read; `database` is there when the database level was read too.
  * @typedef {import("./view.js").Held & {
  *   conn: Connection, where: string, kinds: readonly Kind[], check: "" | "done" | "failed" | "quiet",
  *   error: Error | null, opened: boolean, restoring: Promise<void> | null,
@@ -46,8 +51,10 @@ export const ranDdl = (/** @type {Execution} */ execution) =>
     (s) => s.ran && !s.error && execution.classes[s.index]?.kind === "ddl",
   );
 
+/** What is kept first past the cap: the database level, the default schema, then by name. */
+const rank = (/** @type {string} */ name) => (name === DATABASE ? 0 : name === "public" ? 1 : 2);
 const keepOrder = (/** @type {{ name: string }} */ a, /** @type {{ name: string }} */ b) =>
-  a.name === "public" ? -1 : b.name === "public" ? 1 : a.name.localeCompare(b.name);
+  rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
 const messageOf = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
 
@@ -102,7 +109,7 @@ export function createSchemaCache(deps) {
   /** The entry with what the store kept, read once. */
   const restored = async (/** @type {Connection} */ conn) => {
     const entry = entryOf(conn);
-    entry.restoring ??= restore(deps.store, conn.id, {
+    entry.restoring ??= restore(deps.store, storeIdOf(conn.id), {
       where: entry.where,
       kinds: signature(entry.kinds),
     }).then(
@@ -122,12 +129,38 @@ export function createSchemaCache(deps) {
     return entry;
   };
 
+  /** The store ids of a connection's other databases that it wrote, read once a session. */
+  /** @type {Map<string, Promise<string[]>>} */
+  const others = new Map();
+  const othersOf = (/** @type {string} */ connection) => {
+    let found = others.get(connection);
+    if (!found) {
+      found = deps.store
+        .get(databasesKey(connection))
+        .then((v) => (Array.isArray(v) ? v.filter((id) => typeof id === "string") : []))
+        .catch(() => []);
+      others.set(connection, found);
+    }
+    return found;
+  };
+  /** Another database's cache is listed with its connection before it is first written. */
+  const listed = async (/** @type {string} */ ref) => {
+    const base = baseOf(ref);
+    const id = storeIdOf(ref);
+    if (base === ref) return;
+    const ids = await othersOf(base);
+    if (ids.includes(id)) return;
+    ids.push(id);
+    await deps.store.set(databasesKey(base), [...ids]);
+  };
+
   /** Write the entry to the store, after any write before it. */
   const save = (/** @type {Entry} */ entry) => {
     entry.saving = entry.saving
       .then(async () => {
         if (entries.get(entry.conn.id) !== entry) return;
-        const done = await persist(deps.store, entry.conn.id, {
+        await listed(entry.conn.id);
+        const done = await persist(deps.store, storeIdOf(entry.conn.id), {
           where: entry.where,
           kinds: signature(entry.kinds),
           chosen: entry.chosen,
@@ -216,11 +249,17 @@ export function createSchemaCache(deps) {
       entry.error = null;
       await save(entry);
       set({ state: "idle" });
-      return { statements: result.statements, read: [...result.read.keys()] };
+      const names = [...result.read.keys()];
+      return {
+        statements: result.statements,
+        read: names.filter((name) => name !== DATABASE),
+        ...(result.read.has(DATABASE) ? { database: /** @type {const} */ (true) } : {}),
+      };
     } catch (error) {
       entry.check = request.quiet ? "quiet" : "failed";
       entry.error = error instanceof Error ? error : new Error(messageOf(error));
-      if (error instanceof Cancelled) set({ state: "cancelled", message: "Cancelled." });
+      if (error instanceof Cancelled)
+        set({ state: "cancelled", message: t("schemaCache.index.cancelled") });
       else set({ state: "error", message: messageOf(error) });
       throw error;
     }
@@ -311,16 +350,25 @@ export function createSchemaCache(deps) {
       await save(entry);
       return refresh(conn, {});
     },
-    /** Stop the passes going on (of one connection, or of all) before their next statement. */
+    /** Stop the passes going on (of one connection on any database, one database, or all). */
     cancel(/** @type {string | undefined} */ connection) {
       for (const [id, entry] of entries)
-        if ((connection === undefined || id === connection) && entry.running) entry.generation++;
+        if (
+          (connection === undefined || id === connection || baseOf(id) === connection) &&
+          entry.running
+        )
+          entry.generation++;
     },
-    /** A connection was removed: forget its cache here and in the store. */
+    /** A connection was removed: forget the cache of each of its databases, here and in the store. */
     async drop(/** @type {string} */ connection) {
-      const entry = entries.get(connection);
-      if (entry) entry.generation++;
-      entries.delete(connection);
+      for (const [id, entry] of [...entries])
+        if (baseOf(id) === connection) {
+          entry.generation++;
+          entries.delete(id);
+        }
+      for (const id of await othersOf(connection)) await clear(deps.store, id);
+      others.delete(connection);
+      await deps.store.set(databasesKey(connection), null).catch(() => {});
       await clear(deps.store, connection);
     },
     /** What the cache answers now, or undefined when the connection is not cached here. */

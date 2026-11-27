@@ -8,6 +8,7 @@
 // Reading what sqlite3 printed is the result worker's (ui/output/sqlite.js, #38).
 
 import { quoteText } from "../sql/quote.js";
+import { t } from "../strings/index.js";
 import { lineCounter, markOf } from "./text.js";
 
 /**
@@ -52,7 +53,7 @@ function plan(conn, options) {
 
 export const sqlite = {
   id: /** @type {const} */ ("sqlite"),
-  title: "SQLite",
+  title: t("engines.sqlite.sqlite"),
   dialect: /** @type {const} */ ("sqlite"),
   port: null,
   client: "sqlite3",

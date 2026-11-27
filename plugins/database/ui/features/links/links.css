@@ -1,0 +1,7 @@
+/* A foreign key's cell is a link (PG-41, ADR 0322): link text, underlined, as the design system draws
+   links; g or Mod+click follows it, its title says where it points. */
+
+.cell.link {
+  color: var(--desk-primary-text);
+  text-decoration: underline;
+}

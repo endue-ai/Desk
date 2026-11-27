@@ -32,7 +32,7 @@ closes, Shift+arrows move a column, `1`–`6` views, `/` search, `[` `]` `t` per
 | `shell:open` (`https`); `connector:manage` | Open the original issue in the browser; name the installed task connectors when none is connected (`connector.list`), or say none brings tasks |
 
 Settings: `endue.projects.view`, `.week-start`, `.show-done`, `.columns`. The store keeps the view,
-grouping, sort, source, done filter, zoom and columns (`view`), never the work.
+grouping, sort, source, done filter, zoom and columns (`view`), never the work. Eris reads `tasks`, including the current view, and `task { source, id }` as data. She can navigate and filter Projects. Changes to a named task in a tracker wait for review (ADR 0388).
 
 ```bash
 pnpm exec vitest run plugins/projects

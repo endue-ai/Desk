@@ -228,160 +228,78 @@
         {
           "tag": "section",
           "class": "chat",
+          "aria-label": "Conversation",
           "children": [
             {
-              "tag": "header",
-              "class": "chat-head",
+              "tag": "desk-agent-session",
               "children": [
-                {
-                  "tag": "h2",
-                  "text": "How does the bridge check calls?"
-                },
-                {
-                  "tag": "span",
-                  "class": "desk-muted",
-                  "text": "Continues s-new"
-                },
-                {
-                  "tag": "span",
-                  "class": "desk-bar-spacer"
-                },
                 {
                   "tag": "button",
                   "class": "desk-btn desk-btn-quiet",
                   "type": "button",
                   "text": "New session"
-                }
-              ]
-            },
-            {
-              "tag": "p",
-              "class": "desk-muted",
-              "hidden": ""
-            },
-            {
-              "tag": "ol",
-              "class": "chat-log",
-              "role": "log",
-              "aria-label": "Conversation",
-              "children": [
-                {
-                  "tag": "li",
-                  "class": "turn user",
-                  "data-state": "",
-                  "children": [
-                    {
-                      "tag": "span",
-                      "class": "sr-only",
-                      "text": "You:"
-                    },
-                    {
-                      "tag": "p",
-                      "class": "plain",
-                      "text": "How does the bridge check calls?"
-                    }
-                  ]
-                },
-                {
-                  "tag": "li",
-                  "class": "turn assistant",
-                  "data-state": "done",
-                  "children": [
-                    {
-                      "tag": "span",
-                      "class": "sr-only",
-                      "text": "Agent:"
-                    },
-                    {
-                      "tag": "desk-markdown"
-                    },
-                    {
-                      "tag": "ul",
-                      "class": "tools",
-                      "aria-label": "What the agent used",
-                      "children": [
-                        {
-                          "tag": "li",
-                          "text": "specs/bridge/v0/agents.schema.json",
-                          "children": [
-                            {
-                              "tag": "span",
-                              "class": "tool-name",
-                              "text": "Read"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "tag": "p",
-              "class": "desk-error",
-              "role": "alert",
-              "hidden": ""
-            },
-            {
-              "tag": "div",
-              "class": "composer",
-              "role": "group",
-              "aria-label": "New message",
-              "children": [
-                {
-                  "tag": "textarea",
-                  "class": "desk-field",
-                  "aria-label": "Message",
-                  "value": ""
                 },
                 {
                   "tag": "div",
-                  "class": "composer-row",
+                  "class": "composer",
+                  "role": "group",
+                  "aria-label": "New message",
                   "children": [
                     {
+                      "tag": "textarea",
+                      "class": "desk-field",
+                      "aria-label": "Message",
+                      "value": ""
+                    },
+                    {
                       "tag": "div",
-                      "class": "desk-tabs",
-                      "role": "radiogroup",
-                      "aria-label": "What it may do",
+                      "class": "composer-row",
                       "children": [
                         {
-                          "tag": "button",
-                          "class": "desk-tab",
-                          "type": "button",
-                          "role": "radio",
-                          "data-access": "read-only",
-                          "aria-checked": "true",
-                          "text": "Read only"
+                          "tag": "div",
+                          "class": "desk-tabs",
+                          "role": "radiogroup",
+                          "aria-label": "What it may do",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "class": "desk-tab",
+                              "type": "button",
+                              "role": "radio",
+                              "data-access": "read-only",
+                              "aria-checked": "true",
+                              "text": "Read only"
+                            },
+                            {
+                              "tag": "button",
+                              "class": "desk-tab",
+                              "type": "button",
+                              "role": "radio",
+                              "data-access": "agent",
+                              "aria-checked": "false",
+                              "text": "May change files"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "desk-muted hint",
+                          "text": "Claude Code · Read only"
                         },
                         {
                           "tag": "button",
-                          "class": "desk-tab",
+                          "class": "desk-btn desk-btn-danger",
                           "type": "button",
-                          "role": "radio",
-                          "data-access": "agent",
-                          "aria-checked": "false",
-                          "text": "May change files"
+                          "hidden": "",
+                          "text": "Stop"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "desk-btn desk-btn-primary",
+                          "type": "button",
+                          "text": "Send"
                         }
                       ]
-                    },
-                    {
-                      "tag": "span",
-                      "class": "desk-muted hint",
-                      "text": "Read-only: it reads and answers, and changes nothing."
-                    },
-                    {
-                      "tag": "button",
-                      "class": "desk-btn desk-btn-danger",
-                      "type": "button",
-                      "hidden": "",
-                      "text": "Stop"
-                    },
-                    {
-                      "tag": "button",
-                      "class": "desk-btn desk-btn-primary",
-                      "type": "button",
-                      "text": "Send"
                     }
                   ]
                 }

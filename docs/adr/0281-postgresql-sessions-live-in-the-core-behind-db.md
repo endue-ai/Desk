@@ -99,6 +99,8 @@ the runtime routes `db:<sessionId>` like a socket (`owners.ts`: `db.open` claims
   the plugin, and two statements are the server's 42601. `params` are text or null, their types the
   server's inference unless `paramTypes` gives OIDs (0 infers). While an earlier result still has
   pages, `db.run` closes it first; while a statement runs, `db.run` is `invalid_params`.
+* `db.script { sessionId, statements, goOn?, pageRows?, pageBytes? }` → each statement's first page,
+  so a long script crosses the bridge once a batch instead of once a statement (ADR 0344).
 * `db.fetch { sessionId, pageRows?, pageBytes?, close? }` → the next page; `close: true` ends the result
   without reading on (Sync).
 * `db.copy { sessionId, data?, encoding?, done?, fail? }` sends `COPY ... FROM STDIN` data (`utf8` or
@@ -124,7 +126,8 @@ and `transaction` from ReadyForQuery (`idle`, `open`, `failed`). A page holds `p
 row; a row over 64 MiB ends the result with `invalid_value`. `copy` is `{ direction, format, columns }`.
 
 **Events**, to the session's caller only: `db.notice { sessionId, notice }` as each arrives, also
-while a statement runs; `db.notification { sessionId, pid, channel, payload }`, also while idle;
+while a statement runs (amended by ADR 0334: a notice raised while a call runs comes in its page's
+`notices` instead, and `db.notice` is for those outside any call); `db.notification { sessionId, pid, channel, payload }`, also while idle;
 `db.parameter { sessionId, name, value }` for each ParameterStatus; `db.closed { sessionId, reason,
 message?, error? }`, the session's last event, `reason` one of `closed`, `server` (with its FATAL
 `error` when it sent one), `io`, `encoding`, `unloaded`, `revoked`, `desk`.
@@ -148,7 +151,8 @@ the plugin's commands, whose read-only, production and agent guards hold.
 
 **Lifetime.** A session belongs to the plugin that opened it. It ends at `db.close`, when the server
 or the network ends it, when the plugin stops (turned off, removed, the desk quits) and when its grant
-goes; never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
+goes (amended by ADR 0339: also when the window that opened it closes, and every end cancels a
+running statement before Terminate); never on a timer of the core's (the server's `idle_session_timeout` applies; TCP keepalive is
 on). A window whose frame sleeps (ADR 0134) keeps its sessions and finds them again with `db.list`;
 what was notified meanwhile is lost. A caller holds 16 sessions at most.
 

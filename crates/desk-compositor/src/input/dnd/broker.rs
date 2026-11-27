@@ -10,7 +10,8 @@ use std::time::{Duration, Instant};
 
 use desk_surface::generated::{
     CompositorMessage as M, SurfaceDragEnded, SurfaceDragEnter, SurfaceDragItem, SurfaceDragLeave,
-    SurfaceDragOver, SurfaceDragStart, SurfaceDropAnswer, SurfaceDropEffect,
+    SurfaceDragOver, SurfaceDragPath, SurfaceDragStart, SurfaceDragStatus, SurfaceDropAnswer,
+    SurfaceDropEffect,
 };
 use glam::Vec2;
 
@@ -64,6 +65,7 @@ pub(super) struct Drag {
     pub(super) mods: Modifiers,
     pub(super) over: Option<(String, Vec2)>,
     pub(super) effect: SurfaceDropAnswer,
+    pub(super) destination: Option<SurfaceDragPath>,
     pub(super) answered: bool,
     pub(super) paths: Vec<String>,
 }
@@ -235,6 +237,7 @@ impl Broker {
             mods: Modifiers::default(),
             over: None,
             effect: SurfaceDropAnswer::None,
+            destination: None,
             answered: true,
             paths,
         });
@@ -272,6 +275,7 @@ impl Broker {
                 out.push(leave(&old));
             }
             drag.effect = SurfaceDropAnswer::None;
+            drag.destination = None;
             drag.answered = true;
         }
         let Some((surface, local)) = target else {
@@ -305,22 +309,27 @@ impl Broker {
     }
 
     /// Surface `surface` answered the last hover.
-    pub fn status(
-        &mut self,
-        targets: &Targets,
-        surface: &str,
-        effect: SurfaceDropAnswer,
-    ) -> Vec<DndOut> {
+    pub fn status(&mut self, targets: &Targets, status: &SurfaceDragStatus) -> Vec<DndOut> {
+        let surface = status.surface.as_str();
+        let destination = || {
+            status
+                .destination
+                .as_ref()
+                .filter(|folder| super::data::path_holds(&folder.path))
+                .cloned()
+        };
         if let Some(drag) = self.drag.as_mut()
             && drag.over.as_ref().is_some_and(|(s, _)| s == surface)
         {
-            drag.effect = read_answer(effect, &drag.allowed);
+            drag.effect = read_answer(status.effect, &drag.allowed);
+            drag.destination = destination();
             drag.answered = true;
             return Vec::new();
         }
         match self.settling.take() {
             Some((mut drag, _)) if drag.over.as_ref().is_some_and(|(s, _)| s == surface) => {
-                drag.effect = read_answer(effect, &drag.allowed);
+                drag.effect = read_answer(status.effect, &drag.allowed);
+                drag.destination = destination();
                 drag.answered = true;
                 self.land(targets, drag)
             }

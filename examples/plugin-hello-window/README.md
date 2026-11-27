@@ -11,7 +11,7 @@ just example plugin-hello-window                        # out of the canvas, as 
 DESK_APP_WINDOWS=off just example plugin-hello-window   # on the canvas
 ```
 
-Out, Window > Move to Desk docks it; on the canvas, the palette's "Pop out window" moves it out. Either
+Out, Window > Move to endue docks it; on the canvas, the palette's "Pop out window" moves it out. Either
 move loads the page again and the count stays, because it lives in plugin state.
 
 ## Files

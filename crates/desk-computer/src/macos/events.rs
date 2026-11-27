@@ -77,6 +77,12 @@ fn failed() -> Error {
     )
 }
 
+pub(super) fn pointer_position() -> Result<Point, Error> {
+    let event = CGEvent::new(None).ok_or_else(failed)?;
+    let location = CGEvent::location(Some(&event));
+    Ok(Point::new(location.x, location.y))
+}
+
 /// The CGEvents of one event: one for the mouse and keys, a press and a release for text.
 fn build(event: &Event, source: Option<&CGEventSource>) -> Result<Vec<CFRetained<CGEvent>>, Error> {
     let mouse = |kind: CGEventType, at: Point, button: CGMouseButton| {

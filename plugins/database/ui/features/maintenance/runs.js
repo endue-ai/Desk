@@ -1,12 +1,13 @@
 // A maintenance form's run: refused on a read-only connection, a standby, a server older than 13
 // or a statement that cannot run yet; the statistics read before; the statement sent alone in run
-// mode through deps.execute, so psql gives it its own -c and the server runs it outside a
-// transaction block (the executor's guards ask on production and for an agent); its progress read
+// mode through deps.execute, so it is a db.run of its own on the session and the server runs it
+// outside a transaction block (the executor's guards ask on production and for an agent); its progress read
 // from the server's views while it goes on, one read at a time; its cancel by pg_cancel_backend of
 // its session; and the statistics read again when it ends. No DOM.
 
 import { formatDuration } from "../../format.js";
 import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
 import { labelOf } from "./model.js";
 import { TITLES } from "./options.js";
 import { wordsOf } from "./read.js";
@@ -37,12 +38,16 @@ export function refusalOf(
   /** @type {MaintenanceState} */ s,
 ) {
   if (conn.readOnly)
-    return `${conn.name} is read-only: VACUUM, ANALYZE, REINDEX and CLUSTER do not run on it.`;
-  if (!s.read) return s.error || "The target is not read yet.";
+    return t("features.maintenance.runs.isReadOnlyVacuumAnalyzeReindex", {
+      name: String(conn.name),
+    });
+  if (!s.read) return s.error || t("features.maintenance.runs.theTargetIsNotReadYet");
   const old = tooOld(conn.name, s.read.version, s.read.server);
   if (old) return old;
   if (s.read.recovery)
-    return `${conn.name} is a standby (in recovery): maintenance runs on the primary.`;
+    return t("features.maintenance.runs.isAStandbyInRecoveryMaintenance", {
+      name: String(conn.name),
+    });
   return statementOf(s, s.read).problem;
 }
 
@@ -61,13 +66,15 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
   /** Run a form's statement alone (outside a transaction block) and read the statistics after. */
   const run = async (/** @type {string} */ id, { agent = false } = {}) => {
     const { conn, state } = connOf(id);
-    if (state.run?.status === "running") throw new Error("This form's run is still going on.");
+    if (state.run?.status === "running")
+      throw new Error(t("features.maintenance.runs.thisFormSRunIsStill"));
     const refused = refusalOf(conn, state);
     if (refused) throw new Error(refused);
     const read = /** @type {Read} */ (state.read);
     const { sql } = statementOf(state, read);
     const statements = split(sql, "postgresql");
-    if (statements.length !== 1) throw new Error("The form's statement is not one statement.");
+    if (statements.length !== 1)
+      throw new Error(t("features.maintenance.runs.theFormSStatementIsNot"));
     const before = await reader.stats(conn, state.target).catch(() => read.stats);
     const started = Date.now();
     /** @type {Run} */
@@ -106,7 +113,7 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
     let after = null;
     let note = "";
     try {
-      after = await reader.stats(conn, state.target);
+      after = await reader.stats(conn, state.target, true);
       // The form's facts line shows the target as it is now.
       const now = stateOf(id)?.read;
       if (now) update(id, { read: { ...now, stats: after } });
@@ -119,10 +126,13 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
     const what = `${TITLES[state.operation]} of ${labelOf(state.target, read.database)}`;
     deps.say(
       status === "done"
-        ? `${what} done in ${formatDuration(ms)}.`
+        ? t("features.maintenance.runs.doneIn", {
+            what: String(what),
+            value: String(formatDuration(ms)),
+          })
         : status === "cancelled"
-          ? `${what} cancelled.`
-          : `${what} failed: ${error}`,
+          ? t("features.maintenance.runs.cancelled", { what: String(what) })
+          : t("features.maintenance.runs.failed", { what: String(what), error: String(error) }),
     );
     return { statement: sql, status, ...(error ? { error } : {}), ms, output, before, after };
   };
@@ -152,7 +162,8 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
   const cancel = async (/** @type {string} */ id) => {
     const { conn, state } = connOf(id);
     const begun = state.run;
-    if (begun?.status !== "running") throw new Error("Nothing runs from this form.");
+    if (begun?.status !== "running")
+      throw new Error(t("features.maintenance.runs.nothingRunsFromThisForm"));
     setRun(id, { cancelling: true });
     const sent = await reader.cancel(conn, begun.sql).catch((error) => {
       setRun(id, { cancelling: false });
@@ -160,11 +171,9 @@ export function createRuns({ deps, reader, stateOf, update, connOf }) {
     });
     if (sent === 0) {
       if (stateOf(id)?.run?.status === "running") setRun(id, { cancelling: false });
-      throw new Error(
-        "Not cancelled: the run's session was not found on the server; it may have just ended.",
-      );
+      throw new Error(t("features.maintenance.runs.notCancelledTheRunSSession"));
     }
-    deps.say("Cancel sent to the server.");
+    deps.say(t("features.maintenance.runs.cancelSentToTheServer"));
     return { cancelled: sent };
   };
 

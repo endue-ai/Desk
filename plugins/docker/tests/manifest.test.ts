@@ -3,7 +3,6 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { COMMANDS } from "../ui/schemas.js";
 import { DEFAULTS, SETTING_KEYS } from "../ui/settings.js";
 
 const root = join(import.meta.dirname, "../../..");
@@ -58,16 +57,10 @@ describe("plugin.json", () => {
     ]);
   });
 
-  it("contributes the commands the plugin registers, with the same titles and keywords", () => {
+  it("declares each command once with its title and description", () => {
     const { contributes } = manifest();
-    expect(contributes?.commands).toEqual(
-      COMMANDS.map(({ id, title, keywords, irreversible }) => ({
-        id,
-        title,
-        ...(keywords ? { keywords } : {}),
-        ...(irreversible ? { irreversible } : {}),
-      })),
-    );
+    const commands = contributes?.commands ?? [];
+    expect(new Set(commands.map((c) => c.id)).size).toBe(commands.length);
     // What cannot be taken back, or runs an image's code, waits for the person when an agent asks.
     expect(contributes?.commands?.filter((c) => c.irreversible).map((c) => c.id)).toEqual(
       [
@@ -77,17 +70,19 @@ describe("plugin.json", () => {
         ...["build", "copy-out", "copy-in"],
       ].map((name) => `endue.docker.${name}`),
     );
-    for (const command of COMMANDS) {
+    for (const command of commands) {
       expect(command.title).toMatch(/^Docker: /);
-      expect(command.description.length).toBeGreaterThan(10);
+      expect(command.description?.length).toBeGreaterThan(10);
     }
     expect(contributes?.keys).toEqual([{ key: "Mod+Shift+K", command: "endue.docker.open" }]);
   });
 
   it("gives every command's args a schema a desk can compile", () => {
     const ajv = new Ajv2020({ strict: true });
-    for (const { id, args } of COMMANDS)
-      if (args) expect(() => ajv.compile(args), id).not.toThrow();
+    for (const { id, args } of manifest().contributes?.commands ?? []) {
+      expect(args).toBeDefined();
+      expect(() => ajv.compile(args ?? {}), id).not.toThrow();
+    }
   });
 
   it("declares the settings the plugin reads, with the same defaults", () => {

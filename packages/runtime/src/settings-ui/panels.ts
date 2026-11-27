@@ -190,7 +190,7 @@ export function settingsPanel(
           { class: "settings-app-icon", "aria-hidden": "true" },
           settingsIcon("general", 40),
         ),
-        h("h2", {}, "endue Desk"),
+        h("h2", {}, "endue"),
         h("p", {}, tr("device")),
       ),
       group(

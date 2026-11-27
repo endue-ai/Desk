@@ -4,14 +4,14 @@ name: release-build
 # (which builds a candidate's commit again, given as ref; ADR 0092). No macOS
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
-# It builds the CEF desk (#46, ADR 0145), the only desk since Stage 1 of #32 ended (#97): CEF fetched
-# by its pin and hash, cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb
+# endue uses the CEF shell (#46, #97, ADR 0145). The build verifies the pinned CEF download and
+# produces cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb
 # and AppImage, the updater artifacts signed as Tauri's were, the install smoke run on every package.
 # macOS is signed and notarised when the Apple secrets are set; Windows is signed when
 # DESK_WINDOWS_SIGN_COMMAND is set. The .deb is checked against the updater key before it leaves.
-# Each target leaves as the artifact desk-<target>, canonical names from scripts/release-collect.mjs.
+# Each target uploads endue-app-<target> with package names from scripts/release-collect.mjs.
 # A dry run (release-dry-run.yml) stays out of the signing environment, signs with the run's
-# throwaway key, embeds no key in the binary and labels its artifacts desk-<target>-unsigned.
+# throwaway key, embeds no key in the binary and labels its artifacts endue-app-<target>-unsigned.
 # release-macos.yml asks for both macOS targets. Without an updater key it requests only the
 # first-install disk images.
 on:
@@ -22,7 +22,7 @@ on:
         required: true
         type: string
       shell:
-        description: The desk to build, cef (.github/release-shell names a line's; the Tauri desk is gone, #97).
+        description: The endue shell to build (cef). A release line selects its shell in .github/release-shell.
         required: false
         type: string
         default: cef
@@ -72,12 +72,12 @@ jobs:
     env:
       VERSION: ${{ inputs.version }}
     steps:
-      - name: Refuse a desk this workflow no longer builds
+      - name: Check the requested endue shell
         if: inputs.shell != 'cef'
         env:
           SHELL_NAME: ${{ inputs.shell }}
         run: |
-          echo "::error::release-build builds the CEF desk only (shell: cef), not $SHELL_NAME: the Tauri desk was deleted when Stage 1 of #32 ended (#97)"
+          echo "::error::Unsupported shell '$SHELL_NAME'. Set shell to cef to build endue."
           exit 1
       - uses: actions/checkout@v7
         with:
@@ -147,7 +147,7 @@ jobs:
               if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
             done
           fi
-      - name: Install the CEF desk's build tools
+      - name: Install CEF build tools for endue
         if: inputs.shell == 'cef' && runner.os != 'Windows'
         run: |
           if [ "$RUNNER_OS" = macOS ]; then brew install cmake ninja; exit 0; fi
@@ -167,11 +167,11 @@ jobs:
         with:
           path: ${{ runner.temp }}/cef/*/*.tar.bz2
           key: cef-${{ matrix.rust }}-${{ hashFiles('apps/desk/shell/packager/cef.json') }}
-      - name: Build the CEF desk ${{ inputs.version }} for ${{ matrix.target }}
+      - name: Build endue ${{ inputs.version }} for ${{ matrix.target }}
         if: inputs.shell == 'cef'
         # A dry run embeds no updater key (empty is none), so its binary never updates itself.
         env:
-          # Linux: the desk finds libcef.so beside itself in /usr/lib/endue-desk.
+          # On Linux, endue loads libcef.so from its installation directory.
           RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-Wl,-rpath,$ORIGIN' || '' }}
           DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
           DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
@@ -179,8 +179,13 @@ jobs:
         run: |
           pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build
           pnpm --filter @endue-ai/desk-app build
+          if [ -f scripts/package-build-env.sh ]; then source scripts/package-build-env.sh; fi
           cargo build -p desk-shell --bins --release --target "${{ matrix.rust }}"
-      - name: Package the CEF desk with cargo-packager
+          if [ "$RUNNER_OS" = Linux ] && [ -f scripts/package-cli-build-env.sh ]; then
+            source scripts/package-cli-build-env.sh
+          fi
+          cargo build -p desk-cli --bins --release --target "${{ matrix.rust }}"
+      - name: Package endue with cargo-packager
         if: inputs.shell == 'cef'
         env:
           DESK_WINDOWS_SIGN_COMMAND: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
@@ -189,7 +194,7 @@ jobs:
           # With the Apple identity the .app and the .dmg must come out notarised.
           if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then export DESK_REQUIRE_NOTARISATION=1; fi
           node scripts/cef-package.mjs --target "${{ matrix.rust }}" --version "$VERSION" --out target/packager
-      - name: Sign the CEF desk's updater artifacts
+      - name: Sign the endue app updates
         if: inputs.shell == 'cef' && !inputs.installers-only
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -199,7 +204,7 @@ jobs:
           for file in target/packager/bundle/{macos,nsis,msi,appimage,deb}/*; do
             pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/$file"
           done
-      - name: Install smoke on every CEF desk package
+      - name: Test installation of each endue app package
         if: inputs.shell == 'cef'
         env:
           # Installers only: nothing carries an updater signature, so none is checked (empty is none).
@@ -213,7 +218,7 @@ jobs:
             if [[ "$package" == *.sig ]]; then continue; fi
             display e2e/smoke/install-and-launch.sh "$package"
           done
-      - name: Collect the CEF desk's packages under canonical names
+      - name: Collect the endue app packages under their release names
         if: inputs.shell == 'cef'
         env:
           INSTALLERS_ONLY: ${{ inputs.installers-only }}
@@ -221,14 +226,30 @@ jobs:
           args=(--bundle target/packager/bundle --version "$VERSION" --target "${{ matrix.target }}" --out dist --shell cef)
           if [ "$INSTALLERS_ONLY" = true ]; then args+=(--installers); fi
           node scripts/release-collect.mjs "${args[@]}"
+      - name: Package the same Linux CLI that shipped in the app
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        run: |
+          python3 -B scripts/package-cli-licenses/test_archive.py
+          python3 -B scripts/package-cli.py "target/${{ matrix.rust }}/release/endue" "$VERSION" --out dist
+      - name: Sign the standalone CLI
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      - name: Download and install the signed CLI on minimal Debian
+        if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
+        env:
+          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
       - name: Check the .deb against the updater key
         if: runner.os == 'Linux'
         env:
           UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
-        run: e2e/smoke/verify-signature.sh "dist/endue-desk_${VERSION}_linux-x86_64.deb" "$UPDATER_PUBKEY"
+        run: e2e/smoke/verify-signature.sh dist/*_"${VERSION}"_linux-x86_64.deb "$UPDATER_PUBKEY"
       - uses: actions/upload-artifact@v7
         with:
-          name: desk-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
+          name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 7

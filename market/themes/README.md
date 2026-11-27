@@ -2,7 +2,7 @@
 
 The desk's first theme market (ADR 0060): `index.json`, a `ThemeIndex`
 (`specs/plugin/v0/theme-index.schema.json`), and the `.desk-theme` bundles it lists. Desks read it from
-`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`, the default of the
+`https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json`, the default of the
 setting `desk.theme.markets`, and the theme studio's Market tab shows its themes as cards: Preview
 downloads one and shows it on the whole desk, Install brings it in with its sha256 checked.
 

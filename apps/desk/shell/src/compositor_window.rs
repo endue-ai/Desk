@@ -32,6 +32,7 @@ mod draw_slide;
 mod draw_spread;
 mod draw_web;
 mod edges;
+pub mod edit_command;
 mod frame;
 mod gpu;
 pub use gpu::headless;
@@ -143,7 +144,7 @@ impl CompositorWindow {
     ) -> Result<CompositorWindow, String> {
         let mut gpu = gpu::Gpu::new(Arc::clone(&window), headless())?;
         eprintln!(
-            "endue Desk: compositor mode on {} ({:?})",
+            "endue: compositor mode on {} ({:?})",
             gpu.adapter.name, gpu.adapter.backend
         );
         let shared = Shared::new(Compositor::new(&gpu.device, &gpu.queue, gpu.format));
@@ -311,7 +312,7 @@ impl CompositorWindow {
                 self.shared.lock().dirty = true;
                 if let Some((plugin, _)) = owner(&died.surface) {
                     eprintln!(
-                        "endue Desk: the renderer of {plugin} stopped ({:?})",
+                        "endue: the renderer of {plugin} stopped ({:?})",
                         died.reason
                     );
                     let event = json!({ "plugin": plugin });

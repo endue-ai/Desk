@@ -23,7 +23,7 @@ export function createMarking({ current, keep, view, model, showing }) {
     const full = !marksFit(file.path, file);
     if (full) undo();
     const ok = !full && (await keep(file));
-    if (!showing(file)) return;
+    if (!showing(file)) return ok;
     view.marks(model(file));
     view.status(
       ok
@@ -32,6 +32,7 @@ export function createMarking({ current, keep, view, model, showing }) {
           ? "This file's notes are full; remove a note or a bookmark first."
           : "The reader could not keep that: its store refused it.",
     );
+    return ok;
   };
 
   return {

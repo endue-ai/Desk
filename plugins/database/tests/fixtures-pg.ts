@@ -1,9 +1,12 @@
-// The fixture's PostgreSQL connection (fixtures.ts): its scripted psql answers the catalog of one
+// The fixture's PostgreSQL connection (fixtures.ts): its scripted server answers the catalog of one
 // table of typed columns, public.items (an enum, jsonb, a boolean, a text array and a timestamp with
 // a time zone), the types query of the typed cell editors (ui/cell-editors/pg-types.js), the table's
-// page and its count. Every other statement gets nothing back. Fixture data only.
+// page and its count, the pages of the shop's people and orders, joined by a foreign key
+// (links-fixture.ts), 3,000 rows of rows_demo (PG-22), and fails `select 1/0`. Every other statement gets nothing back. Fixture data
+// only.
 import type { Connection } from "../ui/engines/common.js";
 import type { Answer } from "./clients";
+import { pagesOf, SHOP_ROWS } from "./links-fixture";
 
 /** The saved PostgreSQL connection the fixture page starts with, after `fixture`. */
 export const FIXTURE_PG_CONNECTION: Connection = {
@@ -36,8 +39,12 @@ const ROWS = [
   ["3", "so so", "[1, 2, 3]", "t", '{"c d"}', "2026-11-19 07:15:00+00"],
 ];
 
+const shopPages = pagesOf(SHOP_ROWS);
+
 export function pgFixtureScript(sql: string): Answer {
   const text = sql.trim();
+  const shop = shopPages(text);
+  if (shop) return shop;
   if (/^SELECT nspname FROM pg_catalog\.pg_namespace/u.test(text))
     return { rows: [["nspname"], ["public"]] };
   if (/^SELECT c\.relname, CASE c\.relkind/u.test(text))
@@ -62,6 +69,14 @@ export function pgFixtureScript(sql: string): Answer {
         ]),
       ],
     };
+  // The table view's order (ui/table-order.js): a table keyed by id.
+  if (/^SELECT c\.relkind, /u.test(text) && text.includes("'items'"))
+    return {
+      rows: [
+        ["relkind", "key"],
+        ["r", '"id"'],
+      ],
+    };
   if (/^WITH RECURSIVE d/u.test(text) && text.includes("'items'"))
     return {
       rows: [
@@ -73,5 +88,15 @@ export function pgFixtureScript(sql: string): Answer {
     return { rows: [COLUMNS.map(([name]) => name ?? ""), ...ROWS] };
   if (/^SELECT count\(\*\) FROM "public"\."items"/u.test(text))
     return { rows: [["count"], [String(ROWS.length)]] };
+  // A read larger than a page, which a console reads through a cursor (PG-22).
+  if (text === "select n, label from rows_demo")
+    return {
+      rows: [
+        ["n", "label"],
+        ...Array.from({ length: 3000 }, (_, i) => [`${i + 1}`, `row ${i + 1}`]),
+      ],
+    };
+  // A statement that fails, for a console's failed transaction (PG-02).
+  if (text === "select 1/0") return { error: "division by zero", code: "22012" };
   return {};
 }

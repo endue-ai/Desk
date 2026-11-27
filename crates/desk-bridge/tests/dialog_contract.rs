@@ -88,7 +88,11 @@ fn dialog_vectors_roundtrip() {
         .unwrap();
     let id = "https://endue.ai/specs/bridge/v0";
     let vectors = dialog_vectors();
-    assert_eq!(vectors.len(), 10, "the contract names ten dialog vectors");
+    assert_eq!(
+        vectors.len(),
+        13,
+        "the contract names thirteen dialog vectors"
+    );
     for (file, valid, target, instance) in &vectors {
         let schema = if target == "BridgeRequest" {
             "bridge"

@@ -71,6 +71,41 @@ async function page(files: Record<string, Uint8Array>, restored?: unknown) {
 }
 
 describe("editing a CSV on its page", () => {
+  it("reports the same selection and find result as the visible grid", async () => {
+    const { host, byId } = await page({ [A.path]: fixture("crlf-bom-quotes.csv") });
+    await host.command("desk.files.visit", A);
+    expect(await host.command("endue.sheets.select", { range: "A2:B3" })).toMatchObject({
+      activeCell: "A2",
+      selection: "A2:B3",
+    });
+    expect(await host.command("endue.sheets.read")).toMatchObject({
+      activeCell: "A2",
+      selection: "A2:B3",
+    });
+    expect(await host.command("endue.sheets.find", { text: "Busan" })).toMatchObject({
+      cell: "A3",
+    });
+    expect(byId("cell-address").textContent).toBe("A3");
+  });
+
+  it("reads the open worksheet tab by default", async () => {
+    const { host, byId } = await page({ [X.path]: fixture("budget.xlsx") });
+    await host.command("desk.files.visit", X);
+    await host.command("endue.sheets.select", { sheet: "Notes", range: "B2" });
+    const selected = document.querySelector('[role="tab"][aria-selected="true"]');
+    expect(selected?.textContent).toBe("Notes");
+    expect(byId("cell-address").textContent).toBe("B2");
+    expect(await host.command("endue.sheets.read", { range: "B2" })).toMatchObject({
+      sheet: "Notes",
+      selection: "B2",
+      activeCell: "B2",
+      values: [["가격"]],
+    });
+    expect(await host.command("endue.sheets.read", { sheet: "Budget" })).toMatchObject({
+      sheet: "Budget",
+    });
+  });
+
   it("shows the tier, edits the active cell in the formula bar and marks it unsaved", async () => {
     const files = { [A.path]: fixture("crlf-bom-quotes.csv") };
     const { host, grid, bar, tier, press, type, cell, label, byId } = await page(files);

@@ -1,6 +1,6 @@
 [package]
 name = "desk-core"
-description = "Kernel of endue Desk: permission engine, event bus, storage, plugin registry and session lease client."
+description = "Kernel of endue: permission engine, event bus, storage, plugin registry and session lease client."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -17,10 +17,12 @@ desk-computer = { path = "../desk-computer" }
 desk-index.workspace = true
 desk-memory.workspace = true
 desk-pg.workspace = true
+# db.open's SSH tunnels (ADR 0359).
+desk-ssh.workspace = true
 # studio.*: endue AI's platform API (ADR 0122).
 desk-platform = { path = "../desk-platform" }
 desk-plugin-host.workspace = true
-desk-sys = { workspace = true, features = ["fs", "calendar", "proc", "net", "shell", "keychain", "audio"] }
+desk-sys = { workspace = true, features = ["fs", "calendar", "proc", "net", "shell", "keychain", "audio-api"] }
 # Native plugins (#59): the environment their processes start with (no features: serde only).
 desk-surface.workspace = true
 desk-update.workspace = true
@@ -45,6 +47,8 @@ desk-brain-local.workspace = true
 desk-platform = { path = "../desk-platform", features = ["fake"] }
 # Test connectors in component WAT (tests/connectors_wasm_imports), as desk-plugin-host's tests.
 wat = "1"
+# The SSH server db.open's tunnel tests sign in to (ADR 0359).
+desk-ssh = { workspace = true, features = ["testing"] }
 
 [lints]
 workspace = true

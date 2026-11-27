@@ -10,7 +10,6 @@ import { parseTime, rfc3339, wallOf } from "../ical/values.js";
  * @typedef {import("./model.js").Model} Model
  * @typedef {{ connector: string, instance: string }} Source
  * @typedef {{ name?: string, email?: string }} PersonRef
- * @typedef {{ a: Occurrence, b: Occurrence, from: number, to: number }} Conflict
  */
 
 const EMAIL = /^[^@\s]+@[^@\s]+$/;
@@ -106,16 +105,17 @@ export function toItem(occ, model, source) {
 
 /**
  * Busy, timed, not cancelled occurrences that overlap, as pairs in start order.
- * @param {Occurrence[]} list
- * @returns {Conflict[]}
+ * @template {Pick<Occurrence, "start" | "end" | "allDay" | "free" | "status">} T
+ * @param {T[]} list
+ * @returns {{ a: T, b: T, from: number, to: number }[]}
  */
 export function conflicts(list) {
   const busy = list
     .filter((o) => !o.allDay && !o.free && o.status !== "CANCELLED" && o.end > o.start)
     .sort((x, y) => x.start - y.start || x.end - y.end);
-  /** @type {Conflict[]} */
+  /** @type {{ a: T, b: T, from: number, to: number }[]} */
   const found = [];
-  /** @type {Occurrence[]} */
+  /** @type {T[]} */
   let open = [];
   for (const occ of busy) {
     open = open.filter((o) => o.end > occ.start);

@@ -11,8 +11,35 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
+    <nav id="shelf" aria-label="Notes in ~/Notes">
+      <div id="shelf-head">
+        <input
+          id="shelf-filter"
+          class="desk-field"
+          type="search"
+          aria-label="Filter notes"
+          placeholder="meeting"
+        />
+        <button id="shelf-new" class="desk-btn desk-btn-primary" type="button">New</button>
+      </div>
+      <ul id="shelf-list" class="desk-list"></ul>
+      <p id="shelf-empty" class="desk-muted" hidden></p>
+    </nav>
     <main aria-labelledby="note-name">
-      <h1 id="note-name">No note open</h1>
+      <div id="note-head">
+        <h1 id="note-name">No note open</h1>
+        <div id="note-tools" role="toolbar" aria-label="Note" hidden>
+          <button id="note-preview" class="desk-btn desk-btn-quiet" type="button" aria-pressed="false">
+            Preview
+          </button>
+          <button id="note-rename" class="desk-btn desk-btn-quiet" type="button">Rename</button>
+          <button id="note-delete" class="desk-btn desk-btn-quiet" type="button">Delete</button>
+        </div>
+      </div>
+      <form id="note-naming" hidden>
+        <input id="note-new-name" class="desk-field" aria-label="New name" placeholder="ideas.md" />
+        <button class="desk-btn" type="submit">Rename</button>
+      </form>
       <p id="note-detail">
         <span id="note-path"></span>
         <span id="note-mark" hidden><span aria-hidden="true">● </span>Unsaved changes</span>
@@ -26,6 +53,7 @@
         spellcheck="false"
         hidden
       ></textarea>
+      <desk-markdown id="note-rendered" hidden></desk-markdown>
     </main>
     <p id="status" role="status"></p>
     <script type="module" src="./main.js"></script>

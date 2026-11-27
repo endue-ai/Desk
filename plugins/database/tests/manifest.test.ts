@@ -3,14 +3,17 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { candidates } from "../ui/clients.js";
+import { candidates, PROGRAMS, programCandidates } from "../ui/clients.js";
+import { blank } from "../ui/connections.js";
 import { writeScope } from "../ui/console-files.js";
 import { spillPath } from "../ui/console-text.js";
 import { createDropped } from "../ui/dropped.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { EXPORT_FOLDER, exportResult } from "../ui/export.js";
 import { createRunner } from "../ui/run.js";
-import { DEFAULTS, SETTING_KEYS } from "../ui/settings.js";
+import { DEFAULTS, fromValues, SETTING_KEYS } from "../ui/settings.js";
 import { CHOICES, RANGES, STYLE } from "../ui/sql/layout/style.js";
+import { split } from "../ui/sql/split.js";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/database");
@@ -45,9 +48,15 @@ const readme = () => readFileSync(join(folder, "README.md"), "utf8");
 const features = join(folder, "docs/features.md");
 
 /** A permission as a manifest declares it, or as the code asks for it. */
-type Scope = { permission: string; commands?: string[]; paths?: string[]; ids?: string[] };
+type Scope = {
+  permission: string;
+  commands?: string[];
+  paths?: string[];
+  ids?: string[];
+  hosts?: string[];
+};
 const declarations = () => manifest().permissions as Scope[];
-const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? [];
+const values = (scope: Scope) => scope.commands ?? scope.paths ?? scope.ids ?? scope.hosts ?? [];
 
 /** `~` and `${home}` are one root, as the core reads them. */
 const homed = (path: string) => path.replace(/^\$\{home\}(?=\/|$)/u, "~");
@@ -69,15 +78,18 @@ const covers = (declared: Scope, asked: Scope) => {
   }
   if (declared.paths)
     return (asked.paths ?? []).every((a) => declared.paths?.some((d) => under(d, a)));
+  if (declared.hosts) return declared.hosts.includes("*");
   return (asked.ids ?? []).every((id) => declared.ids?.includes(id));
 };
 const coveredBy = (asked: Scope) => declarations().filter((d) => covers(d, asked));
 
 /** A bridge that refuses every call and every ask, keeping what was asked for. */
-function refusing() {
+function refusing(answers: Record<string, () => unknown> = {}) {
   const asked: Scope[] = [];
   const bridge = {
     call: async (method: string, params: { permission?: Scope }) => {
+      const answer = answers[method];
+      if (answer) return answer();
       if (method !== "perm.request")
         throw Object.assign(new Error("no"), { code: "permission_denied" });
       if (params.permission) asked.push(params.permission);
@@ -100,13 +112,15 @@ describe("plugin.json", () => {
       entry: "ui/index.html",
     });
     expect(existsSync(join(folder, db.entry ?? "missing"))).toBe(true);
-    expect(db.surfaces).toEqual([{ id: "main", title: "Database", placement: "center" }]);
+    expect(db.surfaces).toEqual([
+      { id: "main", title: "Database", titleMessage: "database.surface.main", placement: "center" },
+    ]);
   });
 
   it("contributes every operation as a command, one key, SQLite files and the settings the code reads", () => {
     const { contributes } = manifest();
     const ids = contributes?.commands?.map((c) => c.id) ?? [];
-    expect(ids).toHaveLength(81);
+    expect(ids).toHaveLength(229);
     for (const command of contributes?.commands ?? []) {
       expect(command.id).toMatch(/^endue\.database\.[a-z-]+$/u);
       expect(command.title).toMatch(/^Database: /u);
@@ -141,6 +155,32 @@ describe("plugin.json", () => {
       const key = `endue.database.format-${field.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}`;
       expect(declared[key]).toMatchObject({ kind: "integer", minimum, maximum });
       expect(declared[key]?.default).toBe(STYLE[field as keyof typeof RANGES]);
+    }
+  });
+
+  it("declares each setting's default, range and choices as settings.js checks them", () => {
+    const declared = manifest().contributes?.settings ?? {};
+    for (const key of SETTING_KEYS) {
+      const setting = declared[key];
+      const name = key
+        .slice("endue.database.".length)
+        .replace(/-([a-z0-9])/gu, (_, c: string) => c.toUpperCase()) as keyof typeof DEFAULTS;
+      expect([key, setting?.default]).toEqual([key, DEFAULTS[name]]);
+      const keeps = (value: unknown) => fromValues({ [key]: value })[name] === value;
+      if (setting?.kind === "integer") {
+        const { minimum, maximum } = setting;
+        expect([key, typeof minimum, typeof maximum]).toEqual([key, "number", "number"]);
+        const bounds = [minimum, maximum, Number(minimum) - 1, Number(maximum) + 1].map(keeps);
+        expect([key, ...bounds]).toEqual([key, true, true, false, false]);
+      } else if (setting?.choices) {
+        expect([key, ...setting.choices.map(keeps), keeps("none of them")]).toEqual([
+          key,
+          ...setting.choices.map(() => true),
+          false,
+        ]);
+      } else {
+        expect([key, setting?.minimum, setting?.maximum]).toEqual([key, undefined, undefined]);
+      }
     }
   });
 
@@ -180,9 +220,15 @@ describe("plugin.json", () => {
 describe("permissions", () => {
   it("declares only what its code uses, and nothing wider", () => {
     expect(declarations()).toEqual([
-      // The engines' clients by name (clients.js, run.js): granted at install.
-      { permission: "proc:spawn", commands: ["psql", "mysql", "mariadb", "sqlite3"] },
-      // An export (export.js): granted at install.
+      // The engines' clients and PostgreSQL's pg_dump and pg_restore by name (clients.js, run.js,
+      // features/backup/): granted at install. PostgreSQL's statements need no client: its
+      // sessions are the core's (db:connect below).
+      {
+        permission: "proc:spawn",
+        commands: ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"],
+      },
+      // A cell's bytes saved (features/cell-values/): granted at install. An export needs no
+      // declaration of its own: the save dialog grants the path the person chooses (export.js).
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/Downloads/**"] },
       // Ask in the palette, a buffer per console and table, show an export: granted at install.
@@ -200,6 +246,7 @@ describe("permissions", () => {
       // A dropped .sql, .csv, .tsv or .json file anywhere (dropped.js): asked for each file.
       { permission: "fs:read", paths: ["/**"] },
       // The client a setting names by another name or a path (run.js): asked for each program.
+      // A PostgreSQL connection's password command too, after the person's yes (auth/, ADR 0354).
       { permission: "proc:spawn", commands: ["*"] },
       // Saving a .sql file the person opened, anywhere (console-files.js): asked for each file.
       { permission: "fs:write", paths: ["/**"] },
@@ -208,13 +255,25 @@ describe("permissions", () => {
       { permission: "fs:read", paths: ["${home}/.endue/database/**"] },
       // biome-ignore lint/suspicious/noTemplateCurlyInString: the manifest's path variable, as written there
       { permission: "fs:write", paths: ["${home}/.endue/database/**"] },
+      // A PostgreSQL session on a connection's host and port (engines/pg-session.js, ADR 0281):
+      // asked for each server; it also lets the plugin keep that server's password in the
+      // keychain (keychain.js, ADR 0311).
+      { permission: "db:connect", hosts: ["*"] },
+      // Eris's help in a console (features/assist/, ADR 0345): one question at a time through
+      // brain.ask, in a session of its own; granted at install.
+      { permission: "brain:ask" },
     ]);
   });
 
   it("asks at run time only for scopes its declarations cover", async () => {
-    // The named programs are each engine's default client; the export folder is export.js's.
+    // The named programs are each engine's default client and the backup's two programs; the
+    // Downloads folder is where a cell's bytes go.
     const engines = ["postgresql", "mysql", "sqlite"] as const;
-    expect(declarations()[0]?.commands).toEqual(engines.flatMap((e) => candidates(e, DEFAULTS)));
+    const programs = Object.keys(PROGRAMS) as Array<keyof typeof PROGRAMS>;
+    expect(declarations()[0]?.commands).toEqual([
+      ...engines.flatMap((e) => candidates(e, DEFAULTS)),
+      ...programs.flatMap((p) => programCandidates(p, DEFAULTS)),
+    ]);
     expect(declarations()[1]?.paths?.map(homed)).toEqual([`${EXPORT_FOLDER}/**`]);
     // The desk commands are the ones the UI runs.
     const source = files(join(folder, "ui"))
@@ -228,11 +287,11 @@ describe("permissions", () => {
     const client = refusing();
     const invocation = { args: [], env: {}, nonce: "", statements: [], maxRows: 0, stopAfter: 0 };
     const runner = createRunner(client.bridge);
-    for (const command of ["psql", "/opt/clients/bin/psql"])
+    for (const command of ["mysql", "/opt/clients/bin/mysql"])
       await runner.run({ ...invocation, command }).catch(() => {});
     expect(client.asked).toEqual([
-      { permission: "proc:spawn", commands: ["psql"] },
-      { permission: "proc:spawn", commands: ["/opt/clients/bin/psql"] },
+      { permission: "proc:spawn", commands: ["mysql"] },
+      { permission: "proc:spawn", commands: ["/opt/clients/bin/mysql"] },
     ]);
     expect(coveredBy(client.asked[0] as Scope)).toHaveLength(2);
     expect(coveredBy(client.asked[1] as Scope)).toEqual([declarations()[4]]);
@@ -256,12 +315,29 @@ describe("permissions", () => {
     ]);
     for (const asked of drop.asked) expect(coveredBy(asked)).toEqual([declarations()[3]]);
 
-    // An export: under the Downloads declaration, granted at install (and `/**`, which only asks).
-    const out = refusing();
+    // A PostgreSQL server: its host and port, only db:connect on `*` covers it.
+    const pg = refusing();
+    const sessions = createSessions(pg.bridge);
+    const conn = { ...blank("postgresql"), id: "c-pg", name: "pg", host: "db.example", port: 6543 };
+    conn.user = "app";
+    const statements = split("select 1", "postgresql");
+    const options = { statements, maxRows: 1, timeoutMs: 0, mode: "run" as const };
+    await sessions.run(conn, options).catch(() => {});
+    expect(pg.asked).toEqual([{ permission: "db:connect", hosts: ["db.example:6543"] }]);
+    expect(coveredBy(pg.asked[0] as Scope)).toEqual([declarations()[8]]);
+
+    // Eris's help in a console asks under brain:ask, which its own declaration covers.
+    expect(coveredBy({ permission: "brain:ask" })).toEqual([declarations()[9]]);
+
+    // An export: only the path the save dialog answered, which no declaration grants (`/**` only
+    // lets it ask), and nothing under ~/Downloads.
+    const out = refusing({
+      "dialog.save": () => ({ cancelled: false, path: "~/Reports/orders.csv" }),
+    });
     const set = { columns: ["id"], rows: [["1"]], truncated: false };
     await exportResult(out.bridge, { set, format: "csv", name: "orders" }).catch(() => {});
-    expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Downloads/**"] }]);
-    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[1], declarations()[5]]);
+    expect(out.asked).toEqual([{ permission: "fs:write", paths: ["~/Reports/orders.csv"] }]);
+    expect(coveredBy(out.asked[0] as Scope)).toEqual([declarations()[5]]);
 
     // A .sql file saved anywhere: only `/**` covers it. A console's long text: the plugin's folder,
     // granted at install, besides `/**`, which only lets it ask.

@@ -224,7 +224,7 @@ function renderBridge(root, specs) {
     body.push("**Data**", "", fields(event.data, ctx), "");
   }
   body.push(...typesSection(ctx.types, ctx));
-  return page("Bridge", "Every Desk bridge v0 method and event, from specs/bridge/v0.", body);
+  return page("Bridge", "Every endue bridge v0 method and event, from specs/bridge/v0.", body);
 }
 
 function renderPermissions(root, specs) {
@@ -246,7 +246,7 @@ function renderPermissions(root, specs) {
   }
   const body = [vocabulary?.description ?? "", "", table(["Permission", "Scope", "Covers"], rows)];
   body.push("", "## Permissions", "", ...parts, ...typesSection(ctx.types, ctx));
-  return page("Permissions", "The Desk permission vocabulary, from specs/plugin/v0.", body);
+  return page("Permissions", "The endue permission vocabulary, from specs/plugin/v0.", body);
 }
 
 function manifestRoot(specs) {
@@ -340,7 +340,7 @@ export function render(root = ROOT) {
   const specs = loadSpecs(root);
   const index = [NOTE, "", table(["Page", "Spec", "What it holds"], INDEX), ""];
   return {
-    "index.md": page("API reference", "Desk's contracts, rendered from specs/.", index),
+    "index.md": page("API reference", "endue's contracts, rendered from specs/.", index),
     "bridge.md": renderBridge(root, specs),
     "permissions.md": renderPermissions(root, specs),
     "manifest.md": renderManifest(specs),

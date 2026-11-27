@@ -99,6 +99,12 @@ export const asArgs = (/** @type {unknown} */ value) =>
   /** @type {Record<string, unknown>} */ (value && typeof value === "object" ? value : {});
 export const asStrings = (/** @type {unknown} */ value) =>
   Array.isArray(value) ? value.filter((v) => typeof v === "string" && v !== "") : [];
+export const asSource = (/** @type {unknown} */ value) => {
+  const given = asArgs(value);
+  const connector = asString(given.connector);
+  const instance = asString(given.instance);
+  return connector && instance ? { connector, instance } : undefined;
+};
 /** A page size between 1 and 500, else the default. */
 export const pageOf = (/** @type {unknown} */ value) =>
   Number.isInteger(value) && Number(value) > 0 && Number(value) <= 500

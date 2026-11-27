@@ -67,6 +67,7 @@ fn a_picture_is_read_without_the_token_and_only_when_it_is_an_image_that_fits() 
     );
     let seen = fake.seen_at("GET", "/p/dot.png");
     assert!(!seen[0].headers.contains_key("authorization"), "no token");
+    assert_eq!(seen[0].headers["user-agent"], "endue");
 
     let page = ("text/html".to_owned(), b"<html>".to_vec());
     fake.state().pictures.insert("/p/page".to_owned(), page);

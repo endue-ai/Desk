@@ -57,6 +57,10 @@ describe("plugin.json", () => {
       "endue.browser.type",
       "endue.browser.key",
       "endue.browser.select",
+      "endue.browser.navigate-key",
+      "endue.browser.follow",
+      "endue.browser.find",
+      "endue.browser.zoom",
       "endue.browser.back",
       "endue.browser.forward",
       "endue.browser.stop",
@@ -79,14 +83,19 @@ describe("plugin.json", () => {
       "type",
       "key",
       "select",
+      "navigate-key",
+      "follow",
+      "find",
+      "zoom",
       "back",
       "forward",
+      "stop",
     ]);
     for (const tool of tools) expect(tool.description, tool.id).toBeTruthy();
     // Reading changes nothing; what may send something off waits for the person (ADR 0078).
     const flagged = (flag: "readOnly" | "irreversible") =>
       tools.filter((c) => c[flag]).map((c) => c.id.replace("endue.browser.", ""));
     expect(flagged("readOnly")).toEqual(["read"]);
-    expect(flagged("irreversible")).toEqual(["click", "type", "key", "select"]);
+    expect(flagged("irreversible")).toEqual(["click", "key"]);
   });
 });

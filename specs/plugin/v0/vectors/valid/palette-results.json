@@ -1,6 +1,6 @@
 {
   "target": "PaletteResults",
-  "description": "what an item provider answers: one result per item, Open in Desk first and the original app second",
+  "description": "what an item provider answers: one result per item, Open in endue first and the original app second",
   "instance": {
     "results": [
       {
@@ -11,7 +11,7 @@
         "actions": [
           {
             "command": "desk.views.open",
-            "title": "Open in Desk",
+            "title": "Open in endue",
             "args": {
               "id": "desk.item",
               "params": {

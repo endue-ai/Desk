@@ -6,7 +6,7 @@
 import { channelsModel } from "./channels.js";
 import { cardLabel, checkup } from "./checkup.js";
 import { devicesOf, mergeScan, nameDevice } from "./devices.js";
-import { checkPorts } from "./ports.js";
+import { allowPorts, checkPorts } from "./ports.js";
 import { networkId, readWifi, scanNetwork } from "./probe.js";
 import { isRefusal, NetworkRefusal } from "./refusal.js";
 
@@ -217,25 +217,75 @@ export function createNetwork(deps) {
     return /** @type {Device} */ (state.devices.find((x) => x.mac === d.mac));
   };
 
-  /** Check one device's ports, after the person's yes to the grant. @param {string} mac */
-  const checkDevice = async (mac) => {
+  const portNetwork = () => {
     guardOs();
-    const d = deviceOf(mac);
     if (state.admin !== true)
       throw new NetworkRefusal(state.admin === false ? "not-admin" : "admin-unasked");
-    const here = /** @type {Here} */ (state.here);
+    if (!state.here) throw new NetworkRefusal("no-network");
+    return state.here;
+  };
+
+  /** @param {Device} d @param {Here} here */
+  const recordPorts = async (d, here) => {
+    const guard = () => {
+      if (state.here?.id !== here.id || state.admin !== true)
+        throw new NetworkRefusal("no-network");
+      if (deviceOf(d.mac).ip !== d.ip) throw new NetworkRefusal("unknown-device", { mac: d.mac });
+    };
+    const result = await checkPorts(deps.bridge, {
+      ip: d.ip,
+      network: here.network,
+      allowed: true,
+      guard,
+      now,
+    });
+    guard();
+    ports = { ...ports, [d.mac]: result };
+    await deps.store.savePorts(here.id, ports);
+    derive();
+    return /** @type {Device} */ (state.devices.find((x) => x.mac === d.mac));
+  };
+
+  /** Check a known device after the person's review. @param {string} mac @param {boolean} [again] */
+  const checkDevice = async (mac, again = false) => {
+    const here = portNetwork();
+    const d = deviceOf(mac);
     const job = startJob("ports");
     try {
-      const result = await checkPorts(deps.bridge, {
-        ip: d.ip,
-        network: here.network,
-        reason: deps.t("ports.reason", { device: cardLabel(deps.t, d), ip: d.ip }),
-        now,
-      });
-      ports = { ...ports, [d.mac]: result };
-      await deps.store.savePorts(here.id, ports);
-      derive();
-      return /** @type {Device} */ (state.devices.find((x) => x.mac === d.mac));
+      await allowPorts(
+        deps.bridge,
+        [d.ip],
+        here.network,
+        deps.t("ports.reason", { device: cardLabel(deps.t, d), ip: d.ip }),
+        again,
+      );
+      return await recordPorts(d, here);
+    } finally {
+      job.end();
+    }
+  };
+
+  /** Review the exact current addresses as one request before sending any checks. */
+  const checkAllDevices = async () => {
+    const here = portNetwork();
+    const devices = state.devices.filter((d) => d.online && !d.self && d.open === null);
+    if (!devices.length) return [];
+    const ips = [...new Set(devices.map(({ ip }) => ip))];
+    const job = startJob("ports");
+    try {
+      await allowPorts(
+        deps.bridge,
+        ips,
+        here.network,
+        deps.t("ports.batchReason", { addresses: ips.join(", ") }),
+        true,
+      );
+      const results = [];
+      for (const [at, device] of devices.entries()) {
+        results.push(await recordPorts(device, here));
+        job.update("ports", at + 1, devices.length);
+      }
+      return results;
     } finally {
       job.end();
     }
@@ -276,6 +326,7 @@ export function createNetwork(deps) {
     answerAdmin,
     name,
     checkDevice,
+    checkAllDevices,
     readChannels,
     deviceOf,
     checkup: () => checkup(state.devices, wifiFacts(), (d) => cardLabel(deps.t, d)),

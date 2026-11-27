@@ -157,14 +157,20 @@ export class Notifications {
     return this.#duration(notice) <= 0;
   }
 
-  dismiss(): void {
+  dismiss(id?: string): boolean {
+    if (id !== undefined && this.#current?.id !== id) {
+      const before = this.#waiting.length;
+      this.#waiting = this.#waiting.filter((notice) => notice.id !== id);
+      return this.#waiting.length !== before;
+    }
     this.#cancel?.();
     this.#cancel = undefined;
-    if (this.#current === null) return;
+    if (this.#current === null) return false;
     this.#current = null;
     const next = this.#waiting.shift();
     if (next) this.#show(next);
     else this.#render(null);
+    return true;
   }
 
   /** Newest first. */

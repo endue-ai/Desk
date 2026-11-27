@@ -51,7 +51,7 @@ describe("Explorer selection commands", () => {
       [`${DOCS}/a2.md`, `${DOCS}/Work`].map((target) => ({
         target,
         reveal: true,
-        scope: { permission: "shell:open", paths: [target] },
+        scope: { permission: "shell:open", paths: [DOCS, `${DOCS}/**`] },
       })),
     );
   });
@@ -71,7 +71,7 @@ describe("Explorer selection commands", () => {
     expect(d.params("proc.spawn")).toEqual([]);
   });
 
-  it("lets the core ask for the exact reveal path once and preserves a refusal", async () => {
+  it("lets the core ask once per Explorer root and preserves a refusal", async () => {
     const path = `${DOCS}/a2.md`;
     const d = await mount({
       handlers: {
@@ -92,7 +92,7 @@ describe("Explorer selection commands", () => {
       {
         target: path,
         reveal: true,
-        scope: { permission: "shell:open", paths: [path] },
+        scope: { permission: "shell:open", paths: [DOCS, `${DOCS}/**`] },
       },
     ]);
     expect(d.ran("desk.files.open")).toEqual([]);

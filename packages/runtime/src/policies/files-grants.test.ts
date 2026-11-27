@@ -11,6 +11,8 @@ import { folderRead, installFiles, personChose } from "./files";
 
 const IMAGES = "test.images";
 const OTHER = "test.other";
+const ERIS = "endue.eris";
+const PLAYER = "endue.player";
 const PATH = "~/Pictures/trip 2026/beach.png";
 const FOLDER = { permission: "fs:read", paths: ["~/Pictures/trip 2026/**"] };
 
@@ -29,6 +31,8 @@ async function desk() {
       { id: "desk.buffers", kind: "policy", version: "0.1.0" },
       viewer(IMAGES, "*.png"),
       viewer(OTHER, "*.dat"),
+      viewer(ERIS, "*.txt"),
+      viewer(PLAYER, "*.m3u"),
     ],
   });
   const bridge = core.client;
@@ -60,25 +64,38 @@ async function desk() {
   hub.apply(core.plugins);
   await hub.commands.settled();
   /** desk.files.open as `caller` (a plugin, an agent), through the registry as the core runs it. */
-  const openAs = (caller: string, args: Record<string, unknown>) =>
+  const runAs = (caller: string, id: string, args: Record<string, unknown>) =>
     new Promise<unknown>((resolve) => {
       const off = bridge.onEvent((event) => {
         if (event.event === "cmd.answered" && event.data.caller === caller) {
           off();
-          resolve(event.data.ok);
+          resolve(event.data.ok ? (event.data.result ?? true) : false);
         }
       });
       void bridge.call(
         "cmd.invoke",
         {
-          id: "desk.files.open",
+          id,
           args,
-          scope: { permission: "cmd:invoke", ids: ["desk.files.open"] },
+          scope: { permission: "cmd:invoke", ids: [id] },
         },
         { caller },
       );
     });
-  return { hub, openAs, held, heldAtVisit };
+  const openAs = async (caller: string, args: Record<string, unknown>) =>
+    (await runAs(caller, "desk.files.open", args)) !== false;
+  const coreChoice = (caller: string, args: Record<string, unknown>) =>
+    core.stub.emit({
+      event: "cmd.invoked",
+      data: {
+        invocationId: "test-file-choice",
+        id: "desk.files.open",
+        caller,
+        args,
+        fileOpenGranted: true,
+      },
+    });
+  return { hub, openAs, coreChoice, held, heldAtVisit, runAs };
 }
 
 describe("opening a file the person chose", () => {
@@ -88,11 +105,15 @@ describe("opening a file the person chose", () => {
     expect(d.heldAtVisit).toEqual([[FOLDER]]);
   });
 
-  it("does the same for a plugin acting on the person's click, such as Explorer", async () => {
-    const d = await desk();
-    await expect(d.openAs("endue.explorer", { path: PATH })).resolves.toBe(true);
-    expect(await d.held(IMAGES)).toEqual([FOLDER]);
-  });
+  it.each(["endue.explorer", "agent:eris"])(
+    "does the same for a core-verified selection from %s",
+    async (caller) => {
+      const d = await desk();
+      d.coreChoice(caller, { path: PATH });
+      await vi.waitFor(() => expect(d.heldAtVisit).toEqual([[FOLDER]]));
+      expect(await d.held(IMAGES)).toEqual([FOLDER]);
+    },
+  );
 
   it("gives nothing for an agent's open, or for a plugin that names the plugin to open with", async () => {
     const d = await desk();
@@ -116,13 +137,78 @@ describe("an open that grants nothing", () => {
     await own.hub.commands.run("desk.files.open", { path: PATH, grant: true });
     expect(own.heldAtVisit).toEqual([[FOLDER]]);
   });
+
+  it("cannot pass a path by invoking the open command from an unrelated plugin", async () => {
+    const d = await desk();
+    await expect(d.openAs("example.sneaky", { path: PATH })).resolves.toBe(true);
+    expect(d.heldAtVisit).toEqual([[]]);
+    expect(await d.held(IMAGES)).toEqual([]);
+  });
+});
+
+describe("saving a personally opened buffer", () => {
+  it("grants the opener write access to only the saved file", async () => {
+    const d = await desk();
+    const buffer = await d.hub.commands.run("desk.files.open", { path: PATH });
+    await d.hub.commands.run("desk.files.save", { buffer });
+    expect(await d.held(IMAGES)).toEqual([FOLDER, { permission: "fs:write", paths: [PATH] }]);
+  });
+
+  it("does not grant write access when an agent opened the buffer", async () => {
+    const d = await desk();
+    await d.openAs("agent:mira", { path: PATH });
+    await d.hub.commands.run("desk.files.save", { buffer: `file:${PATH}` });
+    expect(await d.held(IMAGES)).toEqual([]);
+  });
+});
+
+describe("file choices made inside the desk", () => {
+  it("gives Eris only the file the person picked from the open buffers", async () => {
+    const d = await desk();
+    const path = "~/Notes/entry.txt";
+    // This fixture has a different opener so Eris holds no folder grant before attaching the file.
+    const buffer = await d.hub.commands.run("desk.files.open", { path, plugin: OTHER });
+    d.hub.commands.define("desk.palette.pick", {
+      title: "Choose",
+      owner: "desk",
+      run: () => buffer,
+    });
+    await d.hub.commands.settled();
+    expect(await d.runAs("test.other", "desk.files.attach", {})).toBe(false);
+    expect(await d.runAs(ERIS, "desk.files.attach", {})).toEqual({ path, modified: false });
+    expect(await d.held(ERIS)).toEqual([{ permission: "fs:read", paths: [path] }]);
+  });
+
+  it("covers only the local entries of the Player's personally opened playlist", async () => {
+    const d = await desk();
+    const path = "~/Playlists/morning.m3u";
+    await d.openAs("agent:mira", { path });
+    const buffer = `file:${path}`;
+    const paths = [
+      "~/Music/one.ogg",
+      "~/Music/two.ogg",
+      "/Music/late.ogg",
+      "https://example.test/live",
+      "~/Other/*.mp3",
+    ];
+    await d.runAs(PLAYER, "desk.files.playlist-entries", { buffer, paths });
+    expect(await d.held(PLAYER)).toEqual([]);
+    // A subsequent open from the desk records the person's choice even for the existing buffer.
+    await d.hub.commands.run("desk.files.open", { path });
+    expect(await d.runAs(PLAYER, "desk.files.playlist-entries", { buffer, paths })).toBe(true);
+    expect(await d.held(PLAYER)).toEqual([
+      folderRead(path),
+      { permission: "fs:read", paths: ["~/Music/**", "/Music/**"] },
+    ]);
+  });
 });
 
 describe("who chose", () => {
   it("is the person for the desk's own opens and a plugin's with the desk's opener", () => {
     expect(personChose({}, undefined)).toBe(true);
     expect(personChose({}, IMAGES)).toBe(true);
-    expect(personChose({ caller: "endue.explorer" }, undefined)).toBe(true);
+    expect(personChose({ caller: "endue.explorer" }, undefined)).toBe(false);
+    expect(personChose({ caller: "endue.explorer", fileOpenGranted: true }, undefined)).toBe(true);
     expect(personChose({ caller: "endue.explorer" }, IMAGES)).toBe(false);
     expect(personChose({ caller: "agent:eris" }, undefined)).toBe(false);
     expect(folderRead("~/a.md")).toEqual({ permission: "fs:read", paths: ["~/**"] });

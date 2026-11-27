@@ -1,5 +1,5 @@
 // A scripted PostgreSQL server for the activity view (ui/features/activity/): a saved connection and
-// what the scripted psql answers to the view's reads (the version, pg_stat_activity, pg_locks) and to
+// what the scripted server answers to the view's reads (the version, pg_stat_activity, pg_locks) and to
 // pg_cancel_backend and pg_terminate_backend, which change what the next read sees. Session 4242
 // holds a row in a transaction and sleeps, 4243 waits for its transaction, 4244 waits for 4243 on
 // the row; 4250 is the session reading the view, 4251 another of the plugin's, 4260 another role's
@@ -37,15 +37,15 @@ const LOCK_HEAD = [
   ...["virtualxid", "transactionid", "objid", "wait_ms"],
 ];
 
-/** The sessions as pg_stat_activity answers them ("" is NULL: the scripted psql prints it so). */
+/** The sessions as pg_stat_activity answers them ("" is NULL, as the psql path printed it). */
 // biome-ignore format: one session a line, as the view reads them
 const SESSIONS = [
   ["4100", "", "", "", "", "", "", "autovacuum launcher", "", "Activity", "AutoVacuumMain", "", "", "", "", ""],
   ["4242", "", "alice", "warehouse", "billing", "10.0.0.5", "50412", "client backend", "active", "Timeout", "PgSleep", "60000", "95000", "60000", "", "SELECT pg_sleep(600)"],
   ["4243", "", "bob", "warehouse", "reports", "10.0.0.7", "50500", "client backend", "active", "Lock", "transactionid", "30000", "30000", "30000", "4242", "UPDATE orders SET total = total + 1 WHERE id = 1"],
   ["4244", "", "carol", "warehouse", "reports", "10.0.0.7", "50501", "client backend", "active", "Lock", "tuple", "12000", "12000", "12000", "4243", "UPDATE orders SET total = 0 WHERE id = 1"],
-  ["4250", "", "app", "warehouse", "endue Desk", "", "-1", "client backend", "active", "", "", "0", "0", "0", "", "SELECT a.pid FROM pg_catalog.pg_stat_activity a"],
-  ["4251", "", "app", "warehouse", "endue Desk", "127.0.0.1", "50600", "client backend", "idle", "Client", "ClientRead", "300000", "", "310000", "", "select * from orders"],
+  ["4250", "", "app", "warehouse", "endue", "", "-1", "client backend", "active", "", "", "0", "0", "0", "", "SELECT a.pid FROM pg_catalog.pg_stat_activity a"],
+  ["4251", "", "app", "warehouse", "endue", "127.0.0.1", "50600", "client backend", "idle", "Client", "ClientRead", "300000", "", "310000", "", "select * from orders"],
   ["4260", "", "dave", "archive", "", "", "", "", "", "", "", "", "", "", "", HIDDEN],
   ["4300", "", "alice", "warehouse", "billing", "10.0.0.5", "50413", "client backend", "idle in transaction", "Client", "ClientRead", "200000", "250000", "200000", "", "UPDATE stock SET n = n - 1 WHERE item = 7"],
 ];

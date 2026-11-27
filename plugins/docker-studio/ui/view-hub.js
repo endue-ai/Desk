@@ -4,7 +4,7 @@
 
 import { button, h, icon, pill } from "./dom.js";
 import { count } from "./format.js";
-import { jsonLines } from "./parse.js";
+import { searchImages } from "./image-search.js";
 
 /** @typedef {import("./studio.js").App} App */
 
@@ -91,27 +91,16 @@ export function createHub(app) {
     if (term.trim().length < 2) return starters();
     status.replaceChildren(h("span.spinner"), " Searching the registry…");
     try {
-      const { stdout } = await app.docker(
-        ["search", "--limit", "40", "--format", "{{json .}}", "--", term.trim()],
-        { timeoutMs: 20_000 },
-      );
+      const rows = await searchImages(app.docker, term);
       if (term !== last) return;
-      const rows = jsonLines(stdout).sort(
-        (a, b) =>
-          Number(b.IsOfficial === true || b.IsOfficial === "true") -
-            Number(a.IsOfficial === true || a.IsOfficial === "true") ||
-          Number(b.StarCount) - Number(a.StarCount),
-      );
       status.textContent = `${rows.length} images for “${term.trim()}”`;
       results.replaceChildren(
-        ...rows.map((r) =>
-          card(String(r.Name), String(r.Description ?? ""), {
-            official: r.IsOfficial === true || r.IsOfficial === "true",
-            stars: Number(r.StarCount ?? 0),
-          }),
+        ...rows.map(({ name, description, official, stars }) =>
+          card(name, description, { official, stars }),
         ),
       );
     } catch (error) {
+      if (term !== last) return;
       status.textContent = String(/** @type {any} */ (error)?.message ?? error);
       results.replaceChildren();
     }

@@ -7,49 +7,49 @@ import { Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 import type { PluginMessage } from "./plugin-messages";
-import { named, surfaceUrl } from "./plugin-origins";
+import { surfaceUrl } from "./plugin-origins";
+import { readTitleMessages } from "./plugin-title-messages";
 import { PluginAsks } from "./plugins-asks";
+import { closeSessions } from "./plugins-db";
 import {
   broadcast,
   type ChangeHost,
-  claim,
   type EventRoutes,
+  forwardCalls,
   pluginChanged,
   routeEvent,
 } from "./plugins-events";
 import { PluginGreetings } from "./plugins-greetings";
-import { initMessage } from "./plugins-init";
+import { greeting } from "./plugins-init";
+import {
+  enableForLaunch,
+  hasSurface,
+  type LaunchPluginOptions,
+  MANAGE_PLUGINS,
+} from "./plugins-launch";
 import { WindowSearch } from "./plugins-search";
+import { type SharedMessage, SharedMessages } from "./plugins-shared";
 import { now, phase } from "./timing";
 
 export type { PluginHostDeps, PluginHostOptions } from "./plugin-host-deps";
 
-const MANAGE = { permission: "plugin:manage" } as const;
-
-/**
- * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
- * frame a message comes from, so a plugin can only ever call as itself. A plugin may have several
- * windows (ADR 0212): each frame is keyed by its window's key (the plugin id for its first), and
- * every window calls as the plugin.
- */
+/** Mounts plugin surfaces and routes calls as the plugin owning each window (ADR 0212). */
 export class PluginHost {
   readonly #deps: PluginHostDeps;
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
-  /** The windows of the mounted plugins: what the per-frame maps below are keyed by. */
   readonly #instances = new PluginInstances();
   readonly #search = new WindowSearch(this.#instances, this.#mounted);
   readonly #state = new Map<string, unknown>();
-  /** Turns, watches, subscriptions and processes, by window: kept while one is put away (#160). */
+  /** Turns, watches, subscriptions, processes, by window: kept while one is put away (#160). */
   readonly #owners = new Owners();
-  /** Commands delivered to plugins that wait for their reply. */
   readonly #asks = new PluginAsks();
-  readonly #shared = new Map<string, unknown>();
-  /** Plugins whose page said hello since their frame loaded, and callers waiting for one. */
+  readonly #shared = new SharedMessages();
   readonly #greetings = new PluginGreetings();
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
+  readonly #titleMessages: ReturnType<typeof readTitleMessages>;
   /** Which windows hear each core event, and what a plugin's change does (`plugins-events.ts`). */
   readonly #routes: EventRoutes;
   readonly #changes: ChangeHost;
@@ -59,17 +59,23 @@ export class PluginHost {
   /** Plugins whose frame the runtime unloaded, until the next one says hello (ADR 0070). */
   readonly #sleepers = new Sleepers((id) => this.#deps.wake?.(id) === true);
   readonly #dnd: Dnd;
+  readonly #background = new Set<string>();
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
     this.#options = options;
-    this.#commands = new PluginCommands(deps.bridge);
+    this.#titleMessages = readTitleMessages(options.url, deps.language ?? (() => "en"));
+    this.#commands = new PluginCommands(deps.bridge, {
+      launch: (id, options) => this.launch(id, options),
+      post: (id, message) => this.#post(this.#instances.resolve(id) ?? id, message),
+    });
     this.#routes = {
       owners: this.#owners,
       commands: this.#commands,
       instances: this.#instances,
       mounted: this.#mounted,
       post: (key, message) => this.#post(key, message),
+      bridge: deps.bridge,
     };
     this.#changes = {
       mounted: this.#mounted,
@@ -85,7 +91,7 @@ export class PluginHost {
       },
       rise: (id) => this.#sleepers.rise(id),
     };
-    this.#dnd = installDnd(deps, () => this.#instances.keys());
+    this.#dnd = installDnd(deps, () => this.#instances.keys(), this.#mounted);
   }
 
   async start(): Promise<void> {
@@ -93,31 +99,34 @@ export class PluginHost {
     this.#offEvents = this.#deps.bridge.onEvent((event) => this.#onEvent(event));
     const start = now();
     const all = await this.#list();
-    this.#deps.listed?.(all);
+    await this.#listed(all);
     // Whatever goes wrong deciding it, every plugin mounts as before.
     const asleep = (await this.#deps.startAsleep?.(all).catch(() => undefined)) ?? new Set();
     for (const info of all) this.#mount(info, asleep.has(info.id));
     phase("plugin list", start);
   }
 
-  /** Launch an installed UI plugin, including one put away or disabled by the person. */
-  async launch(id: string, waitForReady = false): Promise<void> {
-    let info = (await this.#list()).find((p) => p.id === id);
-    if (info?.status !== "ready" || !this.#mounts(info.manifest))
-      throw new Error(`No launchable plugin ${id}`);
-    if (!info.enabled) {
-      ({ plugin: info } = await this.#deps.bridge.call("plugin.setEnabled", {
-        plugin: id,
-        enabled: true,
-        scope: MANAGE,
-      }));
+  async launch(
+    id: string,
+    wait: boolean | LaunchPluginOptions = false,
+    mayEnable?: () => Promise<void>,
+  ): Promise<void> {
+    const info = (await this.#list()).find((p) => p.id === id);
+    if (!info || !this.#eligible(info)) throw new Error(`No launchable plugin ${id}`);
+    const options = typeof wait === "boolean" ? { waitForReady: wait, mayEnable } : wait;
+    const { background, waitForReady } = options;
+    if (background && (!this.#mounted.has(id) || this.#sleepers.dozing(id)))
+      this.#background.add(id);
+    try {
+      this.#mount(await enableForLaunch(this.#deps.bridge, info, options));
+      // A plugin whose first window closed while others stayed shows the one in use.
+      const key = this.#instances.resolve(id) ?? id;
+      this.#sleepers.rise(key);
+      if (!background) this.#deps.show?.(key, true);
+      if (waitForReady) await this.whenReady(key);
+    } finally {
+      this.#background.delete(id);
     }
-    this.#mount(info);
-    // A plugin whose first window closed while others stayed shows the one in use.
-    const key = this.#instances.resolve(id) ?? id;
-    this.#sleepers.rise(key);
-    this.#deps.show?.(key, true);
-    if (waitForReady) await this.whenReady(key);
   }
 
   /** Open another window of a mounted plugin (ADR 0212): its key; its frame may still connect.
@@ -181,17 +190,15 @@ export class PluginHost {
     return this.#greetings.next(key);
   }
 
-  /**
-   * Take a window away for the session, as its `desk:close` does; its work goes on. A plugin's last
-   * window takes the plugin with it, as does a plugin id whose first window is closed.
-   */
+  /** Take a window away for the session, as `desk:close` does: its database sessions end (ADR 0339).
+   * A plugin's last window, or its first, closes the plugin; its manifest's commands stay (#565). */
   unmount(id: string): void {
     const plugin = pluginOf(id);
     // A later window that is not open (a tab kept from an earlier session) takes nothing with it.
     if (plugin !== id && !this.#instances.has(id)) return;
     const others = this.#instances.of(plugin).filter((key) => key !== id);
     if (others.length > 0 && this.#instances.has(id)) this.#close(id);
-    else this.#unmount(plugin);
+    else this.#unmount(plugin, true);
   }
 
   /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
@@ -204,10 +211,8 @@ export class PluginHost {
     return this.#asks.busy(id, except);
   }
 
-  /**
-   * The runtime took a plugin's frame away (ADR 0070): `state` goes to its next init as `restored`,
-   * and what the gone frame was asked is cancelled. The plugin stays mounted.
-   */
+  /** The runtime took a plugin's frame away (ADR 0070): `state` goes to its next init as
+   * `restored`, what the gone frame was asked is cancelled; the plugin stays mounted. */
   unloaded(id: string, state: unknown): void {
     if (!this.#instances.has(id)) return;
     this.#greetings.forget(id);
@@ -215,10 +220,11 @@ export class PluginHost {
     this.#cancel(id, "was unloaded before it answered");
   }
 
-  /** Keep a message for every plugin, like the theme: sent now, and after each plugin's init. */
-  share(message: { type: string; [field: string]: unknown }): void {
-    this.#shared.set(message.type, message);
-    for (const key of this.#instances.keys()) this.#post(key, message);
+  /** Keep a message for every plugin (the theme) or one's windows (ADR 0398), sent now and at init. */
+  share(message: SharedMessage, plugin?: string, drop = false): void {
+    this.#shared.keep(message, plugin, drop);
+    const keys = plugin === undefined ? this.#instances.keys() : this.#instances.of(plugin);
+    for (const key of keys) this.#post(key, message);
   }
 
   stop(): void {
@@ -229,23 +235,33 @@ export class PluginHost {
   }
 
   async #list(): Promise<PluginInfo[]> {
-    const { plugins } = await this.#deps.bridge.call("plugin.list", { scope: MANAGE });
+    const { plugins } = await this.#deps.bridge.call("plugin.list", { scope: MANAGE_PLUGINS });
     this.#unready = new Set(plugins.filter((p) => p.status !== "ready").map((p) => p.id));
-    return plugins;
+    return this.#titleMessages(plugins);
   }
 
   /** Mount and unmount as `mayMount` says now: the roles setting changed (ADR 0104). */
   async reconcile(): Promise<void> {
-    for (const info of await this.#list())
-      if (this.#deps.mayMount?.(info) === false) this.#unmount(info.id);
-      else this.#mount(info);
+    const all = await this.#list();
+    for (const info of all) {
+      if (this.#eligible(info)) this.#mount(info);
+      else this.#unmount(info.id);
+    }
+    await this.#commands.prepare(all.filter((info) => this.#eligible(info)));
+  }
+
+  #eligible(info: PluginInfo): boolean {
+    return hasSurface(info, this.#options.native) && this.#deps.mayMount?.(info) !== false;
+  }
+
+  async #listed(all: PluginInfo[]): Promise<void> {
+    this.#deps.listed?.(all);
+    await this.#commands.prepare(all.filter((info) => this.#eligible(info)));
   }
 
   /** Mount a plugin: its surface opens now, or on its first use when it starts `asleep` (#590). */
   #mount(info: PluginInfo, asleep = false): void {
-    if (info.status !== "ready" || !info.enabled || !this.#mounts(info.manifest)) return;
-    if (this.#mounted.has(info.id)) return;
-    if (this.#deps.mayMount?.(info) === false) return;
+    if (!info.enabled || this.#mounted.has(info.id) || !this.#eligible(info)) return;
     this.#mounted.set(info.id, info);
     this.#open(info, info.id, asleep);
     this.#commands.mounted(info);
@@ -264,7 +280,7 @@ export class PluginHost {
         // The revision as it is when the surface opens: an update may come while it sleeps.
         src: surfaceUrl(this.#options, this.#mounted.get(info.id) ?? info, instanceNumber(key)),
         ...(surface ? { surface: surface.id, placement: surface.placement } : {}),
-        ...(surface?.hidden ? { hidden: true } : {}),
+        ...(this.#background.delete(key) || surface?.hidden ? { hidden: true } : {}),
         ...(surface?.window ? { window: surface.window } : {}),
       });
     };
@@ -272,19 +288,9 @@ export class PluginHost {
     else this.#sleepers.load(key, open);
   }
 
-  /**
-   * Whether plugins of this manifest's kind get a surface: UI plugins, and native plugins on a
-   * desk whose compositor hosts their processes (#59, ADR 0154).
-   */
-  #mounts(manifest: PluginInfo["manifest"]): manifest is NonNullable<PluginInfo["manifest"]> {
-    return (
-      manifest?.kind === "ui" || (manifest?.kind === "native" && this.#options.native === true)
-    );
-  }
-
-  #unmount(id: string): void {
+  #unmount(id: string, closed = false): void {
+    this.#commands[closed ? "closed" : "unmounted"](id);
     if (!this.#mounted.delete(id)) return;
-    this.#commands.unmounted(id);
     for (const key of this.#instances.of(id)) this.#close(key);
   }
 
@@ -298,6 +304,7 @@ export class PluginHost {
     this.#sleepers.forget(key);
     this.#cancel(key, "stopped before it answered");
     this.#search.closed(key, this.#deps.bridge);
+    closeSessions(this.#owners, key, this.#deps.bridge);
     if (key !== pluginOf(key)) {
       this.#state.delete(key);
       this.#owners.drop(key);
@@ -328,13 +335,21 @@ export class PluginHost {
   #onEvent(event: BridgeEvent): void {
     if (routeEvent(event, this.#routes) || event.event !== "plugin.changed") return;
     broadcast(event, this.#routes);
-    if (this.#deps.listed) void this.#list().then((all) => this.#deps.listed?.(all));
+    void this.#list().then((all) => this.#listed(all));
     pluginChanged(event.data, this.#changes);
   }
 
   #post(id: string, message: unknown): void {
-    if (!this.#sleepers.waits(id)) this.#deps.frame(id)?.postMessage(message, "*");
-    else if (this.#sleepers.hold(id, message) === "stuck")
+    if (!this.#sleepers.waits(id)) {
+      this.#deps.frame(id)?.postMessage(message, "*");
+      return;
+    }
+    if (
+      this.#sleepers.dozing(id) &&
+      this.#commands.background((message as { event?: BridgeEvent }).event)
+    )
+      this.#background.add(id);
+    if (this.#sleepers.hold(id, message) === "stuck")
       this.#commands.refuse(message, pluginOf(id), `${id} is asleep and its frame cannot load`);
   }
 
@@ -350,9 +365,8 @@ export class PluginHost {
         // A new page: what the one it replaced was asked and did not answer, it never will.
         this.#asks.cancel(id, `${id} reloaded before it answered`, "left");
         const { restored, waited } = this.#sleepers.woke(id);
-        this.#post(id, initMessage(id, this.#state.get(id), restored, this.#shared, this.#mounted));
-        for (const shared of this.#shared.values()) this.#post(id, shared);
-        for (const held of waited) this.#post(id, held);
+        const init = greeting(id, this.#state.get(id), restored, this.#shared, this.#mounted);
+        for (const sent of [...init, ...waited]) this.#post(id, sent);
         this.#greetings.hello(id, this.#deps.frame(id));
         break;
       }
@@ -378,21 +392,7 @@ export class PluginHost {
         this.#asks.reply(id, message);
         break;
       case "desk:calls":
-        // Every window calls as its plugin; the one calling is its plugin's window in use.
-        this.#instances.touch(id);
-        void Promise.all(
-          message.calls.map(async (request) => ({
-            request,
-            response: await this.#deps.bridge.forward(
-              ...this.#search.call(id, named(id, request, this.#mounted)),
-            ),
-          })),
-        ).then((answers) => {
-          const results = answers.map(({ request, response }) => ({ id: request.id, response }));
-          this.#post(id, { type: "desk:results", results });
-          // After the results, so a plugin learns its turn, watch, subscription or process id first.
-          for (const { request, response } of answers) claim(request, response, id, this.#routes);
-        });
+        void forwardCalls(id, message.calls, this.#routes, this.#search);
         break;
     }
   };

@@ -6,7 +6,8 @@
 
 import { engineOf } from "../../engines/index.js";
 import { oneLine } from "../../execute.js";
-import { DEFAULT_VIEW, isBackground, PERIODS, SORT_KEYS, summaryOf } from "./model.js";
+import { t } from "../../strings/index.js";
+import { DEFAULT_VIEW, isBackground, PERIODS, SORT_KEYS, saidOf, summaryOf } from "./model.js";
 import { createReader } from "./read.js";
 import { nothingToCancel, refusal, stop } from "./signal.js";
 
@@ -46,21 +47,37 @@ function pidOf(/** @type {unknown} */ value) {
   if (value === undefined || value === null || value === "") return undefined;
   const pid = Number(value);
   if (!Number.isSafeInteger(pid) || pid <= 0)
-    throw new Error("A session is named by its process id, a whole number.");
+    throw new Error(t("features.activity.controller.aSessionIsNamedByIts"));
   return pid;
 }
 
-/** The status line after a read. */
-function said(/** @type {Connection} */ conn, /** @type {Read} */ read) {
-  const waiting = read.sessions.filter((s) => s.blockedBy.length).length;
-  const hidden = read.sessions.filter((s) => s.hidden && !isBackground(s)).length;
-  const hides = hidden === 1 ? "1 hides its statement" : `${hidden} hide their statements`;
-  return `${read.sessions.length} sessions on ${conn.name}, ${waiting || "none"} waiting${hidden ? `; ${hides}` : ""}.`;
+/**
+ * The process ids of the plugin's sessions on this desk to a connection's server (db.list), so
+ * the view marks them; none when the list cannot be had.
+ * @param {Deps["bridge"]} bridge
+ * @param {Connection} conn
+ */
+async function mineOf(bridge, conn) {
+  const host = (conn.host || "localhost").toLowerCase();
+  const port = conn.port ?? 5432;
+  try {
+    const listed = /** @type {{ sessions?: { host: string, port: number, pid: number }[] }} */ (
+      await bridge.call("db.list", {})
+    );
+    return (listed.sessions ?? [])
+      .filter((s) => s.host.toLowerCase() === host && s.port === port)
+      .map((s) => s.pid);
+  } catch {
+    return [];
+  }
 }
 
 /** @param {Deps} deps */
 export function createActivity(deps) {
-  const reader = createReader({ execute: deps.execute });
+  const reader = createReader({
+    execute: deps.execute,
+    mine: (conn) => mineOf(deps.bridge, conn),
+  });
   /** @type {Map<string, Promise<Read | null>>} */
   const inFlight = new Map();
   const panels = () => deps.consoles.list().filter((b) => b.kind === TYPE);
@@ -73,7 +90,10 @@ export function createActivity(deps) {
   const postgres = (/** @type {Connection} */ conn) => {
     if (conn.engine !== "postgresql")
       throw new Error(
-        `${conn.name} is ${engineOf(conn.engine).title}: sessions and locks are read from PostgreSQL connections.`,
+        t("features.activity.controller.isSessionsAndLocksAreRead", {
+          name: String(conn.name),
+          title: String(engineOf(conn.engine).title),
+        }),
       );
     return conn;
   };
@@ -81,7 +101,10 @@ export function createActivity(deps) {
   const choose = async (/** @type {unknown} */ ref) => {
     if (typeof ref === "string" && ref !== "") {
       const conn = deps.manager.get(ref);
-      if (!conn) throw new Error(`No connection is named ${ref}.`);
+      if (!conn)
+        throw new Error(
+          t("features.activity.controller.noConnectionIsNamed", { ref: String(ref) }),
+        );
       return postgres(conn);
     }
     const shown = deps.consoles.current();
@@ -89,19 +112,23 @@ export function createActivity(deps) {
     if (here?.engine === "postgresql") return here;
     const list = deps.manager.list().filter((c) => c.engine === "postgresql");
     if (list.length === 0)
-      throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+      throw new Error(t("features.activity.controller.noPostgresqlConnectionYetAddOne"));
     if (list.length === 1) return list[0];
     const items = list.map((c) => ({
       id: c.id,
       label: c.name,
       ...(c.tag !== "none" ? { detail: c.tag } : {}),
     }));
-    const picked = await deps.pick("Database: server activity of which connection?", items);
+    const picked = await deps.pick(
+      t("features.activity.controller.databaseServerActivityOfWhichConnection"),
+      items,
+    );
     return picked ? deps.manager.get(picked) : undefined;
   };
 
-  /** Read a panel's connection again; `again` waits for a read in flight and reads once more. */
-  const refresh = async (/** @type {string} */ id, again = false) => {
+  /** Read a panel's connection again; `again` waits for a read in flight and reads once more;
+   * `background` is the panel's period's, which a disconnected connection refuses (ADR 0339). */
+  const refresh = async (/** @type {string} */ id, again = false, background = false) => {
     const running = inFlight.get(id);
     if (running && !again) return running;
     if (running) await running;
@@ -111,7 +138,7 @@ export function createActivity(deps) {
     const work = (async () => {
       update(id, { reading: true, conn: about(conn) });
       try {
-        const read = await reader.read(conn);
+        const read = await reader.read(conn, background);
         update(id, { read, error: "", reading: false });
         return read;
       } catch (error) {
@@ -136,8 +163,9 @@ export function createActivity(deps) {
     const state = kept ? { ...kept, conn: about(conn) } : fresh(conn);
     const panel = await deps.consoles.openPanel(conn, TYPE, name, state);
     const read = await refresh(panel.id, true);
-    if (!read) throw new Error(panelOf(panel.id)?.[TYPE].error || "Not read.");
-    deps.say(said(conn, read));
+    if (!read)
+      throw new Error(panelOf(panel.id)?.[TYPE].error || t("features.activity.controller.notRead"));
+    deps.say(saidOf(conn.name, read));
     return summaryOf(read);
   };
 
@@ -153,18 +181,20 @@ export function createActivity(deps) {
     if (can.length === 0)
       throw new Error(
         how === "cancel"
-          ? `No session on ${conn.name} runs a statement now.`
-          : `No other session on ${conn.name}.`,
+          ? t("features.activity.controller.noSessionOnRunsAStatement", { name: String(conn.name) })
+          : t("features.activity.controller.noOtherSessionOn", { name: String(conn.name) }),
       );
     const items = can.map((s) => {
-      const detail = s.hidden ? "statement hidden" : oneLine(s.query ?? "");
+      const detail = s.hidden
+        ? t("features.activity.controller.statementHidden")
+        : oneLine(s.query ?? "");
       const label = `${s.pid} · ${s.user ?? "another role"} · ${s.application || "no application"} · ${s.state ?? "state hidden"}`;
       return { id: String(s.pid), label, ...(detail ? { detail } : {}) };
     });
     const title =
       how === "cancel"
-        ? "Database: cancel the statement of which session?"
-        : "Database: end which session?";
+        ? t("features.activity.controller.databaseCancelTheStatementOfWhich")
+        : t("features.activity.controller.databaseEndWhichSession");
     const picked = await deps.pick(title, items);
     return picked === undefined ? undefined : pidOf(picked);
   };
@@ -174,6 +204,7 @@ export function createActivity(deps) {
     /** @type {How} */ how,
     /** @type {Record<string, unknown>} */ args,
     /** @type {Connection} */ from = undefined,
+    approved = false,
   ) => {
     const conn = from ?? (await choose(args.connection));
     if (!conn) return undefined;
@@ -187,8 +218,14 @@ export function createActivity(deps) {
     pid ??= await pickSession(how, conn, read);
     if (pid === undefined) return undefined;
     const session = read.sessions.find((s) => s.pid === pid);
-    if (!session) throw new Error(`No session ${pid} on ${conn.name}: it may have ended.`);
-    deps.say(await stop(deps, how, conn, session, read.version));
+    if (!session)
+      throw new Error(
+        t("features.activity.controller.noSessionOnItMayHave", {
+          pid: String(pid),
+          name: String(conn.name),
+        }),
+      );
+    deps.say(await stop(deps, how, conn, session, read.version, how === "end" && approved));
     for (const panel of panels().filter((b) => b.connection === conn.id))
       await refresh(panel.id, true);
     return { pid, done: how === "cancel" ? "cancelled" : "ended" };
@@ -213,7 +250,9 @@ export function createActivity(deps) {
     }
     if (patch.sort) {
       if (!SORT_KEYS.includes(patch.sort.key))
-        throw new Error(`No column sorts by ${patch.sort.key}.`);
+        throw new Error(
+          t("features.activity.controller.noColumnSortsBy", { key: String(patch.sort.key) }),
+        );
       next.sort = { key: patch.sort.key, desc: patch.sort.desc === true };
     }
     if ("selected" in patch) {
@@ -224,7 +263,10 @@ export function createActivity(deps) {
     if ("period" in patch) {
       if (!PERIODS.includes(patch.period))
         throw new Error(
-          `The activity refreshes every ${PERIODS.slice(0, -1).join(", ")} or ${PERIODS.at(-1)} seconds.`,
+          t("features.activity.controller.theActivityRefreshesEveryOrSeconds", {
+            value: String(PERIODS.slice(0, -1).join(", ")),
+            value2: String(PERIODS.at(-1)),
+          }),
         );
       next.period = patch.period;
     }
@@ -237,7 +279,8 @@ export function createActivity(deps) {
     const shown = deps.consoles.current();
     if (args.connection || shown?.kind !== TYPE) return open(args);
     const read = await refresh(shown.id, true);
-    if (!read) throw new Error(panelOf(shown.id)?.[TYPE].error || "Not read.");
+    if (!read)
+      throw new Error(panelOf(shown.id)?.[TYPE].error || t("features.activity.controller.notRead"));
     return summaryOf(read);
   };
 
@@ -249,7 +292,7 @@ export function createActivity(deps) {
   ) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!conn) throw new Error("This panel's connection was removed.");
+    if (!conn) throw new Error(t("features.activity.controller.thisPanelSConnectionWasRemoved"));
     return stopSession(how, { pid }, conn);
   };
 

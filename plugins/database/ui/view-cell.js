@@ -8,6 +8,7 @@
 import { typed as isTyped, openTyped } from "./cell-editors/index.js";
 import { el } from "./dom.js";
 import { DEFAULT, isDefault } from "./edit/values.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./cell-editors/resolve.js").Editor} Editor
@@ -29,7 +30,7 @@ export function createCellEditor(doc, host, commit, done, act = () => undefined)
     el(doc, "input", {
       class: "desk-field cell-input",
       spellcheck: "false",
-      "aria-label": "Cell value",
+      "aria-label": t("cell.label"),
     })
   );
   /** @type {Editing | null} */
@@ -113,11 +114,15 @@ export function createCellEditor(doc, host, commit, done, act = () => undefined)
       const empty = editing.value === null || isDefault(editing.value);
       input.value = typed ?? (empty ? "" : (editing.value ?? ""));
       input.placeholder =
-        editing.value === null ? "NULL" : isDefault(editing.value) ? "DEFAULT" : "";
+        editing.value === null
+          ? t("viewCell.null")
+          : isDefault(editing.value)
+            ? t("viewCell.default")
+            : "";
       input.title = [
-        "Enter keeps · Escape cancels",
-        editor?.nullable !== false ? "Alt+N NULL" : "",
-        editor?.hasDefault ? "Alt+D DEFAULT" : "",
+        t("cell.keys"),
+        editor?.nullable !== false ? t("cell.keyNull") : "",
+        editor?.hasDefault ? t("cell.keyDefault") : "",
       ]
         .filter(Boolean)
         .join(" · ");

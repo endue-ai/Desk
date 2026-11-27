@@ -16,10 +16,10 @@ export const scopeOf = (/** @type {string} */ command) =>
  * rejects with `permission_denied`.
  * @param {{ call(method: string, params: unknown): Promise<any> }} bridge
  * @param {Program} program
- * @param {{ env: Record<string, string>, cols: number, rows: number }} options
+ * @param {{ env: Record<string, string>, cols: number, rows: number, invocationId?: string }} options
  * @returns {Promise<{ procId: string }>}
  */
-export async function spawnProgram(bridge, program, { env, cols, rows }) {
+export async function spawnProgram(bridge, program, { env, cols, rows, invocationId }) {
   const scope = scopeOf(program.command);
   const params = {
     command: program.command,
@@ -27,12 +27,13 @@ export async function spawnProgram(bridge, program, { env, cols, rows }) {
     cwd: program.cwd,
     env,
     pty: { cols, rows },
+    ...(invocationId ? { invocationId } : {}),
     scope,
   };
   try {
     return await bridge.call("proc.spawn", params);
   } catch (error) {
-    if (codeOf(error) !== "permission_denied") throw error;
+    if (invocationId || codeOf(error) !== "permission_denied") throw error;
   }
   const reason = `To run ${program.command} in a terminal`;
   const asked = await bridge

@@ -62,11 +62,17 @@ describe("plugin.json", () => {
       `${ID}.search`,
       `${ID}.refresh`,
       `${ID}.latest`,
+      `${ID}.find`,
+      `${ID}.read`,
+      `${ID}.send-message`,
       `${ID}.compose`,
+      `${ID}.draft`,
+      `${ID}.edit-draft`,
       `${ID}.reply`,
       `${ID}.forward`,
       `${ID}.send`,
       `${ID}.discard`,
+      `${ID}.move`,
       `${ID}.archive`,
       `${ID}.trash`,
       `${ID}.flag`,
@@ -80,6 +86,13 @@ describe("plugin.json", () => {
       ["page", "notify", "mark-read", "signature", "addresses"].map((k) => `${ID}.${k}`),
     );
     expect(contributes?.settings?.[`${ID}.mark-read`]?.choices).toEqual(["open", "never"]);
+  });
+
+  it("marks what sends or drops the person's words irreversible, so an agent's call waits", () => {
+    const commands = manifest().contributes?.commands ?? [];
+    const of = (id: string) => commands.find((c) => c.id === `${ID}.${id}`);
+    for (const id of ["send", "send-message", "discard"])
+      expect(of(id)?.irreversible, id).toBe(true);
   });
 
   it("takes no key the desk's default keymap binds", () => {

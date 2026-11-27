@@ -320,6 +320,8 @@ pub struct SurfaceDragStatus {
     pub r#type: SurfaceDragStatusType,
     pub surface: SurfaceId,
     pub effect: SurfaceDropAnswer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination: Option<SurfaceDragPath>,
 }
 
 /// The drag landed on the surface with the effect it last answered, never none: here are the items of the types it accepts. The surface answers drag.done.
@@ -331,6 +333,17 @@ pub struct SurfaceDragDrop {
     pub x: f64,
     pub y: f64,
     pub effect: SurfaceDropEffect,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<SurfaceId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination: Option<SurfaceDragPath>,
+    /// Set by the compositor when the drop was committed by a physical release or an operating system drop.
+    #[serde(
+        rename = "personDropped",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub person_dropped: Option<bool>,
     pub items: Vec<SurfaceDragItem>,
 }
 

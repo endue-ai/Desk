@@ -1,0 +1,122 @@
+/* A name's card over the editor (on the completion list's popover look, editor/editor.css) and the
+   usages panel: a header, then the catalog's and the parsed lists, one quiet button per usage with
+   its kind, name, detail and where it was found. Every colour, font and size is a --desk-* token. */
+
+#editor-box .nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  max-width: calc(var(--desk-space-16) * 8);
+  padding: var(--desk-space-1) var(--desk-space-2);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-sans);
+}
+
+#editor-box .nav-card-head {
+  display: flex;
+  gap: var(--desk-space-2);
+  align-items: baseline;
+}
+
+#editor-box .nav-card-kind,
+#editor-box .nav-card-detail,
+#editor-box .nav-card-comment,
+#editor-box .nav-card-key {
+  color: var(--desk-text-muted);
+}
+
+#editor-box .nav-card-title,
+#editor-box .nav-card-col {
+  font-family: var(--desk-font-mono);
+  font-weight: 600;
+}
+
+#editor-box .nav-card-type,
+#editor-box .nav-card-coltype,
+#editor-box .nav-card-keys,
+#editor-box .nav-card-signature {
+  font-family: var(--desk-font-mono);
+}
+
+#editor-box .nav-card-columns {
+  border-collapse: collapse;
+}
+
+#editor-box .nav-card-columns td {
+  padding: 0 var(--desk-space-2) 0 0;
+  vertical-align: top;
+}
+
+.usages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-3);
+  min-width: 0;
+  padding: var(--desk-space-4);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) var(--desk-font-sans);
+}
+
+.usages-title {
+  margin: 0;
+  font: 600 var(--desk-text-base) var(--desk-font-sans);
+}
+
+.usages-summary {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.usages-group h3 {
+  margin: 0 0 var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font: 600 var(--desk-text-xs) var(--desk-font-sans);
+}
+
+.usages-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.usages .usage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  align-items: baseline;
+  width: 100%;
+  min-width: 0;
+  text-align: start;
+}
+
+.usage-kind,
+.usage-source {
+  flex: none;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.usage-kind {
+  width: calc(var(--desk-space-16) * 2);
+}
+
+.usage-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.usage-detail {
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--desk-text-muted);
+  font: var(--desk-text-xs) var(--desk-font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-source {
+  margin-inline-start: auto;
+}

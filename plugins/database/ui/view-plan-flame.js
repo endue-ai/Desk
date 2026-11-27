@@ -6,21 +6,26 @@
 import { el } from "./dom.js";
 import { flameOf } from "./explain/flame.js";
 import { costText, ms } from "./explain/words.js";
+import { t } from "./strings/index.js";
 
 /** @typedef {import("./explain/plan.js").PlanNode} PlanNode */
 
 /** @param {Document} doc @param {PlanNode} root */
 export function flameView(doc, root) {
   const { measure, blocks, depth } = flameOf(root);
-  if (!blocks.length)
-    return el(doc, "p", { class: "empty" }, "This plan has no cost or time to draw.");
+  if (!blocks.length) return el(doc, "p", { class: "empty" }, t("plan.flameEmpty"));
   const value = (/** @type {number | null} */ n) =>
-    n === null ? "?" : measure === "time" ? ms(n) : `cost ${costText(n)}`;
+    n === null ? "?" : measure === "time" ? ms(n) : t("plan.cost", { cost: costText(n) });
   const rows = Array.from({ length: depth }, () => el(doc, "div", { class: "flame-row" }));
   for (const { node, x, w, depth: at } of blocks) {
     const own = measure === "time" ? node.ownTime : node.self;
     const share = Math.round(node.share * 100);
-    const said = `${node.label}: ${value(own)} own of ${value(node[measure])}, ${share}% of the whole`;
+    const said = t("plan.flameSaid", {
+      label: node.label,
+      own: value(own),
+      total: value(node[measure]),
+      share,
+    });
     rows[at]?.append(
       el(
         doc,
@@ -36,17 +41,12 @@ export function flameView(doc, root) {
       ),
     );
   }
-  const what = measure === "time" ? "time" : "estimated cost";
+  const what = t(measure === "time" ? "plan.measureTime" : "plan.measureCost");
   return el(
     doc,
     "div",
-    { class: "flame", role: "group", "aria-label": `Where the plan's ${what} goes` },
-    el(
-      doc,
-      "p",
-      { class: "flame-note" },
-      `Each block is as wide as its ${what}, its own part coloured: half or more of the whole, a fifth or more, less.`,
-    ),
+    { class: "flame", role: "group", "aria-label": t("plan.flameLabel", { what }) },
+    el(doc, "p", { class: "flame-note" }, t("plan.flameNote", { what })),
     ...rows,
   );
 }

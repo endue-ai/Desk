@@ -2,7 +2,7 @@
 
 `endue.archives`, every archive, package and disk image in one browser: the contents as a tree, a
 preview of the selected entry, and extraction to a folder the person picks. It never changes the
-archive. Community folder format, public SDK only, no third-party code. The decoders and most readers
+archive. Eris can list, read, preview and extract entries of an open archive. Extraction takes a named destination and keeps replaced contents in file history. Community folder format, public SDK only, no third-party code. The decoders and most readers
 come from the library `endue.formats` (`@endue-ai/formats/`, in `ui/index.html`'s import map); RAR,
 disk images, DMGs, SquashFS and WIM open in its worker (the SDK's `startWorker`) or in the frame.
 
@@ -20,8 +20,8 @@ It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`, ref
 and asks once for the file's folder when its grants do not cover a read. A window that sleeps keeps
 each archive's levels, open folders, selection, marks, top row, sort and filter (`keepFiles`) and
 comes back to them without asking; an archive the desk lists that it lost opens when shown. Extraction
-asks with `desk.palette.pick` for the folder, then one question, `perm.request` for `fs:write` on it,
-and refuses names that leave it (`..`, absolute paths, drive letters, links out). Where its grants read
+uses a writable native destination folder and asks for write access to an ungranted named folder.
+It refuses names that leave the destination. Where its grants read
 the folder (beside the archive) an existing file asks once for the run; elsewhere a file of the same
 name is replaced and named, and its history keeps it. "Allow once" writes one file; files over 64 MiB
 are listed, not written. Permissions: `cmd:invoke` (`desk.files.changed`, `desk.palette.pick`); `fs:*` of `/**`, asked per folder.

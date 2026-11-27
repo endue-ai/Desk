@@ -6,6 +6,7 @@
 // app's own size changing, the shell never scrolling, the session's stored coordinates across a
 // relaunch (session.spec.ts), and the Reset button. The canvas map is windows-map.spec.ts's (#54).
 import { browser, expect } from "@wdio/globals";
+import { shellCommand } from "../support/compositor";
 import { shellReady } from "../support/desk";
 import {
   bodyAt,
@@ -22,6 +23,7 @@ import {
   toolAt,
   wheel,
 } from "../support/gestures";
+import { inWindowPage } from "../support/pages";
 import { difference, settled } from "../support/pixels";
 import {
   byId,
@@ -30,6 +32,7 @@ import {
   deskNow,
   freshDesktop,
   front,
+  onScreen,
   openWindow,
   panOf,
   rectOf,
@@ -39,12 +42,68 @@ import {
   windowUntil,
 } from "../support/windows";
 
+type DrawnWindow = { id: string; rect: [number, number, number, number] };
+
 const GRIPS: Grip[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+
+/** The open command can answer while the new window is still moving to its reported bounds. */
+async function openCanvasWindow(): Promise<string> {
+  const id = await openWindow();
+  const { x, y, w, h } = await windowNow(id);
+  const expected = [x, y, w, h];
+  await browser.waitUntil(
+    async () => {
+      const { windows } = await shellCommand<{ windows: DrawnWindow[] }>("compositor_stats");
+      return (
+        windows.find((win) => win.id === id)?.rect.every((value, i) => value === expected[i]) ===
+        true
+      );
+    },
+    { timeoutMsg: `${id} did not reach its reported canvas bounds` },
+  );
+  return id;
+}
+
+/** A wheel over Notes needs its pane at that point in the window's own page. */
+async function openCanvasNotes() {
+  const id = await openCanvasWindow();
+  await run("desk.shell.open-notes");
+  const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+  const at = bodyAt(rectOf(win));
+  await browser.waitUntil(
+    () =>
+      inWindowPage(id, () =>
+        browser.execute(
+          (x: number, y: number) =>
+            Boolean(document.elementFromPoint(x, y)?.closest('[data-pane][data-view="notes"]')),
+          at.x - win.x,
+          at.y - win.y,
+        ),
+      ),
+    { timeoutMsg: "Notes did not cover the wheel point in its window" },
+  );
+  return win;
+}
 
 /** Shift + drag from the empty canvas by (`dx`, `dy`). */
 async function pan(dx: number, dy: number): Promise<void> {
-  const from = emptyAt(await deskNow());
-  await drag(from, { x: from.x + dx, y: from.y + dy }, { keys: [KEY.shift] });
+  const desk = await deskNow();
+  const win = onScreen(desk).find((window) => window.state === "normal");
+  if (!win) throw new Error("the canvas needs a normal window to observe a pan");
+  const from = emptyAt(desk);
+  await drag(from, { x: from.x + dx, y: from.y + dy }, { keys: [KEY.shift], hold: true });
+  try {
+    await browser.waitUntil(
+      async () => {
+        const { windows } = await shellCommand<{ windows: DrawnWindow[] }>("compositor_stats");
+        const rect = windows.find((window) => window.id === win.id)?.rect;
+        return rect?.[0] === win.x + dx && rect[1] === win.y + dy;
+      },
+      { timeoutMsg: "the compositor did not draw the window at the held pan position" },
+    );
+  } finally {
+    await release();
+  }
 }
 
 describe("canvas: resizing and the pan (#82)", () => {
@@ -62,9 +121,23 @@ describe("canvas: resizing and the pan (#82)", () => {
 
   for (const grip of GRIPS) {
     it(`resizes from ${grip} with the opposite edges anchored`, async () => {
-      const id = await openWindow();
+      const id = await openCanvasWindow();
       const win = await windowNow(id);
       const at = gripAt(rectOf(win), grip);
+      // The window's page installs the grip that accepts this first press.
+      await browser.waitUntil(
+        async () =>
+          (await inWindowPage(id, () =>
+            browser.execute(
+              (x: number, y: number) =>
+                document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-resize]")?.dataset
+                  .resize,
+              at.x - win.x,
+              at.y - win.y,
+            ),
+          )) === grip,
+        { timeoutMsg: `${id} did not expose its ${grip} resize grip` },
+      );
       await drag(at, { x: at.x - 40, y: at.y - 30 }, { steps: 5 });
       const w = grip.includes("w") ? 40 : grip.includes("e") ? -40 : 0;
       const h = grip.includes("n") ? 30 : grip.includes("s") ? -30 : 0;
@@ -81,15 +154,24 @@ describe("canvas: resizing and the pan (#82)", () => {
   }
 
   it("a normal window follows the pan, a floating one stays, and either mode keeps its place", async () => {
-    const canvas = await openWindow();
+    const canvas = await openCanvasWindow();
     const before = await windowNow(canvas);
-    const floating = await openWindow();
+    const floating = await openCanvasWindow();
     const unfloated = await windowNow(floating);
     expect(unfloated.state).toBe("normal");
     // Floating mode is a row of the window's menu (ADR 0255).
     await fromMenu(rectOf(unfloated), "floating", false);
     const fixed = await windowUntil(floating, (x) => x.state === "floating", "floating");
     expect(rectOf(fixed)).toEqual(rectOf(unfloated));
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          () =>
+            !document.querySelector(".desktops-menu [data-key='floating']")?.getBoundingClientRect()
+              .width,
+        ),
+      { timeoutMsg: "the window menu still covers the canvas" },
+    );
     // A plain drag on the canvas does not pan.
     const from = emptyAt(await deskNow());
     await drag(from, { x: from.x - 120, y: from.y + 60 });
@@ -110,7 +192,7 @@ describe("canvas: resizing and the pan (#82)", () => {
   });
 
   it("a pan holds through a redraw, Escape cancels it, and each desktop keeps its own", async () => {
-    const id = await openWindow();
+    const id = await openCanvasWindow();
     // The calendar draws a picture of its own, which a shifted copy of it does not match.
     await run("desk.shell.open-calendar");
     const win = await windowUntil(id, (x) => x.panes[0]?.view === "calendar", "shows Calendar");
@@ -143,9 +225,7 @@ describe("canvas: resizing and the pan (#82)", () => {
   });
 
   it("the wheel over a pane does not pan; over the canvas it does", async () => {
-    const id = await openWindow();
-    await run("desk.shell.open-notes");
-    const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+    const win = await openCanvasNotes();
     await wheel(bodyAt(rectOf(win)), 0, 120);
     await browser.pause(300);
     expect(panOf(await deskNow())).toEqual({ x: 0, y: 0 });
@@ -153,13 +233,11 @@ describe("canvas: resizing and the pan (#82)", () => {
     await browser.waitUntil(async () => panOf(await deskNow()).y === -120, {
       timeoutMsg: "the wheel over the canvas did not pan it by 120",
     });
-    expect(rectOf(await windowNow(id))).toEqual({ ...rectOf(win), y: win.y - 120 });
+    expect(rectOf(await windowNow(win.id))).toEqual({ ...rectOf(win), y: win.y - 120 });
   });
 
   it("a wheel's run pans on once a window comes under the pointer, and a rest ends it", async () => {
-    const id = await openWindow();
-    await run("desk.shell.open-notes");
-    const win = await windowUntil(id, (x) => x.panes[0]?.view === "notes", "shows Notes");
+    const win = await openCanvasNotes();
     const at = emptyAt(await deskNow());
     const body = bodyAt(rectOf(win));
     // The first wheel, over the empty canvas, brings the window's body under the pointer.
@@ -185,7 +263,7 @@ describe("canvas: resizing and the pan (#82)", () => {
   });
 
   it("maximize and restore take the whole app over a panned canvas and come back to the same place", async () => {
-    const id = await openWindow();
+    const id = await openCanvasWindow();
     const start = await windowNow(id);
     await pan(-100, -50);
     const before = await windowUntil(id, (x) => x.x !== start.x, "panned");
@@ -199,7 +277,7 @@ describe("canvas: resizing and the pan (#82)", () => {
   });
 
   it("Shift + drag on a title bar pans the canvas instead of moving the window", async () => {
-    const id = await openWindow();
+    const id = await openCanvasWindow();
     const win = await windowNow(id);
     const from = titleAt(rectOf(win));
     await drag(from, { x: from.x + 80, y: from.y + 40 }, { keys: [KEY.shift] });

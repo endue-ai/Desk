@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClients } from "../ui/clients.js";
 import { normalize, parseUri } from "../ui/connections.js";
+import { createSessions } from "../ui/engines/pg-session.js";
 import { createExecutor } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
@@ -23,12 +24,14 @@ const uri = process.env.ENDUE_DB_TEST_POSTGRES;
 function harness() {
   const { fields, password } = parseUri(uri ?? "");
   const conn = normalize({ ...fields, id: "c-layout-live", name: "layout live" });
-  const runner = createRunner(nodeBridge());
+  const bridge = nodeBridge();
+  const runner = createRunner(bridge);
   const settings = fromValues({ "endue.database.max-rows": 1000 });
   const executor = createExecutor({
     runner,
     output: inProcessOutput(),
     clients: createClients(runner, () => settings),
+    sessions: createSessions(bridge),
     settings: () => settings,
     confirm: async () => true,
     passwords: { get: () => password, set: () => {}, ask: async () => undefined },
@@ -66,10 +69,12 @@ async function treeOf(live: ReturnType<typeof harness>, sql: string) {
   const done = await live.run(
     `begin;\nset local search_path = endue_layout;\nset local client_min_messages = log;\nset local debug_print_parse = on;\n${sql};\nrollback`,
   );
-  // The server's LOG comes as notices of the statement, a line each.
+  // The server's LOG comes as notices, a line each, with the statement that raised them (ADR 0334).
   const tree = (done.result.statements[4]?.notices ?? []).join("\n");
   if (!tree.includes("parse tree:")) return null;
-  return tree.replace(/:(?:stmt_)?location -?\d+|:stmt_len \d+/gu, "").replace(/\s+/gu, " ");
+  return tree
+    .replace(/:(?:stmt_)?location -?\d+|:stmt_len \d+|:list_(?:start|end) -?\d+/gu, "")
+    .replace(/\s+/gu, " ");
 }
 
 describe.skipIf(!uri)("Format SQL against PostgreSQL", () => {

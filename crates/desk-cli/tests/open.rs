@@ -6,6 +6,24 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{Duration, Instant};
 
+#[test]
+fn both_commands_name_the_same_app_when_it_cannot_start() {
+    let missing = std::env::temp_dir().join(format!("endue-missing-app-{}", std::process::id()));
+    for (name, bin) in [
+        ("endue", env!("CARGO_BIN_EXE_endue")),
+        ("desk", env!("CARGO_BIN_EXE_desk")),
+    ] {
+        let out = Command::new(bin)
+            .args(["open", "endue.txt"])
+            .env("DESK_APP", &missing)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        let message = String::from_utf8(out.stderr).unwrap();
+        assert!(message.starts_with(&format!("{name}: open: could not start endue (")));
+    }
+}
+
 /// A fresh folder with a fake desk that writes the argument it was started with to `started`.
 fn fake_desk(tag: &str) -> (PathBuf, PathBuf) {
     let dir = std::env::temp_dir().join(format!("desk-cli-open-{tag}-{}", std::process::id()));

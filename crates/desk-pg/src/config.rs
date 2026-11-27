@@ -4,8 +4,11 @@
 
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
+use crate::client_cert::ClientCert;
+use crate::dial::Dial;
 use crate::error::Error;
 
 /// How long the connection and the sign-in take at most, by default and at the most.
@@ -14,7 +17,7 @@ pub const MAX_OPEN_TIMEOUT: Duration = Duration::from_secs(120);
 /// PostgreSQL's port when none is named.
 pub const DEFAULT_PORT: u16 = 5432;
 /// Who the server sees connecting, unless the settings name another `application_name`.
-pub const APPLICATION_NAME: &str = "endue Desk";
+pub const APPLICATION_NAME: &str = "endue";
 
 /// libpq's TLS modes, less `allow` (plain first, TLS only when the server insists).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -58,12 +61,16 @@ pub struct Config {
     pub tls: TlsMode,
     /// The PEM of the authorities to trust; the OS's trust store when absent.
     pub ca_pem: Option<Vec<u8>>,
+    /// The certificate and key presented when the server asks for one (ADR 0331).
+    pub client_cert: Option<ClientCert>,
     /// Startup parameters (`DateStyle`, `TimeZone`, `search_path`, ...), in order.
     pub settings: Vec<(String, String)>,
     /// Adds `default_transaction_read_only=on`: the server refuses writes.
     pub read_only: bool,
     /// For the connection and the sign-in together.
     pub timeout: Duration,
+    /// How to reach the server instead of TCP: an SSH tunnel's channels (ADR 0359).
+    pub via: Option<Arc<dyn Dial>>,
 }
 
 impl fmt::Debug for Config {
@@ -71,14 +78,23 @@ impl fmt::Debug for Config {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}@{}:{}/{} tls={} read_only={}",
+            "{}@{}:{}/{} tls={}{} read_only={}",
             self.user,
             self.host,
             self.port,
             self.database,
             self.tls.name(),
+            if self.client_cert.is_some() {
+                " client_cert"
+            } else {
+                ""
+            },
             self.read_only
-        )
+        )?;
+        match &self.via {
+            Some(via) => write!(f, " via {}", via.name()),
+            None => Ok(()),
+        }
     }
 }
 
@@ -97,9 +113,11 @@ impl Config {
             password_file: None,
             tls: TlsMode::default(),
             ca_pem: None,
+            client_cert: None,
             settings: Vec::new(),
             read_only: false,
             timeout: OPEN_TIMEOUT,
+            via: None,
         }
     }
 
@@ -200,7 +218,7 @@ mod tests {
                 "user=ada",
                 "database=app",
                 "client_encoding=UTF8",
-                "application_name=endue Desk",
+                "application_name=endue",
                 "TimeZone=UTC",
                 "default_transaction_read_only=on",
             ]

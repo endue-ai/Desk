@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Desk brain API
+  title: endue brain API
   version: 0.0.0
   summary: Sessions, streamed turns, tool round trips, session leases and the agent directory.
   description: >-
-    The contract between Desk and a brain. The local brain adapter, endue AI and examples/brain-echo
-    implement the same API. A session is written by exactly one Desk at a time: the holder of its lease.
-    Opening the session on another Desk takes the lease over, and the previous holder becomes read-only.
+    The contract between endue and a brain. The local brain adapter, endue AI and examples/brain-echo
+    implement the same API. A session is written by exactly one endue client at a time: the holder of its lease.
+    Opening the session on another endue client takes the lease over, and the previous holder becomes read-only.
   contact:
     name: Team endue
     email: team@endue.ai
@@ -28,7 +28,7 @@ tags:
   - name: turns
     description: Send messages and receive streamed answers, including tool calls.
   - name: leases
-    description: Decide which Desk may write to a session.
+    description: Decide which endue client may write to a session.
   - name: agents
     description: The person's agents and their A2A cards.
   - name: spaces
@@ -144,7 +144,7 @@ paths:
       tags: [leases]
       summary: Acquire the lease
       description: >-
-        Acquires the session's lease for ttlSeconds. If another Desk holds it, the call fails with
+        Acquires the session's lease for ttlSeconds. If another endue client holds it, the call fails with
         lease_held unless takeover is true; a takeover ends the other lease at once.
       requestBody:
         required: true
@@ -193,7 +193,7 @@ paths:
       operationId: releaseLease
       tags: [leases]
       summary: Release the lease
-      description: Gives the lease up so another Desk can acquire it without a takeover.
+      description: Gives the lease up so another endue client can acquire it without a takeover.
       responses:
         "204":
           description: Released.
@@ -243,7 +243,7 @@ paths:
       operationId: listSpaces
       tags: [spaces]
       summary: List spaces
-      description: The spaces the caller can open. Switching spaces in Desk lists that space's agents.
+      description: The spaces the caller can open. Switching spaces in endue lists that space's agents.
       responses:
         "200":
           description: Every space.
@@ -412,7 +412,7 @@ components:
       required: [client]
       additionalProperties: false
     ClientInfo:
-      description: The Desk build that talks to the brain.
+      description: The endue build that talks to the brain.
       type: object
       properties:
         name: { type: string, minLength: 1 }
@@ -437,7 +437,7 @@ components:
       additionalProperties: false
     TurnContext:
       description: >-
-        What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR
+        What the desk tells the brain before a turn, in the same shape for every brain (endue ADR
         0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the
         desk now. The brain reads it as background, not as the person's words.
       type: object
@@ -489,7 +489,7 @@ components:
     ToolDefinition:
       description: >-
         A tool offered for one turn. The brain calls it with tool.call and arguments that match
-        schema; Desk decides whether it runs.
+        schema; endue decides whether it runs.
       type: object
       properties:
         name:
@@ -582,7 +582,7 @@ components:
       required: [type, turnId, text]
       additionalProperties: false
     ToolCallEvent:
-      description: The brain wants Desk to run a tool and send the result with submitToolResult.
+      description: The brain wants endue to run a tool and send the result with submitToolResult.
       type: object
       properties:
         type: { const: tool.call }
@@ -601,8 +601,8 @@ components:
           type: object
         agentId:
           description: >-
-            The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with
-            that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk
+            The agent that asks for the tool. endue runs the call as the caller agent:<agentId>, with
+            that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it endue
             runs only the echo tool.
           type: string
           pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
@@ -654,7 +654,7 @@ components:
       required: [leaseId, sessionId, holder, acquiredAt, expiresAt, ttlSeconds]
       additionalProperties: false
     LeaseHolder:
-      description: The Desk that holds a lease.
+      description: The endue client that holds a lease.
       type: object
       properties:
         deskId: { type: string, minLength: 1 }
@@ -686,7 +686,7 @@ components:
       required: [code, message]
       additionalProperties: false
     AgentStatus:
-      description: Whether an agent takes work. Desk shows inactive agents waiting at the edge.
+      description: Whether an agent takes work. endue shows inactive agents waiting at the edge.
       type: string
       enum: [active, inactive, archived]
     Agent:
@@ -812,7 +812,7 @@ components:
         maxDepth: { type: integer, minimum: 1 }
         messageCount: { type: integer, minimum: 0 }
         progress:
-          description: How far the task is, from 0 to 1, when the brain knows (a Desk addition).
+          description: How far the task is, from 0 to 1, when the brain knows (an endue addition).
           type: number
           minimum: 0
           maximum: 1

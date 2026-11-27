@@ -4,6 +4,7 @@
 // controller hand in what it needs, so the SDK's test host runs it against a scripted git.
 
 import { listBranches } from "./branches.js";
+import { createDiscard } from "./discard.js";
 import { createHunkActions, isPart } from "./hunks.js";
 
 /**
@@ -24,6 +25,7 @@ import { createHunkActions, isPart } from "./hunks.js";
  *   git(args: string[], options?: RunOptions): Promise<Outcome>,
  *   cancel(): void,
  *   status(): StatusModel,
+ *   root(): string,
  *   diff(): import("./git.js").DiffView | null,
  *   invoke(id: string, args: unknown): Promise<unknown>,
  *   settings(): Settings,
@@ -77,14 +79,23 @@ export function createActions(deps) {
   };
 
   const hunks = createHunkActions({ ...deps, confirm, done });
+  const discardWork = createDiscard({
+    ...deps,
+    confirm,
+    done: async (words) => {
+      await refresh().catch(() => {});
+      say(words);
+    },
+  });
   /** The hunk or lines under the cursor, when an action without a path names part of a file. */
   const partOf = (/** @type {{ path?: string, all?: boolean } | undefined} */ args) => {
     const item = args?.path || args?.all ? undefined : deps.selection();
     return isPart(item) ? item : undefined;
   };
 
-  /** @param {{ path?: string, all?: boolean }} [args] */
+  /** @param {{ path?: string, all?: boolean, patch?: string }} [args] */
   const stage = async (args) => {
+    if (args?.patch !== undefined) return hunks.applyIndex(args.patch, false);
     const part = partOf(args);
     if (part) return hunks.stage(part);
     if (args?.all) {
@@ -110,8 +121,9 @@ export function createActions(deps) {
       ? ["rm", "--cached", "-q", "-r", ...paths(list.length > 0 ? list : ["."])]
       : ["restore", "--staged", ...paths(list.length > 0 ? list : ["."])];
 
-  /** @param {{ path?: string, all?: boolean }} [args] */
+  /** @param {{ path?: string, all?: boolean, patch?: string }} [args] */
   const unstage = async (args) => {
+    if (args?.patch !== undefined) return hunks.applyIndex(args.patch, true);
     const part = partOf(args);
     if (part) return hunks.unstage(part);
     if (args?.all) {
@@ -133,24 +145,17 @@ export function createActions(deps) {
     const part = partOf(args);
     if (part) return hunks.discard(part);
     const target = fileOf(args, "discard");
-    const status = deps.status();
-    if (target.kind === "section") {
-      if (target.section === "untracked") {
-        if (!(await confirm("Delete every untracked file?", "Delete them"))) return;
-        await git(["clean", "-fdq"]);
-        return done("Deleted the untracked files.");
-      }
-      if (target.section !== "unstaged") return;
-      if (!(await confirm("Discard every unstaged change?", "Discard them"))) return;
-      await git(["restore", "--worktree", "--", "."]);
-      return done("Discarded the unstaged changes.");
-    }
-    const untracked = status.untracked.includes(target.path);
-    const what = untracked ? `Delete ${target.path}?` : `Discard the changes to ${target.path}?`;
-    if (!(await confirm(what, untracked ? "Delete it" : "Discard them"))) return;
-    if (untracked) await git(["clean", "-fdq", ...paths([target.path])]);
-    else await git(["restore", "--worktree", ...paths([target.path])]);
-    await done(untracked ? `Deleted ${target.path}.` : `Discarded the changes to ${target.path}.`);
+    const all = target.kind === "section";
+    if (all && target.section !== "untracked" && target.section !== "unstaged") return;
+    const path = target.kind === "file" ? target.path : ".";
+    const listed = deps.status().untracked;
+    const untracked = all ? target.section === "untracked" : listed.includes(path);
+    return deps
+      .invoke("endue.git.discard-files", { root: deps.root(), path, all, untracked })
+      .catch((error) => {
+        if (/** @type {{ code?: string }} */ (error)?.code === "cancelled") return undefined;
+        throw error;
+      });
   };
 
   /** @type {{ resolve(sha: string): void, reject(error: Error): void } | null} */
@@ -303,6 +308,7 @@ export function createActions(deps) {
     unstage,
     unstageAll: () => unstage({ all: true }),
     discard,
+    ...discardWork,
     discardPatch: hunks.discardPatch,
     restorePatch: hunks.restorePatch,
     commit,

@@ -66,6 +66,59 @@ describe("Commands", () => {
     ]);
   });
 
+  it("registers an irreversible desk command independently of agent metadata", async () => {
+    const { commands, client } = setup();
+    commands.define("desk.example.clear", {
+      title: "Clear examples",
+      owner: "desk",
+      run: () => undefined,
+      irreversible: true,
+    });
+    commands.define("desk.example.archive", {
+      title: "Archive examples",
+      owner: "desk",
+      run: () => undefined,
+      agent: { description: "Archive the examples.", irreversible: true },
+    });
+    await commands.settled();
+    expect(commands.list()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "desk.example.clear", irreversible: true }),
+        expect.objectContaining({ id: "desk.example.archive", irreversible: true }),
+      ]),
+    );
+    const { tools } = await client.call("cmd.tools", {});
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({ command: "desk.example.archive", irreversible: true });
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.share", title: "Share", irreversible: true },
+      { caller: "example.notes" },
+    );
+    const { commands: plugin } = await client.call("cmd.list", {
+      scope: { permission: "cmd:invoke", ids: ["example.notes.share"] },
+    });
+    expect(plugin).toHaveLength(1);
+    expect(plugin[0]?.irreversible).toBeUndefined();
+  });
+
+  it("knows which registered commands only read, as a proposed view's source must (ADR 0367)", async () => {
+    const { commands, client } = setup();
+    const notes = { caller: "example.notes" };
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.list", title: "List", readOnly: true },
+      notes,
+    );
+    await client.call("cmd.register", { id: "example.notes.send", title: "Send" }, notes);
+    commands.retitle();
+    await commands.settled();
+    expect(commands.has("example.notes.send")).toBe(true);
+    expect(commands.readOnly("example.notes.list")).toBe(true);
+    expect(commands.readOnly("example.notes.send")).toBe(false);
+    expect(commands.readOnly("example.notes.gone")).toBe(false);
+  });
+
   it("registers a built-in while its owner is on, and runs it through the registry", async () => {
     const { commands, registry } = setup();
     commands.define("desk.buffers.next", { title: "Next", owner: "desk.buffers", run: () => 1 });

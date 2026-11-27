@@ -117,15 +117,11 @@ describe("the view builder", () => {
     expect(m.$('[data-source="url"]').getAttribute("aria-selected")).toBe("true");
     m.builder.pick("file");
     m.$<HTMLInputElement>('input[aria-label="Where"]').value = "~/private/plan.yaml";
-    await m.builder.load();
-    expect(m.builder.preview.getAttribute("state")).toBe("denied");
-    expect(m.$(".build-status").textContent).toContain("permission");
-    const allow = [...m.page.querySelectorAll<HTMLButtonElement>(".build-step .desk-btn")].find(
-      (b) => b.textContent === "Allow",
-    );
-    expect(allow?.hidden).toBe(false);
-    allow?.click();
+    m.$<HTMLButtonElement>(".build-step button.desk-btn:not(.desk-tab)").click();
     await vi.waitFor(() => expect(m.builder.preview.getAttribute("state")).toBe("ready"));
+    expect(m.host.calls.filter((call) => call.method === "perm.request")).toMatchObject([
+      { params: { permission: { permission: "fs:read", paths: ["~/private/plan.yaml"] } } },
+    ]);
     m.$<HTMLButtonElement>(".build-actions .desk-btn-quiet").click();
     expect(m.cancelled).toHaveBeenCalledOnce();
   });

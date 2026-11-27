@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/web.schema.json",
-  "title": "Desk bridge v0: web",
+  "title": "endue bridge v0: web",
   "description": "Show a live web page in the caller's window: a web view is a browser of its own that the desk draws over the caller's surface at the box the caller gives. The page gets nothing of the desk and keeps its cookies apart from the desk's own pages. Scoped by web:browse hosts; reading a view's page and acting in it (web.read, web.act) by web:control hosts.",
   "$defs": {
     "WebViewId": {
@@ -285,7 +285,7 @@
       "additionalProperties": false
     },
     "WebActRequest": {
-      "description": "Act in the page a web view shows as the person would: scroll it, bring an element into view, press one, type into a field, press a key, choose from a list. The keys the person has stay where they are.",
+      "description": "Operate the page a web view shows: scroll, bring an element into view, press, type, choose, follow a link's address, find text, zoom or step through history. The keys the person has stay where they are.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -301,6 +301,11 @@
       "properties": {
         "viewId": { "$ref": "#/$defs/WebViewId" },
         "action": { "$ref": "#/$defs/WebAction" },
+        "invocationId": {
+          "description": "For a built-in Browser action on an agent command, the pending invocation that authorizes the action.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/WebControlPermission" }
       },
       "required": ["viewId", "action", "scope"],
@@ -314,7 +319,11 @@
         { "$ref": "#/$defs/WebPress" },
         { "$ref": "#/$defs/WebType" },
         { "$ref": "#/$defs/WebKey" },
-        { "$ref": "#/$defs/WebChoose" }
+        { "$ref": "#/$defs/WebChoose" },
+        { "$ref": "#/$defs/WebFollow" },
+        { "$ref": "#/$defs/WebFind" },
+        { "$ref": "#/$defs/WebZoom" },
+        { "$ref": "#/$defs/WebHistory" }
       ]
     },
     "WebScroll": {
@@ -428,6 +437,46 @@
         }
       },
       "required": ["do", "ref", "option"],
+      "additionalProperties": false
+    },
+    "WebFollow": {
+      "description": "Navigate to a live link's HTTP or HTTPS address under the view's browse scope, without pressing the link.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "follow" },
+        "ref": { "$ref": "#/$defs/WebRef" }
+      },
+      "required": ["do", "ref"],
+      "additionalProperties": false
+    },
+    "WebFind": {
+      "description": "Find text in the current page. Asking again for the same text moves to the next match.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "find" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      },
+      "required": ["do", "text"],
+      "additionalProperties": false
+    },
+    "WebZoom": {
+      "description": "Set the page magnification, where 1 is the usual size.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "zoom" },
+        "level": { "type": "number", "minimum": 0.25, "maximum": 5 }
+      },
+      "required": ["do", "level"],
+      "additionalProperties": false
+    },
+    "WebHistory": {
+      "description": "Step through history, reload or stop in a controlled view. A traversal that may resend a form needs a reviewed Browser invocation.",
+      "type": "object",
+      "properties": {
+        "do": { "const": "history" },
+        "to": { "$ref": "#/$defs/WebStep" }
+      },
+      "required": ["do", "to"],
       "additionalProperties": false
     },
     "WebActResult": {

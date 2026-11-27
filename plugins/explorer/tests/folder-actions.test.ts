@@ -2,6 +2,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DOCS, denied, disk, mount, sample } from "./harness";
 
 describe("adding a folder the plugin may not list", () => {
+  it("adds a root chosen once as a writable destination", async () => {
+    const path = "/outside/project";
+    const { app, params, view } = await mount({
+      handlers: {
+        ...disk({ ...sample(), [path]: [] }),
+        "dialog.open": () => ({ paths: [path], cancelled: false }),
+      },
+    });
+    await expect(app.addFolder(undefined)).resolves.toBe(path);
+    expect(params("dialog.open")).toMatchObject([{ kind: "folders", intent: "destination" }]);
+    expect(params("perm.request")).toEqual([]);
+    expect(view.headers.at(-1)?.folders).toContain(path);
+  });
+
   it("is refused and not kept as a root", async () => {
     const { app, view } = await mount({
       handlers: {

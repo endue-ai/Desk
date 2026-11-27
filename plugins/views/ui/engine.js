@@ -5,13 +5,15 @@
 // commands. A view can also come inline (a preview, preview.js): no file is read or followed then. It
 // talks only to ctx and to a screen, so the SDK's test host runs it with a recording one.
 
+import { createAccounts } from "./accounts.js";
 import { build, queryOf, scopeOf, settle, settleAll } from "./components.js";
 import { keyOf } from "./present.js";
-import { choose } from "./resolve.js";
+import { itemParams, readSavedView } from "./read.js";
 import { fill, fillValue } from "./template.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
  * @typedef {import("@endue-ai/bridge").ConnectorInfo} ConnectorInfo
  * @typedef {import("@endue-ai/bridge").Item} Item
@@ -26,7 +28,7 @@ import { fill, fillValue } from "./template.js";
  *   preview?: { note: string }, notice?: Notice }} ViewModel
  * @typedef {{ draw(model: ViewModel | null): void, update(component: ComponentModel, env: Env): void,
  *   notice(text: string): void, toast(text: string): void }} Screen
- * @typedef {{ now?: () => number, zone?: string, locale?: string }} EngineOptions
+ * @typedef {{ now?: () => number, zone?: string, locale?: string, readTools: import("./read.js").ReadTools }} EngineOptions
  * @typedef {{ label: string, action?: number, original?: string }} MenuEntry
  * @typedef {ReturnType<typeof createEngine>} Engine
  */
@@ -34,7 +36,7 @@ import { fill, fillValue } from "./template.js";
 const CONNECTORS = /** @type {const} */ ({ permission: "connector:manage" });
 /** @type {import("@endue-ai/bridge").ShellOpenPermission} */
 const LINKS = { permission: "shell:open", schemes: ["http", "https", "mailto"] };
-const ORIGINAL = "Desk could not open the link.";
+const ORIGINAL = "endue could not open the link.";
 const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} */ (error)?.code;
 const said = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
@@ -44,7 +46,8 @@ const said = (/** @type {unknown} */ error) =>
  * @param {Screen} screen
  * @param {EngineOptions} [options]
  */
-export function createEngine(ctx, screen, options = {}) {
+export function createEngine(ctx, screen, options) {
+  const accounts = createAccounts(ctx);
   const clock = options.now ?? (() => Date.now());
   const zone = options.zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const locale = options.locale ?? Intl.DateTimeFormat().resolvedOptions().locale;
@@ -68,15 +71,6 @@ export function createEngine(ctx, screen, options = {}) {
   });
   const ago = (/** @type {number} */ ms) =>
     fill("{at|relative}", { at: new Date(clock() + ms).toISOString() }, envOf({}));
-
-  /** The declared params: what open was given, else each one's default. */
-  const paramsOf = (/** @type {View} */ view, /** @type {Record<string, unknown>} */ given) =>
-    Object.fromEntries(
-      Object.entries(view.params ?? {}).map(([name, param]) => [
-        name,
-        given[name] ?? param.default,
-      ]),
-    );
 
   const show = (/** @type {Live} */ entry) => {
     if (!current || current.live.get(entry.model.path) !== entry) return;
@@ -127,30 +121,14 @@ export function createEngine(ctx, screen, options = {}) {
     current = null;
   };
 
-  /** Ask the person which instance a require binds to; undefined when they cancel. */
-  const pick = async (
-    /** @type {string} */ name,
-    /** @type {import("@endue-ai/bridge").ConnectorInstance[]} */ found,
-    /** @type {View} */ view,
-  ) => {
-    const items = found.map((i) => ({
-      id: `${i.connector}/${i.instance}`,
-      label: i.title ?? i.instance,
-      detail: `${i.connector} · ${i.status.state}`,
-    }));
-    const title = view.requires?.[name]?.title ?? `Pick a source for ${name}`;
-    const id = await ctx.commands.run("desk.palette.pick", { title, items }).catch(() => undefined);
-    const chosen = found.find((i) => `${i.connector}/${i.instance}` === id);
-    return chosen && { connector: chosen.connector, instance: chosen.instance };
-  };
-
   /**
    * desk.views.open { id, params?, bindings?, notice? }: read, bind, draw, query and subscribe, then
    * show. With `view` instead of an id the view is drawn as given (preview.js passes `preview` and
    * `owner` too); `notice` is drawn above the view with its action.
    * @param {unknown} args
+   * @param {Invocation} [invocation]
    */
-  const open = async (args) => {
+  const open = async (args, invocation) => {
     const {
       view: inline,
       params = {},
@@ -162,6 +140,13 @@ export function createEngine(ctx, screen, options = {}) {
      *  import("./resolve.js").Binding>, preview?: { note: string }, notice?: Notice,
      *  owner?: unknown }} */ (args ?? {});
     const id = inline ? inline.id : /** @type {{ id?: unknown } | undefined} */ (args)?.id;
+    const caller = invocation?.caller ?? "";
+    if (
+      (caller.startsWith("agent:") || caller.startsWith("mcp:")) &&
+      (typeof id !== "string" ||
+        Object.keys(/** @type {object} */ (args)).some((key) => key !== "id" && key !== "params"))
+    )
+      throw new Error("An agent opens a saved view with its id and optional params.");
     if (typeof id !== "string") throw new Error("desk.views.open needs the id of a view.");
     const turn = ++opens;
     const found =
@@ -169,6 +154,7 @@ export function createEngine(ctx, screen, options = {}) {
       (await ctx.views.get(id).catch((error) => {
         throw new Error(`There is no view ${id}: ${said(error)}`);
       }));
+    if (turn !== opens) return { id, replaced: true };
     // A universal view or page (ADR 0102, ADR 0103) is desk.universal's to draw, with its params.
     if (!("layout" in found)) {
       const given = Object.keys(params ?? {}).length ? { id, params } : { id };
@@ -176,17 +162,16 @@ export function createEngine(ctx, screen, options = {}) {
       return { id, universal: true };
     }
     const view = /** @type {View} */ (found);
-    const listed = await ctx.bridge.call("connector.list", { scope: CONNECTORS }).catch(() => null);
-    const choice = choose(view, listed?.connectors ?? [], bindings);
-    for (const [name, found] of Object.entries(choice.pick)) {
-      const chosen = await pick(name, found, view);
-      if (chosen) choice.bound[name] = chosen;
-    }
+    const listed = await accounts.list();
+    const choice = await accounts.resolve(view, listed?.connectors ?? [], bindings, {
+      saved: !inline,
+      active: () => turn === opens,
+    });
     if (turn !== opens) return { id, replaced: true };
     end();
     connectors = listed?.connectors ?? [];
     const given = params;
-    const resolved = paramsOf(view, given);
+    const resolved = itemParams(view, given);
     const env = envOf(resolved);
     const { root, live } = build(view.layout, choice.bound, env);
     const title = fill(view.title, {}, env);
@@ -225,6 +210,7 @@ export function createEngine(ctx, screen, options = {}) {
   const close = (/** @type {unknown} */ args) => {
     const only = /** @type {{ id?: unknown } | undefined} */ (args)?.id;
     if (typeof only === "string" && only !== current?.id) return;
+    opens++;
     end();
     screen.draw(null);
     ctx.surface.hide();
@@ -276,6 +262,8 @@ export function createEngine(ctx, screen, options = {}) {
   };
 
   ctx.commands.on("desk.views.open", open);
+  ctx.commands.on("desk.views.list", async () => ({ views: await ctx.views.list() }));
+  ctx.commands.on("desk.views.read", readSavedView(ctx, accounts, envOf, options.readTools));
   ctx.commands.on("desk.views.close", (args) => close(args));
   ctx.commands.on("desk.views.reconnect", async (args) => {
     const { connector, instance } = /** @type {{ connector?: string, instance?: string }} */ (

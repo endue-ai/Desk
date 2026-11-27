@@ -73,12 +73,19 @@ describe("the activity panel", () => {
     expect(el.querySelector(".activity-status")?.textContent).toContain(
       "PostgreSQL 17.6 · 8 sessions, 2 waiting",
     );
-    // Shown with every filter off, the view's session and the plugin's other one are marked.
+    // Shown with every filter off, the view's session is marked; the other endue session is
+    // not this desk's (db.list does not name it), so it has no mark (activity-own.test.ts).
     const all = draw({ filters: { idle: false, own: false, system: true, database: "" } }).el;
     const marks = (pid: string) =>
       all.querySelector(`[data-part="sessions"] tr[data-pid="${pid}"] .desk-badge`)?.textContent;
     expect(marks("4250")).toBe("this view");
-    expect(marks("4251")).toBe("endue");
+    expect(marks("4251")).toBeUndefined();
+    const entries = activityRows();
+    const local = draw({
+      read: readOf(entries.head, entries.sessions, entries.locks, false, 0, new Set([4251])),
+      filters: { idle: false, own: false, system: true, database: "" },
+    }).el;
+    expect(local.querySelector('tr[data-pid="4251"] .desk-badge')?.textContent).toBe("this app");
     // A selected session shows its statement, and Cancel and End; a read-only connection turns them off.
     const picked = draw({ selected: 4242 }).el;
     expect(picked.querySelector(".activity-query")?.textContent).toBe("SELECT pg_sleep(600)");
@@ -133,9 +140,10 @@ describe("the activity panel", () => {
     vi.useFakeTimers();
     const { act, handle, el } = draw({ selected: 4243 });
     vi.advanceTimersByTime(4999);
-    expect(act).not.toHaveBeenCalledWith("activityRefresh", "b-1");
+    expect(act).not.toHaveBeenCalledWith("activityRefresh", "b-1", "timer");
     vi.advanceTimersByTime(1);
-    expect(act).toHaveBeenCalledWith("activityRefresh", "b-1");
+    // The period's read says so: Disconnect stops it (ADR 0339).
+    expect(act).toHaveBeenCalledWith("activityRefresh", "b-1", "timer");
     // The next read lands while the row has the focus: the focus stays on that session.
     el.querySelector<HTMLElement>('tr[data-pid="4243"]')?.focus();
     const rows2 = activityRows();

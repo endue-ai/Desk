@@ -76,6 +76,10 @@ pub trait LoginItems: Send + Sync {
     /// What is registered. A registration it cannot read back is one with an empty `program`, which
     /// matches no desk, so `apply` rewrites or removes it.
     fn registered(&self) -> Result<Option<Registration>, Error>;
+    /// Refresh the product label when the registered program and arguments already match.
+    fn refresh_name(&self) -> Result<Change, Error> {
+        Ok(Change::Unchanged)
+    }
     /// Register `registration`, replacing whatever is registered. `invalid_params` for a program or
     /// argument that is not UTF-8 or holds a control character, with nothing written.
     fn register(&self, registration: &Registration) -> Result<(), Error>;
@@ -92,7 +96,7 @@ pub fn apply(
     registration: &Registration,
 ) -> Result<Change, Error> {
     match (wanted, items.registered()?) {
-        (true, Some(current)) if current == *registration => Ok(Change::Unchanged),
+        (true, Some(current)) if current == *registration => items.refresh_name(),
         (true, _) => items.register(registration).map(|()| Change::Registered),
         (false, Some(_)) => items.unregister().map(|()| Change::Removed),
         (false, None) => Ok(Change::Unchanged),

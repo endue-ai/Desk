@@ -1,4 +1,4 @@
-# Desk agent v0
+# endue agent v0
 
 One record for every agent the desk knows (ADR 0100): Eris, the agents init.yaml names, agents that call
 the desk as `agent:<id>` (the brain's agents, apps over MCP), agents of the brain's directory and the

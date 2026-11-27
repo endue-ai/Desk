@@ -58,6 +58,15 @@ const linesOf = async (m: Opened, staged: boolean, from: string, to: string): Pr
 };
 
 describe("a hunk", () => {
+  it("stages and unstages the provided patch with no selection", async () => {
+    const m = await open();
+    const patch = m.repo.git("diff", "--", "a.txt");
+    await m.host.command("endue.git.stage", { patch });
+    expect(m.repo.git("diff", "--cached")).toContain("+LINE 2");
+    await m.host.command("endue.git.unstage", { patch });
+    expect(m.repo.git("diff", "--cached")).toBe("");
+    expect(m.repo.read("a.txt")).toBe(text(CHANGED));
+  });
   it("is staged on its own, and unstaged again", async () => {
     const m = await open();
     const before = (await showDiff(m)).files[0]?.hunks.length;

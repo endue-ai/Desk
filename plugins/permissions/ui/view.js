@@ -1,7 +1,10 @@
 // The DOM for the permissions plugin, a page that covers the desk as an overlay: the prompt dialog and
 // the approval card (ADR 0078) in front, and the list of grants and refusals when the person opens
 // it. Native buttons, headings, alert dialogs and a status live region carry the keyboard and screen
-// reader behaviour; the words come from the model.
+// reader behaviour; the words come from the model. A card's keys answer nothing for a moment after it
+// shows (arming.js), and it says `data-armed` once they do.
+
+import { ARM_MS, createArming } from "./arming.js";
 
 /**
  * @typedef {import("./model.js").GrantList} GrantList
@@ -19,8 +22,19 @@
 /**
  * @param {Document} doc
  * @param {Actions} actions
+ * @param {{ now?(): number, setTimer?(fn: () => void, ms: number): unknown }} [options]
  */
-export function createView(doc, actions) {
+export function createView(doc, actions, options = {}) {
+  const arming = createArming(options.now ? { now: options.now } : {});
+  const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  /** A new card: its keys wait, and it is marked armed once they answer. */
+  const arm = (/** @type {HTMLElement} */ box) => {
+    arming.start();
+    box.removeAttribute("data-armed");
+    setTimer(() => {
+      if (arming.armed()) box.setAttribute("data-armed", "");
+    }, ARM_MS);
+  };
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const list = byId("grants");
   const listTitle = byId("grants-title");
@@ -32,8 +46,13 @@ export function createView(doc, actions) {
   const refusedList = byId("refused-list");
   const dialog = byId("prompt");
   const status = byId("status");
-  const refuse = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=refuse]"));
-  const parent = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=parent]"));
+  const choice = (/** @type {string} */ answer) =>
+    /** @type {HTMLButtonElement} */ (dialog.querySelector(`[data-answer=${answer}]`));
+  const refuse = choice("refuse");
+  const parent = choice("parent");
+  const always = choice("always");
+  const session = choice("session");
+  const once = choice("once");
   const card = byId("approval");
   const pick = (/** @type {string} */ selector) =>
     /** @type {HTMLElement} */ (card.querySelector(selector));
@@ -62,6 +81,7 @@ export function createView(doc, actions) {
     box.addEventListener("click", (event) => {
       const button = /** @type {HTMLElement} */ (event.target).closest("button[data-answer]");
       if (!(button instanceof HTMLElement)) return;
+      if (arming.ignores(event.detail)) return event.preventDefault();
       actions.answer(/** @type {Choice} */ (button.dataset.answer));
     });
   }
@@ -70,7 +90,17 @@ export function createView(doc, actions) {
   // A press beside the list closes it; beside a card nothing happens: the card waits for an answer.
   byId("scrim").addEventListener("click", () => actions.dismiss());
 
+  const swallow = (/** @type {KeyboardEvent} */ event) => {
+    const asking = !dialog.hidden || !card.hidden;
+    if (!asking || !arming.swallows(/** @type {"keydown" | "keyup"} */ (event.type), event.key))
+      return false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return true;
+  };
+  doc.addEventListener("keyup", swallow, true);
   doc.addEventListener("keydown", (event) => {
+    if (swallow(event)) return;
     const open = !dialog.hidden ? dialog : !card.hidden ? card : !list.hidden ? list : null;
     if (actions.key(event.key)) event.preventDefault();
     else if (event.key === "Tab" && open) keepFocusIn(event, open);
@@ -232,12 +262,36 @@ export function createView(doc, actions) {
       const what = byId("prompt-what");
       what.replaceChildren("Wants to: ", el("strong", {}, model.permission));
       if (model.scope) what.append(" ", el("code", { className: "scope" }, model.scope));
+      for (const { permission, scope } of model.related ?? []) {
+        what.append(el("br", {}), el("strong", {}, permission));
+        if (scope) what.append(" ", el("code", { className: "scope" }, scope));
+      }
       byId("prompt-warning").replaceChildren(...(model.warning ? [warning(model.warning)] : []));
       byId("prompt-why").replaceChildren(
         "Reason: ",
         model.reason ? el("q", {}, model.reason) : "none given",
       );
       byId("prompt-asked").textContent = `Asked for: ${model.duration}`;
+      const effects = byId("prompt-effects");
+      const agent = model.caller.kind === "Agent";
+      const files = agent && model.permissionKind === "fs:write";
+      const facts = agent && model.permissionKind === "memory:write";
+      effects.hidden = !files && !facts;
+      if (files) {
+        effects.textContent =
+          "Allow once permits one reversible write. Allow this session permits reversible writes in this scope until the session ends. Always allow lasts until you revoke it. Non-reversible writes still ask.";
+      } else if (facts) {
+        effects.textContent =
+          "Allow once permits one fact to be saved. Allow this session permits saving facts until the session ends. Always allow lasts until you revoke it.";
+      }
+      byId("prompt-revoke").hidden = !model.preferPersistent;
+      if (always.classList.contains("desk-btn-primary") !== model.preferPersistent) {
+        const focused = doc.activeElement;
+        always.classList.toggle("desk-btn-primary", model.preferPersistent);
+        if (model.preferPersistent) once.before(always, session);
+        else always.before(once, session);
+        if (shown === model.promptId && focused instanceof HTMLButtonElement) focused.focus();
+      }
       // The parent folder, when the core offers it, is a second way to allow.
       parent.hidden = !model.parent;
       parent.textContent = model.parent?.label ?? "";
@@ -246,7 +300,10 @@ export function createView(doc, actions) {
       byId("prompt-waiting").textContent = model.waiting > 0 ? more : "";
       dialog.hidden = false;
       // The least destructive action takes focus, so a stray Enter never grants anything.
-      if (model.promptId !== shown) refuse.focus();
+      if (model.promptId !== shown) {
+        refuse.focus();
+        arm(dialog);
+      }
       shown = model.promptId;
     },
 
@@ -260,32 +317,31 @@ export function createView(doc, actions) {
         return;
       }
       cover();
-      const result = model.kind === "result";
       pick("#approval-title").textContent = model.title;
       pick("#approval-who").textContent = `${model.caller.kind} · ${model.caller.id}`;
       const what = pick("#approval-what");
-      if (model.kind === "result") what.replaceChildren(model.text);
-      else what.replaceChildren(`${model.action}: `, el("code", {}, model.target));
-      const preview = model.kind === "approval" ? model.preview : null;
+      what.replaceChildren(`${model.action}: `, el("code", {}, model.target));
+      const { preview, size, task, app } = model;
       const pre = pick("#approval-preview");
       pre.hidden = !preview;
       pre.replaceChildren(...(preview ? previewLines(preview) : []));
       pick("#approval-more").hidden = !preview?.truncated;
-      const size = model.kind === "approval" ? model.size : "";
       pick("#approval-size").textContent = size ? `Size: ${size}` : "";
-      const task = model.kind === "approval" ? model.task : null;
       pick("#approval-task").textContent = task ?? "";
-      pick("[data-for=approval]").hidden = result;
       pick("[data-answer=task]").hidden = !task;
-      pick("[data-for=result]").hidden = !result;
-      pick("[data-answer=undo]").hidden = !(model.kind === "result" && model.undo);
+      const appButton = pick("[data-answer=app]");
+      appButton.hidden = !app;
+      appButton.textContent = app ?? "";
       const more =
         model.waiting === 1 ? "1 more request waiting" : `${model.waiting} more requests waiting`;
       pick("#approval-waiting").textContent = model.waiting > 0 ? more : "";
       card.hidden = false;
-      // Deny takes focus on a new card, so a stray Enter never allows anything; Done on a result.
+      // Deny takes focus on a new card, so a stray Enter never allows anything.
       const key = `${model.kind}:${model.approvalId}`;
-      if (key !== shownCard) pick(result ? "[data-answer=done]" : "[data-answer=deny]").focus();
+      if (key !== shownCard) {
+        pick("[data-answer=deny]").focus();
+        arm(card);
+      }
       shownCard = key;
     },
 

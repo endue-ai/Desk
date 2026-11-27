@@ -1,12 +1,12 @@
-# endue Desk 구조
+# endue 구조
 
 2026-10-31 · Team endue
 
-> 이 문서가 Desk 설계의 단일 진실입니다. 코드와 어긋나면 ADR 로 결정을 남기고 이 문서를 고칩니다. 영어 요약은 `docs/architecture.md`, 되돌리기 어려운 결정은 `docs/adr/` 에 있습니다.
+> 이 문서가 endue 설계의 단일 진실입니다. 코드와 어긋나면 ADR 로 결정을 남기고 이 문서를 고칩니다. 영어 요약은 `docs/architecture.md`, 되돌리기 어려운 결정은 `docs/adr/` 에 있습니다.
 
-Desk 는 Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위의 모든 기능을 런타임 플러그인으로 만드는 하나의 OS 입니다. Emacs 처럼 코어는 원시 기능만 갖고, 나머지는 앱을 켠 채 바꿉니다.
+endue는 Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위의 모든 기능을 런타임 플러그인으로 만드는 하나의 OS 입니다. Emacs 처럼 코어는 원시 기능만 갖고, 나머지는 앱을 켠 채 바꿉니다.
 
-셸과 화면은 바뀌는 중입니다. Tauri 와 OS 웹뷰를 걷어 내고 Chromium(CEF) 위의 Rust 셸로 옮겼고, 그다음 창마다 자기 프로세스가 그린 것을 Desk 의 컴포지터가 합성하는 구조로 갑니다 (ADR 0140). 1단계는 Tauri 셸을 지우고 끝났고 (#97), 이 문서가 그리는 셸은 CEF 셸입니다. 단계는 "기술 스택 장단점" 의 "화면 합성과 플러그인 스킴" 에 있습니다.
+셸과 화면은 바뀌는 중입니다. Tauri 와 OS 웹뷰를 걷어 내고 Chromium(CEF) 위의 Rust 셸로 옮겼고, 그다음 창마다 자기 프로세스가 그린 것을 endue의 컴포지터가 합성하는 구조로 갑니다 (ADR 0140). 1단계는 Tauri 셸을 지우고 끝났고 (#97), 이 문서가 그리는 셸은 CEF 셸입니다. 단계는 "기술 스택 장단점" 의 "화면 합성과 플러그인 스킴" 에 있습니다.
 
 ## 한눈에
 
@@ -22,7 +22,7 @@ Desk 는 Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어 위에 웹 런타�
  │ 웹 런타임  compositor(3D/2D) · surfaces · input · layout · theme │  재시작
  │            · UI 플러그인 호스트 · 데스크 셸 (ADR 0026 까지)      │
  ├───────────────────────────────────────────────────────────────┤
- │ Desk 브리지  specs/bridge · specs/plugin · specs/item            │  재빌드
+ │ endue 브리지  specs/bridge · specs/plugin · specs/item           │  재빌드
  │              · specs/view · specs/connector 에서 생성된 타입     │
  │              (TS 클라이언트 · Rust 타입)                         │
  ├───────────────────────────────────────────────────────────────┤
@@ -39,12 +39,12 @@ Desk 는 Chromium(CEF) 위의 Rust 셸과 작은 Rust 코어 위에 웹 런타�
 
 ## Emacs 처럼, 하나의 OS 처럼
 
-Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, 실행 중에 고칠 수 있습니다. Desk 는 같은 구조를 운영체제의 말로 옮깁니다.
+Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, 실행 중에 고칠 수 있습니다. endue는 같은 구조를 운영체제의 말로 옮깁니다.
 
-| 역할 | 운영체제 | Emacs | Desk |
+| 역할 | 운영체제 | Emacs | endue |
 | --- | --- | --- | --- |
 | 커널 | 커널 | C 코어 | Rust 코어 |
-| 시스템 호출 | 시스템 콜 | Lisp 원시 함수 | Desk 브리지 API |
+| 시스템 호출 | 시스템 콜 | Lisp 원시 함수 | endue 브리지 API |
 | 드라이버 | 장치 드라이버 | OS 연동 코드 | 셸(winit · CEF) + Rust crate |
 | 창 관리자 | 윈도 매니저 | 프레임 · 윈도 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
@@ -64,7 +64,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 
 ## 기술 스택 장단점
 
-위험은 OS 마다 다른 웹뷰와, 셸과 모든 플러그인이 한 페이지 · 한 프로세스 · 한 메인 스레드를 나눠 쓰는 데 몰려 있었습니다. 그래서 Desk 는 CEF(Chromium) 로 옮기고, 창마다 자기 프로세스가 그린 텍스처를 wgpu 컴포지터가 합성합니다 (ADR 0140). 표의 셸 · 화면 · UI 플러그인 줄은 지금의 모습과 가는 방향을 같이 적습니다.
+위험은 OS 마다 다른 웹뷰와, 셸과 모든 플러그인이 한 페이지 · 한 프로세스 · 한 메인 스레드를 나눠 쓰는 데 몰려 있었습니다. 그래서 endue는 CEF(Chromium) 로 옮기고, 창마다 자기 프로세스가 그린 텍스처를 wgpu 컴포지터가 합성합니다 (ADR 0140). 표의 셸 · 화면 · UI 플러그인 줄은 지금의 모습과 가는 방향을 같이 적습니다.
 
 | 층 | 기술 | 장점 | 단점 | 대응 |
 | --- | --- | --- | --- | --- |
@@ -169,13 +169,13 @@ desk/
 │   └── CODEOWNERS
 │
 ├── specs/                    # 열림/닫힘의 경계. 언어 중립 계약, 단일 진실
-│   ├── bridge/v0/            # Desk 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm · plugin · store · brain · init · cmd · settings · log · events · data · connector · view · catalog)
+│   ├── bridge/v0/            # endue 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm · plugin · store · brain · init · cmd · settings · log · events · data · connector · view · catalog)
 │   ├── brain/v0/             # 두뇌 API: openapi.yaml (세션 · 턴 · 스트리밍 · 임대 · 에이전트 디렉터리, ADR 0024)
 │   ├── init/v0/              # init.yaml 스키마 · 템플릿 · 동기화 규칙 (ADR 0016)
 │   ├── plugin/v0/            # plugin.json 매니페스트 스키마 · 권한 어휘 · contributes (ADR 0017)
 │   ├── item/v0/              # 항목: 연결한 데이터의 한 모양. 봉투 · kind 여덟 + record · 질의 · 페이지 · 변경 (ADR 0032)
 │   ├── view/v0/              # 뷰: 데이터로 쓴 화면. requires · params · 컨테이너와 컴포넌트의 배치 · 동작은 커맨드 (ADR 0032)
-│   ├── connector/v0/         # 커넥터가 선언하는 것(바인딩 wasm · mcp, 인증, 리소스, 동기화) · 상태 · 동기화 결과 · Desk 를 아는 MCP 서버의 프로필 (ADR 0032)
+│   ├── connector/v0/         # 커넥터가 선언하는 것(바인딩 wasm · mcp, 인증, 리소스, 동기화) · 상태 · 동기화 결과 · endue를 아는 MCP 서버의 프로필 (ADR 0032)
 │   └── wit/                  # Wasm 인터페이스: 로직 플러그인이 import 하는 desk:host (브리지의 부분집합) · Wasm 커넥터가 빌드하는 world desk:connector (ADR 0034 제안)
 │
 ├── crates/                   # Rust. 접두사 desk-
@@ -220,7 +220,7 @@ desk/
 │   ├── chat-digest/          # 채팅 한눈에 endue.chat-digest: 데이터만 가진 view 플러그인, desk.views 가 그림
 │   ├── views/                # 뷰 엔진 desk.views: 뷰 파일(specs/view)을 화면으로. data.query 로 묶고 data.subscribe 로 살려 두며 @endue-ai/ui 로 그림 (ADR 0032)
 │   ├── today/                # 오늘 한눈에 desk.today: 데이터만 가진 view 플러그인, desk.views 가 그림 (Mod+T)
-│   ├── item/                 # 항목 하나 desk.item: 팔레트의 Open in Desk 가 여는 view 플러그인
+│   ├── item/                 # 항목 하나 desk.item: 팔레트의 Open in endue가 여는 view 플러그인
 │   ├── profiles/             # 프로필 전환 · 저장 (desk.profiles, 예전 이름 modes)
 │   ├── shell/                # 데스크 셸의 정책 desk.shell: 샘플 프로필 · 설정 · 색 (ADR 0025). 셸의 코드는 packages/runtime
 │   ├── display/ · keys/ · palette/ · buffers/ · files/ · session/ · notify/ · theme/
@@ -266,7 +266,7 @@ desk/
 | endue AI (클라우드) | 저장소 밖. `specs/brain` 과 `crates/desk-brain-endue` 만 여기 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
-| Desk 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
+| endue 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
 | Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` · `crates/desk-pg` (PostgreSQL 세션, 코어가 `db:connect` 아래 `db.*` 로 제공, ADR 0281) |
 | 셸 (CEF) | `apps/desk/shell` (winit 과 CEF 위의 앱 `endue-desk`, ADR 0143) · 엔진과 무관한 스킴 응답과 호출자 판정 `crates/desk-web` · `crates/desk-sys` |
 | 운영체제 | `apps/desk/shell/packager` (번들 · CEF 도우미 앱 · entitlements, ADR 0145) · `.github/workflows/release.yml` (서명 · 공증) |
@@ -512,7 +512,7 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | 표면 프로토콜 | `specs/surface/v0`: 수명 주기 · OS 별 텍스처 핸들 · 입력 · IME · 프레임 페이싱 · 접근성. 3단계의 native 플러그인도 같은 프로토콜 | Wayland 프로토콜 | 0141 |
 | 살아 있는 표면 예산 | 보이는 표면과 최근 포커스한 8개만 프로세스를 가짐. 나머지는 상태를 두고 잠듦. Chromium 의 렌더러 상한도 같은 예산에서 |  | 0142 |
 | 앱 e2e 엔진 | CEF 데스크를 Chromium 원격 디버깅으로 몰고, 런타임 스위트도 Chromium 에서 |  | 0144 |
-| 데이터베이스 세션 | 코어가 PostgreSQL 세션을 갖고 `db.*` 로 제공. `db:connect` 가 호스트와 포트를 막고, 세션은 연 플러그인만의 것이며 플러그인이 멈추거나 허가를 잃으면 닫힘. 값은 텍스트 문자열이나 null, 페이지의 `more` 는 정확 | PostgreSQL 프로토콜 3.0 · libpq 의 비밀번호 파일 | 0281 |
+| 데이터베이스 세션 | 코어가 PostgreSQL 세션을 갖고 `db.*` 로 제공. `db:connect` 가 호스트와 포트를 막고, 세션은 연 플러그인만의 것이며 플러그인이 멈추거나 허가를 잃으면 닫힘. 값은 텍스트 문자열이나 null, 페이지의 `more` 는 정확. 플러그인이 맡긴 비밀번호는 OS 키체인에 두고(`db.passwords.*`) `db.open` 이 `passwordRef` 로 그 서버·사용자에만 쓰며, 어떤 응답도 돌려주지 않음 | PostgreSQL 프로토콜 3.0 · libpq 의 비밀번호 파일 · OS 키체인 | 0281, 0311 |
 
 ## 열린 질문
 

@@ -3,7 +3,7 @@
 `endue.data` ("Data"), structured data and configuration files, each in a window of its own (ADR 0212),
 in the community folder format on the public SDK only. Its `contributes.files` rules open JSON, JSONC, JSON5, JSON
 Lines and NDJSON, YAML, TOML, XML, XSD and XSLT, property lists (XML and binary), INI, CFG and CONF,
-Java properties, dotenv (`.env`, `.env.*`), HCL and Terraform, MessagePack, CBOR and BSON.
+Java properties, dotenv (`.env`, `.env.*`), HCL and Terraform, MessagePack, CBOR and BSON. Eris can read values and the selected pointer, set a scalar in the unsaved buffer, and read schema problems and search results with masked content excluded.
 
 Each format has its own parser (`ui/parse/`, no third-party code) into one typed tree: tree and raw
 text (hex for binary data), groups of 100, search (`Mod+F`, `Mod+G`), JSON Pointer and path, parse
@@ -16,12 +16,12 @@ the tree, text, search, checks and edits, and the page gets bounded, masked rows
 | Formats | Read tier | Edit tier (ADR 0071) |
 | --- | --- | --- |
 | JSON, JSONC (UTF-8, up to 64 MiB) | full | lossless: a save changes only the edited values' bytes |
-| YAML, TOML (UTF-8, up to 64 MiB) | full | text: the first save asks "Save as copy" (default) or "Overwrite" |
+| YAML, TOML (UTF-8, up to 64 MiB) | full | text: the first Save selects a writable file, with a copy suggested |
 | The other formats; files not UTF-8 or that do not parse | full, or details | read-only |
 
 Enter or F2 on a value, or a double click, edits it in its row (`<desk-edit-tier>` shows the tier). It
-answers `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, asking once for a folder
-to read or save. Asleep out of sight (ADR 0176), the SDK's `keepFiles` keeps its files, modes, open and
+answers `desk.files.visit`, `.save`, `.revert`, `desk.buffers.show` and `.closed`, asking for the exact file
+when needed. Asleep out of sight (ADR 0176), the SDK's `keepFiles` keeps its files, modes, open and
 selected nodes and unsaved values. A narrow window first shows the tree alone; a small one folds its chrome.
 
 | File | Purpose |

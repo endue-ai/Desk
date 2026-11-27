@@ -4,6 +4,7 @@
 // and when autovacuum comes, each database's transaction id age against wraparound, and cache hits.
 // Counts are this server's own: a standby's are not its primary's. No DOM.
 
+import { t } from "../../strings/index.js";
 import { LIMIT, lines, since, USER_SCHEMA } from "./sql.js";
 
 /**
@@ -24,8 +25,8 @@ const INDEX_JOIN = lines(
 );
 
 const WHERE_TABLE = [
-  { key: "schema", label: "Schema" },
-  { key: "table", label: "Table" },
+  { key: "schema", label: t("features.overview.health.schema") },
+  { key: "table", label: t("features.overview.health.table") },
 ];
 
 /** An autovacuum reloption of a table, as text (`o.x` holds each of them). */
@@ -39,19 +40,25 @@ export function indexSections(server) {
   return [
     {
       id: "unused",
-      title: "Unused indexes",
+      title: t("features.overview.health.unusedIndexes"),
       source: "pg_stat_user_indexes (idx_scan)",
       counters: "database",
       columns: [
         ...WHERE_TABLE,
-        { key: "index", label: "Index" },
-        { key: "scans", label: "Scans", format: "count" },
+        { key: "index", label: t("features.overview.health.index") },
+        { key: "scans", label: t("features.overview.health.scans"), format: "count" },
         ...(lastScan
-          ? [{ key: "last_scan", label: "Last scan", format: /** @type {const} */ ("time") }]
+          ? [
+              {
+                key: "last_scan",
+                label: t("features.overview.health.lastScan"),
+                format: /** @type {const} */ ("time"),
+              },
+            ]
           : []),
-        { key: "size_bytes", label: "Size", format: "bytes" },
+        { key: "size_bytes", label: t("features.overview.health.size"), format: "bytes" },
       ],
-      empty: `Every index was scanned at least ${RARELY} times.`,
+      empty: t("features.overview.health.everyIndexWasScannedAtLeast", { RARELY: String(RARELY) }),
       sql: lines(
         'SELECT s.schemaname AS schema, s.relname AS "table", s.indexrelname AS index, s.idx_scan AS scans,',
         lastScan && "  s.last_idx_scan AS last_scan,",
@@ -64,16 +71,16 @@ export function indexSections(server) {
     },
     {
       id: "duplicates",
-      title: "Duplicate indexes",
+      title: t("features.overview.health.duplicateIndexes"),
       source: "pg_index (columns, operator classes, collations, expressions, predicate)",
       counters: "none",
       columns: [
         ...WHERE_TABLE,
-        { key: "indexes", label: "Indexes" },
-        { key: "copies", label: "Copies", format: "count" },
-        { key: "size_bytes", label: "Size", format: "bytes" },
+        { key: "indexes", label: t("features.overview.health.indexes") },
+        { key: "copies", label: t("features.overview.health.copies"), format: "count" },
+        { key: "size_bytes", label: t("features.overview.health.size"), format: "bytes" },
       ],
-      empty: "No two indexes of a table are the same.",
+      empty: t("features.overview.health.noTwoIndexesOfATable"),
       sql: lines(
         'SELECT n.nspname AS schema, t.relname AS "table",',
         "  string_agg(c.relname, ', ' ORDER BY c.relname) AS indexes, count(*) AS copies,",
@@ -88,17 +95,17 @@ export function indexSections(server) {
     },
     {
       id: "invalid",
-      title: "Invalid indexes",
+      title: t("features.overview.health.invalidIndexes"),
       source: "pg_index (indisvalid, indisready)",
       counters: "none",
       columns: [
         ...WHERE_TABLE,
-        { key: "index", label: "Index" },
-        { key: "state", label: "State" },
-        { key: "size_bytes", label: "Size", format: "bytes" },
+        { key: "index", label: t("features.overview.health.index") },
+        { key: "state", label: t("features.overview.health.state") },
+        { key: "size_bytes", label: t("features.overview.health.size"), format: "bytes" },
       ],
-      empty: "Every index is valid.",
-      note: "An index a CREATE INDEX CONCURRENTLY left behind is kept up to date but never used: drop it and build it again.",
+      empty: t("features.overview.health.everyIndexIsValid"),
+      note: t("features.overview.health.anIndexACreateIndexConcurrently"),
       sql: lines(
         'SELECT n.nspname AS schema, t.relname AS "table", c.relname AS index,',
         "  CASE WHEN i.indisready THEN 'built, not valid' ELSE 'not built' END AS state,",
@@ -118,20 +125,26 @@ export function tableSections(server) {
   return [
     {
       id: "seqscans",
-      title: "Sequential scans",
+      title: t("features.overview.health.sequentialScans"),
       source: "pg_stat_user_tables (seq_scan, seq_tup_read)",
       counters: "database",
       columns: [
         ...WHERE_TABLE,
-        { key: "seq_scans", label: "Sequential scans", format: "count" },
-        { key: "rows_read", label: "Rows read", format: "count" },
-        { key: "index_scans", label: "Index scans", format: "count" },
-        { key: "live_rows", label: "Live rows", format: "count" },
+        { key: "seq_scans", label: t("features.overview.health.sequentialScans"), format: "count" },
+        { key: "rows_read", label: t("features.overview.health.rowsRead"), format: "count" },
+        { key: "index_scans", label: t("features.overview.health.indexScans"), format: "count" },
+        { key: "live_rows", label: t("features.overview.health.liveRows"), format: "count" },
         ...(lastScan
-          ? [{ key: "last_seq_scan", label: "Last", format: /** @type {const} */ ("time") }]
+          ? [
+              {
+                key: "last_seq_scan",
+                label: t("features.overview.health.last"),
+                format: /** @type {const} */ ("time"),
+              },
+            ]
           : []),
       ],
-      empty: "No table was read by a sequential scan.",
+      empty: t("features.overview.health.noTableWasReadByA"),
       sql: lines(
         'SELECT schemaname AS schema, relname AS "table", seq_scan AS seq_scans, seq_tup_read AS rows_read,',
         "  idx_scan AS index_scans, n_live_tup AS live_rows",
@@ -142,25 +155,38 @@ export function tableSections(server) {
     },
     {
       id: "vacuum",
-      title: "Dead rows and vacuum",
+      title: t("features.overview.health.deadRowsAndVacuum"),
       source: "pg_stat_user_tables, pg_class.reloptions, pg_settings (autovacuum_*)",
       counters: "database",
       columns: [
         ...WHERE_TABLE,
-        { key: "live_rows", label: "Live", format: "count" },
-        { key: "dead_rows", label: "Dead", format: "count" },
-        { key: "dead_percent", label: "Dead %", format: "percent" },
-        { key: "last_vacuum", label: "Last vacuum", format: "time" },
-        { key: "last_autovacuum", label: "Last autovacuum", format: "time" },
-        { key: "last_analyze", label: "Last analyze", format: "time" },
-        { key: "last_autoanalyze", label: "Last autoanalyze", format: "time" },
-        { key: "vacuum_at", label: "Autovacuum at", format: "count" },
-        { key: "own_settings", label: "Own settings" },
+        { key: "live_rows", label: t("features.overview.health.live"), format: "count" },
+        { key: "dead_rows", label: t("features.overview.health.dead"), format: "count" },
+        { key: "dead_percent", label: t("features.overview.health.dead2"), format: "percent" },
+        { key: "last_vacuum", label: t("features.overview.health.lastVacuum"), format: "time" },
+        {
+          key: "last_autovacuum",
+          label: t("features.overview.health.lastAutovacuum"),
+          format: "time",
+        },
+        { key: "last_analyze", label: t("features.overview.health.lastAnalyze"), format: "time" },
+        {
+          key: "last_autoanalyze",
+          label: t("features.overview.health.lastAutoanalyze"),
+          format: "time",
+        },
+        { key: "vacuum_at", label: t("features.overview.health.autovacuumAt"), format: "count" },
+        { key: "own_settings", label: t("features.overview.health.ownSettings") },
       ],
-      empty: "No table outside the system schemas.",
+      empty: t("features.overview.health.noTableOutsideTheSystemSchemas"),
       note: av.on
-        ? `Autovacuum is on: a table is vacuumed past ${av.vacuumThreshold} dead rows plus ${percent(av.vacuumScale)} of its rows, analyzed past ${av.analyzeThreshold} changes plus ${percent(av.analyzeScale)}, unless its own settings say otherwise.`
-        : "Autovacuum is off on this server: dead rows stay until someone runs VACUUM.",
+        ? t("features.overview.health.autovacuumIsOnATableIs", {
+            vacuumThreshold: String(av.vacuumThreshold),
+            value: String(percent(av.vacuumScale)),
+            analyzeThreshold: String(av.analyzeThreshold),
+            value2: String(percent(av.analyzeScale)),
+          })
+        : t("features.overview.health.autovacuumIsOffOnThisServer"),
       sql: lines(
         'SELECT s.schemaname AS schema, s.relname AS "table", s.n_live_tup AS live_rows, s.n_dead_tup AS dead_rows,',
         "  round(100.0 * s.n_dead_tup / nullif(s.n_live_tup + s.n_dead_tup, 0), 1) AS dead_percent,",
@@ -183,18 +209,33 @@ export function tableSections(server) {
     },
     {
       id: "wraparound",
-      title: "Transaction id age",
+      title: t("features.overview.health.transactionIdAge"),
       source: "pg_database (datfrozenxid, datminmxid), pg_settings (autovacuum_freeze_max_age)",
       counters: "none",
       columns: [
-        { key: "database", label: "Database" },
-        { key: "xid_age", label: "Age", format: "count" },
-        { key: "wraparound_percent", label: "Of wraparound", format: "percent" },
-        { key: "freeze_percent", label: "Of freeze max age", format: "percent" },
-        { key: "multixact_age", label: "Multixact age", format: "count" },
+        { key: "database", label: t("features.overview.health.database") },
+        { key: "xid_age", label: t("features.overview.health.age"), format: "count" },
+        {
+          key: "wraparound_percent",
+          label: t("features.overview.health.ofWraparound"),
+          format: "percent",
+        },
+        {
+          key: "freeze_percent",
+          label: t("features.overview.health.ofFreezeMaxAge"),
+          format: "percent",
+        },
+        {
+          key: "multixact_age",
+          label: t("features.overview.health.multixactAge"),
+          format: "count",
+        },
       ],
-      empty: "No database is listed.",
-      note: `Wraparound comes at ${WRAPAROUND.toLocaleString("en-US")} transaction ids; autovacuum freezes a database whose age passes autovacuum_freeze_max_age (${Number(av.freezeMaxAge).toLocaleString("en-US")}).`,
+      empty: t("features.overview.health.noDatabaseIsListed"),
+      note: t("features.overview.health.wraparoundComesAtTransactionIdsAutovacuum", {
+        value: String(WRAPAROUND.toLocaleString("en-US")),
+        value2: String(Number(av.freezeMaxAge).toLocaleString("en-US")),
+      }),
       sql: lines(
         "SELECT datname AS database, age(datfrozenxid) AS xid_age,",
         `  round(100.0 * age(datfrozenxid) / ${WRAPAROUND}, 2) AS wraparound_percent,`,
@@ -205,17 +246,21 @@ export function tableSections(server) {
     },
     {
       id: "cache",
-      title: "Cache hits",
+      title: t("features.overview.health.cacheHits"),
       source: "pg_statio_user_tables (heap_blks_hit, heap_blks_read, idx_blks_*)",
       counters: "database",
       columns: [
         ...WHERE_TABLE,
-        { key: "blocks_read", label: "Blocks read", format: "count" },
-        { key: "blocks_hit", label: "Blocks hit", format: "count" },
-        { key: "hit_percent", label: "Hit %", format: "percent" },
-        { key: "index_hit_percent", label: "Index hit %", format: "percent" },
+        { key: "blocks_read", label: t("features.overview.health.blocksRead"), format: "count" },
+        { key: "blocks_hit", label: t("features.overview.health.blocksHit"), format: "count" },
+        { key: "hit_percent", label: t("features.overview.health.hit"), format: "percent" },
+        {
+          key: "index_hit_percent",
+          label: t("features.overview.health.indexHit"),
+          format: "percent",
+        },
       ],
-      empty: "No table was read.",
+      empty: t("features.overview.health.noTableWasRead"),
       sql: lines(
         'SELECT schemaname AS schema, relname AS "table", heap_blks_read AS blocks_read, heap_blks_hit AS blocks_hit,',
         "  round(100.0 * heap_blks_hit / nullif(heap_blks_hit + heap_blks_read, 0), 2) AS hit_percent,",

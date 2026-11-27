@@ -12,13 +12,21 @@
 # (ADR 0144): the .app bundle's binary on macOS, target/debug/endue-desk(.exe) elsewhere. Nothing is
 # installed or checked then.
 # Either way the app starts with a temp HOME and e2e/fixtures/init.yaml, the script waits for the ready
-# line it prints (desk_ready) and quits it with SIGTERM. Exits 0 only when every step passed;
+# line it prints (desk_ready) and quits it with SIGTERM. With DESK_SMOKE_POSTGRES set (a
+# postgresql:// URI, the password in PGPASSWORD), it also opens the database plugin and runs one
+# query on that server through the desk CLI (DESK_SMOKE_CLI, else the build's `desk`) before quitting
+# (e2e/smoke/database-query.mjs; skipped with one line on Windows, which has no desk socket yet).
+# Exits 0 only when every step passed;
 # otherwise it names the step that failed. `just smoke` runs it; the e2e workflow runs that under
 # xvfb-run, and release-build.yml runs it on each package it builds.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 results="$root/e2e/test-results"
+if [[ "${1:-}" == "--upgrade-from" ]]; then
+  shift
+  exec "$root/scripts/cef-package/upgrade-smoke.sh" "$@"
+fi
 package="${1:-${DESK_SMOKE_PACKAGE:-}}"
 ready_within=60
 quit_within=10
@@ -61,7 +69,11 @@ install_package() {
         fail "hdiutil could not attach $package"
       local found=("$work/mnt/"*.app)
       [ -d "${found[0]}" ] || fail "no .app on the disk image"
-      ditto "${found[0]}" "$work/Applications/$(basename "${found[0]}")"
+      if [[ -x "$work/mnt/Install endue.command" ]]; then
+        "$work/mnt/Install endue.command" --apps-dir "$work/Applications" || fail "installing endue"
+      else
+        ditto "${found[0]}" "$work/Applications/$(basename "${found[0]}")"
+      fi
       hdiutil detach "$work/mnt" >/dev/null || fail "hdiutil could not detach the disk image"
       ;;
     *.app.tar.gz)
@@ -154,7 +166,7 @@ else
   echo "smoke: $step (the desk)"
   just --justfile "$root/justfile" build-shell || fail "just build-shell exited $?"
   case "$(uname -s)" in
-    Darwin) app="$root/target/bundle/endue-desk.app/Contents/MacOS/endue-desk" ;;
+    Darwin) app="$root/target/bundle/endue.app/Contents/MacOS/endue-desk" ;;
     MINGW* | MSYS* | CYGWIN*) app="$root/target/debug/endue-desk.exe" ;;
     *) app="$root/target/debug/endue-desk" ;;
   esac
@@ -169,10 +181,17 @@ err="$results/smoke.stderr.log"
 # A short HOME: on macOS the desk socket's path under Library/Application Support must fit in 104 bytes.
 home="$(mktemp -d /tmp/desk-smoke-XXXXXX)"
 echo "smoke: $step $app (HOME=$home)"
+pgpassfile=""
+if [ -n "${DESK_SMOKE_POSTGRES:-}" ]; then
+  seeded="$(node "$root/e2e/smoke/database-query.mjs" seed "$home")" || fail "the database seed"
+  pgpassfile="${seeded#PGPASSFILE=}"
+fi
 (
   # The data folder follows HOME; nothing from the runner's desk setup leaks in.
   while read -r name; do unset "$name"; done < <(compgen -e | grep -E '^(XDG_|DESK_)' || true)
   export HOME="$home" DESK_INIT="$root/e2e/fixtures/init.yaml"
+  if [ -n "$pgpassfile" ]; then export PGPASSFILE="$pgpassfile"; fi
+  unset PGPASSWORD
   # Runners have no FUSE: the AppImage unpacks itself to a temp folder and runs from there.
   if [[ "$app" == *.AppImage ]]; then export APPIMAGE_EXTRACT_AND_RUN=1; fi
   exec "$app"
@@ -180,14 +199,31 @@ echo "smoke: $step $app (HOME=$home)"
 pid=$!
 
 step="ready"
+ready_line='^(endue|desk) ready'
+failed_line='^(endue|desk) cannot reach the core'
 for ((tick = 0; tick < ready_within * 10; tick++)); do
-  if grep -q '^desk ready' "$out"; then break; fi
-  if grep -q '^desk cannot reach the core' "$out"; then fail "$(grep -m1 '^desk cannot' "$out")"; fi
+  if grep -Eq "$ready_line" "$out"; then break; fi
+  if grep -Eq "$failed_line" "$out"; then fail "$(grep -Em1 "$failed_line" "$out")"; fi
   kill -0 "$pid" 2>/dev/null || { wait "$pid" && code=0 || code=$?; fail "the app exited ($code) before printing a ready line"; }
   sleep 0.1
 done
-grep -q '^desk ready' "$out" || fail "no ready line within $ready_within s"
-echo "smoke: $(grep -m1 '^desk ready' "$out")"
+grep -Eq "$ready_line" "$out" || fail "no ready line within $ready_within s"
+echo "smoke: $(grep -Em1 "$ready_line" "$out")"
+
+if [ -n "${DESK_SMOKE_POSTGRES:-}" ]; then
+  step="database"
+  cli="${DESK_SMOKE_CLI:-}"
+  if [ -z "$cli" ]; then
+    cli="$root/target/debug/desk"
+    [ -x "$cli" ] || cargo build -q -p desk-cli --bin desk --manifest-path "$root/Cargo.toml" ||
+      fail "cargo build of the desk CLI exited $?"
+  fi
+  (
+    while read -r name; do unset "$name"; done < <(compgen -e | grep -E '^(XDG_|DESK_SOCKET)' || true)
+    export HOME="$home"
+    node "$root/e2e/smoke/database-query.mjs" run "$cli"
+  ) || fail "the database plugin's query (see above)"
+fi
 
 step="quit"
 kill -TERM "$pid"

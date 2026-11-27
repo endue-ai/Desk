@@ -1,6 +1,6 @@
 {
   "target": "TurnEvent",
-  "description": "an agent asks Desk to write a file",
+  "description": "an agent asks endue to write a file",
   "instance": {
     "type": "tool.call",
     "turnId": "t2",

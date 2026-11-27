@@ -234,10 +234,10 @@ pub fn chrome(
         })
         .collect();
     DeskChrome {
-        label: "endue Desk".into(),
+        label: "endue".into(),
         scale,
         size: (plan.screen.w as f32, plan.screen.h as f32),
-        page: Some(("Desk".into(), Placed::at(PAGE, 0.0, 0.0))),
+        page: Some(("endue".into(), Placed::at(PAGE, 0.0, 0.0))),
         windows_label: "Windows".into(),
         windows,
         overlays,

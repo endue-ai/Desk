@@ -1,10 +1,12 @@
-// Mounts the Database plugin on the SDK's test host with scripted clients behind `proc.spawn` and a
-// view that records what it was asked to show. The fake psql and sqlite3 answer in their real
-// protocol (markers read from the arguments, CSV or quote mode), so the controller, the engines and
-// the runner all run as in the desk. The SDK is imported by its workspace path.
-import { StubError } from "../../../packages/bridge/src/index";
+// Mounts the Database plugin on the SDK's test host with a scripted sqlite3 behind `proc.spawn`, a
+// scripted PostgreSQL server behind db.* (the test host's StubDatabase, ADR 0281) and a view that
+// records what it was asked to show. sqlite3 answers in its real protocol (markers read from the
+// arguments, quote mode) and the server as the core's sessions do, so the controller, the engines,
+// the runner and the sessions all run as in the desk. The SDK is imported by its workspace path.
+import { type PluginManifest, StubError } from "../../../packages/bridge/src/index";
 import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import manifest from "../plugin.json";
 import type { Console } from "../ui/consoles.js";
 import { createDatabase, type View } from "../ui/database.js";
 import { createDatabaseDrops } from "../ui/dnd.js";
@@ -12,10 +14,11 @@ import type { Connection } from "../ui/engines/common.js";
 import type { Node } from "../ui/explorer.js";
 import type { Feature } from "../ui/feature-host.js";
 import type { FormModel, PasswordModel } from "../ui/manage.js";
-import { type Script, scriptedReply } from "./clients";
+import { type Script, scriptedDb, scriptedReply } from "./clients";
 import { inProcessOutput } from "./output";
+import { runsOf } from "./runs-of";
 
-export { type Answer, psqlRun, type Script, sqliteRun } from "./clients";
+export { type Answer, type Script, scriptedDb, sqliteRun } from "./clients";
 
 type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
@@ -33,7 +36,7 @@ export interface FakeClients {
   attach(host: TestHost): void;
 }
 
-/** psql and sqlite3 behind proc.spawn; `missing` programs are not found. */
+/** sqlite3 and mysql behind proc.spawn; `missing` programs are not found. */
 export function fakeClients(script: Script, missing: string[] = []): FakeClients {
   let host: TestHost | undefined;
   let n = 0;
@@ -157,20 +160,25 @@ export interface Mounted {
   store: Record<string, unknown>;
   picks: Array<{ title: string; items: Array<{ id: string; label: string }> }>;
   shown(): Console | null;
+  /** The statements each PostgreSQL session ran (db.run), a session a list, in order. */
+  sessions(): string[][];
   settle(): Promise<void>;
 }
 
 export async function mount(
   options: {
     script?: Script;
+    /** The password the scripted PostgreSQL server asks for; without it every sign-in is let in. */
+    password?: string;
     missing?: string[];
     commands?: Commands;
     store?: Record<string, unknown>;
     init?: Record<string, unknown>;
-    /** Settings the person set, by the plugin's own key (`confirm`), as settings.list names them. */
+    /** Settings the person set, by the plugin's own key (`confirm`), as settings.get names them. */
     settings?: Record<string, unknown>;
     /** Bridge methods served instead of the scripted clients' (the real processes, for one). */
     handlers?: Handlers;
+    grants?: Options["grants"];
     pick?: (args: { title: string; items: Array<{ id: string; label: string }> }) => string;
     /** The features instead of ui/features/index.js's (a fake one, for one). */
     features?: Feature[];
@@ -186,6 +194,9 @@ export async function mount(
   let buffers = 0;
   const host = createTestHost({
     pluginId: "endue.database",
+    manifestCommands: (manifest as PluginManifest).contributes?.commands,
+    db: scriptedDb(options.script ?? (() => ({})), options.password),
+    ...(options.grants ? { grants: options.grants } : {}),
     ...(options.settings ? { settings: options.settings } : {}),
     handlers: {
       "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),
@@ -246,8 +257,20 @@ export async function mount(
     store,
     picks,
     shown: () => view.consoles.at(-1)?.model ?? null,
+    sessions: () => sessionsOf(host.calls),
     settle,
   };
+}
+
+/** The SQL of every db.run (and db.script's statements), by session in the order each first ran. */
+export function sessionsOf(calls: readonly { method: string; params?: unknown }[]): string[][] {
+  const by = new Map<string, string[]>();
+  for (const call of runsOf(calls)) {
+    if (call.method !== "db.run") continue;
+    const { sessionId, sql } = call.params as { sessionId: string; sql: string };
+    by.set(sessionId, [...(by.get(sessionId) ?? []), sql]);
+  }
+  return [...by.values()];
 }
 
 /** A saved SQLite connection and a PostgreSQL one, as the store keeps them. */

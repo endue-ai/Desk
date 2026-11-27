@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use support::{call, grant, home, plugin_manage, roots};
 
 const RUNTIME: &str = "desk";
-const RAW: &str = "https://raw.githubusercontent.com/endue-ai/Desk/main/";
+const RAW: &str = "https://raw.githubusercontent.com/endue-ai/endue/main/";
 const FOLDERS: [&str; 2] = ["market/themes", "market/design-systems"];
 
 /// The repository's market folders served at their raw URLs, plus any page a test adds.
@@ -132,4 +132,35 @@ fn a_bundle_of_another_kind_than_its_index_says_is_refused() {
         "{}",
         refused.message
     );
+}
+
+#[test]
+fn a_saved_desk_market_installs_from_the_renamed_repository() {
+    let old = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json";
+    let core = desk("markets-saved-desk", web(&[]));
+    call(
+        &core,
+        RUNTIME,
+        "settings.set",
+        json!({ "key": "theme.markets", "value": [old] }),
+    )
+    .unwrap();
+    let items = theme(&core, "market.list", json!({})).unwrap();
+    assert_eq!(items["problems"], json!([]));
+    let listed = items["themes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["market"] == old)
+        .unwrap();
+    let installed = install(&core, listed).unwrap();
+    assert_eq!(installed["plugin"]["manifest"]["id"], listed["theme"]["id"]);
+    let saved = call(
+        &core,
+        RUNTIME,
+        "settings.get",
+        json!({ "key": "theme.markets" }),
+    )
+    .unwrap();
+    assert_eq!(saved["value"], json!([old]));
 }

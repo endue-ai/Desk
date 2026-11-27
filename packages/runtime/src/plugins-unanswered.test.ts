@@ -27,6 +27,12 @@ function invoked(invocationId: string): BridgeEvent {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** Turn the plugin off: it is gone, not closed for the session (#565, plugins-closed.test.ts). */
+const turnedOff = {
+  event: "plugin.changed",
+  data: { plugin: "test.notes", change: "disabled", revision: 1 },
+} as unknown as BridgeEvent;
+
 async function host(options: { wake?: () => boolean; register?: () => Promise<object> } = {}) {
   const stub = browserStub({
     "plugin.list": () => ({ plugins: [NOTES] }),
@@ -79,7 +85,7 @@ describe("a cmd.invoked the host cannot deliver (#1)", () => {
     const { stub, plugins, hello, calls } = await host();
     hello();
     await settle();
-    plugins.unmount(NOTES.id);
+    stub.emit(turnedOff);
     stub.emit(invoked("i-1"));
     await settle();
     expect(calls("cmd.answer")).toEqual([
@@ -97,8 +103,8 @@ describe("a cmd.invoked the host cannot deliver (#1)", () => {
   it("goes back to the core when the registration came back after the plugin went", async () => {
     let registered = () => {};
     const register = () => new Promise<object>((resolve) => (registered = () => resolve({})));
-    const { plugins, calls } = await host({ register });
-    plugins.unmount(NOTES.id);
+    const { stub, plugins, calls } = await host({ register });
+    stub.emit(turnedOff);
     registered();
     await settle();
     expect(calls("cmd.unregister")).toEqual([

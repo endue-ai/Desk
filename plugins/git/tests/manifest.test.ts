@@ -45,6 +45,13 @@ const COMMANDS = [
   "branches",
   "visit",
   "cancel",
+  "commits",
+  "diff-text",
+  "stash",
+  "stash-pop",
+  "stash-drop",
+  "discard-files",
+  "restore-files",
 ].map((name) => `endue.git.${name}`);
 
 describe("plugin.json", () => {
@@ -66,6 +73,7 @@ describe("plugin.json", () => {
           "desk.buffers.open",
           "desk.buffers.update",
           "endue.git.discard-patch",
+          "endue.git.discard-files",
         ],
       },
     ]);
@@ -90,12 +98,16 @@ describe("plugin.json", () => {
     });
   });
 
-  it("a discard of part of a file is undone by its inverse; a whole file's is not", () => {
+  it("keeps a separate undoable command for each kind of discard", () => {
     const commands = manifest().contributes?.commands ?? [];
     const byId = (id: string) => commands.find((c) => c.id === id);
     expect(byId("endue.git.discard-patch")?.undo).toBe("endue.git.restore-patch");
     expect(byId("endue.git.restore-patch")).toBeDefined();
+    expect(byId("endue.git.discard-patch")?.agent).toBe(true);
     expect(byId("endue.git.discard")?.undo).toBeUndefined();
+    expect(byId("endue.git.discard")?.irreversible).not.toBe(true);
+    expect(byId("endue.git.discard-files")?.undo).toBe("endue.git.restore-files");
+    expect(byId("endue.git.stash-drop")?.irreversible).toBe(true);
   });
 
   it("keeps every source file under 400 lines", () => {

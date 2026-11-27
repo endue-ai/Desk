@@ -4,7 +4,7 @@
 import type { MarketListing, StubHandlers } from "@endue-ai/bridge";
 import views from "../../../../market/views/index.json";
 
-const ENDUE = "https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json";
+const ENDUE = "https://raw.githubusercontent.com/endue-ai/endue/main/market/views/index.json";
 const ACME = "https://market.acme.test/index.json";
 
 export function marketHandlers(): StubHandlers {

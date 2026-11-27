@@ -9,8 +9,8 @@ network sparklines from one `docker stats` stream and ports as links. `Space` ma
 act on every mark, one docker call each. `↵` opens the detail pane beside the list: Info, Logs, Stats,
 Env, Ports, Inspect (a JSON tree) and Files (`ls` inside, `docker cp` out with `y`, in with `Y`);
 images get History, and pulls (`U`) and builds (`B`) stream into it with progress. `[` `]` switch
-tabs, `q` closes, `?` lists the keys. Every operation is a command (`endue.docker.*`, with an argument
-schema; agents get `ui/tools.js`'s reads and actions, ADR 0088); `Mod+Shift+K` is `endue.docker.open`.
+tabs, `q` closes, `?` lists the keys. The manifest declares `endue.docker.*` commands, including the
+agent's view snapshot and Files reads (ADR 0380). `Mod+Shift+K` is `endue.docker.open`.
 
 docker runs through `proc.spawn` without a shell (ADR 0039), `--context` when picked, every name and path checked
 (`refs.js`, `files.js`, `images.js`) and `--` before positional values; `docker events` keeps the screen current
@@ -31,7 +31,7 @@ Drag and drop (ADR 0119, `dnd.js`, `drop.js`): paths dropped on a container or i
 | `parse-*.js`, `inspect.js`, `images.js`, `files.js`, `stats.js` | What docker prints, as models |
 | `overview.js`, `query.js`, `prefs.js`, `bulk.js`, `preview.js` | The overview; search, sort; bulk; prune previews |
 | `actions*.js`, `logs.js`, `follow.js`, `watch.js`, `reach.js`, `live.js` | Actions; logs; events and alerts; with no engine only `docker version`, at most once a minute, in sight (ADR 0173) |
-| `docker*.js`, `shelf.js`, `pane.js`, `commands*.js`, `schemas*.js`, `dnd.js`, `drop.js` | The controller, the pane, the commands, drags and drops |
+| `docker*.js`, `shelf.js`, `pane.js`, `commands*.js`, `dnd.js`, `drop.js` | The controller, the pane, the commands, drags and drops |
 | `view*.js`, `tree.js`, `keys.js`, `dom.js`, `sparkline.js`, `*.css` | The DOM, from `--desk-*` tokens only |
 
 ```bash

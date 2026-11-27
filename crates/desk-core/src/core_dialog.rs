@@ -2,8 +2,8 @@
 //! desk window. The core keeps no dialog: the shell hands it a [`Dialogs`] once it has a window,
 //! and each call asks it. What the person chose is granted to the caller for the session, as any
 //! grant is (`perm.list` shows it, `perm.revoke` ends it): `dialog.open` grants `fs:read` on each
-//! chosen file (a folder: the folder and what lies inside it), `dialog.save` grants `fs:write` and
-//! `fs:read` on the chosen path alone; a plugin gets only what its manifest declares (ADR 0260).
+//! chosen file (a destination folder also gets `fs:write`); `dialog.save` grants read and write on
+//! the chosen path and optional write on its exact staging sibling. Manifests still cap grants.
 //! Asking needs no permission, since the person's choice is the consent; only the desk's page and
 //! installed plugins may ask (an agent, an MCP server, `cli` or the palette are refused, and
 //! nothing is shown). A chosen path is granted only as the OS named it: valid UTF-8, no `\\`
@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use desk_bridge::{
-    DialogOpenKind, DialogOpenParams, DialogOpenResult, DialogSaveParams, DialogSaveResult,
-    ErrorCode, FsReadPermission, FsReadPermissionPermission, FsWritePermission,
+    DialogOpenIntent, DialogOpenKind, DialogOpenParams, DialogOpenResult, DialogSaveParams,
+    DialogSaveResult, ErrorCode, FsReadPermission, FsReadPermissionPermission, FsWritePermission,
     FsWritePermissionPermission, GrantDuration, Permission,
 };
 
@@ -31,7 +31,7 @@ pub enum DialogError {
     Failed(String),
 }
 
-/// Who asks, for the dialog's title: `Notes (endue.notes)` for a plugin, `endue Desk` for the desk.
+/// Who asks, for the dialog's title: `Notes (endue.notes)` for a plugin, `endue` for the desk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asker {
     pub caller: String,
@@ -119,7 +119,7 @@ impl Core {
         caller: &str,
     ) -> Result<(Arc<dyn Dialogs>, Asker), desk_bridge::BridgeError> {
         let name = if caller == "desk" {
-            Some("endue Desk".to_owned())
+            Some("endue".to_owned())
         } else if agent_of(caller).is_some() || caller.contains(':') {
             None
         } else {
@@ -153,8 +153,15 @@ impl Core {
     }
 
     pub(crate) fn dialog_open(&self, caller: &str, params: DialogOpenParams) -> Answer {
-        let (dialogs, asker) = self.dialogs_for(caller)?;
         let folders = params.kind == Some(DialogOpenKind::Folders);
+        let destination = params.intent == Some(DialogOpenIntent::Destination);
+        if destination && !folders {
+            return Err(error(
+                ErrorCode::InvalidParams,
+                "Choose a folder as a destination".to_owned(),
+            ));
+        }
+        let (dialogs, asker) = self.dialogs_for(caller)?;
         let Some(chosen) = dialogs.open(&asker, &params).map_err(failed)? else {
             return json(DialogOpenResult {
                 cancelled: true,
@@ -180,6 +187,9 @@ impl Core {
         } else {
             paths.clone()
         };
+        if destination {
+            self.grant_chosen(caller, write(granted.clone()));
+        }
         self.grant_chosen(caller, read(granted));
         json(DialogOpenResult {
             cancelled: false,
@@ -188,8 +198,10 @@ impl Core {
     }
 
     /// Grant the person's choice to `caller` for the session, when its manifest declares it.
-    fn grant_chosen(&self, caller: &str, permission: Permission) {
-        if !self.undeclared(caller, &permission) {
+    pub(crate) fn grant_chosen(&self, caller: &str, permission: Permission) {
+        if !self.undeclared(caller, &permission)
+            && self.lasting_grant(caller, &permission).is_none()
+        {
             self.grant_for(caller, permission, GrantDuration::Session);
         }
     }
@@ -207,6 +219,12 @@ impl Core {
             });
         };
         self.grant_chosen(caller, write(vec![path.clone()]));
+        if params.temporary_sibling == Some(true)
+            && let Some((folder, name)) = path.rsplit_once('/')
+            && !name.is_empty()
+        {
+            self.grant_chosen(caller, write(vec![format!("{folder}/.{name}.partial")]));
+        }
         self.grant_chosen(caller, read(vec![path.clone()]));
         json(DialogSaveResult {
             cancelled: false,

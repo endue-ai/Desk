@@ -1,4 +1,4 @@
-# endue Desk 채팅(Chat) 요구사항
+# endue 채팅(Chat) 요구사항
 
 2026-11-04 · Team endue
 

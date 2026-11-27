@@ -28,7 +28,7 @@ import { blankSession, restoredSession } from "./snapshot.js";
  *   id(): string, seen(next: number): void,
  *   resize(id: string, cols: number, rows: number, again?: boolean): void,
  *   show(id: string): void, buffer(session: Session): Promise<void>,
- *   launch(session: Session): Promise<void>,
+ *   launch(session: Session): Promise<void>, sync(session: Session): void,
  * }} deps
  */
 export function createRestore(deps) {
@@ -68,6 +68,7 @@ export function createRestore(deps) {
       const size = sizes.get(session.id) ?? { cols: session.cols, rows: session.rows };
       if (session.procId) {
         byProc.set(session.procId, session.id);
+        deps.sync(session);
         deps.resize(session.id, size.cols, size.rows, true);
       } else if (session.exit) {
         view.end(session.id, session.ended ?? session.exit);

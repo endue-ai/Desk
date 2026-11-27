@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { parsePlaylist, resolvePath } from "../ui/playlists.js";
 import { file, fixture, mount } from "./harness";
+import { mountPage } from "./page";
 
 const LIST = "~/Music/lists/mix.m3u";
 
@@ -137,7 +138,7 @@ describe("playing a playlist", () => {
 
   it("a CUE sheet plays its file with the tracks as chapters", async () => {
     const C = file("~/Music/album.cue");
-    const { host, shown } = await mount({
+    const { host, audio } = await mountPage({
       grants: ["~/Music/**"],
       files: {
         [C.path]:
@@ -146,11 +147,18 @@ describe("playing a playlist", () => {
       },
     });
     await host.command("desk.files.visit", C);
-    expect(shown()).toMatchObject({ mode: "media", element: "audio" });
-    expect(shown()?.chapters).toEqual([
-      { title: "A", start: 0 },
-      { title: "B", start: 0.4 },
-    ]);
+    await expect(host.command("endue.player.state", {})).resolves.toMatchObject({
+      mode: "media",
+      chapters: [
+        { at: 1, title: "A", start: 0 },
+        { at: 2, title: "B", start: 0.4 },
+      ],
+    });
+    await expect(host.command("endue.player.chapter", { at: 2 })).resolves.toMatchObject({
+      position: 0.4,
+    });
+    expect(audio.element.currentTime).toBe(0.4);
+    await expect(host.command("endue.player.chapter", { at: 3 })).rejects.toThrow("chapter");
   });
 
   it("an entry that is gone is marked and skipped", async () => {

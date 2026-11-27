@@ -2,8 +2,7 @@
 // the agent bar) and the mode layer over the runtime. desk_ready is reported on the shell's status line
 // and on stdout, and the first run arrives over the shell as an overlay surface and can be skipped.
 // init.yaml is specs/init/v0's template (e2e/fixtures/init.yaml, the Default profile); no brain is
-// running, so the agent bar shows the directory offline, and Skip stops at sign-in before any brain
-// call.
+// running. The first run can continue locally when the sign-in page has no network.
 import { $, browser, expect } from "@wdio/globals";
 import { feed, inputState, shellCommand } from "../support/compositor";
 import { appLog, inFrame, MODE, READY, SYSTEM, shellReady } from "../support/desk";
@@ -58,7 +57,7 @@ describe("launch: the desk shell on a fresh data folder", () => {
     expect(hearing[0] ?? "").toContain("onboarding");
   });
 
-  it("Skip intro works over the shell", async () => {
+  it("skips the intro and continues to the desk when sign-in is offline", async () => {
     // The first run's timeline moves on the frame's animation frames, which a desk whose display
     // sleeps or whose screen is locked never gets (the page reads visibilityState hidden): the desk
     // draws while the case waits for Skip, clicks it and reads the next scene (#103).
@@ -69,6 +68,19 @@ describe("launch: the desk shell on a fresh data folder", () => {
         await expect(skip).toHaveText("Skip intro");
         await skip.click();
         await expect($("html")).toHaveAttribute("data-scene", "sign-in");
+
+        const signIn = $("button=Sign in with endue ID");
+        await signIn.waitForDisplayed();
+        await browser.setNetworkConditions({ offline: true, latency: 0, throughput: 0 });
+        try {
+          await browser.waitUntil(() => browser.execute(() => !navigator.onLine));
+          await signIn.click();
+          await $("button=Continue offline").click();
+          await expect($("html")).toHaveAttribute("data-scene", "desk");
+        } finally {
+          await browser.deleteNetworkConditions();
+        }
+        await expect($("#formslot .entry")).not.toExist();
       }),
     );
   });

@@ -64,6 +64,13 @@ const SCRIPT: StubDatabase = {
     },
     { sql: /pg_sleep/, waits: true },
     {
+      sql: "COMMIT WORK",
+      notices: [{ severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "during" }],
+      afterwards: [
+        { severity: "NOTICE", localSeverity: "NOTICE", code: "00000", message: "from a trigger" },
+      ],
+    },
+    {
       sql: "SELECT 1/0",
       error: {
         severity: "ERROR",
@@ -142,8 +149,9 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
       ["3", "NULL"],
     ]);
     expect([first.rows.length, first.more, first.columns?.[0]?.typeOid]).toEqual([10, true, 23]);
+    expect(first.notices?.map((n) => n.message)).toEqual(["hello"]);
     await settle();
-    expect(events.find((e) => e.event === "db.notice")).toBeDefined();
+    expect(events.find((e) => e.event === "db.notice")).toBeUndefined();
     const listed = await client.call("db.list", {}, DB);
     expect(valid("DbListResult", listed) && listed.sessions[0]?.more).toBe(true);
     await client.call("db.fetch", { sessionId, pageRows: 10 }, DB);
@@ -215,6 +223,84 @@ describe("the stub's database sessions, as the core serves db.* (ADR 0281)", () 
       [DB.caller],
       [DB.caller],
       ["example.other"],
+    ]);
+  });
+
+  it("a scripted server answers a statement its list lacks from its answer function, with the session it runs on", async () => {
+    const seen: unknown[] = [];
+    const { client, open } = setup({
+      db: {
+        ...SCRIPT,
+        answer: (sql, session) => {
+          seen.push({ sql, ...session });
+          return sql === "SELECT 2" ? { sql, columns: SCRIPT.statements[0]?.columns } : undefined;
+        },
+      },
+    });
+    const sessionId = await open();
+    const listed = await client.call(
+      "db.run",
+      { sessionId, sql: "SELECT id, note FROM orders" },
+      DB,
+    );
+    expect(listed.rows.length).toBe(25);
+    const two = await client.call("db.run", { sessionId, sql: "SELECT 2" }, DB);
+    expect(valid("DbPage", two) && [two.columns?.length, two.tag]).toEqual([2, "SELECT 0"]);
+    const none = await client.call("db.run", { sessionId, sql: "SELECT 3" }, DB);
+    expect(none.error?.code).toBe("0A000");
+    expect(seen).toEqual([
+      expect.objectContaining({ sql: "SELECT 2", host: "db.example.test", port: 5432 }),
+      expect.objectContaining({ sql: "SELECT 3", database: "shop", user: "reader" }),
+    ]);
+    expect(seen[0]).toMatchObject({ readOnly: false, settings: {} });
+  });
+
+  it("a failed transaction refuses statements until ROLLBACK, a savepoint keeps it open, and pg_terminate_backend ends the session it names", async () => {
+    const { client, open, events, settle } = setup();
+    const sessionId = await open();
+    const run = (sql: string, id = sessionId) => client.call("db.run", { sessionId: id, sql }, DB);
+    expect((await run("BEGIN")).transaction).toBe("open");
+    expect((await run("SAVEPOINT a")).transaction).toBe("open");
+    expect((await run("SELECT 1/0")).transaction).toBe("failed");
+    const ignored = await run("SELECT id, note FROM orders");
+    expect(valid("DbPage", ignored) && [ignored.error?.code, ignored.transaction]).toEqual([
+      "25P02",
+      "failed",
+    ]);
+    const back = await run("ROLLBACK TO SAVEPOINT a");
+    expect([back.tag, back.transaction]).toEqual(["ROLLBACK", "open"]);
+    expect((await run("RELEASE SAVEPOINT a")).transaction).toBe("open");
+    await run("SELECT 1/0");
+    const ended = await run("COMMIT");
+    expect([ended.tag, ended.transaction]).toEqual(["ROLLBACK", "idle"]);
+
+    const other = await open();
+    const listed = await client.call("db.list", {}, DB);
+    const pid = listed.sessions.find((s) => s.sessionId === sessionId)?.pid;
+    const killed = await run(`SELECT pg_terminate_backend(${pid})`, other);
+    expect(valid("DbPage", killed) && [killed.rows, killed.error]).toEqual([[["t"]], undefined]);
+    await settle();
+    const closed = events.filter((e) => e.event === "db.closed").at(-1);
+    expect(closed && valid("BridgeEvent", closed) && closed.data).toMatchObject({
+      sessionId,
+      reason: "server",
+      error: { severity: "FATAL", code: "57P01" },
+    });
+    await expect(run("SELECT 1/0")).rejects.toMatchObject({ code: "not_found" });
+    expect((await run("SELECT 1/0", other)).transaction).toBe("idle");
+  });
+
+  it("a statement's notices come with its page, and a notice after the answer is a db.notice event", async () => {
+    const { client, open, events, settle } = setup();
+    const sessionId = await open();
+    const done = await client.call("db.run", { sessionId, sql: "COMMIT WORK" }, DB);
+    expect(valid("DbPage", done) && done.notices?.map((n) => n.message)).toEqual(["during"]);
+    expect(events.filter((e) => e.event === "db.notice")).toEqual([]);
+    await settle();
+    await settle();
+    const late = events.filter((e) => e.event === "db.notice");
+    expect(late.map((e) => valid("BridgeEvent", e) && e.data)).toEqual([
+      { sessionId, notice: expect.objectContaining({ message: "from a trigger" }) },
     ]);
   });
 

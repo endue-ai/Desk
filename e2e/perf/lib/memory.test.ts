@@ -33,7 +33,7 @@ describe("the app's memory from ps", () => {
 
 // `ps -A -o pid=,ppid=,rss=,command=`: each helper's kind is its `--type` (#312, ADR 0246).
 const COMMANDS = `
-  902   900 204800 /A/endue-desk.app/Contents/MacOS/endue-desk --background
+  902   900 204800 /A/endue.app/Contents/MacOS/endue-desk --background
   903   902 102400 /A/Helpers/endue-desk Helper (GPU).app/x --type=gpu-process --lang=en
   904   902  51200 /A/Helpers/endue-desk Helper.app/x --type=utility --utility-sub-type=network.mojom.NetworkService
   905   902 122880 /A/Helpers/endue-desk Helper (Renderer).app/x --type=renderer --renderer-client-id=7

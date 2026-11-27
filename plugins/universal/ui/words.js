@@ -54,7 +54,7 @@ export function failureText(error, source) {
   const { where, missing, failed } = placeOf(source);
   switch (failure.code) {
     case "permission_denied":
-      return "Desk needs your permission to read this source.";
+      return "endue needs your permission to read this source.";
     case "not_found":
       return missing;
     case "timeout":

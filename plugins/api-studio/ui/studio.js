@@ -100,8 +100,8 @@ export function createStudio(ctx, doc) {
     envScopes: (_tab) => [],
     /** The global variables' scope (the environments feature replaces this). @returns {Scope[]} */
     globalScopes: () => [],
-    /** Save a tab to its collection; collections replace this. @param {Tab} _tab @returns {Promise<boolean>} */
-    save: async (_tab) => {
+    /** Save a tab to its collection; collections replace this. @param {Tab} _tab @param {import("./features-collections.js").SaveDestination} [_destination] @returns {Promise<boolean>} */
+    save: async (_tab, _destination) => {
       app.toast("Open or make a collection to save requests in.", "info");
       return false;
     },

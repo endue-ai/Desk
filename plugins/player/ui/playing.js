@@ -39,14 +39,14 @@ function* walk(
 
 /**
  * @param {{ deps: import("./load.js").Deps, resume: ReturnType<typeof import("./resume.js").createResume>,
- *   say(words: string): void }} parts
+ *   say(words: string): void, grantEntries?(entry: Entry, paths: string[]): Promise<unknown> }} parts
  */
-export function createPlaying({ deps, resume, say }) {
+export function createPlaying({ deps, resume, say, grantEntries }) {
   const { access } = deps;
 
   /** Show the chosen subtitles ("" for none). */
   const choose = (/** @type {Entry} */ entry, /** @type {string} */ id) =>
-    showSubtitles(deps, entry, id).catch((error) => say(text(error)));
+    showSubtitles(deps, entry, id);
 
   /**
    * Play one item of the entry (its own file, or a playlist entry) and find its subtitles. An item
@@ -73,7 +73,13 @@ export function createPlaying({ deps, resume, say }) {
     say(entry.mode === "details" ? (entry.why ?? "") : "");
     if (!entry.playlist) entry.resume = entry.position > 0 ? null : resume.offer(path);
     if (item && entry.mode === "media" && item.element === "video")
-      await findSubtitles(entry, item, deps, choose, how.place);
+      await findSubtitles(
+        entry,
+        item,
+        deps,
+        (file, id) => choose(file, id).catch((error) => say(text(error))),
+        how.place,
+      );
   };
 
   /**
@@ -85,19 +91,20 @@ export function createPlaying({ deps, resume, say }) {
    * @param {How} [how]
    * @returns {Promise<string | null>}
    */
-  const playEntry = async (entry, from, step = 1, how = {}) => {
+  const walkEntries = async (entry, from, step = 1, how = {}) => {
     const list = entry.playlist;
     if (!list) return "";
     let why = "";
     for (const i of walk(from, step, list.entries.length)) {
       const target = list.entries[i];
       if (!target?.path || target.remote || list.states[i]) continue;
+      if (!how.place && list.index === i && entry.item?.path === target.path) return null;
       const [index, position] = [list.index, entry.position];
       const place = how.place?.entry === i ? how.place : undefined;
       list.index = i;
       entry.position = place?.position ?? 0;
       try {
-        await play(entry, target.path, { ask: how.ask, place });
+        await play(entry, target.path, { ask: false, place });
         return null;
       } catch (error) {
         const code = codeOf(error);
@@ -113,6 +120,18 @@ export function createPlaying({ deps, resume, say }) {
       }
     }
     return why;
+  };
+  /** @type {WeakSet<Entry>} */
+  const moving = new WeakSet();
+  /** @type {typeof walkEntries} */
+  const playEntry = async (entry, from, step, how) => {
+    if (moving.has(entry)) throw new Error("Another entry is already opening.");
+    moving.add(entry);
+    try {
+      return await walkEntries(entry, from, step, how);
+    } finally {
+      moving.delete(entry);
+    }
   };
 
   /**
@@ -137,6 +156,10 @@ export function createPlaying({ deps, resume, say }) {
     if (found.family === "subtitles") return openCues(entry, all);
     if (found.family === "playlist") {
       openPlaylist(entry, all);
+      const local = entry.playlist?.entries.flatMap((item) =>
+        !item.remote && item.path ? [item.path] : [],
+      );
+      if (local?.length) await grantEntries?.(entry, local).catch(() => undefined);
       // Back from a sleep it goes on with the entry it was playing, else from the first.
       const start = how.place?.entry ?? 0;
       const played =

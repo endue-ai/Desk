@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { parse } from "./release-version.mjs";
+import { compare, parse } from "./release-version.mjs";
 
 export const MAC_TARGETS = [
   { target: "darwin-aarch64", label: "Apple silicon" },
@@ -29,26 +29,55 @@ export function tagVersion(tag) {
   return version;
 }
 
+/** The first branded line, including its prereleases. Published 0.3 artifacts keep their URLs. */
+function branded(version) {
+  return compare(tagVersion(`v${version}`), "0.4.0-0") >= 0;
+}
+
+export function desktopPrefix(version) {
+  return `${branded(version) ? "endue" : "endue-desk"}_${version}_`;
+}
+
 /** The disk images of `version`, one per macOS target. */
 export function macImages(version) {
-  return MAC_TARGETS.map(({ target }) => `endue-desk_${version}_${target}.dmg`);
+  return MAC_TARGETS.map(({ target }) => `${desktopPrefix(version)}${target}.dmg`);
+}
+
+export function cliFiles(version) {
+  const archive = `endue-cli_${version}_linux-x86_64.tar.gz`;
+  return [archive, `${archive}.sig`, "SHA256SUMS-cli"];
+}
+
+/** Downloadable CLI files and their verification data at the same tag as the app. */
+export function cliSection({ repo, tag, version }) {
+  const [archive, signature, sums] = cliFiles(version);
+  const url = (name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
+  return [
+    "## endue CLI for Linux x86_64",
+    "",
+    `[${archive}](${url(archive)}) · [SHA-256](${url(sums)}) · [versioned signature](${url(signature)})`,
+    "",
+    "Verify the publisher with `gh attestation verify <archive> --repo endue-ai/endue`.",
+    "Extract the verified archive and run `bin/endue` directly. Set `ENDUE_BRAIN_URL` and pass one quoted prompt to `endue run`.",
+  ].join("\n");
 }
 
 /** The files in `dist` to attach: both disk images and their checksums; a missing one fails. */
-export function macFiles(dist, version, exists = existsSync) {
-  const names = [...macImages(version), SUMS];
+export function macFiles(dist, version, exists = existsSync, cli = false) {
+  const names = [...macImages(version), SUMS, ...(cli ? cliFiles(version) : [])];
   const missing = names.filter((name) => !exists(join(dist, name)));
   if (missing.length > 0) throw new Error(`${dist} lacks ${missing.join(", ")}`);
   return names;
 }
 
 /** The notes' macOS section. */
-export function macSection({ repo, tag, version, signed }) {
+export function macSection({ repo, tag, version, signed, cli = false }) {
   const url = (name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
   const images = macImages(version);
+  const endue = cli || branded(version);
   const lines = [
     START,
-    "## macOS",
+    endue ? "## endue app for macOS" : "## macOS",
     "",
     ...MAC_TARGETS.map(({ label }, at) => `- ${label}: [${images[at]}](${url(images[at])})`),
     "",
@@ -59,8 +88,11 @@ export function macSection({ repo, tag, version, signed }) {
       : [
           "This build is not signed with a Developer ID and not notarised, so macOS refuses to open it",
           "the first time. Open it once, then allow it in System Settings > Privacy & Security > Open",
-          'Anyway, or run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.',
+          endue
+            ? "Anyway."
+            : 'Anyway, or run `xattr -dr com.apple.quarantine "/Applications/endue Desk.app"`.',
         ].join(" "),
+    ...(cli ? ["", cliSection({ repo, tag, version })] : []),
     END,
   ];
   return lines.join("\n");
@@ -86,15 +118,27 @@ function main(args) {
   if (subject === undefined) throw new Error("usage: release-assets.mjs version|files|notes <arg>");
   if (command === "version") {
     console.log(tagVersion(subject));
+  } else if (command === "desktop-prefix") {
+    console.log(desktopPrefix(subject));
   } else if (command === "files") {
-    for (const name of macFiles(subject, value("--version"))) console.log(join(subject, name));
+    for (const name of macFiles(subject, value("--version"), existsSync, args.includes("--cli")))
+      console.log(join(subject, name));
+  } else if (command === "cli-section") {
+    const version = tagVersion(`v${subject}`);
+    console.log(cliSection({ repo: value("--repo"), tag: `v${version}`, version }));
   } else if (command === "notes") {
     const signed = value("--signed");
     if (signed !== "true" && signed !== "false") throw new Error("--signed takes true or false");
     const tag = value("--tag");
     const version = value("--version");
     if (tagVersion(tag) !== version) throw new Error(`${tag} is not version ${version}`);
-    const section = macSection({ repo: value("--repo"), tag, version, signed: signed === "true" });
+    const section = macSection({
+      repo: value("--repo"),
+      tag,
+      version,
+      signed: signed === "true",
+      cli: args.includes("--cli"),
+    });
     process.stdout.write(withMacSection(readFileSync(subject, "utf8"), section));
   } else {
     throw new Error(`unknown command ${command}`);

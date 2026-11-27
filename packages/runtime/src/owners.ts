@@ -5,6 +5,7 @@
  * not missed.
  */
 import type {
+  BrainAskResult,
   BrainSayResult,
   BridgeEvent,
   BridgeRequest,
@@ -53,6 +54,9 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
   switch (request.method) {
     case "brain.say":
       return `turn:${(response.result as BrainSayResult).turnId}`;
+    // An ask's turn is the asker's as a say's is (ADR 0059): it carries the answer.
+    case "brain.ask":
+      return `turn:${(response.result as BrainAskResult).turnId}`;
     case "fs.watch":
       return `watch:${(response.result as FsWatchResult).watchId}`;
     case "data.subscribe":
@@ -118,6 +122,13 @@ export class Owners {
   release(key: string): void {
     this.#owners.delete(key);
     this.#early.delete(key);
+  }
+
+  /** The keys `owner` holds that start with `prefix` (`db:` for its database sessions). */
+  held(owner: string, prefix: string): string[] {
+    return [...this.#owners]
+      .filter(([k, o]) => o === owner && k.startsWith(prefix))
+      .map(([k]) => k);
   }
 
   /** Forget everything `owner` held: its surface went away. */

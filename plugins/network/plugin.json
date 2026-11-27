@@ -25,8 +25,14 @@
     {
       "permission": "brain:ask"
     },
-    { "permission": "net:connect", "hosts": ["*"] },
-    { "permission": "cmd:invoke", "ids": ["endue.network.devices"] }
+    {
+      "permission": "net:connect",
+      "hosts": ["*"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["endue.network.devices"]
+    }
   ],
   "surfaces": [
     {
@@ -41,7 +47,12 @@
         "id": "endue.network.open",
         "title": "Network: Show who is on my network",
         "keywords": ["network", "wifi", "devices", "router", "네트워크", "와이파이", "기기"],
-        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.network" } }
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.network"
+          }
+        }
       },
       {
         "id": "endue.network.scan",
@@ -49,7 +60,11 @@
         "keywords": ["scan", "devices", "refresh", "훑기"],
         "description": "Look at the private network this computer is on now: the ARP table, and on a network the person said they administer, a ping to every address of a /24 or smaller and each device's mDNS name. Answers the network, how many devices are online and the new ones.",
         "agent": true,
-        "args": { "type": "object", "properties": {}, "additionalProperties": false }
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.network.devices",
@@ -61,9 +76,16 @@
         "args": {
           "type": "object",
           "properties": {
-            "mac": { "type": "string", "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$" },
-            "online": { "type": "boolean" },
-            "show": { "type": "boolean" }
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            },
+            "online": {
+              "type": "boolean"
+            },
+            "show": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         }
@@ -77,8 +99,14 @@
         "args": {
           "type": "object",
           "properties": {
-            "mac": { "type": "string", "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$" },
-            "name": { "type": "string", "maxLength": 60 },
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 60
+            },
             "kind": {
               "enum": [
                 "router",
@@ -97,7 +125,9 @@
                 "unknown"
               ]
             },
-            "mine": { "type": "boolean" }
+            "mine": {
+              "type": "boolean"
+            }
           },
           "required": ["mac"],
           "additionalProperties": false
@@ -107,13 +137,29 @@
         "id": "endue.network.checkup",
         "title": "Network: Checkup",
         "keywords": ["security", "score", "ports", "점검", "보안"],
-        "description": "The network's score out of 100 with its items (unknown devices, risky open ports, my Wi-Fi's security mode) and the cards of what to do. With mac, first checks that device's common ports (the person is asked to allow it; each port is connected to and closed at once, nothing is sent). Only on a network the person administers.",
+        "description": "Read the current network's score, recorded check results, unknown devices and Wi-Fi security.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "readOnly": true
+      },
+      {
+        "id": "endue.network.check-ports",
+        "title": "Network: Check a known device's ports",
+        "description": "Check the fixed common ports of a known device on the current attached network after the person's permission.",
         "agent": true,
         "args": {
           "type": "object",
           "properties": {
-            "mac": { "type": "string", "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$" }
+            "mac": {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{2}([:-][0-9A-Fa-f]{2}){5}$"
+            }
           },
+          "required": ["mac"],
           "additionalProperties": false
         }
       },
@@ -124,7 +170,11 @@
         "description": "Listen to the Wi-Fi networks around (macOS's own Wi-Fi report; nothing is joined or probed) and answer per band (2.4, 5, 6 GHz) how many networks share it, which channels are crowded, the recommended channel and one sentence such as \"Channel 6 is crowded; channel 11 is recommended.\", with the channel, signal and security mode of the Wi-Fi this computer is joined to. SSIDs are left out.",
         "agent": true,
         "readOnly": true,
-        "args": { "type": "object", "properties": {}, "additionalProperties": false }
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.network.log",
@@ -135,7 +185,13 @@
         "readOnly": true,
         "args": {
           "type": "object",
-          "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 200 } },
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
           "additionalProperties": false
         }
       }

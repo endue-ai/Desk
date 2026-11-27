@@ -4,6 +4,7 @@
 // answered. choose.js finds the connection and target, runs.js runs. index.js's commands and
 // actions call it. No DOM.
 
+import { t } from "../../strings/index.js";
 import { createChooser, operationOf, postgres } from "./choose.js";
 import { locksOf } from "./locks.js";
 import { labelOf, summaryOf, targetFrom, targetOf, WHOLE } from "./model.js";
@@ -72,7 +73,8 @@ export function createMaintenance(deps) {
   const connOf = (/** @type {string} */ id) => {
     const found = panelOf(id);
     const conn = found ? deps.manager.get(found.connection) : undefined;
-    if (!found || !conn) throw new Error("This form's connection was removed.");
+    if (!found || !conn)
+      throw new Error(t("features.maintenance.controller.thisFormSConnectionWasRemoved"));
     return { conn, state: /** @type {MaintenanceState} */ (found[TYPE]) };
   };
   const { choose, pickTarget } = createChooser(deps);
@@ -83,7 +85,8 @@ export function createMaintenance(deps) {
     const running = reading.get(id);
     if (running) return running;
     const { conn, state } = connOf(id);
-    if (state.run?.status === "running") throw new Error("A run is going on: read again after it.");
+    if (state.run?.status === "running")
+      throw new Error(t("features.maintenance.controller.aRunIsGoingOnRead"));
     const work = (async () => {
       update(id, {
         reading: true,
@@ -134,7 +137,8 @@ export function createMaintenance(deps) {
     const kept = panels().find((b) => b.connection === conn.id && b.name === name)?.[TYPE];
     if (kept?.run?.status === "running") {
       const shown = await deps.consoles.openPanel(conn, TYPE, name, kept);
-      if (args.run === true) throw new Error("This form's run is still going on.");
+      if (args.run === true)
+        throw new Error(t("features.maintenance.controller.thisFormSRunIsStill"));
       return answerOf(
         /** @type {MaintenanceState} */ (stateOf(shown.id)),
         deps.settings().timeoutSeconds,
@@ -164,13 +168,17 @@ export function createMaintenance(deps) {
     });
     const read = await refresh(panel.id);
     const now = /** @type {MaintenanceState} */ (stateOf(panel.id));
-    if (!read) throw new Error(now.error || "Not read.");
+    if (!read) throw new Error(now.error || t("features.maintenance.controller.notRead"));
     const picks = Object.fromEntries(
       Object.entries(args.options ?? {}).filter(([key]) => key === "using" || key === "tablespace"),
     );
     if (Object.keys(picks).length) update(panel.id, { options: patched(now.options, picks, read) });
     deps.say(
-      `${labelOf(now.target, read.database)} on ${conn.name}: ${summaryOf(now.target, read.stats)}.`,
+      t("features.maintenance.controller.on", {
+        value: String(labelOf(now.target, read.database)),
+        name: String(conn.name),
+        value2: String(summaryOf(now.target, read.stats)),
+      }),
     );
     if (args.run === true) return run(panel.id, { agent: true });
     return answerOf(
@@ -193,7 +201,7 @@ export function createMaintenance(deps) {
   /** The explorer's row (m). */
   const fromNode = (/** @type {import("../../explorer.js").Node} */ node) => {
     const conn = deps.manager.get(node.connection);
-    if (!conn) throw new Error("Pick a connection, a schema, a table or an index in the explorer.");
+    if (!conn) throw new Error(t("features.maintenance.controller.pickAConnectionASchemaA"));
     return openFor(postgres(conn), targetOf(node), {});
   };
 
@@ -201,7 +209,7 @@ export function createMaintenance(deps) {
   const view = (/** @type {string} */ id, /** @type {Record<string, any>} */ patch) => {
     const { state } = connOf(id);
     if (state.run?.status === "running")
-      throw new Error("A run is going on: wait for it, or cancel it.");
+      throw new Error(t("features.maintenance.controller.aRunIsGoingOnWait"));
     const operation =
       "operation" in patch ? operationOf(patch.operation, state.target) : state.operation;
     const options = patch.options
@@ -214,7 +222,7 @@ export function createMaintenance(deps) {
   const shown = () => {
     const here = deps.consoles.current();
     if (here?.kind !== TYPE)
-      throw new Error("No maintenance form on screen: open one with Database: maintenance.");
+      throw new Error(t("features.maintenance.controller.noMaintenanceFormOnScreenOpen"));
     return here.id;
   };
 
@@ -231,7 +239,8 @@ export function createMaintenance(deps) {
     refreshShown: async () => {
       const id = shown();
       const read = await refresh(id);
-      if (!read) throw new Error(stateOf(id)?.error || "Not read.");
+      if (!read)
+        throw new Error(stateOf(id)?.error || t("features.maintenance.controller.notRead"));
       return answerOf(
         /** @type {MaintenanceState} */ (stateOf(id)),
         deps.settings().timeoutSeconds,

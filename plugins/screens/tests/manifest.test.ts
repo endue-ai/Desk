@@ -46,12 +46,16 @@ describe("plugin.json", () => {
     expect(screens.permissions).toEqual([{ permission: "net:connect", hosts: ["*"] }]);
   });
 
-  it("contributes open, connect and disconnect under its own id", () => {
+  it("contributes saved-computer and session commands under its own id", () => {
     const commands = manifest().contributes?.commands ?? [];
     expect(commands.map((c) => c.id)).toEqual([
       "endue.screens.open",
       "endue.screens.connect",
       "endue.screens.disconnect",
+      "endue.screens.computers",
+      "endue.screens.state",
+      "endue.screens.view-only",
+      "endue.screens.fit",
     ]);
     expect(commands[0]).toMatchObject({
       runs: { command: "desk.plugins.open", args: { plugin: "endue.screens" } },

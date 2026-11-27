@@ -9,6 +9,7 @@
 import { el } from "./dom.js";
 import { flatten } from "./explain/plan.js";
 import { buffersText, costText, rowsText, timeText, totals } from "./explain/words.js";
+import { t } from "./strings/index.js";
 import { flameView } from "./view-plan-flame.js";
 import { marksView } from "./view-plan-marks.js";
 import { tableView } from "./view-plan-table.js";
@@ -20,22 +21,22 @@ import { tableView } from "./view-plan-table.js";
  */
 
 const VIEWS = /** @type {const} */ ([
-  ["tree", "Tree"],
-  ["flame", "Flame"],
-  ["table", "Table"],
+  ["tree", "plan.viewTree"],
+  ["flame", "plan.viewFlame"],
+  ["table", "plan.viewTable"],
 ]);
 
 /** The plan as an outline. */
 export function treeView(/** @type {Document} */ doc, /** @type {PlanNode} */ root) {
   const rows = flatten(root).map(({ node, depth }, i) => {
     const facts = [
-      node.cost !== null ? `cost ${costText(node.cost)}` : "",
+      node.cost !== null ? t("plan.cost", { cost: costText(node.cost) }) : "",
       rowsText(node),
       timeText(node),
       buffersText(node.buffers),
     ].filter(Boolean);
     const hot =
-      node.hot === "high" ? "most of the time" : node.hot === "medium" ? "a large part" : "";
+      node.hot === "high" ? t("plan.hotHigh") : node.hot === "medium" ? t("plan.hotMedium") : "";
     const share = Math.round(node.share * 100);
     return el(
       doc,
@@ -60,8 +61,8 @@ export function treeView(/** @type {Document} */ doc, /** @type {PlanNode} */ ro
         "span",
         {
           class: "plan-share",
-          title: `${share}% of the whole is this node's own`,
-          "aria-label": `${share}% own share`,
+          title: t("plan.shareTitle", { share }),
+          "aria-label": t("plan.shareLabel", { share }),
         },
         el(doc, "span", { class: "plan-bar", style: `width: ${Math.min(100, share)}%` }),
       ),
@@ -69,7 +70,12 @@ export function treeView(/** @type {Document} */ doc, /** @type {PlanNode} */ ro
       node.detail ? el(doc, "span", { class: "plan-detail" }, node.detail) : undefined,
     );
   });
-  const tree = el(doc, "ul", { class: "plan", role: "tree", "aria-label": "Query plan" }, ...rows);
+  const tree = el(
+    doc,
+    "ul",
+    { class: "plan", role: "tree", "aria-label": t("plan.label") },
+    ...rows,
+  );
   tree.addEventListener("keydown", (event) => {
     const items = [...tree.querySelectorAll("[role=treeitem]")];
     const at = items.indexOf(/** @type {Element} */ (doc.activeElement));
@@ -91,7 +97,7 @@ function summaryView(/** @type {Document} */ doc, /** @type {PlanNode} */ root) 
   return el(
     doc,
     "dl",
-    { class: "plan-summary", "aria-label": "What the statement took" },
+    { class: "plan-summary", "aria-label": t("plan.totals") },
     ...facts.flatMap(([name, value]) => [
       el(doc, "dt", {}, name),
       el(doc, "dd", { title: value }, value),
@@ -114,7 +120,7 @@ function toolsView(/** @type {Document} */ doc, /** @type {Tab} */ tab, /** @typ
   const views = el(
     doc,
     "div",
-    { class: "desk-tabs plan-views", role: "tablist", "aria-label": "Show the plan as" },
+    { class: "desk-tabs plan-views", role: "tablist", "aria-label": t("plan.showAs") },
     ...VIEWS.map(([id, label]) => {
       const b = el(
         doc,
@@ -126,7 +132,7 @@ function toolsView(/** @type {Document} */ doc, /** @type {Tab} */ tab, /** @typ
           "aria-selected": String(id === view),
           "data-view": id,
         },
-        label,
+        t(label),
       );
       b.addEventListener("click", () => act("planView", id));
       return b;
@@ -135,18 +141,14 @@ function toolsView(/** @type {Document} */ doc, /** @type {Tab} */ tab, /** @typ
   return el(
     doc,
     "div",
-    { class: "plan-tools", role: "toolbar", "aria-label": "Plan" },
+    { class: "plan-tools", role: "toolbar", "aria-label": t("plan.tools") },
     views,
     el(doc, "span", { class: "grow" }),
-    button("Copy text", "The plan as text, in PostgreSQL's layout", () => act("copyPlan", "text")),
-    button("Copy JSON", "The plan as the server's JSON", () => act("copyPlan", "json")),
-    button("Compare…", "This plan beside an earlier one, with each node's change", () =>
-      act("comparePlans"),
-    ),
+    button(t("plan.copyText"), t("plan.copyTextTitle"), () => act("copyPlan", "text")),
+    button(t("plan.copyJson"), t("plan.copyJsonTitle"), () => act("copyPlan", "json")),
+    button(t("plan.compare"), t("plan.compareTitle"), () => act("comparePlans")),
     tab.plan?.summary
-      ? button("Options…", "Explain again with ANALYZE, BUFFERS, VERBOSE and the rest", () =>
-          act("explainOptions"),
-        )
+      ? button(t("plan.options"), t("plan.optionsTitle"), () => act("explainOptions"))
       : undefined,
   );
 }

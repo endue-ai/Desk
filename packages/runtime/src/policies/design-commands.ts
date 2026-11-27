@@ -174,6 +174,7 @@ export function designCommands(commands: Commands, designs: RuntimeDesigns): () 
       },
       ["import", "file", "shared"],
       {
+        irreversible: true,
         description:
           "Install a .desk-design file someone shared, by its path, as one of the person's design systems. It is not put in force: desk.design.use does that.",
         args: {

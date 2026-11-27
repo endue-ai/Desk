@@ -1,6 +1,6 @@
-// Bundles the database plugin's SQL editor component, CodeMirror 6, from the npm packages the root
+// Bundles the database SQL editor and Notes' plain-text viewport from the CodeMirror packages the root
 // package.json pins to exact versions into one ES module,
-// plugins/database/ui/vendor/editor/editor-component.mjs, with every bundled package's licence and a
+// in each plugin's ui/vendor/editor folder, with every bundled package's licence and a
 // VERSIONS file (ADR 0282); that folder is the editor's alone. CodeMirror ships as packages
 // that import each other by bare name, which a plugin page cannot resolve, so esbuild (pinned as well)
 // joins them; its output is the same for the same versions. `node scripts/vendor-codemirror.mjs`
@@ -22,6 +22,7 @@ export const ENTRY_PACKAGES = [
   "@codemirror/search",
   "@codemirror/autocomplete",
   "@codemirror/language",
+  "@codemirror/lint",
 ];
 
 const HEADER = [
@@ -40,10 +41,20 @@ export function packageOf(/** @type {string} */ input) {
   return first.startsWith("@") ? `${first}/${parts[at + 2]}` : first;
 }
 
-function bundle() {
+const NOTE_EXPORTS = [
+  'export { EditorState } from "@codemirror/state";',
+  'export { EditorView, keymap } from "@codemirror/view";',
+  'export { defaultKeymap, history, historyKeymap } from "@codemirror/commands";',
+].join("\n");
+
+/** @param {"database" | "notes"} target */
+function bundle(target = "database") {
   const result = buildSync({
     stdin: {
-      contents: ENTRY_PACKAGES.map((name) => `export * from "${name}";`).join("\n"),
+      contents:
+        target === "notes"
+          ? NOTE_EXPORTS
+          : ENTRY_PACKAGES.map((name) => `export * from "${name}";`).join("\n"),
       resolveDir: ROOT,
       sourcefile: "codemirror-entry.js",
       loader: "js",
@@ -89,8 +100,8 @@ export function versions() {
 }
 
 /** What ui/vendor/editor must hold: file name -> text. */
-export function expected() {
-  const { text, packages } = bundle();
+export function expected(/** @type {"database" | "notes"} */ target = "database") {
+  const { text, packages } = bundle(target);
   const names = [...packages.keys()].sort((a, b) => a.localeCompare(b));
   const pinned = Object.fromEntries(
     names.map((name) => [
@@ -115,14 +126,16 @@ export function expected() {
   };
 }
 
-export function vendor() {
-  rmSync(VENDOR, { recursive: true, force: true });
-  mkdirSync(VENDOR, { recursive: true });
-  const files = expected();
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(VENDOR, name), text);
+export function vendor(/** @type {"database" | "notes"} */ target = "database") {
+  const folder = target === "database" ? VENDOR : join(ROOT, "plugins/notes/ui/vendor/editor");
+  const files = expected(target);
+  rmSync(folder, { recursive: true, force: true });
+  mkdirSync(folder, { recursive: true });
+  for (const [name, text] of Object.entries(files)) writeFileSync(join(folder, name), text);
   return Object.keys(files).sort();
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  for (const name of vendor()) console.log(`vendored ${name}`);
+  for (const name of vendor()) console.log(`vendored database/${name}`);
+  for (const name of vendor("notes")) console.log(`vendored notes/${name}`);
 }

@@ -61,5 +61,6 @@ methods (files, processes, the network), which no install answers.
 
 ## More Information
 
-Narrows "Inside the cap the usual prompt" of ADR 0072. `crates/desk-core/src/agents.rs`,
+Narrows "Inside the cap the usual prompt" of ADR 0072. Narrowed by ADR 0367: only commands marked
+`agent` run without a question, and no agent runs a command of a plugin that declares `perm:manage`. `crates/desk-core/src/agents.rs`,
 `crates/desk-core/tests/agent_command_tools.rs`.

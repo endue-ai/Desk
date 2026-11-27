@@ -1,9 +1,10 @@
-// Reading a server's overview through the plugin's execute (every run under its guards, PG-01c
-// moves it): the probe first, then every section in one psql run. psql stops at a failed statement
-// (ON_ERROR_STOP), so the sections after it are read again in a run of their own and the failed
+// Reading a server's overview through the plugin's execute (every run under its guards, on the
+// core's sessions since PG-01c): the probe first, then every section in one run. A run stops at a
+// failed statement, so the sections after it are read again in a run of their own and the failed
 // one says what it could not read. Each run first sets lock_timeout for its own session, so a size
 // that waits behind another session's lock fails its section instead of the overview. No DOM.
 
+import { t } from "../../strings/index.js";
 import { PROBE_SQL, serverOf } from "./probe.js";
 import { failureOf, sectionsFor } from "./sections.js";
 import { recordsReset } from "./statements.js";
@@ -51,7 +52,12 @@ export async function readOverview(execute, conn, now = Date.now) {
   const error = probe.result.error ?? first?.error;
   const set = first?.sets[0];
   if (error || !set?.rows[0])
-    throw new Error(`Could not read ${conn.name}: ${error?.message ?? "the server said nothing"}.`);
+    throw new Error(
+      t("features.overview.read.couldNotRead", {
+        name: String(conn.name),
+        value: String(error?.message ?? t("features.overview.read.theServerSaidNothing")),
+      }),
+    );
   const server = serverOf(set.columns, set.rows[0]);
   const sections = sectionsFor(server);
   const runnable = sections.filter((s) => s.sql && !s.missing);
@@ -115,7 +121,8 @@ export async function readAll(execute, conn, sqls) {
         : { names: s.sets[0]?.columns ?? [], rows: s.sets[0]?.rows ?? [] };
     }
     if (next <= from) {
-      for (let i = from; i < sqls.length; i++) out[i] = { message: "the server ran nothing" };
+      for (let i = from; i < sqls.length; i++)
+        out[i] = { message: t("features.overview.read.theServerRanNothing") };
       break;
     }
     from = next;

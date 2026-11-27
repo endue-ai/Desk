@@ -2,13 +2,13 @@
 // The whole window on a real repository: the page as the desk serves it, mounted with a bridge
 // whose proc.spawn runs the real git, so the graph, the sidebar, the working copy panel and the
 // commands are checked end to end.
-import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Invocation } from "../../../packages/plugin-sdk/src/index";
 import { installFeatures } from "../ui/features.js";
 import { createStudio } from "../ui/studio.js";
-import { realGit, tempRepo } from "./real-git";
+import { gitOutput, realGit, tempRepo } from "./real-git";
 
 type Listener = (event: { event: string; data: Record<string, unknown> }) => void;
 
@@ -31,42 +31,29 @@ function realBridge() {
       }
       if (method !== "proc.spawn") throw Object.assign(new Error(method), { code: "unsupported" });
       const procId = `p${++next}`;
-      setTimeout(() => {
-        const child = execFile(
-          "git",
-          params.args as string[],
-          {
-            cwd: params.cwd as string,
-            env: { ...process.env, ...(params.env as object), GIT_CONFIG_GLOBAL: "/dev/null" },
-            encoding: "buffer",
-            maxBuffer: 8 << 20,
-          },
-          (error, stdout, stderr) => {
-            const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
-            if (stdout.length)
-              emit({
-                event: "proc.output",
-                data: {
-                  procId,
-                  stream: "stdout",
-                  data: stdout.toString("base64"),
-                  encoding: "base64",
-                },
-              });
-            if (stderr.length)
-              emit({
-                event: "proc.output",
-                data: {
-                  procId,
-                  stream: "stderr",
-                  data: stderr.toString("base64"),
-                  encoding: "base64",
-                },
-              });
-            emit({ event: "proc.exit", data: { procId, code, signal: null } });
-          },
-        );
-        child.stdin?.end(inputs.get(procId) ?? "");
+      setTimeout(async () => {
+        const input = inputs.get(procId);
+        inputs.delete(procId);
+        const { code, stdout, stderr } = await gitOutput(params.args as string[], {
+          cwd: params.cwd as string,
+          env: { ...process.env, ...(params.env as NodeJS.ProcessEnv) },
+          input,
+        }).catch((error: Error) => ({
+          code: 1,
+          stdout: Buffer.alloc(0),
+          stderr: Buffer.from(error.message),
+        }));
+        for (const [stream, bytes] of [
+          ["stdout", stdout],
+          ["stderr", stderr],
+        ] as const) {
+          if (bytes.length)
+            emit({
+              event: "proc.output",
+              data: { procId, stream, data: bytes.toString("base64"), encoding: "base64" },
+            });
+        }
+        emit({ event: "proc.exit", data: { procId, code, signal: null } });
       }, 0);
       return { procId };
     },
@@ -94,13 +81,14 @@ beforeEach(async () => {
 afterEach(() => repo.done());
 
 async function mount() {
-  const handlers = new Map<string, (args: unknown) => unknown>();
+  type Handler = (args: unknown, invocation?: Invocation) => unknown;
+  const handlers = new Map<string, Handler>();
   let kept: unknown = { repo: repo.root };
   const ctx = {
     bridge: realBridge(),
     state: { get: () => kept, set: (v: unknown) => (kept = v) },
     commands: {
-      on: (name: string, h: (args: unknown) => unknown) => handlers.set(name, h),
+      on: (name: string, h: Handler) => handlers.set(name, h),
       run: async () => undefined,
     },
   };
@@ -108,7 +96,12 @@ async function mount() {
   installFeatures(studio, ctx as never);
   await vi.waitFor(() => expect(studio.app.get().snapshot).not.toBeNull(), { timeout: 5000 });
   await new Promise((r) => setTimeout(r, 50));
-  return { studio, handlers };
+  const agent = async (name: string, args: object = {}) => {
+    const handler = handlers.get(`endue.git-studio.${name}`);
+    if (!handler) throw new Error(`Git Studio has no ${name} handler`);
+    return handler(args, { caller: "agent:fixture", invocationId: "fixture" });
+  };
+  return { studio, handlers, agent };
 }
 
 describe("the window on a real repository", () => {
@@ -147,8 +140,12 @@ describe("the window on a real repository", () => {
       all: true,
     })) as { committed: string };
     expect(done.committed).toMatch(/^[0-9a-f]{40}$/);
-    const subject = (await repo.git("log", "-1", "--format=%s")).stdout.trim();
-    expect(subject).toBe("Change a");
+    const commit = await repo.git("log", "-1", "--format=%s%n%an <%ae>%n%cn <%ce>");
+    expect(commit.stdout.trim().split("\n")).toEqual([
+      "Change a",
+      "endue-team <team@endue.ai>",
+      "endue-team <team@endue.ai>",
+    ]);
   });
 
   it("keeps endue.git-studio.state short in a repository of many branches", async () => {
@@ -203,5 +200,145 @@ describe("the window on a real repository", () => {
     const byCode = await log({ query: "not the one", mode: "code" });
     expect(byCode.commits.map((c) => c.subject)).toEqual(["fix: not the one"]);
     expect((await log({ query: "fix", author: "nobody" })).commits).toEqual([]);
+  });
+
+  it("lets an agent open Git Studio and read changes, commits, blame and file history", async () => {
+    const { studio, agent } = await mount();
+    const head = (await repo.git("rev-parse", "HEAD")).stdout.trim();
+    const root = studio.app.get().repo;
+    expect(await agent("open", { path: repo.root })).toEqual({ opened: root });
+    expect(await agent("diff", { path: "a.txt" })).toMatchObject({
+      text: expect.stringContaining("+changed"),
+    });
+    await repo.git("add", "a.txt");
+    expect(await agent("diff", { path: "a.txt", staged: true })).toMatchObject({
+      text: expect.stringContaining("+changed"),
+    });
+    expect(await agent("diff", { sha: head })).toMatchObject({
+      text: expect.stringContaining("+b"),
+    });
+    const detail = await agent("show", { sha: head });
+    expect(detail).toMatchObject({ sha: head, summary: "Merge topic" });
+    expect(detail).not.toHaveProperty("email");
+    expect(await agent("blame-data", { path: "b.txt" })).toMatchObject({
+      lines: [expect.objectContaining({ line: 1, text: "b" })],
+    });
+    expect(await agent("file-log", { path: "b.txt" })).toMatchObject({
+      commits: [expect.objectContaining({ subject: "On topic" })],
+    });
+    expect(studio.app.get().center).toBe("graph");
+  });
+
+  it("takes an explicit first push and reports rejection and divergence without a dialog", async () => {
+    const remote = join(repo.root, "upstream.git");
+    await repo.git("init", "--bare", "-q", remote);
+    await repo.git("remote", "add", "origin", remote);
+    const { studio, agent } = await mount();
+    const first = agent("push", { remote: "origin" });
+    void first.catch(() => {});
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(first).resolves.toMatchObject({ ok: true });
+    expect((await repo.git("rev-parse", "--abbrev-ref", "@{u}")).stdout.trim()).toBe("origin/main");
+    await repo.git("switch", "-q", "-c", "advanced");
+    await repo.git("commit", "--allow-empty", "-q", "-m", "Remote change");
+    await repo.git("push", "origin", "HEAD:refs/heads/main");
+    await repo.git("switch", "-q", "main");
+    await repo.git("commit", "--allow-empty", "-q", "-m", "Local change");
+    await studio.app.refresh();
+    await expect(agent("push")).rejects.toThrow(/pull first/i);
+    await expect(agent("pull")).rejects.toThrow(/fast-forward/i);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(agent("pull", { strategy: "merge" })).resolves.toMatchObject({ ok: true });
+    expect((await repo.git("rev-list", "--count", "HEAD..origin/main")).stdout.trim()).toBe("0");
+  });
+
+  it("applies stash and index operations and protects the explicit destructive target", async () => {
+    const { studio, agent } = await mount();
+    const root = studio.app.get().repo;
+    const sha = (await repo.git("rev-parse", "HEAD")).stdout.trim();
+    await repo.git("add", "a.txt");
+    await expect(agent("unstage", { paths: ["a.txt"] })).resolves.toMatchObject({ ok: true });
+    expect((await repo.git("diff", "--cached", "--name-only")).stdout).toBe("");
+    await expect(agent("stash", { message: "Keep the change" })).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("one\n");
+    await agent("stash-apply", { index: 0 });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("changed\n");
+    await expect(agent("discard", { root: "different", paths: ["a.txt"] })).rejects.toThrow(
+      /repository/i,
+    );
+    await expect(agent("reset", { sha, mode: "hard" })).rejects.toThrow(/hard reset/i);
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("changed\n");
+    await expect(agent("reset-hard", { root, sha })).resolves.toMatchObject({ ok: true });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("one\n");
+    repo.write("a.txt", "throw away\n");
+    repo.write("scratch.txt", "untracked\n");
+    await expect(
+      agent("discard", { root, paths: ["a.txt", "scratch.txt"] }),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("one\n");
+    expect((await repo.git("status", "--porcelain")).stdout).toBe("");
+    const stash = (await repo.git("rev-parse", "refs/stash")).stdout.trim();
+    await expect(agent("drop-stash", { root, index: 0, sha })).rejects.toThrow(/stash changed/i);
+    await expect(agent("drop-stash", { root, index: 0, sha: stash })).resolves.toMatchObject({
+      ok: true,
+    });
+    expect((await repo.git("stash", "list")).stdout).toBe("");
+  });
+
+  it("runs branch and tag operations and reflog undo on the real repository", async () => {
+    const { agent } = await mount();
+    const root = (await agent("state")) as { root: string };
+    await agent("rename-branch", { from: "topic", to: "renamed" });
+    expect((await repo.git("branch", "--list", "renamed")).stdout).toContain("renamed");
+    await agent("tag", { name: "studio-test", sha: "HEAD" });
+    expect((await repo.git("tag", "--list")).stdout.trim()).toBe("studio-test");
+    await agent("delete-branch", { root: root.root, name: "renamed" });
+    expect((await repo.git("branch", "--list", "renamed")).stdout).toBe("");
+    const sha = (await repo.git("rev-parse", "HEAD")).stdout.trim();
+    await repo.git("commit", "-q", "--allow-empty", "-m", "Undo me");
+    await expect(agent("undo")).resolves.toMatchObject({ head: sha });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("changed\n");
+    await expect(agent("redo")).resolves.toMatchObject({ head: expect.not.stringMatching(sha) });
+    expect((await repo.git("log", "-1", "--format=%s")).stdout.trim()).toBe("Undo me");
+  });
+
+  it("keeps staged content when a history move would replace its index entry", async () => {
+    const { agent } = await mount();
+    await repo.git("add", "a.txt");
+    repo.write("a.txt", "unsaved after stage\n");
+    await expect(agent("undo")).rejects.toThrow(/staged changes/i);
+    await expect(agent("reset", { sha: "HEAD^", mode: "mixed" })).rejects.toThrow(
+      /staged changes/i,
+    );
+    expect((await repo.git("show", ":a.txt")).stdout).toBe("changed\n");
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("unsaved after stage\n");
+  });
+
+  it("reports a conflicted merge and aborts only the named operation", async () => {
+    await repo.git("restore", "a.txt");
+    await repo.git("switch", "-q", "-c", "conflicting");
+    repo.write("a.txt", "other side\n");
+    await repo.git("commit", "-q", "-am", "Other side");
+    await repo.git("switch", "-q", "main");
+    repo.write("a.txt", "our side\n");
+    await repo.git("commit", "-q", "-am", "Our side");
+    const { studio, agent } = await mount();
+    const root = studio.app.get().repo;
+    await expect(agent("merge", { ref: "conflicting" })).rejects.toThrow(/conflict/i);
+    expect(await agent("state")).toMatchObject({ operation: "merge" });
+    await expect(agent("proceed", { root, operation: "rebase", how: "abort" })).rejects.toThrow(
+      /operation changed/i,
+    );
+    await expect(
+      agent("proceed", { root, operation: "merge", how: "abort" }),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(await agent("state")).toMatchObject({ operation: null });
+    expect(readFileSync(join(repo.root, "a.txt"), "utf8")).toBe("our side\n");
   });
 });

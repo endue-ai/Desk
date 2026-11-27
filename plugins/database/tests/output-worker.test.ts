@@ -11,24 +11,25 @@ import { fromValues } from "../ui/settings.js";
 import { split } from "../ui/sql/split.js";
 
 const NONCE = "abcdefghijkl";
-/** What psql prints for `SELECT id, name FROM t` over `rows` rows, then its marker line. */
-const psqlCsv = (rows = 5000) =>
+/** What sqlite3 prints in quote mode for `SELECT id, name FROM t` over `rows` rows, then its marker. */
+const sqliteOut = (rows = 5000) =>
   [
-    "id,name",
-    ...Array.from({ length: rows }, (_, i) => `${i},"row ${i}, quoted"`),
-    `@@endue:${NONCE}:0 ${rows}`,
+    "'id','name'",
+    ...Array.from({ length: rows }, (_, i) => `${i},'row ${i}, quoted'`),
+    `'@@endue:${NONCE}:0'`,
+    "0",
     "",
   ].join("\n");
 const reading = (maxRows: number): Invocation =>
   ({
-    statements: split("SELECT id, name FROM t", "postgresql"),
+    statements: split("SELECT id, name FROM t", "sqlite"),
     nonce: NONCE,
     maxRows,
   }) as unknown as Invocation;
 /** The plan of that read, as the runner takes it. */
-const psqlRun = (maxRows: number): Invocation => ({
+const sqliteRun = (maxRows: number): Invocation => ({
   ...reading(maxRows),
-  command: "psql",
+  command: "sqlite3",
   args: [],
   env: {},
   stopAfter: 0,
@@ -42,8 +43,8 @@ const plain = (stdout: string): Outcome => ({
   stderr: "",
 });
 
-/** A bridge that runs one psql: spawn answers, then the output arrives in 8 KiB chunks and exits. */
-function onePsql(stdout: string) {
+/** A bridge that runs one sqlite3: spawn answers, then the output arrives in 8 KiB chunks and exits. */
+function oneClient(stdout: string) {
   let emit: (event: unknown) => void = () => {};
   return {
     call: async (method: string) => {
@@ -95,14 +96,14 @@ function fakeWorkers() {
 }
 
 describe("the database result worker", () => {
-  it("reads psql's output from bytes, across a real message boundary, cut to maxRows", async () => {
+  it("reads a client's output from bytes, across a real message boundary, cut to maxRows", async () => {
     const { port1, port2 } = new MessageChannel();
     try {
       const reply = new Promise<ReturnType<typeof answer>>((done) => port1.once("message", done));
-      const bytes = new TextEncoder().encode(psqlCsv());
+      const bytes = new TextEncoder().encode(sqliteOut());
       const outcome = { ...plain(""), stdout: bytes, stderr: new Uint8Array() };
       port2.postMessage(
-        answer({ id: 7, engine: "postgresql", outcome, invocation: reading(100), timeoutMs: 0 }),
+        answer({ id: 7, engine: "sqlite", outcome, invocation: reading(100), timeoutMs: 0 }),
       );
       const got = await reply;
       if ("error" in got) throw new Error(got.error);
@@ -121,10 +122,10 @@ describe("the database result worker", () => {
   it("the frame posts the runner's bytes to output-worker.js and never decodes them", async () => {
     const workers = fakeWorkers();
     const reader = createOutputReader(workers.start);
-    const outcome = await createRunner(onePsql(psqlCsv()) as never).run(psqlRun(500));
+    const outcome = await createRunner(oneClient(sqliteOut()) as never).run(sqliteRun(500));
     // The frame's part ends when the message is posted; the stand-in worker answers a turn later.
     const decode = vi.spyOn(TextDecoder.prototype, "decode");
-    const reply = reader.read("postgresql", outcome, reading(500), 0);
+    const reply = reader.read("sqlite", outcome, reading(500), 0);
     expect(decode).not.toHaveBeenCalled();
     decode.mockRestore();
     const result = await reply;
@@ -135,14 +136,14 @@ describe("the database result worker", () => {
   });
 
   it("50 MiB of output: the frame only posts the bytes; the worker reads them into 500 rows", async () => {
-    const stdout = psqlCsv(1_850_000);
+    const stdout = sqliteOut(1_850_000);
     expect(stdout.length).toBeGreaterThan(50 * 1024 * 1024);
     const workers = fakeWorkers();
     workers.holdReplies();
     const reader = createOutputReader(workers.start);
-    const outcome = await createRunner(onePsql(stdout) as never).run(psqlRun(500));
+    const outcome = await createRunner(oneClient(stdout) as never).run(sqliteRun(500));
     const posting = performance.now();
-    void reader.read("postgresql", outcome, reading(500), 0);
+    void reader.read("sqlite", outcome, reading(500), 0);
     const posted = performance.now() - posting;
     const [message] = workers.posted as Array<Parameters<typeof answer>[0]>;
     if (!message) throw new Error("nothing posted");
@@ -160,15 +161,21 @@ describe("the database result worker", () => {
     const reader = createOutputReader(workers.start, { onBusy: (n) => busy.push(n) });
     workers.holdReplies();
     const executor = createExecutor({
-      runner: { run: async () => plain(psqlCsv()) },
+      runner: { run: async () => plain(sqliteOut()) },
       output: reader,
-      clients: { get: async () => ({ command: "psql", flavor: "postgresql", version: "17" }) },
+      clients: { get: async () => ({ command: "sqlite3", flavor: "sqlite", version: "3.50.6" }) },
       settings: () => fromValues({}),
       confirm: async () => true,
       passwords: { get: () => undefined, set: () => {}, ask: async () => undefined },
       cancelled: (message: string) => new Error(message),
     } as never);
-    const conn = { id: "c", engine: "postgresql", tag: "none", readOnly: false } as never;
+    const conn = {
+      id: "c",
+      engine: "sqlite",
+      file: "/tmp/t.db",
+      tag: "none",
+      readOnly: false,
+    } as never;
     const run = executor.execute(conn, "SELECT id, name FROM t");
     await vi.waitFor(() => expect(workers.posted).toHaveLength(1));
     reader.cancel();
@@ -176,7 +183,7 @@ describe("the database result worker", () => {
     expect(result.error).toEqual({ kind: "cancelled", message: "Cancelled." });
     expect(workers.terminated).toEqual([0]);
     expect(busy).toEqual([1, 0]);
-    reader.read("postgresql", plain(psqlCsv()), reading(10), 0).catch(() => {});
+    reader.read("sqlite", plain(sqliteOut()), reading(10), 0).catch(() => {});
     expect(workers.starts).toHaveLength(2);
   });
 
@@ -191,7 +198,7 @@ describe("the database result worker", () => {
       });
       return worker as unknown as Worker;
     });
-    const read = reader.read("postgresql", plain(psqlCsv()), reading(10), 0);
+    const read = reader.read("sqlite", plain(sqliteOut()), reading(10), 0);
     await Promise.resolve();
     await Promise.resolve();
     fail({ message: "" });

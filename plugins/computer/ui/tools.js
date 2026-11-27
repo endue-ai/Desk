@@ -17,12 +17,16 @@ export const TOOLS = [
   "type",
   "keys",
   "scroll",
+  "move",
+  "drag",
+  "quit",
+  "status",
   "open",
   "switch",
   "apps",
 ].map((name) => PREFIX + name);
 /** The tools that only read. */
-export const READS = new Set(["look", "find", "apps"].map((name) => PREFIX + name));
+export const READS = new Set(["look", "find", "apps", "status"].map((name) => PREFIX + name));
 
 /** A screenshot an agent reads: at most this many pixels. */
 const SHOT = { maxWidth: 1280, maxHeight: 800 };
@@ -131,6 +135,23 @@ export function createTools(bridge, scopes) {
       const at = args.x === undefined ? {} : { at: point(args) };
       const params = { ...at, dx: args.dx ?? 0, dy: args.dy ?? 0 };
       return done(await act("computer.input.scroll", params, invocation));
+    },
+    async move(args, invocation) {
+      return done(await act("computer.input.move", point(args), invocation));
+    },
+    async drag(args, invocation) {
+      const params = { from: point(args.from), to: point(args.to) };
+      return done(await act("computer.input.drag", params, invocation));
+    },
+    async quit(args, invocation) {
+      const found = await app(args.app);
+      if (!found) throw new Error(`${args.app} is not running.`);
+      return done(await act("computer.apps.quit", { pid: found.pid }, invocation));
+    },
+    async status(_args, invocation) {
+      const params = invocation ? { invocationId: invocation.invocationId } : {};
+      const status = await see("computer.permissions.status", params);
+      return { ...status, allowedApps: status.allowedApps ?? [] };
     },
     async open(args, invocation) {
       const found = await app(args.app);

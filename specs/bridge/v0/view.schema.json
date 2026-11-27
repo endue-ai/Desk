@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/view.schema.json",
-  "title": "Desk bridge v0: view",
+  "title": "endue bridge v0: view",
   "description": "The views on this desk: the person's, the YAML files in ~/.desk/views, which can be listed, read, saved and removed, and the enabled view plugins', which can be listed and read but neither saved nor removed. A person's file holds an item view (ADR 0032) or a universal view (ADR 0087, ADR 0102). A person's file shadows a plugin's view of its id. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
   "$defs": {
     "ViewSource": {

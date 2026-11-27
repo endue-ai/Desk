@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
-  "title": "Desk bridge v0: perm",
+  "title": "endue bridge v0: perm",
   "description": "Permissions: request, query and revoke grants, the prompter's side of a request, and the approval an agent's irreversible call waits for. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants, granting them for the person (perm.grant) and answering prompts and approvals need perm:manage.",
   "$defs": {
     "PermRequestRequest": {
@@ -25,13 +25,22 @@
           "type": "string",
           "minLength": 1
         },
-        "duration": { "$ref": "#/$defs/GrantDuration" }
+        "duration": { "$ref": "#/$defs/GrantDuration" },
+        "invocationId": {
+          "description": "Check whether a pending approved invocation covers this provider's scope. This answer grants no lasting permission. A matching effect also supplies the invocationId.",
+          "type": "string",
+          "minLength": 1
+        },
+        "again": {
+          "description": "The person asked for it again, by a press of theirs in the caller (an Allow button beside a refusal): the person is asked even when they refused this caller the same permission earlier in the session. Send it only from such a press, never from a retry.",
+          "type": "boolean"
+        }
       },
       "required": ["permission"],
       "additionalProperties": false
     },
     "GrantDuration": {
-      "description": "How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.",
+      "description": "How long a grant lasts. once: the next call it allows, then it expires. session: until endue quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.",
       "type": "string",
       "enum": ["once", "session", "always"]
     },
@@ -299,7 +308,7 @@
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
         },
         "target": {
-          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*.",
+          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember, the app (name and bundle id, or the screen) for computer.*, and the site for web.act.",
           "type": "string",
           "minLength": 1
         },
@@ -311,6 +320,11 @@
         },
         "task": {
           "description": "The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.",
+          "type": "string",
+          "minLength": 1
+        },
+        "untilStopApp": {
+          "description": "The app whose use the person may allow until computer use stops or the conversation changes. Present only when the approval can take an app answer.",
           "type": "string",
           "minLength": 1
         }
@@ -326,6 +340,7 @@
         "proc.spawn",
         "net.fetch",
         "cmd.invoke",
+        "web.act",
         "memory.remember",
         "computer.input.click",
         "computer.input.move",
@@ -380,9 +395,9 @@
       "additionalProperties": false
     },
     "ApprovalAnswer": {
-      "description": "once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.",
+      "description": "once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). app: this call runs and the agent may act in the named app until computer use stops or the conversation changes (invalid_params without untilStopApp). deny: this call is refused with permission_denied; the next one asks again.",
       "type": "string",
-      "enum": ["once", "task", "deny"]
+      "enum": ["once", "task", "app", "deny"]
     },
     "PermApproveResult": {
       "description": "Result of perm.approve.",
@@ -390,8 +405,34 @@
       "properties": {},
       "additionalProperties": false
     },
+    "PermUndoApprovalRequest": {
+      "description": "Undo the exact reversible change named by a completion receipt. The desk calls this from its Undo notice.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.undoApproval" },
+        "params": { "$ref": "#/$defs/PermUndoApprovalParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermUndoApprovalParams": {
+      "description": "The completed change to undo, as named by its receipt.",
+      "type": "object",
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission" }
+      },
+      "required": ["approvalId", "scope"],
+      "additionalProperties": false
+    },
+    "PermUndoApprovalResult": {
+      "description": "An empty result once the change was undone.",
+      "type": "object",
+      "additionalProperties": false
+    },
     "PermApprovalDoneEvent": {
-      "description": "An approved call ran: what came of it. Sent to callers that hold perm:manage.",
+      "description": "An approved call ran or a granted reversible change completed. Sent to callers that hold perm:manage.",
       "type": "object",
       "properties": {
         "event": { "const": "perm.approval.done" },
@@ -401,7 +442,7 @@
       "additionalProperties": false
     },
     "PermApprovalDoneData": {
-      "description": "Payload of perm.approval.done.",
+      "description": "Payload of perm.approval.done. Each reversible change has a unique completion id for Undo.",
       "type": "object",
       "properties": {
         "approvalId": { "type": "string", "minLength": 1 },
@@ -413,12 +454,23 @@
         },
         "error": { "$ref": "bridge.schema.json#/$defs/BridgeError" },
         "undoable": {
-          "description": "true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.",
+          "description": "True when perm.undoApproval can undo this change.",
           "type": "boolean"
+        },
+        "change": { "$ref": "#/$defs/ApprovalChange" },
+        "path": {
+          "description": "The affected path for a file change. Memory notices carry no fact text.",
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": ["approvalId", "ok"],
       "additionalProperties": false
+    },
+    "ApprovalChange": {
+      "description": "The single change that Undo can reverse.",
+      "type": "string",
+      "enum": ["file-saved", "file-created", "fact-remembered", "fact-edited"]
     },
     "PermPendingRequest": {
       "description": "What waits for the person now: every perm.prompt nobody has answered and every perm.approval nobody has approved or denied, for a prompter that comes up while they wait.",

@@ -65,7 +65,7 @@ impl Session {
         let params = json!({
             "protocolVersion": PROTOCOL,
             "capabilities": {},
-            "clientInfo": { "name": "endue-desk", "title": "endue Desk",
+            "clientInfo": { "name": "endue-desk", "title": "endue",
                 "version": env!("CARGO_PKG_VERSION") }
         });
         let answer = connection.request("initialize", params, wait)?;
@@ -74,11 +74,12 @@ impl Session {
             .and_then(Value::as_str)
             .filter(|version| PROTOCOLS.contains(version))
             .ok_or_else(|| {
-                let asked = answer
-                    .get("protocolVersion")
-                    .cloned()
-                    .unwrap_or(Value::Null);
-                Failure::Protocol(format!("protocol version {asked} is not one Desk speaks"))
+                let version = &answer["protocolVersion"];
+                let asked = version
+                    .as_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| version.to_string());
+                Failure::Protocol(format!("endue does not support protocol version {asked}"))
             })?
             .to_owned();
         let server = answer

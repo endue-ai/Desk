@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DragBroker } from "./broker";
 import type { DndHostMessage, DropAnswer, Point } from "./types";
 
@@ -11,6 +11,7 @@ const KEYS = { alt: false, shift: false, ctrl: false, meta: false };
 function desk(options: { patient?: boolean; pressed?: boolean } = {}) {
   const posted = new Map<string, DndHostMessage[]>(FRAMES.map((id) => [id, []]));
   const drawn: Array<{ at?: Point; effect?: DropAnswer; shown?: boolean; hidden?: boolean }> = [];
+  const grantDrop = vi.fn(async () => {});
   const broker = new DragBroker({
     pluginAt: (x) => FRAMES[Math.floor(x / 400)],
     toFrame: (id, at) => ({ x: at.x - left(id), y: at.y }),
@@ -24,11 +25,12 @@ function desk(options: { patient?: boolean; pressed?: boolean } = {}) {
     // An impatient desk does not wait for a target's late answer.
     wait: () => (options.patient ? new Promise<void>(() => {}) : Promise.resolve()),
     gesture: () => options.pressed ?? true,
+    grantDrop,
   });
   const send = (id: string, message: Record<string, unknown>) => broker.message(id, message);
   const of = (id: string) => posted.get(id) ?? [];
   const types = (id: string) => of(id).map((m) => m.type);
-  return { broker, send, of, types, drawn };
+  return { broker, send, of, types, drawn, grantDrop };
 }
 
 /** a.one starts dragging a path at (10, 10); b.two takes paths and text. */
@@ -118,6 +120,37 @@ describe("the drag broker", () => {
     await expect(released).resolves.toEqual({ effect: "none" });
     expect(types("b.two")).toEqual(["desk:dragenter", "desk:dragover", "desk:dragleave"]);
     expect(of("a.one").at(-1)).toEqual({ type: "desk:drag-ended", drag: 7, effect: "none" });
+  });
+
+  it("grants file access only when the desk's pointer commits a drop", async () => {
+    const at = { x: 450, y: 20 };
+    const d = dragging();
+    d.broker.pointer(at);
+    d.send("b.two", {
+      type: "desk:drag-status",
+      drag: 1,
+      seq: 1,
+      effect: "copy",
+      destination: "~/Inbox",
+    });
+    expect(d.grantDrop).not.toHaveBeenCalled();
+    const released = d.broker.release(at, KEYS, true);
+    await vi.waitFor(() => expect(d.types("b.two")).toContain("desk:drop"));
+    expect(d.grantDrop).toHaveBeenCalledExactlyOnceWith(
+      "a.one",
+      "b.two",
+      ["~/Documents/a.md"],
+      "~/Inbox",
+    );
+    d.send("b.two", { type: "desk:drop-done", drag: 1, effect: "copy" });
+    await released;
+
+    const generated = dragging();
+    generated.broker.pointer(at);
+    generated.send("b.two", { type: "desk:drag-status", drag: 1, seq: 1, effect: "copy" });
+    generated.send("a.one", { type: "desk:drag-end", drag: 7, ...at, keys: KEYS });
+    generated.send("b.two", { type: "desk:drop-done", drag: 1, effect: "copy" });
+    expect(generated.grantDrop).not.toHaveBeenCalled();
   });
 
   it("cancels on Escape: B hears it leave, nobody gets the items", async () => {

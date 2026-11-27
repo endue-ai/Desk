@@ -113,7 +113,7 @@ fn perm_log(core: &Core) -> Vec<Value> {
 }
 
 #[test]
-fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
+fn a_tool_call_runs_as_its_agent_and_the_approval_names_it() {
     let echo = Echo::start();
     let home = home("tools-prompt");
     let (core, deliveries) = core(&echo, &home);
@@ -122,18 +122,12 @@ fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
         &write_call(Some("mira"), "~/Notes/today.md", "~/Notes/**"),
     );
 
-    let prompt = wait_for(&deliveries, "perm.prompt");
-    assert_eq!(prompt.data()["caller"], "agent:mira");
-    assert_eq!(
-        prompt.data()["permission"],
-        json!({ "permission": "fs:write", "paths": ["~/Notes/**"] })
-    );
-    let params = json!({ "promptId": prompt.data()["promptId"], "granted": true,
-        "duration": "session", "scope": manage() });
-    call(&core, "desk", "perm.answer", params).unwrap();
-    // The write is irreversible: it waits for the person's approval too (ADR 0078).
     let approval = wait_for(&deliveries, "perm.approval");
     assert_eq!(approval.data()["caller"], "agent:mira");
+    assert_eq!(
+        approval.data()["permission"],
+        json!({ "permission": "fs:write", "paths": ["~/Notes/**"] })
+    );
     approve_as_desk(&core, &approval, "once");
 
     let said = answer(&deliveries, &turn, &mut Vec::new());
@@ -144,12 +138,12 @@ fn a_tool_call_runs_as_its_agent_and_the_prompt_names_it() {
         "Buy milk"
     );
     let log = perm_log(&core);
-    let allowed = log
+    let approved = log
         .iter()
-        .find(|e| e["fields"]["decision"] == "allowed")
+        .find(|e| e["fields"]["decision"] == "approved")
         .expect("the agent's call is logged");
-    assert_eq!(allowed["fields"]["caller"], "agent:mira");
-    assert_eq!(allowed["fields"]["target"], "~/Notes/today.md");
+    assert_eq!(approved["fields"]["caller"], "agent:mira");
+    assert_eq!(approved["fields"]["target"], "~/Notes/today.md");
 }
 
 #[test]
@@ -304,7 +298,7 @@ fn a_brain_ask_turn_hands_its_tool_call_back_and_runs_no_agent_tool() {
     });
     let (core, deliveries) = core_on(brain.clone(), &home);
     // Were the ask's call run, mira's grant would let it write without asking.
-    grant(
+    let grant_id = grant(
         &core,
         "agent:mira",
         json!({ "permission": "fs:write", "paths": ["~/Notes/**"] }),
@@ -346,6 +340,13 @@ fn a_brain_ask_turn_hands_its_tool_call_back_and_runs_no_agent_tool() {
 
     // The desk's conversation still runs mira's tool calls as mira, once the person approves the
     // write (ADR 0078).
+    call(
+        &core,
+        "agent:mira",
+        "perm.revoke",
+        json!({ "grantId": grant_id }),
+    )
+    .unwrap();
     let turn = say(
         &core,
         &write_call(Some("mira"), "~/Notes/today.md", "~/Notes/**"),

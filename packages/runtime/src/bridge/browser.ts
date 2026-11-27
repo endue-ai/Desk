@@ -148,6 +148,7 @@ function studioShell(stub: StudioStub, opened: string[]): StudioShellBridge {
     picture: async (agentId) => on("studio.agents.picture")({ agentId, scope }, "desk"),
     spaces: async () => (await on("studio.spaces.list")({ scope }, "desk")).spaces,
     space: async (spaceId) => on("studio.spaces.get")({ spaceId, scope }, "desk"),
+    ask: async (question) => on("studio.chat.ask")({ ...question, scope }, "desk"),
     async open(url) {
       opened.push(url);
     },

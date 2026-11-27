@@ -1,7 +1,8 @@
 /* The SQL console's editor: the component's parts, the highlighting of the plugin's lexer, the
    completion list and the find bar. Every colour, font, size, radius and duration comes from the
-   theme's --desk-* tokens; the highlighting takes the theme's status and category text colours, so
-   both schemes keep contrast. */
+   theme's --desk-* tokens; the highlighting takes the theme's status text colours and its code
+   colour for a name, and the marks of a match or a bracket the solid status colours, so both schemes
+   keep 4.5:1 for the text and 3:1 for the marks (tests/contrast.test.ts). */
 
 /* The editor component (ADR 0282) fills the console's box. Its own stylesheet draws its parts in
    fixed colours; every rule here starts at the box's id, so the theme's tokens win over it. */
@@ -78,7 +79,7 @@
 
 #editor-box .cm-searchMatch {
   background: color-mix(in srgb, var(--desk-warning) 26%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--desk-warning) 60%, transparent);
+  outline: 1px solid var(--desk-warning);
 }
 
 #editor-box .cm-searchMatch-selected {
@@ -91,12 +92,12 @@
 
 #editor-box .cm-matchingBracket {
   background: color-mix(in srgb, var(--desk-success) 22%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--desk-success) 60%, transparent);
+  outline: 1px solid var(--desk-success);
 }
 
 #editor-box .cm-nonmatchingBracket {
   background: color-mix(in srgb, var(--desk-danger) 22%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--desk-danger) 60%, transparent);
+  outline: 1px solid var(--desk-danger);
 }
 
 .tok-keyword {
@@ -122,11 +123,16 @@
 }
 
 .tok-name {
-  color: var(--desk-chart-5);
+  color: var(--desk-code-property);
 }
 
 .tok-param {
   color: var(--desk-danger-text);
+}
+
+/* A PL/pgSQL body's variables and parameters (plpgsql.js). */
+.tok-variable {
+  color: var(--desk-code-tag);
 }
 
 /* The completion list keeps the console's look: a popover of mono rows, the detail at the right. */

@@ -28,6 +28,8 @@ import {
   type ThemeIndex,
   type ThemeMarketListResult,
 } from "@endue-ai/bridge";
+import { literalFile } from "../policies/files-choices";
+import { globMatch } from "../policy";
 import { themeHandlers } from "./core-themes";
 import { type StubFolder, stubFolder } from "./folder";
 import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
@@ -114,21 +116,66 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     id: manifest.id,
     status: "ready",
     enabled: !off.has(manifest.id) && manifest.autoload !== true,
-    builtIn: manifest.id.startsWith("desk."),
+    ...(manifest.autoload === true && !off.has(manifest.id) ? { autoStart: true } : {}),
+    builtIn:
+      manifest.id.startsWith("desk.") ||
+      ["endue.eris", "endue.explorer", "endue.player"].includes(manifest.id),
     revision: 1,
     manifest,
   }));
   // A built-in plugin holds what its manifest declares, as desk-core grants it at install.
   const grants = Object.fromEntries(
-    plugins.filter((p) => p.builtIn).map((p) => [p.id, p.manifest?.permissions ?? []]),
+    plugins
+      .filter((p) => p.builtIn)
+      .map((p) => [
+        p.id,
+        (p.manifest?.permissions ?? []).filter(
+          (scope) =>
+            !(
+              (scope.permission === "fs:read" || scope.permission === "fs:write") &&
+              scope.paths.includes("/**")
+            ),
+        ),
+      ]),
   );
   const open = options.open ?? newWindow;
-  const registry = stubCommands((event) => stub.emit(event), {
-    grants,
-    open: ({ target, reveal }) => {
-      if (!reveal) open(target);
+  const registry = stubCommands(
+    (event) => {
+      if (
+        event.event === "cmd.invoked" &&
+        event.data.id === "desk.files.open" &&
+        event.data.caller === "endue.explorer"
+      ) {
+        const { args, caller } = event.data;
+        const path = typeof args?.path === "string" && literalFile(args.path);
+        if (
+          path &&
+          args?.plugin === undefined &&
+          args.grant !== false &&
+          plugins.some((plugin) => plugin.id === caller && plugin.builtIn && plugin.enabled) &&
+          registry
+            .state()
+            .grants.some(
+              ({ caller: owner, grant }) =>
+                owner === caller &&
+                grant.duration !== "once" &&
+                grant.permission.permission === "fs:read" &&
+                grant.permission.paths.some((pattern) => globMatch(pattern, path)),
+            )
+        ) {
+          stub.emit({ ...event, data: { ...event.data, fileOpenGranted: true } });
+          return;
+        }
+      }
+      stub.emit(event);
     },
-  });
+    {
+      grants,
+      open: ({ target, reveal }) => {
+        if (!reveal) open(target);
+      },
+    },
+  );
   const themes = themeHandlers(plugins, (event) => stub.emit(event));
   const served: StubHandlers = {
     ...registry.handlers,
@@ -137,9 +184,12 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     ...(options.download ? marketHandlers(options, plugins, themes, options.download) : {}),
     "perm.query": () => ({ grants: [] }),
     "plugin.list": () => ({ plugins: structuredClone(plugins) }),
-    "plugin.setEnabled": ({ plugin, enabled }) => {
+    "plugin.setEnabled": ({ plugin, enabled, automatic }, caller) => {
       const info = plugins.find((p) => p.id === plugin);
       if (!info) throw new Error(`no plugin ${plugin}`);
+      if (automatic && (!info.autoStart || (caller !== undefined && caller !== "desk")))
+        throw new StubError("permission_denied", "automatic activation is unavailable");
+      if (!automatic) delete info.autoStart;
       info.enabled = enabled;
       // The core drops a plugin's commands when it is turned off.
       if (!enabled) registry.drop(plugin);

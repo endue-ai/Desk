@@ -1,15 +1,16 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/desk/shell", "examples/plugin-native-wgpu"]
+# The compatibility crates use the same lockfile and can run their own tests.
+members = ["crates/desk-*", "crates/compat/*", "apps/desk/shell", "examples/plugin-native-wgpu"]
 # The shell downloads and builds CEF, so day-to-day commands skip it; `just check-shell` covers it.
-default-members = ["crates/*", "examples/plugin-native-wgpu"]
+default-members = ["crates/desk-*", "examples/plugin-native-wgpu"]
 
 [workspace.package]
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
-repository = "https://github.com/endue-ai/Desk"
+repository = "https://github.com/endue-ai/endue"
 publish = false
 
 [workspace.dependencies]
@@ -23,6 +24,7 @@ desk-crash = { path = "crates/desk-crash" }
 desk-index = { path = "crates/desk-index" }
 desk-memory = { path = "crates/desk-memory" }
 desk-pg = { path = "crates/desk-pg" }
+desk-ssh = { path = "crates/desk-ssh" }
 desk-plugin-host = { path = "crates/desk-plugin-host" }
 desk-compositor = { path = "crates/desk-compositor" }
 desk-surface = { path = "crates/desk-surface" }
@@ -79,3 +81,10 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 2
+
+[patch.crates-io]
+# These compatibility packages bridge the published consumers to the replacement implementations.
+# The registry CEF downloader and the upstream SSH protocol and text layout code remain in use.
+bzip2 = { path = "crates/compat/cef-bzip2" }
+fontdb = { path = "crates/compat/fontdb" }
+russh-util = { path = "crates/compat/russh-util" }

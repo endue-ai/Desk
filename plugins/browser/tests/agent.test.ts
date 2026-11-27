@@ -32,6 +32,7 @@ describe("the assistant in the Browser", () => {
     const page = await agent.read();
     expect(desk.of("web.read")).toEqual([{ viewId: "w-1", from: 0, max: CHARS, scope: SCOPE }]);
     expect(page).toMatchObject({ url: PAGE.url, title: "Home", text: PAGE.text, length: 9000 });
+    expect(page).toMatchObject({ loading: false, canGoBack: true, canGoForward: false });
     // The text went on: `more` is where the next part starts.
     expect(page.more).toBe(Array.from(PAGE.text).length);
     await agent.read({ from: 4000, chars: 999999 });
@@ -76,6 +77,42 @@ describe("the assistant in the Browser", () => {
     ]);
     // Each act is followed by a read of what came of it.
     expect(desk.of("web.read")).toHaveLength(5);
+  });
+
+  it("hands the core the agent's invocation for actions the core classifies", async () => {
+    const { desk, agent } = await started();
+    const invocation = { caller: "agent:eris", invocationId: "i-7" };
+    await agent.click({ ref: "e1" }, invocation);
+    await agent.click({ ref: "e1" }, { ...invocation, caller: "desk" });
+    await agent.scroll({ to: "bottom" });
+    await agent["navigate-key"]({ key: "PageDown" }, invocation);
+    await agent.type({ ref: "e2", text: "draft" }, invocation);
+    await agent.select({ ref: "e7", option: "한국어" }, invocation);
+    await agent.reload({}, invocation);
+    expect(desk.of("web.act").map((p) => p.invocationId)).toEqual([
+      "i-7",
+      undefined,
+      undefined,
+      "i-7",
+      "i-7",
+      "i-7",
+      "i-7",
+    ]);
+    expect(desk.of("web.read").every((p) => p.invocationId === undefined)).toBe(true);
+  });
+
+  it("follows, finds, zooms and stops in the active view", async () => {
+    const { desk, agent } = await started();
+    await agent.follow({ ref: "e1" });
+    await agent.find({ text: "Local fixture" });
+    await agent.zoom({ level: 1.25 });
+    await agent.stop();
+    expect(desk.of("web.act").map((p) => p.action)).toEqual([
+      { do: "follow", ref: "e1" },
+      { do: "find", text: "Local fixture" },
+      { do: "zoom", level: 1.25 },
+    ]);
+    expect(desk.of("web.go")).toEqual([{ viewId: "w-1", to: "stop" }]);
   });
 
   it("waits for the page an act loads before it reads", async () => {

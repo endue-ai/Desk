@@ -6,6 +6,7 @@
 // the cancel of that session. No DOM.
 
 import { quoteText, readableName } from "../../sql/quote.js";
+import { t as messageText } from "../../strings/index.js";
 import { clusterable, LABELS, on, partitionedTooOld, TITLES } from "./options.js";
 
 /**
@@ -22,8 +23,6 @@ import { clusterable, LABELS, on, partitionedTooOld, TITLES } from "./options.js
 export const FLOOR = 130000;
 const FOURTEEN = 140000;
 const SEVENTEEN = 170000;
-/** psql runs the plugin's sessions as this application (engines/postgres.js, PGAPPNAME). */
-export const OWN_APPLICATION = "endue Desk";
 /** A size read waits this long for a lock another session holds, then says so. */
 export const LOCK_TIMEOUT = "SET lock_timeout = 2000";
 
@@ -55,7 +54,10 @@ export function tooOld(
 ) {
   return version >= FLOOR
     ? ""
-    : `${conn} runs PostgreSQL ${server}: maintenance from this form needs PostgreSQL 13 or later.`;
+    : messageText("features.maintenance.sql.runsPostgresqlMaintenanceFromThisForm", {
+        conn: String(conn),
+        server: String(server),
+      });
 }
 
 /**
@@ -83,9 +85,14 @@ export function statementOf(plan, facts) {
     const sql = [TITLES[op], opts.length ? `(${opts.join(", ")})` : "", what.join(", ")];
     const problem =
       target.kind === "schema" && what.length === 0
-        ? `Schema ${target.schema} holds no table to ${op}.`
+        ? messageText("features.maintenance.sql.schemaHoldsNoTableTo", {
+            schema: String(target.schema),
+            op: String(op),
+          })
         : target.kind === "index"
-          ? `${TITLES[op]} runs on a table, a schema or the database.`
+          ? messageText("features.maintenance.sql.runsOnATableASchema", {
+              value: String(TITLES[op]),
+            })
           : "";
     return { sql: sql.filter(Boolean).join(" "), problem };
   }
@@ -108,16 +115,21 @@ export function statementOf(plan, facts) {
   if (target.kind === "database")
     return { sql: ["CLUSTER", options].join(" ").trim(), problem: "" };
   if (target.kind === "schema")
-    return { sql: "CLUSTER", problem: "CLUSTER runs on a table or on the whole database." };
+    return {
+      sql: "CLUSTER",
+      problem: messageText("features.maintenance.sql.clusterRunsOnATableOr"),
+    };
   const using = target.kind === "index" ? target.index : o.using;
   const table = name(target.schema, target.table);
   const sql = ["CLUSTER", options, table, using ? `USING ${name("", using)}` : ""];
   const problem = !using
-    ? "Pick the index CLUSTER orders the table by."
+    ? messageText("features.maintenance.sql.pickTheIndexClusterOrdersThe")
     : partitionedTooOld(facts)
-      ? "CLUSTER of a partitioned table needs PostgreSQL 15 or later."
+      ? messageText("features.maintenance.sql.clusterOfAPartitionedTableNeeds")
       : target.kind === "index" && !facts.indexes.some((i) => i.name === using && clusterable(i))
-        ? `CLUSTER cannot order a table by ${using}: it needs a valid, whole btree or GiST index.`
+        ? messageText("features.maintenance.sql.clusterCannotOrderATableBy", {
+            using: String(using),
+          })
         : "";
   return { sql: sql.filter(Boolean).join(" "), problem };
 }
@@ -217,10 +229,12 @@ export function statsQueries(/** @type {Target} */ t) {
   ];
 }
 
-/** The run's own session: the plugin's, this role's, this database's, running this statement. */
+/** The run's own session: the plugin's, this sign-in's, this database's, running this statement. Its
+ * application name and sign-in are this session's own, so a connection's own application name or
+ * role (PG-12) finds it too. */
 const own = (/** @type {string} */ sql) =>
   [
-    `a.application_name = ${text(OWN_APPLICATION)} AND a.usename = current_user`,
+    "a.application_name = pg_catalog.current_setting('application_name') AND a.usename = session_user",
     "AND a.datname = current_database() AND a.pid <> pg_catalog.pg_backend_pid()",
     `AND a.state = 'active' AND a.query <> '' AND starts_with(${text(sql)}, a.query)`,
   ].join(" ");

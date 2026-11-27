@@ -3,6 +3,7 @@
 // bridge only, as a community plugin would. The tested modules take the bridge from here.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { defineElements } from "@endue-ai/ui";
+import { installAgentCommands } from "./agent-commands.js";
 import { createApp } from "./app.js";
 import { createAsk } from "./ask.js";
 import { createView } from "./view.js";
@@ -51,6 +52,10 @@ defineUiPlugin({
         stop: () => void on().chat(shownId()).stop(),
         access: (access) => on().chat(shownId()).setAccess(access),
         fresh: () => on().local(shownId(), "new-session"),
+        open: (id) => on().local(shownId(), "open", { id }),
+        older: () => on().chat(shownId()).older(),
+        more: () => on().moreSessions(shownId()),
+        preview: (id) => on().preview(shownId(), id),
         link: (href) => void on().studioActions.link(href),
       },
       flow: {
@@ -76,16 +81,7 @@ defineUiPlugin({
           yes: "Allow and send",
         }),
     });
-    // The agent bar's New agent (and the palette) asks for the New agent page.
-    ctx.commands.on("endue.agents.new", () => on().create());
-    // An agent window's Studio board asks for one endue agent's Studio, at a facet: the desk
-    // never sends the person to endue.ai for it.
-    ctx.commands.on("endue.agents.studio", (args) => {
-      const { agent, facet } = /** @type {{ agent?: unknown, facet?: unknown }} */ (args ?? {});
-      if (typeof agent !== "string" || !agent)
-        throw new Error("endue.agents.studio needs an agent");
-      on().studio(`endue:${agent}`, typeof facet === "string" ? facet : "");
-    });
+    installAgentCommands(ctx, app);
     // Signing in happens in the desk's account menu: look again when the person comes back.
     window.addEventListener("focus", () => {
       if (on().sides.endue.state === "signed-out") void on().refreshEndue();

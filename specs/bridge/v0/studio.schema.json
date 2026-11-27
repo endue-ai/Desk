@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/studio.schema.json",
-  "title": "Desk bridge v0: studio",
+  "title": "endue bridge v0: studio",
   "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one and studio.agents.picture its face; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
   "$defs": {
     "StudioAgentId": {

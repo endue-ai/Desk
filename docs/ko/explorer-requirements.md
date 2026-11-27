@@ -1,4 +1,4 @@
-# endue Desk 탐색기(Explorer) 요구사항
+# endue 탐색기(Explorer) 요구사항
 
 2026-10-31 · Team endue
 

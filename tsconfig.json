@@ -3,7 +3,10 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": false,
-    "paths": { "@endue-ai/formats/*": ["./plugins/formats/lib/*"] }
+    "paths": {
+      "@endue-ai/formats/*": ["./plugins/formats/lib/*"],
+      "@endue-ai/plugin-sdk/testing/theme": ["./packages/plugin-sdk/src/testing/theme.ts"]
+    }
   },
   "include": [
     "packages/*/src",

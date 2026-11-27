@@ -17,6 +17,8 @@ goes, and the card offers "Open GitHub board" for after. Undo on the card switch
 in force before and turns off what Apply turned on. Removing the pack leaves `desk.github`: it is not
 nested in the pack, only named. "Set up a service…" asks which service first.
 
+Eris can also open the GitHub board or timeline after the pack is enabled.
+
 ```bash
 pnpm exec vitest run plugins/pack-github
 cargo run -p desk-cli -- plugin validate plugins/pack-github

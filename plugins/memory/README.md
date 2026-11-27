@@ -13,6 +13,7 @@ community folder format, on the public bridge only. It autoloads: off until the 
 | Forget one; forget everything, once asked in the page's own dialog | `memory.forget` (`id`, or `all` with the kind shown) |
 
 `memory.changed` reads the list again, so an edit elsewhere (Eris, `facts.yaml` by hand) shows at once.
+Agents can open Memory, use `endue.memory.find { query?, kind? }` or request `endue.memory.forget { id }` for one entry after approval (ADR 0389).
 At the size the desk first opens a window (a 400×263 page) the header keeps two rows and the rest is the list.
 
 | Permission | Why |

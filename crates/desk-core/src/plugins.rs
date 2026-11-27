@@ -31,6 +31,8 @@ struct Entry {
 struct Store {
     #[serde(default)]
     enabled: BTreeMap<String, bool>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    automatic: BTreeSet<String>,
 }
 
 /// Whether `bytes` are a plugin store file (plugins.json).
@@ -116,7 +118,20 @@ impl PluginRegistry {
         if library(&self.entries[index]) {
             return Some(self.info(index));
         }
+        self.store.automatic.remove(id);
         self.store.enabled.insert(id.to_owned(), enabled);
+        self.save();
+        Some(self.info(index))
+    }
+
+    /// Change an eligible plugin's automatic activation without creating a manual override.
+    pub(crate) fn set_automatic(&mut self, id: &str, enabled: bool) -> Option<PluginInfo> {
+        let index = self.entries.iter().position(|e| e.id == id)?;
+        if enabled {
+            self.store.automatic.insert(id.to_owned());
+        } else {
+            self.store.automatic.remove(id);
+        }
         self.save();
         Some(self.info(index))
     }
@@ -148,8 +163,7 @@ impl PluginRegistry {
     /// On or off as the persisted flag says, this run's holds aside (plugins.lock, ADR 0079).
     pub(crate) fn kept_enabled(&self, id: &str) -> Option<bool> {
         let entry = self.entries.iter().find(|e| e.id == id)?;
-        let flag = self.store.enabled.get(id).copied();
-        Some(library(entry) || flag.unwrap_or(!autoload(entry)))
+        Some(self.saved_enabled(entry))
     }
 
     pub fn list(&self) -> Vec<PluginInfo> {
@@ -212,21 +226,30 @@ impl PluginRegistry {
             } else {
                 PluginStatus::Failed
             },
-            enabled: !self.held_off.contains_key(&entry.id)
-                && (library(entry)
-                    || self
-                        .store
-                        .enabled
-                        .get(&entry.id)
-                        .copied()
-                        .unwrap_or(!autoload(entry))),
+            enabled: !self.held_off.contains_key(&entry.id) && self.saved_enabled(entry),
             built_in: entry.built_in,
             revision: entry.revision,
             manifest: entry.manifest.clone(),
             error: entry.error.clone(),
             folder: Some(folder(&entry.dir)),
             held_off: self.held_off.get(&entry.id).copied(),
+            auto_start: (entry.error.is_none()
+                && autoload(entry)
+                && !library(entry)
+                && !self.held_off.contains_key(&entry.id)
+                && !self.store.enabled.contains_key(&entry.id))
+            .then_some(true),
         }
+    }
+
+    fn saved_enabled(&self, entry: &Entry) -> bool {
+        library(entry)
+            || self
+                .store
+                .enabled
+                .get(&entry.id)
+                .copied()
+                .unwrap_or_else(|| !autoload(entry) || self.store.automatic.contains(&entry.id))
     }
 
     fn save(&self) {

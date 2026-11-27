@@ -4,7 +4,7 @@
 # build (the last Tauri build, from a commit before Stage 1 of #32 ended, or a CEF one); the second and
 # third are builds of the desk.
 #   e2e/smoke/update-two-hops.sh <dist 1> <dist 2> <dist 3>
-# Each dist is a release folder as scripts/release-collect.mjs leaves it (endue-desk_<v>_<target>.<ext>
+# Each dist is a release folder as scripts/release-collect.mjs leaves it (endue_<v>_<target>.<ext>
 # with its .sig), the version read from the names. The three builds must carry the updater key whose
 # private half is in TAURI_SIGNING_PRIVATE_KEY (and _PASSWORD) and the origin
 # http://127.0.0.1:<DESK_SMOKE_PORT>/desk (19846 unless set): the release workflow's
@@ -24,6 +24,20 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ "$#" == 1 && "$1" == --github-rename ]]; then
+  # The revision that shipped GitHub tag discovery (#516). Only the test driver is added to it.
+  revision=bd831d7d34abfb4e011686d0aa1baa5949430ec9
+  work="$(mktemp -d)"
+  trap 'rm -rf "$work"' EXIT
+  mkdir "$work/old" "$work/catalog"
+  git -C "$root" archive "$revision" Cargo.toml Cargo.lock crates apps/desk/shell examples/plugin-native-wgpu | tar -x -C "$work/old"
+  cp "$root/crates/desk-update/tests/repository_rename.rs" "$work/old/crates/desk-update/tests/"
+  export DESK_RENAME_SMOKE_DIR="$work/catalog"
+  export DESK_RENAME_SMOKE_PUBLISHER="$root/scripts/github-upgrade-path.mjs"
+  DESK_RENAME_SMOKE_HOP=old CARGO_TARGET_DIR="$work/old-target" cargo test --locked --manifest-path "$work/old/Cargo.toml" -p desk-update --test repository_rename
+  DESK_RENAME_SMOKE_HOP=new cargo test --locked --manifest-path "$root/Cargo.toml" -p desk-update --test repository_rename
+  exit 0
+fi
 port="${DESK_SMOKE_PORT:-19846}"
 base="http://127.0.0.1:$port/desk"
 pubkey="${DESK_UPDATER_PUBKEY:-}"
@@ -62,28 +76,39 @@ trap cleanup EXIT
 
 [ "$#" -eq 3 ] || { echo "usage: update-two-hops.sh <dist 1> <dist 2> <dist 3>" >&2; exit 2; }
 case "$(uname -s)" in
-  Darwin) os=macos target=darwin-$([ "$(uname -m)" = arm64 ] && echo aarch64 || echo x86_64) ;;
-  Linux) os=linux target=linux-x86_64 ;;
+  Darwin) os=macos target=darwin-$([ "$(uname -m)" = arm64 ] && echo aarch64 || echo x86_64) ext=.app.tar.gz ;;
+  Linux) os=linux target=linux-x86_64 ext=.AppImage ;;
   *) echo "update-two-hops: the desk CLI has no Windows transport yet; make the hops by hand (#61)" >&2; exit 2 ;;
 esac
 [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ] || { echo "update-two-hops: TAURI_SIGNING_PRIVATE_KEY is not set" >&2; exit 2; }
 
-# The version in a dist's canonical names.
+# The first install and both updates must name the platform package of exactly one version.
+shopt -s nullglob
 version_of() {
-  local names=("$1"/endue-desk_*_"$target"*)
-  [ -e "${names[0]}" ] || fail "no endue-desk_<version>_$target file in $1"
-  local name="${names[0]##*/endue-desk_}"
-  echo "${name%%_"$target"*}"
+  local names=("$1"/endue_*_"$target$ext" "$1"/endue-desk_*_"$target$ext")
+  [ "${#names[@]}" -eq 1 ] || fail "expected one application package for $target"
+  local name="${names[0]##*/}" version prefix
+  version="${name#*_}"
+  version="${version%_"$target$ext"}"
+  prefix="$(node "$root/scripts/release-assets.mjs" desktop-prefix "$version")" || fail "invalid package version"
+  [ "$name" = "$prefix$target$ext" ] || fail "package has the wrong release name"
+  echo "$version"
 }
 
 step="setup"
 dists=("$(cd "$1" && pwd)" "$(cd "$2" && pwd)" "$(cd "$3" && pwd)")
-versions=("$(version_of "${dists[0]}")" "$(version_of "${dists[1]}")" "$(version_of "${dists[2]}")")
+versions=()
+prefixes=()
+for dist in "${dists[@]}"; do
+  version="$(version_of "$dist")"
+  versions+=("$version")
+  prefixes+=("$(node "$root/scripts/release-assets.mjs" desktop-prefix "$version")")
+done
 echo "update-two-hops: ${versions[0]} -> ${versions[1]} -> ${versions[2]} on $target"
 cli="${DESK_CLI:-}"
 if [ -z "$cli" ]; then
   cargo build -q -p desk-cli --manifest-path "$root/Cargo.toml" || fail "cargo build -p desk-cli"
-  cli="$root/target/debug/desk"
+  cli="$root/target/debug/endue"
 fi
 # A short folder: the desk socket's path under the data folder must fit in 104 bytes on macOS. Its
 # real path: Tauri's updater (a Tauri first build's) refuses to replace an app whose path holds a
@@ -98,9 +123,9 @@ sign() { pnpm --dir "$root" --filter @endue-ai/desk-app exec tauri signer sign "
 publish() {
   local n="$1" v="${versions[$1]}" dir="$work/origin/desk/releases/${versions[$1]}" index="$work/origin/desk/channels/beta/index.json"
   mkdir -p "$dir" "$(dirname "$index")"
-  cp "${dists[$n]}"/endue-desk_"$v"_* "$dir/"
+  cp "${dists[$n]}"/"${prefixes[$n]}"* "$dir/"
   node "$root/scripts/release-manifest.mjs" release "$dir" --version "$v" --base "$base" \
-    --notes "https://github.com/endue-ai/Desk/commits" --commit 0000000 >"$dir/release.json" || fail "release.json of $v"
+    --notes "https://github.com/endue-ai/endue/commits" --commit 0000000 >"$dir/release.json" || fail "release.json of $v"
   sign "$dir/release.json"
   node "$root/scripts/release-manifest.mjs" list "$index" --channel beta --release "$dir/release.json" >"$index.next" || fail "listing $v"
   mv "$index.next" "$index"
@@ -119,7 +144,7 @@ step="install"
 case "$os" in
   macos)
     mkdir -p "$work/Applications"
-    tar -xzf "${dists[0]}/endue-desk_${versions[0]}_$target.app.tar.gz" -C "$work/Applications" || fail "unpacking the first build"
+    tar -xzf "${dists[0]}/${prefixes[0]}$target$ext" -C "$work/Applications" || fail "unpacking the first build"
     apps=("$work/Applications/"*.app)
     installed="${apps[0]}"
     executable() { plutil -extract CFBundleExecutable raw -o - "$installed/Contents/Info.plist"; }
@@ -127,9 +152,9 @@ case "$os" in
     ;;
   linux)
     mkdir -p "$work/Applications"
-    installed="$work/Applications/endue-desk.AppImage"
-    install -m 755 "${dists[0]}/endue-desk_${versions[0]}_$target.AppImage" "$installed"
-    executable() { echo "endue-desk.AppImage"; }
+    installed="$work/Applications/endue.AppImage"
+    install -m 755 "${dists[0]}/${prefixes[0]}$target$ext" "$installed"
+    executable() { echo "endue.AppImage"; }
     app="$installed"
     ;;
 esac

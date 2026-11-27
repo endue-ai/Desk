@@ -108,6 +108,28 @@ describe("the page view", () => {
     expect(scrolled.at(-1)?.closest(".page")).toBe($$(".page")[1]);
   });
 
+  it("shares navigation, zoom and document selection with the agent view", async () => {
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    await view.show(shown(DOC));
+    expect(view.position().pageText).toContain("needle");
+    await view.navigate({ heading: "Part two" });
+    expect(scrolled.at(-1)?.textContent).toBe("Part two");
+    await view.navigate({ text: "commented words" });
+    expect($("#find-count").textContent).toBe("1 of 1");
+    expect(view.zoom(1.25).zoom).toBe(1.25);
+    const range = document.createRange();
+    range.selectNodeContents($(".page-body"));
+    const selection = document.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    expect(view.position().selection).toContain("Intro");
+    await expect(view.navigate({ page: 3 })).rejects.toThrow(/outside/);
+    await expect(view.navigate({ page: 1, text: "Intro" })).rejects.toThrow(/exactly one/);
+  });
+
   it("selecting a comment highlights its range in the page", async () => {
     Element.prototype.scrollIntoView = vi.fn();
     await view.show(shown(DOC));

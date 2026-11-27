@@ -3,39 +3,31 @@
 // schema, so callers see what to send, and as agents' tools, the two reads marked so (ADR 0088);
 // every action goes through the command registry (ADR 0032).
 // Reads cover the open calendars, or the calendar file the settings name when none is open.
-import { createEvent } from "./calendar/edit.js";
+import { SPECS } from "./agent-specs.js";
+import { createEvent, deleteEvent, fieldsOf, updateEvent } from "./calendar/edit.js";
 import { conflicts, instanceName, toItem } from "./calendar/items.js";
+import { MODES, span } from "./calendar/layout.js";
 import { occurrences } from "./calendar/model.js";
+import { dayFrom } from "./date.js";
 import { parseRule } from "./ical/rrule.js";
-import { DAY, MINUTE } from "./ical/values.js";
+import { DAY, MINUTE, rfc3339 } from "./ical/values.js";
 import { ianaZone } from "./ical/zones.js";
+import { isLayerId } from "./layer.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
+ * @typedef {import("@endue-ai/plugin-sdk").Invocation} Invocation
  * @typedef {import("./calendar.js").Cal} Cal
+ * @typedef {import("./calendar.js").At} At
+ * @typedef {import("./calendar/model.js").Occurrence} Occurrence
+ * @typedef {import("./calendar/layout.js").Mode} Mode
  * @typedef {import("./ical/zones.js").Zone} Zone
  * @typedef {import("./ical/component.js").Document} Document
  */
 
 const PLUGIN = "endue.calendar";
-/** The commands that only read the calendars. */
-const READS = new Set(["endue.calendar.events", "endue.calendar.conflicts"]);
 /** The longest span one call reads. */
 const MAX_DAYS = 366;
-
-const TIME = {
-  type: "string",
-  description:
-    "RFC 3339 with an offset (2026-10-30T09:00:00+09:00), a local time (2026-10-30T09:00) or a date (2026-10-30)",
-};
-const SPAN = {
-  type: "object",
-  properties: {
-    from: { ...TIME, description: `${TIME.description}; today when absent` },
-    to: { ...TIME, description: `${TIME.description}; seven days after from when absent` },
-  },
-  additionalProperties: false,
-};
 
 /**
  * A time argument as a wall time in `zone` and whether it was a bare date.
@@ -55,7 +47,64 @@ function timeArg(value, zone) {
   }
   if (!/(Z|[+-]\d{2}:\d{2})$/i.test(text)) return undefined;
   const instant = Date.parse(text);
-  return Number.isNaN(instant) ? undefined : { wall: instant + zone.offset(instant), date: false };
+  return Number.isNaN(instant)
+    ? undefined
+    : { wall: instant + zone.offset(instant), date: false, instant };
+}
+
+const dateOf = (/** @type {number} */ day) => new Date(day * DAY).toISOString().slice(0, 10);
+
+const itemOf = (/** @type {Cal} */ cal, /** @type {Occurrence} */ occ) => {
+  const item = toItem(occ, cal.model, { connector: PLUGIN, instance: instanceName(cal.name) });
+  return { ...item, raw: { ...item.raw, path: cal.path } };
+};
+
+/** A new event's fields for the editor or the calendar buffer. */
+function prepare(/** @type {Record<string, unknown>} */ args, /** @type {Zone} */ display) {
+  const zoneName = typeof args.timeZone === "string" && args.timeZone ? args.timeZone : display.id;
+  const zone = ianaZone(zoneName);
+  if (!zone) throw new Error(`timeZone: ${zoneName} is not a time zone.`);
+  const startArg = timeArg(args.start, zone);
+  if (args.start !== undefined && !startArg)
+    throw new Error(`start: ${String(args.start)} is not a time.`);
+  const allDay = typeof args.allDay === "boolean" ? args.allDay : (startArg?.date ?? false);
+  const endArg = timeArg(args.end, zone);
+  if (args.end !== undefined && !endArg) throw new Error(`end: ${String(args.end)} is not a time.`);
+  if (endArg && !startArg) throw new Error("Give a start before giving an end.");
+  const start = startArg
+    ? allDay
+      ? Math.floor(startArg.wall / DAY) * DAY
+      : startArg.wall
+    : undefined;
+  const end =
+    start === undefined
+      ? undefined
+      : endArg
+        ? allDay
+          ? Math.ceil(endArg.wall / DAY) * DAY
+          : endArg.wall
+        : start + (allDay ? DAY : 60 * MINUTE);
+  if (start !== undefined && end !== undefined && end <= start)
+    throw new Error("end must come after start.");
+  const rrule = typeof args.rrule === "string" ? args.rrule.trim() : undefined;
+  const parsed = rrule ? parseRule(rrule) : undefined;
+  if (parsed && "error" in parsed) throw new Error(`rrule: ${parsed.error}.`);
+  return {
+    zone,
+    start,
+    end,
+    fields: {
+      ...(typeof args.title === "string" ? { title: args.title.trim() } : {}),
+      ...(typeof args.location === "string" ? { location: args.location } : {}),
+      ...(typeof args.description === "string" ? { description: args.description } : {}),
+      ...(rrule !== undefined ? { rrule: rrule || null } : {}),
+      ...(Number.isInteger(args.reminder)
+        ? { reminder: /** @type {number} */ (args.reminder) }
+        : {}),
+      allDay,
+      zone: allDay ? "" : zone.id,
+    },
+  };
 }
 
 /**
@@ -68,30 +117,24 @@ function timeArg(value, zone) {
  * @param {() => string} host.uid
  * @param {() => Promise<Cal>} host.readDefault
  * @param {() => Promise<unknown>} host.openDefault
+ * @param {ReturnType<typeof import("./layer.js").createLayer>} host.layer
+ * @param {() => {mode: Mode, anchor: number, weekStart: number,
+ *   event?: { cal: Cal, occ: Occurrence } | undefined}} host.screen
+ * @param {(view?: Mode, day?: number) => void} host.navigate
+ * @param {(at?: At) => unknown} host.compose
  * @param {(cal: Cal, doc: Document, message: string) => void} host.change
  * @param {(cal: Cal) => Cal} host.writable
+ * @param {(cal: Cal, byAgent: boolean) => Promise<unknown>} host.save
  */
 export function createAgentCommands(ctx, host) {
-  /**
-   * @param {string} id
-   * @param {string} title
-   * @param {string} description
-   * @param {object} argsSchema
-   * @param {(args: Record<string, unknown>) => unknown} run
-   */
-  const provide = (id, title, description, argsSchema, run) => {
-    void ctx.bridge
-      .call("cmd.register", {
-        id,
-        title,
-        description,
-        keywords: ["calendar", "agenda"],
-        argsSchema,
-        agent: true,
-        ...(READS.has(id) ? { readOnly: true } : {}),
-      })
-      .catch(() => {});
-    ctx.commands.on(id, (args) => run(/** @type {Record<string, unknown>} */ (args ?? {})));
+  const provide = (
+    /** @type {string} */ id,
+    /** @type {(args: Record<string, unknown>, invocation?: Invocation) => unknown} */ run,
+  ) => {
+    if (!(id in SPECS)) throw new Error(`${id} has no spec`);
+    ctx.commands.on(id, (args, invocation) =>
+      run(/** @type {Record<string, unknown>} */ (args ?? {}), invocation),
+    );
   };
 
   /** The span a call asks about, as instants. */
@@ -112,144 +155,236 @@ export function createAgentCommands(ctx, host) {
   const readable = async () => {
     const open = host.calendars();
     if (open.length) return open;
-    return [await host.readDefault()];
+    try {
+      return [await host.readDefault()];
+    } catch (error) {
+      if (error instanceof Error && /: not_found\.$/.test(error.message)) return [];
+      throw error;
+    }
   };
 
   const itemsIn = async (/** @type {Record<string, unknown>} */ args) => {
     const { from, to } = spanOf(args);
-    return (await readable()).flatMap((cal) =>
+    await host.layer.ready();
+    const zone = host.display();
+    const fileEntries = (await readable()).flatMap((cal) =>
       occurrences(cal.model, from, to).map((occ) => ({
         occ,
-        item: toItem(occ, cal.model, { connector: PLUGIN, instance: instanceName(cal.name) }),
+        item: itemOf(cal, occ),
       })),
     );
+    const at = (/** @type {number} */ utc) => rfc3339(utc, zone.offset(utc));
+    const layerEntries = host.layer.entries(from, to, zone).map(({ occ, item }) => ({
+      occ,
+      item: {
+        ...item,
+        id: occ.id.slice(0, 512),
+        title: occ.title.slice(0, 1000),
+        start: at(occ.start),
+        end: at(occ.end),
+        raw: { ...item.raw, readOnly: true },
+      },
+    }));
+    return [...fileEntries, ...layerEntries].sort((a, b) => a.occ.start - b.occ.start);
   };
 
-  provide(
-    "endue.calendar.events",
-    "Calendar: list events",
-    "The events between from and to in the open calendars, as specs/item/v0 event items, earliest first.",
-    {
-      ...SPAN,
-      properties: {
-        ...SPAN.properties,
-        text: {
-          type: "string",
-          description: "Only events whose title, place or notes hold this text",
-        },
-      },
-    },
-    async (args) => {
-      const words = typeof args.text === "string" ? args.text.trim().toLowerCase() : "";
-      const found = (await itemsIn(args)).filter(
-        ({ occ }) =>
-          !words ||
-          [occ.title, occ.location, occ.description].some((t) => t?.toLowerCase().includes(words)),
-      );
-      return { timeZone: host.display().id, items: found.map((f) => f.item) };
-    },
-  );
+  provide("endue.calendar.events", async (args) => {
+    const words = typeof args.text === "string" ? args.text.trim().toLowerCase() : "";
+    const found = (await itemsIn(args)).filter(
+      ({ item }) =>
+        !words ||
+        [item.title, item.location, item.body].some((t) => t?.toLowerCase().includes(words)),
+    );
+    return { timeZone: host.display().id, items: found.map((f) => f.item) };
+  });
 
-  provide(
-    "endue.calendar.conflicts",
-    "Calendar: find overlapping events",
-    "Pairs of busy events between from and to that overlap, with when the overlap starts and ends.",
-    SPAN,
-    async (args) => {
-      const found = await itemsIn(args);
-      const byOcc = new Map(found.map((f) => [f.occ, f.item]));
-      const zone = host.display();
-      const at = (/** @type {number} */ utc) =>
-        new Date(utc + zone.offset(utc)).toISOString().slice(0, 16);
-      return {
-        timeZone: zone.id,
-        conflicts: conflicts(found.map((f) => f.occ)).map((c) => ({
-          a: byOcc.get(c.a),
-          b: byOcc.get(c.b),
-          from: at(c.from),
-          to: at(c.to),
-          minutes: Math.round((c.to - c.from) / MINUTE),
-        })),
-      };
-    },
-  );
+  provide("endue.calendar.conflicts", async (args) => {
+    const found = await itemsIn(args);
+    const byOcc = new Map(found.map((f) => [f.occ, f.item]));
+    const zone = host.display();
+    const at = (/** @type {number} */ utc) =>
+      new Date(utc + zone.offset(utc)).toISOString().slice(0, 16);
+    return {
+      timeZone: zone.id,
+      conflicts: conflicts(found.map((f) => f.occ)).map((c) => ({
+        a: byOcc.get(c.a),
+        b: byOcc.get(c.b),
+        from: at(c.from),
+        to: at(c.to),
+        minutes: Math.round((c.to - c.from) / MINUTE),
+      })),
+    };
+  });
 
-  provide(
-    "endue.calendar.add",
-    "Calendar: add an event",
-    "Adds an event to the calendar on screen (or the default calendar file) and answers it as an item. The change is unsaved until the person saves.",
-    {
-      type: "object",
-      properties: {
-        title: { type: "string", minLength: 1 },
-        start: TIME,
-        end: {
-          ...TIME,
-          description: `${TIME.description}; the default length after start when absent`,
-        },
-        allDay: { type: "boolean" },
-        timeZone: {
-          type: "string",
-          description: "An IANA zone for local times; the person's zone when absent",
-        },
-        location: { type: "string" },
-        description: { type: "string" },
-        rrule: { type: "string", description: "An RFC 5545 RRULE value, FREQ=WEEKLY;BYDAY=MO" },
-        reminder: { type: "integer", description: "Minutes before the start" },
+  const calendarOf = (/** @type {unknown} */ target) => {
+    if (target === undefined) return undefined;
+    const cal = host.calendars().find((cal) => cal.buffer === target || cal.path === target);
+    if (!cal) throw new Error("Name an open calendar by file path or buffer ID.");
+    return cal;
+  };
+
+  const current = () => {
+    const screen = host.screen();
+    const range = span(screen.mode, screen.anchor, screen.weekStart);
+    const cal = host.shown();
+    return {
+      view: screen.mode,
+      date: dateOf(screen.anchor),
+      span: { from: dateOf(range.from), to: dateOf(range.to) },
+      calendar: cal
+        ? { name: cal.name, path: cal.path, buffer: cal.buffer, modified: cal.modified }
+        : null,
+      event: screen.event ? itemOf(screen.event.cal, screen.event.occ) : null,
+    };
+  };
+
+  provide("endue.calendar.current", current);
+  provide("endue.calendar.show", (args) => {
+    const { date, view } = args;
+    const mode = /** @type {Mode | undefined} */ (view);
+    if (mode !== undefined && !MODES.includes(mode))
+      throw new Error("Use month, week, day or agenda.");
+    const now = host.now();
+    const today = Math.floor((now + host.display().offset(now)) / DAY);
+    const day = typeof date === "string" ? dayFrom(date, today) : undefined;
+    if (date !== undefined && day === undefined)
+      throw new Error("Give a date, such as YYYY-MM-DD.");
+    host.navigate(mode, day);
+    return current();
+  });
+
+  provide("endue.calendar.new", (args) => {
+    const input = args.fields;
+    if (input === undefined) return host.compose();
+    if (!input || typeof input !== "object" || Array.isArray(input))
+      throw new Error("Give the fields of the new event.");
+    const { fields, start, end } = prepare(
+      /** @type {Record<string, unknown>} */ (input),
+      host.display(),
+    );
+    return host.compose({
+      fields: { ...fields, ...(start === undefined ? {} : { start, end }) },
+    });
+  });
+
+  provide("endue.calendar.add", async (args) => {
+    const { fields, start, end, zone } = prepare(args, host.display());
+    if (start === undefined || end === undefined) throw new Error("Give the event's start.");
+    const { title } = fields;
+    if (!title) throw new Error("Give the event's title.");
+    const named = calendarOf(args.calendar);
+    if (!named && !host.shown()) await host.openDefault();
+    const cal = named ?? host.shown();
+    if (!cal) throw new Error("No calendar is open.");
+    host.writable(cal);
+    const { doc, uid } = createEvent(
+      cal.doc,
+      {
+        rrule: null,
+        reminder: null,
+        ...fields,
+        title,
+        start,
+        end,
       },
-      required: ["title", "start"],
-      additionalProperties: false,
-    },
-    async (args) => {
-      const zoneName =
-        typeof args.timeZone === "string" && args.timeZone ? args.timeZone : host.display().id;
-      const zone = ianaZone(zoneName);
-      if (!zone) throw new Error(`timeZone: ${zoneName} is not a time zone.`);
-      const start = timeArg(args.start, zone);
-      if (!start) throw new Error(`start: ${String(args.start)} is not a time.`);
-      const allDay = typeof args.allDay === "boolean" ? args.allDay : start.date;
-      const end = args.end === undefined ? undefined : timeArg(args.end, zone);
-      if (args.end !== undefined && !end)
-        throw new Error(`end: ${String(args.end)} is not a time.`);
-      const from = allDay ? Math.floor(start.wall / DAY) * DAY : start.wall;
-      const until = end
-        ? allDay
-          ? Math.ceil(end.wall / DAY) * DAY
-          : end.wall
-        : from + (allDay ? DAY : 60 * MINUTE);
-      if (until <= from) throw new Error("end must come after start.");
-      const rrule = typeof args.rrule === "string" ? args.rrule.trim() : undefined;
-      const parsed = rrule ? parseRule(rrule) : undefined;
-      if (parsed && "error" in parsed) throw new Error(`rrule: ${parsed.error}.`);
-      if (!host.shown()) await host.openDefault();
-      const cal = host.shown();
-      if (!cal) throw new Error("No calendar is open.");
-      host.writable(cal);
-      const title = String(args.title).trim();
-      const { doc, uid } = createEvent(
-        cal.doc,
-        {
-          title,
-          allDay,
-          start: from,
-          end: until,
-          zone: allDay ? "" : zone.id,
-          ...(typeof args.location === "string" ? { location: args.location } : {}),
-          ...(typeof args.description === "string" ? { description: args.description } : {}),
-          rrule: rrule ?? null,
-          reminder: Number.isInteger(args.reminder) ? /** @type {number} */ (args.reminder) : null,
-        },
-        { now: host.now(), uid: host.uid, display: host.display() },
-      );
-      host.change(cal, doc, `Added ${title}.`);
-      const first = occurrences(cal.model, zone.toUtc(from) - DAY, zone.toUtc(until) + DAY).find(
-        (o) => o.uid === uid,
-      );
-      return {
-        item:
-          first &&
-          toItem(first, cal.model, { connector: PLUGIN, instance: instanceName(cal.name) }),
-      };
-    },
-  );
+      { now: host.now(), uid: host.uid, display: host.display() },
+    );
+    host.change(cal, doc, `Added ${title}.`);
+    const first = occurrences(cal.model, zone.toUtc(start) - DAY, zone.toUtc(end) + DAY).find(
+      (o) => o.uid === uid,
+    );
+    return {
+      item: first && itemOf(cal, first),
+    };
+  });
+
+  /** The event named by its id and start in any open writable calendar. */
+  const namedEvent = (/** @type {Record<string, unknown>} */ args) => {
+    if (isLayerId(args.id)) throw new Error("The system calendar event is read-only here.");
+    const cal = calendarOf(args.calendar);
+    const open = cal ? [cal] : host.calendars();
+    if (open.length === 0)
+      throw new Error("No calendar is open: open one, or add to the default one first.");
+    const zone = host.display();
+    const at = timeArg(args.start, zone);
+    if (!at) throw new Error(`start: ${String(args.start)} is not a time.`);
+    const near = at.instant ?? zone.toUtc(at.wall);
+    const matches = open.flatMap((cal) =>
+      occurrences(cal.model, near - DAY, near + DAY)
+        .filter((occ) => occ.id === args.id && (at.date ? occ.start >= near : occ.start === near))
+        .map((occ) => ({ cal, occ })),
+    );
+    if (matches.length > 1)
+      throw new Error("More than one calendar has this event. Give the file path.");
+    const match = matches[0];
+    if (!match) throw new Error(`There is no event ${String(args.id)} near that start.`);
+    host.writable(match.cal);
+    const scope = args.scope === "following" || args.scope === "all" ? args.scope : "one";
+    return { ...match, scope: /** @type {"one" | "following" | "all"} */ (scope) };
+  };
+
+  provide("endue.calendar.update", async (args) => {
+    const { cal, occ, scope } = namedEvent(args);
+    const display = host.display();
+    const fields = fieldsOf(occ, display);
+    const zoneName =
+      typeof args.timeZone === "string" && args.timeZone
+        ? args.timeZone
+        : fields.zone || display.id;
+    const zone = ianaZone(zoneName);
+    if (!zone) throw new Error(`timeZone: ${zoneName} is not a time zone.`);
+    const length = fields.end - fields.start;
+    const moved = args.newStart === undefined ? undefined : timeArg(args.newStart, zone);
+    if (args.newStart !== undefined && !moved)
+      throw new Error(`newStart: ${String(args.newStart)} is not a time.`);
+    const allDay = typeof args.allDay === "boolean" ? args.allDay : (moved?.date ?? fields.allDay);
+    const start = moved ? (allDay ? Math.floor(moved.wall / DAY) * DAY : moved.wall) : fields.start;
+    const end = args.end === undefined ? undefined : timeArg(args.end, zone);
+    if (args.end !== undefined && !end) throw new Error(`end: ${String(args.end)} is not a time.`);
+    const until = end ? (allDay ? Math.ceil(end.wall / DAY) * DAY : end.wall) : start + length;
+    if (until <= start) throw new Error("end must come after start.");
+    const rrule = typeof args.rrule === "string" ? args.rrule.trim() : undefined;
+    const parsed = rrule ? parseRule(rrule) : undefined;
+    if (parsed && "error" in parsed) throw new Error(`rrule: ${parsed.error}.`);
+    const text = (/** @type {unknown} */ v) => (typeof v === "string" ? { value: v } : undefined);
+    const next = {
+      ...fields,
+      ...(typeof args.title === "string" && args.title.trim() ? { title: args.title.trim() } : {}),
+      allDay,
+      start,
+      end: until,
+      zone: allDay ? "" : args.timeZone || moved ? zone.id : fields.zone,
+      ...(text(args.location) ? { location: args.location } : {}),
+      ...(text(args.description) ? { description: args.description } : {}),
+      ...(rrule !== undefined ? { rrule: rrule || null } : {}),
+      ...(Number.isInteger(args.reminder)
+        ? { reminder: /** @type {number} */ (args.reminder) }
+        : {}),
+    };
+    const context = { now: host.now(), uid: host.uid, display };
+    const doc = updateEvent(cal.doc, occ, /** @type {never} */ (next), scope, context);
+    host.change(cal, doc, `Changed ${next.title}.`);
+    const near = zone.toUtc(start);
+    const found = occurrences(cal.model, near - 2 * DAY, near + 2 * DAY).find(
+      (o) => o.uid === occ.uid,
+    );
+    return { item: found && itemOf(cal, found) };
+  });
+
+  provide("endue.calendar.delete", async (args) => {
+    const { cal, occ, scope } = namedEvent(args);
+    const context = { now: host.now(), uid: host.uid, display: host.display() };
+    host.change(cal, deleteEvent(cal.doc, occ, scope, context), `Deleted ${occ.title}.`);
+    return { deleted: occ.id };
+  });
+
+  provide("endue.calendar.save", async (args, invocation) => {
+    const byAgent = invocation?.caller.startsWith("agent:") === true;
+    if (byAgent && args.calendar === undefined)
+      throw new Error("Give the calendar file path or buffer ID.");
+    const cal = calendarOf(args.calendar) ?? host.shown();
+    if (!cal?.modified) return { path: null };
+    await host.save(cal, byAgent);
+    return { path: cal.path };
+  });
 }

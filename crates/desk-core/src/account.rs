@@ -155,7 +155,7 @@ impl Problem {
     /// The problem for people, in English.
     pub fn text(self) -> &'static str {
         match self {
-            Self::Offline => "Desk could not reach endue. Check your connection and try again.",
+            Self::Offline => "Could not reach endue ID. Check your connection and try again.",
             Self::Denied => "The sign-in was turned down in the browser.",
             Self::Expired => "The sign-in code expired. Sign in again for a new one.",
             Self::SlowDown => "endue asked the desk to slow down. Wait a moment and try again.",

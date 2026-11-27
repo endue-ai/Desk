@@ -35,7 +35,12 @@ export type {
   ViewSummary,
 } from "@endue-ai/bridge";
 export { BridgeCallError } from "@endue-ai/bridge";
-export { CommandFailed, type CommandInfo, type PluginCommands } from "./commands";
+export {
+  CommandFailed,
+  type CommandInfo,
+  type Invocation,
+  type PluginCommands,
+} from "./commands";
 export type {
   PluginEvents,
   PluginLog,
@@ -43,6 +48,7 @@ export type {
   PluginSettings,
   SurfaceOptions,
 } from "./context";
+export { CUSTOM_STYLE_ID, type CustomState } from "./custom";
 export { type PluginData, type PluginViews, readScope } from "./data";
 export type {
   DeskData,
@@ -121,6 +127,8 @@ export {
   type UniversalHandle,
   type UniversalOpenOptions,
   type UniversalViewElement,
+  universalItems,
+  universalParams,
 } from "./universal";
 export {
   assetUrl,

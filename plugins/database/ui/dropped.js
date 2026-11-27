@@ -3,10 +3,13 @@
 // (console-files.js), on the connection of the console on screen unless the file remembers one; a
 // .sql, .csv, .tsv or .json file is read with fs.read under the plugin's own grant, asked for once
 // with perm.request (a drop hands over the path, not access to it), a .sql file only up to the
-// editor's limit; a SQLite file opens as a connection. No DOM.
+// editor's limit, a file to import only its first bytes (import-copy/start.js: PostgreSQL copies the
+// rest as it goes, PG-60); a SQLite file opens as a connection. No DOM.
 
 import { EDITOR_MAX, readScope, withGrant } from "./console-files.js";
 import { dropAction } from "./drops.js";
+import { headOf } from "./import-copy/start.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -18,8 +21,8 @@ import { dropAction } from "./drops.js";
  *     choose(ref: string | undefined, title: string): Promise<Connection | undefined> },
  *   consoles: { current(): { kind: string, connection: string } | null,
  *     open(conn: Connection): Promise<unknown> },
- *   importer: { start(input: { path: string, text: string, format: import("./import.js").Format,
- *     into?: Into }): Promise<void> },
+ *   importer: { start(input: { path: string, head: import("./import-copy/start.js").Head,
+ *     text?: string, format: import("./import-copy/wizard.js").CopyFormat, into?: Into }): Promise<void> },
  *   files: { open(path: string, head: import("./console-files.js").Head,
  *     near: Connection | undefined): Promise<unknown> },
  *   view: { insert(text: string): void, focus(where: "editor"): void },
@@ -50,7 +53,12 @@ export function createDropped(deps) {
       });
     const file = await withGrant(deps.bridge, scope, call, `To open ${name} in Database`);
     if (length === undefined && file.content.length > MAX_BYTES)
-      throw new Error(`${name} is larger than ${MAX_BYTES / 1024 / 1024} MiB.`);
+      throw new Error(
+        t("dropped.isLargerThanMib", {
+          name: String(name),
+          value: String(MAX_BYTES / 1024 / 1024),
+        }),
+      );
     return file;
   };
   /** The connection of the console on screen. */
@@ -63,7 +71,7 @@ export function createDropped(deps) {
   const consoleFor = async () => {
     const on = here();
     if (on) return on;
-    const conn = await deps.manager.choose(undefined, "Database: open the SQL in which console?");
+    const conn = await deps.manager.choose(undefined, t("dropped.databaseOpenTheSqlInWhich"));
     if (!conn) return undefined;
     await deps.consoles.open(conn);
     deps.view.focus("editor");
@@ -81,7 +89,7 @@ export function createDropped(deps) {
    * Carry out a drop: undefined when it was (the effect agreed), "none" when nothing was done;
    * a refusal throws the sentence to say.
    * @param {Dropped} item
-   * @param {Into} [into] The explorer table it landed on, for an import.
+   * @param {Into & { format?: import("./import-copy/wizard.js").CopyFormat }} [into] The import target.
    */
   return async (item, into) => {
     const action = dropAction(item);
@@ -101,11 +109,17 @@ export function createDropped(deps) {
         return undefined;
       }
       case "import": {
-        const { content: text } = await read(action.path);
+        const format = into?.format ?? action.format;
+        const head = await headOf(deps.bridge, action.path, format === "xlsx");
+        const text =
+          head.whole && format !== "xlsx"
+            ? new TextDecoder().decode(Uint8Array.from(atob(head.data), (c) => c.charCodeAt(0)))
+            : undefined;
         await deps.importer.start({
           path: action.path,
-          text,
-          format: action.format,
+          head,
+          ...(text === undefined ? {} : { text }),
+          format,
           ...(into ? { into } : {}),
         });
         return undefined;

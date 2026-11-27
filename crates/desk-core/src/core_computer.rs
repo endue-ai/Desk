@@ -54,6 +54,7 @@ impl Core {
         let was = flag.is_raised();
         flag.raise();
         if !was {
+            self.clear_computer_approvals();
             self.activity(ComputerActivityState::Stopped, CORE, None, None, None, None);
         }
         !was
@@ -184,7 +185,7 @@ impl Core {
                     dx: lines(p.dx),
                     dy: lines(p.dy),
                 };
-                let reach = at.map_or(Reach::Frontmost, Reach::Point);
+                let reach = at.map_or(Reach::Pointer, Reach::Point);
                 let act = mouse_act(ApprovalAction::ComputerInputScroll, scroll, reach);
                 (
                     r.id,
@@ -271,6 +272,7 @@ impl Core {
             }
         } else if !flag.is_raised() {
             flag.raise();
+            self.clear_computer_approvals();
             self.activity(
                 ComputerActivityState::Stopped,
                 caller,

@@ -2,7 +2,7 @@
 
 `endue.reader` ("Reader"), the desk's reader for documents, e-books and comics, community format on
 the public SDK only. It opens `*.pdf` `*.xps` `*.oxps` `*.epub` `*.mobi` `*.azw` `*.azw3` `*.prc`
-`*.fb2` `*.cbz` `*.cbt` `*.cbr` `*.cb7` `*.djvu` `*.djv`, picked by first bytes, then extension.
+`*.fb2` `*.cbz` `*.cbt` `*.cbr` `*.cb7` `*.djvu` `*.djv`, picked by first bytes, then extension. Eris reads an open book's pages or chapters with `endue.reader.read { path?, from?, count? }` and finds words with `endue.reader.find { query }` (ADR 0088, `ui/agent.js`); a locked one waits for the person's password.
 
 PDF is pdf.js (`pdfjs-dist` 6.4.299, pinned in `package.json`, copied into `ui/vendor` by
 `node scripts/vendor-pdfjs.mjs`, ADR 0042), its pages read by byte ranges in a real worker. EPUB,
@@ -14,7 +14,7 @@ from an allowlist (no scripts, handlers or remote URLs) into a shadow root with 
 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed` (`.save` is refused),
 reads SDK byte ranges, asks once for a file's folder, follows files with `fs.watch`, and keeps
-position, zoom, bookmarks and notes per path in its store, never in the file. Asleep out of sight (ADR
+position, zoom, bookmarks and notes per path in its store. Eris can read and move the position, set zoom and add marks (ADR 0391). Asleep out of sight (ADR
 0070, ADR 0176), the SDK's `keepFiles` keeps its files, pages, zooms and watches; back, the one on screen
 opens without asking or taking the focus, the others (and any listed file it lost) when shown. Progress
 offers Cancel, which stops every page being decoded; a stopped PDF or DjVu offers Reload document.

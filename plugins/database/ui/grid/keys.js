@@ -5,6 +5,7 @@
 // binding cannot say.
 
 import { actionFor, extending, pressOf } from "../keys.js";
+import { t } from "../strings/index.js";
 import { ROW } from "../view-grid-draw.js";
 
 /**
@@ -17,9 +18,11 @@ import { ROW } from "../view-grid-draw.js";
  *   size(): { rows: number, cols: number }, cursor(): { row: number, col: number },
  *   moveTo(row: number, col: number, extend: boolean): void, records(step: number): void,
  *   startEdit(): void, cursorCell(): ({ row: number, col: number, editable: boolean, reason: string } | undefined),
- *   blockRows(): number[], addRow(): void, toggleRecord(): unknown, openMenu(): void,
- *   say(words: string | undefined): unknown,
+ *   blockRows(): number[], addRows(action: string): void, toggleRecord(): unknown, openMenu(): void,
+ *   say(words: string | undefined): unknown, selected(): boolean,
  * }} KeysHeld
+ *   `addRows` runs an action that adds rows at the end (the cursor follows them); `selected`
+ *   whether more than one cell is selected.
  */
 
 /** @param {KeysHeld} g */
@@ -59,11 +62,13 @@ export function createGridKeys(g) {
     edit: () => g.startEdit(),
     value: () => act("value", g.cursorCell()),
     null: () => {
+      if (g.selected()) return act("clearCells");
       const cell = g.cursorCell();
       if (cell?.editable) act("editCell", cell.row, cell.col, null);
-      else act("say", cell?.reason || "This cell cannot change.");
+      else act("say", cell?.reason || t("grid.keys.thisCellCannotChange"));
     },
-    addRow: () => g.addRow(),
+    addRow: () => g.addRows("addRow"),
+    duplicateRows: () => g.addRows("duplicateRows"),
     deleteRows: () => act("deleteRows", g.blockRows()),
     revertRows: () => act("revertRows", g.blockRows()),
     record: () => g.toggleRecord(),

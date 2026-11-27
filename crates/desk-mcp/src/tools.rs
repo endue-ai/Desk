@@ -73,9 +73,9 @@ pub(crate) fn list(selection: &Selection, catalog: Option<&Catalog>) -> Value {
 }
 
 fn agent_note() -> String {
-    "It runs as this server's agent: an installed plugin's command runs at once, one of the desk's \
-     own asks the person the first time, and a command its plugin marks irreversible waits for the \
-     person's approval."
+    "It runs as this server's agent: a command an installed plugin offers agents runs at once, any \
+     other command (the desk's own included) asks the person the first time, and a command its \
+     plugin marks irreversible waits for the person's approval."
         .to_owned()
 }
 
@@ -84,22 +84,22 @@ fn fixed(note: &str) -> Vec<Value> {
     vec![
         json!({
             "name": LIST_PLUGINS,
-            "title": "List Desk plugins",
-            "description": "List the plugins installed in the running endue Desk (id, name, kind, \
+            "title": "List endue plugins",
+            "description": "List the plugins installed in the running endue app (id, name, kind, \
                 description, whether it is enabled and ready) with the commands each one provides \
-                now, and Desk's own commands under desk. Start here to see what Desk can do.",
+                now, and endue's own commands under desk. Start here to see what endue can do.",
             "inputSchema": {
                 "type": "object",
                 "properties": { "plugin": plugin },
                 "additionalProperties": false
             },
-            "annotations": { "title": "List Desk plugins", "readOnlyHint": true, "openWorldHint": false }
+            "annotations": { "title": "List endue plugins", "readOnlyHint": true, "openWorldHint": false }
         }),
         json!({
             "name": LIST_COMMANDS,
-            "title": "List Desk commands",
-            "description": "List the commands the running Desk can run, from every plugin and from \
-                Desk itself (provider desk): id, title, description, provider, keywords, the JSON \
+            "title": "List endue commands",
+            "description": "List the commands the running endue app can run, from every plugin and from \
+                endue itself (provider desk): id, title, description, provider, keywords, the JSON \
                 Schema of their args, and irreversible when the plugin says so. Filter by plugin \
                 and by words.",
             "inputSchema": {
@@ -107,7 +107,7 @@ fn fixed(note: &str) -> Vec<Value> {
                 "properties": {
                     "plugin": {
                         "type": "string",
-                        "description": "Only the commands this plugin provides; desk for Desk's own"
+                        "description": "Only the commands this plugin provides; desk for endue's own"
                     },
                     "query": {
                         "type": "string",
@@ -116,13 +116,13 @@ fn fixed(note: &str) -> Vec<Value> {
                 },
                 "additionalProperties": false
             },
-            "annotations": { "title": "List Desk commands", "readOnlyHint": true, "openWorldHint": false }
+            "annotations": { "title": "List endue commands", "readOnlyHint": true, "openWorldHint": false }
         }),
         json!({
             "name": RUN_COMMAND,
-            "title": "Run a Desk command",
+            "title": "Run an endue command",
             "description": format!(
-                "Run one Desk command by id, whichever plugin provides it, and return its result. \
+                "Run one endue command by id, whichever plugin provides it, and return its result. \
                  Find commands with list-commands; args must match the command's argsSchema. {note}"
             ),
             "inputSchema": {
@@ -138,13 +138,13 @@ fn fixed(note: &str) -> Vec<Value> {
                 "required": ["command"],
                 "additionalProperties": false
             },
-            "annotations": { "title": "Run a Desk command", "destructiveHint": true, "openWorldHint": true }
+            "annotations": { "title": "Run an endue command", "destructiveHint": true, "openWorldHint": true }
         }),
         json!({
             "name": CALL_BRIDGE,
-            "title": "Call a Desk bridge method",
+            "title": "Call an endue bridge method",
             "description": format!(
-                "Call one method of the Desk bridge (specs/bridge/v0) by name with its params and \
+                "Call one method of the endue bridge (specs/bridge/v0) by name with its params and \
                  return its result: data.query and data.get for the items connector plugins bring \
                  in (mail, events, tasks), catalog.get, fs.read, view.list and the rest. A call that \
                  reaches beyond the agent's own data carries its permission scope in params.scope. \
@@ -159,7 +159,7 @@ fn fixed(note: &str) -> Vec<Value> {
                 "required": ["method"],
                 "additionalProperties": false
             },
-            "annotations": { "title": "Call a Desk bridge method", "destructiveHint": true, "openWorldHint": true }
+            "annotations": { "title": "Call an endue bridge method", "destructiveHint": true, "openWorldHint": true }
         }),
     ]
 }
@@ -173,7 +173,7 @@ fn command_tool(name: &str, command: &Value, irreversible: bool) -> Value {
         None => format!("{title}."),
     };
     description.push_str(&format!(
-        " The Desk command {} of {}. {}",
+        " The endue command {} of {}. {}",
         command["id"].as_str().unwrap_or_default(),
         command["provider"].as_str().unwrap_or_default(),
         agent_note()

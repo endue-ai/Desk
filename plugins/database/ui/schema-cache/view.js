@@ -1,7 +1,10 @@
 // What a connection's cache answers without waiting: the schemas the explorer lists, which of them
 // are read (chosen), held and kept on disk, and each held schema's objects, columns, parts, foreign
-// keys and routines. Undefined means "not held here": the caller reads it from the catalog. Pure.
+// keys and routines; `objects(DATABASE)` the database's and the server's (PG-50). Undefined means
+// "not held here": the caller reads it from the catalog. Pure.
 
+import { clock, day, t } from "../strings/index.js";
+import { DATABASE } from "./kinds.js";
 import { lookupOf } from "./model.js";
 
 /**
@@ -15,12 +18,15 @@ import { lookupOf } from "./model.js";
  * @typedef {{ name: string, system: boolean, chosen: boolean, held: boolean, kept: boolean }} SchemaState
  */
 
-/** Whether a schema is read: the person's list, else every one but the system ones. */
+/**
+ * Whether a schema is read: the person's list, else every one but the system ones. The database
+ * level (DATABASE) is always read.
+ */
 export const isChosen = (
   /** @type {string[] | null} */ chosen,
   /** @type {string} */ name,
   /** @type {boolean} */ system,
-) => (chosen ? chosen.includes(name) : !system);
+) => name === DATABASE || (chosen ? chosen.includes(name) : !system);
 
 /**
  * @param {Held} held
@@ -36,16 +42,19 @@ export function viewOf(held, systemSchemas) {
     const known = held.all.length
       ? held.all
       : [...held.schemas.keys()].map((name) => /** @type {[string, string]} */ ([name, ""]));
-    return known.map(([name, s]) => {
+    return known.flatMap(([name, s]) => {
+      if (name === DATABASE) return [];
       const system = s === "s";
       const has = held.schemas.has(name);
-      return {
-        name,
-        system,
-        chosen: isChosen(held.chosen, name, system),
-        held: has,
-        kept: has && !held.over.has(name),
-      };
+      return [
+        {
+          name,
+          system,
+          chosen: isChosen(held.chosen, name, system),
+          held: has,
+          kept: has && !held.over.has(name),
+        },
+      ];
     });
   };
   /** @template T @param {(l: import("./model.js").Lookup) => Map<string, T[]>} pick */
@@ -65,7 +74,7 @@ export function viewOf(held, systemSchemas) {
     /** The schemas the explorer lists: system ones only with the setting or when chosen. */
     listed: () => all().flatMap((s) => (!s.system || systemSchemas || s.chosen ? [s.name] : [])),
     /** The schemas held in memory. */
-    schemas: () => [...held.schemas.keys()],
+    schemas: () => [...held.schemas.keys()].filter((name) => name !== DATABASE),
     chosen: (/** @type {string} */ schema) =>
       isChosen(held.chosen, schema, all().find((s) => s.name === schema)?.system ?? false),
     held: (/** @type {string} */ schema) => held.schemas.has(schema),
@@ -82,19 +91,19 @@ export function viewOf(held, systemSchemas) {
 
 /** @typedef {ReturnType<typeof viewOf>} CacheView */
 
-/** "read 14:05" today, "read 2026-11-20 14:05" before. */
-export function readAtText(/** @type {number} */ readAt, now = Date.now()) {
+/**
+ * "read 14:05" today, "read 2026-11-20 14:05" before, on the 24-hour clock; with `seconds`,
+ * "read 14:05:09" (the activity view, which reads every few seconds).
+ */
+export function readAtText(/** @type {number} */ readAt, now = Date.now(), seconds = false) {
   const at = new Date(readAt);
-  const day = new Date(now);
-  const two = (/** @type {number} */ n) => String(n).padStart(2, "0");
-  const time = `${two(at.getHours())}:${two(at.getMinutes())}`;
+  const today = new Date(now);
+  const time = clock(at, seconds);
   const same =
-    at.getFullYear() === day.getFullYear() &&
-    at.getMonth() === day.getMonth() &&
-    at.getDate() === day.getDate();
-  return same
-    ? `read ${time}`
-    : `read ${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} ${time}`;
+    at.getFullYear() === today.getFullYear() &&
+    at.getMonth() === today.getMonth() &&
+    at.getDate() === today.getDate();
+  return same ? t("cache.readToday", { time }) : t("cache.readBefore", { date: day(at), time });
 }
 
 /**
@@ -107,13 +116,24 @@ export function labelsOf(view, now = Date.now()) {
   if (!view) return undefined;
   const { status } = view;
   const reading =
-    status.state === "reading" ? `${status.label}, ${status.step} of ${status.steps}` : "";
+    status.state === "reading"
+      ? t("cache.step", { label: status.label, step: status.step, steps: status.steps })
+      : "";
   const failed = status.state === "error" || status.state === "cancelled";
   return {
-    detail: reading ? `reading ${reading}` : view.readAt ? readAtText(view.readAt, now) : "",
-    progress: reading ? `Reading ${reading}… (Database: cancel stops it)` : undefined,
-    stale: failed && view.readAt ? `Not refreshed: ${status.message ?? "failed"}` : "",
+    detail: reading
+      ? t("cache.reading", { what: reading })
+      : view.readAt
+        ? readAtText(view.readAt, now)
+        : "",
+    progress: reading ? t("cache.progress", { what: reading }) : undefined,
+    stale:
+      failed && view.readAt ? t("cache.stale", { why: status.message ?? t("cache.failed") }) : "",
     schema: (/** @type {string} */ name) =>
-      !view.chosen(name) ? "not cached" : view.held(name) && !view.kept(name) ? "not kept" : "",
+      !view.chosen(name)
+        ? t("cache.notCached")
+        : view.held(name) && !view.kept(name)
+          ? t("cache.notKept")
+          : "",
   };
 }

@@ -6,6 +6,7 @@
 // irreversible). The panel keeps nothing across a restart. controller.js reads and signals,
 // panel.js and tables.js draw.
 
+import { t } from "../../strings/index.js";
 import { createActivity, TYPE } from "./controller.js";
 import { activityPanel } from "./panel.js";
 
@@ -29,19 +30,22 @@ export const feature = {
       "endue.database.activity": (args) => activity.open(args),
       "endue.database.activity-refresh": (args) => activity.refreshCommand(args),
       "endue.database.cancel-session": (args) => activity.stopSession("cancel", args),
-      "endue.database.end-session": (args) => activity.stopSession("end", args),
+      "endue.database.end-session": (args, invocation) =>
+        activity.stopSession("end", args, undefined, invocation?.approved === true),
     };
   },
   actions: (deps) => {
     const activity = of(deps);
     return {
-      activityRefresh: (/** @type {string} */ id) => activity.refresh(id),
+      // The panel's period says "timer": a read of its own, which Disconnect stops (ADR 0339).
+      activityRefresh: (/** @type {string} */ id, /** @type {unknown} */ by) =>
+        activity.refresh(id, false, by === "timer"),
       activityView: (/** @type {string} */ id, /** @type {Record<string, unknown>} */ patch) =>
         activity.view(id, patch),
       activityStop: (/** @type {string} */ id, /** @type {"cancel" | "end"} */ how, pid) =>
         activity.stopFrom(id, how, pid),
     };
   },
-  panels: { [TYPE]: { label: "Server activity", render: activityPanel } },
+  panels: { [TYPE]: { label: t("features.activity.index.serverActivity"), render: activityPanel } },
   styles: [new URL("./activity.css", import.meta.url).href],
 };

@@ -44,7 +44,7 @@ static CATALOGS: LazyLock<[MessageCatalog; 2]> = LazyLock::new(|| [parse(EN), pa
 
 fn parse(text: &str) -> MessageCatalog {
     serde_json::from_str(text).unwrap_or_else(|why| {
-        eprintln!("endue Desk: a catalog of the shell's words does not read ({why})");
+        eprintln!("endue: a catalog of the shell's words does not read ({why})");
         MessageCatalog::new()
     })
 }

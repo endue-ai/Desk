@@ -208,7 +208,7 @@ describe("a file this build does not play", () => {
       {
         target: V.path,
         reveal: true,
-        scope: { permission: "shell:open", paths: [V.path] },
+        scope: { permission: "shell:open", paths: ["~/Movies/*"] },
       },
     ]);
     expect(page.byId("status").textContent).toBe(

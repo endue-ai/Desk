@@ -1,3 +1,5 @@
+import { t } from "./strings/index.js";
+
 // The plugin's features (features/index.js, features/README.md), each a folder that declares its
 // commands, its actions, its panels and its dialogs. A command answers through answer.js as the
 // built-in ones do (a failure on the status line, a cancel quiet), an action joins the view's
@@ -34,6 +36,9 @@
  *   explorer: ReturnType<typeof import("./explorer.js").createExplorer>,
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   execute: import("./catalog.js").Execute,
+ *   runner: ReturnType<typeof import("./run.js").createRunner>,
+ *   clients: ReturnType<typeof import("./clients.js").createClients>,
+ *   startWorker?: import("./explain/reader.js").StartWorker,
  *   settings(): import("./settings.js").Settings,
  *   onSettings(listener: (settings: import("./settings.js").Settings) => void): () => void,
  *   pick: import("./ask.js").Pick,
@@ -42,14 +47,18 @@
  *   guard: ReturnType<typeof import("./answer.js").guarded>,
  *   cancelled(message: string): Error,
  *   dialog(type: string, model: unknown): Promise<unknown>,
+ *   drop(item: import("./drops.js").Dropped, into?: import("./importer.js").Into & { format?: import("./import-copy/wizard.js").CopyFormat }): Promise<unknown>,
  * }} Deps
  *   `execute` runs SQL under the read-only, production and agent guards; every write goes through
- *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled).
+ *   it. `dialog` shows a feature's dialog and resolves with its answer (undefined: cancelled);
+ *   `drop` carries out a file or text as a drop on the page does (dropped.js).
  *   `onSettings` calls its listener with the settings after each change while the plugin runs, until
  *   the function it returns is called.
+ *   `runner` runs a program as the clients run (features/backup/), `clients` finds it, and
+ *   `startWorker` starts a feature's worker (absent in tests: read in place).
  * @typedef {{
  *   id: string,
- *   commands?(deps: Deps): Record<string, (args: Record<string, any>) => unknown>,
+ *   commands?(deps: Deps): Record<string, (args: Record<string, any>, invocation?: import("@endue-ai/plugin-sdk").Invocation) => unknown>,
  *   actions?(deps: Deps): Record<string, (...args: any[]) => unknown>,
  *   panels?: Record<string, Panel>,
  *   dialogs?: Record<string, Dialog>,
@@ -62,7 +71,7 @@
 /** The kinds of the built-in buffers and the fields every buffer has: no panel type is one. */
 const KINDS = "console table ddl";
 const FIELDS =
-  "id kind connection name text execution shown running tab maxRows edit page consoleId number title file visited used filing explained";
+  "id kind connection name text execution shown running tab maxRows edit page consoleId number title file visited used filing explained pinned";
 export const RESERVED = new Set(`${KINDS} ${FIELDS}`.split(" "));
 
 /**
@@ -75,9 +84,14 @@ export function panelsOf(features) {
   const panels = {};
   for (const feature of features)
     for (const [type, panel] of Object.entries(feature.panels ?? {})) {
-      if (RESERVED.has(type)) throw new Error(`${feature.id}: ${type} is a built-in buffer's.`);
+      if (RESERVED.has(type))
+        throw new Error(
+          t("featureHost.isABuiltInBufferS", { id: String(feature.id), type: String(type) }),
+        );
       if (Object.hasOwn(panels, type))
-        throw new Error(`${feature.id}: the panel ${type} is taken.`);
+        throw new Error(
+          t("featureHost.thePanelIsTaken", { id: String(feature.id), type: String(type) }),
+        );
       panels[type] = panel;
     }
   return panels;
@@ -94,7 +108,9 @@ export function dialogsOf(features) {
   for (const feature of features)
     for (const [type, dialog] of Object.entries(feature.dialogs ?? {})) {
       if (Object.hasOwn(dialogs, type))
-        throw new Error(`${feature.id}: the dialog ${type} is taken.`);
+        throw new Error(
+          t("featureHost.theDialogIsTaken", { id: String(feature.id), type: String(type) }),
+        );
       dialogs[type] = dialog;
     }
   return dialogs;
@@ -114,7 +130,9 @@ export function registerFeatures(features, deps, { answer, taken }) {
     for (const [id, handler] of Object.entries(feature.commands?.(deps) ?? {})) answer(id, handler);
     for (const [name, fn] of Object.entries(feature.actions?.(deps) ?? {})) {
       if (taken.has(name) || Object.hasOwn(actions, name))
-        throw new Error(`${feature.id}: the action ${name} is taken.`);
+        throw new Error(
+          t("featureHost.theActionIsTaken", { id: String(feature.id), name: String(name) }),
+        );
       actions[name] = deps.guard(fn);
     }
   }

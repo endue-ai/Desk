@@ -6,24 +6,34 @@
 // Mod+F finds, `t` shows the cursor's row as a record (grid/keys.js). Enter, F2 or a double click
 // edits a cell of a result that can be changed (pending until Submit), `n` sets NULL, `+` adds a
 // row, Delete marks rows for deletion, `u` takes a row's changes back; changes are drawn as a diff.
-// `v` opens the value viewer, Mod+C copies the block as tab-separated text. A plan tab draws the
-// plan tree, the Messages tab each statement's outcome. The parts live in grid/.
+// Mod+V pastes from the caret, `D` duplicates rows, `"` fills down, `n` on a block clears it, Mod+Z
+// takes the last change back (PG-43, grid/paste.js, features/paste/). `v` opens the value viewer,
+// Mod+C copies the block as tab-separated text. A foreign key's cells are links: `g` or Mod+click
+// follows one, `r` lists the rows pointing at the row, `b` goes back, Enter searches the referenced
+// table (PG-41, links/). Plan, Messages and Map tabs draw the plan tree, each statement's outcome
+// and the shapes (geo/map-view.js). The parts live in grid/.
 
 import { el } from "./dom.js";
+import { createMaps } from "./geo/map-view.js";
 import { emptyColumns, layoutOf } from "./grid/columns.js";
 import { createFinder } from "./grid/finder.js";
 import { attachHeader } from "./grid/header.js";
 import { createGridKeys } from "./grid/keys.js";
 import { range } from "./grid/lane.js";
 import { createCellMenu } from "./grid/menu.js";
+import { createGridPaste } from "./grid/paste.js";
 import { attachPointer } from "./grid/pointer.js";
 import { createRowsClient } from "./grid/rows-client.js";
 import { createScreen } from "./grid/screen.js";
 import { createShapes } from "./grid/shapes.js";
 import { createShaping } from "./grid/shaping.js";
 import { createStrip } from "./grid/strip.js";
+import { attachWindow } from "./grid/window.js";
 import { defaultWidths } from "./grid-model.js";
+import { createGridLinks } from "./links/grid-links.js";
+import { lineOf } from "./message-line.js";
 import { numericColumns } from "./results.js";
+import { t } from "./strings/index.js";
 import { createCellEditor } from "./view-cell.js";
 import { ROW } from "./view-grid-draw.js";
 import { planView } from "./view-plan.js";
@@ -69,19 +79,26 @@ export function createGrid(doc, host, act, options = {}) {
     ch: 0,
     px: /** @type {number[]} */ ([]),
   };
+  const links = createGridLinks(act, () => screen.redraw());
   const screen = createScreen(doc, st, {
     found: (value) => finder.marks(value),
     sortKeys: () => shaping.sortKeys(),
+    link: (col) => links.title(col),
+    startWorker: options.startWorker,
   });
   const { scroller, head, spacer, body, grid, set, changes, cellOf, size, moveTo } = screen;
   const { blockRows, cursorCell, selection } = screen;
   const rows = createRowsClient(options.startWorker);
   const shapes = createShapes(act, (key) => key === shape().key && st.tab?.set && relayout());
   const shape = () => shapes.of(st.context.key ?? "result:none");
+  // A Map tab, and the row its Show in grid puts the cursor on next (PG-46).
+  const maps = createMaps(doc, act, options.startWorker);
+  let goto = /** @type {number | undefined} */ (undefined);
   const say = (/** @type {string | undefined} */ words) => (words ? act("say", words) : undefined);
 
   /** The rows' order changed: size the grid for them and draw. */
   const arrange = () => {
+    windowing.follow();
     const s = set();
     st.recordAt = Math.max(0, Math.min(st.recordAt, st.order.length - 1));
     strip.draw(shaping.filters(), st.context.server);
@@ -94,23 +111,24 @@ export function createGrid(doc, host, act, options = {}) {
       st.cursor = { row: Math.max(0, st.order.length - 1), col: 0 };
       st.anchor = st.cursor;
     }
+    const at = st.record || grid.hasAttribute("aria-busy") ? -1 : st.order.indexOf(goto ?? -1);
+    if (at >= 0) goto = undefined;
     st.cursor = {
       row: Math.min(st.cursor.row, Math.max(0, count - 1)),
       col: Math.min(st.cursor.col, Math.max(0, cols - 1)),
     };
-    const why = s.columns.length
-      ? st.text || shaping.filters().length
-        ? "No row holds that."
-        : "No rows."
-      : "No rows (this client names no columns for an empty result).";
+    const filtered = st.text || shaping.filters().length;
+    const why = t(
+      s.columns.length ? (filtered ? "grid.noMatch" : "grid.noRows") : "grid.noColumns",
+    );
     // The scroller stays in the page, so the focused grid keeps its focus.
     if (host.firstChild !== scroller) host.replaceChildren(scroller);
     for (const old of host.querySelectorAll(":scope > .empty")) old.remove();
     if (count === 0) host.append(el(doc, "p", { class: "empty" }, why));
     screen.redraw();
+    if (at >= 0) moveTo(at, 0, false);
     finder.changed();
   };
-
   /**
    * Lay the grid out again after a change of rows, sort, filters, columns or mode; `reorder` false
    * keeps the rows' order (only the columns changed, and no typed filter searches them).
@@ -154,13 +172,13 @@ export function createGrid(doc, host, act, options = {}) {
     st.order = before.length ? before : [...range(0, s.rows.length), ...added];
     arrange();
   };
-
   /** Draw a tab: a grid for a result set, a plan, or the messages. */
   const render = (
     /** @type {Tab | null} */ next,
     /** @type {boolean} */ fresh,
     /** @type {Context} */ given,
   ) => {
+    if (st.tab?.set && next?.kind === "map") maps.leave(st.tab.set, blockRows(), cursorCell()?.row);
     st.tab = next;
     st.context = given;
     shaping.answered();
@@ -174,12 +192,13 @@ export function createGrid(doc, host, act, options = {}) {
       if (key !== shownKey) scroller.scrollLeft = 0;
     }
     shownKey = key;
+    links.shown(next?.set ? key : "");
     if (!next) return host.replaceChildren();
     if (next.kind === "plan" && next.plan) return host.replaceChildren(planView(doc, next, act));
+    if (next.kind === "map") return maps.show(host, next);
+    if (fresh) goto = maps.take(next.set);
     if (next.kind === "messages" || !next.set) {
-      const lines = (next.lines ?? []).map((line) =>
-        el(doc, "li", { class: `line ${line.level}` }, line.text),
-      );
+      const lines = (next.lines ?? []).map((line) => lineOf(doc, line, act));
       strip.draw([], false);
       return host.replaceChildren(el(doc, "ul", { class: "messages" }, ...lines));
     }
@@ -244,6 +263,7 @@ export function createGrid(doc, host, act, options = {}) {
     const cell = cursorCell();
     if (!cell) return;
     if (!cell.editable) return act("value", cell);
+    if (links.title(cell.col) !== undefined) return act("pickKey");
     const target = body.querySelector(
       `[aria-rowindex="${st.cursor.row + 2}"] [aria-colindex="${st.cursor.col + 1}"]`,
     );
@@ -269,6 +289,9 @@ export function createGrid(doc, host, act, options = {}) {
         pinned: !st.record && st.cursor.col < st.layout.pinned,
         sortable: !st.record,
         hidden: columns().hidden.length,
+        editable: !st.record && st.context.edit?.status === "ready",
+        link: cell.value !== null && links.title(cell.col) !== undefined,
+        referenced: links.referenced(),
       },
       at,
     );
@@ -304,13 +327,25 @@ export function createGrid(doc, host, act, options = {}) {
     startEdit,
     cursorCell,
     blockRows,
-    addRow() {
+    addRows(action) {
       st.toEnd = true;
-      act("addRow");
+      act(action);
     },
     toggleRecord,
     openMenu,
     say,
+    selected() {
+      const b = screen.block();
+      return !st.record && (b.bottom > b.top || b.right > b.left);
+    },
+  });
+  const pasting = createGridPaste(doc, {
+    grid,
+    st,
+    block: screen.block,
+    editing: () => editor.active(),
+    act,
+    ...(options.startWorker ? { startWorker: options.startWorker } : {}),
   });
 
   /** The columns on screen: their keys, the hidden ones, how many are pinned, their widths. */
@@ -320,8 +355,8 @@ export function createGrid(doc, host, act, options = {}) {
     pinned: st.layout.pinned,
     widths: [...st.layout.widths],
   });
-
   scroller.addEventListener("scroll", screen.paint);
+  const windowing = attachWindow(scroller, st, act); // a read its cursor keeps (PG-22)
   attachHeader(doc, head, grid, {
     width: shaping.width,
     resize: (col, px) => shaping.resize(col, px),
@@ -336,6 +371,8 @@ export function createGrid(doc, host, act, options = {}) {
     openMenu,
     selection,
     cursorRow: () => st.cursor.row,
+    copyLarge: () => act("copy", "tsv"),
+    follow: () => act("followKey"),
   });
 
   return {
@@ -356,7 +393,8 @@ export function createGrid(doc, host, act, options = {}) {
     /** An operation by name, as a command runs it (features/grid/); undefined without a result. */
     command(/** @type {string} */ op, /** @type {Record<string, unknown>} */ args = {}) {
       if (!st.tab?.set) return undefined;
-      return op === "columns" ? columns() : keys.command(op, args);
+      if (op === "columns") return columns();
+      return pasting.command(op, args) ?? keys.command(op, args);
     },
   };
 }

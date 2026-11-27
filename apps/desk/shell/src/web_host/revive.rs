@@ -58,7 +58,7 @@ impl WebHost {
         );
         let (secs, fed) = (found.waited.as_secs_f32(), found.fed);
         let said = format!(
-            "endue Desk: {what} stopped painting: its page waited {secs:.1} s for a frame \
+            "endue: {what} stopped painting: its page waited {secs:.1} s for a frame \
              through {fed} begin frames (#157)"
         );
         let Some(surface) = surface else {

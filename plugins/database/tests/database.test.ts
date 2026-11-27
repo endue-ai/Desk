@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PluginManifest } from "../../../packages/bridge/src/index";
+import manifest from "../plugin.json";
 import { mount, SAVED } from "./harness";
 
 const sqliteRuns = (spawned: Array<{ command: string; args: string[] }>) =>
@@ -42,17 +44,18 @@ describe("connections", () => {
     await m.settle();
     expect(JSON.stringify(m.store)).not.toContain("s3cret");
     await m.host.command("endue.database.test-connection", { connection: "Shop" });
-    const run = m.clients.spawned.find((s) => s.command === "psql" && s.args[0] !== "--version");
-    expect(run?.env.PGPASSWORD).toBe("s3cret");
-    expect(run?.args.join(" ")).not.toContain("s3cret");
+    const opens = m.host.calls.filter((c) => c.method === "db.open").map((c) => c.params);
+    expect(opens.at(-1)).toMatchObject({ host: "db.example", port: 6543, password: "s3cret" });
+    expect(opens.at(-1)).toMatchObject({ tls: { mode: "require" } });
+    expect(m.clients.spawned).toHaveLength(0);
     expect(JSON.stringify(m.host.state)).not.toContain("s3cret");
   });
 
-  it("asks for a password when psql says one is missing, and runs again with it", async () => {
+  it("asks for a password when the server needs one, and runs again with it", async () => {
     const m = await mount({
       store: { connections: SAVED },
-      script: (_sql, env) =>
-        env.PGPASSWORD === "typed" ? { rows: [["?column?"], ["1"]] } : "auth",
+      script: () => ({ rows: [["?column?"], ["1"]] }),
+      password: "typed",
       pick: () => "yes",
     });
     await m.host.command("endue.database.console", { connection: "Shop" });
@@ -126,9 +129,7 @@ describe("consoles", () => {
     await expect(m.host.command("endue.database.run-all")).rejects.toThrow(/Not run/u);
     expect(m.picks.at(-1)?.title).toBe("Run this statement on Shop?");
     expect(m.picks.at(-1)?.items.map((i) => i.label)).toContain("No");
-    expect(
-      m.clients.spawned.filter((s) => s.command === "psql" && s.args[0] !== "--version"),
-    ).toHaveLength(0);
+    expect(m.sessions()).toHaveLength(0);
   });
 
   it("asks before DELETE without WHERE anywhere, unless confirm is off", async () => {
@@ -237,19 +238,22 @@ describe("consoles", () => {
 });
 
 describe("agents", () => {
-  it("registers its commands with argument schemas and answers a read", async () => {
+  it("declares its agent queries in the manifest and answers a read", async () => {
     const m = await mount({
       store: { connections: SAVED },
       script: () => ({ rows: [["n"], ["42"]] }),
     });
-    const registered = m.host.calls
-      .filter((c) => c.method === "cmd.register")
-      .map((c) => c.params as { id: string; agent?: boolean; readOnly?: boolean });
-    expect(registered.map((r) => [r.id, r.agent, r.readOnly ?? false])).toEqual([
-      ["endue.database.connections", true, true],
-      ["endue.database.schema", true, true],
-      ["endue.database.query", true, false],
-    ]);
+    const tools = new Map(
+      (manifest as PluginManifest).contributes?.commands?.map((c) => [c.id, c]),
+    );
+    expect(tools.get("endue.database.connections")).toMatchObject({ agent: true, readOnly: true });
+    expect(tools.get("endue.database.schema")).toMatchObject({ agent: true, readOnly: true });
+    expect(tools.get("endue.database.query")).toMatchObject({
+      agent: true,
+      args: { required: ["connection", "sql"] },
+    });
+    expect(tools.get("endue.database.query")?.readOnly).toBeUndefined();
+    expect(m.host.calls.filter((c) => c.method === "cmd.register")).toEqual([]);
     const listed = (await m.host.invoke("endue.database.connections")) as Array<
       Record<string, unknown>
     >;
@@ -265,13 +269,17 @@ describe("agents", () => {
   });
 
   it("never shows an agent's request a password prompt", async () => {
-    const m = await mount({ store: { connections: SAVED }, script: () => "auth" });
+    const m = await mount({
+      store: { connections: SAVED },
+      password: "s3cret",
+      grants: [{ permission: "db:connect", hosts: ["db.example:5432"] }],
+    });
     await expect(m.host.invoke("endue.database.schema", { connection: "Shop" })).rejects.toThrow(
-      /no password supplied/u,
+      /asks for a password/u,
     );
     await expect(
       m.host.invoke("endue.database.query", { connection: "Shop", sql: "select 1" }),
-    ).rejects.toThrow(/no password supplied/u);
+    ).rejects.toThrow(/asks for a password/u);
     expect(m.view.passwords).toEqual([]);
   });
 

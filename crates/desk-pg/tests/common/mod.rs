@@ -31,7 +31,8 @@ pub fn server(var: &str) -> Option<Config> {
     Some(parse(&uri))
 }
 
-/// `postgresql://user:password@host:port/database?sslmode=..&sslrootcert=..`
+/// `postgresql://user:password@host:port/database?sslmode=..&sslrootcert=..&sslcert=..&sslkey=..`
+/// (`sslpassword` decrypts an encrypted key)
 pub fn parse(uri: &str) -> Config {
     let rest = uri
         .strip_prefix("postgresql://")
@@ -49,13 +50,22 @@ pub fn parse(uri: &str) -> Config {
         &decode(user),
     );
     config.password = (!password.is_empty()).then(|| decode(password));
+    let (mut cert, mut key, mut key_password) = (None, None, None);
     for pair in query.split('&').filter(|p| !p.is_empty()) {
         let (name, value) = pair.split_once('=').unwrap_or((pair, ""));
+        let file = |what: &str| std::fs::read(decode(value)).expect(what);
         match name {
             "sslmode" => config.tls = mode(value),
-            "sslrootcert" => config.ca_pem = Some(std::fs::read(decode(value)).expect("the CA")),
+            "sslrootcert" => config.ca_pem = Some(file("the CA")),
+            "sslcert" => cert = Some(file("the client certificate")),
+            "sslkey" => key = Some(file("the client key")),
+            "sslpassword" => key_password = Some(decode(value)),
             _ => {}
         }
+    }
+    if let (Some(cert), Some(key)) = (cert, key) {
+        let client = desk_pg::ClientCert::from_pem(&cert, &key, key_password.as_deref());
+        config.client_cert = Some(client.expect("the client certificate and key"));
     }
     config
 }

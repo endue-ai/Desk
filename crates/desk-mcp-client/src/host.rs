@@ -161,7 +161,7 @@ fn run(
                 routes = refresh(core, &caller, config, &session, &routes, &log);
             }
             Ok(Heard::Closed) => break "the server exited",
-            Ok(Heard::Stop) | Err(RecvTimeoutError::Disconnected) => break "Desk stopped it",
+            Ok(Heard::Stop) | Err(RecvTimeoutError::Disconnected) => break "endue stopped it",
             Ok(_) | Err(RecvTimeoutError::Timeout) => {}
         }
     };

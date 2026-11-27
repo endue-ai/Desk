@@ -18,8 +18,8 @@ pub(crate) fn list(desk: &Desk) -> Value {
     let mut resources = vec![json!({
         "uri": INDEX,
         "name": "plugins",
-        "title": "Desk plugins",
-        "description": "The plugins installed in the running Desk with the commands each provides now",
+        "title": "endue plugins",
+        "description": "The plugins installed in the running endue app with the commands each provides now",
         "mimeType": JSON
     })];
     if let Ok(catalog) = Catalog::read(desk) {

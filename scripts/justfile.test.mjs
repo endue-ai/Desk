@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 /** The CEF desk `just dev` runs (#97): the macOS bundle's binary, else the debug build. */
-const MAC = "exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk";
+const MAC = "exec target/bundle/endue.app/Contents/MacOS/endue-desk";
 const DEBUG = "exec target/debug/endue-desk";
 const missing = spawnSync("just", ["--version"]).error;
 const skip = missing ? `just is not installed (${missing.message}); CI runs this test` : false;

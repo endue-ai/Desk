@@ -190,8 +190,11 @@ export function installTrust(S) {
 
   // Saving scripts the person edited keeps them allowed after a restart.
   const save = S.save;
-  S.save = async (/** @type {Tab} */ tab) => {
-    const ok = await save(tab);
+  S.save = async (
+    /** @type {Tab} */ tab,
+    /** @type {import("./features-collections.js").SaveDestination | undefined} */ destination,
+  ) => {
+    const ok = await save(tab, destination);
     if (ok) await allow(theirs(tab));
     return ok;
   };

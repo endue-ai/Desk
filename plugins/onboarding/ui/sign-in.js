@@ -16,6 +16,7 @@ export const ENTRY = {
   create: "Create account",
   note: "Start free. No card required.",
   skip: "Skip for now",
+  offline: "Continue offline",
 };
 
 export const WAITING = {

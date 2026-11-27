@@ -86,11 +86,9 @@ fn an_agent_is_refused_outside_its_allowlist_even_with_a_grant() {
         named(&deliveries, "perm.prompt").is_empty(),
         "nobody is asked"
     );
-    // Inside the allowlist the grant it holds still counts (and the write waits for approval).
-    approved_once(&core, &deliveries, || {
-        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
-    })
-    .unwrap();
+    // Inside the allowlist the grant it holds lets it create the file.
+    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
+    assert!(named(&deliveries, "perm.approval").is_empty());
 }
 
 #[test]
@@ -112,48 +110,40 @@ fn a_refusal_outside_the_allowlist_sends_a_notice_naming_the_agent() {
 #[test]
 fn within_the_allowlist_the_person_is_prompted_and_the_answer_is_remembered_per_agent() {
     let home = home("agent-prompt");
-    let (core, deliveries) = core_with(&home, NOTES_ONLY);
+    let init = "agents:\n  mira:\n    allow:\n      - { permission: fs:read, paths: [\"~/Documents/**\"] }\n";
+    let (core, deliveries) = core_with(&home, init);
     std::thread::scope(|s| {
-        let writing = s.spawn(|| write(&core, MIRA, "~/Notes/a.md", "~/Notes/**"));
+        let reading = s.spawn(|| read_hello(&core, MIRA));
         let prompt = wait_for(&deliveries, "perm.prompt");
         assert_eq!(prompt.to, strings(&["desk"]));
         assert_eq!(prompt.data()["caller"], MIRA);
-        assert_eq!(prompt.data()["permission"], fs_write(&["~/Notes/**"]));
+        assert_eq!(prompt.data()["permission"], notes_read());
         answer(
             &core,
             &prompt,
             json!({ "granted": true, "duration": "session" }),
         );
-        let approval = wait_for(&deliveries, "perm.approval");
-        approve_as_desk(&core, &approval, "once");
-        writing.join().unwrap().unwrap();
+        assert_eq!(reading.join().unwrap().unwrap()["content"], "# Hello");
     });
-    assert_eq!(fs::read_to_string(home.join("Notes/a.md")).unwrap(), "hi");
-    approved_once(&core, &deliveries, || {
-        write(&core, MIRA, "~/Notes/b.md", "~/Notes/**")
-    })
-    .unwrap();
+    assert_eq!(read_hello(&core, MIRA).unwrap()["content"], "# Hello");
     assert!(named(&deliveries, "perm.prompt").is_empty(), "asked once");
 
     // Another agent holds nothing of mira's: it is asked, and its refusal is its own.
     std::thread::scope(|s| {
-        let writing = s.spawn(|| write(&core, THEO, "~/Notes/c.md", "~/Notes/**"));
+        let reading = s.spawn(|| read_hello(&core, THEO));
         let prompt = wait_for(&deliveries, "perm.prompt");
         assert_eq!(prompt.data()["caller"], THEO);
         answer(&core, &prompt, json!({ "granted": false }));
-        let refused = writing.join().unwrap().unwrap_err();
+        let refused = reading.join().unwrap().unwrap_err();
         assert_eq!(refused.code, ErrorCode::PermissionDenied);
     });
-    let again = write(&core, THEO, "~/Notes/c.md", "~/Notes/**").unwrap_err();
+    let again = read_hello(&core, THEO).unwrap_err();
     assert_eq!(again.code, ErrorCode::PermissionDenied);
     assert_eq!(
-        request(&core, THEO, fs_write(&["~/Notes/**"])),
+        request(&core, THEO, notes_read()),
         json!({ "granted": false, "reason": "refused-earlier" })
     );
-    assert_eq!(
-        request(&core, MIRA, fs_write(&["~/Notes/**"]))["granted"],
-        true
-    );
+    assert_eq!(request(&core, MIRA, notes_read())["granted"], true);
     assert!(named(&deliveries, "perm.prompt").is_empty());
 }
 
@@ -163,7 +153,7 @@ fn an_empty_allowlist_prompts_on_every_first_use() {
     let (core, deliveries) = core_with(&home, "agents:\n  theo:\n    allow: []\n");
     for agent in [THEO, "agent:kai"] {
         std::thread::scope(|s| {
-            let writing = s.spawn(|| write(&core, agent, "~/Desktop/x.txt", "~/Desktop/**"));
+            let reading = s.spawn(|| read_hello(&core, agent));
             let prompt = wait_for(&deliveries, "perm.prompt");
             assert_eq!(prompt.data()["caller"], agent);
             answer(
@@ -171,9 +161,7 @@ fn an_empty_allowlist_prompts_on_every_first_use() {
                 &prompt,
                 json!({ "granted": true, "duration": "once" }),
             );
-            let approval = wait_for(&deliveries, "perm.approval");
-            approve_as_desk(&core, &approval, "once");
-            writing.join().unwrap().unwrap();
+            reading.join().unwrap().unwrap();
         });
         std::thread::scope(|s| {
             let asking = s.spawn(|| request(&core, agent, notes_read()));
@@ -224,10 +212,7 @@ fn an_edit_to_the_allowlist_applies_to_the_next_call() {
     let home = home("agent-edit");
     let (core, deliveries) = core_with(&home, NOTES_ONLY);
     grant(&core, MIRA, fs_write(&["~/Notes/**"]));
-    approved_once(&core, &deliveries, || {
-        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
-    })
-    .unwrap();
+    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
     fs::write(
         home.join("init.yaml"),
         NOTES_ONLY.replace("~/Notes/**", "~/Other/**"),
@@ -251,14 +236,14 @@ fn an_agents_always_grant_is_its_own_in_the_grant_file() {
     let core = core.with_grant_file(grants.clone());
     grant(&core, "desk", manage());
     std::thread::scope(|s| {
-        let writing = s.spawn(|| write(&core, MIRA, "~/Notes/a.md", "~/Notes/**"));
+        let asking = s.spawn(|| request(&core, MIRA, fs_write(&["~/Notes/**"])));
         let prompt = wait_for(&deliveries, "perm.prompt");
         answer(
             &core,
             &prompt,
             json!({ "granted": true, "duration": "always" }),
         );
-        writing.join().unwrap().unwrap();
+        assert_eq!(asking.join().unwrap()["granted"], true);
     });
     let file: Value = serde_json::from_str(&fs::read_to_string(&grants).unwrap()).unwrap();
     assert_eq!(file["grants"][0]["caller"], MIRA);

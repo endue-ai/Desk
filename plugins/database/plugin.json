@@ -4,11 +4,12 @@
   "version": "0.2.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
+  "messages": "ui/strings/manifest",
+  "description": "A client for PostgreSQL on the desk's own sessions, and MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of every object kind with DDL and row counts, SQL consoles with highlighting, autocomplete, formatting and parameters, results that keep NULL apart with sorting, filtering, paging, a value viewer, a record view, copy and export, pending cell edits applied in one transaction, query plans, history and starred queries, and guards for read-only and production connections.",
   "permissions": [
     {
       "permission": "proc:spawn",
-      "commands": ["psql", "mysql", "mariadb", "sqlite3"]
+      "commands": ["mysql", "mariadb", "sqlite3", "pg_dump", "pg_restore"]
     },
     {
       "permission": "fs:write",
@@ -25,16 +26,39 @@
         "desk.files.changed"
       ]
     },
-    { "permission": "fs:read", "paths": ["/**"] },
-    { "permission": "proc:spawn", "commands": ["*"] },
-    { "permission": "fs:write", "paths": ["/**"] },
-    { "permission": "fs:read", "paths": ["${home}/.endue/database/**"] },
-    { "permission": "fs:write", "paths": ["${home}/.endue/database/**"] }
+    {
+      "permission": "fs:read",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "proc:spawn",
+      "commands": ["*"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["/**"]
+    },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/.endue/database/**"]
+    },
+    {
+      "permission": "db:connect",
+      "hosts": ["*"]
+    },
+    {
+      "permission": "brain:ask"
+    }
   ],
   "surfaces": [
     {
       "id": "main",
       "title": "Database",
+      "titleMessage": "database.surface.main",
       "placement": "center"
     }
   ],
@@ -61,206 +85,1059 @@
       {
         "id": "endue.database.open",
         "title": "Database: open",
+        "titleMessage": "database.command.open",
         "keywords": ["sql", "postgres", "mysql", "sqlite", "client"]
       },
       {
         "id": "endue.database.console",
         "title": "Database: open a console",
+        "titleMessage": "database.command.console",
         "keywords": ["sql", "query"]
       },
       {
         "id": "endue.database.new-console",
         "title": "Database: new console",
+        "titleMessage": "database.command.newConsole",
         "keywords": ["sql", "query", "another", "tab", "second"]
       },
       {
         "id": "endue.database.consoles",
         "title": "Database: show a console",
+        "titleMessage": "database.command.consoles",
         "keywords": ["consoles", "list", "switch", "sql"]
       },
       {
         "id": "endue.database.rename-console",
         "title": "Database: rename the console",
+        "titleMessage": "database.command.renameConsole",
         "keywords": ["name", "title", "console"]
       },
       {
         "id": "endue.database.close-console",
         "title": "Database: close the console",
+        "titleMessage": "database.command.closeConsole",
         "keywords": ["close", "console", "remove"]
       },
       {
         "id": "endue.database.run-file",
         "title": "Database: run a .sql file",
+        "titleMessage": "database.command.runFile",
         "keywords": ["sql", "script", "file", "dump", "restore", "import"]
       },
       {
         "id": "endue.database.file-connection",
         "title": "Database: run this .sql file on another connection",
+        "titleMessage": "database.command.fileConnection",
         "keywords": ["sql", "file", "connection", "bind"]
       },
       {
         "id": "endue.database.new-connection",
         "title": "Database: new connection",
-        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
+        "titleMessage": "database.command.newConnection",
+        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"],
+        "description": "Prepare a connection form for the person to review and save. Supply no credentials or executable.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "engine": {
+              "enum": ["postgresql", "mysql", "sqlite"]
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "readOnly": {
+              "type": "boolean"
+            },
+            "tag": {
+              "enum": ["none", "development", "staging", "production"]
+            },
+            "ssl": {
+              "enum": ["default", "disable", "prefer", "require", "verify-ca", "verify-full"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.import-file",
+        "title": "Database: import a file into a table",
+        "titleMessage": "database.command.importFile",
+        "keywords": ["csv", "xlsx", "json", "copy", "load"],
+        "description": "Prepare the import form with a file, connection and table. The person opens the file and submits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "format": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.database.import-uri",
         "title": "Database: new connection from a URI",
+        "titleMessage": "database.command.importUri",
         "keywords": ["url", "dsn", "connection string"]
       },
       {
         "id": "endue.database.edit-connection",
         "title": "Database: change a connection",
+        "titleMessage": "database.command.editConnection",
         "keywords": ["edit"]
       },
       {
         "id": "endue.database.duplicate-connection",
         "title": "Database: duplicate a connection",
+        "titleMessage": "database.command.duplicateConnection",
         "keywords": ["copy", "clone"]
       },
       {
         "id": "endue.database.remove-connection",
         "title": "Database: remove a connection",
+        "titleMessage": "database.command.removeConnection",
         "keywords": ["delete", "forget"]
       },
       {
         "id": "endue.database.test-connection",
         "title": "Database: test a connection",
-        "keywords": ["ping", "version"]
+        "titleMessage": "database.command.testConnection",
+        "keywords": ["ping", "version"],
+        "description": "Read the version of the named database server using permissions that are already held.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.disconnect",
         "title": "Database: disconnect",
+        "titleMessage": "database.command.disconnect",
         "keywords": ["forget password", "sign out"]
+      },
+      {
+        "id": "endue.database.forget-password",
+        "title": "Database: forget the remembered password",
+        "titleMessage": "database.command.forgetPassword",
+        "keywords": ["keychain", "password", "forget", "disconnect"]
       },
       {
         "id": "endue.database.copy-uri",
         "title": "Database: copy the connection URI",
+        "titleMessage": "database.command.copyUri",
         "keywords": ["url", "dsn"]
       },
       {
         "id": "endue.database.run",
         "title": "Database: run the statement",
+        "titleMessage": "database.command.run",
         "keywords": ["execute", "query", "selection"]
       },
       {
         "id": "endue.database.run-all",
         "title": "Database: run the script",
+        "titleMessage": "database.command.runAll",
         "keywords": ["execute", "all"]
       },
       {
         "id": "endue.database.run-transaction",
         "title": "Database: run the script in one transaction",
+        "titleMessage": "database.command.runTransaction",
         "keywords": ["atomic", "begin", "commit"]
       },
       {
         "id": "endue.database.dry-run",
         "title": "Database: dry run (roll back at the end)",
+        "titleMessage": "database.command.dryRun",
         "keywords": ["rollback", "preview", "test"]
+      },
+      {
+        "id": "endue.database.check",
+        "title": "Database: check the statement without running it",
+        "titleMessage": "database.command.check",
+        "keywords": ["check", "validate", "describe", "parameters", "types", "columns", "syntax"]
       },
       {
         "id": "endue.database.explain",
         "title": "Database: explain the statement",
+        "titleMessage": "database.command.explain",
         "keywords": ["plan", "query plan"]
       },
       {
         "id": "endue.database.explain-analyze",
         "title": "Database: explain analyze the statement",
+        "titleMessage": "database.command.explainAnalyze",
         "keywords": ["plan", "timing", "actual"]
       },
       {
         "id": "endue.database.explain-options",
         "title": "Database: explain with options",
+        "titleMessage": "database.command.explainOptions",
         "keywords": ["plan", "analyze", "buffers", "verbose", "settings", "wal", "generic plan"]
       },
       {
         "id": "endue.database.plan-view",
         "title": "Database: show the plan as a tree, flame or table",
+        "titleMessage": "database.command.planView",
         "keywords": ["query plan", "flame graph", "icicle", "where the time goes"]
       },
       {
         "id": "endue.database.copy-plan",
         "title": "Database: copy the query plan",
+        "titleMessage": "database.command.copyPlan",
         "keywords": ["plan", "explain", "text", "json"]
+      },
+      {
+        "id": "endue.database.pin-result",
+        "title": "Database: pin the result tab",
+        "titleMessage": "database.command.pinResult",
+        "keywords": ["pin", "keep", "result", "tab", "snapshot", "before"]
+      },
+      {
+        "id": "endue.database.unpin-result",
+        "title": "Database: unpin a result tab",
+        "titleMessage": "database.command.unpinResult",
+        "keywords": ["unpin", "let go", "result", "tab", "memory"]
+      },
+      {
+        "id": "endue.database.compare-results",
+        "title": "Database: compare two results",
+        "titleMessage": "database.command.compareResults",
+        "keywords": ["compare", "diff", "difference", "result", "added", "removed", "changed"]
+      },
+      {
+        "id": "endue.database.run-again-and-compare",
+        "title": "Database: run again and compare with before",
+        "titleMessage": "database.command.runAgainAndCompare",
+        "keywords": ["rerun", "compare", "diff", "difference", "before and after"]
+      },
+      {
+        "id": "endue.database.copy-difference",
+        "title": "Database: copy the difference of two results",
+        "titleMessage": "database.command.copyDifference",
+        "keywords": ["compare", "diff", "copy", "csv", "json", "markdown"]
+      },
+      {
+        "id": "endue.database.export-difference",
+        "title": "Database: export the difference of two results",
+        "titleMessage": "database.command.exportDifference",
+        "keywords": ["compare", "diff", "export", "file", "csv", "json"]
       },
       {
         "id": "endue.database.compare-plans",
         "title": "Database: compare two query plans",
+        "titleMessage": "database.command.comparePlans",
         "keywords": ["plan", "diff", "before and after", "regression"]
       },
       {
         "id": "endue.database.format",
         "title": "Database: format the SQL",
+        "titleMessage": "database.command.format",
         "keywords": ["pretty", "beautify", "indent", "layout", "selection", "script"]
+      },
+      {
+        "id": "endue.database.count-result-rows",
+        "title": "Database: count every row of the result",
+        "titleMessage": "database.command.countResultRows",
+        "keywords": ["count", "total", "rows", "cursor", "result", "all"]
+      },
+      {
+        "id": "endue.database.fetch-all-rows",
+        "title": "Database: fetch every row of the result",
+        "titleMessage": "database.command.fetchAllRows",
+        "keywords": ["fetch", "all", "rows", "load", "cursor", "sort", "filter"]
       },
       {
         "id": "endue.database.format-statement",
         "title": "Database: format the statement at the caret",
+        "titleMessage": "database.command.formatStatement",
         "keywords": ["pretty", "beautify", "indent", "layout", "query", "cursor"]
       },
       {
         "id": "endue.database.format-preview",
         "title": "Database: preview the SQL format",
+        "titleMessage": "database.command.formatPreview",
         "keywords": ["style", "settings", "sample", "layout", "pretty"]
       },
       {
         "id": "endue.database.cancel",
         "title": "Database: cancel the run",
+        "titleMessage": "database.command.cancel",
         "keywords": ["stop", "kill", "interrupt"]
       },
       {
         "id": "endue.database.more",
         "title": "Database: load more rows",
+        "titleMessage": "database.command.more",
         "keywords": ["fetch", "page"]
       },
       {
         "id": "endue.database.next-page",
         "title": "Database: next page of rows",
+        "titleMessage": "database.command.nextPage",
         "keywords": ["paging", "offset"]
       },
       {
         "id": "endue.database.previous-page",
         "title": "Database: previous page of rows",
+        "titleMessage": "database.command.previousPage",
         "keywords": ["paging", "offset"]
       },
       {
         "id": "endue.database.open-table",
         "title": "Database: open a table's rows",
+        "titleMessage": "database.command.openTable",
         "keywords": ["data", "browse"]
       },
       {
         "id": "endue.database.refresh",
         "title": "Database: refresh the explorer",
+        "titleMessage": "database.command.refresh",
         "keywords": ["reload", "schema"]
       },
       {
         "id": "endue.database.reload-schema",
         "title": "Database: read the schema again",
+        "titleMessage": "database.command.reloadSchema",
         "keywords": ["schema", "cache", "reload", "refresh", "catalog"]
       },
       {
         "id": "endue.database.choose-schemas",
         "title": "Database: choose the schemas to read",
+        "titleMessage": "database.command.chooseSchemas",
         "keywords": ["schema", "cache", "system schemas", "catalog"]
       },
       {
         "id": "endue.database.filter-explorer",
         "title": "Database: filter the explorer",
+        "titleMessage": "database.command.filterExplorer",
         "keywords": ["find", "search", "objects"]
       },
       {
         "id": "endue.database.ddl",
         "title": "Database: show an object's DDL",
+        "titleMessage": "database.command.ddl",
         "keywords": ["create", "definition", "source"]
       },
       {
         "id": "endue.database.er-diagram",
         "title": "Database: ER diagram of a schema",
-        "keywords": ["entity relationship", "foreign keys", "relations", "erd"]
+        "titleMessage": "database.command.erDiagram",
+        "keywords": ["entity relationship", "foreign keys", "relations", "erd"],
+        "description": "Read schema tables and relationships as an ER diagram.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "columns": {
+              "type": "string"
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "maxItems": 20
+            },
+            "filter": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.er-neighbours",
+        "title": "Database: ER diagram of a table and its neighbours",
+        "titleMessage": "database.command.erNeighbours",
+        "keywords": ["entity relationship", "foreign keys", "related tables", "depth", "erd"],
+        "description": "Read a table and the schemas and relationships around it in an ER diagram.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "columns": {
+              "type": "string"
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.er-arrange",
+        "title": "Database: auto layout of the ER diagram",
+        "titleMessage": "database.command.erArrange",
+        "keywords": ["arrange", "layout", "tidy", "erd"]
+      },
+      {
+        "id": "endue.database.er-columns",
+        "title": "Database: columns shown in the ER diagram",
+        "titleMessage": "database.command.erColumns",
+        "keywords": ["keys only", "hide columns", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-table",
+        "title": "Database: add a table to the ER diagram",
+        "titleMessage": "database.command.erAddTable",
+        "keywords": ["show table", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-table",
+        "title": "Database: remove a table from the ER diagram",
+        "titleMessage": "database.command.erRemoveTable",
+        "keywords": ["hide table", "erd"]
+      },
+      {
+        "id": "endue.database.er-expand",
+        "title": "Database: add a table's neighbours to the ER diagram",
+        "titleMessage": "database.command.erExpand",
+        "keywords": ["related tables", "foreign keys", "erd"]
+      },
+      {
+        "id": "endue.database.er-add-schema",
+        "title": "Database: add a schema to the ER diagram",
+        "titleMessage": "database.command.erAddSchema",
+        "keywords": ["several schemas", "erd"]
+      },
+      {
+        "id": "endue.database.er-relation",
+        "title": "Database: draw a relation in the ER diagram",
+        "titleMessage": "database.command.erRelation",
+        "keywords": ["virtual foreign key", "not in the database", "erd"]
+      },
+      {
+        "id": "endue.database.er-remove-relation",
+        "title": "Database: remove a drawn relation from the ER diagram",
+        "titleMessage": "database.command.erRemoveRelation",
+        "keywords": ["virtual foreign key", "erd"]
+      },
+      {
+        "id": "endue.database.er-export",
+        "title": "Database: export the ER diagram as an image",
+        "titleMessage": "database.command.erExport",
+        "keywords": ["svg", "png", "save", "picture", "erd"]
+      },
+      {
+        "id": "endue.database.er-copy-image",
+        "title": "Database: copy the ER diagram as an image",
+        "titleMessage": "database.command.erCopyImage",
+        "keywords": ["png", "clipboard", "picture", "erd"]
+      },
+      {
+        "id": "endue.database.object-actions",
+        "title": "Database: actions on an object…",
+        "titleMessage": "database.command.objectActions",
+        "keywords": [
+          "menu",
+          "rename",
+          "drop",
+          "truncate",
+          "comment",
+          "owner",
+          "source",
+          "generate"
+        ],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.rename-object",
+        "title": "Database: rename an object",
+        "titleMessage": "database.command.renameObject",
+        "keywords": ["alter", "name", "rename to"],
+        "description": "Renames a table, view, sequence, routine, index, trigger, constraint or schema (ALTER ... RENAME TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The new name, written as typed in quotes."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.move-object",
+        "title": "Database: move an object to another schema",
+        "titleMessage": "database.command.moveObject",
+        "keywords": ["set schema", "alter"],
+        "description": "Moves a table, view, sequence or routine to another schema (ALTER ... SET SCHEMA; MySQL: RENAME TABLE to another database). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema it moves to."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-owner",
+        "title": "Database: change an object's owner",
+        "titleMessage": "database.command.changeOwner",
+        "keywords": ["owner to", "alter", "role"],
+        "description": "Gives a PostgreSQL table, view, sequence, routine or schema to another role (ALTER ... OWNER TO). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role that will own it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.comment-object",
+        "title": "Database: comment on an object",
+        "titleMessage": "database.command.commentObject",
+        "keywords": ["comment on", "describe", "note"],
+        "description": "Sets or removes an object's comment (COMMENT ON ... IS; an empty comment removes it). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "comment": {
+              "type": "string",
+              "description": "The comment; empty removes it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.drop-object",
+        "title": "Database: drop an object",
+        "titleMessage": "database.command.dropObject",
+        "keywords": ["delete", "remove", "cascade", "dependents"],
+        "description": "Drops an object after listing what depends on it (PostgreSQL's pg_depend); CASCADE only when asked. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Also drop what depends on it (PostgreSQL). Off unless true."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.truncate-table",
+        "title": "Database: truncate a table",
+        "titleMessage": "database.command.truncateTable",
+        "keywords": ["empty", "delete all rows", "restart identity", "cascade"],
+        "description": "Removes every row of a table (TRUNCATE; SQLite: DELETE FROM), with the server's row estimate shown first. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "restartIdentity": {
+              "type": "boolean",
+              "description": "Start its sequences again (PostgreSQL)."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Also empty the tables whose foreign keys point at it (PostgreSQL)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.refresh-materialized-view",
+        "title": "Database: refresh a materialized view",
+        "titleMessage": "database.command.refreshMaterializedView",
+        "keywords": ["refresh", "concurrently", "with no data"],
+        "description": "Refreshes a PostgreSQL materialized view, CONCURRENTLY when it has data and a unique index. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "concurrently": {
+              "type": "boolean",
+              "description": "Refresh without blocking reads, where the view allows it."
+            },
+            "withNoData": {
+              "type": "boolean",
+              "description": "Empty it instead (WITH NO DATA)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.enable-trigger",
+        "title": "Database: enable or disable a trigger",
+        "titleMessage": "database.command.enableTrigger",
+        "keywords": ["disable trigger", "enable trigger", "alter table"],
+        "description": "Enables or disables a PostgreSQL trigger (ALTER TABLE ... ENABLE or DISABLE TRIGGER). The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "true enables it, false disables it; it is toggled when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.edit-source",
+        "title": "Database: edit the source of a view, routine or trigger",
+        "titleMessage": "database.command.editSource",
+        "keywords": [
+          "create or replace",
+          "definition",
+          "function",
+          "procedure",
+          "materialized view",
+          "trigger function"
+        ],
+        "description": "Opens the definition of a view, materialized view, function, procedure or trigger's function in a console of its own, to edit and apply.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.apply-source",
+        "title": "Database: apply the source (save the object)",
+        "titleMessage": "database.command.applySource",
+        "keywords": ["save", "create or replace", "replace", "commit the definition"],
+        "description": "Runs the source edited in the console on screen: CREATE OR REPLACE, or the drop and create a materialized view needs, in one transaction. The person is shown the script first.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.generate-sql",
+        "title": "Database: generate SQL for an object",
+        "titleMessage": "database.command.generateSql",
+        "keywords": ["template", "select", "insert", "update", "delete", "call", "script"],
+        "description": "Writes a SELECT, INSERT, UPDATE or DELETE of a table, or a call of a routine, into its connection's console, with :name parameters; nothing runs.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema (MySQL: the database; SQLite: main); one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments, or its name alone when only one has it); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind as the explorer says it: table, view, materialized view, foreign table, sequence, function, procedure, index, trigger, primary key, unique, check, foreign key, schema."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table a part (an index, a trigger, a constraint) is on."
+            },
+            "statement": {
+              "enum": ["select", "insert", "update", "delete", "call"],
+              "description": "Which statement; asked when absent and there are several."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.database.activity",
         "title": "Database: server activity (sessions and locks)",
+        "titleMessage": "database.command.activity",
         "keywords": [
           "sessions",
           "locks",
@@ -289,11 +1166,13 @@
       {
         "id": "endue.database.activity-refresh",
         "title": "Database: refresh the server activity",
+        "titleMessage": "database.command.activityRefresh",
         "keywords": ["reload", "sessions", "locks"]
       },
       {
         "id": "endue.database.cancel-session",
         "title": "Database: cancel a session's statement",
+        "titleMessage": "database.command.cancelSession",
         "keywords": ["pg_cancel_backend", "stop", "interrupt", "query", "kill"],
         "description": "Cancels the statement a PostgreSQL session runs (pg_cancel_backend); the session stays. The person is asked first, with the statement shown; a read-only connection refuses.",
         "args": {
@@ -312,12 +1191,12 @@
           },
           "additionalProperties": false
         },
-        "agent": true,
-        "irreversible": true
+        "agent": true
       },
       {
         "id": "endue.database.end-session",
         "title": "Database: end a session",
+        "titleMessage": "database.command.endSession",
         "keywords": ["pg_terminate_backend", "terminate", "kill", "disconnect", "backend"],
         "description": "Ends a PostgreSQL session (pg_terminate_backend): its connection closes and its open transaction rolls back. The person is asked first, with its statement shown; a read-only connection refuses.",
         "args": {
@@ -340,8 +1219,635 @@
         "irreversible": true
       },
       {
+        "id": "endue.database.explain-statement",
+        "title": "Database: explain a statement (agents)",
+        "titleMessage": "database.command.explainStatement",
+        "keywords": ["explain", "plan", "query plan", "analyze", "agent"],
+        "description": "Answers the plan of one statement (EXPLAIN; SQLite's EXPLAIN QUERY PLAN) on a read-only session. analyze runs it (EXPLAIN ANALYZE), only a read and only where the person allows it for agents.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "analyze": {
+              "type": "boolean",
+              "description": "Run it to measure it (EXPLAIN ANALYZE); refused unless the person allows it on this connection."
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.object-ddl",
+        "title": "Database: an object's DDL (agents)",
+        "titleMessage": "database.command.objectDdl",
+        "keywords": ["ddl", "definition", "create statement", "source", "agent"],
+        "description": "Answers the DDL of a table, view, sequence, routine or other object, read from the server.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its schema (SQLite: main)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "description": "Its kind, when names clash: table, view, function ..."
+            }
+          },
+          "required": ["connection", "name"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.sample-rows",
+        "title": "Database: a table's sample rows (agents)",
+        "titleMessage": "database.command.sampleRows",
+        "keywords": ["sample", "rows", "preview", "head", "agent"],
+        "description": "Answers a table's first rows (20 by default; 1000 and the settings' row limit at most) on a read-only session, the columns the person marks sensitive masked.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its schema (SQLite: main)."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "table"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.table-stats",
+        "title": "Database: a table's statistics (agents)",
+        "titleMessage": "database.command.tableStats",
+        "keywords": ["statistics", "pg_stats", "size", "dead rows", "vacuum", "analyze", "agent"],
+        "description": "Answers a PostgreSQL table's estimated rows, sizes, scans, live and dead rows, last vacuum and analyze, and each column's statistics (pg_stats); a sensitive column's common values and histogram are masked.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "schema", "table"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.sessions-list",
+        "title": "Database: the server's sessions (agents)",
+        "titleMessage": "database.command.sessionsList",
+        "keywords": ["sessions", "pg_stat_activity", "processes", "connections", "agent"],
+        "description": "Answers a PostgreSQL server's sessions (pg_stat_activity): process id, user, database, application, client, state, wait, start times and statement (cut at 500 characters). It only reads.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.check-statement",
+        "title": "Database: check a statement without running it (agents)",
+        "titleMessage": "database.command.checkStatement",
+        "keywords": ["check", "validate", "prepare", "syntax", "lint", "agent"],
+        "description": "Asks a PostgreSQL server to prepare one SELECT, INSERT, UPDATE, DELETE, MERGE or VALUES statement on a read-only session, which checks its names and types without running it, and answers the error with its position, if any.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds the read may take; the settings' timeout at most."
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.agent-audit",
+        "title": "Database: agent audit",
+        "titleMessage": "database.command.agentAudit",
+        "keywords": ["agents", "audit", "log", "what agents ran", "eris", "access"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-access",
+        "title": "Database: what agents may reach of a connection",
+        "titleMessage": "database.command.agentAccess",
+        "keywords": ["agents", "close to agents", "sensitive", "mask", "explain analyze", "access"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "closed": {
+              "type": "boolean",
+              "description": "Close the connection to agents, or open it again."
+            },
+            "analyze": {
+              "type": "boolean",
+              "description": "Let agents run EXPLAIN ANALYZE here."
+            },
+            "sensitive": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The sensitive columns, replacing the ones set: column, table.column or schema.table.column."
+            },
+            "add": {
+              "type": "string",
+              "description": "One more sensitive column."
+            },
+            "remove": {
+              "type": "string",
+              "description": "A sensitive column to unmask."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-audit-export",
+        "title": "Database: export the agent audit list",
+        "titleMessage": "database.command.agentAuditExport",
+        "keywords": ["agents", "audit", "export", "json", "download"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.agent-audit-clear",
+        "title": "Database: clear the agent audit list",
+        "titleMessage": "database.command.agentAuditClear",
+        "keywords": ["agents", "audit", "clear", "forget"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.database.backup",
+        "title": "Database: back up a database",
+        "titleMessage": "database.command.backup",
+        "keywords": ["pg_dump", "dump", "backup", "export", "archive", "copy"],
+        "description": "Opens the backup form of a PostgreSQL connection (pg_dump), filled from these arguments: the format, the schemas or tables, schema or data only, owner and privileges, compression and jobs. Nothing runs until the person submits it and chooses where to save; it answers what was written and its size.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, the only one, or one picked, when absent."
+            },
+            "format": {
+              "type": "string",
+              "enum": ["custom", "directory", "tar", "plain"],
+              "description": "custom (the default), directory, tar or plain SQL."
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Back up only these schemas, by exact name."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Back up only these tables, as pg_dump's patterns (public.orders, sales.*)."
+            },
+            "content": {
+              "type": "string",
+              "enum": ["all", "schema", "data"],
+              "description": "Schema and data (all), schema only or data only."
+            },
+            "noOwner": {
+              "type": "boolean"
+            },
+            "noPrivileges": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["default", "none", "gzip", "lz4", "zstd"],
+              "description": "Compression of a custom or directory backup."
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 22
+            },
+            "jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "description": "Parallel jobs of a directory backup."
+            },
+            "inserts": {
+              "type": "boolean",
+              "description": "A plain backup's rows as INSERT statements (the default)."
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Where to write it; asked of the person first. Without it the save dialog asks."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.restore",
+        "title": "Database: restore a database",
+        "titleMessage": "database.command.restore",
+        "keywords": ["pg_restore", "load", "import", "dump", "backup"],
+        "description": "Opens the restore form for a dump (pg_restore, or a plain SQL file run as a script), filled from these arguments: the connection it goes into and pg_restore's options. Nothing runs until the person submits it; a read-only connection refuses, and production is asked first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The dump: a file, or a directory archive's folder; asked of the person first. Without it the open dialog asks."
+            },
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, the only one, or one picked, when absent."
+            },
+            "clean": {
+              "type": "boolean"
+            },
+            "ifExists": {
+              "type": "boolean"
+            },
+            "create": {
+              "type": "boolean"
+            },
+            "content": {
+              "type": "string",
+              "enum": ["all", "schema", "data"],
+              "description": "Schema and data (all), schema only or data only."
+            },
+            "noOwner": {
+              "type": "boolean"
+            },
+            "noPrivileges": {
+              "type": "boolean"
+            },
+            "jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "singleTransaction": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.backup-cancel",
+        "title": "Database: cancel the backup or restore",
+        "titleMessage": "database.command.backupCancel",
+        "keywords": ["stop", "abort", "pg_dump", "pg_restore"]
+      },
+      {
+        "id": "endue.database.search-data",
+        "title": "Database: search for a value in tables",
+        "titleMessage": "database.command.searchData",
+        "keywords": [
+          "find",
+          "where is",
+          "value",
+          "id",
+          "across tables",
+          "grep",
+          "lookup",
+          "regex",
+          "json"
+        ],
+        "description": "Looks for a value in every table of the chosen schemas, one table at a time in a read-only transaction with a statement timeout each, and answers the tables and columns that hold it with their counts and the first rows' keys. A production connection asks first. Without a value it opens the form.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "value": {
+              "type": "string",
+              "description": "The text or number to find; absent or empty opens the form."
+            },
+            "match": {
+              "type": "string",
+              "enum": ["equals", "contains", "starts", "regex"],
+              "description": "How a value matches: equals (the default), contains, starts with, or a regular expression (PostgreSQL ~, MySQL and SQLite REGEXP)."
+            },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case."
+            },
+            "schemas": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The schemas to search; every one the explorer lists when absent."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only these tables (name or schema.name, * for any run of characters); every table when absent."
+            },
+            "types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["text", "number", "uuid", "json", "date"]
+              },
+              "description": "The kinds of column to look in; all five when absent."
+            },
+            "rowLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Matching rows read per table (100 when absent)."
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300,
+              "description": "Seconds each table's statement may take (10 when absent)."
+            },
+            "sizeLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Tables estimated past this many rows are left out (1,000,000 when absent)."
+            },
+            "big": {
+              "type": "boolean",
+              "description": "Search the tables past the size limit too."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.search-data-cancel",
+        "title": "Database: cancel the value search",
+        "titleMessage": "database.command.searchDataCancel",
+        "keywords": ["stop", "search", "find"]
+      },
+      {
+        "id": "endue.database.search-source",
+        "title": "Database: search the source of routines, views and triggers",
+        "titleMessage": "database.command.searchSource",
+        "keywords": [
+          "find in source",
+          "grep",
+          "definition",
+          "function",
+          "procedure",
+          "view",
+          "trigger",
+          "policy",
+          "check",
+          "default",
+          "regex",
+          "where used"
+        ],
+        "description": "Looks for a text or a regular expression in the definitions of functions, procedures, views, materialized views, triggers, policies, checks and defaults that the schema cache holds (routine and view bodies read once per read of a schema), in one schema, the connection's database or every connection, and answers each object with its matching lines. Comments too when asked. Without a text it opens the form. It never changes anything.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "text": {
+              "type": "string",
+              "description": "What to find; absent or empty opens the form."
+            },
+            "regex": {
+              "type": "boolean",
+              "description": "The text is a regular expression, matched within a line."
+            },
+            "ignoreCase": {
+              "type": "boolean",
+              "description": "Match ignoring case (the default)."
+            },
+            "comments": {
+              "type": "boolean",
+              "description": "Search COMMENT ON texts and the comments inside definitions too."
+            },
+            "scope": {
+              "type": "string",
+              "enum": ["schema", "database", "all"],
+              "description": "One schema (with schema), the connection's database (the default), or every PostgreSQL connection and each cached database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "description": "The schema of the scope schema."
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "function",
+                  "procedure",
+                  "view",
+                  "materialized view",
+                  "trigger",
+                  "policy",
+                  "check",
+                  "default"
+                ]
+              },
+              "description": "The kinds of object to search; all of them when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.search-source-cancel",
+        "title": "Database: cancel the source search",
+        "titleMessage": "database.command.searchSourceCancel",
+        "keywords": ["stop", "search", "source"]
+      },
+      {
         "id": "endue.database.overview",
         "title": "Database: server overview",
+        "titleMessage": "database.command.overview",
         "keywords": [
           "health",
           "statistics",
@@ -350,26 +1856,44 @@
           "vacuum",
           "replication",
           "pg_stat_statements"
-        ]
+        ],
+        "description": "Read the server overview of a named PostgreSQL connection.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.refresh-overview",
         "title": "Database: refresh the server overview",
+        "titleMessage": "database.command.refreshOverview",
         "keywords": ["reload", "statistics", "health"]
       },
       {
         "id": "endue.database.overview-result",
         "title": "Database: open an overview section in the console",
+        "titleMessage": "database.command.overviewResult",
         "keywords": ["result", "copy", "export", "statistics"]
       },
       {
         "id": "endue.database.overview-statement",
         "title": "Database: open a heavy statement in the console",
+        "titleMessage": "database.command.overviewStatement",
         "keywords": ["pg_stat_statements", "slow query", "top queries"]
       },
       {
         "id": "endue.database.maintenance",
         "title": "Database: maintenance (VACUUM, ANALYZE, REINDEX, CLUSTER)",
+        "titleMessage": "database.command.maintenance",
         "keywords": [
           "vacuum",
           "analyze",
@@ -415,15 +1939,38 @@
               "type": "object",
               "description": "The statement's options, on the defaults (an open form's own are set aside); what the server's version or another option rules out is left out of the statement.",
               "properties": {
-                "full": { "type": "boolean" },
-                "freeze": { "type": "boolean" },
-                "verbose": { "type": "boolean", "description": "On by default." },
-                "analyze": { "type": "boolean" },
-                "skipLocked": { "type": "boolean" },
-                "indexCleanup": { "type": "string", "enum": ["", "auto", "on", "off"] },
-                "truncate": { "type": "string", "enum": ["", "on", "off"] },
-                "parallel": { "type": ["integer", "null"], "minimum": 0, "maximum": 1024 },
-                "processToast": { "type": "boolean" },
+                "full": {
+                  "type": "boolean"
+                },
+                "freeze": {
+                  "type": "boolean"
+                },
+                "verbose": {
+                  "type": "boolean",
+                  "description": "On by default."
+                },
+                "analyze": {
+                  "type": "boolean"
+                },
+                "skipLocked": {
+                  "type": "boolean"
+                },
+                "indexCleanup": {
+                  "type": "string",
+                  "enum": ["", "auto", "on", "off"]
+                },
+                "truncate": {
+                  "type": "string",
+                  "enum": ["", "on", "off"]
+                },
+                "parallel": {
+                  "type": ["integer", "null"],
+                  "minimum": 0,
+                  "maximum": 1024
+                },
+                "processToast": {
+                  "type": "boolean"
+                },
                 "bufferUsageLimit": {
                   "type": "string",
                   "description": "A size such as 256kB or 16MB, or 0."
@@ -455,162 +2002,2078 @@
       {
         "id": "endue.database.maintenance-run",
         "title": "Database: run the maintenance form",
+        "titleMessage": "database.command.maintenanceRun",
         "keywords": ["vacuum", "analyze", "reindex", "cluster", "start", "execute"]
       },
       {
         "id": "endue.database.maintenance-cancel",
         "title": "Database: cancel the maintenance run",
+        "titleMessage": "database.command.maintenanceCancel",
         "keywords": ["stop", "abort", "pg_cancel_backend", "vacuum", "reindex"]
       },
       {
         "id": "endue.database.maintenance-refresh",
         "title": "Database: read the maintenance target again",
+        "titleMessage": "database.command.maintenanceRefresh",
         "keywords": ["reload", "size", "statistics", "dead tuples", "last vacuum"]
+      },
+      {
+        "id": "endue.database.routine",
+        "title": "Database: run a function or procedure",
+        "titleMessage": "database.command.routine",
+        "keywords": [
+          "routine",
+          "function",
+          "procedure",
+          "call",
+          "execute",
+          "stored procedure",
+          "arguments",
+          "plpgsql"
+        ],
+        "description": "Opens the form of a PostgreSQL function or procedure, one field per argument checked by its type, and answers the routine, its arguments with their modes, types and defaults, how it runs (an IMMUTABLE or STABLE function reads; a VOLATILE function or a procedure is a write) and the exact call. With run, it runs the call in the connection's console and answers its rows, the notices and how it ended; a write runs only after the person says yes, a read-only connection refuses one, and rollback runs it in a transaction rolled back at the end.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The routine's schema; every schema but the system ones when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The function's or procedure's name; one picked from the palette when absent."
+            },
+            "signature": {
+              "type": "string",
+              "description": "Its argument types as pg_get_function_identity_arguments writes them (a integer, b text), for an overloaded name."
+            },
+            "arguments": {
+              "type": ["object", "array"],
+              "description": "Values by argument name ($1 for one without), or a list in the call's order: null is NULL, a list is a VARIADIC argument's elements, {value, type} gives a polymorphic one its type, and one left out takes its DEFAULT."
+            },
+            "rollback": {
+              "type": "boolean",
+              "description": "Run it in a transaction rolled back at the end (not for a procedure that commits)."
+            },
+            "run": {
+              "type": "boolean",
+              "description": "Run the call once the form is open; the person is asked first when it may write."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.routine-run",
+        "title": "Database: run the routine form",
+        "titleMessage": "database.command.routineRun",
+        "keywords": ["function", "procedure", "call", "execute", "start"]
+      },
+      {
+        "id": "endue.database.routine-refresh",
+        "title": "Database: read the routine form again",
+        "titleMessage": "database.command.routineRefresh",
+        "keywords": ["function", "procedure", "reload", "arguments", "signature"]
+      },
+      {
+        "id": "endue.database.create-table",
+        "title": "Database: create a table…",
+        "titleMessage": "database.command.createTable",
+        "keywords": [
+          "new table",
+          "create table",
+          "design",
+          "columns",
+          "primary key",
+          "foreign key",
+          "index",
+          "partition",
+          "ddl"
+        ],
+        "description": "Opens the table form of a new PostgreSQL table, filled from the arguments, and answers the CREATE script it shows (every name quoted), with the problems that hold it back. Nothing runs: the person reads the script in the form and runs it there; a read-only connection gets no Run.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "description": "The new table's name, written as given (quoted)."
+            },
+            "columns": {
+              "type": "array",
+              "description": "Its columns in order.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The column's name, written as given (quoted)."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "One of the server's types: as PostgreSQL formats it (character varying), its own name (varchar, int4) or schema.name, with a length (varchar(120)) and [] for an array."
+                  },
+                  "length": {
+                    "type": "string",
+                    "description": "The type's length when not in type (120, or 10,2)."
+                  },
+                  "notNull": {
+                    "type": "boolean",
+                    "description": "NOT NULL."
+                  },
+                  "default": {
+                    "type": "string",
+                    "description": "A default expression, as SQL (now(), 0, 'new')."
+                  },
+                  "identity": {
+                    "type": "string",
+                    "enum": ["always", "by default"],
+                    "description": "An identity column (smallint, integer or bigint)."
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "The column's comment."
+                  }
+                },
+                "required": ["name"],
+                "additionalProperties": false
+              }
+            },
+            "primaryKey": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The columns of the primary key, by name."
+            },
+            "comment": {
+              "type": "string",
+              "description": "The table's comment."
+            },
+            "owner": {
+              "type": "string",
+              "description": "The role that owns it."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.change-table",
+        "title": "Database: change a table's design…",
+        "titleMessage": "database.command.changeTable",
+        "keywords": [
+          "alter table",
+          "modify table",
+          "design",
+          "rename column",
+          "add column",
+          "drop column",
+          "column type",
+          "index",
+          "constraint"
+        ],
+        "description": "Opens the table form of a PostgreSQL table, read from the server, for the person to change; every change becomes the ALTER script the form shows (a rename is a rename, dangerous steps marked) and runs only when the person runs it there.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id (PostgreSQL); one is picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's name; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.table-design-run",
+        "title": "Database: run the table form's script",
+        "titleMessage": "database.command.tableDesignRun",
+        "keywords": ["apply", "alter table", "create table", "execute", "save the design"]
+      },
+      {
+        "id": "endue.database.table-design-dry-run",
+        "title": "Database: dry-run the table form's script",
+        "titleMessage": "database.command.tableDesignDryRun",
+        "keywords": ["try", "rollback", "test the alter", "check the script"]
+      },
+      {
+        "id": "endue.database.table-design-console",
+        "title": "Database: open the table form's script in a console",
+        "titleMessage": "database.command.tableDesignConsole",
+        "keywords": ["copy", "edit the script", "alter table", "create table", "sql"]
+      },
+      {
+        "id": "endue.database.table-design-refresh",
+        "title": "Database: read the table form's table again",
+        "titleMessage": "database.command.tableDesignRefresh",
+        "keywords": ["reload", "discard changes", "design", "columns"]
       },
       {
         "id": "endue.database.history",
         "title": "Database: history",
+        "titleMessage": "database.command.history",
         "keywords": ["recent", "earlier queries"]
       },
       {
         "id": "endue.database.star",
         "title": "Database: star the query",
+        "titleMessage": "database.command.star",
         "keywords": ["save", "favorite", "bookmark"]
       },
       {
         "id": "endue.database.starred",
         "title": "Database: starred queries",
+        "titleMessage": "database.command.starred",
         "keywords": ["saved", "favorites", "bookmarks"]
       },
       {
         "id": "endue.database.unstar",
         "title": "Database: unstar a query",
+        "titleMessage": "database.command.unstar",
         "keywords": ["remove saved", "forget"]
       },
       {
         "id": "endue.database.copy",
         "title": "Database: copy the result as",
+        "titleMessage": "database.command.copy",
         "keywords": ["csv", "tsv", "json", "markdown", "insert", "update", "clipboard"]
+      },
+      {
+        "id": "endue.database.copy-value",
+        "title": "Database: copy the cell's value",
+        "titleMessage": "database.command.copyValue",
+        "keywords": ["cell", "value", "clipboard", "text"]
       },
       {
         "id": "endue.database.export",
         "title": "Database: export the result to a file",
-        "keywords": ["download", "save", "csv", "json", "sql"]
+        "titleMessage": "database.command.export",
+        "keywords": [
+          "download",
+          "save",
+          "csv",
+          "json",
+          "sql",
+          "xlsx",
+          "spreadsheet",
+          "html",
+          "xml",
+          "template"
+        ],
+        "description": "Exports the result on screen (or the grid's selection) as a file in a format, with that format's options; the person always chooses the place in the save dialog, which no argument can skip. Without a format the palette asks, then the options dialog. It answers the path, the rows written, their bytes, and partial when the server has more rows than the result holds.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "sheets": {
+              "enum": ["shown", "all"],
+              "description": "For xlsx: the result on screen, or every result of the console as a sheet each."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.database.add-row",
         "title": "Database: add a row",
+        "titleMessage": "database.command.addRow",
         "keywords": ["insert", "new row", "edit"]
       },
       {
         "id": "endue.database.preview-changes",
         "title": "Database: preview the pending changes",
-        "keywords": ["diff", "sql", "edit"]
+        "titleMessage": "database.command.previewChanges",
+        "keywords": ["diff", "sql", "edit"],
+        "description": "Read the pending grid changes for the active result. Submit stays with the person.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.database.submit-changes",
         "title": "Database: submit the pending changes",
+        "titleMessage": "database.command.submitChanges",
         "keywords": ["commit", "apply", "save", "edit"]
       },
       {
         "id": "endue.database.revert-changes",
         "title": "Database: revert the pending changes",
+        "titleMessage": "database.command.revertChanges",
         "keywords": ["undo", "discard", "edit"]
+      },
+      {
+        "id": "endue.database.paste",
+        "title": "Database: paste into the grid",
+        "titleMessage": "database.command.paste",
+        "keywords": ["clipboard", "tsv", "csv", "spreadsheet", "cells", "rows", "edit"],
+        "description": "Pastes tab-separated text (or CSV, or one value) into the grid on screen from its caret as pending changes: rows past the last are added, each value is checked by its column's type and a bad one refuses the whole paste with its row and column. Nothing runs until the person submits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The text to paste; the clipboard's when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.duplicate-rows",
+        "title": "Database: duplicate the selected rows",
+        "titleMessage": "database.command.duplicateRows",
+        "keywords": ["copy row", "clone", "insert", "new row", "edit"]
+      },
+      {
+        "id": "endue.database.fill-down",
+        "title": "Database: fill down the selected cells",
+        "titleMessage": "database.command.fillDown",
+        "keywords": ["copy down", "repeat", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.clear-cells",
+        "title": "Database: clear the selected cells to NULL",
+        "titleMessage": "database.command.clearCells",
+        "keywords": ["null", "empty", "erase", "cells", "edit"]
+      },
+      {
+        "id": "endue.database.undo-change",
+        "title": "Database: undo the last pending change",
+        "titleMessage": "database.command.undoChange",
+        "keywords": ["undo", "take back", "paste", "edit"]
       },
       {
         "id": "endue.database.set-default",
         "title": "Database: set the cell to DEFAULT",
+        "titleMessage": "database.command.setDefault",
         "keywords": ["default value", "edit", "cell", "reset"]
       },
       {
         "id": "endue.database.cell-file-load",
         "title": "Database: load the cell's bytes from a file",
+        "titleMessage": "database.command.cellFileLoad",
         "keywords": ["bytea", "blob", "binary", "upload", "edit", "cell"]
       },
       {
         "id": "endue.database.cell-file-save",
         "title": "Database: save the cell's bytes to a file",
+        "titleMessage": "database.command.cellFileSave",
         "keywords": ["bytea", "blob", "binary", "download", "cell"]
       },
       {
         "id": "endue.database.clients",
         "title": "Database: check the clients",
-        "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+        "titleMessage": "database.command.clients",
+        "keywords": ["postgresql", "mysql", "mariadb", "sqlite3", "install", "version"]
       },
       {
         "id": "endue.database.hide-column",
         "title": "Database: hide the result's column at the cursor",
+        "titleMessage": "database.command.hideColumn",
         "keywords": ["grid", "columns", "hide"]
       },
       {
         "id": "endue.database.show-column",
         "title": "Database: show a hidden column of the result",
+        "titleMessage": "database.command.showColumn",
         "keywords": ["grid", "columns", "unhide"]
       },
       {
         "id": "endue.database.move-column-left",
         "title": "Database: move the result's column left",
+        "titleMessage": "database.command.moveColumnLeft",
         "keywords": ["grid", "columns", "reorder"]
       },
       {
         "id": "endue.database.move-column-right",
         "title": "Database: move the result's column right",
+        "titleMessage": "database.command.moveColumnRight",
         "keywords": ["grid", "columns", "reorder"]
       },
       {
         "id": "endue.database.pin-column",
         "title": "Database: pin or unpin the result's column",
+        "titleMessage": "database.command.pinColumn",
         "keywords": ["grid", "columns", "freeze", "sticky"]
       },
       {
         "id": "endue.database.fit-column",
         "title": "Database: fit the result's column to its content",
+        "titleMessage": "database.command.fitColumn",
         "keywords": ["grid", "columns", "width", "autosize"]
       },
       {
         "id": "endue.database.narrow-column",
         "title": "Database: make the result's column narrower",
+        "titleMessage": "database.command.narrowColumn",
         "keywords": ["grid", "columns", "width", "resize"]
       },
       {
         "id": "endue.database.widen-column",
         "title": "Database: make the result's column wider",
+        "titleMessage": "database.command.widenColumn",
         "keywords": ["grid", "columns", "width", "resize"]
       },
       {
         "id": "endue.database.reset-columns",
         "title": "Database: reset the result's columns",
+        "titleMessage": "database.command.resetColumns",
         "keywords": ["grid", "columns", "order", "width"]
       },
       {
         "id": "endue.database.add-sort",
         "title": "Database: sort the result by its column next",
+        "titleMessage": "database.command.addSort",
         "keywords": ["grid", "order by", "multi-column"]
       },
       {
         "id": "endue.database.filter-by-cell",
         "title": "Database: filter the result by the cell at the cursor",
+        "titleMessage": "database.command.filterByCell",
         "keywords": ["grid", "quick filter", "equals", "contains", "null"]
       },
       {
         "id": "endue.database.clear-filters",
         "title": "Database: clear the result's quick filters",
+        "titleMessage": "database.command.clearFilters",
         "keywords": ["grid", "quick filter", "where"]
       },
       {
         "id": "endue.database.find-in-result",
         "title": "Database: find in the result",
+        "titleMessage": "database.command.findInResult",
         "keywords": ["grid", "search", "cell"]
       },
       {
         "id": "endue.database.find-next",
         "title": "Database: find the next match in the result",
+        "titleMessage": "database.command.findNext",
         "keywords": ["grid", "search"]
       },
       {
         "id": "endue.database.find-previous",
         "title": "Database: find the previous match in the result",
+        "titleMessage": "database.command.findPrevious",
         "keywords": ["grid", "search"]
+      },
+      {
+        "id": "endue.database.problems",
+        "title": "Database: list the SQL problems",
+        "titleMessage": "database.command.problems",
+        "keywords": ["errors", "diagnostics", "lint", "underline", "syntax"]
+      },
+      {
+        "id": "endue.database.next-problem",
+        "title": "Database: go to the next SQL problem",
+        "titleMessage": "database.command.nextProblem",
+        "keywords": ["error", "diagnostic", "lint", "F8"]
+      },
+      {
+        "id": "endue.database.previous-problem",
+        "title": "Database: go to the previous SQL problem",
+        "titleMessage": "database.command.previousProblem",
+        "keywords": ["error", "diagnostic", "lint", "Shift+F8"]
+      },
+      {
+        "id": "endue.database.signatures",
+        "title": "Database: show the arguments of the function at the caret",
+        "titleMessage": "database.command.signatures",
+        "keywords": ["signature", "parameters", "overloads", "help", "Ctrl+Shift+Space"]
+      },
+      {
+        "id": "endue.database.expand-star",
+        "title": "Database: write out the columns of * at the caret",
+        "titleMessage": "database.command.expandStar",
+        "keywords": ["star", "asterisk", "columns", "expand", "select list"]
+      },
+      {
+        "id": "endue.database.follow-key",
+        "title": "Database: go to the row this key points at",
+        "titleMessage": "database.command.followKey",
+        "keywords": ["foreign key", "follow", "reference", "link", "related", "grid"]
+      },
+      {
+        "id": "endue.database.referencing-rows",
+        "title": "Database: show the rows that point at this row",
+        "titleMessage": "database.command.referencingRows",
+        "keywords": ["foreign key", "referencing", "references", "children", "related", "count"]
+      },
+      {
+        "id": "endue.database.go-back",
+        "title": "Database: go back to where the key was followed from",
+        "titleMessage": "database.command.goBack",
+        "keywords": ["back", "foreign key", "return", "previous", "grid"]
+      },
+      {
+        "id": "endue.database.chart",
+        "title": "Database: draw the result as a chart",
+        "titleMessage": "database.command.chart",
+        "keywords": ["chart", "graph", "plot", "bar", "line", "pie", "visualize", "result"]
+      },
+      {
+        "id": "endue.database.chart-export",
+        "title": "Database: export the chart as an image",
+        "titleMessage": "database.command.chartExport",
+        "keywords": ["chart", "export", "image", "png", "svg", "save"]
+      },
+      {
+        "id": "endue.database.pick-key",
+        "title": "Database: pick the key from the referenced table",
+        "titleMessage": "database.command.pickKey",
+        "keywords": ["foreign key", "search", "lookup", "reference", "edit", "cell"]
+      },
+      {
+        "id": "endue.database.show-map",
+        "title": "Database: show the result on a map",
+        "titleMessage": "database.command.showMap",
+        "keywords": [
+          "geometry",
+          "geography",
+          "spatial",
+          "shapes",
+          "map",
+          "point",
+          "polygon",
+          "srid"
+        ]
+      },
+      {
+        "id": "endue.database.export-connections",
+        "title": "Database: export connections to a file",
+        "titleMessage": "database.command.exportConnections",
+        "keywords": ["export", "move", "share", "json", "connections", "backup"]
+      },
+      {
+        "id": "endue.database.import-connections",
+        "title": "Database: import connections from a file",
+        "titleMessage": "database.command.importConnections",
+        "keywords": ["import", "move", "share", "json", "pg_service.conf", "service"]
+      },
+      {
+        "id": "endue.database.fix-problem",
+        "title": "Database: fix the SQL warning at the caret",
+        "titleMessage": "database.command.fixProblem",
+        "keywords": ["quick fix", "warning", "lint", "IS NULL", "column list"]
+      },
+      {
+        "id": "endue.database.switch-database",
+        "title": "Database: switch the database",
+        "titleMessage": "database.command.switchDatabase",
+        "keywords": ["database", "switch", "server", "catalog", "postgresql"]
+      },
+      {
+        "id": "endue.database.privileges",
+        "title": "Database: roles and privileges",
+        "titleMessage": "database.command.privileges",
+        "keywords": ["roles", "users", "grants", "permissions", "access", "members", "pg_roles"],
+        "description": "Opens a PostgreSQL connection's roles and privileges and answers its roles: attributes (login, superuser, create database, create role, replication, bypass RLS, inherit, connection limit, valid until), what each is a member of and its members. Never a password; a catalog this role cannot read is said.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.object-privileges",
+        "title": "Database: privileges of an object",
+        "titleMessage": "database.command.objectPrivileges",
+        "keywords": ["grants", "acl", "matrix", "who may", "permissions"],
+        "description": "Opens an object's matrix of grantees and privileges and answers its owner and every grant: grantee, privilege, grant option and grantor, its columns' too, and a table's row security policies.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's schema; one is picked when absent (not for a database, a schema, a language, a foreign data wrapper or server, or a tablespace)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind: table, view, materialized view, foreign table, sequence, function, procedure, type, schema, database, language, foreign data wrapper, foreign server, tablespace."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.role-privileges",
+        "title": "Database: what a role may do",
+        "titleMessage": "database.command.rolePrivileges",
+        "keywords": ["effective privileges", "membership", "inherit", "public", "why"],
+        "description": "Answers everything a PostgreSQL role may do and why: the roles it inherits from or may SET ROLE to, each object's privileges with the path they come through (itself, PUBLIC or a membership), what it owns, and what its attributes and predefined roles let it do.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.default-privileges",
+        "title": "Database: default privileges",
+        "titleMessage": "database.command.defaultPrivileges",
+        "keywords": ["alter default privileges", "new objects", "pg_default_acl"],
+        "description": "Opens and answers the default privileges per owner, schema and kind: what new tables, sequences, functions, types and schemas get.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.change-privileges",
+        "title": "Database: grant or revoke privileges",
+        "titleMessage": "database.command.changePrivileges",
+        "keywords": ["grant", "revoke", "grant option", "permissions", "access"],
+        "description": "Grants and revokes an object's privileges for one grantee (GRANT and REVOKE). The person is shown the exact statements and runs them, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's schema; one is picked when absent (not for a database, a schema, a language, a foreign data wrapper or server, or a tablespace)."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The object's name as the explorer shows it (a routine's with its arguments); one is picked when absent."
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Its kind: table, view, materialized view, foreign table, sequence, function, procedure, type, schema, database, language, foreign data wrapper, foreign server, tablespace."
+            },
+            "grantee": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A role, or PUBLIC."
+            },
+            "column": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A column, for a column grant."
+            },
+            "grant": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to grant (SELECT, INSERT ... or ALL)."
+            },
+            "revoke": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to revoke (or ALL)."
+            },
+            "grantOption": {
+              "type": "boolean",
+              "description": "Grant them WITH GRANT OPTION."
+            },
+            "cascade": {
+              "type": "boolean",
+              "description": "Revoke with CASCADE: what the grantee granted on goes too. Off unless true."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-default-privileges",
+        "title": "Database: change default privileges",
+        "titleMessage": "database.command.changeDefaultPrivileges",
+        "keywords": ["alter default privileges", "grant", "revoke", "new objects"],
+        "description": "Changes what new objects of a role get (ALTER DEFAULT PRIVILEGES), in a schema or every one. The person is shown the exact statement and runs it, or not; a read-only connection refuses.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role whose new objects these are."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; every schema when absent."
+            },
+            "on": {
+              "type": "string",
+              "enum": ["tables", "sequences", "functions", "types", "schemas"],
+              "description": "The kind of new objects."
+            },
+            "grantee": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A role, or PUBLIC."
+            },
+            "grant": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to grant (or ALL)."
+            },
+            "revoke": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Privileges to revoke (or ALL)."
+            },
+            "grantOption": {
+              "type": "boolean",
+              "description": "WITH GRANT OPTION."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.create-role",
+        "title": "Database: create a role",
+        "titleMessage": "database.command.createRole",
+        "keywords": ["create role", "create user", "login", "password", "new user"],
+        "description": "Creates a PostgreSQL role with its attributes and the roles it joins (CREATE ROLE). A password is typed by the person in a hidden field, never taken as an argument; the person is shown the exact statement, the password masked, and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The new role's name."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "It may log in."
+            },
+            "superuser": {
+              "type": "boolean",
+              "description": "SUPERUSER."
+            },
+            "createDb": {
+              "type": "boolean",
+              "description": "CREATEDB."
+            },
+            "createRole": {
+              "type": "boolean",
+              "description": "CREATEROLE."
+            },
+            "replication": {
+              "type": "boolean",
+              "description": "REPLICATION."
+            },
+            "bypassRls": {
+              "type": "boolean",
+              "description": "BYPASSRLS."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "INHERIT (on by default)."
+            },
+            "connectionLimit": {
+              "type": "integer",
+              "minimum": -1,
+              "description": "CONNECTION LIMIT; -1 for none."
+            },
+            "validUntil": {
+              "type": "string",
+              "minLength": 1,
+              "description": "VALID UNTIL, a timestamp or infinity."
+            },
+            "memberOf": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Roles it joins (IN ROLE)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.alter-role",
+        "title": "Database: change a role",
+        "titleMessage": "database.command.alterRole",
+        "keywords": [
+          "alter role",
+          "password",
+          "login",
+          "connection limit",
+          "valid until",
+          "superuser"
+        ],
+        "description": "Changes a role's attributes, connection limit, valid until and password (ALTER ROLE), only what changed. A password is typed by the person in a hidden field, never taken as an argument; the person is shown the exact statement, the password masked, and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role to change."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "It may log in."
+            },
+            "superuser": {
+              "type": "boolean",
+              "description": "SUPERUSER."
+            },
+            "createDb": {
+              "type": "boolean",
+              "description": "CREATEDB."
+            },
+            "createRole": {
+              "type": "boolean",
+              "description": "CREATEROLE."
+            },
+            "replication": {
+              "type": "boolean",
+              "description": "REPLICATION."
+            },
+            "bypassRls": {
+              "type": "boolean",
+              "description": "BYPASSRLS."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "INHERIT (on by default)."
+            },
+            "connectionLimit": {
+              "type": "integer",
+              "minimum": -1,
+              "description": "CONNECTION LIMIT; -1 for none."
+            },
+            "validUntil": {
+              "type": "string",
+              "minLength": 1,
+              "description": "VALID UNTIL, a timestamp or infinity."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.change-membership",
+        "title": "Database: change a role membership",
+        "titleMessage": "database.command.changeMembership",
+        "keywords": ["grant role", "revoke role", "member", "admin option", "inherit", "set role"],
+        "description": "Grants a role to a member, revokes it, or changes its ADMIN, INHERIT and SET options (PostgreSQL 16; ADMIN OPTION before). The person is shown the exact statements and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The role whose privileges the member gets."
+            },
+            "member": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The member."
+            },
+            "revoke": {
+              "type": "boolean",
+              "description": "Take the membership away."
+            },
+            "admin": {
+              "type": "boolean",
+              "description": "The member may grant the role on."
+            },
+            "inherit": {
+              "type": "boolean",
+              "description": "The member inherits its privileges (16+)."
+            },
+            "set": {
+              "type": "boolean",
+              "description": "The member may SET ROLE to it (16+)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.policy",
+        "title": "Database: create or change a row security policy",
+        "titleMessage": "database.command.policy",
+        "keywords": ["row level security", "rls", "policy", "using", "with check"],
+        "description": "Creates a table's row security policy, or changes the one named (CREATE POLICY, ALTER POLICY; DROP and CREATE in one transaction for another command or kind). The person is shown the exact statements in a form and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The policy; a new one when the table has none of that name."
+            },
+            "newName": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A new name for it."
+            },
+            "command": {
+              "type": "string",
+              "enum": ["ALL", "SELECT", "INSERT", "UPDATE", "DELETE"],
+              "description": "FOR which command."
+            },
+            "restrictive": {
+              "type": "boolean",
+              "description": "AS RESTRICTIVE; permissive when false."
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "TO which roles; PUBLIC when absent."
+            },
+            "using": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The USING expression."
+            },
+            "check": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The WITH CHECK expression."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.drop-policy",
+        "title": "Database: drop a row security policy",
+        "titleMessage": "database.command.dropPolicy",
+        "keywords": ["drop policy", "rls", "row level security"],
+        "description": "Drops a table's row security policy (DROP POLICY). The person is shown the exact statement and runs it, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The policy."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.database.row-security",
+        "title": "Database: turn a table's row security on or off",
+        "titleMessage": "database.command.rowSecurity",
+        "keywords": ["enable row level security", "force", "rls"],
+        "description": "Turns a table's row security on or off and forced on its owner or not (ALTER TABLE ... ROW LEVEL SECURITY). The person is shown the exact statements and runs them, or not.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id; the one on screen, the only PostgreSQL one, or one picked, when absent."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table's schema; one is picked when absent."
+            },
+            "table": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The table; one is picked when absent."
+            },
+            "enable": {
+              "type": "boolean",
+              "description": "Row security on."
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Forced on the table's owner too."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.compare-schemas",
+        "title": "Database: compare two schemas…",
+        "titleMessage": "database.command.compareSchemas",
+        "keywords": [
+          "diff",
+          "schema compare",
+          "migration",
+          "dev and production",
+          "drift",
+          "version control"
+        ],
+        "description": "Compares two PostgreSQL schemas (of a connection, another connection or database, a folder of DDL files or a saved snapshot) and opens the panel of the objects on one side only and the ones that differ, with their DDL side by side, and the migration script for the person to choose, read and run there.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "left": {
+              "type": "object",
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+                },
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The schema; with a folder, the schema its files are of."
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A folder of DDL files, one file per object as a dump writes them."
+                },
+                "snapshot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A snapshot file saved by Database: save a schema's snapshot."
+                }
+              },
+              "additionalProperties": false,
+              "description": "The left side; asked for when absent."
+            },
+            "right": {
+              "type": "object",
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+                },
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The schema; with a folder, the schema its files are of."
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A folder of DDL files, one file per object as a dump writes them."
+                },
+                "snapshot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A snapshot file saved by Database: save a schema's snapshot."
+                }
+              },
+              "additionalProperties": false,
+              "description": "The right side; asked for when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.dump-schema",
+        "title": "Database: dump a schema to a folder…",
+        "titleMessage": "database.command.dumpSchema",
+        "keywords": ["export ddl", "version control", "one file per object", "git", "schema files"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            },
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The folder; the person picks one when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Write a schema as separate object definitions in a folder."
+      },
+      {
+        "id": "endue.database.save-schema-snapshot",
+        "title": "Database: save a schema's snapshot…",
+        "titleMessage": "database.command.saveSchemaSnapshot",
+        "keywords": ["baseline", "compare later", "schema json"],
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A PostgreSQL connection's name or id, or name/database for another database of its server."
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The schema; one is picked when absent."
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Save a schema snapshot the person can compare with a later version."
+      },
+      {
+        "id": "endue.database.schema-compare-run",
+        "title": "Database: run the schema comparison's script",
+        "titleMessage": "database.command.schemaCompareRun",
+        "keywords": ["apply migration", "sync schema", "execute"]
+      },
+      {
+        "id": "endue.database.schema-compare-dry-run",
+        "title": "Database: dry-run the schema comparison's script",
+        "titleMessage": "database.command.schemaCompareDryRun",
+        "keywords": ["try migration", "rollback", "check the script"]
+      },
+      {
+        "id": "endue.database.schema-compare-console",
+        "title": "Database: open the schema comparison's script in a console",
+        "titleMessage": "database.command.schemaCompareConsole",
+        "keywords": ["edit migration", "copy", "sql"]
+      },
+      {
+        "id": "endue.database.schema-compare-refresh",
+        "title": "Database: compare the two schemas again",
+        "titleMessage": "database.command.schemaCompareRefresh",
+        "keywords": ["reload", "diff again"]
+      },
+      {
+        "id": "endue.database.schema-compare-cancel",
+        "title": "Database: cancel the schema comparison",
+        "titleMessage": "database.command.schemaCompareCancel",
+        "keywords": ["stop reading", "abort"]
+      },
+      {
+        "id": "endue.database.find-objects",
+        "title": "Database: find objects by name",
+        "titleMessage": "database.command.findObjects",
+        "keywords": ["palette", "find", "table", "column", "routine", "schema cache", "search"],
+        "description": "Search the object names known to Database by text.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.copy-name",
+        "title": "Database: copy a qualified name",
+        "titleMessage": "database.command.copyName",
+        "keywords": ["copy", "name", "identifier", "qualified", "palette"]
+      },
+      {
+        "id": "endue.database.palette-hide",
+        "title": "Database: hide a connection from the palette, or show it again",
+        "titleMessage": "database.command.paletteHide",
+        "keywords": ["palette", "hide", "show", "search", "connection"]
+      },
+      {
+        "id": "endue.database.commit",
+        "title": "Database: commit the console's transaction",
+        "titleMessage": "database.command.commit",
+        "keywords": ["commit", "transaction", "manual", "save", "end"]
+      },
+      {
+        "id": "endue.database.rollback",
+        "title": "Database: roll back the console's transaction",
+        "titleMessage": "database.command.rollback",
+        "keywords": ["rollback", "transaction", "undo", "discard", "abort"]
+      },
+      {
+        "id": "endue.database.transaction-mode",
+        "title": "Database: switch the console between auto and manual commit",
+        "titleMessage": "database.command.transactionMode",
+        "keywords": ["autocommit", "manual", "auto", "commit", "transaction", "mode"]
+      },
+      {
+        "id": "endue.database.transaction-options",
+        "title": "Database: isolation level and read-only of the next transaction",
+        "titleMessage": "database.command.transactionOptions",
+        "keywords": [
+          "isolation",
+          "serializable",
+          "repeatable read",
+          "read committed",
+          "read only",
+          "transaction"
+        ]
+      },
+      {
+        "id": "endue.database.savepoint",
+        "title": "Database: set a savepoint",
+        "titleMessage": "database.command.savepoint",
+        "keywords": ["savepoint", "transaction", "mark", "nested"]
+      },
+      {
+        "id": "endue.database.rollback-to-savepoint",
+        "title": "Database: roll back to a savepoint",
+        "titleMessage": "database.command.rollbackToSavepoint",
+        "keywords": ["savepoint", "rollback", "undo", "transaction"]
+      },
+      {
+        "id": "endue.database.release-savepoint",
+        "title": "Database: release a savepoint",
+        "titleMessage": "database.command.releaseSavepoint",
+        "keywords": ["savepoint", "release", "forget", "transaction"]
+      },
+      {
+        "id": "endue.database.allow-connect",
+        "title": "Database: allow connecting",
+        "titleMessage": "database.command.allowConnect",
+        "keywords": ["permission", "refused", "connect", "server", "ask again"]
+      },
+      {
+        "id": "endue.database.assist-write",
+        "title": "Database: Eris writes a statement from a sentence",
+        "titleMessage": "database.command.assistWrite",
+        "keywords": ["ai", "brain", "generate", "natural language", "write", "sql"]
+      },
+      {
+        "id": "endue.database.assist-explain",
+        "title": "Database: Eris explains this statement",
+        "titleMessage": "database.command.assistExplain",
+        "keywords": ["ai", "brain", "explain", "what does", "sql"]
+      },
+      {
+        "id": "endue.database.assist-fix",
+        "title": "Database: Eris fixes this error",
+        "titleMessage": "database.command.assistFix",
+        "keywords": ["ai", "brain", "fix", "error", "repair", "sql"]
+      },
+      {
+        "id": "endue.database.assist-plan",
+        "title": "Database: Eris explains this plan",
+        "titleMessage": "database.command.assistPlan",
+        "keywords": ["ai", "brain", "explain", "plan", "slow", "index"]
+      },
+      {
+        "id": "endue.database.assist-sent",
+        "title": "Database: what this console sends to Eris",
+        "titleMessage": "database.command.assistSent",
+        "keywords": ["ai", "brain", "privacy", "sent", "sample", "prompt"]
+      },
+      {
+        "id": "endue.database.assist-close",
+        "title": "Database: close this connection to Eris",
+        "titleMessage": "database.command.assistClose",
+        "keywords": ["ai", "brain", "privacy", "off", "block"]
+      },
+      {
+        "id": "endue.database.assist-open",
+        "title": "Database: open this connection to Eris again",
+        "titleMessage": "database.command.assistOpen",
+        "keywords": ["ai", "brain", "privacy", "on", "allow"]
+      },
+      {
+        "id": "endue.database.go-to-definition",
+        "title": "Database: go to the definition of the name at the caret",
+        "titleMessage": "database.command.goToDefinition",
+        "keywords": ["definition", "jump", "navigate", "DDL", "CTE", "alias", "F12"]
+      },
+      {
+        "id": "endue.database.show-card",
+        "title": "Database: show what the name at the caret is",
+        "titleMessage": "database.command.showCard",
+        "keywords": ["card", "documentation", "hover", "columns", "comment", "signature", "Alt+F12"]
+      },
+      {
+        "id": "endue.database.find-usages",
+        "title": "Database: find the usages of the name at the caret",
+        "titleMessage": "database.command.findUsages",
+        "keywords": ["usages", "references", "dependencies", "where used", "pg_depend", "Shift+F12"]
+      },
+      {
+        "id": "endue.database.rename-at-caret",
+        "title": "Database: rename the name at the caret",
+        "titleMessage": "database.command.renameAtCaret",
+        "keywords": ["rename", "refactor", "alias", "CTE", "parameter", "F2"]
+      },
+      {
+        "id": "endue.database.rename-with-dependents",
+        "title": "Database: rename an object with the script that keeps its dependents working",
+        "titleMessage": "database.command.renameWithDependents",
+        "keywords": ["rename", "refactor", "column", "table", "function", "dependents", "script"]
+      },
+      {
+        "id": "endue.database.extract-cte",
+        "title": "Database: make the subquery at the caret a CTE",
+        "titleMessage": "database.command.extractCte",
+        "keywords": ["extract", "CTE", "WITH", "subquery", "refactor"]
+      },
+      {
+        "id": "endue.database.inline-cte",
+        "title": "Database: inline the CTE at the caret where it is used",
+        "titleMessage": "database.command.inlineCte",
+        "keywords": ["inline", "CTE", "WITH", "subquery", "refactor"]
+      },
+      {
+        "id": "endue.database.qualify-names",
+        "title": "Database: qualify every name of the statement at the caret",
+        "titleMessage": "database.command.qualifyNames",
+        "keywords": ["qualify", "schema", "alias", "names", "refactor"]
+      },
+      {
+        "id": "endue.database.reconnect",
+        "title": "Database: reconnect the lost session",
+        "titleMessage": "database.command.reconnect",
+        "keywords": ["reconnect", "session", "lost", "connection", "network", "again"]
+      },
+      {
+        "id": "endue.database.transfer",
+        "title": "Database: copy tables to another database",
+        "titleMessage": "database.command.transfer",
+        "keywords": ["copy", "transfer", "migrate", "move", "clone", "table", "schema"]
+      },
+      {
+        "id": "endue.database.transfer-query",
+        "title": "Database: copy the query's result into a table",
+        "titleMessage": "database.command.transferQuery",
+        "keywords": ["copy", "transfer", "result", "create table as", "append", "insert"]
+      },
+      {
+        "id": "endue.database.transfer-start",
+        "title": "Database: start the copy",
+        "titleMessage": "database.command.transferStart",
+        "keywords": ["copy", "transfer", "run"]
+      },
+      {
+        "id": "endue.database.transfer-cancel",
+        "title": "Database: cancel the copy",
+        "titleMessage": "database.command.transferCancel",
+        "keywords": ["copy", "transfer", "stop", "abort"]
+      },
+      {
+        "id": "endue.database.forget-ssh-host-key",
+        "title": "Database: forget the SSH host key",
+        "titleMessage": "database.command.forgetSshHostKey",
+        "keywords": ["ssh", "tunnel", "bastion", "fingerprint", "known hosts"]
+      },
+      {
+        "id": "endue.database.clear-notifications",
+        "title": "Database: clear the console's notifications",
+        "titleMessage": "database.command.clearNotifications",
+        "keywords": ["notify", "listen", "notification", "channel", "clear", "empty"]
+      },
+      {
+        "id": "endue.database.export-notifications",
+        "title": "Database: export the console's notifications",
+        "titleMessage": "database.command.exportNotifications",
+        "keywords": ["notify", "listen", "notification", "channel", "export", "save"]
+      },
+      {
+        "id": "endue.database.listen-again",
+        "title": "Database: listen again on the channels the lost session listened to",
+        "titleMessage": "database.command.listenAgain",
+        "keywords": ["listen", "notify", "notification", "channel", "again", "reconnect"]
+      },
+      {
+        "id": "endue.database.export-all",
+        "title": "Database: export every row to a file",
+        "titleMessage": "database.command.exportAll",
+        "keywords": [
+          "export all",
+          "whole table",
+          "large",
+          "stream",
+          "copy",
+          "csv",
+          "download",
+          "save",
+          "gzip"
+        ],
+        "description": "Exports every row of the result's statement on screen, or of the table a table view shows, straight from the server to a file, however large, without loading the rows into the grid: one read-only transaction with one snapshot, the server's COPY for CSV and TSV when its output matches the options, written under a temporary name and renamed at the end, so a cancel leaves no file. The person always chooses the place in the save dialog. It answers the files, their rows and bytes.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "description": "The connection, by name or id, with sql or table; else the one on screen."
+            },
+            "sql": {
+              "type": "string",
+              "description": "One read to export instead of the result on screen."
+            },
+            "table": {
+              "type": "string",
+              "description": "A table to export, as schema.table (public when no schema)."
+            },
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "compress": {
+              "type": "boolean",
+              "description": "gzip the file (.gz added); not for xlsx."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.export-tables",
+        "title": "Database: export tables to a folder",
+        "titleMessage": "database.command.exportTables",
+        "keywords": ["export all", "schema", "many tables", "folder", "dump", "csv", "gzip"],
+        "description": "Exports every row of a schema's tables (or the tables named) to a folder the person chooses, one file each, in one read-only transaction with one snapshot, optionally gzipped. A file already there is kept: the next free name is taken.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "description": "The connection, by name or id; picked when absent."
+            },
+            "schema": {
+              "type": "string",
+              "description": "The schema; picked when absent."
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only these tables of the schema."
+            },
+            "format": {
+              "enum": [
+                "tsv",
+                "csv",
+                "json",
+                "markdown",
+                "insert",
+                "update",
+                "xlsx",
+                "html",
+                "xml",
+                "template"
+              ],
+              "description": "The format; picked in the palette when absent."
+            },
+            "options": {
+              "type": "object",
+              "description": "The format's options; the ones it had last time when absent. delimiter (one character), quote (needed, always, never), header (boolean), null (the text for NULL), lineEnding (lf, crlf), encoding (utf-8, utf-16le, utf-16be), bom (boolean); SQL: table, batch (rows per INSERT); template: head, row ({{column}}, {{1}}, {{#}}), separator, foot.",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2
+                },
+                "quote": {
+                  "enum": ["needed", "always", "never"]
+                },
+                "header": {
+                  "type": "boolean"
+                },
+                "null": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "lineEnding": {
+                  "enum": ["lf", "crlf"]
+                },
+                "encoding": {
+                  "enum": ["utf-8", "utf-16le", "utf-16be"]
+                },
+                "bom": {
+                  "type": "boolean"
+                },
+                "table": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "batch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "head": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "row": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "separator": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "foot": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              },
+              "additionalProperties": false
+            },
+            "compress": {
+              "type": "boolean",
+              "description": "gzip each file (.gz added); not for xlsx."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.export-cancel",
+        "title": "Database: cancel the export",
+        "titleMessage": "database.command.exportCancel",
+        "keywords": ["stop", "abort", "export all"]
+      },
+      {
+        "id": "endue.database.connections",
+        "title": "Database: list connections",
+        "titleMessage": "database.command.connections",
+        "keywords": ["database", "sql"],
+        "description": "The person's database connections: name, engine, where, environment tag, read-only. Never a password.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.schema",
+        "title": "Database: describe",
+        "titleMessage": "database.command.schema",
+        "keywords": ["database", "sql"],
+        "description": "Without schema, the connection's schemas (and on PostgreSQL its server's databases); with schema, its tables and views; with table too, its columns. On PostgreSQL, database names another database of the server.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "schema": {
+              "type": "string"
+            },
+            "table": {
+              "type": "string"
+            }
+          },
+          "required": ["connection"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.query",
+        "title": "Database: run SQL",
+        "titleMessage": "database.command.query",
+        "keywords": ["database", "sql"],
+        "description": "Runs SQL on a connection (on PostgreSQL, on database when given) and answers each statement's columns and rows (maxRows each, 100 by default, 1000 and the settings' row limit at most), rows affected or error. A read runs read-only, within timeoutSeconds and the settings' timeout, with sensitive columns masked; statements that change data run only after the person says yes, for that run only.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A connection's name or id."
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PostgreSQL: another database of the connection's server; its own by default."
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.database.view-state",
+        "title": "Database: read the current view",
+        "titleMessage": "database.command.viewState",
+        "args": {
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "enum": ["console", "result", "selection", "pending", "plan", "transaction"]
+              },
+              "maxItems": 6,
+              "uniqueItems": true
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Read the current editor, result page, selection, pending changes, plan or transaction. Result rows are bounded and sensitive values are masked.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.write-console",
+        "title": "Database: draft SQL in a console",
+        "titleMessage": "database.command.writeConsole",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "sql": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16000
+            },
+            "newTab": {
+              "type": "boolean"
+            }
+          },
+          "required": ["connection", "sql"],
+          "additionalProperties": false
+        },
+        "description": "Put SQL in a named connection’s console as an unrun draft. Set newTab for a new console.",
+        "agent": true
+      },
+      {
+        "id": "endue.database.history-list",
+        "title": "Database: read query history",
+        "titleMessage": "database.command.historyList",
+        "args": {
+          "type": "object",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": ["connection"],
+          "additionalProperties": false
+        },
+        "description": "Read a named connection’s recent statement history as data.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.database.stage-cells",
+        "title": "Database: stage grid cell edits",
+        "titleMessage": "database.command.stageCells",
+        "args": {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000000
+                  },
+                  "column": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "value": {
+                    "type": ["string", "null"],
+                    "maxLength": 10000
+                  }
+                },
+                "required": ["row", "column", "value"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["cells"],
+          "additionalProperties": false
+        },
+        "description": "Stage cells of the current result by zero-based row and column. The person submits the changes.",
+        "agent": true
+      },
+      {
+        "id": "endue.database.stage-delete-rows",
+        "title": "Database: stage grid row deletions",
+        "titleMessage": "database.command.stageDeleteRows",
+        "args": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000000
+              },
+              "minItems": 1,
+              "maxItems": 100,
+              "uniqueItems": true
+            }
+          },
+          "required": ["rows"],
+          "additionalProperties": false
+        },
+        "description": "Stage the removal of rows of the current result by zero-based row index. The person submits the changes.",
+        "agent": true
       }
     ],
     "keys": [
@@ -623,11 +4086,15 @@
       "endue.database.max-rows": {
         "kind": "integer",
         "default": 500,
+        "minimum": 1,
+        "maximum": 100000,
         "description": "Rows a result keeps (1 to 100000); More rows loads four times as many."
       },
       "endue.database.timeout-seconds": {
         "kind": "integer",
         "default": 0,
+        "minimum": 0,
+        "maximum": 86400,
         "description": "Stop a run that takes longer, in seconds; 0 waits as long as it takes. PostgreSQL ends the statement on the server (statement_timeout)."
       },
       "endue.database.confirm": {
@@ -643,17 +4110,14 @@
       "endue.database.history-max": {
         "kind": "integer",
         "default": 200,
+        "minimum": 0,
+        "maximum": 1000,
         "description": "How many statements each connection's history keeps (0 to 1000)."
       },
       "endue.database.system-schemas": {
         "kind": "boolean",
         "default": false,
-        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
-      },
-      "endue.database.psql": {
-        "kind": "string",
-        "default": "",
-        "description": "The psql program: a name on PATH or a full path. Empty: psql. Any other program or path is asked for at its first run."
+        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...) and PostgreSQL's template databases."
       },
       "endue.database.mysql": {
         "kind": "string",
@@ -724,7 +4188,69 @@
         "kind": "boolean",
         "default": false,
         "description": "Save lays a .sql file's console out with Format SQL before it writes the file, by the format of the file's connection; a file on no connection yet is written as typed."
+      },
+      "endue.database.problems-syntax": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline SQL the parser cannot read in PostgreSQL consoles, a pause after typing stops."
+      },
+      "endue.database.problems-names": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Underline tables, columns and schemas that the cached schema does not have, and INSERT column counts that do not match, in PostgreSQL consoles. Nothing is asked of the server."
+      },
+      "endue.database.problems-warnings": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Mark statements that are likely mistakes in PostgreSQL consoles as warnings, each with its identifier and, where the rewrite is certain, a fix. A comment -- endue-ignore <identifiers> turns them off for its line, or for the next line when it stands alone."
+      },
+      "endue.database.problems-warnings-off": {
+        "kind": "array",
+        "default": [],
+        "description": "Warnings never marked, by identifier: null-comparison, join-without-condition, select-star, column-cast, not-in-null, update-without-where, delete-without-where, limit-without-order, function-on-indexed-column, insert-without-columns, server-signal, and in PL/pgSQL bodies unused-variable, unreachable-code."
+      },
+      "endue.database.pg-dump": {
+        "kind": "string",
+        "default": "",
+        "description": "The pg_dump program: a name on PATH or a full path. Empty: pg_dump. Any other program or path is asked for at its first run."
+      },
+      "endue.database.pg-restore": {
+        "kind": "string",
+        "default": "",
+        "description": "The pg_restore program: a name on PATH or a full path. Empty: pg_restore. Any other program or path is asked for at its first run."
+      },
+      "endue.database.sessions-per-connection": {
+        "kind": "integer",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12,
+        "description": "PostgreSQL sessions a connection's consoles and table views keep open at once (1 to 12). At the limit, a table view's idle session closes first; past it, a run says which to close."
+      },
+      "endue.database.session-idle-minutes": {
+        "kind": "integer",
+        "default": 30,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Close a console's or a table view's PostgreSQL session no run used for this many minutes; 0 keeps them open. A session in a transaction is never closed this way."
+      },
+      "endue.database.transaction-idle-minutes": {
+        "kind": "integer",
+        "default": 5,
+        "minimum": 0,
+        "maximum": 1440,
+        "description": "Flag a console's open PostgreSQL transaction in its header once no run used it for this many minutes; 0 never. The transaction stays open: only Commit or Rollback ends it."
+      },
+      "endue.database.snippets": {
+        "kind": "object",
+        "default": {},
+        "description": "Your own completion snippets: a name (letters, digits and _) to a template, at most 100. ${name} marks a place Tab moves to; the same name is edited together. One named like a built-in snippet (sel, ins, upd, del, upsert, with, ctab, idx, txn, case) replaces it."
       }
-    }
+    },
+    "paletteProviders": [
+      {
+        "command": "endue.database.find-objects",
+        "title": "Database objects"
+      }
+    ]
   }
 }

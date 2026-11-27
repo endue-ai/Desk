@@ -58,6 +58,8 @@ export function wmSeam(send: Send, ask: Ask): WmSeam {
         send("compositor_grab", { gesture, x: at.x, y: at.y, after: pending.last() }),
       run: (op, window) =>
         send("compositor_wm", { op, ...(window ? { window } : {}), after: pending.last() }),
+      // The OS window of a window out of the canvas, which the shell moves itself (ADR 0294).
+      outWindow: (window, out) => ask("app_window", { window, ask: out }),
       live: () => kept,
       onLive(listener) {
         listening.add(listener);

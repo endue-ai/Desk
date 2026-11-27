@@ -3,6 +3,7 @@
 // in the palette), and the operation a caller names, checked against the target. No DOM.
 
 import { engineOf } from "../../engines/index.js";
+import { t as messageText } from "../../strings/index.js";
 import { WHOLE } from "./model.js";
 import { operationsFor, TITLES } from "./options.js";
 
@@ -17,7 +18,10 @@ import { operationsFor, TITLES } from "./options.js";
 export function postgres(/** @type {Connection} */ conn) {
   if (conn.engine !== "postgresql")
     throw new Error(
-      `${conn.name} is ${engineOf(conn.engine).title}: VACUUM, ANALYZE, REINDEX and CLUSTER run from here on PostgreSQL connections.`,
+      messageText("features.maintenance.choose.isVacuumAnalyzeReindexAndCluster", {
+        name: String(conn.name),
+        title: String(engineOf(conn.engine).title),
+      }),
     );
   return conn;
 }
@@ -28,7 +32,12 @@ export function operationOf(/** @type {unknown} */ value, /** @type {Target} */ 
   if (value === undefined || value === null || value === "") return ops[0];
   const op = String(value).toLowerCase();
   if (!ops.includes(/** @type {Operation} */ (op)))
-    throw new Error(`On a ${target.kind} the form runs ${ops.map((o) => TITLES[o]).join(", ")}.`);
+    throw new Error(
+      messageText("features.maintenance.choose.onATheFormRuns", {
+        kind: String(target.kind),
+        value: String(ops.map((o) => TITLES[o]).join(", ")),
+      }),
+    );
   return /** @type {Operation} */ (op);
 }
 
@@ -38,7 +47,10 @@ export function createChooser(deps) {
   const choose = async (/** @type {unknown} */ ref) => {
     if (typeof ref === "string" && ref !== "") {
       const conn = deps.manager.get(ref);
-      if (!conn) throw new Error(`No connection is named ${ref}.`);
+      if (!conn)
+        throw new Error(
+          messageText("features.maintenance.choose.noConnectionIsNamed", { ref: String(ref) }),
+        );
       return postgres(conn);
     }
     const shown = deps.consoles.current();
@@ -46,14 +58,17 @@ export function createChooser(deps) {
     if (here?.engine === "postgresql") return here;
     const list = deps.manager.list().filter((c) => c.engine === "postgresql");
     if (list.length === 0)
-      throw new Error("No PostgreSQL connection yet: add one with Database: new connection.");
+      throw new Error(messageText("features.maintenance.choose.noPostgresqlConnectionYetAddOne"));
     if (list.length === 1) return list[0];
     const items = list.map((c) => ({
       id: c.id,
       label: c.name,
       ...(c.tag !== "none" ? { detail: c.tag } : {}),
     }));
-    const picked = await deps.pick("Database: maintenance on which connection?", items);
+    const picked = await deps.pick(
+      messageText("features.maintenance.choose.databaseMaintenanceOnWhichConnection"),
+      items,
+    );
     return picked ? deps.manager.get(picked) : undefined;
   };
 
@@ -68,19 +83,40 @@ export function createChooser(deps) {
         index: "",
       });
     const schemas = await deps.catalog.schemas(conn);
-    const first = await deps.pick("Database: maintenance of what?", [
-      { id: "\u0000", label: `The whole database ${conn.database}` },
-      ...schemas.map((s) => ({ id: s, label: `Schema ${s}` })),
-    ]);
+    const first = await deps.pick(
+      messageText("features.maintenance.choose.databaseMaintenanceOfWhat"),
+      [
+        {
+          id: "\u0000",
+          label: messageText("features.maintenance.choose.theWholeDatabase", {
+            database: String(conn.database),
+          }),
+        },
+        ...schemas.map((s) => ({
+          id: s,
+          label: messageText("features.maintenance.choose.schema", { s: String(s) }),
+        })),
+      ],
+    );
     if (first === undefined || first === "") return undefined;
     if (first === "\u0000") return { ...WHOLE };
     const tables = (await deps.catalog.objects(conn, first)).filter(
       (o) => o.kind === "table" || o.kind === "materialized view",
     );
-    const second = await deps.pick(`Database: maintenance of what in ${first}?`, [
-      { id: "\u0000", label: `The whole schema ${first}` },
-      ...tables.map((t) => ({ id: t.name, label: t.name, detail: t.kind })),
-    ]);
+    const second = await deps.pick(
+      messageText("features.maintenance.choose.databaseMaintenanceOfWhatIn", {
+        first: String(first),
+      }),
+      [
+        {
+          id: "\u0000",
+          label: messageText("features.maintenance.choose.theWholeSchema", {
+            first: String(first),
+          }),
+        },
+        ...tables.map((t) => ({ id: t.name, label: t.name, detail: t.kind })),
+      ],
+    );
     if (second === undefined || second === "") return undefined;
     return /** @type {Target} */ (
       second === "\u0000"

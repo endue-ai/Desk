@@ -138,7 +138,7 @@ pub fn page(button: &str, at: [f64; 4]) -> SurfaceA11yUpdate {
     update(serde_json::json!({
         "type": "a11y.update", "surface": "desk", "tree": { "root": 1 },
         "nodes": [
-            { "id": 1, "role": "root-web-area", "name": "endue Desk", "children": [2],
+            { "id": 1, "role": "root-web-area", "name": "endue", "children": [2],
               "bounds": { "x": 0, "y": 0, "width": 1280, "height": 800 } },
             { "id": 2, "role": "button", "name": button, "actions": ["click", "focus"],
               "bounds": { "x": at[0], "y": at[1], "width": at[2], "height": at[3] } }
@@ -192,10 +192,10 @@ pub fn asleep(x: f32, y: f32) -> PaneShows {
 /// The desk at scale 2 with the page and `windows`, the keys with `focus`.
 pub fn desk(windows: Vec<ChromeWindow>, focus: Option<&str>) -> DeskChrome {
     DeskChrome {
-        label: "endue Desk".into(),
+        label: "endue".into(),
         scale: 2.0,
         size: (1280.0, 800.0),
-        page: Some(("Desk".into(), Placed::at("desk", 0.0, 0.0))),
+        page: Some(("endue".into(), Placed::at("desk", 0.0, 0.0))),
         windows_label: "Windows".into(),
         windows,
         overlays: Vec::new(),

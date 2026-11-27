@@ -262,6 +262,7 @@ export function createLoad({ state: s, actions, say, render }) {
     lists,
     conversation,
     thread,
+    saved,
     timeline,
     columns,
     layout,

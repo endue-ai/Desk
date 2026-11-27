@@ -20,7 +20,7 @@ dev: build-shell
     set -euo pipefail
     export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
     export DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}}
-    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue.app/Contents/MacOS/endue-desk; fi
     exec target/debug/endue-desk
 
 # `just dev`, by the name it had while the Tauri shell was the default (Stage 1 of #32)
@@ -35,7 +35,7 @@ example name: build-shell
     export DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins"
     export DESK_DEV_PLUGINS={{quote(justfile_directory() / "examples" / name)}}
     export DESK_COMPOSITOR=1
-    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue-desk.app/Contents/MacOS/endue-desk; fi
+    if [ "$(uname -s)" = Darwin ]; then exec target/bundle/endue.app/Contents/MacOS/endue-desk; fi
     exec target/debug/endue-desk
 
 # Run examples/brain-echo, the smallest brain, where the app's echo brain looks (http://127.0.0.1:8787/v0)
@@ -57,6 +57,14 @@ test-unit:
 test-e2e *args:
     node scripts/e2e.mjs test "$@"
 
+# The database plugin's live tests against real PostgreSQL 15 to 19, each in a throwaway container
+# (PG-101, ADR 0351): as the superuser, as a role that is not one with its own search_path, and over
+# TLS with a client certificate. `--versions 17,18`, `--variants main,app,cert`, file names narrow it;
+# skipped with one line where no container runtime answers
+[positional-arguments]
+test-pg-versions *args:
+    node scripts/pg-versions.mjs "$@"
+
 # Static checks: formatting, lints, types, workflows, specs and the theme market (not the CEF shell)
 check:
     cargo fmt --all -- --check
@@ -68,17 +76,18 @@ check:
     node scripts/ui-lint.mjs
     node scripts/ds-lint.mjs
     node scripts/copy-lint.mjs
+    node scripts/strings-lint.mjs
     node scripts/theme-market.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Build the CEF shell (ADR 0143) with the web runtime it serves; on macOS also assemble
-# target/bundle/endue-desk.app, which opens with its built-in plugins outside `just dev` too
+# target/bundle/endue.app, which opens with its built-in plugins outside `just dev` too
 # (the CEF framework, its helper apps and a link to plugins/)
 build-shell: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-shell --bins
     @# A fresh bundle each time: macOS kills a signed binary that was rewritten in place (SIGKILL at launch).
-    @if [ "$(uname -s)" = Darwin ]; then rm -rf target/bundle/endue-desk.app && cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
+    @if [ "$(uname -s)" = Darwin ]; then cargo run -q -p desk-shell --features bundle --bin desk-shell-bundle -- target/bundle debug; fi
 
 # Lint and test the CEF shell crate, which downloads and builds CEF (so `just check` leaves it out);
 # it embeds the plugin SDK and the UI bundle, so those build first
@@ -113,7 +122,12 @@ package-shell version="0.0.0": build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     # Linux: the desk finds libcef.so beside itself.
     if [ "$(uname -s)" = Linux ]; then export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN'; fi
+    export DESK_VERSION="{{version}}"
+    # Build separately so desktop features do not enter the standalone CLI.
+    source scripts/package-build-env.sh
     cargo build -p desk-shell --bins --release
+    if [ "$(uname -s)" = Linux ]; then source scripts/package-cli-build-env.sh; fi
+    cargo build -p desk-cli --bins --release
     node scripts/cef-package.mjs --target "$triple" --version "{{version}}"
 
 # Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)
@@ -154,6 +168,14 @@ app-icons:
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
 
+# The database plugin's budgets (#498, ADR 0362): a million-row read, 10,000 tables, 1,000 columns and
+# a 1 MB script, each judged against a calibration run just before it, so load does not fail it; the
+# live cases need ENDUE_DB_TEST_POSTGRES (a scratch database: their tables are made and dropped there).
+# Baselines and reasons in e2e/perf/database.json ("record" sets them), lines in
+# e2e/test-results/perf-database/results.json
+perf-database mode="check":
+    PERF_MODE={{mode}} pnpm exec vitest run --config e2e/perf/database/vitest.config.ts --silent=false
+
 # WebdriverIO on the CEF desk as in `just test-app-e2e`, results in e2e/test-results/perf, baselines in
 # e2e/perf/budgets.json; nightly in the e2e workflow's perf job. Measure the app's start-up, idle
 # memory and input latency ("record" sets the baselines)
@@ -190,8 +212,7 @@ doctor:
 lanes *args="status":
     node scripts/lanes.mjs {{args}}
 
-# For every repository under ~/Project/endue (`--root <folder>` for another); `--block '<text>'` adds a
-# personal string to refuse, kept in this machine's config only. Sessions and task-start check it too.
+# Applies under ~/Project/endue by default. Use `--root <folder>` to select another folder.
 # Install the commit identity endue-team and its hooks on this machine (AGENTS.md, Boundaries)
 [positional-arguments]
 identity *args:

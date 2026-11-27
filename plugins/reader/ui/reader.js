@@ -5,6 +5,7 @@
 // position, zoom, bookmarks and notes in its store (marks.js). A file the desk lists and the frame
 // lost (it slept, or its page loaded again) opens again, where it was when a sleep kept it (keep.js).
 // The SDK's test host runs it with a recording view.
+import { answerAgents } from "./agent.js";
 import { placeOf, readPlace } from "./keep.js";
 import { createLinks } from "./links.js";
 import { createLoading } from "./loading.js";
@@ -19,7 +20,9 @@ import { emptyMarks, loadMarks, saveMarks } from "./marks.js";
  * @typedef {import("./marks.js").At} At
  * @typedef {import("./marks.js").Marks} Marks
  * @typedef {{ buffer: string, path: string, name: string, size: number, book: Book } & Marks} ShownModel
- * @typedef {{ show(model: ShownModel | null): void, marks(model: ShownModel): void, status(text: string): void, focus(): void, progress?(value: import("./progress.js").Progress | null): void }} View
+ * @typedef {{ show(model: ShownModel | null): void, marks(model: ShownModel): void, status(text: string): void,
+ *   focus(): void, progress?(value: import("./progress.js").Progress | null): void,
+ *   go?(at: At): Promise<unknown>, zoom?(level: number | "fit"): number }} View
  * @typedef {ShownModel & { cancel(): void, watchId?: string, password?: string }} Open
  * @typedef {import("./keep.js").KeptPlace} KeptPlace
  */
@@ -303,6 +306,13 @@ export function createReader({ bridge, commands, surface }, view, options) {
     view,
     model,
     showing: (file) => files.get(file.buffer) === file && shown === file.buffer,
+  });
+  answerAgents(commands, {
+    open: () => [...files.values()],
+    shown: () => shown,
+    go: view.go,
+    zoom: view.zoom,
+    marking,
   });
 
   return {

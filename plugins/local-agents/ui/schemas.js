@@ -49,6 +49,8 @@ export const COMMANDS = [
     keywords: ["detect", "scan", "installed"],
     description:
       "Ask every known agent program (claude, codex, gemini, grok, qwen, copilot, cursor-agent, opencode) for its version, and return which are installed.",
+    agent: true,
+    readOnly: true,
   },
   {
     id: "endue.local-agents.list",
@@ -56,6 +58,7 @@ export const COMMANDS = [
     keywords: ["installed", "versions"],
     description:
       "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+    args: object({}),
     agent: true,
     readOnly: true,
   },
@@ -120,7 +123,9 @@ export const COMMANDS = [
     id: "endue.local-agents.board",
     title: "Local agents: board",
     keywords: ["kanban", "tasks", "cards"],
-    description: "Show the board and return its cards with their columns.",
+    description: "Read the board's cards and their columns.",
+    agent: true,
+    readOnly: true,
   },
   {
     id: "endue.local-agents.add-card",
@@ -163,15 +168,27 @@ export const COMMANDS = [
     id: "endue.local-agents.activity",
     title: "Local agents: activity",
     keywords: ["runs", "history", "log"],
-    description: "Show and return this session's runs, newest first: agent, prompt, state, answer.",
+    description: "Read this session's runs, newest first: agent, prompt, state, answer.",
+    agent: true,
+    readOnly: true,
   },
   {
     id: "endue.local-agents.stop",
     title: "Local agents: stop",
     keywords: ["cancel", "abort", "kill"],
     description:
-      "Stop a run by id, or every run in progress when run is absent. Returns how many stopped.",
+      "Stop a named work run you started. Without a run id, only the desk can stop all runs.",
     args: object({ run: { type: "string" } }),
+    agent: true,
+  },
+  {
+    id: "endue.local-agents.transcript",
+    title: "Local agents: read a transcript",
+    keywords: ["history", "chat", "conversation"],
+    description: "Read the latest text messages in the named agent's saved conversation.",
+    args: object({ agent: AGENT }, ["agent"]),
+    agent: true,
+    readOnly: true,
   },
 ];
 

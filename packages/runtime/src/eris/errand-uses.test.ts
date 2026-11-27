@@ -82,7 +82,7 @@ describe("the window a desk command of Eris's names", () => {
 
   afterEach(() => shell.remove());
 
-  it("the errand's spark flies on to its middle, and it glows as one she uses once it lands", async () => {
+  it("the errand's spark flies on to its border, and it glows as one she uses once it lands", async () => {
     const errands = mountErrands(() => shell, ctx);
     errands.step(MOVE);
     await settle();
@@ -95,9 +95,9 @@ describe("the window a desk command of Eris's names", () => {
     expect(lit(), "not before the spark is there").toEqual([]);
     await run(32 + GLOW_IN_MS);
     expect(lit()).toEqual([{ id: "w1", glow: USE }]);
-    expect(spark()?.style.transform).toContain("translate(300.0px, 450.0px)");
+    expect(spark()?.style.transform).toContain("translate(460.1px, 300.0px)");
     expect(spark()?.dataset.leg).toBe("there");
-    // Its thread leads to the window from where the spark was when it heard.
+    // Its thread leads from her to the border of the window it went on to.
     const thread = shell.querySelector<SVGSVGElement>(".errand-thread");
     expect(thread?.querySelector("path")?.getAttribute("d")).toMatch(/L8\.0 [\d.]+$/);
     expect(thread?.dataset.leg).toBe("there");
@@ -127,13 +127,13 @@ describe("the window a desk command of Eris's names", () => {
     await settle();
     await run(LEG_MS + GLOW_IN_MS + 16);
     expect(lit()).toEqual([{ id: "w2", glow: USE }]);
-    expect(spark()?.style.transform).toContain("translate(1000.0px, 300.0px)");
+    expect(spark()?.style.transform).toContain("translate(824.1px, 200.0px)");
     // A second window lights at once: the spark stays where it went first.
     asked({ window: "w1" });
     await settle();
     await run(GLOW_IN_MS + 16);
     expect(lit().map((w) => w.id)).toEqual(["w2", "w1"]);
-    expect(spark()?.style.transform).toContain("translate(1000.0px, 300.0px)");
+    expect(spark()?.style.transform).toContain("translate(824.1px, 200.0px)");
     errands.dispose();
   });
 

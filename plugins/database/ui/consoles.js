@@ -5,16 +5,23 @@
 // for its parameters first), in one of three modes (run, in one transaction, dry run), explains it
 // as a plan tree, formats it, and pages or loads more rows of a single read. Changes in the grid
 // wait as pending changes (edits.js); a new run asks before it drops them. A console's text is
-// kept under its own id (console-text.js), a run's statements in the history. No DOM: the view
-// gets a model and hands back the editor's text and selection.
-
+// kept under its own id (console-text.js), a run's statements in the history. On PostgreSQL a
+// console and a table view each run on a session of their own (PG-02, ADR 0320), whose state the
+// model carries (`session`) and which closes with the buffer, asked first while a transaction is
+// open. The view exchanges only models, text and selection.
 import { createBuffers } from "./buffers.js";
 import { createMany } from "./console-many.js";
+import { createRebind } from "./console-rebind.js";
 import { createRunning } from "./console-run.js";
 import { createTexts } from "./console-text.js";
+import { baseOf } from "./databases.js";
 import { createEdits } from "./edits.js";
 import { createPages } from "./pages.js";
 import { createPanels } from "./panels.js";
+import { lapse } from "./rows/control.js";
+import { keyOf, ownerOf, sessionLabel } from "./session/owners.js";
+import { reasonsOf, rolledBackOnClose } from "./session/words.js";
+import { t as messageText } from "./strings/index.js";
 import { show, summaryOf } from "./tabs.js";
 
 /**
@@ -37,7 +44,7 @@ import { show, summaryOf } from "./tabs.js";
  *   tab: number, maxRows: number, edit: import("./edits.js").EditState | null,
  *   page: { statement: Statement, offset: number } | null,
  *   consoleId?: string, number?: number, title?: string, file?: SqlFile, visited?: true,
- *   used?: number, filing?: boolean,
+ *   used?: number, filing?: boolean, session?: import("./session/words.js").SessionModel,
  *   [panel: string]: any,
  * }} Console
  *   `kind` is "console", "table", "ddl" or a feature's panel type, whose state sits under that
@@ -45,7 +52,8 @@ import { show, summaryOf } from "./tabs.js";
  *   SELECT that can be paged. A console has its own id (`consoleId`, console-list.js), its number
  *   among its connection's, the person's name for it (`title`), a bound .sql file (`file`);
  *   `visited` when the desk opened its buffer for a file; `used` counts when it was on screen
- *   last; `filing` while a file runs in it (features/consoles/run-file.js).
+ *   last; `filing` while a file runs in it (features/consoles/run-file.js); `session` the state
+ *   of its PostgreSQL session, as the header shows it.
  * @typedef {{
  *   console(model: Console | null, conn: Connection | null): void,
  *   closed?(id: string): void,
@@ -74,32 +82,59 @@ import { show, summaryOf } from "./tabs.js";
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
  *   readPlan?(set: import("./engines/common.js").ResultSet): Promise<import("./explain/node.js").PlanNode | undefined>,
+ *   sessions?: Pick<ReturnType<typeof import("./engines/pg-session.js").createSessions>, "state" | "forget" | "inTransaction" | "rows" | "rowsGone"> & { decorate?(owner: string, model: Console): void },
  * }} Deps
  *   `panels` are the features' panel types (feature-host.js); `choose` asks for a connection, a
  *   .sql file's console's when it has none; `fileEdited` hears an edit of a bound file's console
  *   and `bound` its connection picked (console-files.js); `readPlan` reads a big plan in the plan
- *   worker (explain/reader.js), and plans are read in place without it.
+ *   worker (explain/reader.js), and plans are read in place without it; `sessions` keeps the
+ *   PostgreSQL sessions (engines/pg-session.js).
  */
 
 /** @param {Deps} deps */
 export function createConsoles(deps) {
-  const buffers = createBuffers(deps);
+  const who = (/** @type {Console} */ target) =>
+    ownerOf(target, deps.connection(target.connection));
+  /** A buffer's session in a transaction, with what the person calls the buffer. */
+  const inTransaction = (/** @type {Console} */ target) => {
+    const owner = who(target)?.owner;
+    const open = owner ? (deps.sessions?.inTransaction((e) => e.owner === owner) ?? []) : [];
+    const label = sessionLabel(target, deps.connection(target.connection));
+    return open.map((e) => ({ label, transaction: e.transaction }));
+  };
+  /** The sentence a close asks with while the buffer's transaction is open. */
+  const closing = (/** @type {Console} */ target) => reasonsOf(inTransaction(target));
+  /** A buffer that goes, or moves to another connection: its session closes. */
+  const release = (/** @type {Console} */ target) => {
+    const owner = keyOf(target);
+    if (owner) deps.sessions?.forget(owner);
+  };
+  const buffers = createBuffers({
+    ...deps,
+    decorate: (model) => {
+      const owner = who(model)?.owner;
+      if (owner && deps.sessions) model.session = deps.sessions.state(owner);
+      else delete model.session;
+      if (owner && model.kind === "console") deps.sessions?.decorate?.(owner, model);
+      if (owner && deps.sessions?.rowsGone) lapse(model, deps.sessions.rowsGone);
+    },
+    gone: (target) => release(target),
+  });
   const panels = createPanels(buffers, deps);
   const texts = createTexts(deps);
-  const many = createMany(buffers, texts, deps);
+  const many = createMany(buffers, texts, { ...deps, closing, release });
   const { render } = buffers;
   /** The values typed for parameters this session, by console and name. */
   /** @type {Map<string, string>} */
   const typed = new Map();
-
   const tableName = (/** @type {Connection} */ conn, /** @type {TablePage} */ table) =>
     `db: ${conn.name} · ${table.schema ? `${table.schema}.` : ""}${table.name}`;
 
   /**
    * Show a connection's console (the one used last, else its first), or a table's view, opening its
-   * buffer the first time.
+   * buffer the first time (under `filters`, its first page read with them: a followed key's, PG-41).
    * @param {Connection} conn
-   * @param {{ schema: string, name: string } | null} [table]
+   * @param {{ schema: string, name: string, filters?: import("./grid/filters.js").Filter[] } | null} [table]
    * @param {string} [given] A buffer the desk opened already (a visited SQLite file).
    */
   const open = async (conn, table = null, given = undefined) => {
@@ -112,7 +147,8 @@ export function createConsoles(deps) {
         c.table?.name === table.name,
     );
     if (found) return buffers.show(found);
-    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters: [] };
+    const filters = table.filters ?? [];
+    const page = { ...table, where: "", order: "", offset: 0, count: null, sort: [], filters };
     const name = tableName(conn, page);
     const id = await buffers.open(name);
     const target = buffers.show(
@@ -141,14 +177,10 @@ export function createConsoles(deps) {
   /** The console on screen, or an Error naming what to do. */
   const active = () => {
     const shown = buffers.current();
-    if (!shown)
-      throw new Error("No console is open: pick a connection first (Database: open a console).");
+    if (!shown) throw new Error(messageText("consoles.noConsoleIsOpenPickA"));
     const conn = deps.connection(shown.connection);
-    if (!conn && shown.file)
-      throw new Error(
-        "Pick the connection it runs on: Database: run this .sql file on another connection.",
-      );
-    if (!conn) throw new Error("This console's connection was removed.");
+    if (!conn && shown.file) throw new Error(messageText("consoles.pickTheConnectionItRunsOn"));
+    if (!conn) throw new Error(messageText("consoles.thisConsoleSConnectionWasRemoved"));
     return { shown, conn };
   };
 
@@ -156,10 +188,14 @@ export function createConsoles(deps) {
   const discard = async (/** @type {Console} */ target) => {
     if (!edits.pending(target)) return;
     const count = target.edit?.count ?? 0;
-    const ok = await deps.confirm(`Drop ${count} pending change${count === 1 ? "" : "s"}?`, [
-      "The new run replaces the rows they were made on. Submit them first to keep them.",
-    ]);
-    if (!ok) throw deps.cancelled("Not run: the pending changes are kept.");
+    const ok = await deps.confirm(
+      messageText("consoles.dropPendingChange", {
+        count: String(count),
+        value: String(count === 1 ? "" : messageText("consoles.s")),
+      }),
+      [messageText("consoles.theNewRunReplacesTheRows")],
+    );
+    if (!ok) throw deps.cancelled(messageText("consoles.notRunThePendingChangesAre"));
   };
 
   /**
@@ -167,25 +203,35 @@ export function createConsoles(deps) {
    * @param {Console} target
    * @param {Connection} conn
    * @param {string} sql
-   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean }} options
-   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console.
+   * @param {{ mode?: Mode, base?: number, statements?: Statement[], maxRows?: number, history?: boolean, file?: boolean, agent?: boolean }} options
+   *   `file` is a part of a file run (features/consoles/run-file.js), which holds the console;
+   *   `agent` runs it for an agent, whose writes the executor asks the person about.
    */
   const execute = async (target, conn, sql, options) => {
     if (target.running || (target.filing && !options.file))
-      throw new Error("A run is going on in this console: cancel it first.");
+      throw new Error(messageText("consoles.aRunIsGoingOnIn"));
     await discard(target);
+    // The last run's error does not stay on screen while this one runs; rows that came back do.
+    const last = target.execution?.result;
+    if (last && (last.error || last.statements.some((s) => s.error))) {
+      target.execution = null;
+      target.shown = null;
+    }
     target.running = true;
     deps.view.say("");
     render();
     try {
       const maxRows = options.maxRows ?? deps.settings().maxRows;
+      const session = ownerOf(target, conn);
       const execution = await deps.execute(conn, sql, {
         mode: options.mode ?? "run",
         maxRows,
         ...(options.statements ? { statements: options.statements } : {}),
+        ...(session ? { session } : {}),
+        ...(options.agent ? { agent: true, interactive: false } : {}),
       });
       target.execution = execution;
-      target.shown = show(execution, options.base ?? 0);
+      target.shown = show(execution, options.base ?? 0, target.pinned);
       target.tab = target.shown.open;
       target.maxRows = maxRows;
       target.edit = null;
@@ -202,6 +248,8 @@ export function createConsoles(deps) {
     run: (target, conn, sql, options) => execute(target, conn, sql, options),
     execute: deps.execute,
     render,
+    sessions: deps.sessions,
+    say: (text) => deps.view.say(text),
   });
   const edits = createEdits({
     catalog: deps.catalog,
@@ -224,6 +272,7 @@ export function createConsoles(deps) {
     execute,
     render,
     typed,
+    pages,
   });
 
   /** The editor's text changed: keep it, a moment later, in the store; a file's, mark it. */
@@ -269,6 +318,8 @@ export function createConsoles(deps) {
     restoreConsoles: many.restore,
     /** Run SQL in a console as a run of its own does (features/consoles/run-file.js). */
     runIn: execute,
+    /** The PostgreSQL sessions: a console's transaction (features/transactions/, PG-20). */
+    sessions: deps.sessions,
     page: (/** @type {Parameters<typeof pages.page>[2]} */ change) =>
       withActive((shown, conn) => pages.page(shown, conn, change)),
     edits: {
@@ -284,6 +335,13 @@ export function createConsoles(deps) {
         withActive((t) => edits.revert(t, rows)),
       preview: () => withActive((t) => edits.preview(t)),
       submit: () => withActive((t, c) => edits.submit(t, c)),
+      // A paste, a fill or a duplicate (features/paste/): planned on `ready`'s state, one `step`.
+      ready: () => withActive((t, c) => edits.ready(t, c)),
+      step: (
+        /** @type {import("./edits.js").EditState} */ state,
+        /** @type {Parameters<typeof edits.step>[2]} */ step,
+      ) => withActive((t) => edits.step(t, state, step)),
+      undo: () => withActive((t) => edits.undo(t)),
       ensure: () =>
         withActive(async (t, c) => {
           const state = await edits.ensure(t, c);
@@ -294,24 +352,42 @@ export function createConsoles(deps) {
     /** Pick a result tab. */
     tab(/** @type {number} */ index) {
       const target = buffers.current();
-      if (target?.shown && index >= 0 && index < target.shown.tabs.length) target.tab = index;
+      if (target) pages.pick(target, deps.connection(target.connection), index);
       render();
     },
     show: buffers.showId,
-    closed: many.closed,
+    /** The desk closed one of the plugin's buffers: its session closes, a transaction said. */
+    closed(/** @type {string} */ id) {
+      const target = buffers.get(id);
+      const [open] = target ? inTransaction(target) : [];
+      many.closed(id);
+      if (open) deps.view.say(rolledBackOnClose(open.label));
+    },
     drop: buffers.drop,
-    /** Rename a connection's consoles and table views after an edit. */
+    /** Rename a connection's consoles and table views (on each of its databases) after an edit. */
     async renamed(/** @type {Connection} */ conn) {
       await many.renamed(conn);
       for (const target of buffers.list()) {
-        if (target.connection !== conn.id || target.kind !== "table" || !target.table) continue;
-        target.name = tableName(conn, target.table);
+        if (baseOf(target.connection) !== conn.id || target.kind !== "table" || !target.table)
+          continue;
+        target.name = tableName(deps.connection(target.connection) ?? conn, target.table);
         await deps.commands
           .run("desk.buffers.update", { id: target.id, name: target.name })
           .catch(() => {});
       }
       render();
     },
+    /** Move a console or a table view to another database of its server (PG-13). */
+    rebind: createRebind({
+      deps,
+      discard,
+      closing,
+      release,
+      bind: (target, conn) => many.bind(target, conn),
+      refresh: (target, conn) => pages.refresh(target, conn),
+      tableName,
+      render,
+    }),
     current: buffers.current,
     list: buffers.list,
   };

@@ -15,13 +15,14 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { cliFiles, desktopPrefix, macImages, SUMS } from "./release-assets.mjs";
 import { compare, lineOf, parse } from "./release-version.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 /** The Tauri updater targets a canonical file serves, most specific first; none for a disk image. */
 export function targetsOf(name, version) {
-  const prefix = `endue-desk_${version}_`;
+  const prefix = desktopPrefix(version);
   if (!name.startsWith(prefix) || name.endsWith(".sig")) return [];
   const rest = name.slice(prefix.length);
   const rules = [
@@ -38,6 +39,34 @@ export function targetsOf(name, version) {
     if (m) return targets(m[1]);
   }
   return [];
+}
+
+/** Only known downloads and metadata may leave the release folder. */
+export function checkNames(names, version) {
+  const allowed = new Set([
+    "release.json",
+    "release.json.sig",
+    "SHA256SUMS",
+    SUMS,
+    ...macImages(version),
+    ...cliFiles(version),
+  ]);
+  for (const name of names) {
+    const unsigned = name.replace(/\.sig$/u, "");
+    if ((!allowed.has(name) && !targetsOf(unsigned, version).length) || !names.includes(unsigned)) {
+      throw new Error("Unexpected or unpaired file in release folder.");
+    }
+  }
+}
+
+export function downloadNames(dist, version) {
+  const entries = readdirSync(dist, { withFileTypes: true });
+  if (entries.some((entry) => !entry.isFile())) {
+    throw new Error("The release folder must contain only regular files.");
+  }
+  const names = entries.map((entry) => entry.name);
+  checkNames(names, version);
+  return names;
 }
 
 /** The release folder's updater artifacts: name, size, sha256 and the text of its .sig. */
@@ -195,6 +224,9 @@ function main([command, path, ...args]) {
   };
   const now = value("--now", new Date().toISOString().replace(/\.\d{3}Z$/u, "Z"));
   switch (command) {
+    case "check-files":
+      downloadNames(path, need("--version"));
+      return;
     case "release": {
       const version = need("--version");
       return print(

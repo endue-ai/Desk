@@ -18,7 +18,48 @@
       {
         "id": "desk.views.open",
         "title": "Open a view",
-        "keywords": ["view", "dashboard", "today"]
+        "keywords": ["view", "dashboard", "today"],
+        "description": "Open a saved view or page by id with optional params. Use desk.views.list to find saved views. Agent calls use id and params.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "params": { "type": "object" },
+            "bindings": { "type": "object" },
+            "view": { "type": "object" },
+            "preview": { "type": "object" },
+            "notice": { "type": "object" },
+            "owner": {}
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "desk.views.list",
+        "title": "List saved views",
+        "keywords": ["views", "pages", "saved", "list"],
+        "description": "List the IDs, titles and kinds of the saved views and pages.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "desk.views.read",
+        "title": "Read the item sections of a saved view",
+        "keywords": ["view", "page", "today", "items", "read"],
+        "description": "Read the item-source sections of a saved view or page by id with optional params. Returns their entries and any unavailable section states without opening the view.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "params": { "type": "object" }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "desk.views.preview",

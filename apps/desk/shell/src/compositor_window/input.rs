@@ -161,6 +161,34 @@ impl CompositorWindow {
         let Some(surface) = surface_of(message) else {
             return;
         };
+        if let CompositorMessage::SurfaceDragDrop(drop) = message
+            && drop.person_dropped == Some(true)
+            && let Some(owner) = self.router.targets.owner(&surface)
+        {
+            let paths = drop
+                .items
+                .iter()
+                .filter_map(|item| match item {
+                    desk_surface::generated::SurfaceDragItem::SurfaceDragPaths(paths) => {
+                        Some(&paths.paths)
+                    }
+                    _ => None,
+                })
+                .flatten()
+                .map(|path| path.path.as_str());
+            let target = drop.destination.as_ref().filter(|_| {
+                !matches!(
+                    drop.effect,
+                    desk_surface::generated::SurfaceDropEffect::Link
+                )
+            });
+            self.desk.core.grant_file_drop(
+                drop.source.as_deref(),
+                owner,
+                paths,
+                target.map(|folder| folder.path.as_str()),
+            );
+        }
         // A window's own page has the engine's focus while it has the keys (ADR 0201): a field
         // there shows its caret.
         if window_pages::is_window_page(&surface) {

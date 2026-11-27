@@ -7,17 +7,23 @@
   const native = globalThis.__deskNative;
   if (!native || typeof native.post !== "function") return;
   const post = native.post;
+  Reflect.deleteProperty(native, "post");
+  const encode = JSON.stringify;
+  const decode = JSON.parse;
+  const startsWith = Function.call.bind(String.prototype.startsWith);
   const desk = Object.freeze({
     postMessage(message) {
-      // What the shim says of an OS drag (below) is the shim's alone.
-      if (String(message?.type).startsWith("desk:os-")) return;
       let text;
       try {
-        text = JSON.stringify(message);
+        text = encode(message);
+        if (typeof text !== "string") return;
+        const type = decode(text)?.type;
+        // OS drag messages come only from the trusted DOM listeners below.
+        if (typeof type === "string" && startsWith(type, "desk:os-")) return;
       } catch {
         return;
       }
-      if (typeof text === "string") post(text);
+      post(text);
     },
   });
   Object.defineProperty(globalThis, "parent", { value: desk, enumerable: true });
@@ -30,20 +36,20 @@
   let said = "";
   const tell = (type, e) => {
     const keys = { alt: e.altKey, shift: e.shiftKey, ctrl: e.ctrlKey, meta: e.metaKey };
-    const text = JSON.stringify({ type, x: e.clientX, y: e.clientY, keys });
+    const text = encode({ type, x: e.clientX, y: e.clientY, keys });
     if (type === "desk:os-dragover" && text === said) return;
     said = text;
     post(text);
   };
   const follow = (e) => {
-    if (e.dataTransfer?.types?.includes?.("Files") !== true) return;
+    if (!e.isTrusted || e.dataTransfer?.types?.includes?.("Files") !== true) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     if (e.type === "dragleave") {
       depth = Math.max(0, depth - 1);
       if (depth === 0) {
         said = "";
-        post(JSON.stringify({ type: "desk:os-dragleave" }));
+        post(encode({ type: "desk:os-dragleave" }));
       }
       return;
     }

@@ -84,6 +84,12 @@ impl DragIds {
                     r#type: Default::default(),
                     surface,
                     effect: answer(&m),
+                    destination: m.get("destination").and_then(Value::as_str).map(|path| {
+                        desk_surface::generated::SurfaceDragPath {
+                            path: path.to_owned(),
+                            kind: None,
+                        }
+                    }),
                 });
                 Up::Take(if current { vec![status] } else { Vec::new() })
             }

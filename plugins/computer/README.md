@@ -10,16 +10,18 @@ allows, the apps she may operate, Stop and what she did lately. Off until the pe
 | --- | --- | --- |
 | `endue.computer.look` | `ax.tree` + `screenshot` | the focused window's elements and the screen; reads only |
 | `endue.computer.find` | `ax.find` | elements by role and title; reads only |
+| `endue.computer.status` | `permissions.status` | OS permissions, stop state and allowed apps |
 | `endue.computer.apps` | `apps.list` | the running apps; reads only |
 | `endue.computer.click` | `input.click`, or `ax.perform` for an element | |
 | `endue.computer.type` / `keys` / `scroll` | `input.type` / `input.keys` / `input.scroll` | |
+| `endue.computer.move` / `drag` | `input.move` / `input.drag` | points on the screen |
+| `endue.computer.quit` | `apps.quit` | always asks |
 | `endue.computer.open` / `switch` | `apps.launch` or `apps.activate` | |
 
-Every act carries the invocation it serves (`invocationId`), so the core holds it as the invoking
-agent's: its allowlist caps it, the person approves it on the permission card ("Allow for this task"
-covers the same app until the turn ends), and it is a run on the runs board with a screenshot after
-it. The scope of every call is the setting `endue.computer.apps` (bundle ids; empty is every app).
-Another plugin cannot use these commands as a deputy.
+Acts carry their invocation ID so the core applies the agent's allowlist and records the action
+on the runs board. The app list in `endue.computer.apps` narrows each call (empty allows any app).
+Move and scroll use no approval card. For a card on one app, the person can approve input for
+the rest of the turn or until they stop computer use or change conversations (ADR 0375).
 
 ## Banner and stop
 

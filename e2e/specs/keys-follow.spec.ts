@@ -214,10 +214,14 @@ describe("keys follow the window in use", () => {
       async () =>
         (await inFrame(PERMISSIONS, () =>
           browser.execute(
-            () => document.hasFocus() && document.activeElement?.textContent === "Don't allow",
+            () =>
+              document.hasFocus() &&
+              document.activeElement?.textContent === "Don't allow" &&
+              // Keys answer it only after its arming delay (ADR 0335).
+              document.querySelector("#prompt[data-armed]") !== null,
           ),
         )) === true,
-      "the question's page never had its focus on Don't allow",
+      "the question's page never had its focus on Don't allow, armed",
     );
     await feed(keyPress("Escape", "Escape"));
     await holds(

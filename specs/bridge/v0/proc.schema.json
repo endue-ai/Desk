@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/proc.schema.json",
-  "title": "Desk bridge v0: proc",
+  "title": "endue bridge v0: proc",
   "description": "Processes: spawn (optionally in a PTY), write, resize, kill. Scoped by proc:spawn commands.",
   "$defs": {
     "ProcSpawnRequest": {
@@ -32,6 +32,11 @@
           "additionalProperties": { "type": "string" }
         },
         "pty": { "$ref": "#/$defs/PtySize" },
+        "invocationId": {
+          "description": "The pending approved command invocation that named this program and its arguments. Valid for one matching spawn by its provider.",
+          "type": "string",
+          "minLength": 1
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
       },
       "required": ["command", "scope"],

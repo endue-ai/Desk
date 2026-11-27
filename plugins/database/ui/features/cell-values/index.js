@@ -6,6 +6,7 @@
 
 import { DEFAULT } from "../../edit/values.js";
 import { EXPORT_FOLDER, exportName } from "../../export.js";
+import { t } from "../../strings/index.js";
 
 /**
  * @typedef {import("../../feature-host.js").Deps} Deps
@@ -13,7 +14,7 @@ import { EXPORT_FOLDER, exportName } from "../../export.js";
  * @typedef {{ run(id: string, args?: unknown): Promise<unknown> }} Commands
  */
 
-/** The most a file may hold to become a cell's value: its hex literal must fit one psql argument. */
+/** The most a file may hold to become a cell's value: its hex literal must fit one client argument. */
 export const MAX_FILE = 256 * 1024;
 const HEX = /^(?:\\x|0x)([0-9a-fA-F]*)$/u;
 
@@ -33,7 +34,9 @@ const fileName = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/"
  * @returns {Promise<{ hex: string, name: string, size: number } | undefined>}
  */
 export async function loadBytes(bridge) {
-  const picked = await bridge.call("dialog.open", { title: "Load bytes from a file" });
+  const picked = await bridge.call("dialog.open", {
+    title: t("features.cellValues.index.loadBytesFromAFile"),
+  });
   const path = picked.cancelled ? undefined : picked.paths[0];
   if (!path) return undefined;
   const name = fileName(path);
@@ -47,7 +50,11 @@ export async function loadBytes(bridge) {
   const size = read.size ?? 0;
   if (size > MAX_FILE)
     throw new Error(
-      `${name} is ${Math.round(size / 1024)} KiB: a value loaded from a file is ${MAX_FILE / 1024} KiB at most.`,
+      t("features.cellValues.index.isKibAValueLoadedFrom", {
+        name: String(name),
+        value: String(Math.round(size / 1024)),
+        value2: String(MAX_FILE / 1024),
+      }),
     );
   return { hex: `\\x${toHex(read.content)}`, name, size };
 }
@@ -62,7 +69,7 @@ export async function loadBytes(bridge) {
 export async function saveBytes(bridge, commands, value, name, at = new Date()) {
   const hex = HEX.exec(value ?? "");
   if (!hex || (hex[1] ?? "").length % 2)
-    throw new Error(`${name}'s value is not bytes: nothing to save.`);
+    throw new Error(t("features.cellValues.index.sValueIsNotBytesNothing", { name: String(name) }));
   const path = `${EXPORT_FOLDER}/${exportName(name, "tsv", at).replace(/\.tsv$/u, ".bin")}`;
   const scope = { permission: /** @type {const} */ ("fs:write"), paths: [`${EXPORT_FOLDER}/**`] };
   const content = toBase64(hex[1] ?? "");
@@ -74,8 +81,11 @@ export async function saveBytes(bridge, commands, value, name, at = new Date()) 
 /** The cursor's cell, when it can change. */
 const changing = (/** @type {Deps} */ deps) => {
   const cell = deps.view.cell();
-  if (!cell) throw new Error("Put the cursor on a cell of a result first.");
-  if (!cell.editable) throw new Error(cell.reason || `${cell.name} cannot change here.`);
+  if (!cell) throw new Error(t("features.cellValues.index.putTheCursorOnACell"));
+  if (!cell.editable)
+    throw new Error(
+      cell.reason || t("features.cellValues.index.cannotChangeHere", { name: String(cell.name) }),
+    );
   return cell;
 };
 
@@ -85,34 +95,49 @@ export const feature = {
   commands: (deps) => ({
     "endue.database.set-default": async () => {
       const cell = changing(deps);
-      if (!cell.editor?.hasDefault) throw new Error(`${cell.name} has no default.`);
+      if (!cell.editor?.hasDefault)
+        throw new Error(t("features.cellValues.index.hasNoDefault", { name: String(cell.name) }));
       await deps.consoles.edits.editCell(cell.row, cell.col, DEFAULT);
     },
     "endue.database.cell-file-load": async () => {
       const cell = changing(deps);
       if (cell.editor?.kind !== "bytes")
-        throw new Error(`${cell.name} holds no bytes: it is not bytes to load.`);
+        throw new Error(
+          t("features.cellValues.index.holdsNoBytesItIsNot", { name: String(cell.name) }),
+        );
       const loaded = await loadBytes(deps.bridge);
       if (!loaded) return;
       const value =
         cell.editor.prefix === "0x" ? `0x${loaded.hex.slice(2).toUpperCase()}` : loaded.hex;
       await deps.consoles.edits.editCell(cell.row, cell.col, value);
       deps.say(
-        `Loaded ${loaded.name} (${loaded.size} byte${loaded.size === 1 ? "" : "s"}) into ${cell.name}: pending until Submit.`,
+        t("features.cellValues.index.loadedByteIntoPendingUntilSubmit", {
+          name: String(loaded.name),
+          size: String(loaded.size),
+          value: String(loaded.size === 1 ? "" : t("features.cellValues.index.s")),
+          name2: String(cell.name),
+        }),
       );
     },
     "endue.database.cell-file-save": async () => {
       const cell = deps.view.cell();
-      if (!cell) throw new Error("Put the cursor on a cell of a result first.");
+      if (!cell) throw new Error(t("features.cellValues.index.putTheCursorOnACell"));
       const path = await saveBytes(deps.bridge, deps.commands, cell.value ?? "", cell.name);
-      deps.say(`Saved ${cell.name}'s bytes to ${path}.`);
+      deps.say(
+        t("features.cellValues.index.savedSBytesTo", {
+          name: String(cell.name),
+          path: String(path),
+        }),
+      );
     },
   }),
   actions: (deps) => ({
     cellFileLoad: () => loadBytes(deps.bridge),
     cellFileSave: async (/** @type {string} */ value, /** @type {string} */ name) => {
       const path = await saveBytes(deps.bridge, deps.commands, value, name);
-      deps.say(`Saved ${name}'s bytes to ${path}.`);
+      deps.say(
+        t("features.cellValues.index.savedSBytesTo", { name: String(name), path: String(path) }),
+      );
       return path;
     },
   }),

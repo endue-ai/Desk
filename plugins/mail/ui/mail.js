@@ -5,6 +5,7 @@
 // ctx.bridge, ctx.commands, ctx.settings, ctx.surface and a view, so the SDK's test host runs it.
 
 import { createActions } from "./actions.js";
+import { answerAgents } from "./agent.js";
 import { registerCommands } from "./commands.js";
 import { blank, NO_ACCOUNT } from "./compose.js";
 import { latestOf, latestQuery } from "./latest.js";
@@ -277,7 +278,7 @@ export function createMail({ bridge, commands, settings, surface }, view, option
     now,
   });
 
-  const { command } = registerCommands({
+  const { command, answer } = registerCommands({
     commands,
     surface,
     view,
@@ -304,6 +305,17 @@ export function createMail({ bridge, commands, settings, surface }, view, option
         return latestOf(box, items);
       },
     },
+  });
+
+  answerAgents(answer, {
+    actions,
+    named,
+    draft: writing.composing,
+    messageOf,
+    account: () => s.account ?? s.accounts[0],
+    conf: () => ({ signature: s.conf.signature, addresses: s.conf.addresses }),
+    say,
+    now,
   });
 
   settings.onChange(({ key: name, value }) => {

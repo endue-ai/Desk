@@ -2,7 +2,7 @@
 // so the operations are tested against what git does rather than a script of it.
 import { execFile } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
 
 export type Outcome = {
@@ -13,37 +13,55 @@ export type Outcome = {
 };
 export type RunOptions = { cwd?: string; input?: string; ok?: number[]; timeoutMs?: number };
 
-const ENV = {
-  ...process.env,
+const FIXTURE_ENV = {
   GIT_TERMINAL_PROMPT: "0",
   LC_ALL: "C",
-  GIT_AUTHOR_NAME: "Test",
-  GIT_AUTHOR_EMAIL: "test@example.com",
-  GIT_COMMITTER_NAME: "Test",
-  GIT_COMMITTER_EMAIL: "test@example.com",
-  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_AUTHOR_NAME: "endue-team",
+  GIT_AUTHOR_EMAIL: "team@endue.ai",
+  GIT_COMMITTER_NAME: "endue-team",
+  GIT_COMMITTER_EMAIL: "team@endue.ai",
+  GIT_CONFIG_GLOBAL: devNull,
   GIT_CONFIG_NOSYSTEM: "1",
 };
 
-export const realGit = {
-  run(args: string[], options: RunOptions = {}): Promise<Outcome> {
-    return new Promise((resolve, reject) => {
-      const child = execFile(
-        "git",
-        ["-c", "core.quotepath=false", ...args],
-        { cwd: options.cwd, env: ENV, maxBuffer: 8 << 20 },
-        (error, stdout, stderr) => {
-          const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
-          const outcome = { code, signal: null, stdout, stderr };
-          if (code === 0 || (options.ok ?? []).includes(code)) resolve(outcome);
-          else
-            reject(
-              Object.assign(new Error(stderr.trim() || `git exited with ${code}`), { outcome }),
-            );
-        },
-      );
-      child.stdin?.end(options.input ?? "");
+/** Both test adapters keep Git's raw output until their own text or bridge encoding step. */
+export function gitOutput(
+  args: string[],
+  options: { cwd?: string; env: NodeJS.ProcessEnv; input?: string },
+): Promise<{ code: number; stdout: Buffer; stderr: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "git",
+      args,
+      {
+        cwd: options.cwd,
+        env: { ...options.env, ...FIXTURE_ENV },
+        encoding: "buffer",
+        maxBuffer: 8 << 20,
+      },
+      (error, stdout, stderr) => {
+        const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
+        resolve({ code, stdout, stderr });
+      },
+    );
+    // Commands such as git version and failed invocations may finish without consuming input.
+    child.stdin?.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EPIPE") reject(error);
     });
+    child.stdin?.end(options.input);
+  });
+}
+
+export const realGit = {
+  async run(args: string[], options: RunOptions = {}): Promise<Outcome> {
+    const { code, stdout, stderr } = await gitOutput(["-c", "core.quotepath=false", ...args], {
+      cwd: options.cwd,
+      env: process.env,
+      input: options.input,
+    });
+    const outcome = { code, signal: null, stdout: stdout.toString(), stderr: stderr.toString() };
+    if (code === 0 || (options.ok ?? []).includes(code)) return outcome;
+    throw Object.assign(new Error(outcome.stderr.trim() || `git exited with ${code}`), { outcome });
   },
 };
 

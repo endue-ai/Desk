@@ -7,7 +7,7 @@ Events), tool calls, session leases and a fixed agent directory. Node's standard
 just brain-echo                                  # or: node examples/brain-echo/server.mjs
 node examples/brain-echo/server.mjs --port 0     # a free port; the first line printed has the URL
 ```
-It listens on `http://127.0.0.1:8787/v0`, where Desk's echo brain looks (`DESK_ECHO_URL`, ADR 0094).
+It listens on `http://127.0.0.1:8787/v0`, where endue's echo brain looks (`DESK_ECHO_URL`, ADR 0094).
 
 | Message | Answer |
 | --- | --- |

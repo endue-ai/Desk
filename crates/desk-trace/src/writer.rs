@@ -232,7 +232,7 @@ impl Trace {
         }
         let mut events = vec![json!({
             "name": "process_name", "ph": "M", "pid": PID, "tid": 0,
-            "args": { "name": "endue Desk" },
+            "args": { "name": "endue" },
         })];
         events.extend(tracks.into_iter().map(|(tid, name)| {
             json!({

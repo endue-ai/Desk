@@ -1,4 +1,4 @@
-//! Kernel of endue Desk: permission engine, event bus, plugin registry, session store, settings and
+//! Kernel of endue: permission engine, event bus, plugin registry, session store, settings and
 //! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
 //! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
 //! item index, connectors and views; ADR 0036), the desk's own updates (ADR 0054), the person's
@@ -15,7 +15,11 @@ mod agent_runs;
 mod agent_tools;
 mod agents;
 mod approval_action;
+mod approval_log;
 mod approval_preview;
+mod approval_provider;
+mod approval_scope;
+mod approval_versions;
 mod approvals;
 mod brain_choice;
 mod brain_options;
@@ -36,13 +40,20 @@ mod core_brain;
 mod core_builtins;
 mod core_catalog;
 mod core_cmd;
+mod core_cmd_args;
 mod core_computer;
 mod core_connectors;
 mod core_data;
 mod core_db;
+mod core_db_describe;
+mod core_db_end;
+mod core_db_passwords;
+mod core_db_script;
+mod core_db_ssh;
 mod core_dialog;
 mod core_directory;
 mod core_events;
+mod core_files_gesture;
 mod core_fs;
 mod core_fs_url;
 mod core_history;
@@ -81,6 +92,8 @@ mod core_views_check;
 mod core_wasm;
 mod core_web;
 mod core_web_control;
+mod db_passwords;
+mod db_ssh_hosts;
 mod db_wire;
 mod declared;
 mod desk_files;
@@ -134,7 +147,7 @@ pub use core_snapshots::{ShotError, SurfaceShot, SurfaceSnapshots};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
 pub use core_tools::mcp_caller;
-pub use core_web::{MAX_WEB_VIEWS, WebError, WebPlace, WebState, WebViews};
+pub use core_web::{MAX_WEB_VIEWS, WebError, WebHistoryTarget, WebPlace, WebState, WebViews};
 pub use core_web_control::WEB_READ_CHARS;
 pub use desk_files::{
     DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,

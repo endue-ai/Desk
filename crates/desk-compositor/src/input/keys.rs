@@ -35,7 +35,7 @@ impl InputRouter {
         else {
             return Vec::new();
         };
-        let mods = self.mods;
+        let mods = self.key_mods;
         if !key.pressed {
             return match self.keys_down.remove(&key.code) {
                 Some(None) => Vec::new(),

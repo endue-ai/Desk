@@ -7,6 +7,7 @@
 // wake.js). It only talks to ctx.commands, ctx.bridge, ctx.settings, ctx.surface and a view, so the
 // SDK's test host runs it.
 
+import { answerAgents } from "./agent.js";
 import { ENCODINGS } from "./csv.js";
 import { extensionOf } from "./detect.js";
 import { createLoading, NAME, scopeOf } from "./loading.js";
@@ -32,9 +33,11 @@ export { NAME } from "./loading.js";
  *   progress?(value: Progress | null): void, commit?(): void,
  *   where?(buffer: string): import("./keep.js").Where | undefined,
  *   restore?(buffer: string, where: Partial<import("./keep.js").Where>): void,
+ *   select?(sheet: number, range: import("./agent.js").Range): void,
+ *   find?(text: string): string | undefined,
  * }} View commit: the edit in progress on screen becomes an edit before a save; where and
  *   restore: the place in a file, kept across a sleep
- * @typedef {Shown & import("./save.js").Editing & { watchId?: string, notice?: string }} Held
+ * @typedef {Shown & import("./save.js").Editing & { watchId?: string, notice?: string, saving?: boolean }} Held
  *   notice: what the status line says of it until the person edits it (an edit a sleep lost)
  * @typedef {{ edit(r: number, c: number, text: string): boolean, refused(buffer: string, r: number, c: number): void }} Sheets
  *   What the view asks of the file on screen: set a cell's text (false when the file has no
@@ -108,7 +111,8 @@ export function createSheets({ bridge, commands, settings, surface }, view, opti
     const { buffer, path, name, size, book, tier, doc, editable } = held;
     return { buffer, path, name, size, book, tier, modified: doc?.modified ?? false, editable };
   };
-  const onScreen = () => model(shown === null ? undefined : files.get(shown));
+  const current = () => (shown === null ? undefined : files.get(shown));
+  const onScreen = () => model(current());
   const render = () => view.show(onScreen());
   const present = (/** @type {string} */ buffer) => {
     shown = buffer;
@@ -245,21 +249,46 @@ export function createSheets({ bridge, commands, settings, surface }, view, opti
     return summary(before);
   });
 
+  /** @param {Held} file @param {string} path @param {string} [invocationId] */
+  const save = async (file, path, invocationId) => {
+    const doc = file.doc;
+    if (!doc) throw new Error(file.tier.refusal ?? `${NAME} opens files read-only.`);
+    if (file.saving) throw new Error("This worksheet is already being saved.");
+    if (invocationId && !doc.modified) return null;
+    if (!invocationId && shown === file.buffer) view.commit?.();
+    const saving = doc.save();
+    file.saving = true;
+    try {
+      const result = await writeFile(bridge, path, saving.bytes, invocationId);
+      saving.commit();
+      if (file.doc !== doc || files.get(file.buffer) !== file) return result;
+      delete file.notice;
+      if (shown === file.buffer) render();
+      // The runtime clears its own Save mark. An agent's provider answers it directly.
+      if (invocationId) report(file);
+      else {
+        file.reported = false;
+        if (doc.modified) setTimeout(() => report(file), 0);
+      }
+      return result;
+    } finally {
+      file.saving = false;
+    }
+  };
+
   answer("desk.files.save", async (args) => {
     const { buffer, path } = requested(args);
     const file = (await wake.lost(buffer, undefined)) ?? held(buffer);
-    if (!file.doc) throw new Error(file.tier.refusal ?? `${NAME} opens files read-only.`);
-    if (shown === buffer) view.commit?.();
-    const saving = file.doc.save();
-    await writeFile(bridge, path ?? file.path, saving.bytes);
-    saving.commit();
-    // desk.files clears the list's mark after a save; edits made while it was written stay
-    // unsaved, and the desk hears so once this answer has reached it.
-    file.reported = false;
-    delete file.notice;
-    if (shown === buffer) render();
-    if (file.doc.modified) setTimeout(() => report(file), 0);
+    await save(file, path ?? file.path);
     return `Saved ${file.name}.`;
+  });
+  commands.on("endue.sheets.save", async (raw, invocation) => {
+    const path = requested(raw).path;
+    const file = current();
+    if (!file || path !== file.path) throw new Error("Give the exact path of the open worksheet.");
+    const id = invocation?.caller.startsWith("agent:") ? invocation.invocationId : undefined;
+    const result = await save(file, file.path, id);
+    return { path, saved: result !== null, version: result?.version, unsaved: file.doc?.modified };
   });
 
   answer("desk.buffers.show", async (args) => {
@@ -286,6 +315,27 @@ export function createSheets({ bridge, commands, settings, surface }, view, opti
     shown = null;
     render();
     return "";
+  });
+
+  answerAgents(commands, {
+    open: () => [...files.values()].map(model).filter(Boolean),
+    shown: () => shown,
+    view,
+    edit(span, values) {
+      const file = current();
+      const doc = file?.doc;
+      if (!file || !doc) throw new Error("This format does not support lossless cell edits.");
+      const cells = values.flatMap((row, y) =>
+        row.map((text, x) => ({ r: span.r0 + y, c: span.c0 + x, text })),
+      );
+      if (cells.some(({ r, c, text }) => !doc.editable(r, c) || !text.isWellFormed()))
+        throw new Error("The format cannot keep every cell and value in that range.");
+      for (const { r, c, text } of cells) doc.set(r, c, text);
+      delete file.notice;
+      report(file);
+      render();
+      return doc.modified;
+    },
   });
 
   bridge.onEvent((/** @type {BridgeEvent} */ event) => {
@@ -321,7 +371,7 @@ export function createSheets({ bridge, commands, settings, surface }, view, opti
   /** @type {Sheets} */
   return {
     edit(r, c, text) {
-      const file = shown === null ? undefined : files.get(shown);
+      const file = current();
       const result = file?.doc?.set(r, c, text) ?? "outside";
       if (!file || result === "outside") return false;
       if (result === "changed") {

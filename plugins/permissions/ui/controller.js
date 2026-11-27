@@ -2,7 +2,8 @@
 // perm.approval (ADR 0078) one card at a time in front of everything (`overlay.js`), and it lists
 // every caller's grants and this session's refusals. It only talks to the bridge, its surface and a
 // view, so the SDK's test host runs it with a recording view.
-import { answeredLabel, approvalModel, resultModel } from "./approval.js";
+import { answeredLabel, approvalModel } from "./approval.js";
+import { connectionReview } from "./connection-review.js";
 import { describeCaller, describePermission, durationLabel } from "./describe.js";
 import { grantList, parentOffer, promptModel } from "./model.js";
 import { createOverlay } from "./overlay.js";
@@ -14,7 +15,6 @@ import { createRefusals, refusalItems } from "./refusals.js";
  * @typedef {import("@endue-ai/bridge").GrantDuration} GrantDuration
  * @typedef {import("@endue-ai/bridge").PermPromptData} PermPromptData
  * @typedef {import("@endue-ai/bridge").PermApprovalData} PermApprovalData
- * @typedef {import("@endue-ai/bridge").PermApprovalDoneData} PermApprovalDoneData
  * @typedef {import("@endue-ai/bridge").PluginInfo} PluginInfo
  * @typedef {import("./model.js").GrantList} GrantList
  * @typedef {import("./model.js").PromptModel} PromptModel
@@ -23,10 +23,9 @@ import { createRefusals, refusalItems } from "./refusals.js";
  * @typedef {{ grants(list: GrantList): void, refusals(items: RefusalItem[]): void,
  *   sheet(open: boolean): void, prompt(model: PromptModel | null): void,
  *   approval(model: CardModel | null): void, status(text: string): void }} View
- * @typedef {"once" | "session" | "always" | "parent" | "refuse" | "task" | "deny" | "done" | "undo"}
+ * @typedef {"once" | "session" | "always" | "parent" | "refuse" | "task" | "app" | "deny"}
  *   Choice
- * @typedef {{ kind: "prompt", data: PermPromptData } | { kind: "approval", data: PermApprovalData }
- *   | { kind: "result", data: PermApprovalData }} Card
+ * @typedef {{ kind: "prompt", data: PermPromptData } | { kind: "approval", data: PermApprovalData }} Card
  * @typedef {Pick<PluginContext["surface"], "show" | "hide">} Surface
  * @typedef {Pick<PluginContext["state"], "get" | "set">} State
  */
@@ -35,7 +34,7 @@ const MANAGE = { permission: "perm:manage" };
 const PLUGINS = { permission: "plugin:manage" };
 const CHANGES = { permission: "events:subscribe", names: ["perm.changed"] };
 const DURATIONS = new Set(["once", "session", "always"]);
-const APPROVALS = new Set(["once", "task", "deny"]);
+const APPROVALS = new Set(["once", "task", "app", "deny"]);
 /** How many answered cards are remembered, so one delivered again is not asked twice. */
 const SETTLED = 256;
 
@@ -43,7 +42,7 @@ const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 const NO_SURFACE = { show() {}, hide() {} };
 
-/** The waiting cards a page kept, well formed; results are not kept. @returns {Card[]} */
+/** The well-formed waiting cards the page kept. @returns {Card[]} */
 const cardsOf = (/** @type {unknown} */ kept) =>
   (Array.isArray(kept) ? kept : []).filter(
     (c) =>
@@ -60,15 +59,8 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
   let plugins = [];
   /** The latest perm.list answer, null before the first one. @type {CallerGrant[] | null} */
   let grants = null;
-  /**
-   * Cards in arrival order; the first one is on screen: a prompt, an agent's call waiting for
-   * approval, or what an allowed write did. @type {Card[]}
-   */
+  /** Waiting cards in arrival order. The first is on screen. @type {Card[]} */
   const queue = [];
-  /** perm.approval.done of the writes approved on a card, by approval id. */
-  const results = new Map();
-  /** The writes waiting on a card, whose perm.approval.done the result card shows. */
-  const writes = new Set();
   /** The cards answered, by kind and id, oldest first: a copy delivered again is not shown. */
   const settled = new Set();
   // What the page kept before it loaded again (a renderer that died, a reload): the refusals, and
@@ -83,8 +75,7 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     if (grants) view.grants(grantList(grants, plugins));
   };
   const showRefusals = () => view.refusals(refusalItems(refusals.all(), plugins));
-  const keep = () =>
-    state?.set({ refused: refusals.all(), cards: queue.filter((c) => c.kind !== "result") });
+  const keep = () => state?.set({ refused: refusals.all(), cards: queue });
   const keepRefusals = () => {
     keep();
     showRefusals();
@@ -92,8 +83,7 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
   /** @param {Card} card @param {number} waiting @returns {PromptModel | CardModel} */
   const modelOf = (card, waiting) => {
     if (card.kind === "prompt") return promptModel(card.data, plugins, waiting);
-    if (card.kind === "approval") return approvalModel(card.data, plugins, waiting);
-    return resultModel(card.data, results.get(card.data.approvalId), plugins, waiting);
+    return approvalModel(card.data, plugins, waiting);
   };
   const idOf = (/** @type {Card} */ c) =>
     c.kind === "prompt" ? c.data.promptId : c.data.approvalId;
@@ -101,6 +91,12 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     settled.add(`${card.kind}:${idOf(card)}`);
     if (settled.size > SETTLED) settled.delete(settled.values().next().value);
   };
+  const reviewOf = (/** @type {PermPromptData} */ front) =>
+    connectionReview(
+      front,
+      queue.flatMap((c) => (c.kind === "prompt" ? [c.data] : [])),
+      plugins,
+    );
 
   /** The card in front, in the dialog it belongs to; the other dialog closes first. */
   const showPrompt = () => {
@@ -108,7 +104,8 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     const waiting = queue.length - 1;
     if (front?.kind === "prompt") {
       view.approval(null);
-      view.prompt(promptModel(front.data, plugins, waiting));
+      const review = reviewOf(front.data);
+      view.prompt(promptModel(front.data, plugins, waiting - (review?.other.length ?? 0), review));
     } else {
       view.prompt(null);
       view.approval(front ? /** @type {CardModel} */ (modelOf(front, waiting)) : null);
@@ -156,17 +153,8 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     if (queue.some((c) => c.kind === card.kind && idOf(c) === id)) return;
     queue.push(card);
     keep();
-    if (card.kind === "approval" && card.data.action === "fs.write") writes.add(id);
     overlay.raise();
     showPrompt();
-  };
-
-  /** @param {PermApprovalDoneData} done */
-  const finished = (done) => {
-    if (!writes.has(done.approvalId)) return;
-    results.set(done.approvalId, done);
-    const [front] = queue;
-    if (front?.kind === "result" && front.data.approvalId === done.approvalId) showPrompt();
   };
 
   /**
@@ -179,7 +167,7 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     keep();
     showPrompt();
     if (!next) overlay.lower();
-    const title = next && next.kind !== "result" ? modelOf(next, 0).title : "";
+    const title = next ? modelOf(next, 0).title : "";
     const text = [said, title && `Next: ${title}.`].filter(Boolean).join(" ");
     if (text) view.status(text);
   };
@@ -195,7 +183,6 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     if (at < 0 || (at === 0 && answering)) return;
     const [card] = queue.splice(at, 1);
     settle(card);
-    writes.delete(id);
     if (at === 0) moveOn("");
     else {
       keep();
@@ -258,90 +245,71 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     const parent = choice === "parent" ? parentOffer(prompt) : null;
     if (choice === "parent" ? !parent : choice !== "refuse" && !DURATIONS.has(choice)) return;
     answering = true;
+    const prompts = [prompt, ...(reviewOf(prompt)?.other ?? [])];
     const granted = choice !== "refuse";
     const duration = parent ? prompt.duration : /** @type {GrantDuration} */ (choice);
-    const { label } = describePermission(prompt.permission);
+    const label = prompts
+      .map(({ permission }) => describePermission(permission).label)
+      .join(" and ");
     const { name } = describeCaller(prompt.caller, plugins);
     const what = parent ? `${label} in all of ${parent.folder}` : label;
     let said;
-    try {
-      await bridge.call("perm.answer", {
-        promptId: prompt.promptId,
-        granted,
-        ...(granted ? { duration } : {}),
-        ...(parent ? { parent: true } : {}),
-        scope: MANAGE,
-      });
+    const results = await Promise.allSettled(
+      prompts.map(async (part) => {
+        await bridge.call("perm.answer", {
+          promptId: part.promptId,
+          granted,
+          ...(granted ? { duration } : {}),
+          ...(parent ? { parent: true } : {}),
+          scope: MANAGE,
+        });
+        if (!granted) {
+          const { caller, permission, duration: asked } = part;
+          refusals.add({ caller, permission, duration: asked });
+          keepRefusals();
+        }
+      }),
+    );
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) said = `Could not answer ${name}: ${codeOf(failed.reason)}.`;
+    else
       said = granted
         ? `Allowed ${name}: ${what} (${durationLabel(duration)}).`
         : `Refused ${name}: ${label}.`;
-      if (!granted) {
-        const { caller, permission, duration: asked } = prompt;
-        refusals.add({ caller, permission, duration: asked });
-        keepRefusals();
-      }
-    } catch (error) {
-      said = `Could not answer ${name}: ${codeOf(error)}.`;
-    }
     answering = false;
-    const card = queue.shift();
-    if (card) settle(card);
+    for (const part of prompts) {
+      const at = queue.findIndex((c) => c.kind === "prompt" && idOf(c) === part.promptId);
+      if (at >= 0) settle(queue.splice(at, 1)[0]);
+    }
     // The dialog stays open for the next card; the live region says that it changed.
     moveOn(said);
   };
 
   /**
-   * Answer an agent's call waiting for approval: once, for the rest of its task, or deny. An
-   * allowed write leaves a card that shows what it wrote. Any failure still moves on.
+   * Answer an agent's call waiting for approval and advance the queue.
    * @param {PermApprovalData} data
    * @param {Choice} choice
    */
   const approve = async (data, choice) => {
-    if (!APPROVALS.has(choice) || (choice === "task" && !data.task)) return;
-    const answer = /** @type {"once" | "task" | "deny"} */ (choice);
+    if (
+      !APPROVALS.has(choice) ||
+      (choice === "task" && !data.task) ||
+      (choice === "app" && !data.untilStopApp)
+    )
+      return;
+    const answer = /** @type {import("@endue-ai/bridge").ApprovalAnswer} */ (choice);
     answering = true;
     let said;
-    let allowed = false;
     try {
       const params = { approvalId: data.approvalId, answer, scope: MANAGE };
       await bridge.call("perm.approve", params);
       said = answeredLabel(data, answer, plugins);
-      allowed = answer !== "deny";
     } catch (error) {
       said = `Could not answer ${describeCaller(data.caller, plugins).name}: ${codeOf(error)}.`;
     }
     answering = false;
     const card = queue.shift();
     if (card) settle(card);
-    if (allowed && writes.has(data.approvalId)) queue.unshift({ kind: "result", data });
-    else writes.delete(data.approvalId);
-    moveOn(said);
-  };
-
-  /**
-   * Close the card an allowed write left, or take the write back first when the core can (Undo).
-   * @param {PermApprovalData} data
-   * @param {Choice} choice
-   */
-  const close = async (data, choice) => {
-    const done = results.get(data.approvalId);
-    const undo = choice === "undo" && done?.ok === true && done.undoable === true;
-    if (!undo && choice !== "done") return;
-    let said = "";
-    if (undo) {
-      answering = true;
-      try {
-        // cmd.undo (#276) takes back the desk's latest undoable action, this write.
-        await /** @type {any} */ (bridge).call("cmd.undo", {});
-        said = `Undid the write to ${data.target}.`;
-      } catch (error) {
-        said = `Could not undo the write to ${data.target}: ${codeOf(error)}.`;
-      }
-      answering = false;
-    }
-    results.delete(data.approvalId);
-    writes.delete(data.approvalId);
-    queue.shift();
     moveOn(said);
   };
 
@@ -353,21 +321,19 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     const [front] = queue;
     if (!front || answering) return;
     if (front.kind === "prompt") return answerPrompt(front.data, choice);
-    if (front.kind === "approval") return approve(front.data, choice);
-    return close(front.data, choice);
+    return approve(front.data, choice);
   };
 
   /**
    * Keys the plugin handles wherever focus is in its page. Returns whether the key was used.
-   * Escape refuses, denies or closes the card in front, else closes the list.
+   * Escape refuses or denies the question in front, else closes the list.
    * @param {string} key
    */
   const key = (key) => {
     if (key !== "Escape") return false;
     const [front] = queue;
     if (!front) overlay.close();
-    else
-      void answer(front.kind === "prompt" ? "refuse" : front.kind === "approval" ? "deny" : "done");
+    else void answer(front.kind === "prompt" ? "refuse" : "deny");
     return true;
   };
 
@@ -382,7 +348,6 @@ export function createPermissions({ bridge, surface = NO_SURFACE, state }, view)
     if (event.event === "perm.changed") void refresh();
     else if (event.event === "perm.prompt") enqueue({ kind: "prompt", data: event.data });
     else if (event.event === "perm.approval") enqueue({ kind: "approval", data: event.data });
-    else if (event.event === "perm.approval.done") finished(event.data);
     else if (event.event === "perm.settled") settledElsewhere(event.data);
     else if (event.event === "plugin.changed") void loadPlugins().then(showNames);
   });

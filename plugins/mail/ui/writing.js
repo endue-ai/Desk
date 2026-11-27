@@ -4,8 +4,8 @@
 // only through the view and to the bridge only through actions.js.
 import {
   blank,
+  composeDraft,
   forwardDraft,
-  newDraft,
   parseAddresses,
   problemsOf,
   replyDraft,
@@ -148,6 +148,8 @@ export function createWriting(deps) {
     else if (drafts.all().some((d) => d.id === current.id)) drafts.remove(current.id);
   };
   const open = (/** @type {Draft} */ next) => {
+    clearTimeout(saving);
+    if (draft?.id !== next.id) keep();
     draft = next;
     keep();
     show();
@@ -172,23 +174,18 @@ export function createWriting(deps) {
   return {
     composing: () => draft,
 
-    /** Start a message, from a command's arguments or empty. */
-    compose: (/** @type {Record<string, unknown>} */ given = {}) => {
-      const text = (/** @type {unknown} */ v) => (typeof v === "string" ? v : undefined);
-      const account = text(given.account) ?? deps.account();
-      return open(
-        newDraft({
-          to: text(given.to),
-          cc: text(given.cc),
-          bcc: text(given.bcc),
-          subject: text(given.subject),
-          body: text(given.body),
-          ...(account ? { account } : {}),
-          signature: deps.conf().signature,
-          now: new Date(now()).toISOString(),
-        }),
-      );
-    },
+    /** Start a new message, reply or forward for review. */
+    compose: (
+      /** @type {Record<string, unknown>} */ given,
+      /** @type {Message | undefined} */ original,
+    ) =>
+      open(
+        composeDraft(
+          given,
+          { ...deps.conf(), account: deps.account(), now: new Date(now()).toISOString() },
+          original,
+        ),
+      ),
 
     reply: (all = false) =>
       open(
@@ -210,6 +207,7 @@ export function createWriting(deps) {
 
     /** Go on with a saved draft. @param {string} id */
     openDraft: (id) => {
+      if (draft?.id === id) return open(draft);
       const saved = drafts.all().find((d) => d.id === id);
       if (!saved) throw new Error("That draft is gone.");
       return open(saved);
@@ -228,33 +226,42 @@ export function createWriting(deps) {
       }, 300);
     },
 
+    /** Apply fields through the visible composer and keep them immediately. */
+    editDraft: (/** @type {Partial<Pick<Draft, "to" | "cc" | "subject" | "body">>} */ fields) => {
+      if (!draft) throw new Error("Nothing is being written.");
+      return open({ ...draft, ...fields });
+    },
+
     /** Send the draft through the account's connector; the composer closes once it went. */
     send: async () => {
       if (!draft) throw new Error("Nothing is being written.");
-      const problems = problemsOf(draft, await actions.accounts());
+      const sent = draft;
+      const problems = problemsOf(sent, await actions.accounts());
       if (problems.length > 0) {
-        show(problems);
+        if (draft === sent) show(problems);
         throw new Error(problems[0] ?? "The draft cannot be sent.");
       }
-      const [connector = ""] = (draft.account ?? "").split("/");
-      const sent = draft;
+      const [connector = ""] = (sent.account ?? "").split("/");
       const result = await actions.run(connector, "send", sendArgs(sent));
-      clearTimeout(saving);
-      drafts.remove(sent.id);
-      draft = null;
-      show();
       say(`Sent: ${sent.subject.trim() || "(No subject)"}.`);
-      deps.changed();
+      if (draft === sent) discard();
+      else {
+        if (draft?.id !== sent.id) drafts.remove(sent.id);
+        deps.changed();
+      }
       return result;
     },
 
-    /** Close the composer and drop the draft, without asking: endue.mail.discard, for agents. */
+    /**
+     * Close the composer and drop the draft, without asking: endue.mail.discard. The command is
+     * irreversible, so an agent's call of it waited for the person's approval first (ADR 0078).
+     */
     discard,
 
     /**
      * The person's Discard: a draft with text goes only once they pick Discard in the palette; Keep
      * or a closed palette keeps it. An empty draft goes without a question. Agents run discard(),
-     * which never asks, because their own approval path already did.
+     * which never asks, because the core held their call for the person's approval.
      */
     confirmDiscard: async () => {
       if (!draft) return false;

@@ -40,7 +40,7 @@ impl Sent {
         let relink = tree_id != TreeId::ROOT && nodes.iter().any(|(id, _)| *id == want.root);
         let tree = (moved || relink).then(|| TreeInfo {
             root: want.root,
-            toolkit_name: toolkit.then(|| "endue Desk".to_owned()),
+            toolkit_name: toolkit.then(|| "endue".to_owned()),
             toolkit_version: None,
         });
         let update = TreeUpdate {

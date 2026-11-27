@@ -1,13 +1,16 @@
-// The ER diagram (item 9 of #540): tables, columns and foreign keys from each engine's queries,
-// laid out without overlaps, links routed between facing sides; and the diagram of a real SQLite
-// database through the plugin's command.
+// The ER diagram (item 9 of #540, PG-55): tables, columns and foreign keys from each engine's
+// queries, laid out without overlaps with a line per link; and the diagram of a real SQLite database
+// through the plugin's command, nullability read from the engine.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { compareVersions, parseVersion } from "../ui/clients.js";
 import { normalize } from "../ui/connections.js";
-import { diagramOf, diagramQueries, layout } from "../ui/schema/diagram.js";
+import { layoutOf, problemOf, solve } from "../ui/features/diagram/layout.js";
+import { graphFromRows } from "../ui/features/diagram/model.js";
+import type { DiagramState } from "../ui/features/diagram/read.js";
+import { diagramOf, diagramQueries } from "../ui/schema/diagram.js";
 import { mount } from "./harness";
 import { clientVersion } from "./node-bridge";
 import { realProcs } from "./scripted";
@@ -53,32 +56,19 @@ describe("the ER diagram", () => {
     expect(diagramQueries("postgresql", "it's")[1]).toContain("n.nspname = 'it''s'");
   });
 
-  it("lays the most linked tables out first, without overlaps, and routes each link", () => {
-    const placed = layout(diagramOf(columns, keys));
-    expect(placed.boxes[0]?.name).toBe("orders");
+  it("lays the tables out without overlaps and routes each link", () => {
+    const graph = graphFromRows("main", diagramOf(columns, keys));
+    const made = problemOf(graph, "all", new Map());
+    const placed = layoutOf(graph, "all", made, solve(made.problem));
     for (const a of placed.boxes)
       for (const b of placed.boxes) {
         if (a === b) continue;
         const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
         expect(apart, `${a.name} and ${b.name}`).toBe(true);
       }
-    expect(placed.edges).toHaveLength(2);
-    for (const { points } of placed.edges) expect(points).toHaveLength(4);
-    expect(placed.width).toBeGreaterThan(0);
-    const wide = layout({
-      tables: [
-        {
-          name: "t",
-          columns: Array.from({ length: 20 }, (_, i) => ({
-            name: `c${i}`,
-            type: "int",
-            key: false,
-          })),
-        },
-      ],
-      links: [],
-    });
-    expect(wide.boxes[0]?.more).toBe(8);
+    expect(placed.lines).toHaveLength(2);
+    for (const { points } of placed.lines) expect(points.length).toBeGreaterThanOrEqual(4);
+    expect(placed.bounds.w).toBeGreaterThan(0);
   });
 });
 
@@ -110,10 +100,12 @@ describe.skipIf(!usable)("the ER diagram of a real SQLite database", () => {
     expect(drawn).toEqual({ tables: 2, links: 1 });
     const shown = m.shown();
     expect(shown?.kind).toBe("diagram");
-    expect(shown?.diagram?.layout.edges[0]?.link).toMatchObject({
-      from: "orders",
-      to: "customers",
-      fromColumns: "customer_id",
-    });
+    const { layout } = (shown?.diagram ?? {}) as DiagramState;
+    expect(layout.lines[0]?.title).toBe("orders (customer_id) → customers (id) · fk0");
+    const orders = layout.boxes.find((b) => b.name === "orders");
+    expect(orders?.rows.map((c) => [c.name, c.nullable, c.primary, c.foreign])).toEqual([
+      ["id", false, true, false],
+      ["customer_id", true, false, true],
+    ]);
   });
 });

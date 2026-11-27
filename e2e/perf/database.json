@@ -1,0 +1,181 @@
+{
+  "$comment": "The database plugin's budgets (#498, ADR 0362), measured by just perf-database (e2e/perf/database/*.perf.ts) against the server ENDUE_DB_TEST_POSTGRES names (the live cases are skipped without it), recorded with just perf-database record. A value is the fastest of its runs; it fails past (baseline × (1 + allowedRegression) + slack), scaled by the calibration measured just before it (e2e/perf/lib/calibrated.ts, the median of five runs of a fixed workload on the case's clock) over calibrationMs, at least 1 and at most 6; MiB and % are not scaled. Past a load average of twice the cores a value over its limit is reported as busy, and a baseline of another platform is reported, never failed. load is the one-minute load average at the record. The baselines below are the median of three runs on the reference machine (docs/qa/TESTING.md) on 2026-11-23 at load averages of about 30 on its 16 cores, other sessions building: no quiet moment was to be had, so a quiet run reads faster, and the live cases, whose server's container the calibration does not see, allow twice their baseline.",
+  "rows.firstRowsMs": {
+    "baseline": 45.9,
+    "unit": "ms",
+    "calibrationMs": 110.2,
+    "allowedRegression": 1.0,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "Wall clock. A PostgreSQL console runs select g, md5(g::text), now() from generate_series(1, 1000000) and its cursor's first page (the max-rows default, 500) is held and shown: from Run to the result on screen (PG-22, ADR 0352). Server-bound."
+  },
+  "rows.scrollPageMs": {
+    "baseline": 2.3,
+    "unit": "ms",
+    "calibrationMs": 108.4,
+    "allowedRegression": 1.0,
+    "slack": 2,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "Wall clock. That read scrolled to its last row page by page as the grid asks for them (2,000 pages of 500, each a FETCH on the console's session) until the exact count is known; the median page is judged, so a burst of load during the 2,000 round trips does not fail it, and the whole scroll is printed. Its baseline is the mean page of the three record runs' scrolls (4,155, 5,215 and 5,270 ms; the median page was judged from the next run on, and read 1.2 to 7.3 ms at load averages of 50 to 55). Server-bound."
+  },
+  "rows.heapAfterEndMiB": {
+    "baseline": 3.9,
+    "unit": "MiB",
+    "calibrationMs": 108.4,
+    "allowedRegression": 0.5,
+    "slack": 8,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "The frame's heap after the end against before the scroll, after a collection (--expose-gc): the rows held stay bounded (four pages), so it stays at a few MiB, not the hundreds a million rows would take."
+  },
+  "rows.idleCpuPercent": {
+    "baseline": 0,
+    "unit": "%",
+    "calibrationMs": 108.4,
+    "allowedRegression": 0.0,
+    "slack": 1,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "The process's CPU over 3 s with the console open on that result and nothing asked: an open console costs nothing at rest; the limit is 1 %."
+  },
+  "schema.explorerColdMs": {
+    "baseline": 922.5,
+    "unit": "ms",
+    "calibrationMs": 101.4,
+    "allowedRegression": 1.0,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 34.2,
+    "reason": "Wall clock. A fresh start with nothing kept, the explorer opened down to public's Tables folder of 10,000 tables (five columns, a key, every tenth with a foreign key): the schema cache's read from the server (PG-06, ADR 0285) and the 10,000 rows listed. Server-bound."
+  },
+  "schema.explorerKeptMs": {
+    "baseline": 106.8,
+    "unit": "ms",
+    "calibrationMs": 98.5,
+    "allowedRegression": 1.0,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 33.7,
+    "reason": "Wall clock. The same in a new start over what the store kept: answered from the store while the fingerprints are checked behind it."
+  },
+  "schema.modelMs": {
+    "baseline": 2,
+    "unit": "ms",
+    "calibrationMs": 100.1,
+    "allowedRegression": 0.5,
+    "slack": 4,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 33.7,
+    "reason": "CPU clock. The model of the 10,000 tables (diagnose/model.js) handed to the parse worker's service and indexed, which it does once per change of the schema."
+  },
+  "schema.completeNameMs": {
+    "baseline": 8.7,
+    "unit": "ms",
+    "calibrationMs": 96.3,
+    "allowedRegression": 0.5,
+    "slack": 4,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "CPU clock. Completion at the caret of select * from perf_t0999 over the 10,000 tables in the worker's service (PG-31, ADR 0327): within a frame; the slack is a quarter of one."
+  },
+  "schema.completeJoinMs": {
+    "baseline": 6.1,
+    "unit": "ms",
+    "calibrationMs": 102.6,
+    "allowedRegression": 0.5,
+    "slack": 4,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "CPU clock. Completion of a join after select * from perf_t05000 t join, from the foreign keys of the 10,000 tables."
+  },
+  "schema.problemsMs": {
+    "baseline": 63.5,
+    "unit": "ms",
+    "calibrationMs": 99,
+    "allowedRegression": 0.5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 32.3,
+    "reason": "CPU clock. The problems of a script of 2,000 statements naming the 10,000 tables' columns, every name bound (PG-30, ADR 0294)."
+  },
+  "script.problemsMs": {
+    "baseline": 357.4,
+    "unit": "ms",
+    "calibrationMs": 100.4,
+    "allowedRegression": 0.5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 30,
+    "reason": "CPU clock, the worker thread's included. 1 MB of SQL checked for problems in the real parse worker across its thread, the first time (PG-30, ADR 0294). Moved from problems-incremental.test.ts, whose absolute 2,000 ms failed the default run at load averages above 30."
+  },
+  "script.problemsAgainMs": {
+    "baseline": 72.4,
+    "unit": "ms",
+    "calibrationMs": 99.4,
+    "allowedRegression": 0.5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 30,
+    "reason": "CPU clock. The same script checked again after one edit: only the statement edited is parsed (it was 300 ms absolute in the unit test)."
+  },
+  "script.warningsMs": {
+    "baseline": 567.6,
+    "unit": "ms",
+    "calibrationMs": 91.4,
+    "allowedRegression": 0.5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 28.5,
+    "reason": "CPU clock. 1 MB of SQL checked with its warnings in process (ADR 0328), the first time. Moved from warnings.test.ts."
+  },
+  "script.warningsAgainMs": {
+    "baseline": 83.4,
+    "unit": "ms",
+    "calibrationMs": 102.9,
+    "allowedRegression": 0.5,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 28.5,
+    "reason": "CPU clock. Its warnings again after one edit."
+  },
+  "grid.firstDrawMs": {
+    "baseline": 30,
+    "unit": "ms",
+    "calibrationMs": 102.9,
+    "allowedRegression": 0.5,
+    "slack": 4,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 28.8,
+    "reason": "CPU clock. A result of 1,000 columns and 1,000 rows drawn by the grid the first time (jsdom: the plugin's work to make the elements, only the lane in view)."
+  },
+  "grid.sidewaysScreenMs": {
+    "baseline": 8.8,
+    "unit": "ms",
+    "calibrationMs": 96.6,
+    "allowedRegression": 0.5,
+    "slack": 4,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 28.8,
+    "reason": "CPU clock. That grid scrolled sideways from its first column to its last a screen (960 px) at a time, each a paint of the lane in view: the mean of a screen, within a frame."
+  },
+  "wide.tableViewMs": {
+    "baseline": 68.6,
+    "unit": "ms",
+    "calibrationMs": 90.7,
+    "allowedRegression": 1.0,
+    "platform": "darwin-arm64",
+    "recorded": "2026-11-23",
+    "load": 28.8,
+    "reason": "Wall clock. A table of 1,000 columns and 1,000 rows opened as a table view (endue.database.open-table): its columns and first page read on its session and held. Server-bound."
+  }
+}

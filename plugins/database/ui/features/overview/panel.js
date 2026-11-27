@@ -6,6 +6,7 @@
 // connection's console; a heavy statement's Open puts it there. The settings have a search. An
 // update draws again in place and keeps the search. Colours come from overview.css's classes.
 
+import { t } from "../../strings/index.js";
 import { formatValue, numeric, uptime } from "./format.js";
 import { blindSpots } from "./probe.js";
 
@@ -66,7 +67,7 @@ export function overviewView(doc, first, act, buffer) {
     /** @type {HTMLElement} */ (text.lastChild).textContent = describe(s);
     const actions = make("div", "desk-header-actions");
     const refresh = button("Refresh", "", () => act("overviewRefresh", buffer.connection));
-    refresh.title = "Read every section again";
+    refresh.title = t("features.overview.panel.readEverySectionAgain");
     refresh.disabled = s.reading;
     actions.append(refresh);
     head.append(text, actions);
@@ -80,7 +81,12 @@ export function overviewView(doc, first, act, buffer) {
       status.setAttribute("role", "status");
       const spin = make("span", "desk-spinner");
       spin.setAttribute("aria-hidden", "true");
-      status.append(spin, doc.createTextNode(` Reading the statistics of ${s.name}…`));
+      status.append(
+        spin,
+        doc.createTextNode(
+          t("features.overview.panel.readingTheStatisticsOf", { name: String(s.name) }),
+        ),
+      );
       out.push(status);
     }
     if (s.failed) {
@@ -92,20 +98,14 @@ export function overviewView(doc, first, act, buffer) {
     const blind = s.server ? blindSpots(s.server) : "";
     if (blind) out.push(make("p", "ov-note", blind));
     if (s.server && s.server.versionNum > 0 && s.server.versionNum < 130000)
-      out.push(
-        make(
-          "p",
-          "ov-note",
-          "This server is older than PostgreSQL 13, the oldest the overview reads: some sections may not be read.",
-        ),
-      );
+      out.push(make("p", "ov-note", t("features.overview.panel.thisServerIsOlderThanPostgresql")));
     return out;
   };
 
   const nav = (/** @type {OverviewState} */ s) => {
     const links = make("div", "ov-nav");
     links.setAttribute("role", "navigation");
-    links.setAttribute("aria-label", "Sections");
+    links.setAttribute("aria-label", t("features.overview.panel.sections"));
     for (const r of s.sections) {
       const link = /** @type {HTMLAnchorElement} */ (make("a", "", r.title));
       link.href = `#ov-${r.id}`;
@@ -126,7 +126,12 @@ export function overviewView(doc, first, act, buffer) {
     const rows = (r.rows ?? [])
       .map((row, index) => ({ row, index }))
       .filter(({ row }) => !needle || row.some((v) => (v ?? "").toLowerCase().includes(needle)));
-    if (rows.length === 0) return make("p", "ov-empty", `No setting holds “${search.trim()}”.`);
+    if (rows.length === 0)
+      return make(
+        "p",
+        "ov-empty",
+        t("features.overview.panel.noSettingHolds", { value: String(search.trim()) }),
+      );
     const wrap = make("div", "ov-scroll");
     const grid = make("table", "desk-table ov-table");
     const head = make("tr");
@@ -155,7 +160,10 @@ export function overviewView(doc, first, act, buffer) {
         const open = button("Open", "desk-btn-quiet", () =>
           act("overviewStatement", buffer.connection, index),
         );
-        open.setAttribute("aria-label", `Open statement ${index + 1} in the console`);
+        open.setAttribute(
+          "aria-label",
+          t("features.overview.panel.openStatementInTheConsole", { value: String(index + 1) }),
+        );
         cell.append(open);
         line.prepend(cell);
       }
@@ -178,8 +186,7 @@ export function overviewView(doc, first, act, buffer) {
       const open = button("Open in console", "desk-btn-quiet ov-open", () =>
         act("overviewResult", buffer.connection, r.id),
       );
-      open.title =
-        "Run this section's SQL in the console: its rows come back as a result to copy or export";
+      open.title = t("features.overview.panel.runThisSectionSSqlIn");
       head.append(open);
     }
     box.append(head, make("p", "ov-source", sourceOf(r)));
@@ -192,7 +199,7 @@ export function overviewView(doc, first, act, buffer) {
       const failed = make("div", "desk-error ov-failed");
       failed.append(make("p", "", r.failed));
       box.append(failed);
-    } else if (!r.rows) box.append(make("p", "ov-empty", "Not read yet."));
+    } else if (!r.rows) box.append(make("p", "ov-empty", t("features.overview.panel.notReadYet")));
     else if (r.rows.length === 0) box.append(make("p", "ov-empty", r.empty));
     else {
       if (r.search) {
@@ -200,7 +207,7 @@ export function overviewView(doc, first, act, buffer) {
         label.append(make("span", "sr-only", `Search the ${r.title.toLowerCase()}`));
         const field = /** @type {HTMLInputElement} */ (make("input", "desk-field"));
         field.type = "search";
-        field.placeholder = "Search the settings";
+        field.placeholder = t("features.overview.panel.searchTheSettings");
         field.spellcheck = false;
         field.value = search;
         field.dataset.ovSearch = r.id;
@@ -233,7 +240,8 @@ export function overviewView(doc, first, act, buffer) {
 
 /** The header's line: the server, its uptime, when it was read and since when it counts. */
 function describe(/** @type {OverviewState} */ s) {
-  if (!s.server) return s.reading ? `Reading ${s.name}…` : s.name;
+  if (!s.server)
+    return s.reading ? t("features.overview.panel.reading", { name: String(s.name) }) : s.name;
   const server = s.server;
   return [
     `PostgreSQL ${server.version.split(" ")[0]}`,

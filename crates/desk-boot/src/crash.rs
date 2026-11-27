@@ -66,7 +66,7 @@ impl Crash {
         match self.crashes.write(&report) {
             Ok(_) => true,
             Err(why) => {
-                eprintln!("endue Desk: the crash report was not written ({why})");
+                eprintln!("endue: the crash report was not written ({why})");
                 false
             }
         }
@@ -81,7 +81,7 @@ impl Crash {
     /// shows like any other, unless that run panicked and its own report already does.
     pub fn ended_unclean(&self, run: &Unclean) {
         eprintln!(
-            "endue Desk: the run before this one (process {}, started {}) ended without quitting",
+            "endue: the run before this one (process {}, started {}) ended without quitting",
             run.pid, run.at
         );
         if self.crashes.panicked_since(run.started) {
@@ -89,7 +89,7 @@ impl Crash {
         }
         let report = Report::exit(&run.at, run.pid, run.ready, &self.context);
         if let Err(why) = self.crashes.write(&report) {
-            eprintln!("endue Desk: the crash report was not written ({why})");
+            eprintln!("endue: the crash report was not written ({why})");
         }
     }
 }

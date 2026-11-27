@@ -1,11 +1,11 @@
 // Editing and saving the data plugin's open files (ADR 0071), without a DOM. Edits of one file run
 // in order, in its session (the page's, or the worker's above 1 MiB); the first since a load or a
 // save marks its buffer unsaved with desk.buffers.update. desk.files.save writes the file's bytes
-// with fs.write under an fs:write scope of its folder, asking once with perm.request when that is
-// refused. A text-tier file asks first whether to save a copy or overwrite (save-copy.js). Each file
+// with fs.write in the selected file's scope. A text-tier file first chooses a writable destination
+// in the save dialog (save-copy.js). Each file
 // also keeps the values its edits set since the file on disk, for a sleep to keep (keep.js).
 
-import { copyPathOf, createSaveChoice } from "./save-copy.js";
+import { createSaveChoice } from "./save-copy.js";
 import { MAX_EDIT } from "./session.js";
 import { bytesSum } from "./sum.js";
 
@@ -31,17 +31,6 @@ import { bytesSum } from "./sum.js";
  */
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
-const folderOf = (/** @type {string} */ path) => path.slice(0, Math.max(0, path.lastIndexOf("/")));
-/**
- * The scope of `permission` over the folder `path` is in. (Its glob is joined, not a template:
- * Biome 2 misreads a template's slash-star-star as a comment opener.)
- * @param {"fs:read" | "fs:write"} permission
- * @param {string} path
- */
-const folderScope = (permission, path) => ({
-  permission,
-  paths: [[folderOf(path), "**"].join("/")],
-});
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
@@ -60,13 +49,7 @@ function base64(/** @type {Uint8Array} */ bytes) {
  * @param {Hooks} hooks
  */
 export function createEditing({ bridge, commands }, hooks) {
-  /** Whether a file is in its folder, to say a copy replaces it. */
-  const exists = async (/** @type {string} */ path) => {
-    const scope = folderScope("fs:read", path);
-    const { entries } = await bridge.call("fs.list", { path: folderOf(path), scope });
-    return entries.some((entry) => entry.name === nameOf(path));
-  };
-  const choice = createSaveChoice(commands, exists);
+  const choice = createSaveChoice(bridge);
 
   const readOnly = (/** @type {EditedFile} */ file) =>
     new Error(`${file.name} opens read-only: ${file.why ?? "it is not edited here"}.`);
@@ -76,9 +59,10 @@ export function createEditing({ bridge, commands }, hooks) {
     return file;
   };
 
-  /** Write `bytes` to `path`; when the grants do not cover it, ask once for its folder. */
+  /** Write `bytes` to `path`; when the grants do not cover it, ask for that file. */
   const write = async (/** @type {string} */ path, /** @type {Uint8Array} */ bytes) => {
-    const scope = folderScope("fs:write", path);
+    if (/[*?]/u.test(path)) throw new Error("Choose an exact file path to save.");
+    const scope = { permission: /** @type {const} */ ("fs:write"), paths: [path] };
     const content = base64(bytes);
     const call = () => bridge.call("fs.write", { path, content, encoding: "base64", scope });
     const refusal = new Error(`Not allowed to write ${path}.`);
@@ -121,7 +105,29 @@ export function createEditing({ bridge, commands }, hooks) {
     return changed;
   };
 
+  /** Change one field after the file's earlier edits, leaving its bytes unsaved. */
+  const editFile = (
+    /** @type {EditedFile} */ file,
+    /** @type {number[]} */ path,
+    /** @type {string} */ text,
+  ) => {
+    const done = (file.pending ?? Promise.resolve()).then(async () => {
+      if (file.tier === "read-only") throw readOnly(file);
+      if (!(await apply(file, path, text))) return false;
+      file.values = new Map(file.values).set(path.join("/"), [path, text]);
+      if (!file.edited) {
+        file.edited = true;
+        commands.run("desk.buffers.update", { id: file.buffer, modified: true }).catch(() => {});
+      }
+      await hooks.changed(file);
+      return true;
+    });
+    file.pending = done.catch(() => {});
+    return done;
+  };
+
   return {
+    editFile,
     /**
      * Put back on `file`, opened again from disk, the values a sleep kept: false when one of them
      * cannot be set (the file changed meanwhile, or opens in another tier).
@@ -160,20 +166,7 @@ export function createEditing({ bridge, commands }, hooks) {
      * @param {string} text
      */
     edit(path, text) {
-      const file = current();
-      const run = async () => {
-        if (file.tier === "read-only") throw readOnly(file);
-        if (!(await apply(file, path, text))) return;
-        file.values = new Map(file.values).set(path.join("/"), [path, text]);
-        if (!file.edited) {
-          file.edited = true;
-          commands.run("desk.buffers.update", { id: file.buffer, modified: true }).catch(() => {});
-        }
-        await hooks.changed(file);
-      };
-      const done = (file.pending ?? Promise.resolve()).then(run);
-      file.pending = done.catch(() => {});
-      return done;
+      return editFile(current(), path, text);
     },
 
     /**
@@ -190,7 +183,7 @@ export function createEditing({ bridge, commands }, hooks) {
       if (file.tier === "text") {
         const answer = await choice.ask({ path: file.path, format: file.opened.label });
         if (!answer) throw new Error(`Did not save ${file.name}.`);
-        if (answer === "copy") target = copyPathOf(file.path);
+        target = answer;
       }
       const remote = file.opened.remote;
       /** @type {Uint8Array} */
@@ -201,6 +194,7 @@ export function createEditing({ bridge, commands }, hooks) {
         throw new Error(`Did not save ${file.name}: Data saves files up to 64 MiB.`);
       const before = file.values;
       await write(target, bytes);
+      if (file.tier === "text") choice.saved(file.path, target);
       file.edited = false;
       // The file on disk is what was written: only values set after it are unsaved. A copy leaves
       // the file as it was.

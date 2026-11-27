@@ -1,27 +1,29 @@
-// Export a result to a file (DB-16): in the first slice, into the folder the manifest declares for
-// it, ~/Downloads (fs:write on ${home}/Downloads/**), under a name made of the table (or "result")
-// and the time, so an export never overwrites an earlier one. The desk keeps no save dialog a
-// plugin can open yet; an arbitrary path waits for a narrow fs:write request (D3). When the grant
-// is missing the desk is asked once (perm.request), as the clients are.
+// Export a result to a file (DB-16, PG-61): the person chooses the place in the desk's save dialog
+// (dialog.save), which starts in the folder of the last export and grants that one path, so an
+// export is written nowhere the person did not choose, an agent's included. The suggested name is
+// the table (or "result") and the time, so a quick Save never overwrites an earlier export. The
+// file is written in the format and with the options chosen (export/), in a worker when it is large.
+// A refused write asks the desk once for that path (withGrant).
 
-import { FORMATS, formatRows } from "./results.js";
+import { withGrant, writeScope } from "./console-files.js";
+import { writeFile } from "./export/client.js";
+import { EXPORT_FORMATS, EXTENSIONS, isExportFormat, LABELS, optionsOf } from "./export/options.js";
+import { t } from "./strings/index.js";
 
 /**
- * @typedef {import("./results.js").Format} Format
+ * @typedef {import("./export/options.js").ExportFormat} Format
  * @typedef {import("./results.js").FormatOptions} FormatOptions
  * @typedef {import("./engines/common.js").ResultSet} ResultSet
+ * @typedef {import("./export/file.js").Part} Part
  * @typedef {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} Bridge
+ * @typedef {{ path: string, format: Format, rows: number, bytes: number, partial: boolean }} Exported
+ *   `partial`: the server had more rows than the result holds.
  */
 
+/** Where a cell's bytes are saved (features/cell-values/): the manifest declares it. */
 export const EXPORT_FOLDER = "~/Downloads";
-export const EXTENSIONS = /** @type {Record<Format, string>} */ ({
-  tsv: "tsv",
-  csv: "csv",
-  json: "json",
-  markdown: "md",
-  insert: "sql",
-  update: "sql",
-});
+/** The store key of the folder the last export went to. */
+export const FOLDER_KEY = "export-folder";
 
 /**
  * A file name for an export: the name made safe for every file system, the local time to the
@@ -44,41 +46,60 @@ export function exportName(base, format, at) {
   return `${safe}-${stamp}.${EXTENSIONS[format]}`;
 }
 
+/** The folder a path is in. */
+const folderOf = (/** @type {string} */ path) => {
+  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return cut > 0 ? path.slice(0, cut) : "";
+};
+
 /**
- * Write a result as a format into the export folder; answers the path.
+ * Write a result (or `parts`, an .xlsx's sheets) where the person chooses; answers what was written,
+ * or undefined when the save dialog was cancelled.
  * @param {Bridge} bridge
- * @param {{ set: ResultSet, format: Format, name: string, options?: FormatOptions, at?: Date }} input
+ * @param {{
+ *   set: ResultSet, format: Format, name: string, options?: FormatOptions,
+ *   settings?: Record<string, unknown>, parts?: Part[], at?: Date,
+ *   startWorker?: import("./export/client.js").StartWorker,
+ * }} input `options` the result's dialect, table, types and selection; `settings` the format's
+ *   export options (export/options.js).
+ * @returns {Promise<Exported | undefined>}
  */
-export async function exportResult(bridge, { set, format, name, options = {}, at = new Date() }) {
-  if (!FORMATS.includes(format))
-    throw new Error(`Export as ${format}: pick ${FORMATS.join(", ")}.`);
-  const text = formatRows(set, format, options);
-  // A CSV or TSV file ends with a line break, as spreadsheets and COPY ... FROM expect.
-  const content =
-    format === "csv" ? `${text}\r\n` : text.endsWith("\n") || text === "" ? text : `${text}\n`;
-  const path = `${EXPORT_FOLDER}/${exportName(name, format, at)}`;
-  const scope = { permission: /** @type {const} */ ("fs:write"), paths: [`${EXPORT_FOLDER}/**`] };
-  const write = () =>
-    bridge.call("fs.write", { path, content, encoding: "utf8", createDirs: true, scope });
-  try {
-    await write();
-  } catch (error) {
-    if (codeOf(error) !== "permission_denied")
-      throw new Error(`Could not write ${path}: ${codeOf(error)}.`);
-    const decision = await bridge
-      .call("perm.request", { permission: scope, reason: `To export ${name} to ${path}` })
-      .catch(() => ({ granted: false }));
-    if (!decision.granted) throw new Error(`Not allowed to write ${path}.`);
-    await write().catch((again) => {
-      throw new Error(`Could not write ${path}: ${codeOf(again)}.`);
-    });
-  }
+export async function exportResult(bridge, input) {
+  const { set, format, name, options = {}, at = new Date() } = input;
+  if (!isExportFormat(format))
+    throw new Error(
+      t("export.exportAsPick", {
+        format: String(format),
+        value: String(EXPORT_FORMATS.join(", ")),
+      }),
+    );
+  const settings = optionsOf(format, input.settings);
+  const parts = input.parts ?? [{ name, set, base: options }];
+  const kept = await bridge.call("store.get", { key: FOLDER_KEY }).catch(() => ({}));
+  const folder = typeof kept?.value === "string" ? kept.value : "";
+  const chosen = await bridge.call("dialog.save", {
+    title: t("export.exportTheResult"),
+    suggestedName: exportName(name, format, at),
+    ...(folder ? { startIn: folder } : {}),
+    filters: [{ name: LABELS[format], extensions: [EXTENSIONS[format]] }],
+  });
+  if (chosen.cancelled || !chosen.path) return undefined;
+  const path = chosen.path;
+  const file = await writeFile({ format, options: settings, parts }, input.startWorker);
+  const scope = writeScope(path);
+  await withGrant(
+    bridge,
+    scope,
+    () => bridge.call("fs.write", { path, content: file.content, encoding: file.encoding, scope }),
+    `To export ${name} to ${path}`,
+  );
+  const where = folderOf(path);
+  if (where) await bridge.call("store.set", { key: FOLDER_KEY, value: where }).catch(() => {});
   return {
     path,
-    rows: (options.rows ?? set.rows).length,
-    bytes: new TextEncoder().encode(content).length,
+    format,
+    rows: file.rows,
+    bytes: file.bytes,
+    partial: parts.some((p) => p.set.truncated),
   };
 }
-
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";

@@ -7,6 +7,7 @@
 
 import { el } from "../dom.js";
 import { DEFAULT, isDefault } from "../edit/values.js";
+import { t as messageText } from "../strings/index.js";
 
 /**
  * @typedef {import("./resolve.js").Editor} Editor
@@ -90,17 +91,25 @@ export function openPanel(doc, host, anchor, opened, make, hooks) {
     el(doc, "button", { type: "button", class: "desk-btn desk-btn-quiet", ...attrs }, label);
   const tools = (view.tools ?? []).map((tool) => {
     const b = button(
-      { "data-do": tool.name, title: tool.key ? `Alt+${tool.key.slice(3)}` : "" },
+      {
+        "data-do": tool.name,
+        title: tool.key
+          ? messageText("cellEditors.panel.alt", { value: String(tool.key.slice(3)) })
+          : "",
+      },
       tool.label,
     );
     b.addEventListener("click", () => tool.run());
     return b;
   });
   const setNull = nullable
-    ? button({ "data-choice": "null", title: "Alt+N" }, "Set NULL")
+    ? button({ "data-choice": "null", title: messageText("cellEditors.panel.altN") }, "Set NULL")
     : undefined;
   const setDefault = editor.hasDefault
-    ? button({ "data-choice": "default", title: "Alt+D" }, "Set DEFAULT")
+    ? button(
+        { "data-choice": "default", title: messageText("cellEditors.panel.altD") },
+        "Set DEFAULT",
+      )
     : undefined;
   setNull?.addEventListener("click", () => choose(null, "none"));
   setDefault?.addEventListener("click", () => choose(DEFAULT, "none"));
@@ -108,7 +117,7 @@ export function openPanel(doc, host, anchor, opened, make, hooks) {
     doc,
     "button",
     { type: "button", class: "desk-btn desk-btn-primary", "data-do": "keep" },
-    "Keep",
+    messageText("cellEditors.panel.keep"),
   );
   keepButton.addEventListener("click", () => keep("none"));
   const hint = [
@@ -123,7 +132,7 @@ export function openPanel(doc, host, anchor, opened, make, hooks) {
     {
       class: `cell-editor cell-editor-${editor.kind}`,
       role: "dialog",
-      "aria-label": `Change ${name}`,
+      "aria-label": messageText("cellEditors.panel.change", { name: String(name) }),
     },
     el(
       doc,
@@ -135,11 +144,16 @@ export function openPanel(doc, host, anchor, opened, make, hooks) {
         "span",
         { class: "desk-muted" },
         editor.kind === "enum" && !/^enum\b/iu.test(editor.type)
-          ? `enum ${editor.type}`
+          ? messageText("cellEditors.panel.enum", { type: String(editor.type) })
           : editor.type,
       ),
       editor.zone && editor.timeZone
-        ? el(doc, "span", { class: "desk-muted" }, `time zone ${editor.timeZone}`)
+        ? el(
+            doc,
+            "span",
+            { class: "desk-muted" },
+            messageText("cellEditors.panel.timeZone", { timeZone: String(editor.timeZone) }),
+          )
         : undefined,
     ),
     view.el,
@@ -237,12 +251,17 @@ export function field(ctx, { text = textOf(ctx.value), check, multiline = false,
     el(ctx.doc, multiline ? "textarea" : "input", {
       class: "desk-field cell-editor-text",
       spellcheck: "false",
-      "aria-label": `${ctx.name}'s value`,
+      "aria-label": messageText("cellEditors.panel.sValue", { name: String(ctx.name) }),
       ...(multiline ? { rows: "8" } : {}),
     })
   );
   input.value = text;
-  input.placeholder = ctx.value === null ? "NULL" : isDefault(ctx.value) ? "DEFAULT" : example;
+  input.placeholder =
+    ctx.value === null
+      ? messageText("cellEditors.panel.null")
+      : isDefault(ctx.value)
+        ? messageText("cellEditors.panel.default")
+        : example;
   input.addEventListener("input", () => ctx.clear());
   /** @returns {Checked} */
   const read = () =>

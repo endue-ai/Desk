@@ -4,6 +4,7 @@
 
 import { authFailed, endedBy, failedRun, notRun, offsetIn, resultSet } from "../engines/common.js";
 import { markOf } from "../engines/text.js";
+import { t } from "../strings/index.js";
 import { readMysqlXml } from "./readers.js";
 
 /** Client errors that mean the connection never stood: cannot connect, unknown host, TLS, auth. */
@@ -112,7 +113,7 @@ export function clientErrors(stderr) {
  * @returns {DbError}
  */
 function statementError(error, text) {
-  if (!error) return { kind: "client", message: "The client ended without saying why." };
+  if (!error) return { kind: "client", message: t("output.mysql.theClientEndedWithoutSayingWhy") };
   const near = /near '([\s\S]*)' at line (\d+)$/u.exec(error.message);
   let position;
   if (near) {

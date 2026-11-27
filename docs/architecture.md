@@ -1,4 +1,4 @@
-# endue Desk architecture
+# endue architecture
 
 English · [日本語](i18n/ja/architecture.md) · [中文](i18n/zh/architecture.md) ·
 [Français](i18n/fr/architecture.md) · [Deutsch](i18n/de/architecture.md) · [한국어](i18n/ko/architecture.md)
@@ -6,11 +6,11 @@ English · [日本語](i18n/ja/architecture.md) · [中文](i18n/zh/architecture
 This is the English summary of the design. The source of truth is `docs/ko/desk-structure.md`; decisions
 that are hard to reverse are in `docs/adr/`.
 
-Desk is one OS built as one app: a Rust shell on Chromium (CEF) and a small Rust core carry a web runtime. The runtime
+endue is one OS built as one app: a Rust shell on Chromium (CEF) and a small Rust core carry a web runtime. The runtime
 owns settings, keyboard bindings and their persistence. Other features on top are plugins. Like Emacs,
 the Rust core keeps primitives while plugins can be changed while the app is running.
 
-The shell and the screen are changing: Desk has moved from Tauri and the OS webviews to a Rust shell on
+The shell and the screen are changing: endue has moved from Tauri and the OS webviews to a Rust shell on
 Chromium (CEF), and moves on to a compositor of its own in which every window renders in its own process
 ([ADR 0140](adr/0140-a-wgpu-compositor-over-cef-off-screen-surfaces.md)). Stage 1 ended with the Tauri
 shell deleted; the shell described below is the CEF one. "Where the shell and the screen are going",
@@ -30,7 +30,7 @@ below the layer table, has the stages.
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge · specs/item · specs/view            │  rebuild
+ │ endue bridge specs/bridge · specs/item · specs/view            │  rebuild
  │              · specs/connector → TS client · Rust types        │
  ├────────────────────────────────────────────────────────────────┤
  │ Rust core    permissions · event bus · storage · item index    │  rebuild
@@ -53,7 +53,7 @@ device. Everything else runs on the user's computer.
 | endue AI (cloud) | outside the repository; only `specs/brain` and `crates/desk-brain-endue` live here |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web runtime | `packages/runtime`: the desk's system surface (ADR 0160): the UI plugin host (ADR 0012), the policies and, until ADR 0026 is decided, the desk shell's parts (ADR 0025); it lays out no window and holds no plugin frame in the app · `packages/ui` |
-| Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
+| endue bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
 | Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` · `crates/desk-pg`, the PostgreSQL sessions the core serves as `db.*` under `db:connect`, each one its plugin's own and closed when the plugin stops or loses the grant (ADR 0281) |
 | Shell (CEF) | `apps/desk/shell`, the app `endue-desk` on winit and CEF (ADR 0143), and `crates/desk-web`, what its URL schemes answer and which caller each page is, without the engine · `crates/desk-sys` · `crates/desk-computer`, computer use on macOS (screenshots, the accessibility tree, input, apps), which the core serves as `computer.*` under `computer:see` and `computer:control`, each act of an agent waiting for the person's approval (ADR 0120, ADR 0123) |
 | OS | `apps/desk/shell/packager`: the bundles, CEF's helper apps and their entitlements (ADR 0145) · release workflow (signing, notarisation) |
@@ -63,16 +63,16 @@ device. Everything else runs on the user's computer.
 Until Stage 1 the desk was one Tauri window with one OS webview, and every plugin window a sandboxed
 iframe in that one page. The shell and all plugins shared one process and one main thread, so a plugin
 that looped stalled the whole desk, and WebGPU was missing on Linux. ADR 0140 changes that: every window
-renders in its own process, and a compositor of Desk's own, on wgpu, places what they render. Since Stage
+renders in its own process, and a compositor of endue's own, on wgpu, places what they render. Since Stage
 1 every plugin surface is its own Chromium renderer, so a dead renderer costs its window only. Since #83
 the compositor is the only desk (ADR 0156): every plugin surface renders off screen in a browser of its
 own, the compositor draws it where `crates/desk-wm` places its window, and desk-wm runs the window
 gestures, the window commands and the live budget. What stays web runs as system surfaces the
 compositor places above every window (ADR 0160): the desk's own page (the bars, Eris, notices, menus,
-settings and the studios, each part drawn whole) and the Search Desk window. Both use their own
+settings and the studios, each part drawn whole) and the search window. Both use their own
 window's caller identity. The shell connects the desk's plugin host to each plugin's own browser.
-Option+Enter brings Desk forward and opens Eris's talk line (ADR 0280). Permission prompts and agent
-approvals are answered in Desk. Shown notices can also reach the OS according to
+Option+Enter brings endue forward and opens Eris's talk line (ADR 0280). Permission prompts and agent
+approvals are answered in endue. Shown notices can also reach the OS according to
 `desk.notify.system` (ADR 0240).
 
 A window of the desk can also live in an OS window of its own (ADR 0205, #235). Any window that shows
@@ -111,13 +111,13 @@ painting while one renderer was killed; a light renderer cost about 40 MiB
 
 ## Like Emacs, like an OS
 
-Emacs runs almost everything in Elisp on top of a small C core, and you can change it while it runs. Desk
+Emacs runs almost everything in Elisp on top of a small C core, and you can change it while it runs. endue
 takes the same shape and names the parts the way an operating system would.
 
-| Role | Operating system | Emacs | Desk |
+| Role | Operating system | Emacs | endue |
 | --- | --- | --- | --- |
 | Kernel | kernel | C core | Rust core |
-| System calls | syscalls | Lisp primitives | Desk bridge API |
+| System calls | syscalls | Lisp primitives | endue bridge API |
 | Drivers | device drivers | OS glue | the shell (winit, CEF) + Rust crates |
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |

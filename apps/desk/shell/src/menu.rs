@@ -21,17 +21,17 @@ use crate::words::Language;
 /// What a menu item does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Choice {
-    /// Search Desk (the palette).
+    /// Search endue (the palette).
     Search,
     /// Talk to Eris: as her shortcut does.
     Eris,
-    /// Open Desk: the main window in front.
+    /// Open endue: the main window in front.
     Desk,
     /// Restart to update (ADR 0054): into the staged build.
     Update,
     /// Quit Desk.
     Quit,
-    /// Window > Move to Desk: the window out of the canvas in front docks back (#235).
+    /// Window > Move to endue: the window out of the canvas in front docks back (#235).
     Dock,
 }
 
@@ -111,15 +111,13 @@ impl MenuBar {
 pub fn app_menu(language: Language) -> Option<MenuBar> {
     #[cfg(target_os = "macos")]
     {
-        let made = mac_menu(language).map_err(|why| eprintln!("endue Desk: no menu bar ({why})"));
+        let made = mac_menu(language).map_err(|why| eprintln!("endue: no menu bar ({why})"));
         let (bar, window) = made.ok()?;
         bar._menu.init_for_nsapp();
         // AppKit lists the desk's window and its windows out of the canvas under Window (#235);
         // the floating ones keep out of it (`float.rs`).
         window.set_as_windows_menu_for_nsapp();
-        eprintln!(
-            "endue Desk: the menu bar is set (Edit: Undo, Redo, Cut, Copy, Paste, Select All)"
-        );
+        eprintln!("endue: the menu bar is set (Edit: Undo, Redo, Cut, Copy, Paste, Select All)");
         Some(bar)
     }
     #[cfg(not(target_os = "macos"))]

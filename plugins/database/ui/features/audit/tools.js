@@ -1,0 +1,273 @@
+// The agents' read tools (PG-91): explain a statement (ANALYZE only where the person allows it, and
+// only of a read), an object's DDL, a table's first rows, a table's statistics, the server's
+// sessions, and a check of a statement without running it (the server's Parse and Describe, the
+// plugin's one check without running: engines/pg-describe.js, ADR 0353). Each runs as an agent's read (run.js:
+// read-only, limited, masked) and answers plain data; the gate (gate.js) refuses a connection closed
+// to agents before any of them starts. No DOM.
+
+import { onDatabase } from "../../databases.js";
+import { numbered } from "../../editor/bind.js";
+import { paramsOf } from "../../editor/params.js";
+import { engineOf } from "../../engines/index.js";
+import { classify, readsOnly } from "../../sql/classify.js";
+import { split } from "../../sql/split.js";
+import { t } from "../../strings/index.js";
+import { MASK, namesOn } from "./mask.js";
+import { readOnly } from "./run.js";
+import { explainSql, objectsOf, PREPARED, SESSIONS_SQL, sampleSql, statsSql } from "./sql.js";
+
+/**
+ * @typedef {import("../../engines/common.js").Connection} Connection
+ * @typedef {import("../../feature-host.js").Deps} Deps
+ * @typedef {ReturnType<typeof import("./agents.js").createAgents>} Agents
+ */
+
+const SAMPLE_DEFAULT = 20;
+
+/** The text of a run's failure, if any. */
+const failureOf = (/** @type {import("../../execute.js").Execution} */ done) =>
+  done.result.error?.message ?? done.result.statements.find((s) => s.error)?.error?.message ?? "";
+
+/**
+ * @param {Deps} deps
+ * @param {Agents} agents
+ */
+export function agentTools(deps, agents) {
+  /** The connection an agent names, on the database it names (PostgreSQL). */
+  const named = (/** @type {unknown} */ ref, /** @type {unknown} */ database) => {
+    const conn = typeof ref === "string" ? deps.manager.get(ref) : undefined;
+    if (!conn)
+      throw new Error(
+        t("features.audit.tools.noConnectionIsNamed", { value: String(String(ref)) }),
+      );
+    if (typeof database !== "string" || !database) return conn;
+    if (conn.engine !== "postgresql")
+      throw new Error(
+        t("features.audit.tools.isNotPostgresqlNameItsSchema", { name: String(conn.name) }),
+      );
+    return onDatabase(conn, database);
+  };
+  const postgres = (/** @type {Connection} */ conn, /** @type {string} */ what) => {
+    if (conn.engine !== "postgresql")
+      throw new Error(
+        t("features.audit.tools.readsPostgresqlSCatalogIsA", {
+          what: String(what),
+          name: String(conn.name),
+          title: String(engineOf(conn.engine).title),
+        }),
+      );
+  };
+  /** The one statement an agent hands in. */
+  const one = (/** @type {Connection} */ conn, /** @type {unknown} */ sql) => {
+    const dialect = engineOf(conn.engine).dialect;
+    const statements = split(typeof sql === "string" ? sql : "", dialect);
+    if (statements.length !== 1)
+      throw new Error(
+        t("features.audit.tools.handInOneStatementThisSql", { length: String(statements.length) }),
+      );
+    const statement = /** @type {import("../../sql/split.js").Statement} */ (statements[0]);
+    return { text: statement.text, class: classify(statement, dialect) };
+  };
+  const text = (/** @type {unknown} */ value, /** @type {string} */ what) => {
+    if (typeof value !== "string" || !value)
+      throw new Error(t("features.audit.tools.nameThe", { what: String(what) }));
+    return value;
+  };
+
+  return {
+    "endue.database.explain-statement": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, args.database);
+      const statement = one(conn, args.sql);
+      const analyze = args.analyze === true;
+      if (analyze) {
+        if (!(await agents.access.of(conn.id)).analyze)
+          throw new Error(
+            t("features.audit.tools.explainAnalyzeRunsTheStatementThe", {
+              name: String(conn.name),
+            }),
+          );
+        if (conn.engine === "sqlite")
+          throw new Error(t("features.audit.tools.sqliteHasNoExplainAnalyze"));
+        if (!readsOnly([statement.class]))
+          throw new Error(
+            t("features.audit.tools.explainAnalyzeRunsTheStatementAnd", {
+              verb: String(statement.class.verb),
+            }),
+          );
+      }
+      const sql = explainSql(conn.engine, statement.text, analyze);
+      const done = await agents.runs.read(conn, sql, {
+        args,
+        command: "endue.database.explain-statement",
+        rows: 1000,
+        limits: { timeoutSeconds: args.timeoutSeconds },
+        names: new Set(),
+      });
+      const failed = failureOf(done);
+      if (failed) throw new Error(failed);
+      const set = done.result.statements[0]?.sets[0];
+      if (conn.engine === "postgresql")
+        return { plan: (set?.rows ?? []).map((r) => r[0] ?? "").join("\n"), analyzed: analyze };
+      return { plan: objectsOf(set), analyzed: analyze };
+    },
+
+    "endue.database.object-ddl": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, args.database);
+      const schema = conn.engine === "sqlite" ? "main" : text(args.schema, "schema");
+      const name = text(args.name, "object");
+      const objects = await deps.catalog.objects(readOnly(conn), schema, true);
+      const kind = typeof args.kind === "string" ? args.kind : "";
+      const object = objects.find((o) => o.name === name && (!kind || o.kind === kind));
+      if (!object)
+        throw new Error(
+          t("features.audit.tools.hasNoNamed", {
+            schema: String(schema),
+            value: String(kind || t("features.audit.tools.object")),
+            name: String(name),
+          }),
+        );
+      const ddl = await deps.catalog.ddl(readOnly(conn), object);
+      agents.gate.note(args, "endue.database.object-ddl", {
+        connection: conn.id,
+        statement: `DDL of ${object.kind} ${schema}.${name}`,
+        rows: null,
+        asked: false,
+        allowed: null,
+        outcome: "ran",
+      });
+      return { kind: object.kind, ddl };
+    },
+
+    "endue.database.sample-rows": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, args.database);
+      const schema = conn.engine === "sqlite" ? "main" : text(args.schema, "schema");
+      const table = text(args.table, "table");
+      const { sensitive } = await agents.access.of(conn.id);
+      const names = namesOn(sensitive, schema, table);
+      const limits = { maxRows: args.limit, timeoutSeconds: args.timeoutSeconds };
+      const { maxRows } = agents.limits(limits, SAMPLE_DEFAULT);
+      const sql = sampleSql(conn, schema, table, maxRows);
+      const done = await agents.runs.read(conn, sql, {
+        args,
+        command: "endue.database.sample-rows",
+        limits,
+        rows: SAMPLE_DEFAULT,
+        names,
+      });
+      const failed = failureOf(done);
+      if (failed) throw new Error(failed);
+      const set = done.result.statements[0]?.sets[0];
+      return {
+        columns: set?.columns ?? [],
+        rows: set?.rows ?? [],
+        masked: (set?.columns ?? []).filter((c) => names.has(c.toLowerCase())),
+      };
+    },
+
+    "endue.database.table-stats": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, args.database);
+      postgres(conn, "A table's statistics");
+      const schema = text(args.schema, "schema");
+      const table = text(args.table, "table");
+      const done = await agents.runs.read(conn, statsSql(schema, table).join(";\n"), {
+        args,
+        command: "endue.database.table-stats",
+        single: true,
+        rows: 1000,
+        limits: { timeoutSeconds: args.timeoutSeconds },
+        names: new Set(),
+      });
+      const failed = failureOf(done);
+      if (failed) throw new Error(failed);
+      const [size, columns] = done.result.statements.map((s) => objectsOf(s.sets[0]));
+      if (!size?.[0])
+        throw new Error(
+          t("features.audit.tools.hasNoTableNamed", {
+            schema: String(schema),
+            table: String(table),
+          }),
+        );
+      const names = namesOn((await agents.access.of(conn.id)).sensitive, schema, table);
+      const hidden = ["most_common_vals", "histogram_bounds"];
+      return {
+        table: size[0],
+        columns: (columns ?? []).map((c) =>
+          names.has(String(c.attname).toLowerCase())
+            ? { ...c, ...Object.fromEntries(hidden.map((k) => [k, c[k] === null ? null : MASK])) }
+            : c,
+        ),
+      };
+    },
+
+    "endue.database.sessions-list": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, undefined);
+      postgres(conn, "The sessions list");
+      const done = await agents.runs.read(conn, SESSIONS_SQL, {
+        args,
+        command: "endue.database.sessions-list",
+        rows: 1000,
+        limits: { maxRows: args.limit, timeoutSeconds: args.timeoutSeconds },
+        names: new Set(),
+      });
+      const failed = failureOf(done);
+      if (failed) throw new Error(failed);
+      return { sessions: objectsOf(done.result.statements[0]?.sets[0]) };
+    },
+
+    "endue.database.check-statement": async (/** @type {Record<string, unknown>} */ args) => {
+      const conn = named(args.connection, args.database);
+      postgres(conn, "A check without running");
+      const statement = one(conn, args.sql);
+      if (!PREPARED.has(statement.class.verb))
+        return {
+          checked: false,
+          why: t("features.audit.tools.postgresqlChecksWithoutRunningOnlyThis", {
+            value: String([...PREPARED].join(", ")),
+            value2: String(statement.class.verb || t("features.audit.tools.unknown")),
+          }),
+        };
+      const sent = numbered(statement.text, paramsOf(statement.text, "postgresql"));
+      const done = await agents.runs.read(conn, statement.text, {
+        args,
+        command: "endue.database.check-statement",
+        limits: { timeoutSeconds: args.timeoutSeconds },
+        names: new Set(),
+        mode: "describe",
+        statements: [
+          {
+            text: sent.text,
+            keys: sent.keys,
+            shifts: sent.shifts,
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 1,
+            tokens: [],
+          },
+        ],
+      });
+      const outcome =
+        /** @type {{ described?: import("../../engines/pg-describe.js").Described, error?: import("../../engines/common.js").DbError } | undefined} */ (
+          done.result.statements[0]
+        );
+      const error = done.result.error ?? outcome?.error;
+      if (!error) {
+        const described = outcome?.described;
+        return {
+          checked: true,
+          ok: true,
+          params: (described?.params ?? []).map((p) => ({ name: p.key, type: p.type })),
+          columns: (described?.columns ?? []).map((c) => ({ name: c.name, type: c.type })),
+        };
+      }
+      return {
+        checked: true,
+        ok: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+        ...(error.detail ? { detail: error.detail } : {}),
+        ...(error.position !== undefined ? { position: error.position } : {}),
+      };
+    },
+  };
+}

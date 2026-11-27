@@ -16,21 +16,23 @@ export function createObjectActions(app) {
     for (const name of names) void app.engine.load(/** @type {any} */ (name));
   };
 
-  const removeVolumes = async (/** @type {Volume[]} */ list) => {
+  const removeVolumes = async (/** @type {Volume[]} */ list, reviewed = false) => {
     if (!list.length) return false;
     const use = volumeUse(app.store.state.containers);
     const used = list.filter((v) => use.has(v.name));
     const size = list.reduce((s, v) => s + (app.store.state.volumeSizes.get(v.name) ?? 0), 0);
-    const yes = await app.overlay.confirm({
-      title:
-        list.length === 1
-          ? `Remove the volume ${list[0]?.name}?`
-          : `Remove ${list.length} volumes?`,
-      text: `What they hold is deleted for good${size ? ` (${bytes(size)})` : ""}.${used.length ? ` Containers mount ${used.length === 1 ? "one of them" : `${used.length} of them`}: remove those containers first.` : ""}`,
-      ok: "Delete for good",
-      danger: true,
-    });
-    if (!yes) return false;
+    if (!reviewed) {
+      const yes = await app.overlay.confirm({
+        title:
+          list.length === 1
+            ? `Remove the volume ${list[0]?.name}?`
+            : `Remove ${list.length} volumes?`,
+        text: `What they hold is deleted for good${size ? ` (${bytes(size)})` : ""}.${used.length ? ` Containers mount ${used.length === 1 ? "one of them" : `${used.length} of them`}: remove those containers first.` : ""}`,
+        ok: "Delete for good",
+        danger: true,
+      });
+      if (!yes) return false;
+    }
     try {
       await app.docker(["volume", "rm", "--", ...list.map((v) => objectRef(v.name, "The volume"))]);
       app.toast(
@@ -103,21 +105,23 @@ export function createObjectActions(app) {
     }
   };
 
-  const removeNetworks = async (/** @type {Network[]} */ list) => {
+  const removeNetworks = async (/** @type {Network[]} */ list, reviewed = false) => {
     const mine = list.filter((n) => !n.builtin);
     if (!mine.length) return false;
-    const yes = await app.overlay.confirm({
-      title:
-        mine.length === 1
-          ? `Remove the network ${mine[0]?.name}?`
-          : `Remove ${mine.length} networks?`,
-      text: mine.some((n) => n.members.length)
-        ? "Containers are connected to it: docker refuses until they leave."
-        : "Containers that would join it later will not find it.",
-      ok: "Remove",
-      danger: true,
-    });
-    if (!yes) return false;
+    if (!reviewed) {
+      const yes = await app.overlay.confirm({
+        title:
+          mine.length === 1
+            ? `Remove the network ${mine[0]?.name}?`
+            : `Remove ${mine.length} networks?`,
+        text: mine.some((n) => n.members.length)
+          ? "Containers are connected to it: docker refuses until they leave."
+          : "Containers that would join it later will not find it.",
+        ok: "Remove",
+        danger: true,
+      });
+      if (!yes) return false;
+    }
     try {
       await app.docker([
         "network",

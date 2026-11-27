@@ -1,6 +1,7 @@
 // The engines by id. Each knows its client, how to plan a run, how to read the client's output and
 // the catalog queries the explorer runs.
 
+import { t } from "../strings/index.js";
 import { mysql } from "./mysql.js";
 import { postgres } from "./postgres.js";
 import { sqlite } from "./sqlite.js";
@@ -16,7 +17,7 @@ export const ENGINES = { postgresql: postgres, mysql, sqlite };
 /** @returns {Engine} */
 export function engineOf(/** @type {EngineId} */ id) {
   const engine = ENGINES[id];
-  if (!engine) throw new Error(`Unknown engine: ${String(id)}.`);
+  if (!engine) throw new Error(t("engines.index.unknownEngine", { value: String(String(id)) }));
   return engine;
 }
 

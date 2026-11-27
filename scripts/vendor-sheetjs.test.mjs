@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   committed,
+  DATABASE_FILES,
+  DATABASE_VENDOR,
+  databaseFiles,
   expected,
   FILES,
   recorded,
@@ -35,6 +38,14 @@ describe("vendor-sheetjs", () => {
     for (const name of Object.keys(FILES)) {
       assert.equal(sha256(files[name] ?? ""), hashes[name], `${name} differs from VERSIONS`);
     }
+  });
+
+  it("the database plugin's copy is the same pin's reader and licence, byte for byte", () => {
+    const files = committed(DATABASE_VENDOR);
+    assert.deepEqual(Object.keys(files).sort(), [...DATABASE_FILES, "VERSIONS"].sort());
+    assert.deepEqual(files, databaseFiles(committed()));
+    const hashes = recorded(files.VERSIONS ?? "");
+    assert.deepEqual(Object.keys(hashes).sort(), [...DATABASE_FILES].sort());
   });
 
   it("VERSIONS pins the release tarball by its SHA-256", () => {

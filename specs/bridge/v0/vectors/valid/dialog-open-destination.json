@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "the person chooses a folder as a writable destination",
+  "instance": {
+    "id": 45,
+    "method": "dialog.open",
+    "params": { "kind": "folders", "intent": "destination" }
+  }
+}

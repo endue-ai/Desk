@@ -199,12 +199,6 @@
                       "tag": "p",
                       "role": "status",
                       "class": "build-status"
-                    },
-                    {
-                      "tag": "button",
-                      "hidden": "",
-                      "class": "desk-btn",
-                      "text": "Allow"
                     }
                   ]
                 },

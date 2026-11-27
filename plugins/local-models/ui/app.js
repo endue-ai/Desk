@@ -6,7 +6,7 @@ import { nameThread } from "./edit.js";
 import { groundFor } from "./ground.js";
 import { createLocal } from "./local.js";
 import { modelKey, splitKey } from "./models.js";
-import { createSockets } from "./net.js";
+import { createSockets, isLocalHost, scopeFor } from "./net.js";
 import { createPresets, settingsOf } from "./presets.js";
 import { createRunner } from "./run.js";
 import { clientOf, discover } from "./servers.js";
@@ -28,7 +28,7 @@ const message = (/** @type {unknown} */ e) => (e instanceof Error ? e.message : 
 /** @param {Bridge} bridge @param {{ storeDelayMs?: number, autoTitle?: boolean }} [options] */
 export function createApp(bridge, options = {}) {
   const S = createState();
-  const sockets = createSockets(bridge);
+  const sockets = createSockets(bridge, { askForRemote: false });
   const store = createStore(bridge, { delayMs: options.storeDelayMs });
   /** @type {import("./servers.js").ServerSpec[]} */
   let added = [];
@@ -55,6 +55,20 @@ export function createApp(bridge, options = {}) {
       model = models.find((m) => m.id === id && servers.find((s) => s.id === m.serverId)?.managed);
     const server = servers.find((s) => s.id === (model?.serverId ?? serverId));
     return { model, server, id };
+  }
+
+  /** A person pressed Add or Retry for this exact endpoint. @param {{ host: string, port: number }} server */
+  async function allowServer({ host, port }) {
+    if (isLocalHost(host)) return true;
+    const answer = await bridge
+      .call("perm.request", {
+        permission: scopeFor(host, port),
+        reason: `To talk to the model server on ${host}:${port}`,
+        duration: "always",
+        again: true,
+      })
+      .catch(() => ({ granted: false }));
+    return answer?.granted === true;
   }
 
   /** Look at every server again and gather their models. */
@@ -191,6 +205,7 @@ export function createApp(bridge, options = {}) {
     const sid = thread.model ? splitKey(thread.model).serverId : "";
     if (answer && sid) void refreshModels(sid);
     if (fresh && answer?.content && autoTitle) void nameThread(api, thread);
+    return answer;
   }
 
   /** Stop the answer being written; what came so far stays. */
@@ -326,6 +341,7 @@ export function createApp(bridge, options = {}) {
     start,
     scan,
     reloadServers,
+    allowServer,
     resolve,
     newChat,
     openThread,

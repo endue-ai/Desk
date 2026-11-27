@@ -1,6 +1,6 @@
 endue.formats RAR reader (lib/rar)
 
-This reader was written for endue Desk from published descriptions of the RAR formats and from
+This reader was written for endue from published descriptions of the RAR formats and from
 permissively licensed readers of them. No code was taken or followed from unRAR or from any other
 source under the unRAR licence restriction, the GPL or the LGPL. ADR 0051 records how it was made.
 

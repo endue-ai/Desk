@@ -1,6 +1,6 @@
 /**
  * The desk folder on the browser stub: the runtime's own fs.read, fs.write, fs.list, fs.watch and
- * fs.trash under `~/.desk`, over text files held in memory, as desk-core answers the runtime (which
+ * fs.rename and fs.trash under `~/.desk`, over text files held in memory, as desk-core answers the runtime (which
  * holds fs:read on `~/.desk/**` and fs:write on its profiles and keys.yaml): a write or a trash is
  * refused as the core refuses it (`checkScope`), so a scope that fails there fails here too (#102).
  * Every write and trash is an fs.changed for
@@ -86,6 +86,21 @@ export function stubFolder(
       put(params.path, params.content);
       return { bytesWritten: new TextEncoder().encode(params.content).length };
     },
+    "fs.rename": (params, caller) => {
+      if (caller !== undefined || !inFolder(params.from) || !inFolder(params.to))
+        return passOn(fallback, "fs.rename")(params, caller);
+      checkScope(params.from, params.fromScope ?? params.scope);
+      checkScope(params.to, params.scope);
+      const text = files.get(params.from);
+      if (text === undefined) throw missing(params.from);
+      if (files.has(params.to))
+        throw new StubError("already_exists", `${params.to} already exists`);
+      files.delete(params.from);
+      files.set(params.to, text);
+      changed(params.from, "removed");
+      changed(params.to, "created");
+      return { crossedDevices: false };
+    },
     "fs.list": (params, caller) => {
       if (caller !== undefined || !inFolder(params.path))
         return passOn(fallback, "fs.list")(params, caller);
@@ -154,10 +169,9 @@ function checkWrite(params: FsWriteParams, exists: (dir: string) => boolean): vo
 }
 
 /** The page's own handler for `method`, or an answer that nobody serves it. */
-function passOn<M extends "fs.read" | "fs.write" | "fs.list" | "fs.watch" | "fs.trash">(
-  fallback: StubHandlers,
-  method: M,
-): NonNullable<StubHandlers[M]> {
+function passOn<
+  M extends "fs.read" | "fs.write" | "fs.rename" | "fs.list" | "fs.watch" | "fs.trash",
+>(fallback: StubHandlers, method: M): NonNullable<StubHandlers[M]> {
   const handler = fallback[method];
   if (handler) return handler;
   return (() => {

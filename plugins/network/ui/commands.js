@@ -123,9 +123,8 @@ export function wireCommands(ctx, app, t, failure = plainFailure) {
     return deviceAnswer(t, d);
   });
 
-  on("endue.network.checkup", async (args) => {
-    await ensure();
-    if (typeof args.mac === "string") await net.checkDevice(args.mac);
+  on("endue.network.checkup", () => {
+    raise();
     const c = net.checkup();
     return {
       network: network(),
@@ -140,6 +139,11 @@ export function wireCommands(ctx, app, t, failure = plainFailure) {
       })),
       unchecked: c.unchecked,
     };
+  });
+
+  on("endue.network.check-ports", async ({ mac }) => {
+    const device = await net.checkDevice(String(mac ?? ""));
+    return deviceAnswer(t, device);
   });
 
   on("endue.network.channels", async () => {

@@ -12,7 +12,7 @@ asks too.
 
 The theme and design system markets stay `desk.theme.markets` and `desk.design.markets`; Settings,
 Market lists their entries too. Code (`kind: plugin`) installs only from the endue index
-(`https://raw.githubusercontent.com/endue-ai/Desk/main/market/`); anything else is shown as not verified.
+(`https://raw.githubusercontent.com/endue-ai/endue/main/market/`); anything else is shown as not verified.
 
 ```bash
 cargo run -p desk-cli -- plugin validate plugins/market

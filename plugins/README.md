@@ -29,6 +29,7 @@ there were two formats, the API would have holes.
 | `memory/` | What Eris knows, kept on this computer (`endue.memory`, autoload): facts and conversations, search, edit a fact, forget one or everything (ADR 0095) |
 | `agents/` | Every agent as a card (`endue.agents`, autoload, ADR 0112): your endue AI agents (`studio.*`) and the agent programs the core finds on this computer (`agents.*`) in one Home (cards with source and status chips and search, and the Activity board: Waiting, Active, Failed, Done), one Studio (the card's facets with an inspector beside it, Delete with the name typed) and New agent (find in the catalog, or build from scratch); a chat with a local agent whose reply streams, Stop, and its sessions' history |
 | `computer/` | Eris uses your computer (`endue.computer`, autoload, ADR 0123): her tools to look, find, click, type, press keys and open and switch apps through `computer.*`, each act approved by the person and kept as a run with a screenshot; the Computer page with what macOS allows (Accessibility, Screen Recording), the apps she may operate, Stop and Resume; the banner the desk shows above every app while she acts |
+| `android-emulator/` | Android Emulator (`endue.android-emulator`) brings a local Android virtual device into Desk with touch and keyboard input, reusable test conditions, APK installation, logcat and snapshots |
 | `screens/` | Screen Sharing (`endue.screens`, autoload, ADR 0133): another Mac's screen in a desk window over VNC, the protocol macOS Screen Sharing speaks; the kept computers, the macOS or VNC sign-in asked each time and never kept, View only and Fit; noVNC (vendored, MPL-2.0) over the core's `net.connect`, granted per computer |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
@@ -46,6 +47,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
 | `design/` (`desk.design`) | `defface` per widget | Which design system the components are made of (`desk.design.active`, ADR 0090) |
+| `customize/` (`desk.customize`) | Emacs's `custom.el` | The person's own style and script on any plugin's page, per endue account (ADR 0398) |
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
 | `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 

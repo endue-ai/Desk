@@ -25,7 +25,6 @@ const JOIN =
 const WRITE = "update plan_orders set total = total + 1 where id <= 20";
 
 describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
-  const saved = process.env.PGPASSWORD;
   let m: Awaited<ReturnType<typeof mount>>;
   /** Run SQL in the console and give back the first cell of the last result. */
   const value = async (sql: string) => {
@@ -37,8 +36,7 @@ describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
   beforeAll(async () => {
     const { fields, password } = parseUri(uri ?? "");
     const conn = normalize({ ...fields, id: "c-plans", name: "Plans" });
-    if (password) process.env.PGPASSWORD = password;
-    const procs = realProcs();
+    const procs = realProcs(password ? { password } : {});
     m = await mount({
       store: { connections: [conn] },
       handlers: procs.handlers,
@@ -54,12 +52,12 @@ describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
       m.view.text = "drop table if exists plan_orders, plan_customers, plan_audit cascade";
       await m.host.command("endue.database.run-all").catch(() => {});
     }
-    if (saved === undefined) delete process.env.PGPASSWORD;
-    else process.env.PGPASSWORD = saved;
   });
 
   it("plans a join the planner misestimates, with its buffers, and offers the server's options", async () => {
     const version = Number(await value("show server_version_num"));
+    // The tables sit in the role's first schema, which need not be public (a search_path of its own).
+    const schema = String(await value("select current_schema()"));
     m.view.answerDialog = () => ["ANALYZE", "BUFFERS", "VERBOSE", "SETTINGS", "TIMING", "SUMMARY"];
     m.view.text = JOIN;
     await m.host.command("endue.database.explain-options");
@@ -77,7 +75,7 @@ describe.skipIf(!uri)("plans from a real PostgreSQL", () => {
     expect(s?.execution).toBeGreaterThan(0);
     expect((s?.buffers?.sharedHit ?? 0) + (s?.buffers?.sharedRead ?? 0)).toBeGreaterThan(0);
     const nodes = flatten(plan).map(({ node }) => node);
-    const customers = nodes.find((n) => /on public\.plan_customers c/u.test(n.label));
+    const customers = nodes.find((n) => n.label.includes(`on ${schema}.plan_customers c`));
     expect(customers?.actualRows).toBe(666);
     expect(customers?.marks.map((mark) => mark.text)).toContain("67× more rows than estimated");
     expect(nodes.every((n) => n.ownTime !== null && n.ownTime >= 0)).toBe(true);

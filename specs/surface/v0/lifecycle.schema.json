@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/lifecycle.schema.json",
-  "title": "Desk surface protocol v0: lifecycle",
+  "title": "endue surface protocol v0: lifecycle",
   "description": "A surface's life: create, resize, show and hide, sleep and wake, destroy, from the compositor; ready, died and its title, from the surface. See lifecycle.md.",
   "$defs": {
     "SurfaceOwner": {

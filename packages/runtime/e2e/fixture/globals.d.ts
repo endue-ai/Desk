@@ -1,4 +1,4 @@
-import type { BrowserStub, Item, ItemSource, PluginInfo } from "@endue-ai/bridge";
+import type { BridgeClient, BrowserStub, Item, ItemSource, PluginInfo } from "@endue-ai/bridge";
 import type { BrowserBridge, Envelope } from "../../src/bridge/browser";
 import type { StubFolder } from "../../src/bridge/folder";
 import type { ManualClock, RemotePages, Runtime } from "../../src/index";
@@ -8,7 +8,13 @@ import type { FixtureWm } from "./wm";
 declare global {
   interface Window {
     /** Test handle installed by the fixture pages only. */
-    __desk: { clock: ManualClock; runtime: Runtime; stub: BrowserStub; commands: string[] };
+    __desk: {
+      clock: ManualClock;
+      runtime: Runtime;
+      stub: BrowserStub;
+      commands: string[];
+      client?: BridgeClient;
+    };
     /** The terminal fixture (terminal.html): what its PTY was written, and printing more to it. */
     __terminal: {
       writes: Array<{ data: string; encoding: string }>;

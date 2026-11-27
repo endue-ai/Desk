@@ -22,7 +22,11 @@
       "permission": "cmd:invoke",
       "ids": ["*"]
     },
-    { "permission": "proc:spawn", "commands": ["*"], "pty": true }
+    {
+      "permission": "proc:spawn",
+      "commands": ["*"],
+      "pty": true
+    }
   ],
   "surfaces": [
     {
@@ -64,13 +68,14 @@
               "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
             }
           }
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.close",
         "title": "Close the terminal",
         "keywords": ["exit"],
-        "description": "Close a terminal and end its program.",
+        "description": "Close a terminal and end its program. A running program is protected; force asks before ending it.",
         "args": {
           "type": "object",
           "properties": {
@@ -78,6 +83,10 @@
               "type": "string",
               "minLength": 1,
               "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Ask before ending a running program."
             }
           }
         },
@@ -103,7 +112,8 @@
           },
           "required": ["direction"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.focus-pane",
@@ -119,20 +129,48 @@
           },
           "required": ["direction"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.next",
-        "title": "Next terminal"
+        "title": "Next terminal",
+        "agent": true,
+        "description": "Focus the next terminal tab and the pane in use there.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.previous",
-        "title": "Previous terminal"
+        "title": "Previous terminal",
+        "agent": true,
+        "description": "Focus the previous terminal tab and the pane in use there.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.clear",
         "title": "Clear the terminal",
-        "keywords": ["cls"]
+        "keywords": ["cls"],
+        "description": "Clear a terminal's screen and scrollback; what runs in it goes on. session is its id, as endue.terminal.sessions lists it; the one on screen without it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.interrupt",
@@ -154,12 +192,47 @@
       {
         "id": "endue.terminal.restart",
         "title": "Start the terminal's shell again",
-        "keywords": ["relaunch", "respawn"]
+        "keywords": ["relaunch", "respawn"],
+        "description": "End what runs in a terminal and start its shell again in the same folder. session is its id, as endue.terminal.sessions lists it; the one on screen without it. A running program is protected; force asks before ending it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Ask before ending a running program."
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.find",
         "title": "Find in the terminal",
-        "keywords": ["search", "scrollback", "grep"]
+        "keywords": ["search", "scrollback", "grep"],
+        "agent": true,
+        "readOnly": true,
+        "description": "Search the kept output of the named or current terminal. An empty person invocation opens the search bar.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        }
       },
       {
         "id": "endue.terminal.tabs",
@@ -187,7 +260,8 @@
           },
           "required": ["title"],
           "additionalProperties": false
-        }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.run",
@@ -226,7 +300,7 @@
         "id": "endue.terminal.sessions",
         "title": "List the terminals",
         "keywords": ["sessions", "tabs"],
-        "description": "The open terminals: session id, title, the program with its args and folder, whether it still runs, how it ended, and which one is on screen.",
+        "description": "List open terminals, what they run, their current folders and which is on screen.",
         "args": {
           "type": "object",
           "properties": {},
@@ -357,7 +431,7 @@
       },
       {
         "key": "Control+Alt+Shift+\\",
-        "mac": "Mod+Shift+Enter",
+        "mac": "Mod+Control+\\",
         "command": "endue.terminal.split",
         "args": {
           "direction": "down"
@@ -510,7 +584,7 @@
       "endue.terminal.event-commands": {
         "kind": "object",
         "default": {},
-        "description": "Desk commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
+        "description": "endue commands a terminal's events run, by event: bell, notification (OSC 9, 777, 99), command (one that ran notify-after seconds or more, OSC 133) and exit, each to a command id such as endue.terminal.focus. The command gets { event, session, tab, looking, level } and what happened; one outside the terminal's grants is asked for once."
       }
     }
   }

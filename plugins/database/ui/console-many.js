@@ -3,7 +3,10 @@
 // of a connection, else its first; a new one numbered; renamed, closed (a closed console's text
 // forgotten, but for a connection's first console, whose text stays as the one console's did); a
 // .sql file's console in the desk's buffer for the file (console-files.js); and the list the
-// surface state keeps, opened again after a restart. No DOM.
+// surface state keeps, opened again after a restart. A console on another database of its server
+// (PG-13) takes a random id, as does a first console whose id another console holds. Closing one,
+// moving a file's console to another connection, or a console to another database closes its
+// PostgreSQL session: asked first while it is in a transaction. No DOM.
 
 import {
   baseName,
@@ -15,6 +18,8 @@ import {
   nextNumber,
   readKept,
 } from "./console-list.js";
+import { baseOf } from "./databases.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -28,9 +33,11 @@ import {
  *   choose?(title: string): Promise<Connection | undefined>,
  *   bound?(target: Console, conn: Connection): Promise<void> | void,
  *   random?(): number,
+ *   closing?(target: Console): string[], release?(target: Console): void,
  * }} Deps
  *   `choose` asks for a connection; `bound` hears a .sql file's console given one (the file
- *   remembers it).
+ *   remembers it); `closing` says what closing a console's session ends (its transaction), and
+ *   `release` closes it.
  */
 
 /**
@@ -61,22 +68,27 @@ export function createMany(buffers, texts, deps) {
     const text = await texts.load(how.consoleId);
     return buffers.made({ id, name, text, ...fields });
   };
+  /** The id a first console of `conn` takes: the connection's, unless another database's or taken. */
+  const firstId = (/** @type {Connection} */ conn) =>
+    conn.id !== baseOf(conn.id) || buffers.list().some((c) => c.consoleId === conn.id)
+      ? newConsoleId(random)
+      : conn.id;
   /** The id and number the next console of `conn` takes: its first's while that is closed. */
   const slot = (/** @type {Connection} */ conn) =>
     scratchOf(conn.id).some((c) => c.consoleId === conn.id)
       ? { consoleId: newConsoleId(random), number: nextNumber(buffers.list(), conn.id) }
-      : { consoleId: conn.id, number: 1 };
+      : { consoleId: firstId(conn), number: 1 };
 
   /** The console on screen, or the one named, that the person may close or rename. */
   const pickConsole = (/** @type {string | undefined} */ id) => {
     const target = id ? buffers.get(id) : buffers.current();
-    if (target?.kind !== "console") throw new Error("No console is on screen.");
+    if (target?.kind !== "console") throw new Error(t("consoleMany.noConsoleIsOnScreen"));
     return target;
   };
 
   /** A console that closed: an extra one's text goes with it. */
   const gone = (/** @type {Console} */ target) => {
-    if (isScratch(target) && target.consoleId && target.consoleId !== target.connection)
+    if (isScratch(target) && target.consoleId && target.consoleId !== baseOf(target.connection))
       texts.forget(target.consoleId);
     else texts.keep();
   };
@@ -86,7 +98,7 @@ export function createMany(buffers, texts, deps) {
     async open(/** @type {Connection} */ conn) {
       const [last] = scratchOf(conn.id).sort((a, b) => (b.used ?? 0) - (a.used ?? 0));
       if (last) return buffers.show(last);
-      return buffers.show(await make(conn, { consoleId: conn.id, number: 1 }));
+      return buffers.show(await make(conn, { consoleId: firstId(conn), number: 1 }));
     },
     /** Open another console on a connection, `<connection> 2` and on. */
     async openNew(/** @type {Connection} */ conn) {
@@ -115,13 +127,21 @@ export function createMany(buffers, texts, deps) {
     /** Close a console (the one on screen unless named), asking first for unsaved edits. */
     async close(/** @type {string | undefined} */ id) {
       const target = pickConsole(id);
-      if (target.running) throw new Error("A run is going on in this console: cancel it first.");
+      if (target.running) throw new Error(t("consoleMany.aRunIsGoingOnIn"));
       const label = labelOf(target, deps.connection(target.connection));
       if (target.file?.modified) {
         const name = baseName(target.file.path);
-        const ok = await deps.confirm(`Close ${name} without saving?`, ["Its edits are lost."]);
-        if (!ok) throw deps.cancelled("Not closed.");
+        const ok = await deps.confirm(t("consoleMany.closeWithoutSaving", { name: String(name) }), [
+          t("consoleMany.itsEditsAreLost"),
+        ]);
+        if (!ok) throw deps.cancelled(t("consoleMany.notClosed"));
       }
+      const open = deps.closing?.(target) ?? [];
+      if (
+        open.length &&
+        !(await deps.confirm(t("consoleMany.close", { label: String(label) }), open))
+      )
+        throw deps.cancelled(t("consoleMany.notClosed"));
       buffers.closed(target.id);
       gone(target);
       await deps.commands.run("desk.buffers.close", { id: target.id }).catch(() => {});
@@ -136,7 +156,7 @@ export function createMany(buffers, texts, deps) {
     /** Name the console on screen (an empty name gives it its connection's again). */
     async rename(/** @type {string} */ name) {
       const target = pickConsole(undefined);
-      if (target.file) throw new Error("A .sql file's console is named after its file.");
+      if (target.file) throw new Error(t("consoleMany.aSqlFileSConsoleIs"));
       const title = name.trim().slice(0, 60);
       if (title) target.title = title;
       else delete target.title;
@@ -153,13 +173,26 @@ export function createMany(buffers, texts, deps) {
       const shown = buffers.current();
       if (!shown?.file || deps.connection(shown.connection) || !deps.choose) return;
       const conn = await deps.choose(
-        `Database: run ${baseName(shown.file.path)} on which connection?`,
+        t("consoleMany.databaseRunOnWhichConnection", { value: String(baseName(shown.file.path)) }),
       );
-      if (!conn) throw deps.cancelled("Not run: pick the connection it runs on.");
+      if (!conn) throw deps.cancelled(t("consoleMany.notRunPickTheConnectionIt"));
       await this.bind(shown, conn);
     },
     /** Run a .sql file's console on another connection. */
     async bind(/** @type {Console} */ target, /** @type {Connection} */ conn) {
+      const open = target.connection === conn.id ? [] : (deps.closing?.(target) ?? []);
+      if (
+        open.length &&
+        !(await deps.confirm(
+          t("consoleMany.runOn", {
+            value: String(baseName(target.file?.path ?? "")),
+            name: String(conn.name),
+          }),
+          open,
+        ))
+      )
+        throw deps.cancelled(t("consoleMany.notMovedTheConsoleStaysOn"));
+      if (target.connection !== conn.id) deps.release?.(target);
       target.connection = conn.id;
       target.name = nameOf(target, conn);
       await deps.bound?.(target, conn);
@@ -199,11 +232,11 @@ export function createMany(buffers, texts, deps) {
       if (last) buffers.show(last);
       return back.length > 0;
     },
-    /** A connection was renamed: so are its consoles. */
+    /** A connection was renamed: so are its consoles, on each of its databases. */
     async renamed(/** @type {Connection} */ conn) {
       for (const target of buffers.list()) {
-        if (target.connection !== conn.id || target.kind !== "console") continue;
-        target.name = nameOf(target, conn);
+        if (baseOf(target.connection) !== conn.id || target.kind !== "console") continue;
+        target.name = nameOf(target, deps.connection(target.connection) ?? conn);
         if (target.visited) continue;
         await deps.commands
           .run("desk.buffers.update", { id: target.id, name: target.name })

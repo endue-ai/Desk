@@ -104,14 +104,14 @@ fn notes() -> Value {
                 { "name": "todo.txt", "kind": "file", "size": 4, "modifiedAt": "2026-01-01T09:00:00Z" }
             ] },
             { "method": "fs.read", "params": { "path": "/notes/welcome.md" },
-              "result": "# Welcome to Desk\n\nHello." }
+              "result": "# Welcome to endue\n\nHello." }
         ],
         "expect": {
             "calls": [{ "method": "fs.read", "params": { "path": "/notes/welcome.md" } }],
             "items": [{
                 "id": "welcome.md",
                 "kind": "note",
-                "title": "Welcome to Desk",
+                "title": "Welcome to endue",
                 "updatedAt": "2026-01-01T09:00:00Z",
                 "source": { "connector": "example.hello-connector", "instance": "default" }
             }]

@@ -48,32 +48,34 @@ export async function listFolder(bridge, path) {
  * The walk through the folder: show its image at `where(index, count)` (0-based) in place of the one
  * on screen, through the desk, one step at a time.
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginContext["commands"], "run">} commands
- * @param {{ current(): { buffer: string, name: string } | undefined,
+ * @param {{ current(): { buffer: string, name: string, path: string } | undefined,
  *   folder(): { dir: string, names: string[] } | null,
- *   left(buffer: string): boolean, say(words: string): void }} parts
+ *   left(buffer: string): boolean }} parts
  *   left: whether the image walked away from is still open, but not on screen
  */
-export function createWalk(commands, { current, folder: listed, left, say }) {
+export function createWalk(commands, { current, folder: listed, left }) {
   let moving = false;
   return async (/** @type {(index: number, count: number) => number} */ where) => {
     const entry = current();
     const folder = listed();
-    if (!entry || !folder || moving) return;
+    if (moving) throw new Error("Another image is already opening.");
+    if (!entry || !folder || folderOf(entry.path) !== folder.dir)
+      throw new Error("The active image's folder is not available.");
     const index = folder.names.indexOf(entry.name);
     const target = where(index, folder.names.length);
-    if (target < 0) return say("This is the first image in the folder.");
-    if (target >= folder.names.length) return say("This is the last image in the folder.");
-    if (target === index) return;
+    if (target < 0) throw new Error("This is the first image in the folder.");
+    if (target >= folder.names.length) throw new Error("This is the last image in the folder.");
+    const path = `${folder.dir}/${folder.names[target]}`;
+    if (target === index) return { path, index: target + 1, count: folder.names.length };
     moving = true;
     try {
       await commands.run("desk.files.open", {
-        path: `${folder.dir}/${folder.names[target]}`,
+        path,
         plugin: "endue.images",
       });
       // Like find-alternate-file: the image walked away from closes, so the walk leaves one buffer.
       if (left(entry.buffer)) await commands.run("desk.buffers.close", { id: entry.buffer });
-    } catch (error) {
-      say(error instanceof Error ? error.message : String(error));
+      return { path, index: target + 1, count: folder.names.length };
     } finally {
       moving = false;
     }

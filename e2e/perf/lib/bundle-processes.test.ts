@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { described, ofBundle } from "./bundle-processes.ts";
 
-const APP = "/w/a/target/bundle-motion/endue-desk.app";
+const APP = "/w/a/target/bundle-motion/endue.app";
 const PS = [
   `  501     1 ${APP}/Contents/MacOS/endue-desk`,
   `  612   501 ${APP}/Contents/Frameworks/endue-desk Helper (Renderer).app/Contents/MacOS/endue-desk Helper (Renderer) --type=renderer`,
-  `  700   680 /w/b/target/bundle-motion/endue-desk.app/Contents/MacOS/endue-desk`,
-  `  701   680 /Users/me/Desk/target/bundle/endue-desk.app/Contents/MacOS/endue-desk`,
+  `  700   680 /w/b/target/bundle-motion/endue.app/Contents/MacOS/endue-desk`,
+  `  701   680 /work/endue/another-checkout/target/bundle/endue.app/Contents/MacOS/endue-desk`,
   `  702   690 grep ${APP}/Contents/MacOS`,
   "",
 ].join("\n");

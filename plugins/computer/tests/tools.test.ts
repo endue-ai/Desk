@@ -19,6 +19,14 @@ describe("the tools", () => {
       ["keys", { keys: ["cmd+t", "cmd+l"] }, "computer.input.keys", { keys: ["cmd+t", "cmd+l"] }],
       ["keys", { keys: "return" }, "computer.input.keys", { keys: ["return"] }],
       ["scroll", { dy: 3 }, "computer.input.scroll", { dx: 0, dy: 3 }],
+      ["move", { x: 10, y: 20 }, "computer.input.move", { x: 10, y: 20 }],
+      [
+        "drag",
+        { from: { x: 10, y: 20 }, to: { x: 30, y: 40 } },
+        "computer.input.drag",
+        { from: { x: 10, y: 20 }, to: { x: 30, y: 40 } },
+      ],
+      ["quit", { app: "TextEdit" }, "computer.apps.quit", { pid: 530 }],
       ["open", { app: "com.apple.Notes" }, "computer.apps.launch", { bundleId: "com.apple.Notes" }],
       ["open", { app: "textedit" }, "computer.apps.activate", { pid: 530 }],
       ["switch", { app: "530" }, "computer.apps.activate", { pid: 530 }],
@@ -34,6 +42,15 @@ describe("the tools", () => {
         scope: { permission: "computer:control" },
       });
     }
+  });
+
+  it("reads status for the agent that asked for it", async () => {
+    const { invokeAs, computer } = await mount();
+    const invocationId = await invokeAs("agent:eris", "endue.computer.status");
+    expect(computer("computer.permissions.status").at(-1)?.params).toEqual({
+      invocationId,
+      scope: { permission: "computer:see" },
+    });
   });
 
   it("look reads the screen and the focused window as elements to click, and only reads", async () => {

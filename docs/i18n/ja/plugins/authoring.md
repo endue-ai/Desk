@@ -1,12 +1,12 @@
 > この文書は[英語版](../../../plugins/authoring.md)の翻訳です。内容に相違がある場合は英語版が優先されます。
 
-# Desk プラグインの作り方
+# endue プラグインの作り方
 
-Desk プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、Desk 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページはプラグインの種類とテンプレートから始め、続いて UI プラグインを詳しく扱い、次にネイティブプラグイン、最後にテーマを扱います。ツール（MCP）プラグインには今後対応します。
+endue プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、endue 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページはプラグインの種類とテンプレートから始め、続いて UI プラグインを詳しく扱い、次にネイティブプラグイン、最後にテーマを扱います。ツール（MCP）プラグインには今後対応します。
 
 ## テンプレートから始める
 
-`create-plugin` は、`desk plugin validate` を通過し、テストをひとつ持つ、いずれかの種類のプラグインフォルダーを作ります（パッケージの公開後は `pnpm create @endue-ai/plugin`）。
+`create-plugin` は、`endue plugin validate` を通過し、テストをひとつ持つ、いずれかの種類のプラグインフォルダーを作ります（パッケージの公開後は `pnpm create @endue-ai/plugin`）。
 
 ```bash
 pnpm --filter @endue-ai/create-plugin build
@@ -26,17 +26,17 @@ cargo run -p desk-cli -- plugin test ../my-plugin
 
 Rust の種類は、その言語自身のコマンドでビルドします。フォルダー内で `wasm32-wasip2` ターゲット向けに `cargo build --release` を実行します（最初に一度 `rustup target add wasm32-wasip2`）。コンポーネントは `plugin.json` の `entry` が指す場所にできます。
 
-開発中のプラグインを Desk 上で確認するには、そのフォルダーを開発用プラグインとして指定して Desk を起動します。
+開発中のプラグインを endue 上で確認するには、そのフォルダーを開発用プラグインとして指定して endue を起動します。
 
 ```bash
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-フォルダー内のファイルを保存すると、そのプラグインだけが 1 秒以内にリロードされます。Desk のほかの部分とプラグインの状態は、そのまま保たれます。Desk の起動時に空だった、または壊れていたフォルダーも、ファイルが届くか直された時点で、再起動なしに現れます。
+フォルダー内のファイルを保存すると、そのプラグインだけが 1 秒以内にリロードされます。endue のほかの部分とプラグインの状態は、そのまま保たれます。endue の起動時に空だった、または壊れていたフォルダーも、ファイルが届くか直された時点で、再起動なしに現れます。
 
-### `desk plugin test` によるテスト
+### `endue plugin test` によるテスト
 
-`desk plugin test <folder>` は `validate` と同じようにフォルダーを検査し、その種類に合ったホストで `tests/` を実行します。
+`endue plugin test <folder>` は `validate` と同じようにフォルダーを検査し、その種類に合ったホストで `tests/` を実行します。
 
 - `ui`、`view`、`policy`、`theme`、そのほか Wasm を持たない種類：`tests/*.test.js` または `*.test.ts` を、jsdom のページ内で、SDK のテストホスト（`@endue-ai/plugin-sdk/testing`、後述の「テスト」を参照）上の vitest で実行します。SDK は名前でインポートし、テストするコードはテンプレートと同じく SDK をインポートしない形にしておきます（`ui/plugin.js` と、`defineUiPlugin(plugin)` を呼ぶ `ui/main.js`）。
 - `logic` と Wasm の `connector`：各 `tests/<name>.test.json` を、ビルド済みのコンポーネントで、スクリプト化されたデスクである `desk-plugin-host` のハーネス上で実行します。
@@ -61,7 +61,7 @@ DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 | パス | 必須 | 用途 |
 | --- | --- | --- |
 | `plugin.json` | はい | マニフェスト。id、version、kind、entry、permissions、surfaces を記述します |
-| `ui/index.html` | はい（`entry`） | Desk がサンドボックス化されたフレームに読み込むページ |
+| `ui/index.html` | はい（`entry`） | endue がサンドボックス化されたフレームに読み込むページ |
 | `ui/*.js`、`ui/*.css` | いいえ | プラグインのコードとスタイル。エントリーからの相対パスで読み込まれます |
 | `README.md` | 推奨 | プラグインが何をするのか、どの権限をなぜ求めるのか |
 
@@ -82,7 +82,7 @@ id は小文字の逆ドメイン形式です（`example.my-plugin`）。エン�
 
 ## SDK
 
-SDK は、エントリーページのインポートマップを通してインポートします。Desk は SDK を `/_desk/plugin-sdk.js` で配信しています。
+SDK は、エントリーページのインポートマップを通してインポートします。endue は SDK を `/_desk/plugin-sdk.js` で配信しています。
 
 ```html
 <script type="importmap">
@@ -106,9 +106,9 @@ defineUiPlugin({
 
 `bridge.call(method, params)` でコアを呼び出します。同じティック内に行った呼び出しは、ひとつのメッセージにまとめて送られます。拒否された呼び出しは、`permission_denied` などの `code` を持つ `BridgeCallError` で reject されます。
 
-しばらく誰の目にも触れていないサーフェス（他のウィンドウの後ろや画面の外）は、メモリを節約するためにアンロードされることがあり、再び表示されると読み込み直されます（ADR 0070）。元の状態で戻るには、残したいものを登録します。`surface.onUnload(() => ({ open, caret, scroll }))` が Desk の `ui.surface.state` に 64 KiB までの JSON で応え、読み込み直したページは `surface.restored` でそれを受け取ります。プロバイダーがなければ初期状態で戻りますが、上の `state` はそのまま戻ります。
+しばらく誰の目にも触れていないサーフェス（他のウィンドウの後ろや画面の外）は、メモリを節約するためにアンロードされることがあり、再び表示されると読み込み直されます（ADR 0070）。元の状態で戻るには、残したいものを登録します。`surface.onUnload(() => ({ open, caret, scroll }))` が endue の `ui.surface.state` に 64 KiB までの JSON で応え、読み込み直したページは `surface.restored` でそれを受け取ります。プロバイダーがなければ初期状態で戻りますが、上の `state` はそのまま戻ります。
 
-SDK は読み込まれた瞬間から Desk の ping（`desk:ping`）に自分で応えるため、遅い呼び出しを待っていてもハングとは見なされません。5 秒間応答しないフレームのウィンドウには「応答なし」と「待つ」「停止」が表示され、「再読み込み」で最後の `state` とともに戻ります（#39）。
+SDK は読み込まれた瞬間から endue の ping（`desk:ping`）に自分で応えるため、遅い呼び出しを待っていてもハングとは見なされません。5 秒間応答しないフレームのウィンドウには「応答なし」と「待つ」「停止」が表示され、「再読み込み」で最後の `state` とともに戻ります（#39）。
 
 ### サーフェスのオリジン
 
@@ -153,7 +153,7 @@ SDK は読み込まれた瞬間から Desk の ping（`desk:ping`）に自分で
 
 これらはヒントです。プロファイルやセッションが保存した場所と、人が自分で行う配置 (フィル、スナップ、タイル) は、
 ヒントにかかわらずキャンバス上のウィンドウの大きさを決め、ペインに分割されたウィンドウはペインに従います。
-人はどのウィンドウも外に出して戻せます (パレットの「Pop out window」、Window > Move to Desk)。
+人はどのウィンドウも外に出して戻せます (パレットの「Pop out window」、Window > Move to endue（v0.3.0 では Move to Desk）)。
 `DESK_APP_WINDOWS` は一回の起動のあいだマニフェストより優先されます。`off` はすべてのウィンドウをキャンバスに
 残し、`on` はすべてのアプリを外に開き、プラグイン ID の一覧はそれらを外に開きます。
 `examples/plugin-hello-window` は両方の開き方をそれぞれ一つのコマンドで実行します。
@@ -180,7 +180,7 @@ SDK は読み込まれた瞬間から Desk の ping（`desk:ping`）に自分で
 
 ## 権限
 
-プラグインのフレームは、スクリプトだけを許可したサンドボックスで動作します。Desk のページにはアクセスできず、トップレベルのナビゲーション、フォームやポップアップ、独自のネットワーク接続も使えません。あらゆる機能はブリッジを経由し、`perm.*` を除くすべてのブリッジ呼び出しには、必要な権限スコープ（`params.scope`）が付きます。コアが応答するのは、そのスコープをカバーする権限をユーザーが付与している場合だけです。
+プラグインのフレームは、スクリプトだけを許可したサンドボックスで動作します。endue のページにはアクセスできず、トップレベルのナビゲーション、フォームやポップアップ、独自のネットワーク接続も使えません。あらゆる機能はブリッジを経由し、`perm.*` を除くすべてのブリッジ呼び出しには、必要な権限スコープ（`params.scope`）が付きます。コアが応答するのは、そのスコープをカバーする権限をユーザーが付与している場合だけです。
 
 1. 要求する可能性のあるものは、すべて `plugin.json` の `permissions` で宣言します。
 2. 必要になったその時点で要求します：`bridge.call("perm.request", { permission, reason })`。
@@ -190,7 +190,7 @@ SDK は読み込まれた瞬間から Desk の ping（`desk:ping`）に自分で
 
 ## 自分のプロセスと自分のオリジン
 
-いまはすべてのプラグインのフレームが、Desk のひとつのページとひとつのプロセスを共有しています。Desk は Chromium への移行を進めており、そこでは各サーフェスが自分のプロセスで動きます（ADR 0140）。プラグインのコードは何も変わりません。マニフェスト、インポートマップ、`@endue-ai/plugin-sdk`、ブリッジ、CSP はこのページの説明どおりです。
+いまはすべてのプラグインのフレームが、endue のひとつのページとひとつのプロセスを共有しています。endue は Chromium への移行を進めており、そこでは各サーフェスが自分のプロセスで動きます（ADR 0140）。プラグインのコードは何も変わりません。マニフェスト、インポートマップ、`@endue-ai/plugin-sdk`、ブリッジ、CSP はこのページの説明どおりです。
 
 * 各サーフェスは `desk-plugin` スキーム上に自分のオリジンを持ちます。プラグインごとではなく、サーフェスごとです。自分のファイルは相対 URL で読み込み、ホストを決め打ちしないでください。残したいものは `localStorage` や IndexedDB ではなく `state` か `store.*` に置きます。ひとつのプラグインの 2 つのウィンドウは、それらを共有しません。
 * プラグインのループ、リーク、クラッシュが影響するのは、そのウィンドウだけです。しばらく見えていなかったウィンドウはスリープすることがあり、`surface.onUnload` が残したものと一緒に戻ります（ADR 0142）。
@@ -271,6 +271,12 @@ endue AI のエージェントやローカルの頭脳は、人が実行する�
 `cmd.register` で同じ項目（`description`、`argsSchema`、`resultSchema`、`agent`、`readOnly`）を
 受け取り、`ctx.commands.tools()` は自分の権限が及ぶエージェント向けコマンドを一覧します。組み込みの git、
 terminal、docker、calendar、database プラグインが例です。
+
+`agent` を付けたコマンドは、エージェントが人に尋ねずに実行します。プラグインを入れたことが、そのプラグインが
+差し出すものへの人の同意だからです（ADR 0268）。付けていないコマンドは、エージェントが実行する前に人に尋ね、
+`perm:manage` を宣言するプラグインのコマンドはどれもエージェントが実行しません（ADR 0367）。ハンドラーは
+第 2 引数で呼び出し元 `{ invocationId, caller }` を受け取ります。エージェントの呼び出し元は `agent:` か `mcp:`
+で始まるので、人だけがしてよいことをコマンドはエージェントに断れます。
 
 ## ファイルの編集: 編集ティア
 
@@ -410,11 +416,11 @@ await host.settle();
 // host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
-公開する前に、`desk plugin validate <folder>` が通る必要があります。CI は `plugins/` と `examples/` 内のすべてのフォルダーに対してこれを実行します。
+公開する前に、`endue plugin validate <folder>` が通る必要があります。CI は `plugins/` と `examples/` 内のすべてのフォルダーに対してこれを実行します。
 
 ## ネイティブプラグイン
 
-ネイティブプラグイン（種類 `native`）は、どの言語で書いてもよい自作のプログラムで、Desk がそれ自身のプロセスとして起動します（ADR 0154）。好きな GPU API でウィンドウを描き、デスクと共有するテクスチャに収め、UI プラグインと同じブリッジを呼び出します。デスクのコンポジターがほかのウィンドウと同じようにそのウィンドウを描き（ADR 0156）、`just example plugin-native-wgpu` がサンプルをビルドしてデスクで実行します。
+ネイティブプラグイン（種類 `native`）は、どの言語で書いてもよい自作のプログラムで、endue がそれ自身のプロセスとして起動します（ADR 0154）。好きな GPU API でウィンドウを描き、デスクと共有するテクスチャに収め、UI プラグインと同じブリッジを呼び出します。デスクのコンポジターがほかのウィンドウと同じようにそのウィンドウを描き（ADR 0156）、`just example plugin-native-wgpu` がサンプルをビルドしてデスクで実行します。
 
 ```json
 {
@@ -455,7 +461,7 @@ DESK_DEV_PLUGINS=$PWD/../my-theme just dev
 cargo run -p desk-cli -- theme apply local.my-theme
 ```
 
-パッケージが公開されれば、これは `pnpm create @endue-ai/plugin my-theme --kind theme` になります。テンプレートには両方の scheme のすべての役割色、既定値のままのほかのレイヤー、それぞれが何を塗るかを説明する README が入っています。`examples/plugin-hello-theme` は、フォントとバックドロップをひとつずつ持つ最小のテーマです。テーマはインストールしても適用されません。適用中のテーマは設定 `desk.theme.active` が指し、テーマスタジオ（右上のパレットボタン、またはコマンドパレットの Themes）、`desk.theme.use`、`desk theme apply` で選びます。
+パッケージが公開されれば、これは `pnpm create @endue-ai/plugin my-theme --kind theme` になります。テンプレートには両方の scheme のすべての役割色、既定値のままのほかのレイヤー、それぞれが何を塗るかを説明する README が入っています。`examples/plugin-hello-theme` は、フォントとバックドロップをひとつずつ持つ最小のテーマです。テーマはインストールしても適用されません。適用中のテーマは設定 `desk.theme.active` が指し、テーマスタジオ（右上のパレットボタン、またはコマンドパレットの Themes）、`desk.theme.use`、`endue theme apply` で選びます。
 
 スタジオでもテーマを作れます。「Tune a copy」（または `desk.theme.edit`）は選んだテーマのコピーで、「New theme」は endue のテーマでエディターを開きます。フォントやバックドロップの画像も含め、すべてのレイヤーに操作部品があり、デスク全体が変わっていく下書きをそのまま映し、ゲートの補正はパレットの下に並び、Save で自分のテーマ（`local.<名前>`）として保存します。テーマをリポジトリに置き、テストし、公開するにはフォルダーを使います。
 
@@ -516,7 +522,7 @@ cargo run -p desk-cli -- plugin validate ../my-theme
 cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` はブロックをスキーマと、ファイルを上限と照らし合わせます。`desk plugin test` はテンプレートの `tests/theme.test.ts` を SDK のテストホスト上の vitest で実行します。このテストは、デスクがテーマを適用する前と同じく、両方の scheme を `compileTheme` でコンパイルして endue のパレットの上で `gate` にかけ、ゲートが直すものがあればそのすべてを示して失敗します。
+`endue plugin validate` はブロックをスキーマと、ファイルを上限と照らし合わせます。`endue plugin test` はテンプレートの `tests/theme.test.ts` を SDK のテストホスト上の vitest で実行します。このテストは、デスクがテーマを適用する前と同じく、両方の scheme を `compileTheme` でコンパイルして endue のパレットの上で `gate` にかけ、ゲートが直すものがあればそのすべてを示して失敗します。
 
 ### `.desk-theme` で共有する
 
@@ -525,16 +531,16 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーにインストールされます。id が `local.` と `market.` の外にあれば `local.<名前>` になります。`desk theme list` で一覧でき、`desk theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
+`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーにインストールされます。id が `local.` と `market.` の外にあれば `local.<名前>` になります。`endue theme list` で一覧でき、`endue theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
 
 ### マーケット
 
-スタジオの Market タブは、設定 `desk.theme.markets` が各インデックスの https URL で挙げるマーケットのテーマを一覧します（ADR 0060）。既定はこのリポジトリの `main` にある `market/themes/index.json` で、`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` から読みます。ほかのマーケットのインデックスは `init.yaml` でその後ろに加えます。ふたつのマーケットが同じ id を載せていれば、先のマーケットが優先されます。
+スタジオの Market タブは、設定 `desk.theme.markets` が各インデックスの https URL で挙げるマーケットのテーマを一覧します（ADR 0060）。既定はこのリポジトリの `main` にある `market/themes/index.json` で、`https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json` から読みます。ほかのマーケットのインデックスは `init.yaml` でその後ろに加えます。ふたつのマーケットが同じ id を載せていれば、先のマーケットが優先されます。
 
 ```yaml
 settings:
   desk.theme.markets:
-    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://raw.githubusercontent.com/endue-ai/endue/main/market/themes/index.json
     - https://themes.example.com/index.json
 ```
 
@@ -542,7 +548,7 @@ settings:
 
 テーマを公開するには、バンドルとインデックスの項目を `market/themes/` に加えるプルリクエストを開きます。
 
-1. テーマをエクスポートします（`desk theme export <id> <file>`、またはスタジオの Export）。id は `market.` 以下にし、バージョン、`theme.author`、`theme.license`（フォントと画像も含む SPDX 式）を付けます。
+1. テーマをエクスポートします（`endue theme export <id> <file>`、またはスタジオの Export）。id は `market.` 以下にし、バージョン、`theme.author`、`theme.license`（フォントと画像も含む SPDX 式）を付けます。
 2. ファイルを `market/themes/` に `<name>.desk-theme` として置き、`index.json`（`specs/plugin/v0/theme-index.schema.json`）に項目を加えます。`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最大 5 色の `preview`、`url`（ファイル名）、`sha256`、`size` です。
 3. `node scripts/theme-market.mjs` を実行します。`just check` に含まれるこのマーケットチェッカーは、ハッシュやサイズの不一致、ライセンスの欠落、重複した id、正しいテーマプラグインでないバンドルを拒否します。マーケットのテーマはすべて、テストが両方の scheme でゲートにかけます。
 

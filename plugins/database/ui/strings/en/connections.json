@@ -1,0 +1,20 @@
+{
+  "connections.aFullPathStartingWithOr": "{field}: a full path, starting with / or ~/.",
+  "connections.atMostCharacters": "{field}: at most {max} characters.",
+  "connections.aUriStartsWithPostgresMysql": "A URI starts with postgres://, mysql://, mariadb:// or sqlite:.",
+  "connections.certificateFileTheKeyFileNeeds": "Certificate file: the key file needs its certificate.",
+  "connections.colourPickOneOfTheColours": "Colour: pick one of the colours.",
+  "connections.enginePickPostgresqlMysqlMariadbOr": "Engine: pick PostgreSQL, MySQL / MariaDB or SQLite.",
+  "connections.environmentPickOneOfTheTags": "Environment: pick one of the tags.",
+  "connections.fileTheDatabaseFileLikeData": "File: the database file, like ~/data/app.db.",
+  "connections.hostNoSpaces": "Host: no spaces.",
+  "connections.keyFileTheCertificateFileNeeds": "Key file: the certificate file needs its key.",
+  "connections.nameIsTaken": "Name: \"{name}\" is taken.",
+  "connections.oneLinePlease": "{field}: one line, please.",
+  "connections.portANumberFromTo": "Port: a number from 1 to 65535.",
+  "connections.sslPickOneOfTheModes": "SSL: pick one of the modes.",
+  "connections.textExpected": "{field}: text expected.",
+  "connections.thatUriCannotBeRead": "That URI cannot be read.",
+  "connections.theConnectionHasNoId": "The connection has no id.",
+  "connections.tooManyConnectionsToKeepRemove": "Too many connections to keep: remove some first."
+}

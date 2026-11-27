@@ -1,296 +1,329 @@
-// Autocomplete from the introspected schema. The statement around the caret is read with the same
-// lexer statements are cut with: after FROM, JOIN, INTO or UPDATE it offers tables, views and
-// schemas; after `alias.` or `table.` that table's columns; after `schema.` its tables; elsewhere
-// the columns of every table the statement names (with their aliases), functions and keywords.
-// Tables whose columns are not read yet come back in `wants`, so the caller reads them and asks
-// again. Inside a string or a comment nothing is offered. Pure.
+// Autocomplete from the schema, by where the caret stands (caret.js): after FROM, JOIN, INTO or
+// UPDATE the tables a foreign key links first with their ON condition (joins.js), the CTEs, the tables
+// and views of the search path and the schemas; after `alias.` or `table.` that FROM item's columns;
+// after `schema.` its tables, types and functions; `*` written out on request; INSERT's column list
+// and VALUES rows (lists.js); UPDATE's SET targets; elsewhere the columns of every FROM item in reach,
+// nearest level first, the FROM items' names, types, functions and keywords. Candidates show their
+// type and comment and are ranked by rank.js. On the page the FROM items are read from the tokens; in
+// the parse worker `options.scope` answers them from the resolver (statement.js), CTEs, subqueries
+// and set-returning functions with them. Tables whose columns are not read yet come back in `wants`,
+// so the caller reads them and asks again. Inside a string or a comment nothing is offered. Pure.
 
-import { tokenize } from "../sql/lexer.js";
 import { quoteName } from "../sql/quote.js";
-import { functionsOf, keywordsOf, RESERVED } from "./words.js";
+import { t as messageText } from "../strings/index.js";
+import { builtinsOf } from "./builtins.js";
+import { caretOf, refsOf } from "./caret.js";
+import { joinItems } from "./joins.js";
+import { insertItems, rowItems, starItems } from "./lists.js";
+import { keyOf, rank } from "./rank.js";
+import { expectedArg, signatureOf } from "./signatures.js";
+import { snippetItems } from "./snippets.js";
+import { functionsOf, keywordsOf, PG_RESERVED, RESERVED } from "./words.js";
 
 /**
  * @typedef {import("../sql/lexer.js").Dialect} Dialect
- * @typedef {import("../sql/lexer.js").Token} Token
- * @typedef {{ name: string, type: string }} Named
+ * @typedef {import("./rank.js").Item} Item
+ * @typedef {import("./rank.js").Picks} Picks
+ * @typedef {import("./joins.js").Column} Column
+ * @typedef {import("./joins.js").Entry} Entry
+ * @typedef {import("./caret.js").Caret} Caret
+ * @typedef {import("./signatures.js").Signature} Signature
+ * @typedef {{ name: string, type: string, comment?: string }} Named
  * @typedef {{
  *   defaultSchema: string,
  *   schemas(): string[],
  *   tables(schema: string): Named[] | undefined,
- *   columns(schema: string, table: string): Named[] | undefined,
- * }} SchemaView
- * @typedef {"column" | "alias" | "table" | "view" | "schema" | "function" | "keyword"} ItemKind
- * @typedef {{ label: string, kind: ItemKind, detail: string, insert: string }} Item
- * @typedef {{ schema: string, name: string, alias: string, start: number }} Ref
- * @typedef {{ from: number, to: number, items: Item[], wants: { schema: string, table: string }[] }} Completion
+ *   columns(schema: string, table: string): Column[] | undefined,
+ *   types?(schema: string): Named[] | undefined,
+ * } & import("./joins.js").JoinView & import("./signatures.js").RoutineView} SchemaView
+ *   `types` are a schema's own (enums, domains ...); `path` the schemas an unqualified name is
+ *   looked for in (the default schema alone when absent).
+ * @typedef {{ levels: Entry[][], ctes: Entry[], before: Entry[] | null }} Hit
+ *   What is in scope at the caret: the FROM items of each query level, nearest first, the CTEs in
+ *   sight, and in a FROM list the items before the caret's (what a JOIN may join to).
+ * @typedef {(caret: Caret & { text: string, caret: number }) => Hit | null} ScopeAt
+ * @typedef {{ from: number, to: number, items: Item[], wants: { schema: string, table: string }[],
+ *   place: "statement" | "expression" | "none", signature?: Signature | null }} Completion
+ *   `place` says which snippets fit there.
  */
 
-const TABLE_WORDS = new Set(["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "DESCRIBE", "TRUNCATE"]);
-const FROM_ENDS = new Set([
-  "WHERE",
-  "GROUP",
-  "ORDER",
-  "HAVING",
-  "LIMIT",
-  "UNION",
-  "EXCEPT",
-  "INTERSECT",
-  "SET",
-  "VALUES",
-  "ON",
-  "USING",
-  "WINDOW",
-  "RETURNING",
-  "OFFSET",
-  "FETCH",
-  "FOR",
-  "SELECT",
-]);
-/** Kinds in the order they are offered; tables and views together. */
-const RANK = { column: 0, alias: 1, table: 2, view: 2, schema: 3, function: 4, keyword: 5 };
-const WORD = /[A-Za-z0-9_$\u0080-￿]/u;
-const LIMIT = 100;
+/** A name as it must be written: quoted unless it reads back unquoted as the same name. */
+export function ident(/** @type {Dialect} */ dialect, /** @type {string} */ name) {
+  if (dialect === "postgresql")
+    return /^[a-z_][a-z0-9_$]*$/u.test(name) && !PG_RESERVED.has(name)
+      ? name
+      : quoteName(dialect, name);
+  return /^[A-Za-z_][A-Za-z0-9_$]*$/u.test(name) && !RESERVED.has(name.toUpperCase())
+    ? name
+    : quoteName(dialect, name);
+}
 
 /**
  * @param {string} text
  * @param {number} caret
  * @param {Dialect} dialect
  * @param {SchemaView} schema
+ * @param {{ picks?: Picks, scope?: ScopeAt, want?: "items" | "signature" | "star",
+ *   snippets?: import("./snippets.js").Snippet[], locals?: import("./plpgsql-complete.js").Locals }} [options]
+ *   `snippets` are offered where they fit; `locals` a PL/pgSQL body's variables and parameters, offered
+ *   in expressions and where a statement starts, a record's fields after its name and a dot
  * @returns {Completion}
  */
-export function complete(text, caret, dialect, schema) {
-  const tokens = tokenize(text, dialect);
-  let from = caret;
-  while (from > 0 && WORD.test(text[from - 1] ?? "")) from--;
-  const none = { from, to: caret, items: [], wants: [] };
-  const inside = tokens.find((t) => t.start < caret && caret <= t.end);
-  const quoted = inside?.type === "string" || inside?.type === "comment" || inside?.type === "name";
-  const after = inside && inside.type !== "comment" && caret === inside.end && closed(inside);
-  if (quoted && !after) return none;
-  if (/[0-9]/u.test(text[from] ?? "") && from < caret) return none;
-  const prefix = text.slice(from, caret);
-  const statement = statementTokens(tokens, from);
-  const qualifier = qualifierBefore(statement, from, dialect);
-  const before = statement.filter((t) => t.end <= (qualifier.start ?? from));
-  const refs = refsOf(statement, dialect, schema.defaultSchema).filter(
-    (r) => !(r.start >= (qualifier.start ?? from) && r.start <= caret),
-  );
-  /** @type {Item[]} */
-  const items = [];
+export function complete(text, caret, dialect, schema, options = {}) {
+  const c = caretOf(text, caret, dialect);
+  /** @type {Completion} */
+  const none = { from: c?.from ?? caret, to: caret, items: [], wants: [], place: "none" };
+  if (!c) return options.want === "signature" ? { ...none, signature: null } : none;
+  const signature = signatureOf(c.call, schema, dialect);
+  if (options.want === "signature") return { ...none, signature };
+  if (options.want === "star" && c.place !== "star") return none;
+  const name = (/** @type {string} */ n) => ident(dialect, n);
+  const path = schema.path ?? [schema.defaultSchema];
+  const home = (/** @type {string} */ table) =>
+    path.find((s) => schema.tables(s)?.some((t) => t.name === table)) ?? schema.defaultSchema;
   /** @type {Completion["wants"]} */
   const wants = [];
-  const columnsOf = (
-    /** @type {string} */ s,
-    /** @type {string} */ t,
-    /** @type {string} */ by,
-  ) => {
-    const columns = schema.columns(s, t);
-    if (!columns) {
-      wants.push({ schema: s, table: t });
-      return;
-    }
-    for (const c of columns)
-      items.push({
-        label: c.name,
-        kind: "column",
-        detail: `${c.type} · ${by}`,
-        insert: ident(dialect, c.name),
+  const columnsOf = (/** @type {string} */ s, /** @type {string} */ t) => {
+    const found = schema.columns(s, t);
+    if (!found) wants.push({ schema: s, table: t });
+    return found ?? null;
+  };
+  /** @type {Hit | null | undefined} */
+  let hit;
+  const scope = () => {
+    if (hit === undefined) hit = options.scope?.({ ...c, text, caret }) ?? null;
+    return hit;
+  };
+  /** The FROM items read from the tokens, when the resolver has none. @returns {Entry[]} */
+  const fromTokens = () =>
+    refsOf(c.tokens, dialect, "", keywordsOf(dialect))
+      .filter((r) => !(r.start >= c.chain && r.start <= caret))
+      .map((r) => {
+        const s = r.schema || home(r.name);
+        return {
+          name: r.alias || r.name,
+          relation: { schema: s, name: r.name },
+          columns: columnsOf(s, r.name),
+        };
       });
+  const levels = () => scope()?.levels ?? [fromTokens()];
+
+  /** @type {Item[]} */
+  const items = [];
+  const columnItems = (/** @type {Entry} */ entry, /** @type {number} */ level) => {
+    for (const col of entry.columns ?? []) {
+      const type = col.type ?? "";
+      items.push({
+        label: col.name,
+        kind: "column",
+        detail: type ? `${type} · ${entry.name}` : entry.name,
+        insert: name(col.name),
+        ...(col.comment ? { info: col.comment } : {}),
+        ...(type ? { type } : {}),
+        scope: 1 + Math.min(level, 1),
+        key: keyOf("column", col.name),
+      });
+    }
   };
   const tablesOf = (/** @type {string} */ s) => {
-    for (const t of schema.tables(s) ?? [])
+    for (const t of schema.tables(s) ?? []) {
+      const comment = t.comment || schema.comment?.(s, t.name) || "";
       items.push({
         label: t.name,
         kind: t.type.includes("view") ? "view" : "table",
-        detail: s,
-        insert: ident(dialect, t.name),
-      });
-  };
-  const names = qualifier.names;
-  if (names.length === 1) {
-    const q = fold(names[0] ?? "");
-    const ref = refs.find((r) => fold(r.alias) === q) ?? refs.find((r) => fold(r.name) === q);
-    if (ref) columnsOf(ref.schema, ref.name, ref.alias || ref.name);
-    else if (schema.schemas().some((s) => fold(s) === q))
-      tablesOf(schema.schemas().find((s) => fold(s) === q) ?? "");
-    else if (schema.tables(schema.defaultSchema)?.some((t) => fold(t.name) === q))
-      columnsOf(schema.defaultSchema, names[0] ?? "", names[0] ?? "");
-  } else if (names.length === 2) columnsOf(names[0] ?? "", names[1] ?? "", names[1] ?? "");
-  else if (wantsTable(before)) {
-    if (schema.defaultSchema) tablesOf(schema.defaultSchema);
-    for (const s of schema.schemas())
-      if (s !== schema.defaultSchema)
-        items.push({ label: s, kind: "schema", detail: "schema", insert: ident(dialect, s) });
-  } else {
-    for (const ref of refs) {
-      columnsOf(ref.schema, ref.name, ref.alias || ref.name);
-      const label = ref.alias || ref.name;
-      items.push({
-        label,
-        kind: "alias",
-        detail: ref.alias ? `${ref.name}` : "table",
-        insert: ident(dialect, label),
+        detail: `${t.type} · ${s}`,
+        insert: name(t.name),
+        ...(comment ? { info: comment } : {}),
+        key: keyOf("table", t.name),
       });
     }
-    for (const f of functionsOf(dialect))
-      items.push({ label: f, kind: "function", detail: "function", insert: f });
-    const lower = prefix !== "" && prefix === prefix.toLowerCase();
+  };
+  const typesOf = (/** @type {string} */ s) => {
+    for (const t of schema.types?.(s) ?? [])
+      items.push({
+        label: t.name,
+        kind: "type",
+        detail: `${t.type} · ${s}`,
+        insert: name(t.name),
+        key: keyOf("type", t.name),
+      });
+  };
+  const routinesOf = (/** @type {string} */ s) => {
+    for (const r of schema.routines?.(s) ?? [])
+      items.push({
+        label: r.name,
+        kind: "function",
+        detail: `(${r.args})${r.result ? ` → ${r.result}` : ""}`,
+        insert: name(r.name),
+        ...(r.comment ? { info: r.comment } : {}),
+        ...(r.result ? { type: r.result } : {}),
+        key: keyOf("function", r.name),
+      });
+  };
+  const words = (/** @type {boolean} */ functions) => {
+    if (functions) {
+      for (const s of path) routinesOf(s);
+      for (const f of functionsOf(dialect)) {
+        const first = builtinsOf(dialect, f)[0];
+        items.push({
+          label: f,
+          kind: "function",
+          detail: first
+            ? `(${first.args}) → ${first.result}`
+            : messageText("editor.complete.function"),
+          insert: f,
+          ...(first ? { type: first.result } : {}),
+          key: keyOf("function", f),
+        });
+      }
+    }
+    const lower = c.prefix !== "" && c.prefix === c.prefix.toLowerCase();
     for (const k of keywordsOf(dialect))
       items.push({
         label: k,
         kind: "keyword",
-        detail: "keyword",
+        detail: messageText("editor.complete.keyword"),
         insert: lower ? k.toLowerCase() : k,
+        key: keyOf("keyword", k),
       });
-  }
-  return { from, to: caret, items: rank(items, prefix), wants: unique(wants) };
-}
+  };
+  const all = () => levels().flat();
+  /** A column's type, by its name or its FROM item and name, nearest level first. */
+  const typeOf = (/** @type {string[] | null} */ names) => {
+    if (!names?.length) return "";
+    const col = names.at(-1);
+    const by = names.length > 1 ? names.at(-2) : undefined;
+    for (const level of levels())
+      for (const e of level)
+        if (!by || e.name === by) {
+          const found = e.columns?.find((x) => x.name === col);
+          if (found) return found.type ?? "";
+        }
+    return "";
+  };
+  const target = (/** @type {string[]} */ parts) => {
+    const [s, t] = parts.length === 2 ? parts : [home(parts[0] ?? ""), parts[0] ?? ""];
+    return columnsOf(s ?? "", t ?? "") ?? [];
+  };
 
-/** A quoted run that ends with its quote. */
-function closed(/** @type {Token} */ token) {
-  const open = token.text[0];
-  const close = open === "[" ? "]" : open;
-  return token.text.length > 1 && token.text.endsWith(close ?? "");
-}
-
-/** The tokens of the statement `at` is in, without spaces and comments. */
-function statementTokens(/** @type {Token[]} */ tokens, /** @type {number} */ at) {
-  let first = 0;
-  let last = tokens.length;
-  tokens.forEach((t, i) => {
-    if ((t.type === "end" || t.type === "delimiter") && t.end <= at) first = i + 1;
-  });
-  const next = tokens.findIndex((t, i) => i >= first && t.type === "end" && t.start >= at);
-  if (next >= 0) last = next;
-  return tokens.slice(first, last).filter((t) => t.type !== "space" && t.type !== "comment");
-}
-
-/** `a.` or `a.b.` right before the word at `from`: the names, and where the chain starts. */
-function qualifierBefore(
-  /** @type {Token[]} */ tokens,
-  /** @type {number} */ from,
-  /** @type {Dialect} */ dialect,
-) {
-  /** @type {string[]} */
-  const names = [];
-  /** @type {number | undefined} */
-  let start;
-  let at = from;
-  for (;;) {
-    const dot = tokens.find((t) => t.end === at && t.type === "op" && t.text === ".");
-    const name = dot && tokens.find((t) => t.end === dot.start);
-    if (!dot || !name || (name.type !== "word" && name.type !== "name")) break;
-    names.unshift(unquote(name, dialect));
-    start = name.start;
-    at = name.start;
-    if (names.length === 2) break;
-  }
-  return { names, start };
-}
-
-/** Whether the word being typed stands where a table goes: after FROM, JOIN, INTO, ... or a comma in FROM. */
-function wantsTable(/** @type {Token[]} */ before) {
-  const last = before[before.length - 1];
-  if (!last) return false;
-  if (last.type === "word") return TABLE_WORDS.has(last.text.toUpperCase());
-  if (last.type !== "op" || last.text !== ",") return false;
-  let depth = 0;
-  for (let i = before.length - 1; i >= 0; i--) {
-    const t = /** @type {Token} */ (before[i]);
-    if (t.type === "op" && t.text === ")") depth++;
-    else if (t.type === "op" && t.text === "(") depth--;
-    else if (depth === 0 && t.type === "word") {
-      const w = t.text.toUpperCase();
-      if (w === "FROM") return true;
-      if (FROM_ENDS.has(w)) return false;
+  let place = /** @type {Completion["place"]} */ ("none");
+  let expected = "";
+  if (c.place === "star" && c.star) {
+    const star = c.star;
+    const at = levels()[0] ?? [];
+    const read = star.qualifier.length ? at.filter((e) => e.name === star.qualifier.at(-1)) : at;
+    items.push(...starItems(read, star, name));
+  } else if (options.want === "star") return none;
+  else if (c.place === "qualified") {
+    const names = c.qualifier;
+    const q = names[names.length - 1] ?? "";
+    const record = names.length === 1 ? options.locals?.records.get(q) : undefined;
+    const entry = names.length === 1 && !record ? all().find((e) => e.name === q) : undefined;
+    const named = schema.schemas().find((s) => s === q || s.toLowerCase() === q);
+    if (record) columnItems({ name: q, columns: record }, 0);
+    else if (entry) columnItems(entry, 0);
+    else if (names.length === 2) columnItems({ name: q, columns: columnsOf(names[0] ?? "", q) }, 0);
+    else if (named !== undefined) {
+      tablesOf(named);
+      typesOf(named);
+      routinesOf(named);
+    } else if (schema.tables(home(q))?.some((t) => t.name === q))
+      columnItems({ name: q, columns: columnsOf(home(q), q) }, 0);
+  } else if (c.place === "table") {
+    const hits = scope();
+    if (c.join) items.push(...joinItems(hits?.before ?? fromTokens(), schema, name, c.upper));
+    for (const cte of hits?.ctes ?? [])
+      items.push({
+        label: cte.name,
+        kind: "cte",
+        detail: messageText("editor.complete.with"),
+        insert: name(cte.name),
+        key: keyOf("cte", cte.name),
+      });
+    const shown = new Set();
+    for (const s of path) {
+      if (shown.has(s) || !schema.tables(s)) continue;
+      shown.add(s);
+      tablesOf(s);
     }
-  }
-  return false;
-}
-
-/**
- * The tables a statement names, with their aliases: after FROM (and its commas), JOIN, UPDATE, INTO.
- * @param {Token[]} tokens
- * @param {Dialect} dialect
- * @param {string} defaultSchema
- * @returns {Ref[]}
- */
-export function refsOf(tokens, dialect, defaultSchema) {
-  /** @type {Ref[]} */
-  const refs = [];
-  let inFrom = false;
-  for (let i = 0; i < tokens.length; i++) {
-    const t = /** @type {Token} */ (tokens[i]);
-    const word = t.type === "word" ? t.text.toUpperCase() : "";
-    if (word === "FROM") inFrom = true;
-    else if (FROM_ENDS.has(word)) inFrom = false;
-    const starts = (word && TABLE_WORDS.has(word)) || (inFrom && t.type === "op" && t.text === ",");
-    if (!starts) continue;
-    const first = tokens[i + 1];
-    if (!first || (first.type !== "word" && first.type !== "name")) continue;
-    if (first.type === "word" && RESERVED.has(first.text.toUpperCase())) continue;
-    let j = i + 1;
-    const parts = [unquote(first, dialect)];
-    if (tokens[j + 1]?.type === "op" && tokens[j + 1]?.text === "." && tokens[j + 2]) {
-      parts.push(unquote(/** @type {Token} */ (tokens[j + 2]), dialect));
-      j += 2;
+    for (const s of schema.schemas())
+      if (!shown.has(s))
+        items.push({
+          label: s,
+          kind: "schema",
+          detail: messageText("editor.complete.schema"),
+          insert: name(s),
+          key: keyOf("schema", s),
+        });
+  } else if (c.place === "insert" && c.insert) {
+    const columns = target(c.insert.table);
+    if (c.insert.listed.length === 0)
+      items.push(...insertItems(columns, name, { upper: c.upper, rest: c.insert.rest }));
+    const listed = new Set(c.insert.listed);
+    columnItems(
+      {
+        name: c.insert.table.at(-1) ?? "",
+        columns: columns.filter((col) => !listed.has(col.name)),
+      },
+      0,
+    );
+  } else if (c.place === "values" && c.insert) {
+    const columns = target(c.insert.table);
+    const listed = c.insert.listed.length
+      ? c.insert.listed.map((n) => columns.find((col) => col.name === n) ?? { name: n })
+      : columns;
+    const fresh = c.before.at(-1)?.type === "op" && c.before.at(-1)?.text === "(";
+    if (c.values === 0 && fresh) items.push(...rowItems(listed, c.insert.rest));
+    expected = listed[c.values]?.type ?? "";
+    words(true);
+    items.push(...(options.locals?.items ?? []));
+    place = "expression";
+  } else if (c.place === "set" && c.update) {
+    columnItems({ name: c.update.at(-1) ?? "", columns: target(c.update) }, 0);
+  } else if (c.place === "start") {
+    // In a PL/pgSQL body, its statements' words in place of every keyword.
+    if (!options.locals) words(false);
+    else {
+      items.push(...options.locals.items);
+      for (const k of options.locals.keywords)
+        items.push({
+          label: k,
+          kind: "keyword",
+          detail: messageText("editor.complete.plPgsql"),
+          insert: c.prefix && c.prefix === c.prefix.toLowerCase() ? k.toLowerCase() : k,
+          key: keyOf("keyword", k),
+        });
     }
-    let alias = "";
-    let k = j + 1;
-    if (tokens[k]?.type === "word" && tokens[k]?.text.toUpperCase() === "AS") k++;
-    const a = tokens[k];
-    if (
-      a &&
-      (a.type === "name" || (a.type === "word" && !keywordsOf(dialect).has(a.text.toUpperCase())))
-    )
-      alias = unquote(a, dialect);
-    const [s, n] = parts.length === 2 ? parts : [defaultSchema, parts[0]];
-    refs.push({ schema: s ?? "", name: n ?? "", alias, start: first.start });
+    place = "statement";
+  } else {
+    levels().forEach((level, depth) => {
+      for (const entry of level) columnItems(entry, depth);
+    });
+    for (const entry of levels()[0] ?? [])
+      items.push({
+        label: entry.name,
+        kind: "alias",
+        detail:
+          entry.relation && entry.relation.name !== entry.name
+            ? entry.relation.name
+            : messageText("editor.complete.table"),
+        insert: name(entry.name),
+        key: keyOf("alias", entry.name),
+      });
+    typesOf(schema.defaultSchema);
+    words(true);
+    items.push(...(options.locals?.items ?? []));
+    place = "expression";
+    expected = typeOf(c.operand) || expectedArg(signature);
   }
-  return refs;
-}
-
-/** A name token as the server reads it. */
-function unquote(/** @type {Token} */ token, /** @type {Dialect} */ dialect) {
-  if (token.type !== "name")
-    return dialect === "postgresql" ? token.text.toLowerCase() : token.text;
-  const q = token.text[0];
-  const inner = token.text.slice(1, -1);
-  return q === "[" ? inner : inner.replaceAll(`${q}${q}`, q ?? "");
-}
-
-/** A name as it must be written: quoted unless it is a plain lower-case (PostgreSQL) word. */
-export function ident(/** @type {Dialect} */ dialect, /** @type {string} */ name) {
-  const plain = dialect === "postgresql" ? /^[a-z_][a-z0-9_$]*$/u : /^[A-Za-z_][A-Za-z0-9_$]*$/u;
-  return plain.test(name) && !RESERVED.has(name.toUpperCase()) ? name : quoteName(dialect, name);
-}
-
-const fold = (/** @type {string} */ s) => s.toLowerCase();
-
-/** Items that start with the prefix first, then those that hold it (from three letters); by kind, then by name. */
-function rank(/** @type {Item[]} */ items, /** @type {string} */ prefix) {
-  const p = prefix.toLowerCase();
-  const seen = new Set();
-  return items
-    .map((item) => {
-      const label = item.label.toLowerCase();
-      const score = label.startsWith(p) ? 0 : p.length > 2 && label.includes(p) ? 1 : 2;
-      return { item, score };
-    })
-    .filter(({ item, score }) => {
-      const key = `${item.kind}\u0000${item.label}\u0000${item.detail}`;
-      if (score === 2 || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort(
-      (a, b) =>
-        a.score - b.score ||
-        RANK[a.item.kind] - RANK[b.item.kind] ||
-        a.item.label.localeCompare(b.item.label),
-    )
-    .slice(0, LIMIT)
-    .map(({ item }) => item);
+  items.push(...snippetItems(options.snippets ?? [], place));
+  return {
+    from: c.from,
+    to: caret,
+    items: rank(items, c.prefix, { ...(options.picks ? { picks: options.picks } : {}), expected }),
+    wants: unique(wants),
+    place,
+  };
 }
 
 /** @param {Completion["wants"]} wants */

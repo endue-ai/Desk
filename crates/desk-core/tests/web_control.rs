@@ -4,14 +4,17 @@
 //! last reported; another caller's view is `not_found`; the shell is told the address the call
 //! was allowed at, and what it cannot do comes back as `not_found` or `invalid_value`.
 
+mod common;
 mod support;
+#[path = "web_control/task_approvals.rs"]
+mod task_approvals;
 
 use std::sync::{Arc, Mutex};
 
 use desk_bridge::{
     BridgeError, ErrorCode, WebActResult, WebAction, WebReadResult, WebScrolled, WebStep,
 };
-use desk_core::{Core, WebError, WebPlace, WebState, WebViews};
+use desk_core::{Core, WebError, WebHistoryTarget, WebPlace, WebState, WebViews};
 use serde_json::{Value, json};
 use support::{call, grant, home, roots};
 
@@ -22,6 +25,7 @@ const OTHER: &str = "example.other";
 #[derive(Default)]
 struct Pages {
     asked: Mutex<Vec<String>>,
+    history: Mutex<Option<WebHistoryTarget>>,
 }
 
 impl Pages {
@@ -48,6 +52,29 @@ impl WebViews for Pages {
     }
 
     fn go(&self, _view: &str, _step: WebStep) -> Result<(), WebError> {
+        Ok(())
+    }
+
+    fn history_target(
+        &self,
+        _view: &str,
+        _at: &str,
+        _step: WebStep,
+    ) -> Result<Option<WebHistoryTarget>, WebError> {
+        Ok(self.history.lock().unwrap().clone())
+    }
+
+    fn go_history(
+        &self,
+        view: &str,
+        at: &str,
+        step: WebStep,
+        expected: &WebHistoryTarget,
+    ) -> Result<(), WebError> {
+        if self.history_target(view, at, step)?.as_ref() != Some(expected) {
+            return Err(WebError::Changed("history changed".into()));
+        }
+        self.note(format!("history {step:?} to {}", expected.url));
         Ok(())
     }
 

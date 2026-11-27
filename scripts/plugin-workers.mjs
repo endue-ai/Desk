@@ -26,10 +26,8 @@ export const OFF_MAIN = {
       modules: [
         "ui/output-worker.js",
         "ui/output/index.js",
-        "ui/output/postgres.js",
         "ui/output/mysql.js",
         "ui/output/sqlite.js",
-        "ui/output/csv.js",
         "ui/output/readers.js",
       ],
     },
@@ -65,6 +63,21 @@ export const OFF_MAIN = {
         "ui/sql/layout/roles.js",
         "ui/sql/layout/tokens.js",
       ],
+    },
+    // The editor's SQL problems check (ADR 0294), in the same worker; the page holds diagnose/editor.js.
+    {
+      worker: "ui/sql/parse/worker.js",
+      modules: [
+        "ui/diagnose/check.js",
+        "ui/diagnose/script.js",
+        "ui/diagnose/names.js",
+        "ui/diagnose/insert.js",
+      ],
+    },
+    // A file import's .xlsx reader, the vendored one (PG-60, ADR 0363); the page holds import-copy/client.js.
+    {
+      worker: "ui/import-copy/worker.js",
+      modules: ["ui/import-copy/worker.js", "ui/import-copy/xlsx.js", "ui/vendor/sheetjs/xlsx.mjs"],
     },
   ],
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
@@ -128,6 +141,8 @@ export function graph(entries) {
     const file = /** @type {string} */ (todo.pop());
     if (modules.has(file) || !existsSync(file)) continue;
     modules.add(file);
+    // JSON modules are data dependencies. Words in a catalog cannot import other modules.
+    if (file.endsWith(".json")) continue;
     const { imports, workers: started } = scan(readFileSync(file, "utf8"));
     for (const spec of imports) {
       const target = resolveFrom(file, spec);

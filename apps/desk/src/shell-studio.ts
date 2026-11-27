@@ -21,6 +21,7 @@ export function studioShell(core: BridgeClient): StudioShellBridge {
     picture: (agentId) => core.call("studio.agents.picture", { agentId, ...STUDIO }),
     spaces: async () => (await core.call("studio.spaces.list", STUDIO)).spaces,
     space: (spaceId) => core.call("studio.spaces.get", { spaceId, ...STUDIO }),
+    ask: (question) => core.call("studio.chat.ask", { ...question, ...STUDIO }),
     async open(url) {
       if (!url.startsWith(WEB)) throw new Error(`only endue.ai's pages open here: ${url}`);
       await core.call("shell.open", { target: url, scope: OPEN });

@@ -10,6 +10,7 @@ import { RESERVED } from "./editor/words.js";
 import { engineOf } from "./engines/index.js";
 import { formatRows } from "./results.js";
 import { readableName } from "./sql/quote.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginDnd} PluginDnd
@@ -83,8 +84,11 @@ export function createDrags(deps) {
         ],
         effectAllowed: ["copy"],
         image: {
-          label: `${full.length} row${full.length === 1 ? "" : "s"}`,
-          detail: table?.name ?? conn?.name ?? "result",
+          label: t("dnd.row", {
+            length: String(full.length),
+            value: String(full.length === 1 ? "" : t("dnd.s")),
+          }),
+          detail: table?.name ?? conn?.name ?? t("dnd.result"),
         },
       };
     },
@@ -131,7 +135,7 @@ export function createDatabaseDrops({ dnd }, app, view) {
       );
       const paths = drop.paths ?? [];
       if (paths.length > 1) {
-        app.say(`Drop one file at a time: these are ${paths.length}.`);
+        app.say(t("dnd.dropOneFileAtATime", { length: String(paths.length) }));
         return "none";
       }
       if (paths[0]) return app.drop({ kind: "file", path: paths[0].path }, into);

@@ -1,12 +1,13 @@
 // Drawing the grid's rows and header: each cell with its flags (NULL, a number, changed, the
-// cursor, the selected block, a find match, pinned), each row marked when it is to be added or
-// deleted, the header with its sort keys and a grip to resize. Only the columns of a lane are drawn:
-// the pinned ones (sticky at the left), an empty gap as wide as the columns scrolled past, and the
-// ones in view; the track after them keeps the row as wide as all its columns. The grid
-// (view-grid.js) says what is where; this only makes the elements.
+// cursor, the selected block, a find match, pinned, a foreign key's link), each row marked when it
+// is to be added or deleted, the header with its sort keys and a grip to resize. Only the columns of
+// a lane are drawn: the pinned ones (sticky at the left), an empty gap as wide as the columns
+// scrolled past, and the ones in view; the track after them keeps the row as wide as all its
+// columns. The grid (view-grid.js) says what is where; this only makes the elements.
 
 import { el } from "./dom.js";
 import { cellText } from "./grid-model.js";
+import { t } from "./strings/index.js";
 
 /**
  * @typedef {{ value: string | null, changed: boolean, inserted: boolean, deleted: boolean }} Cell
@@ -19,7 +20,16 @@ import { cellText } from "./grid-model.js";
  */
 
 export const ROW = 24;
-const ORDINAL = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
+const ORDINAL = [
+  "grid.ordinalFirst",
+  "grid.ordinalSecond",
+  "grid.ordinalThird",
+  "grid.ordinalFourth",
+  "grid.ordinalFifth",
+  "grid.ordinalSixth",
+  "grid.ordinalSeventh",
+  "grid.ordinalEighth",
+];
 
 /** A pinned cell's class and its sticky left. */
 const pinning = (/** @type {Lane} */ lane, /** @type {number} */ i) =>
@@ -40,12 +50,12 @@ const gap = (/** @type {Document} */ doc) =>
  * @param {{
  *   from: number, to: number, lane: Lane, cell(r: number, c: number): Cell & { col?: number },
  *   block: Block, cursor: { row: number, col: number }, number(r: number, c: number): boolean,
- *   found(value: string | null): boolean, record: boolean,
- * }} at
+ *   found(value: string | null): boolean, record: boolean, link?(r: number, c: number): string | undefined,
+ * }} at `link` is a foreign key's cell's title (PG-41), undefined for a plain cell.
  */
 export function drawRows(
   doc,
-  { from, to, lane, cell: cellAt, block, cursor, number, found, record },
+  { from, to, lane, cell: cellAt, block, cursor, number, found, record, link },
 ) {
   const drawn = [];
   for (let r = from; r < to; r++) {
@@ -59,6 +69,7 @@ export function drawRows(
       else if (cell.inserted) flags = " inserted";
       const chosen = r >= block.top && r <= block.bottom && c >= block.left && c <= block.right;
       const pin = pinning(lane, i);
+      const linked = cell.value !== null && (!record || c === 1) ? link?.(r, c) : undefined;
       const classes = [
         "cell",
         cell.value === null && (!record || c === 1) ? "null" : "",
@@ -68,6 +79,7 @@ export function drawRows(
         chosen ? "chosen" : "",
         r === cursor.row && c === cursor.col ? "cursor" : "",
         (!record || c === 1) && found(cell.value) ? "found" : "",
+        linked ? "link" : "",
       ];
       cells.push(
         el(
@@ -80,14 +92,14 @@ export function drawRows(
             ...(cell.col === undefined ? {} : { "data-col": String(cell.col) }),
             ...(pin.style ? { style: pin.style } : {}),
             ...(chosen ? { "aria-selected": "true" } : {}),
-            ...(cell.changed ? { title: "Changed, not submitted" } : {}),
+            ...(cell.changed ? { title: t("grid.changed") } : linked ? { title: linked } : {}),
           },
           cellText(cell.value),
         ),
       );
     });
     if (lane.cols.length === lane.pinned) cells.push(gap(doc));
-    const label = flags.trim() === "deleted" ? "To be deleted" : "To be added";
+    const label = t(flags.trim() === "deleted" ? "grid.toDelete" : "grid.toAdd");
     drawn.push(
       el(
         doc,
@@ -146,7 +158,10 @@ export function drawHeader(doc, heads, { lane, record, sort }) {
               doc,
               "span",
               { class: "sr-only" },
-              `, sorted ${ORDINAL[at] ?? `${at + 1}th`}, ${key.direction === "asc" ? "ascending" : "descending"}`,
+              t("grid.sorted", {
+                nth: ORDINAL[at] ? t(ORDINAL[at]) : t("grid.ordinalNth", { n: String(at + 1) }),
+                direction: t(key.direction === "asc" ? "grid.ascending" : "grid.descending"),
+              }),
             )
           : undefined,
         record ? undefined : el(doc, "span", { class: "grip", "aria-hidden": "true" }),

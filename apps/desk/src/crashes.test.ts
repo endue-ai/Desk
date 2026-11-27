@@ -42,6 +42,34 @@ describe("crash reports from the shell's window (#322)", () => {
     stop();
   });
 
+  it("an_error_before_the_desk_is_ready_is_not_reported_as_a_crash", async () => {
+    // A fresh start's refused bridge call came before ready and was reported as a crash (#566).
+    const invoke = vi.fn(async (_command: string, _args?: Record<string, unknown>) => null);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let started = () => {};
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const stop = reportCrashes(window, invoke, ready);
+    const early = new Event("unhandledrejection") as PromiseRejectionEvent;
+    Object.defineProperty(early, "reason", { value: new Error("not a bridge request") });
+    window.dispatchEvent(early);
+    window.dispatchEvent(new ErrorEvent("error", { error: new Error("early"), message: "early" }));
+    expect(invoke).not.toHaveBeenCalled();
+    expect(warn.mock.calls).toEqual([
+      ["endue startup warning — Unhandled rejection: Error: not a bridge request"],
+      ["endue startup warning — Error: early"],
+    ]);
+    started();
+    await ready;
+    window.dispatchEvent(new ErrorEvent("error", { error: new Error("late"), message: "late" }));
+    expect(invoke.mock.calls).toEqual([
+      ["desk_crash", { message: "Error: late", stack: expect.stringContaining("late") }],
+    ]);
+    warn.mockRestore();
+    stop();
+  });
+
   it("a_report_from_last_time_shows_one_notice", async () => {
     const invoke = vi.fn(async (command: string) =>
       command === "take_last_crash" ? REPORT : null,

@@ -136,6 +136,18 @@ pub fn answer(desk: &Desk, cmd: &str, args: &Value) -> Result<Value, String> {
                 .recv_timeout(Duration::from_secs(10))
                 .map_err(|_| "the window manager did not answer".to_owned())
         }
+        // A desk.edit.* command: the Edit menu's command where the keys are (`edit_command.rs`).
+        "compositor_edit_command" => {
+            let name = args.get("command").and_then(Value::as_str).unwrap_or("");
+            let command = super::edit_command::blink_command(name)
+                .ok_or_else(|| format!("no edit command {name}"))?;
+            desk.pump.run(move |shell, _| {
+                if let Some(compositor) = shell.compositor.as_mut() {
+                    compositor.page_edit_command(command);
+                }
+            });
+            Ok(Value::Null)
+        }
         // The motion gate's shake (#247) and sway (#258, `motion.rs`): each runs on a thread of
         // its own.
         "compositor_input" if cfg!(debug_assertions) && args.get("shake").is_some() => {

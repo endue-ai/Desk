@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "Ask the exact Front Desk agent one question with an explicit space",
+  "instance": {
+    "id": 3,
+    "method": "studio.chat.ask",
+    "params": {
+      "agentId": "ag_fixture",
+      "spaceId": "sp_fixture",
+      "question": "What is ready for review?",
+      "scope": { "permission": "studio:manage" }
+    }
+  }
+}

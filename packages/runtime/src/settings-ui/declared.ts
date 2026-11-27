@@ -9,7 +9,7 @@ import { CORE_SETTINGS, PERSONAL_KEYS, SEQUENCE_TIMEOUT } from "../core/defaults
 import type { Preferences } from "../core/preferences";
 import type { PolicyHub } from "../hub";
 import { LANGUAGE_SETTING } from "../policies/language";
-import { fits } from "../settings";
+import { schemaFits } from "../settings";
 import { h } from "../shell/dom";
 import { type SettingsCopy, type SettingsLanguage, settingsText } from "./copy";
 import { jumpHeading, jumpIndex } from "./jump";
@@ -135,22 +135,6 @@ export function declaredRows(
   ];
 }
 
-/** Whether `value` is one the declaration allows: its kind and choices, range and pattern. */
-function allowed(setting: SettingContribution, value: unknown): boolean {
-  if (!fits(setting, value)) return false;
-  if (typeof value === "number")
-    return (
-      (setting.minimum === undefined || value >= setting.minimum) &&
-      (setting.maximum === undefined || value <= setting.maximum)
-    );
-  if (typeof value !== "string" || !setting.pattern) return true;
-  try {
-    return new RegExp(setting.pattern, "u").test(value);
-  } catch {
-    return true;
-  }
-}
-
 /** The control for one setting's kind; `show` puts the value in force back in it. */
 function control(e: Entry, commit: (value: unknown) => void) {
   const { key, setting, title } = e;
@@ -193,7 +177,7 @@ function control(e: Entry, commit: (value: unknown) => void) {
     onChange: () => {
       const typed = field.value.trim();
       const value = numeric ? (typed === "" ? Number.NaN : Number(typed)) : field.value;
-      if (allowed(setting, value)) {
+      if (schemaFits(setting, value)) {
         field.removeAttribute("aria-invalid");
         commit(value);
       } else field.setAttribute("aria-invalid", "true");

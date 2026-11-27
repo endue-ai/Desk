@@ -2,6 +2,7 @@
 // integer, bigint), any other takes a decimal as PostgreSQL reads one, with NaN and Infinity. The
 // value stays as typed, less the space around it.
 
+import { t as messageText } from "../strings/index.js";
 import { field } from "./panel.js";
 
 /** @typedef {import("./resolve.js").Editor} Editor */
@@ -24,14 +25,27 @@ export const number = {
       const holds = range
         ? `${range[2]} holds whole numbers from ${range[0]} to ${range[1]}`
         : `${editor.type} holds whole numbers`;
-      if (!WHOLE.test(t)) return { error: `${t || "Nothing"} is not a whole number: ${holds}.` };
+      if (!WHOLE.test(t))
+        return {
+          error: messageText("cellEditors.number.isNotAWholeNumber", {
+            value: String(t || messageText("cellEditors.number.nothing")),
+            holds: String(holds),
+          }),
+        };
       if (range && (BigInt(t) < range[0] || BigInt(t) > range[1]))
-        return { error: `${t} is out of range: ${holds}.` };
+        return {
+          error: messageText("cellEditors.number.isOutOfRange", {
+            t: String(t),
+            holds: String(holds),
+          }),
+        };
       return { value: t };
     }
     if (DECIMAL.test(t) || SPECIAL.test(t)) return { value: t };
     return {
-      error: `${t || "Nothing"} is not a number: write digits with a point, as 1234.5 or 1.5e3.`,
+      error: messageText("cellEditors.number.isNotANumberWriteDigits", {
+        value: String(t || messageText("cellEditors.number.nothing")),
+      }),
     };
   },
   /** @param {import("./panel.js").Ctx} ctx */

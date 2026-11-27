@@ -31,9 +31,9 @@ describe("endue.ai's pages in a desk window (ADR 0223)", () => {
   });
 
   it("builds an agent's own page and its Studio on endue.ai, the id one path segment", () => {
-    expect(agentHome("ag_miso")).toBe("https://endue.ai/agent/ag_miso");
-    expect(agentHome("ag/../x")).toBe("https://endue.ai/agent/ag%2F..%2Fx");
-    expect(STUDIO).toBe("https://endue.ai/agent/ag_miso/studio");
+    expect(agentHome("ag_miso")).toBe("https://endue.ai/agents/ag_miso");
+    expect(agentHome("ag/../x")).toBe("https://endue.ai/agents/ag%2F..%2Fx");
+    expect(STUDIO).toBe("https://endue.ai/agents/ag_miso/studio");
   });
 
   it("opens the Browser and sends it to the page", async () => {

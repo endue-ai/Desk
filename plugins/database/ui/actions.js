@@ -17,7 +17,7 @@ import { codeOf } from "./answer.js";
  *   tools: ReturnType<typeof import("./tools.js").createTools>,
  *   importer: ReturnType<typeof import("./importer.js").createImporter>,
  *   dropped: ReturnType<typeof import("./dropped.js").createDropped>,
- *   complete(text: string, caret: number): Promise<unknown>,
+ *   complete: ReturnType<typeof import("./features/completion/controller.js").createCompletion>["complete"],
  *   cancel(): void,
  * }} Deps
  */
@@ -27,11 +27,11 @@ export function builtinActions(deps) {
   const { guard, view, manager, consoles, explorer, tools, importer, dropped } = deps;
   const edits = consoles.edits;
   return {
-    /** Activate a row of the explorer: a connection opens its console, a table its rows. */
+    /** Activate an explorer row: a connection or a database opens a console, a table its rows. */
     activate: guard(async (/** @type {Node} */ node) => {
       const conn = manager.get(node.connection);
       if (!conn) return explorer.toggle(node);
-      if (node.kind === "connection") await consoles.open(conn);
+      if (node.kind === "connection" || node.kind === "database") await consoles.open(conn);
       else if (node.kind === "table" && node.table)
         await consoles.open(conn, { schema: node.schema ?? "", name: node.table });
       else if (node.kind === "object" || node.kind === "part") await tools.ddl(node);
@@ -48,8 +48,13 @@ export function builtinActions(deps) {
     explain: guard(() => consoles.explain(false)),
     explainAnalyze: guard(() => consoles.explain(true)),
     format: guard(async () => view.say(await consoles.format())),
-    complete: (/** @type {string} */ text, /** @type {number} */ caret) =>
-      deps.complete(text, caret).catch(() => undefined),
+    /** What completion offers at the caret (features/completion/controller.js, ADR 0327). */
+    complete: (
+      /** @type {string} */ text,
+      /** @type {number} */ caret,
+      /** @type {number} */ offset = 0,
+      /** @type {"items" | "signature" | "star"} */ want = "items",
+    ) => deps.complete(text, caret, offset, want).catch(() => undefined),
     more: guard(() => consoles.more()),
     cancel: deps.cancel,
     page: guard((/** @type {Parameters<typeof consoles.page>[0]} */ change) =>
@@ -59,6 +64,7 @@ export function builtinActions(deps) {
     star: guard(() => tools.star(undefined)),
     starred: guard(() => tools.starred()),
     copy: guard((/** @type {string | undefined} */ format) => tools.copy(format)),
+    copyValue: guard((/** @type {string | undefined} */ text) => tools.copyValue(text)),
     exportTo: guard((/** @type {string | undefined} */ format) => tools.exportTo(format)),
     ddl: guard((/** @type {Node} */ node) => tools.ddl(node)),
     openTable: guard(
@@ -103,6 +109,7 @@ export function builtinActions(deps) {
       importer.change(change),
     ),
     importRun: guard(() => importer.run()),
+    importCheck: guard(() => importer.check()),
     importCancel: () => importer.cancel(),
     create: () => manager.create(),
     importUri: guard(() => manager.importUri(undefined)),
@@ -115,6 +122,7 @@ export function builtinActions(deps) {
     formCancel: guard((/** @type {Parameters<typeof manager.cancelForm>[0]} */ fields) =>
       manager.cancelForm(fields),
     ),
-    password: (/** @type {string | undefined} */ value) => manager.answered(value),
+    password: (/** @type {string | undefined} */ value, remember = false) =>
+      manager.answered(value, remember),
   };
 }

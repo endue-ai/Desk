@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/connector/v0/connector.schema.json",
-  "title": "Desk connector v0",
+  "title": "endue connector v0",
   "description": "One contract for every connector, with three bindings: a Wasm component, an MCP server (ADR 0032) or a declarative HTTP binding the core runs (ADR 0106). A connector brings an app's data in as items and its actions as commands; it has no screen of its own.",
   "$defs": {
     "ConnectorManifest": {
@@ -36,7 +36,7 @@
       ]
     },
     "ConnectorBinding": {
-      "description": "How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).",
+      "description": "How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the endue profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).",
       "type": "string",
       "enum": ["wasm", "mcp", "http"]
     },

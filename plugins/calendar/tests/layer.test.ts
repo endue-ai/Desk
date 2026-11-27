@@ -54,6 +54,36 @@ type Drawn = { occurrences: Array<{ title: string }> };
 const titles = (state: Drawn) => state.occurrences.map((o) => o.title);
 
 describe("the system calendar's layer", () => {
+  it("lets an agent find visible system events and overlaps, and refuses to edit a system event", async () => {
+    const overlap = event(
+      "review",
+      "System review",
+      "2026-10-30T10:30:00+09:00",
+      "2026-10-30T11:30:00+09:00",
+      WORK,
+    );
+    const { host } = await mount({
+      handlers: disk({ [A.path]: TEAM }),
+      grants: [LAYER],
+      items: [overlap],
+    });
+    await host.command("desk.files.visit", A);
+    const span = { from: "2026-10-30", to: "2026-10-31" };
+    const answer = (await host.command("endue.calendar.events", span)) as { items: EventItem[] };
+    const system = answer.items.find((item) => item.source.connector === "desk.calendar");
+    expect(system).toMatchObject({ title: "System review", raw: { readOnly: true } });
+    expect(await host.command("endue.calendar.conflicts", span)).toMatchObject({
+      conflicts: [{ a: { title: "Design review" }, b: { title: "System review" }, minutes: 30 }],
+    });
+    await expect(
+      host.command("endue.calendar.delete", { id: system?.id, start: system?.start }),
+    ).rejects.toThrow(/read.only/i);
+    await host.command("endue.calendar.layer", { calendar: WORK_KEY, on: false });
+    expect(await host.command("endue.calendar.events", span)).toMatchObject({
+      items: [expect.objectContaining({ title: "Design review" })],
+    });
+  });
+
   it("the system calendar's events appear from the index beside the file's, with their calendar's name and colour", async () => {
     const { host, view, params, app } = await mount({
       handlers: disk({ [A.path]: TEAM }),

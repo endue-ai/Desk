@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { notReachable } from "../ui/errors.js";
 import { FIRST_ASK_MS } from "../ui/reach.js";
-import { COMMANDS } from "../ui/schemas.js";
 import { EVENT_ARGS } from "../ui/watch.js";
 import {
   DAEMON_DOWN,
@@ -46,18 +45,9 @@ describe("the engine", () => {
     expect(m.docker.last("ps")?.args.slice(0, 3)).toEqual(["ps", "-a", "--no-trunc"]);
   });
 
-  it("registers every command with its description and argument schema", async () => {
+  it("mounts handlers without registering commands already declared in the manifest", async () => {
     const m = await mount();
-    const registered = m.params("cmd.register") as Array<{
-      id: string;
-      argsSchema: { type: string };
-    }>;
-    expect(registered.map((r) => r.id)).toEqual(COMMANDS.map((c) => c.id));
-    expect(registered.every((r) => r.argsSchema.type === "object")).toBe(true);
-    const run = registered.find((r) => r.id === "endue.docker.run") as unknown as {
-      argsSchema: { required: string[] };
-    };
-    expect(run.argsSchema.required).toEqual(["image"]);
+    expect(m.params("cmd.register")).toEqual([]);
   });
 
   it("says Docker is not running on the overview, and recovers on refresh", async () => {
@@ -346,6 +336,7 @@ describe("detail, shell and files", () => {
         command: "docker",
         args: ["--context", "build", "exec", "-it", "--", WEB_ID, "/bin/sh"],
         title: "shop-web-1: /bin/sh",
+        dockerShell: true,
       },
     ]);
     await m.host.invoke("endue.docker.shell", {

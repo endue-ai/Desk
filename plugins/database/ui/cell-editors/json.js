@@ -2,6 +2,7 @@
 // as strict JSON with the line and column of what is wrong, Format (Alt+F) to lay it out again,
 // Mod+Enter to keep. A value that only differs in space from the cell's is no change.
 
+import { t } from "../strings/index.js";
 import { formatJson, sameJson, scanJson } from "./json-text.js";
 import { field, textOf } from "./panel.js";
 
@@ -37,7 +38,7 @@ export const json = {
           return { value: ctx.value };
         return done;
       },
-      tools: [{ label: "Format", name: "format", key: "KeyF", run: format }],
+      tools: [{ label: t("cellEditors.json.format"), name: "format", key: "KeyF", run: format }],
     };
   },
 };
