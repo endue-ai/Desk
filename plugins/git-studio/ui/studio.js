@@ -14,6 +14,7 @@ import { createStatusbar, createToolbar, welcome } from "./view-chrome.js";
 import { createDetail } from "./view-detail.js";
 import { createDiffView } from "./view-diff.js";
 import { createGraphView } from "./view-graph.js";
+import { createOriginView } from "./view-origin.js";
 import { createSidebar } from "./view-sidebar.js";
 import { createWip } from "./view-wip.js";
 
@@ -100,6 +101,7 @@ export function createStudio(ctx, doc) {
     },
   });
   const center = createCenter(app, $("graph-host"), $("view-host"));
+  const origin = createOriginView(app, ctx.bridge, center.page("origin"), layer);
   const diff = createDiffView(app, center.page("diff"), {
     onBack: () => center.back(),
     onPatch: (patch, op, what) => actions.patch(patch, op, what),
@@ -190,11 +192,20 @@ export function createStudio(ctx, doc) {
     switch (action) {
       case "refresh":
         return app.refresh();
+      case "origin":
+        if (app.get().center === "origin") {
+          center.back();
+          toolbar.focusOrigin();
+        } else {
+          center.show("origin");
+          origin.focus();
+        }
+        return;
       case "sidebar":
         app.set({ sidebar: !app.get().sidebar });
         return app.keep();
       case "repo":
-        return app.set({ repo: null, snapshot: null });
+        return app.set({ repo: null, snapshot: null, center: "graph" });
       case "branch":
         return branchPicker(event);
       case "search":
@@ -281,7 +292,8 @@ export function createStudio(ctx, doc) {
   }
 
   function layout() {
-    const { repo, sidebar: side } = app.get();
+    const { repo, sidebar: side, center } = app.get();
+    shell.classList.toggle("in-origin", center === "origin");
     shell.classList.toggle("no-repo", !repo);
     shell.classList.toggle("no-sidebar", !side);
     if (!repo)
@@ -299,6 +311,7 @@ export function createStudio(ctx, doc) {
     if (
       state.repo !== previous.repo ||
       state.sidebar !== previous.sidebar ||
+      state.center !== previous.center ||
       state.error !== previous.error
     )
       layout();
@@ -314,6 +327,10 @@ export function createStudio(ctx, doc) {
     const target = /** @type {HTMLElement} */ (event.target);
     const typing = target.closest("input, textarea, select, [contenteditable]");
     const mod = event.metaKey || event.ctrlKey;
+    if (app.get().center === "origin") {
+      if (event.key === "Escape" && !event.defaultPrevented) void tool("origin");
+      return;
+    }
     if (event.key === "/" && !typing) {
       event.preventDefault();
       toolbar.focusSearch();

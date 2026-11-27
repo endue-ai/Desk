@@ -93,10 +93,35 @@ describe("desk.windows.pop-out and desk.windows.dock", () => {
     expect(kept).toEqual(["endue.notes on the canvas", "endue.notes out"]);
   });
 
-  it("refuse a split window, one on another desktop and a dock of one not out", async () => {
+  it("take a window of tabs out with the tab it shows, whatever its plugin", async () => {
+    const { commands, store, kept, wm } = await desk();
+    const tabs = [
+      { id: "p1", view: "plugin:endue.terminal" },
+      { id: "p2", view: "plugin:endue.terminal@2" },
+    ];
+    await wm.edit([
+      { op: "adopt", id: "endue.terminal", title: "Terminal" },
+      { op: "adopt", id: "endue.terminal@2", title: "Terminal" },
+      place("1", at("terminal", 100, 500, { plugin: "endue.terminal", tabs, tab: "p2" })),
+      { op: "focus", window: "terminal", tab: "p2" },
+    ]);
+    expect(poppable(store.get(), "terminal")).toBe(true);
+    expect(await commands.run(POP_OUT, { window: "terminal" })).toEqual({ window: "terminal" });
+    const out = store.get().wm.layouts["1"]?.surfaces.find((p) => p.id === "terminal");
+    expect(out?.tabs?.map((t) => t.view)).toEqual(["plugin:endue.terminal@2"]);
+    // Its other tab stays where the window was, in a window of its own.
+    const left = windowsOf(store.get()).filter((p) => p.id !== "notes" && p.id !== "split");
+    expect(left.map((p) => [p.tabs?.map((t) => t.view), p.x, p.y])).toEqual([
+      [["plugin:endue.terminal"], 100, 500],
+    ]);
+    // The page that moves is the tab's: its plugin kept its state first.
+    expect(kept).toEqual(["endue.terminal@2 on the canvas"]);
+  });
+
+  it("refuse a window of the desk's own view, one on another desktop and a dock of one not out", async () => {
     const { commands, store } = await desk();
     expect(poppable(store.get(), "split")).toBe(false);
-    await expect(commands.run(POP_OUT, { window: "split" })).rejects.toThrow(/one plugin/);
+    await expect(commands.run(POP_OUT, { window: "split" })).rejects.toThrow(/shows a plugin/);
     await expect(commands.run(POP_OUT, { window: "tomorrow" })).rejects.toThrow(
       /not on this desktop/,
     );

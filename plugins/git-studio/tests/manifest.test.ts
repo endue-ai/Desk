@@ -1,4 +1,4 @@
-// The manifest is valid against specs/plugin/v0, asks only for the git program (and the brain),
+// The manifest is valid against specs/plugin/v0, scopes Git and the hosted tools,
 // and every command it declares is one the plugin answers.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,9 +44,15 @@ describe("plugin.json", () => {
     expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
   });
 
-  it("spawns only git, without a broad grant", () => {
+  it("names only git and the two provider CLIs, without a broad grant", () => {
     const spawn = manifest.permissions.filter((p) => p.permission === "proc:spawn");
-    expect(spawn).toEqual([{ permission: "proc:spawn", commands: ["git"] }]);
+    expect(spawn).toEqual([
+      { permission: "proc:spawn", commands: ["git"] },
+      { permission: "proc:spawn", commands: ["gh", "glab"] },
+    ]);
+    expect(manifest.permissions.filter((p) => p.permission === "shell:open")).toEqual([
+      { permission: "shell:open", schemes: ["https"] },
+    ]);
     expect(
       manifest.permissions.map((p) => p.permission).filter((p) => p.startsWith("fs:")),
     ).toEqual([]);

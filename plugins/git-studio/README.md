@@ -8,7 +8,12 @@ centre: diffs (unified or side by side, words marked, hunks and lines staged), t
 theirs, the output, by hand or with AI), a file's history and blame. Right-click anything for its
 operations; drop a branch on another to merge or rebase; Mod+Z undoes the last move of HEAD.
 
-Every operation is the git program through `proc.spawn` without a shell (`ui/run.js`, `endue.git`'s
+Open **Origin** to see open and recent pull or merge requests, nested prerequisites, recent CI runs
+with hover or keyboard job details, and releases. Create, close, reopen and merge requests, and
+publish, edit or delete releases after review. Use `gh auth login` for github.com or `glab auth login`
+for gitlab.com. Both CLIs need to be on Desk's PATH when used. Publishing uses an existing remote tag.
+
+Every local operation is the git program through `proc.spawn` without a shell (`ui/run.js`, `endue.git`'s
 runner), `--` before paths. No `fs:*` grant: files are read and written through git (conflicts resolve
 with `hash-object` and `update-index`). AI is `brain.ask` with a tool per question (`ui/ai.js`).
 Commands `endue.git-studio.*` serve the palette and Eris. `Mod+Alt+Shift+G` opens the window.
@@ -20,19 +25,16 @@ deletion, discard, hard reset and proceeding with a paused operation use command
 | Permission | Why |
 | --- | --- |
 | `proc:spawn` (`git`) | Run the git program, and only it, in the repository |
+| `proc:spawn` (`gh`, `glab`), `shell:open` (HTTPS) | Read and manage the selected origin and open provider pages |
 | `brain:ask` | Write commit messages, explain commits, suggest conflict resolutions, describe branches |
 
 | File | Purpose |
 | --- | --- |
 | `ui/run.js`, `repo.js`, `history.js` | git over the bridge; the reads: snapshot, commit, diff, file log, blame, deep search |
-| `ui/parse*.js`, `graph.js`, `conflict.js` | Parsers, the lane layout (per-row segments), conflict chunks |
-| `ui/ops.js`, `ops-history.js` | The writes as git arguments |
 | `ui/app.js`, `actions*.js`, `menus.js`, `commands*.js` | State without DOM; what clicks, menus and commands do |
 | `ui/studio.js`, `features*.js`, `center.js` | The window put together; conflict, history, blame, AI |
 | `ui/view-*.js`, `diff-*.js`, `overlay.js`, `dom.js` | The views, dialogs and menus; `style*.css` theme tokens only |
-| `dev/` | The preview outside the desk: `serve.mjs`, the SDK shim, a demo repository, `shot.mjs` |
 
 ```bash
 pnpm exec vitest run plugins/git-studio
-node plugins/git-studio/dev/demo-repo.mjs /tmp/gs && node plugins/git-studio/dev/serve.mjs --repo /tmp/gs/lumen
 ```

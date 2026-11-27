@@ -35,6 +35,23 @@ describe("the kinds", () => {
     expect(kinds).toEqual(["ui", "logic", "connector", "view", "policy", "theme"]);
   });
 
+  it("scaffolds a visualization as a UI plugin with documented agent tools", () => {
+    const files = renderPlugin({
+      id: "local.revenue",
+      name: "Revenue <2026>",
+      preset: "visualization",
+    });
+    const manifest = JSON.parse(files["plugin.json"] ?? "null") as PluginManifest;
+    expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
+    expect(manifest.kind).toBe("ui");
+    expect(manifest.contributes?.commands?.map(({ id, agent }) => ({ id, agent }))).toEqual([
+      { id: "local.revenue.get-data", agent: true },
+      { id: "local.revenue.set-data", agent: true },
+    ]);
+    expect(files["ui/index.html"]).toContain("Revenue &lt;2026&gt;");
+    expect(Object.keys(files).every((path) => !path.endsWith(".rs"))).toBe(true);
+  });
+
   it.each(kinds)(
     "%s: a manifest of that kind that specs/plugin v0 accepts, and one test",
     (kind) => {

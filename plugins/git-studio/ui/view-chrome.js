@@ -7,7 +7,7 @@ import { nameOf } from "./repo.js";
 /**
  * @typedef {import("./app.js").App} App
  * @typedef {"repo" | "branch" | "undo" | "redo" | "fetch" | "pull" | "push" | "new-branch" | "stash"
- *   | "pop" | "ai" | "sidebar" | "refresh" | "search"} ToolAction
+ *   | "pop" | "ai" | "sidebar" | "refresh" | "search" | "origin"} ToolAction
  * @typedef {"text" | "code" | "path"} SearchMode
  * @typedef {{ onTool(action: ToolAction, event: MouseEvent): void, onOpen(path: string): void,
  *   onSearch(query: string, mode: SearchMode): void, onJump?(step: number): void }} Hooks
@@ -78,6 +78,13 @@ export function createToolbar(app, host, hooks) {
   pull.append(pullBadge);
   const push = tool("push", "push", "Push");
   push.append(pushBadge);
+  const originButton = tool(
+    "origin",
+    "cloud",
+    "Origin",
+    "Show pull requests, CI and releases on origin",
+  );
+  originButton.setAttribute("aria-pressed", "false");
   host.replaceChildren(
     h(
       "div.tool-group.pickers",
@@ -86,6 +93,7 @@ export function createToolbar(app, host, hooks) {
       h("span.tool-sep", null, icon("chevronRight", 14)),
       branchButton,
     ),
+    h("div.tool-group.origin-navigation", null, originButton),
     h(
       "div.tool-group",
       null,
@@ -116,7 +124,12 @@ export function createToolbar(app, host, hooks) {
   );
 
   function draw() {
-    const { snapshot, repo } = app.get();
+    const { snapshot, repo, center } = app.get();
+    const onOrigin = center === "origin";
+    originButton.setAttribute("aria-pressed", String(onOrigin));
+    originButton.title = onOrigin
+      ? "Return to the commit graph"
+      : "Show pull requests, CI and releases on origin";
     fill(
       repoButton,
       icon("repo", 16),
@@ -148,11 +161,17 @@ export function createToolbar(app, host, hooks) {
     }
   }
   app.subscribe((state, previous) => {
-    if (state.snapshot !== previous.snapshot || state.repo !== previous.repo) draw();
+    if (
+      state.snapshot !== previous.snapshot ||
+      state.repo !== previous.repo ||
+      state.center !== previous.center
+    )
+      draw();
   });
   draw();
   return {
     focusSearch: () => search.focus(),
+    focusOrigin: () => originButton.focus(),
     setSearch: (/** @type {string} */ q) => {
       search.value = q;
     },
@@ -192,7 +211,12 @@ export function createStatusbar(app, host) {
           ? h("span.sb-item", { class: `sb-${notice.tone}` }, notice.text)
           : null,
       busy || loading
-        ? h("span.sb-item.sb-busy", null, h("span.spinner"), busy ? "Running git…" : "Reading…")
+        ? h(
+            "span.sb-item.sb-busy",
+            null,
+            h("span.spinner"),
+            busy ? "Running commands…" : "Reading…",
+          )
         : null,
       snapshot
         ? h(

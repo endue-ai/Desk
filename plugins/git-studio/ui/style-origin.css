@@ -1,0 +1,242 @@
+/* The Origin dashboard takes the workspace so merge stacks and remote activity can sit together. */
+.studio.in-origin .workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.studio.in-origin :is(.sidebar, .panel, .banner, .toolbar .tool-sep, .tool-search-wrap, .tool-spacer),
+.studio.in-origin .tool-group:not(.pickers, .origin-navigation),
+.studio.in-origin .picker + .tool-sep + .picker {
+  display: none;
+}
+
+.origin-navigation [aria-pressed="true"] {
+  background: var(--desk-hover);
+}
+
+.origin-page {
+  gap: var(--desk-space-4);
+  padding: var(--desk-space-5);
+}
+
+.origin-page [hidden] {
+  display: none;
+}
+
+.origin-header,
+.origin-section-head {
+  flex-wrap: wrap;
+}
+
+.origin-header .desk-header-title {
+  font-size: var(--desk-text-xl);
+}
+
+.origin-header .desk-header-desc,
+.origin-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+}
+
+.origin-summary,
+.origin-grid {
+  display: grid;
+  gap: var(--desk-space-3);
+}
+
+.origin-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.origin-summary-item.desk-btn {
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  height: auto;
+  min-width: 0;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-3);
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.origin-summary-item strong {
+  font-size: var(--desk-text-base);
+}
+
+.origin-grid {
+  align-items: start;
+  gap: var(--desk-space-5);
+}
+
+.origin-section {
+  min-width: 0;
+  scroll-margin-block-start: var(--desk-space-3);
+}
+
+.origin-section-head {
+  padding-block-end: var(--desk-space-2);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.origin-section-head .desk-header-title {
+  font-size: var(--desk-text-base);
+}
+
+.origin-section > :is(.desk-btn, .origin-filters) {
+  margin-block-start: var(--desk-space-2);
+}
+
+.origin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.origin-row,
+.origin-job {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--desk-space-2);
+  min-width: 0;
+  padding: var(--desk-space-2) 0;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.origin-row-text {
+  display: grid;
+  min-width: 0;
+  gap: var(--desk-space-1);
+  overflow-wrap: anywhere;
+}
+
+.origin-row-text > :first-child,
+.origin-row-text > .origin-link {
+  font-weight: 600;
+}
+
+.origin-inline,
+.origin-message {
+  font-size: var(--desk-text-xs);
+}
+
+.origin-branches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1) var(--desk-space-2);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.origin-children {
+  margin-inline-start: var(--desk-space-2);
+  padding-inline-start: var(--desk-space-3);
+  border-inline-start: 1px solid var(--desk-input);
+}
+
+.origin-children.origin-deep {
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+}
+
+.origin-link {
+  color: var(--desk-primary-text);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.origin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+}
+
+.origin-status .desk-dot,
+.origin-manage {
+  flex: none;
+}
+
+.origin-jobs {
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-inline-start: 1px solid var(--desk-input);
+  background: var(--desk-hover);
+}
+
+.origin-job:last-child {
+  border-bottom: 0;
+}
+
+.origin-message {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: var(--desk-space-2) 0;
+}
+
+.origin-notice:empty {
+  display: none;
+}
+
+.origin-page .desk-error {
+  margin: var(--desk-space-2) 0;
+}
+
+.origin-dialog-context {
+  display: grid;
+  gap: var(--desk-space-1);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 720px) {
+  .origin-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  .origin-requests {
+    grid-row: span 2;
+  }
+
+  #origin-runs > .origin-list {
+    max-block-size: calc(8 * var(--desk-control-lg));
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1120px) {
+  .origin-grid {
+    grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr));
+  }
+
+  .origin-requests {
+    grid-row: auto;
+  }
+
+  #origin-runs > .origin-list {
+    max-block-size: none;
+  }
+}
+
+@media (max-width: 719px) {
+  .studio:not(.in-origin) .origin-navigation {
+    order: -1;
+  }
+}
+
+@media (max-width: 399px) {
+  .origin-page {
+    padding: var(--desk-space-3);
+  }
+
+  .origin-summary {
+    gap: var(--desk-space-1);
+  }
+
+  .origin-summary-item.desk-btn {
+    padding: var(--desk-space-2);
+  }
+}

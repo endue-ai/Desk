@@ -140,6 +140,9 @@ const core = browserCore({
     ...(params.has("files")
       ? Object.values(manifests).filter((m) => ["endue.images", "endue.explorer"].includes(m.id))
       : []),
+    ...(params.has("imageStudio")
+      ? Object.values(manifests).filter((m) => m.id === "endue.image-studio")
+      : []),
   ],
   handlers: {
     ...(params.has("files") ? files : {}),
@@ -174,7 +177,13 @@ const core = browserCore({
     },
   },
 });
-if (params.has("files")) await grantFilePlugins(core, params.has("heavy") ? ["endue.notes"] : []);
+if (params.has("files")) {
+  const more = [
+    ...(params.has("heavy") ? ["endue.notes"] : []),
+    ...(params.has("imageStudio") ? ["endue.image-studio"] : []),
+  ];
+  await grantFilePlugins(core, more);
+}
 // Snapshots use a fixed wall clock and macOS shortcuts. Input tests can request the other platform.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const endue = params.has("endue") ? studioHandlers({ epoch }) : undefined;
