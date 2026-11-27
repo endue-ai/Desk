@@ -80,6 +80,10 @@ export const OFF_MAIN = {
       modules: ["ui/import-copy/worker.js", "ui/import-copy/xlsx.js", "ui/vendor/sheetjs/xlsx.mjs"],
     },
   ],
+  "image-studio": {
+    worker: "ui/worker.js",
+    modules: ["ui/worker.js", "ui/decode.js", "ui/engine.js"],
+  },
   notes: { worker: "ui/count-worker.js", modules: ["ui/count-worker.js", "ui/count.js"] },
   player: {
     worker: "ui/software/worker.js",

@@ -123,6 +123,8 @@ const USES: &str = r#"{
       "desk.buffers.update", "endue.git.discard-patch"] }],
   "endue.git-studio": [{ "permission": "proc:spawn", "commands": ["git"] }, { "permission": "brain:ask" }],
   "desk.github": [{ "permission": "net:fetch", "hosts": ["api.github.com"] }],
+  "endue.image-studio": [{ "permission": "fs:read", "paths": ["~/Pictures/source.png"] },
+    { "permission": "fs:write", "paths": ["/Volumes/USB/result.png"] }],
   "endue.images": [{ "permission": "cmd:invoke", "ids": ["desk.files.changed", "desk.files.open",
     "desk.buffers.close"] }],
   "desk.inspector": [{ "permission": "perm:manage" }, { "permission": "plugin:manage" },

@@ -36,6 +36,7 @@ const plugins: Record<string, string> = {
   "endue.sidebar": join(repo, "plugins/sidebar"),
   "endue.toolbar": join(repo, "plugins/toolbar"),
   "endue.notes": join(repo, "plugins/notes"),
+  "endue.image-studio": join(repo, "plugins/image-studio"),
   "endue.images": join(repo, "plugins/images"),
   "endue.player": join(repo, "plugins/player"),
   "endue.explorer": join(repo, "plugins/explorer"),

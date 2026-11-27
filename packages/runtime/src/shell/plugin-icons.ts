@@ -26,6 +26,7 @@ const PLUGIN_ICONS: Record<string, IconName> = {
   "endue.explorer": "folder",
   "endue.git": "branch",
   "endue.git-studio": "branch",
+  "endue.image-studio": "image",
   "endue.images": "image",
   "desk.inspector": "eye",
   "endue.local-agents": "user",

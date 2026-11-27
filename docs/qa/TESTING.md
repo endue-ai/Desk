@@ -518,6 +518,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `git` | Status, log and diff parsed (the runner stops git at 8 MiB) | Frame | Stays: a 7.8 MB diff parses in 5 ms and a 60k-file status in 8 ms (Node); a worker's reply would cost more to clone (33 ms); the cost is the diff's DOM (follow-up: draw only the rows in view) | 1.5 and 7.8 MB diff, 60k-entry status (Node) |
 | `git-studio` | Status, refs, log, diffs, blame and the graph's lane layout (the runner stops git at 8 MiB) | Frame | Stays: the layout of 1,000 commits takes well under 100 ms, the graph draws only the rows in view, a diff stops at 4,000 lines and blame at 6,000 until asked | `graph.test.ts` (1,000 commits), `studio.dom.test.ts` |
 | `github` | None: an http connector the core runs | — | — | — |
+| `image-studio` | Raster decode, pixel edits, layer compositing, brush and mask strokes, preview scaling and PNG encoding | Worker with a Rust WebAssembly engine | Transferred preview pixels up to 1,200 pixels per side; raster and history limits enforced by Rust | `image-studio.spec.ts`, `plugins/image-studio/tests/engine.test.ts`, `crates/desk-image-studio/tests/layers.rs` |
 | `images` | TIFF, EXR, DDS, DICOM and more decoded | Worker over 8 MiB, frame below | Unchanged (confirmed; out of scope) | `image-files.spec.ts` |
 | `inspector` | Tables ≤ 2000 rows redrawn every 2–5 s; export JSON once | Frame | Stays: bounded | Golden export |
 | `item` | None: a data-only view plugin | — | — | — |

@@ -1,0 +1,299 @@
+{
+  "id": "endue.image-studio",
+  "name": "Image Studio",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Edit raster images with layers, masks, brushes, geometry and color adjustments. Export the visible composite as PNG.",
+  "permissions": [
+    { "permission": "fs:read", "paths": ["/**"] },
+    { "permission": "fs:write", "paths": ["/**"] }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Image Studio",
+      "placement": "center",
+      "window": {
+        "size": { "width": 1000, "height": 700 }
+      }
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.image-studio.open",
+        "title": "Image Studio: Open an image",
+        "description": "Open a PNG, JPEG or WebP from an exact path already granted to Image Studio. Export or discard a current draft before replacing it.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1 }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.image-studio.inspect",
+        "title": "Image Studio: Inspect the current image",
+        "description": "Read the document ID, revision, dimensions, ordered layers with IDs, and undo and redo availability. Use the document ID and revision for edits.",
+        "agent": true,
+        "readOnly": true,
+        "args": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.image-studio.apply",
+        "title": "Image Studio: Apply image edits",
+        "description": "Apply an ordered batch of up to 16 edits to the identified revision. Geometry transforms the canvas and its masks; filters may name a layer. Layers are ordered bottom to top and brush points are in canvas pixels.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "document": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "operations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "crop" },
+                      "x": { "$ref": "#/$defs/coordinate" },
+                      "y": { "$ref": "#/$defs/coordinate" },
+                      "width": { "$ref": "#/$defs/edge" },
+                      "height": { "$ref": "#/$defs/edge" }
+                    },
+                    "required": ["op", "x", "y", "width", "height"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "resize" },
+                      "width": { "$ref": "#/$defs/edge" },
+                      "height": { "$ref": "#/$defs/edge" }
+                    },
+                    "required": ["op", "width", "height"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "rotate" },
+                      "degrees": { "enum": [90, 180, 270] }
+                    },
+                    "required": ["op", "degrees"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "flip" },
+                      "axis": { "enum": ["horizontal", "vertical"] }
+                    },
+                    "required": ["op", "axis"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "adjust" },
+                      "brightness": { "$ref": "#/$defs/adjustment" },
+                      "contrast": { "$ref": "#/$defs/adjustment" },
+                      "saturation": { "$ref": "#/$defs/adjustment" },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op", "brightness", "contrast", "saturation"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "invert" },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "blur" },
+                      "radius": { "type": "integer", "minimum": 1, "maximum": 32 },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op", "radius"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "sharpen" },
+                      "amount": { "type": "integer", "minimum": 1, "maximum": 100 },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op", "amount"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "add-layer" },
+                      "name": { "$ref": "#/$defs/name" }
+                    },
+                    "required": ["op", "name"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "duplicate-layer" },
+                      "layer": { "$ref": "#/$defs/layer" },
+                      "name": { "$ref": "#/$defs/name" }
+                    },
+                    "required": ["op", "layer"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "set-layer" },
+                      "layer": { "$ref": "#/$defs/layer" },
+                      "name": { "$ref": "#/$defs/name" },
+                      "opacity": { "type": "integer", "minimum": 0, "maximum": 100 },
+                      "visible": { "type": "boolean" }
+                    },
+                    "required": ["op", "layer"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "move-layer" },
+                      "layer": { "$ref": "#/$defs/layer" },
+                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
+                    },
+                    "required": ["op", "layer", "index"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "remove-layer" },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op", "layer"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "reset-mask" },
+                      "layer": { "$ref": "#/$defs/layer" }
+                    },
+                    "required": ["op", "layer"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "op": { "const": "stroke" },
+                      "layer": { "$ref": "#/$defs/layer" },
+                      "mode": { "enum": ["paint", "erase", "mask-hide", "mask-reveal"] },
+                      "radius": { "type": "integer", "minimum": 1, "maximum": 256 },
+                      "strength": { "$ref": "#/$defs/strength" },
+                      "color": {
+                        "type": "array",
+                        "items": { "type": "integer", "minimum": 0, "maximum": 255 },
+                        "minItems": 3,
+                        "maxItems": 3
+                      },
+                      "points": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 128,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "x": { "$ref": "#/$defs/coordinate" },
+                            "y": { "$ref": "#/$defs/coordinate" }
+                          },
+                          "required": ["x", "y"],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": ["op", "layer", "mode", "radius", "strength", "points"],
+                    "additionalProperties": false,
+                    "if": {
+                      "properties": {
+                        "mode": { "const": "paint" }
+                      },
+                      "required": ["mode"]
+                    },
+                    "then": { "required": ["color"] }
+                  }
+                ]
+              }
+            }
+          },
+          "required": ["document", "revision", "operations"],
+          "additionalProperties": false,
+          "$defs": {
+            "layer": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+            "coordinate": { "type": "integer", "minimum": 0, "maximum": 16383 },
+            "edge": { "type": "integer", "minimum": 1, "maximum": 16384 },
+            "strength": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "adjustment": { "type": "integer", "minimum": -100, "maximum": 100 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 80 }
+          }
+        }
+      },
+      {
+        "id": "endue.image-studio.undo",
+        "title": "Image Studio: Undo an edit batch",
+        "description": "Undo the last batch for the identified document revision.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "document": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          },
+          "required": ["document", "revision"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.image-studio.redo",
+        "title": "Image Studio: Redo an edit batch",
+        "description": "Redo the next batch for the identified document revision.",
+        "agent": true,
+        "args": {
+          "type": "object",
+          "properties": {
+            "document": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          },
+          "required": ["document", "revision"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.image-studio.export",
+        "title": "Image Studio: Export a PNG",
+        "description": "Export the current image to a destination chosen in the save dialog."
+      }
+    ]
+  }
+}
