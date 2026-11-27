@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{name}}</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+  </head>
+  <body>
+    <header class="desk-bar"><h1 class="desk-bar-title">{{name}}</h1></header>
+    <main class="desk-pane workspace">
+      <section aria-label="Bar chart">
+        <ul id="chart"></ul>
+        <p class="desk-muted" id="empty" hidden>Add data to draw a bar chart.</p>
+      </section>
+      <form id="editor">
+        <label for="rows">Chart data (JSON)</label>
+        <textarea class="desk-field" id="rows" rows="8" spellcheck="false"></textarea>
+        <div><button class="desk-btn desk-btn-primary" type="submit">Update chart</button></div>
+        <p class="desk-error" id="error" role="alert" hidden></p>
+      </form>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

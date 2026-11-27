@@ -1,0 +1,23 @@
+[package]
+name = "desk-image-studio"
+description = "Raster editing and PNG export for the Image Studio plugin."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+png.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+sha2 = "0.11"
+
+[lints]
+workspace = true

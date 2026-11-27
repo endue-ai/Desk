@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Image Studio</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+  </head>
+  <body>
+    <header class="desk-bar toolbar">
+      <button class="desk-btn" id="open" type="button">Open image</button>
+      <button class="desk-btn desk-btn-quiet" id="undo" type="button" disabled>Undo</button>
+      <button class="desk-btn desk-btn-quiet" id="redo" type="button" disabled>Redo</button>
+      <span class="desk-bar-spacer"></span>
+      <button class="desk-btn desk-btn-quiet" id="discard" type="button" hidden>Discard draft</button>
+      <button class="desk-btn desk-btn-primary" id="export" type="button" disabled>Export PNG</button>
+    </header>
+    <p class="desk-error" id="error" role="alert" hidden></p>
+    <main class="workspace">
+      <section class="stage" aria-label="Image preview">
+        <div class="desk-empty" id="empty"><p class="desk-empty-title">Open a PNG, JPEG or WebP to edit it.</p></div>
+        <canvas id="preview" role="img" aria-label="Edited image preview" hidden></canvas>
+      </section>
+      <form id="edit" class="desk-details controls" hidden>
+        <h1>Adjust image</h1>
+        <label for="operation">Edit</label>
+        <select class="desk-field" id="operation">
+          <option value="crop">Crop</option>
+          <option value="resize">Resize</option>
+          <option value="rotate">Rotate</option>
+          <option value="flip">Flip</option>
+          <option value="adjust">Brightness, contrast and saturation</option>
+          <option value="invert">Invert colors</option>
+          <option value="blur">Blur</option>
+          <option value="sharpen">Sharpen</option>
+        </select>
+        <div id="values"></div>
+        <button class="desk-btn" type="submit">Apply edit</button>
+      </form>
+    </main>
+    <footer>
+      <p class="desk-muted" id="status" role="status"></p>
+      <desk-progress label="Processing image" hidden></desk-progress>
+    </footer>
+    <dialog class="desk-dialog" id="confirm-discard" aria-labelledby="discard-title">
+      <h2 id="discard-title">Discard the current draft?</h2>
+      <p>Edits since the last export will be lost.</p>
+      <form method="dialog" class="desk-bar">
+        <button class="desk-btn" value="cancel" autofocus>Keep editing</button>
+        <button class="desk-btn desk-btn-danger" value="discard">Discard draft</button>
+      </form>
+    </dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
