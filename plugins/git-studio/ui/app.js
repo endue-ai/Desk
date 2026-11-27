@@ -9,7 +9,7 @@ import { createRunner } from "./run.js";
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("./repo.js").Snapshot} Snapshot
  * @typedef {import("./repo.js").CommitDetail} CommitDetail
- * @typedef {"graph" | "diff" | "conflict" | "blame" | "history"} Center
+ * @typedef {"graph" | "diff" | "conflict" | "blame" | "history" | "origin"} Center
  * @typedef {{ text: string, tone: "info" | "success" | "danger" }} Notice
  * @typedef {{
  *   repo: string | null, snapshot: Snapshot | null, loading: boolean, error: string | null,

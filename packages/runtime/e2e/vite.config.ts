@@ -46,6 +46,7 @@ const plugins: Record<string, string> = {
   "endue.android-emulator": join(repo, "plugins/android-emulator"),
   "endue.memory": join(repo, "plugins/memory"),
   "endue.database": join(repo, "plugins/database"),
+  "endue.git-studio": join(repo, "plugins/git-studio"),
   "endue.mail": join(repo, "plugins/mail"),
   "endue.projects": join(repo, "plugins/projects"),
   "endue.docs": join(repo, "plugins/docs"),

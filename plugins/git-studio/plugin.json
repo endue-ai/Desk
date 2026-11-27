@@ -4,11 +4,19 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "A graphical Git client: the commit graph of every branch with the work in progress on top, staging by file, hunk or line, diffs side by side, branches, tags, stashes and worktrees, merge, rebase, cherry-pick, revert and reset from the graph, a merge conflict tool, file history and blame, and AI that writes commit messages and explains changes. Every operation runs the git program without a shell.",
+  "description": "A graphical Git client: the commit graph of every branch with the work in progress on top, staging by file, hunk or line, diffs side by side, branches, tags, stashes and worktrees, merge, rebase, cherry-pick, revert and reset from the graph, a merge conflict tool, file history and blame, and AI that writes commit messages and explains changes. Origin shows hosted reviews, CI jobs and releases through GitHub CLI or GitLab CLI.",
   "permissions": [
     {
       "permission": "proc:spawn",
       "commands": ["git"]
+    },
+    {
+      "permission": "proc:spawn",
+      "commands": ["gh", "glab"]
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["https"]
     },
     {
       "permission": "brain:ask"

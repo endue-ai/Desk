@@ -1,5 +1,5 @@
 // Git Studio's runner, the same contract as endue.git's (plugins have no shared code, so it is kept
-// here in full). Runs the git program through the bridge: `proc.spawn` without a shell, output gathered from
+// here in full). Runs a scoped program through the bridge: `proc.spawn` without a shell, output gathered from
 // `proc.output` events by process id until `proc.exit`, a timeout and a cancel that kill, and one
 // ask with `perm.request` when the grant is missing. Every failure is an Error whose message is the
 // sentence the person reads. Output that arrives before the spawn answer names its process is kept.
@@ -8,13 +8,14 @@
  * @typedef {import("@endue-ai/plugin-sdk").PluginBridge} PluginBridge
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
  * @typedef {{ code: number | null, signal: string | null, stdout: string, stderr: string }} Outcome
- * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[], input?: string }} RunOptions
- *   `input` is written to git's stdin, which then closes (`proc.write` with `close`), for `apply -`.
+ * @typedef {"git" | "gh" | "glab"} Program
+ * @typedef {{ cwd?: string, timeoutMs?: number, ok?: number[], input?: string, program?: Program }} RunOptions
+ *   `input` is written to stdin, which then closes (`proc.write` with `close`).
  * @typedef {{ chunks: Uint8Array[], size: number }} Sink
- * @typedef {{ out: Sink, err: Sink, timer: ReturnType<typeof setTimeout> | undefined, settle(outcome: Outcome): void, fail(error: Error, signal?: "term" | "kill"): void }} Job
+ * @typedef {{ program: Program, out: Sink, err: Sink, timer: ReturnType<typeof setTimeout> | undefined, settle(outcome: Outcome): void, fail(error: Error, signal?: "term" | "kill"): void }} Job
  */
 
-/** The scope every call carries: the git program, no PTY. */
+/** The default program scope, with no PTY. */
 export const GIT_SCOPE = Object.freeze({ permission: "proc:spawn", commands: ["git"] });
 
 /** No prompts (a missing credential fails at once), no optional locks, English messages. */
@@ -32,6 +33,20 @@ export const GIT_FLAGS = Object.freeze([
   "-c",
   "core.quotepath=false",
 ]);
+
+const CLI_ENV = Object.freeze({
+  gh: { GH_PROMPT_DISABLED: "1", GH_NO_UPDATE_NOTIFIER: "1", GH_DEBUG: "" },
+  glab: {
+    GLAB_NO_PROMPT: "1",
+    GLAB_CHECK_UPDATE: "0",
+    GLAB_DEBUG: "false",
+    GLAB_DEBUG_HTTP: "false",
+  },
+});
+
+// A Finder-launched app may miss Homebrew. Try common Unix install folders after PATH fails.
+const CLI_PATH_FALLBACK =
+  "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/snap/bin:/home/linuxbrew/.linuxbrew/bin";
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 const OUTPUT_LIMIT = 8 * 1024 * 1024;
@@ -57,7 +72,8 @@ export class GitError extends Error {
  */
 export function createRunner(bridge, options = {}) {
   const onBusy = options.onBusy ?? (() => {});
-  const reason = options.reason ?? ((cwd) => (cwd ? `To run git in ${cwd}` : "To run git"));
+  /** @type {Map<Program, Promise<{ granted: boolean }>>} */
+  const grants = new Map();
   /** @type {Map<string, Job>} */
   const jobs = new Map();
   /** Events for processes whose spawn answer has not arrived yet. @type {Map<string, BridgeEvent[]>} */
@@ -70,7 +86,9 @@ export function createRunner(bridge, options = {}) {
       sink.chunks.push(bytes);
       sink.size += bytes.length;
       if (job.out.size + job.err.size > OUTPUT_LIMIT) {
-        job.fail(new GitError("git wrote more than 8 MiB; the output was dropped."));
+        job.fail(
+          new GitError(`${job.program} wrote more than 8 MiB. Try again with a smaller result.`),
+        );
       }
     } else if (event.event === "proc.exit") {
       job.settle({
@@ -97,55 +115,84 @@ export function createRunner(bridge, options = {}) {
   });
 
   /**
-   * Start git once; when the grant is missing, ask once and try again.
+   * Start the program once. Share the permission request across concurrent reads.
    * @param {string[]} args
    * @param {string | undefined} cwd
+   * @param {Program} program
    */
-  const spawn = async (args, cwd) => {
+  const spawn = async (args, cwd, program) => {
     const params = {
-      command: "git",
-      args: [...GIT_FLAGS, ...args],
+      command: program,
+      args: program === "git" ? [...GIT_FLAGS, ...args] : args,
       ...(cwd ? { cwd } : {}),
-      env: { ...GIT_ENV },
-      scope: { ...GIT_SCOPE, commands: [...GIT_SCOPE.commands] },
+      env: program === "git" ? { ...GIT_ENV } : { ...CLI_ENV[program], NO_COLOR: "1" },
+      scope: scopeOf(program),
+    };
+    const start = async () => {
+      try {
+        return await bridge.call("proc.spawn", params);
+      } catch (error) {
+        if (
+          program === "git" ||
+          codeOf(error) !== "not_found" ||
+          globalThis.navigator?.platform?.startsWith("Win")
+        )
+          throw error;
+        return bridge.call("proc.spawn", {
+          ...params,
+          env: { ...params.env, PATH: CLI_PATH_FALLBACK },
+        });
+      }
     };
     try {
-      return await bridge.call("proc.spawn", params);
+      return await start();
     } catch (error) {
       const code = codeOf(error);
       if (code === "unsupported")
         throw new GitError("This desk cannot run programs yet: proc.spawn is unsupported.");
-      if (code !== "permission_denied") throw new GitError(`Could not run git: ${code}.`);
+      if (code !== "permission_denied") throw spawnError(program, code);
     }
-    const decision = await bridge
-      .call("perm.request", { permission: params.scope, reason: reason(cwd) })
-      .catch(() => ({ granted: false }));
-    if (!decision.granted) throw new GitError("Not allowed to run git.");
+    let request = grants.get(program);
+    if (!request) {
+      const reason =
+        program === "git"
+          ? (options.reason?.(cwd) ?? (cwd ? `To run git in ${cwd}` : "To run git"))
+          : `To access origin through the authenticated ${program} CLI`;
+      request = bridge
+        .call("perm.request", { permission: params.scope, reason })
+        .catch(() => ({ granted: false }))
+        .finally(() => grants.delete(program));
+      grants.set(program, request);
+    }
+    if (!(await request).granted) throw new GitError(`Not allowed to run ${program}.`);
     try {
-      return await bridge.call("proc.spawn", params);
+      return await start();
     } catch (error) {
-      throw new GitError(`Could not run git: ${codeOf(error)}.`);
+      throw spawnError(program, codeOf(error));
     }
   };
 
-  const kill = (/** @type {string} */ procId, /** @type {"term" | "kill"} */ signal) =>
-    bridge
-      .call("proc.kill", { procId, signal, scope: { ...GIT_SCOPE, commands: ["git"] } })
-      .catch(() => {});
+  const kill = (
+    /** @type {string} */ procId,
+    /** @type {"term" | "kill"} */ signal,
+    /** @type {Program} */ program,
+  ) => bridge.call("proc.kill", { procId, signal, scope: scopeOf(program) }).catch(() => {});
 
   /**
-   * Run git with `args` and resolve with what it wrote. A non-zero exit rejects with a `GitError`
-   * whose message is git's own, unless `ok` lists the code. `timeoutMs: 0` waits as long as it takes.
+   * Run the program with `args` and resolve with what it wrote. A non-zero exit rejects with a
+   * `GitError` unless `ok` lists the code. `timeoutMs: 0` waits as long as it takes.
    * @param {string[]} args
    * @param {RunOptions} [options]
    * @returns {Promise<Outcome>}
    */
   const run = async (args, options = {}) => {
-    const { procId } = await spawn(args, options.cwd);
+    const program = options.program ?? "git";
+    const { procId } = await spawn(args, options.cwd, program);
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const outcome = await new Promise((resolve, reject) => {
       /** @type {Job} */
       const job = {
+        program,
         out: { chunks: [], size: 0 },
         err: { chunks: [], size: 0 },
         timer: undefined,
@@ -155,7 +202,7 @@ export function createRunner(bridge, options = {}) {
         },
         fail: (error, signal = "kill") => {
           finish();
-          void kill(procId, signal);
+          void kill(procId, signal, program);
           reject(error);
         },
       };
@@ -169,22 +216,25 @@ export function createRunner(bridge, options = {}) {
       if (timeoutMs > 0) {
         job.timer = setTimeout(() => {
           const seconds = timeoutMs / 1000;
-          job.fail(new GitError(`git ${args[0] ?? ""} took longer than ${seconds} s.`), "term");
+          job.fail(
+            new GitError(`${program} ${args[0] ?? ""} took longer than ${seconds} s.`),
+            "term",
+          );
         }, timeoutMs);
       }
       for (const event of early.get(procId) ?? []) feed(job, event);
       early.delete(procId);
       if (options.input !== undefined) {
-        const scope = { ...GIT_SCOPE, commands: [...GIT_SCOPE.commands] };
+        const scope = scopeOf(program);
         bridge
           .call("proc.write", { procId, data: options.input, close: true, scope })
           .catch((error) =>
-            job.fail(new GitError(`Could not hand git its input: ${codeOf(error)}.`)),
+            job.fail(new GitError(`Could not hand ${program} its input: ${codeOf(error)}.`)),
           );
       }
     });
     if (outcome.code === 0 || (options.ok ?? []).includes(outcome.code ?? -1)) return outcome;
-    throw new GitError(explain(args, outcome), outcome);
+    throw new GitError(explain(args, outcome, program), outcome);
   };
 
   /** Stop every running process (a fetch or push that takes too long). */
@@ -197,7 +247,11 @@ export function createRunner(bridge, options = {}) {
 }
 
 /** What git said, without its `fatal:` and `error:` prefixes, or a plain line about the exit. */
-export function explain(/** @type {string[]} */ args, /** @type {Outcome} */ outcome) {
+export function explain(
+  /** @type {string[]} */ args,
+  /** @type {Outcome} */ outcome,
+  /** @type {Program} */ program = "git",
+) {
   const conflict = outcome.stdout.split("\n").find((line) => line.startsWith("CONFLICT "));
   if (conflict) return conflict;
   const said = outcome.stderr
@@ -206,7 +260,17 @@ export function explain(/** @type {string[]} */ args, /** @type {Outcome} */ out
     .filter((line) => line !== "" && !line.startsWith("hint:"));
   if (said.length > 0) return said.slice(0, 3).join(" ");
   const how = outcome.signal ? `was ended by ${outcome.signal}` : `exited with ${outcome.code}`;
-  return `git ${args[0] ?? ""} ${how}.`;
+  return `${program} ${args[0] ?? ""} ${how}.`;
+}
+
+const scopeOf = (/** @type {Program} */ program) => ({ ...GIT_SCOPE, commands: [program] });
+
+function spawnError(/** @type {Program} */ program, /** @type {string} */ code) {
+  return new GitError(
+    program !== "git" && code === "not_found"
+      ? `Could not find ${program}. Install it on Desk's PATH, sign in with ${program} auth login, and refresh.`
+      : `Could not run ${program}: ${code}.`,
+  );
 }
 
 const codeOf = (/** @type {unknown} */ error) =>
