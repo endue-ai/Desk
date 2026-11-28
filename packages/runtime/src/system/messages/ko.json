@@ -34,6 +34,8 @@
   "system.account.slowDown": "로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요.",
   "system.account.unavailable": "로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
   "system.account.suspended": "정지된 계정이에요. team@endue.ai 로 문의해 주세요.",
+  "system.account.pendingApproval": "승인을 기다리는 계정이에요. 이 이메일 도메인의 가입은 검토한 뒤 열려요.",
+  "system.account.regionUnavailable": "지금 계신 지역에서는 endue 를 쓸 수 없어요.",
   "system.account.rejected": "endue 가 세션 연장을 거절했어요. 지금은 로그인 상태를 유지해요.",
   "system.account.sessionExpired": "다시 로그인이 필요해요.",
   "system.account.failed": "인증에 실패했습니다. 다시 시도해 주세요.",

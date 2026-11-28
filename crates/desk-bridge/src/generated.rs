@@ -3671,7 +3671,7 @@ pub enum AccountScreen {
     SignUp,
 }
 
-/// Which kind of problem the last step ran into, for the runtime to word: offline (endue could not be reached), denied (turned down in the browser), expired (the code ran out), slow-down (too many attempts; endue asked the desk to wait), unavailable (endue answered with a server error), suspended (the account is suspended), rejected (endue refused to renew the session, which the desk keeps), session-expired (the session ended, so the desk signed out), failed (anything else).
+/// Which kind of problem the last step ran into, for the runtime to word: offline (endue could not be reached), denied (turned down in the browser), expired (the code ran out), slow-down (too many attempts; endue asked the desk to wait), unavailable (endue answered with a server error), suspended (the account is suspended), pending-approval (the account waits for endue to approve its sign-up, as sign-ups from some email domains do), region-unavailable (endue is not offered where the person signs in from), rejected (endue refused to renew the session, which the desk keeps), session-expired (the session ended, so the desk signed out), failed (anything else).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AccountProblem {
     #[serde(rename = "offline")]
@@ -3686,6 +3686,10 @@ pub enum AccountProblem {
     Unavailable,
     #[serde(rename = "suspended")]
     Suspended,
+    #[serde(rename = "pending-approval")]
+    PendingApproval,
+    #[serde(rename = "region-unavailable")]
+    RegionUnavailable,
     #[serde(rename = "rejected")]
     Rejected,
     #[serde(rename = "session-expired")]

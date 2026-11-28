@@ -131,6 +131,8 @@ fn reason_of(problem: Problem) -> AccountProblem {
         Problem::SlowDown => AccountProblem::SlowDown,
         Problem::Unavailable => AccountProblem::Unavailable,
         Problem::Suspended => AccountProblem::Suspended,
+        Problem::PendingApproval => AccountProblem::PendingApproval,
+        Problem::RegionUnavailable => AccountProblem::RegionUnavailable,
         Problem::Rejected => AccountProblem::Rejected,
         Problem::SessionExpired => AccountProblem::SessionExpired,
         Problem::Failed => AccountProblem::Failed,

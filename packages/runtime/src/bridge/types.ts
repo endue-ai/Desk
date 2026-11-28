@@ -124,6 +124,8 @@ export interface AccountStatus {
     | "slow-down"
     | "unavailable"
     | "suspended"
+    | "pending-approval"
+    | "region-unavailable"
     | "rejected"
     | "session-expired"
     | "failed";

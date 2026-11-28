@@ -34,6 +34,8 @@
   "system.account.slowDown": "Too many sign-in attempts. Wait a moment and try again.",
   "system.account.unavailable": "Something went wrong while signing in. Please try again in a moment.",
   "system.account.suspended": "This account is suspended. Write to team@endue.ai.",
+  "system.account.pendingApproval": "This account is awaiting approval. Sign-ups from its email domain are reviewed first.",
+  "system.account.regionUnavailable": "endue is not available in your region.",
   "system.account.rejected": "endue refused to renew the session. You stay signed in for now.",
   "system.account.sessionExpired": "Please sign in again.",
   "system.account.failed": "Sign-in failed. Please try again.",

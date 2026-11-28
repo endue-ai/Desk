@@ -95,10 +95,17 @@ impl Account {
         let realm = origin_of(&self.options.auth_url);
         let ours = |page: &str| realm.is_some() && origin_of(page) == realm;
         if ours(&start.verification_uri) && ours(&start.verification_uri_complete) {
-            Ok(start)
-        } else {
-            Err(Problem::Failed)
+            return Ok(start);
         }
+        let page = origin_of(&start.verification_uri_complete);
+        let (page, realm) = (page.as_deref(), realm.as_deref());
+        let line = format!(
+            "sign-in: the code's page is on {}, not endue ID's {}",
+            page.unwrap_or("no origin"),
+            realm.unwrap_or("unknown origin"),
+        );
+        self.options.log.say(&line);
+        Err(Problem::Failed)
     }
 
     fn poll(&self, generation: u64, device_code: &str, verifier: &str, interval: u64, until: u64) {
@@ -150,6 +157,9 @@ impl Account {
     fn approved(&self, generation: u64, tokens: Tokens) {
         let Some(cookie) = tokens.cookie else {
             // No refresh cookie: the session would end with its first token.
+            self.options
+                .log
+                .say("sign-in: the token reply set no endue_rt cookie");
             return self.end(generation, None, Some(Problem::Failed));
         };
         let mut session = Session::new(tokens.access_token, cookie, tokens.expires_in);

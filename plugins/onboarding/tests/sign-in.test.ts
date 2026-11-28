@@ -80,6 +80,9 @@ describe("scene 5: endue ID at auth.endue.ai (ADR 0111)", () => {
     expect(ended("slow-down")?.line).toContain("slow down");
     expect(ended("unavailable")?.line).toContain("isn't answering");
     expect(ended("suspended")?.line).toContain("suspended");
+    expect(ended("pending-approval")).toMatchObject({ retry: "Try again" });
+    expect(ended("pending-approval")?.line).toContain("waiting for approval");
+    expect(ended("region-unavailable")?.line).toContain("not available in your region");
     expect(failure("something-new").line).toBe(SAY.failure);
     // Cancel: back to the entry, no failure.
     expect(step("signing-in", { state: "signed-out" }, "sign-in")).toEqual({ kind: "entry" });
