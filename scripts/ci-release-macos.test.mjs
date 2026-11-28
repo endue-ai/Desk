@@ -67,7 +67,7 @@ test("it attaches the disk images and their checksums and writes the notes' macO
   assert.doesNotMatch(run, /gh release create|git tag|git push/u, "it never makes a release");
 });
 
-test("release-build builds the macOS rows alone for targets: darwin, else all four", () => {
+test("release-build builds the macOS row alone for targets: darwin, else all three", () => {
   const build = workflow("release-build");
   const inputs = build.on.workflow_call.inputs;
   assert.equal(inputs.targets.default, "all");
@@ -77,7 +77,7 @@ test("release-build builds the macOS rows alone for targets: darwin, else all fo
   const [darwin, all] = [...include.matchAll(/'(\[.*?\])'/gu)].map((list) => JSON.parse(list[1]));
   assert.deepEqual(
     all.map((row) => row.target),
-    ["darwin-aarch64", "darwin-x86_64", "windows-x86_64", "linux-x86_64"],
+    ["darwin-aarch64", "windows-x86_64", "linux-x86_64"],
   );
   assert.deepEqual(
     darwin,

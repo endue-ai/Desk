@@ -79,7 +79,7 @@ describe("cef-fetch", () => {
     // The matrix is an expression that picks one of two JSON lists; the last holds every target.
     const lists = [...build.jobs.build.strategy.matrix.include.matchAll(/'(\[.*?\])'/gu)];
     const targets = JSON.parse(lists.at(-1)[1]);
-    assert.equal(targets.length, 4);
+    assert.equal(targets.length, 3, "Apple silicon, Windows and Linux (ADR 0402)");
     for (const { rust } of targets) {
       assert.ok(pin.archives[rust], `cef.json pins an archive for ${rust}`);
       assert.match(pin.archives[rust].name, /_minimal\.tar\.bz2$/u, "the minimal distribution");

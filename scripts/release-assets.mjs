@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // What a GitHub Release a person published carries (release-macos.yml, ADR 0229): the macOS desk's
-// disk images for Apple silicon and Intel under their canonical names (scripts/release-collect.mjs),
-// and a macOS section in the release's notes that links them and says whether Apple knows the build.
+// disk image for Apple silicon (ADR 0402) under its canonical name (scripts/release-collect.mjs),
+// and a macOS section in the release's notes that links it and says whether Apple knows the build.
 //   node scripts/release-assets.mjs version v0.1.0                    prints 0.1.0, or fails
 //   node scripts/release-assets.mjs files dist --version 0.1.0        prints the files to attach
 //   node scripts/release-assets.mjs notes body.md --repo owner/name --tag v0.1.0 --version 0.1.0
@@ -11,10 +11,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { compare, parse } from "./release-version.mjs";
 
-export const MAC_TARGETS = [
-  { target: "darwin-aarch64", label: "Apple silicon" },
-  { target: "darwin-x86_64", label: "Intel" },
-];
+export const MAC_TARGETS = [{ target: "darwin-aarch64", label: "Apple silicon" }];
 export const SUMS = "SHA256SUMS-macos";
 const START = "<!-- release-macos:start -->";
 const END = "<!-- release-macos:end -->";
@@ -62,7 +59,7 @@ export function cliSection({ repo, tag, version }) {
   ].join("\n");
 }
 
-/** The files in `dist` to attach: both disk images and their checksums; a missing one fails. */
+/** The files in `dist` to attach: the disk image and its checksums; a missing one fails. */
 export function macFiles(dist, version, exists = existsSync, cli = false) {
   const names = [...macImages(version), SUMS, ...(cli ? cliFiles(version) : [])];
   const missing = names.filter((name) => !exists(join(dist, name)));

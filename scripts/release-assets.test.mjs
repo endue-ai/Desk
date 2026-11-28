@@ -20,10 +20,7 @@ const RELEASE = { repo: "endue-ai/Desk", tag: "v0.1.0", version: "0.1.0" };
 describe("release-assets", () => {
   it("uses the endue name in every download and installation note from the 0.4 line", () => {
     for (const version of ["0.4.0-beta.1", "0.4.0", "1.0.0"]) {
-      assert.deepEqual(macImages(version), [
-        `endue_${version}_darwin-aarch64.dmg`,
-        `endue_${version}_darwin-x86_64.dmg`,
-      ]);
+      assert.deepEqual(macImages(version), [`endue_${version}_darwin-aarch64.dmg`]);
       const notes = macSection({
         repo: "endue-ai/endue",
         tag: `v${version}`,
@@ -44,26 +41,26 @@ describe("release-assets", () => {
     }
   });
 
-  it("attaches one disk image per macOS target and their checksums, all or nothing", () => {
-    const images = ["endue-desk_0.1.0_darwin-aarch64.dmg", "endue-desk_0.1.0_darwin-x86_64.dmg"];
+  it("attaches the Apple silicon disk image and its checksums, all or nothing (ADR 0402)", () => {
+    const images = ["endue-desk_0.1.0_darwin-aarch64.dmg"];
     assert.deepEqual(macImages("0.1.0"), images);
     assert.deepEqual(
       macFiles("dist", "0.1.0", () => true),
       [...images, SUMS],
     );
     assert.throws(
-      () => macFiles("dist", "0.1.0", (path) => !path.includes("x86_64")),
-      /dist lacks endue-desk_0\.1\.0_darwin-x86_64\.dmg$/u,
+      () => macFiles("dist", "0.1.0", (path) => !path.includes("aarch64")),
+      /dist lacks endue-desk_0\.1\.0_darwin-aarch64\.dmg$/u,
     );
   });
 
-  it("links both images and says an ad-hoc build is not notarised and how to open it", () => {
+  it("links the image and says an ad-hoc build is not notarised and how to open it", () => {
     const adhoc = macSection({ ...RELEASE, signed: false });
     assert.match(
       adhoc,
       /- Apple silicon: \[endue-desk_0\.1\.0_darwin-aarch64\.dmg\]\(https:\/\/github\.com\/endue-ai\/Desk\/releases\/download\/v0\.1\.0\/endue-desk_0\.1\.0_darwin-aarch64\.dmg\)/u,
     );
-    assert.match(adhoc, /- Intel: \[endue-desk_0\.1\.0_darwin-x86_64\.dmg\]/u);
+    assert.doesNotMatch(adhoc, /Intel|x86_64/u);
     assert.match(adhoc, /releases\/download\/v0\.1\.0\/SHA256SUMS-macos\)/u);
     assert.match(adhoc, /not signed with a Developer ID and not notarised/u);
     assert.match(adhoc, /xattr -dr com\.apple\.quarantine "\/Applications\/endue Desk\.app"/u);

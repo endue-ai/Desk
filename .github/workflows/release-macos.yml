@@ -204,4 +204,4 @@ jobs:
             --version "$VERSION" --signed "$SIGNED" "${cli[@]}" > notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
           if [ "$SIGNED" = true ]; then state="signed with the Developer ID and notarised"; else state="ad-hoc signed, not notarised"; fi
-          echo "::notice::$TAG carries the macOS app for Apple silicon and Intel ($state)"
+          echo "::notice::$TAG carries the macOS app for Apple silicon ($state)"
