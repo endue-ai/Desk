@@ -28,9 +28,8 @@ the tag eligible for in-app updates (ADR 0229, ADR 0291).
    `gh release create v0.4.0 --target <commit> --title "endue 0.4.0" --notes-file <reviewed-notes>`, or
    Releases → Draft a new release → Publish.
 2. Run `gh workflow run release-macos --ref main -f tag=v0.4.0` with the published tag. It builds the app at the tag's commit for Apple silicon
-   and Intel (`release-build.yml`), runs the install smoke on each package, and
-   attaches `endue_<version>_darwin-aarch64.dmg`, `endue_<version>_darwin-x86_64.dmg` and
-   `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
+   (`release-build.yml`; Intel is not released, ADR 0402), runs the install smoke on the package, and
+   attaches `endue_<version>_darwin-aarch64.dmg` and `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
 3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
    notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
    ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
@@ -248,7 +247,7 @@ Nothing below is in git, and nothing checks it; set it once, and keep it in step
 
 | Where | Setting |
 | --- | --- |
-| Environment `signing` | deployment branches and tags: custom, branches `main` and `release/v*`, tags `v*` (a run a published release starts is on its tag; **release-macos** creates the environment, open to every ref, when it does not exist); no reviewers |
+| Environment `signing` | deployment branches: custom, `main` only (every workflow that uses it is dispatched on `main`; add `release/v*` only with a ruleset that guards who creates those branches, before running a line); required reviewers (maintainers, self-review allowed while there is one), a wait timer, administrators cannot bypass |
 | Environment `stable` | deployment branches: custom, `main` and `release/v*`; required reviewers (maintainers), prevent self-review |
 | `signing` secrets | `ENDUE_UPDATER_PRIVATE_KEY`, `ENDUE_UPDATER_PRIVATE_KEY_PASSWORD`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; for macOS `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and either `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` (preferred) or `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
 | `stable` secrets | the updater key and its password, the R2 secrets (a token of its own), `RELEASE_APP_KEY` |

@@ -1,8 +1,8 @@
 name: release-build
 
 # Builds one version for the four targets (ADR 0054), called by canary, release and release-final
-# (which builds a candidate's commit again, given as ref; ADR 0092). No macOS
-# universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
+# (which builds a candidate's commit again, given as ref; ADR 0092). macOS is Apple silicon only
+# (darwin-aarch64, ADR 0402): no hosted runner can launch the Intel build. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
 # endue uses the CEF shell (#46, #97, ADR 0145). The build verifies the pinned CEF download and
 # produces cargo-packager's .app (helpers signed one by one) and .dmg, NSIS and MSI, .deb
@@ -12,7 +12,7 @@ name: release-build
 # Each target uploads endue-app-<target> with package names from scripts/release-collect.mjs.
 # A dry run (release-dry-run.yml) stays out of the signing environment, signs with the run's
 # throwaway key, embeds no key in the binary and labels its artifacts endue-app-<target>-unsigned.
-# release-macos.yml asks for both macOS targets. Without an updater key it requests only the
+# release-macos.yml asks for the macOS target. Without an updater key it requests only the
 # first-install disk images.
 on:
   workflow_call:
@@ -32,7 +32,7 @@ on:
         type: string
         default: ""
       targets:
-        description: all four targets, or darwin for the two macOS ones.
+        description: all three targets, or darwin for the macOS one.
         required: false
         type: string
         default: all
@@ -58,12 +58,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # Each row is a target, its runner and its Rust triple: the two macOS rows for targets:
-        # darwin, else all four (scripts/ci-release-macos.test.mjs holds the two lists together).
+        # Each row is a target, its runner and its Rust triple: the macOS row for targets:
+        # darwin, else all three (scripts/ci-release-macos.test.mjs holds the two lists together).
         include: >-
           ${{ fromJSON(inputs.targets == 'darwin'
-          && '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"},{"target":"darwin-x86_64","os":"macos-latest","rust":"x86_64-apple-darwin"}]'
-          || '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"},{"target":"darwin-x86_64","os":"macos-latest","rust":"x86_64-apple-darwin"},{"target":"windows-x86_64","os":"windows-latest","rust":"x86_64-pc-windows-msvc"},{"target":"linux-x86_64","os":"ubuntu-22.04","rust":"x86_64-unknown-linux-gnu"}]') }}
+          && '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"}]'
+          || '[{"target":"darwin-aarch64","os":"macos-latest","rust":"aarch64-apple-darwin"},{"target":"windows-x86_64","os":"windows-latest","rust":"x86_64-pc-windows-msvc"},{"target":"linux-x86_64","os":"ubuntu-22.04","rust":"x86_64-unknown-linux-gnu"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     defaults:
