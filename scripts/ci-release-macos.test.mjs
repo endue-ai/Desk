@@ -33,6 +33,8 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
     ref: expr("needs.gate.outputs.commit"),
     targets: "darwin",
     "installers-only": expr("needs.gate.outputs.updates != 'true'"),
+    "upgrade-path": expr("needs.gate.outputs.updates == 'true' && 'manual' || ''"),
+    "min-from": expr("inputs.min-from || vars.DESK_UPDATE_MIN_FROM"),
   });
   assert.equal(build.secrets, "inherit", "the Apple secrets reach the build");
   assert.doesNotMatch(JSON.stringify(mac), /R2_|release-publish/u);
@@ -43,12 +45,36 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
     step.run?.includes("publish-upgrade-path.sh"),
   );
   assert.equal(publish.if, "needs.gate.outputs.updates == 'true'");
-  assert.ok(publish.env.TAURI_SIGNING_PRIVATE_KEY);
-  assert.equal(mac.jobs.attach.environment, "signing");
-  const apple = mac.jobs.gate.steps.find((step) => step.id === "apple");
-  assert.deepEqual(Object.keys(apple.env), ["APPLE_CERTIFICATE", "APPLE_SIGNING_IDENTITY"]);
-  assert.match(apple.run, /::warning::No Apple signing secrets/u, "an ad-hoc build says so");
-  assert.doesNotMatch(apple.run, /exit 1/u, "and still ships");
+  assert.match(publish.run, /publish-upgrade-path\.sh signed dist "\$VERSION" upgrade-path/u);
+  assert.equal(publish.env, undefined, "it publishes what the build signed, with no key");
+  assert.match(mac.jobs.attach.env.SIGNED, /needs\.build\.outputs\.apple-signed == 'true'/u);
+});
+
+test("a person approves a run once: only build and cli hold the signing environment (#823)", () => {
+  const mac = workflow("release-macos");
+  const held = Object.entries(mac.jobs)
+    .filter(([, job]) => job.environment || job.uses)
+    .map(([name, job]) => [name, job.environment ?? "through release-build"]);
+  assert.deepEqual(held, [
+    ["build", "through release-build"],
+    ["cli", "signing"],
+  ]);
+  assert.equal(mac.jobs.build.needs, "gate");
+  assert.equal(mac.jobs.cli.needs, "gate", "so both wait for the same approval");
+  for (const name of ["gate", "verify", "attach"]) {
+    assert.doesNotMatch(JSON.stringify(mac.jobs[name]), /secrets\./u, `${name} reads no secret`);
+  }
+  const steps = workflow("release-build").jobs.build.steps;
+  const path = steps.find((step) => step.name === "Write and sign the upgrade path");
+  assert.equal(
+    path.if,
+    "inputs.upgrade-path == 'manual' && runner.os == 'macOS' && !inputs.installers-only",
+  );
+  assert.match(path.run, /publish-upgrade-path\.sh sign dist/u);
+  const at = (step) => steps.indexOf(step);
+  const uploads = steps.filter((step) => String(step.uses).startsWith("actions/upload-artifact@"));
+  assert.ok(at(path) < at(uploads[0]), "signed before the packages leave");
+  assert.equal(uploads[1].with.name, "endue-upgrade-path");
 });
 
 test("it attaches the disk images and their checksums and writes the notes' macOS section", () => {
@@ -160,10 +186,7 @@ test("artifacts-from publishes an earlier run's packages after verify, without b
   assert.equal(verify["runs-on"], "macos-latest");
   assert.match(scripts(verify), /verify-signature\.sh --code "\$dmg"/u);
   assert.match(scripts(verify), /verify-signature\.sh --code "\$app"/u);
-  assert.equal(
-    verify.env.DESK_REQUIRE_SIGNED,
-    expr("needs.gate.outputs.signed == 'true' && '1' || ''"),
-  );
+  assert.equal(verify.env.DESK_REQUIRE_SIGNED, "1", "only a Developer ID build is published again");
   assert.match(
     mac.jobs.attach.if,
     /needs\.build\.result == 'success' \|\| \(needs\.gate\.outputs\.reuse == 'true' && needs\.verify\.result == 'success'\)/u,

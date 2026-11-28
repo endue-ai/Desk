@@ -46,6 +46,20 @@ on:
         required: false
         type: boolean
         default: false
+      upgrade-path:
+        description: manual to also write and sign release.json and UPGRADE_PATH.json (artifact endue-upgrade-path) for release-macos.
+        required: false
+        type: string
+        default: ""
+      min-from:
+        description: With upgrade-path, the oldest installed version that can install this one directly.
+        required: false
+        type: string
+        default: ""
+    outputs:
+      apple-signed:
+        description: true when the macOS build is signed with the Developer ID and notarised.
+        value: ${{ jobs.build.outputs.apple-signed }}
 
 permissions:
   contents: read
@@ -55,6 +69,9 @@ jobs:
     name: build (${{ matrix.target }})
     # An empty name is no environment: a dry run reads no secret and runs on any branch.
     environment: ${{ !inputs.dry-run && 'signing' || '' }}
+    # Set by the macOS row only; release-macos builds that row alone.
+    outputs:
+      apple-signed: ${{ steps.pack.outputs.apple-signed }}
     strategy:
       fail-fast: true
       matrix:
@@ -162,6 +179,7 @@ jobs:
       # Connect API key when one is set (no person's Apple ID or two-factor prompt behind it), else
       # with the Apple ID and its app password. The key file lives for this step only.
       - name: Package, sign and notarise endue with cargo-packager
+        id: pack
         if: inputs.shell == 'cef'
         env:
           DESK_WINDOWS_SIGN_COMMAND: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
@@ -201,6 +219,11 @@ jobs:
           unset IN_APPLE_CERTIFICATE IN_APPLE_CERTIFICATE_PASSWORD IN_APPLE_SIGNING_IDENTITY IN_APPLE_API_ISSUER \
             IN_APPLE_API_KEY IN_APPLE_API_KEY_P8 IN_APPLE_ID IN_APPLE_PASSWORD IN_APPLE_TEAM_ID
           node scripts/cef-package.mjs --target "${{ matrix.rust }}" --version "$VERSION" --out target/packager
+          if [ "$RUNNER_OS" = macOS ]; then
+            # Notarisation was required, and cef-package fails without it, so the build is signed.
+            if [ -n "${DESK_REQUIRE_NOTARISATION:-}" ]; then signed=true; else signed=false; fi
+            echo "apple-signed=$signed" >> "$GITHUB_OUTPUT"
+          fi
       - name: Sign the endue app updates
         if: inputs.shell == 'cef' && !inputs.installers-only
         env:
@@ -230,6 +253,16 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.ENDUE_UPDATER_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      # release-macos's signed upgrade path, made here where the updater key already is, so no later
+      # job of that run holds a secret or waits for another approval (#823).
+      - name: Write and sign the upgrade path
+        if: inputs.upgrade-path == 'manual' && runner.os == 'macOS' && !inputs.installers-only
+        env:
+          COMMIT: ${{ inputs.ref || github.sha }}
+          MIN_FROM: ${{ inputs.min-from }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.ENDUE_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
+        run: bash scripts/publish-upgrade-path.sh sign dist "$VERSION" "$COMMIT" "$MIN_FROM" upgrade-path
       # The signed packages leave the job before any test runs: a test that fails (a slow hosted
       # runner) fails the job and keeps every caller from publishing, but the packages stay on the
       # run, and release-macos can publish them with artifacts-from once verify passes (#820).
@@ -237,6 +270,13 @@ jobs:
         with:
           name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
           path: dist/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.upgrade-path == 'manual' && runner.os == 'macOS' && !inputs.installers-only
+        with:
+          name: endue-upgrade-path
+          path: upgrade-path/
           if-no-files-found: error
           retention-days: 7
       - name: Test installation of each endue app package

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publish verified artifacts before the signed path that advertises them. The caller holds the
-# release's signing environment and the channel publication lock.
+# release's signing environment and the channel publication lock; "signed" only uploads what "sign"
+# signed in a build that held them, and needs no secret.
 set -euo pipefail
 
 work="$(mktemp -d)"
@@ -10,6 +11,40 @@ upload() { gh release upload "$tag" "$@" --clobber --repo "$GITHUB_REPOSITORY"; 
 path="$work/UPGRADE_PATH.json"
 
 case "$1" in
+  sign)
+    # release-macos's build (#823): write and sign release.json and UPGRADE_PATH.json into $6 and
+    # upload nothing; its attach job, which holds no secret, publishes them with "signed".
+    dist="$2"
+    version="$3"
+    out="$6"
+    mkdir -p "$out"
+    node scripts/release-manifest.mjs check-files "$dist" --version "$version"
+    node scripts/github-upgrade-path.mjs manifest "$dist" "$version" "$4" "${5:-}" > "$out/release.json"
+    sign "$out/release.json"
+    node scripts/github-upgrade-path.mjs manual "$out/release.json" > "$out/UPGRADE_PATH.json"
+    sign "$out/UPGRADE_PATH.json"
+    exit 0
+    ;;
+  signed)
+    # Publish what "sign" made: the packages, then release.json, then the path that advertises them.
+    dist="$2"
+    version="$3"
+    signed="$4"
+    tag="v$version"
+    node scripts/release-manifest.mjs check-files "$dist" --version "$version"
+    prefix="$(node scripts/release-assets.mjs desktop-prefix "$version")"
+    for name in release.json release.json.sig UPGRADE_PATH.json UPGRADE_PATH.json.sig; do
+      [ -s "$signed/$name" ] || { echo "publish-upgrade-path: $signed lacks $name" >&2; exit 1; }
+    done
+    files=()
+    for sig in "$dist"/"$prefix"*.sig; do files+=("${sig%.sig}" "$sig"); done
+    upload "${files[@]}"
+    upload "$signed/release.json.sig"
+    upload "$signed/release.json"
+    upload "$signed/UPGRADE_PATH.json.sig"
+    upload "$signed/UPGRADE_PATH.json"
+    exit 0
+    ;;
   packages|manual)
     dist="$2"
     version="$3"
@@ -44,7 +79,7 @@ case "$1" in
       fi
     fi
     ;;
-  *) echo "expected packages, manual or index" >&2; exit 1 ;;
+  *) echo "expected sign, signed, packages, manual or index" >&2; exit 1 ;;
 esac
 sign "$path"
 upload "$path.sig"
