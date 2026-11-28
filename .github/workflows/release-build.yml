@@ -211,22 +211,6 @@ jobs:
           for file in target/packager/bundle/{macos,nsis,msi,appimage,deb}/*; do
             pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/$file"
           done
-      - name: Test installation of each endue app package
-        if: inputs.shell == 'cef'
-        env:
-          # Installers only: nothing carries an updater signature, so none is checked (empty is none).
-          DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY) || '' }}
-          WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
-          # Whether the packaging step signed with the Developer ID, without the secrets themselves.
-          APPLE_SIGNED: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
-        run: |
-          shopt -s nullglob
-          if [ "$APPLE_SIGNED" = true ] || [ -n "$WINDOWS_SIGNED" ]; then export DESK_REQUIRE_SIGNED=1; fi
-          display() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args="-screen 0 1280x800x24" "$@"; else "$@"; fi; }
-          for package in target/packager/bundle/*/*; do
-            if [[ "$package" == *.sig ]]; then continue; fi
-            display e2e/smoke/install-and-launch.sh "$package"
-          done
       - name: Collect the endue app packages under their release names
         if: inputs.shell == 'cef'
         env:
@@ -246,6 +230,33 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.ENDUE_UPDATER_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
+      # The signed packages leave the job before any test runs: a test that fails (a slow hosted
+      # runner) fails the job and keeps every caller from publishing, but the packages stay on the
+      # run, and release-macos can publish them with artifacts-from once verify passes (#820).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Test installation of each endue app package
+        if: inputs.shell == 'cef'
+        env:
+          # Installers only: nothing carries an updater signature, so none is checked (empty is none).
+          DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY) || '' }}
+          WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
+          # Hosted macOS runners start the CEF app slowly; elsewhere the script's own 60 s.
+          DESK_SMOKE_READY_WITHIN: ${{ runner.os == 'macOS' && '180' || '' }}
+          # Whether the packaging step signed with the Developer ID, without the secrets themselves.
+          APPLE_SIGNED: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
+        run: |
+          shopt -s nullglob
+          if [ "$APPLE_SIGNED" = true ] || [ -n "$WINDOWS_SIGNED" ]; then export DESK_REQUIRE_SIGNED=1; fi
+          display() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args="-screen 0 1280x800x24" "$@"; else "$@"; fi; }
+          for package in target/packager/bundle/*/*; do
+            if [[ "$package" == *.sig ]]; then continue; fi
+            display e2e/smoke/install-and-launch.sh "$package"
+          done
       - name: Download and install the signed CLI on minimal Debian
         if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
         env:
@@ -256,9 +267,3 @@ jobs:
         env:
           UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY }}
         run: e2e/smoke/verify-signature.sh dist/*_"${VERSION}"_linux-x86_64.deb "$UPDATER_PUBKEY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
-          path: dist/
-          if-no-files-found: error
-          retention-days: 7
