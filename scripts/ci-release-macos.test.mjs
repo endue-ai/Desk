@@ -37,7 +37,7 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
   assert.equal(build.secrets, "inherit", "the Apple secrets reach the build");
   assert.doesNotMatch(JSON.stringify(mac), /R2_|release-publish/u);
   const gate = mac.jobs.gate.steps.find((step) => step.id === "version");
-  assert.equal(gate.env.HAS_UPDATER_KEY, expr("vars.DESK_UPDATER_PUBKEY != ''"));
+  assert.equal(gate.env.HAS_UPDATER_KEY, expr("vars.ENDUE_UPDATER_PUBLIC_KEY != ''"));
   assert.match(gate.run, /"\$author" = Bot \]; then HAS_UPDATER_KEY=false/u);
   const publish = mac.jobs.attach.steps.find((step) =>
     step.run?.includes("publish-upgrade-path.sh"),

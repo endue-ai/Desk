@@ -144,9 +144,9 @@ jobs:
             echo
             echo "Built every target, signed with a throwaway key, wrote the R2 tree to the artifact"
             echo "\`release-dry-run\`. Nothing was uploaded. A real publish (canary.yml) also needs, in"
-            echo "the \`signing\` environment: \`TAURI_SIGNING_PRIVATE_KEY\`, \`TAURI_SIGNING_PRIVATE_KEY_PASSWORD\`,"
+            echo "the \`signing\` environment: \`ENDUE_UPDATER_PRIVATE_KEY\`, \`ENDUE_UPDATER_PRIVATE_KEY_PASSWORD\`,"
             echo "\`R2_ACCOUNT_ID\`, \`R2_ACCESS_KEY_ID\`, \`R2_SECRET_ACCESS_KEY\`, the Apple secrets for a signed"
-            echo "macOS build, and the repository variable \`DESK_UPDATER_PUBKEY\`."
+            echo "macOS build, and the repository variable \`ENDUE_UPDATER_PUBLIC_KEY\`."
             echo
             echo '```'
             (cd release-dry-run && find . -type f | sort)

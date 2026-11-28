@@ -39,7 +39,7 @@ the tag eligible for in-app updates (ADR 0229, ADR 0291).
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
 
-For in-app upgrades, set the repository variable `DESK_UPDATER_PUBKEY` and its matching signing
+For in-app upgrades, set the repository variable `ENDUE_UPDATER_PUBLIC_KEY` and its matching signing
 key in the protected environment. The release then includes the signed updater archives,
 `release.json` and `UPGRADE_PATH.json` with their signatures. To require a stepping stone, set
 `DESK_UPDATE_MIN_FROM` before publishing or supply `min-from` on a workflow dispatch. For example,
@@ -250,15 +250,18 @@ Nothing below is in git, and nothing checks it; set it once, and keep it in step
 | --- | --- |
 | Environment `signing` | deployment branches and tags: custom, branches `main` and `release/v*`, tags `v*` (a run a published release starts is on its tag; **release-macos** creates the environment, open to every ref, when it does not exist); no reviewers |
 | Environment `stable` | deployment branches: custom, `main` and `release/v*`; required reviewers (maintainers), prevent self-review |
-| `signing` secrets | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; for macOS `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and either `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` (preferred) or `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
+| `signing` secrets | `ENDUE_UPDATER_PRIVATE_KEY`, `ENDUE_UPDATER_PRIVATE_KEY_PASSWORD`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; for macOS `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and either `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` (preferred) or `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` |
 | `stable` secrets | the updater key and its password, the R2 secrets (a token of its own), `RELEASE_APP_KEY` |
-| Variables | `DESK_UPDATER_PUBKEY` (repository), `RELEASE_APP_ID` (repository or `stable`); `R2_BUCKET` and `DESK_RELEASES_URL` only to change the defaults; `DESK_WINDOWS_SIGN_COMMAND` (`signing`) once Windows signing is chosen: the command that signs one file, `%1` the file, no spaces inside an argument; its credentials go in `signing` secrets and the packaging step's `env` in `release-build.yml` |
+| Variables | `ENDUE_UPDATER_PUBLIC_KEY` (repository), `RELEASE_APP_ID` (repository or `stable`); `R2_BUCKET` and `DESK_RELEASES_URL` only to change the defaults; `DESK_WINDOWS_SIGN_COMMAND` (`signing`) once Windows signing is chosen: the command that signs one file, `%1` the file, no spaces inside an argument; its credentials go in `signing` secrets and the packaging step's `env` in `release-build.yml` |
 | Release GitHub App | owned by the organisation, installed on this repository only; permissions Contents read and write, Issues read and write, Metadata read; its private key is `RELEASE_APP_KEY` |
 | Rulesets | `RELEASE_APP_ID=<id> scripts/sync-rulesets.sh` applies `.github/rulesets/`: `main`, `release` (who creates lines, review and checks on them) and `protect-release-tags` (who creates `v*`) |
 | Labels | `scripts/sync-labels.sh` adds `release-blocker` |
 
-Make the updater key with `pnpm --filter @endue-ai/desk-app exec tauri signer generate -w desk-updater.key`,
-put the public key in `DESK_UPDATER_PUBKEY` and keep the private key only in the two environments. Each
+Make the updater key with `pnpm --filter @endue-ai/desk-app exec tauri signer generate -w endue-updater.key`,
+put the private key (the file's text) in `ENDUE_UPDATER_PRIVATE_KEY` and its password in
+`ENDUE_UPDATER_PRIVATE_KEY_PASSWORD` in the two environments, and the public key (`endue-updater.key.pub`) in
+`ENDUE_UPDATER_PUBLIC_KEY`. `tauri signer` is only the tool: steps that run it hand it the key as
+`TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)`, and the build reads the public key as `DESK_UPDATER_PUBKEY`. Each
 R2 token is scoped to the one bucket with object read and write, so each can be revoked alone.
 
 Windows builds are unsigned until Authenticode signing is chosen. The candidate is Azure Artifact

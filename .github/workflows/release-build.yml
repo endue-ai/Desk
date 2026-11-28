@@ -173,7 +173,7 @@ jobs:
         env:
           # On Linux, endue loads libcef.so from its installation directory.
           RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-Wl,-rpath,$ORIGIN' || '' }}
-          DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
+          DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.ENDUE_UPDATER_PUBLIC_KEY || '' }}
           DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
           DESK_VERSION: ${{ inputs.version }}
         run: |
@@ -197,8 +197,8 @@ jobs:
       - name: Sign the endue app updates
         if: inputs.shell == 'cef' && !inputs.installers-only
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.ENDUE_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: |
           shopt -s nullglob
           for file in target/packager/bundle/{macos,nsis,msi,appimage,deb}/*; do
@@ -208,7 +208,7 @@ jobs:
         if: inputs.shell == 'cef'
         env:
           # Installers only: nothing carries an updater signature, so none is checked (empty is none).
-          DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY) || '' }}
+          DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY) || '' }}
           WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
         run: |
           shopt -s nullglob
@@ -234,18 +234,18 @@ jobs:
       - name: Sign the standalone CLI
         if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.ENDUE_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
       - name: Download and install the signed CLI on minimal Debian
         if: runner.os == 'Linux' && !inputs.installers-only && hashFiles('scripts/package-cli.py') != ''
         env:
-          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+          DESK_UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY }}
         run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
       - name: Check the .deb against the updater key
         if: runner.os == 'Linux'
         env:
-          UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+          UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY }}
         run: e2e/smoke/verify-signature.sh dist/*_"${VERSION}"_linux-x86_64.deb "$UPDATER_PUBKEY"
       - uses: actions/upload-artifact@v7
         with:
