@@ -83,7 +83,7 @@ mod tests {
         let items = LaunchAgent::in_dir(&dir, ID);
         let done = match_setting(&items, true, Path::new(PROGRAM));
         assert_eq!(done, Ok(Change::Registered));
-        let plist = std::fs::read_to_string(dir.join("ai.endue.desk.plist")).expect("the agent");
+        let plist = std::fs::read_to_string(dir.join("ai.endue.desktop.plist")).expect("the agent");
         assert!(
             plist.contains(&format!("<string>{PROGRAM}</string>")),
             "{plist}"
@@ -113,7 +113,7 @@ mod tests {
             match_setting(&items, false, Path::new(PROGRAM)),
             Ok(Change::Removed)
         );
-        assert!(!dir.join("ai.endue.desk.plist").exists());
+        assert!(!dir.join("ai.endue.desktop.plist").exists());
         let _ = std::fs::remove_dir_all(dir.parent().and_then(Path::parent).expect("the home"));
     }
 
@@ -129,7 +129,7 @@ mod tests {
             match_setting(&items, true, Path::new(PROGRAM)),
             Ok(Change::Registered)
         );
-        let plist = std::fs::read_to_string(dir.join("ai.endue.desk.plist")).expect("the agent");
+        let plist = std::fs::read_to_string(dir.join("ai.endue.desktop.plist")).expect("the agent");
         assert!(!plist.contains("/old/endue-desk"), "{plist}");
         let _ = std::fs::remove_dir_all(dir.parent().and_then(Path::parent).expect("the home"));
     }

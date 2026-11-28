@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static NSString *const appID = @"ai.endue.desk";
+static NSString *const appID = @"ai.endue.desktop";
 static NSFileManager *files(void) { return NSFileManager.defaultManager; }
 
 static int refuse(NSString *reason) {

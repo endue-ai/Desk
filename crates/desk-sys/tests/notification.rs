@@ -163,7 +163,7 @@ fn a_notification_carries_one_action_and_its_click_says_whether_it_was_pressed()
 #[cfg(target_os = "macos")]
 #[test]
 fn os_is_unsupported_outside_an_app_bundle() {
-    let err = match desk_sys::notification::os("ai.endue.desk", "endue Desk") {
+    let err = match desk_sys::notification::os("ai.endue.desktop", "endue Desk") {
         Ok(_) => panic!("the test binary is not an app bundle"),
         Err(err) => err,
     };

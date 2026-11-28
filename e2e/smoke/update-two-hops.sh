@@ -116,7 +116,7 @@ fi
 work="$(cd "$(mktemp -d /tmp/desk-2hop-XXXXXX)" && pwd -P)"
 home="$work/home"
 mkdir -p "$home" "$work/origin/desk"
-if [ "$os" = macos ]; then data="$home/Library/Application Support/ai.endue.desk"; else data="$home/.local/share/ai.endue.desk"; fi
+if [ "$os" = macos ]; then data="$home/Library/Application Support/ai.endue.desktop"; else data="$home/.local/share/ai.endue.desktop"; fi
 sign() { pnpm --dir "$root" --filter @endue-ai/desk-app exec tauri signer sign "$1" >/dev/null || fail "tauri signer sign $1"; }
 
 # Put release `n` on the origin and list it on beta.

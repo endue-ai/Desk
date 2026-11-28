@@ -1,5 +1,5 @@
 //! Where the session is kept (ADR 0239). The access token and the refresh cookie go to the OS
-//! keychain, under service `ai.endue.desk` and account `endue-id` (`endue-id@<host>` for a platform
+//! keychain, under service `ai.endue.desktop` and account `endue-id` (`endue-id@<host>` for a platform
 //! other than endue's); `<data>/account.json` keeps only what is not secret, as version 3:
 //!
 //! ```json

@@ -54,7 +54,7 @@ fn registration(program: &str, args: &[&str]) -> Registration {
 
 #[test]
 fn apply_registers_the_desk_when_wanted_and_removes_it_when_not() {
-    assert_eq!((BACKGROUND, ID), ("--background", "ai.endue.desk"));
+    assert_eq!((BACKGROUND, ID), ("--background", "ai.endue.desktop"));
     let desk_program = desk(PROGRAM);
     assert_eq!(desk_program, registration(PROGRAM, &["--background"]));
     let fake = FakeLoginItems::new();
@@ -153,7 +153,7 @@ fn a_failing_backend_is_an_io_error_and_changes_nothing() {
 fn the_launch_agent_starts_the_program_in_the_background_at_login() {
     let dir = missing_dir();
     let agent = LaunchAgent::in_dir(&dir, ID);
-    let path = dir.join("ai.endue.desk.plist");
+    let path = dir.join("ai.endue.desktop.plist");
     assert_eq!(agent.path(), path);
     assert_eq!(agent.registered(), Ok(None));
 
@@ -165,7 +165,7 @@ fn the_launch_agent_starts_the_program_in_the_background_at_login() {
     let tags: String = text.lines().map(str::trim).collect();
     for expected in [
         "<plist version=\"1.0\"><dict>",
-        "<key>Label</key><string>ai.endue.desk</string>",
+        "<key>Label</key><string>ai.endue.desktop</string>",
         &format!("<key>ProgramArguments</key><array><string>{PROGRAM}</string>"),
         "<string>--background</string></array>",
         "<key>RunAtLoad</key><true/>",
@@ -190,7 +190,11 @@ fn the_launch_agent_starts_the_program_in_the_background_at_login() {
     assert_eq!(agent.registered(), Ok(Some(odd.clone())));
     #[cfg(target_os = "macos")]
     plutil_reads(&path, &odd.program);
-    assert_eq!(names(&dir), ["ai.endue.desk.plist"], "no temp file is left");
+    assert_eq!(
+        names(&dir),
+        ["ai.endue.desktop.plist"],
+        "no temp file is left"
+    );
 
     let err = agent.register(&desk("/Users/a\nb/endue-desk")).unwrap_err();
     assert_eq!(err.code, ErrorCode::InvalidParams, "{err}");
@@ -233,7 +237,7 @@ fn plutil_reads(path: &Path, program: &Path) {
 fn the_autostart_entry_quotes_the_program_and_reads_back() {
     let dir = missing_dir();
     let autostart = XdgAutostart::in_dir(&dir, ID);
-    let path = dir.join("ai.endue.desk.desktop");
+    let path = dir.join("ai.endue.desktop.desktop");
     assert_eq!(autostart.path(), path);
     assert_eq!(autostart.registered(), Ok(None));
 
@@ -264,7 +268,7 @@ fn the_autostart_entry_quotes_the_program_and_reads_back() {
     let with_args = registration("/opt/endue-desk/endue-desk", &[BACKGROUND, "a b", "50%"]);
     autostart.register(&with_args).unwrap();
     assert_eq!(autostart.registered(), Ok(Some(with_args)));
-    assert_eq!(names(&dir), ["ai.endue.desk.desktop"], "no temp file");
+    assert_eq!(names(&dir), ["ai.endue.desktop.desktop"], "no temp file");
 
     let by_hand = "# by hand\n[Desktop Entry]\nName=endue Desk\nExec = /opt/endue-desk/endue-desk --background\n";
     fs::write(&path, by_hand).unwrap();
@@ -340,13 +344,13 @@ fn os_names_the_platform_backend() {
 #[cfg(target_os = "macos")]
 fn expected_backend() -> (&'static str, String) {
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
-    let plist = home.join("Library/LaunchAgents/ai.endue.desk.plist");
+    let plist = home.join("Library/LaunchAgents/ai.endue.desktop.plist");
     ("launch-agent", plist.display().to_string())
 }
 
 #[cfg(windows)]
 fn expected_backend() -> (&'static str, String) {
-    let value = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ai.endue.desk";
+    let value = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ai.endue.desktop";
     ("run-key", value.to_owned())
 }
 
@@ -357,7 +361,7 @@ fn expected_backend() -> (&'static str, String) {
         .map(PathBuf::from)
         .filter(|config| config.is_absolute())
         .unwrap_or_else(home);
-    let entry = config.join("autostart/ai.endue.desk.desktop");
+    let entry = config.join("autostart/ai.endue.desktop.desktop");
     ("xdg-autostart", entry.display().to_string())
 }
 
@@ -376,7 +380,7 @@ fn on_windows_the_run_key_registers_and_removes_a_value() {
     let cleanup = Cleanup(key.clone());
     let items = login::RunKey::at(&key, ID);
     assert_eq!(items.name(), "run-key");
-    assert_eq!(items.location(), format!(r"HKCU\{key}\ai.endue.desk"));
+    assert_eq!(items.location(), format!(r"HKCU\{key}\ai.endue.desktop"));
     assert_eq!(items.registered(), Ok(None));
     assert_eq!(items.unregister(), Ok(()), "nothing to remove is fine");
 

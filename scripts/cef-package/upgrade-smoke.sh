@@ -9,7 +9,7 @@ new="$2"
 work="$(mktemp -d /tmp/endue-upgrade-XXXXXX)"
 home="$work/home"
 apps="$work/Applications"
-data="$home/Library/Application Support/ai.endue.desk"
+data="$home/Library/Application Support/ai.endue.desktop"
 mount="$work/image"
 app="$apps/Studio.app/Contents/MacOS/endue-desk"
 cli="${DESK_CLI:-$root/target/debug/desk}"
@@ -78,7 +78,7 @@ attach "$new"
 "$mount/Install endue.command" --apps-dir "$apps"
 detach
 test "$(cat "$apps/endue.app/marker")" == foreign
-test "$(plutil -extract CFBundleIdentifier raw -o - "$apps/Studio.app/Contents/Info.plist")" == ai.endue.desk
+test "$(plutil -extract CFBundleIdentifier raw -o - "$apps/Studio.app/Contents/Info.plist")" == ai.endue.desktop
 test "$(plutil -extract CFBundleDisplayName raw -o - "$apps/Studio.app/Contents/Info.plist")" == endue
 test "$(plutil -extract CFBundleName raw -o - "$apps/Studio.app/Contents/Info.plist")" == endue
 codesign --verify --strict --deep "$apps/Studio.app"

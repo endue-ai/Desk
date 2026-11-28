@@ -108,7 +108,7 @@ fn an_archive_that_is_not_this_desk_is_refused_before_anyone_is_asked() {
     );
     mode(&apps, 0o755);
     let why = refused.unwrap_err();
-    assert!(why.contains("not this desk (ai.endue.desk)"), "{why}");
+    assert!(why.contains("not this desk (ai.endue.desktop)"), "{why}");
     assert_eq!(names(&apps), ["endue Desk.app"]);
     assert!(names(&scratch.join("0.6.0")).is_empty(), "nothing kept");
     let _ = fs::remove_dir_all(root);

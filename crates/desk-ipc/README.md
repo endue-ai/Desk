@@ -11,7 +11,7 @@ Layer: Rust core. Status: Unix sockets on macOS and Linux; Windows answers `Unsu
 - `CALLER` (`"cli"`), `grants()`: everything the app grants `cli` at start, the one list of what
   the CLI may do: run any command, manage plugins, grants, updates and themes, read the log, and
   read and write files over `/**` and `~/**` for `desk fs` (ADR 0030, 0054, 0058, 0076).
-- `socket_path()`: `DESK_SOCKET`, or `desk.sock` in the data folder (`ai.endue.desk` under
+- `socket_path()`: `DESK_SOCKET`, or `desk.sock` in the data folder (`ai.endue.desktop` under
   `dirs::data_dir()`, the shell's data folder, `apps/desk/shell/src/paths.rs`).
 - `Listener::bind(&path, Arc<Core>)`: bind (a stale file is replaced; a live desk gives `AddrInUse`),
   mode 0600, serve every connection on its own threads; dropping it removes the file.

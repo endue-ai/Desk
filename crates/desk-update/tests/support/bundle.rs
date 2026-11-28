@@ -9,7 +9,7 @@ use desk_update::verify::sha256_hex;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 
-pub const ID: &str = "ai.endue.desk";
+pub const ID: &str = "ai.endue.desktop";
 
 /// An Info.plist naming `executable` and `id`.
 pub fn info_plist(executable: &str, id: &str) -> String {

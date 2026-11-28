@@ -19,7 +19,7 @@ describe("the Computer page", () => {
         why: WHY["screen-recording"],
       },
     ]);
-    expect(shown.message).toBe("macOS asks about ai.endue.desk.");
+    expect(shown.message).toBe("macOS asks about ai.endue.desktop.");
     expect(shown.stopped).toBe(false);
   });
 

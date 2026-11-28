@@ -33,7 +33,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>ai.endue.desk.link</string>
+			<string>ai.endue.desktop.link</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>endue</string>

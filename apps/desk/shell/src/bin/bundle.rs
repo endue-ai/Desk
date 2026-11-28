@@ -181,7 +181,7 @@ mod tests {
         let out = tempfile::tempdir().unwrap();
         let destination = out.path().join("endue.app");
         let staged = out.path().join("staged.app");
-        let identifier = "ai.endue.desk";
+        let identifier = "ai.endue.desktop";
         fs::create_dir_all(staged.join("Contents/Resources")).unwrap();
         fs::create_dir(out.path().join("plugins")).unwrap();
         symlink(

@@ -2,7 +2,7 @@
 //! Settings > Privacy & Security: Accessibility (reading and acting on other apps' interfaces, and
 //! posting input events) and Screen Recording (screenshots, and other apps' window titles).
 //!
-//! TCC grants them to the responsible process: the signed bundle `ai.endue.desk` for the app, and
+//! TCC grants them to the responsible process: the signed bundle `ai.endue.desktop` for the app, and
 //! the terminal that launched it under `just dev` (ADR 0120). `Permissions::bundle_id` says which.
 
 /// One OS permission.

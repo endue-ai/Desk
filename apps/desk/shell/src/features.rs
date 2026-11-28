@@ -4,7 +4,7 @@
 //!
 //! macOS: Chromium's code-sign clone (`MacAppCodeSignClone`, `chrome/browser/mac/
 //! code_sign_clone_manager.mm`) hard-links the desk's executable into a copy of its bundle under the
-//! per-user temporary folder (`X/ai.endue.desk.code_sign_clone`) at every start and removes it once
+//! per-user temporary folder (`X/ai.endue.desktop.code_sign_clone`) at every start and removes it once
 //! the desk has quit. Making and removing that link changes the executable's inode, so at the next
 //! start macOS's exec policy (`syspolicyd`) treats it as a binary it has not seen: an XProtect scan
 //! of the whole executable and a notarization ticket lookup before `main` runs, 1.4 s for a

@@ -33,7 +33,7 @@ it("installs once, updates a user-renamed Desk, and leaves a foreign endue.app a
       );
     };
     const source = join(root, "endue.app");
-    bundle(source, "ai.endue.desk");
+    bundle(source, "ai.endue.desktop");
     const resources = join(source, "Contents/Resources");
     mkdirSync(resources);
     const helper = join(resources, "install-endue");

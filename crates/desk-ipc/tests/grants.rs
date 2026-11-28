@@ -30,12 +30,12 @@ fn the_cli_gets_the_permissions_adr_0030_lists_update_and_theme_manage_and_files
 
 #[test]
 fn the_socket_lives_in_the_desk_data_folder() {
-    assert_eq!(desk_ipc::APP_ID, "ai.endue.desk");
+    assert_eq!(desk_ipc::APP_ID, "ai.endue.desktop");
     assert_eq!(desk_ipc::SOCKET_FILE, "desk.sock");
     if std::env::var_os(desk_ipc::SOCKET_ENV).is_none() {
         let path = desk_ipc::socket_path().expect("a data folder");
         assert!(
-            path.ends_with("ai.endue.desk/desk.sock"),
+            path.ends_with("ai.endue.desktop/desk.sock"),
             "{}",
             path.display()
         );

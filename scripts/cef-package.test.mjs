@@ -52,9 +52,9 @@ describe("cef-package", () => {
       "/o/stage/helpers/endue-desk Helper (Plugin).app",
       "/o/stage/helpers/endue-desk Helper (Renderer).app",
     ]);
-    const ids = helperApps("ai.endue.desk").map((h) => h.identifier);
+    const ids = helperApps("ai.endue.desktop").map((h) => h.identifier);
     assert.equal(new Set(ids).size, 5, "every helper has an identifier of its own");
-    assert.ok(ids.includes("ai.endue.desk.helper.renderer"));
+    assert.ok(ids.includes("ai.endue.desktop.helper.renderer"));
     assert.equal(targets(config).shell, "/dist", "the shell's files in Contents/Resources/shell");
     assert.equal(
       targets(config)["licenses/CEF-LICENSE.txt"],
@@ -155,7 +155,7 @@ with tarfile.open(sys.argv[1]) as archive:
   it("registers endue:// and Open with entries in both Windows installers, never a default (#310)", () => {
     const config = render("x86_64-pc-windows-msvc");
     assert.match(config.nsis.preinstallSection, /^Section DeskRegistrations\n/u);
-    assert.match(config.nsis.preinstallSection, /OpenWithProgids" "ai\.endue\.desk\.file" ""/u);
+    assert.match(config.nsis.preinstallSection, /OpenWithProgids" "ai\.endue\.desktop\.file" ""/u);
     assert.ok(config.wix.fragmentPaths[0].endsWith("windows/registrations.wxs"));
     assert.deepEqual(config.wix.componentGroupRefs, ["DeskRegistrations"]);
     assert.equal(config.fileAssociations, undefined, "cargo-packager's would take the defaults");
@@ -199,7 +199,7 @@ with tarfile.open(sys.argv[1]) as archive:
     ]) {
       const config = render(target);
       assert.equal(config.productName, "endue");
-      assert.equal(config.identifier, "ai.endue.desk");
+      assert.equal(config.identifier, "ai.endue.desktop");
       assert.equal(config.binaries[0].path, "endue-desk");
     }
     const win = render("x86_64-pc-windows-msvc");
@@ -241,7 +241,7 @@ with tarfile.open(sys.argv[1]) as archive:
 
   it("writes each helper's Info.plist with Apple's numeric version", () => {
     const template = readFileSync(join(PACKAGER, "macos/helper.plist"), "utf8");
-    const [gpu] = helperApps("ai.endue.desk").filter((h) => h.suffix === " (GPU)");
+    const [gpu] = helperApps("ai.endue.desktop").filter((h) => h.suffix === " (GPU)");
     const plist = helperPlist(template, { ...gpu, version: "0.5.0-pre.212", minimum: "12.0" });
     assert.match(
       plist,
@@ -249,7 +249,7 @@ with tarfile.open(sys.argv[1]) as archive:
     );
     assert.match(
       plist,
-      /<key>CFBundleIdentifier<\/key>\s*<string>ai\.endue\.desk\.helper\.gpu<\/string>/u,
+      /<key>CFBundleIdentifier<\/key>\s*<string>ai\.endue\.desktop\.helper\.gpu<\/string>/u,
     );
     assert.match(plist, /<key>CFBundleVersion<\/key>\s*<string>0\.5\.0<\/string>/u);
     assert.match(

@@ -26,7 +26,7 @@ pub use xdg_autostart::XdgAutostart;
 
 /// The app identifier (`identifier` in `apps/desk/shell/packager/packager.json`) that names the
 /// registration on every OS.
-pub const ID: &str = "ai.endue.desk";
+pub const ID: &str = "ai.endue.desktop";
 
 /// The one argument a login item starts the desk with.
 pub const BACKGROUND: &str = "--background";

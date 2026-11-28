@@ -40,10 +40,11 @@ export function dataDir(
   /** @type {string} */ home,
   env = process.env,
 ) {
-  if (platform === "darwin") return join(home, "Library", "Application Support", "ai.endue.desk");
+  if (platform === "darwin")
+    return join(home, "Library", "Application Support", "ai.endue.desktop");
   if (platform === "win32")
-    return join(env.APPDATA || join(home, "AppData", "Roaming"), "ai.endue.desk");
-  return join(env.XDG_DATA_HOME || join(home, ".local", "share"), "ai.endue.desk");
+    return join(env.APPDATA || join(home, "AppData", "Roaming"), "ai.endue.desktop");
+  return join(env.XDG_DATA_HOME || join(home, ".local", "share"), "ai.endue.desktop");
 }
 
 /** One field of a password file line: `:` and `\` escaped, as libpq reads it. */
