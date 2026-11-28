@@ -6,7 +6,8 @@ set -euo pipefail
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-sign() { pnpm --filter @endue-ai/desk-app exec tauri signer sign "$1"; }
+# pnpm runs the signer in apps/desk, so it gets an absolute path, not one relative to the checkout.
+sign() { pnpm --filter @endue-ai/desk-app exec tauri signer sign "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; }
 upload() { gh release upload "$tag" "$@" --clobber --repo "$GITHUB_REPOSITORY"; }
 path="$work/UPGRADE_PATH.json"
 
