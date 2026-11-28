@@ -13,7 +13,8 @@
 # installed or checked then.
 # Either way the app starts with a temp HOME and e2e/fixtures/init.yaml, the script waits for the ready
 # line it prints (desk_ready; DESK_SMOKE_READY_WITHIN seconds, 60 by default, the end of the app's
-# stdout and stderr printed when it fails) and quits it with SIGTERM. With DESK_SMOKE_POSTGRES set (a
+# stdout and stderr printed when it fails) and quits it with SIGTERM: the app within 10 s, then its CEF
+# helpers (what names the temp HOME) within 10 s more. With DESK_SMOKE_POSTGRES set (a
 # postgresql:// URI, the password in PGPASSWORD), it also opens the database plugin and runs one
 # query on that server through the desk CLI (DESK_SMOKE_CLI, else the build's `desk`) before quitting
 # (e2e/smoke/database-query.mjs; skipped with one line on Windows, which has no desk socket yet).
@@ -58,12 +59,30 @@ fail() {
   exit 1
 }
 
+# The app's other processes: CEF's helpers name its profile under the temp HOME (--user-data-dir).
+# Without pgrep (Windows' Git Bash) there are none to see.
+helpers() {
+  if [ -n "$home" ] && command -v pgrep >/dev/null; then pgrep -f -- "$home/" | tr '\n' ' ' || true; fi
+}
+
+# A folder the smoke made goes, even while a process that outlived the app still writes into it; one
+# that stays is a warning, never the run's verdict.
+remove() {
+  local tries
+  for ((tries = 0; tries < 50; tries++)); do
+    if rm -rf "$1" 2>/dev/null; then return 0; fi
+    sleep 0.1
+  done
+  echo "smoke: warning: could not remove $1" >&2
+}
+
 cleanup() {
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then kill -KILL "$pid" 2>/dev/null || true; fi
+  if [ -n "$(helpers)" ]; then pkill -KILL -f -- "$home/" 2>/dev/null || true; fi
   if [ -n "$uninstall" ]; then eval "$uninstall" >/dev/null 2>&1 || true; fi
   if [ -n "$pkg" ]; then $sudo apt-get remove -y "$pkg" >/dev/null 2>&1 || true; fi
-  if [ -n "$home" ]; then rm -rf "$home"; fi
-  if [ -n "$work" ]; then rm -rf "$work"; fi
+  if [ -n "$home" ]; then remove "$home"; fi
+  if [ -n "$work" ]; then remove "$work"; fi
 }
 trap cleanup EXIT
 
@@ -245,5 +264,13 @@ done
 if kill -0 "$pid" 2>/dev/null; then fail "the app was still running $quit_within s after SIGTERM"; fi
 wait "$pid" 2>/dev/null || true
 pid=""
+# CEF's helpers outlive the app by a moment and still write its profile (the network service's cache
+# index): the app has quit when they are gone too, and only then can its HOME go.
+for ((tick = 0; tick < quit_within * 10; tick++)); do
+  [ -n "$(helpers)" ] || break
+  sleep 0.1
+done
+left="$(helpers)"
+if [ -n "$left" ]; then fail "the app's helpers were still running $quit_within s after it quit (pids ${left% })"; fi
 
 echo "smoke: ok"
