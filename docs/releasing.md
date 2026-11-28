@@ -29,7 +29,10 @@ the tag eligible for in-app updates (ADR 0229, ADR 0291).
    Releases → Draft a new release → Publish.
 2. Run `gh workflow run release-macos --ref main -f tag=v0.4.0` with the published tag. It builds the app at the tag's commit for Apple silicon
    (`release-build.yml`; Intel is not released, ADR 0402), runs the install smoke on the package, and
-   attaches `endue_<version>_darwin-aarch64.dmg` and `SHA256SUMS-macos` to the release. The notes get a macOS section with the links.
+   attaches `endue_<version>_darwin-aarch64.dmg` and `SHA256SUMS-macos` to the release. Only the
+   build and the Linux CLI hold the `signing` environment, and they start together, so a maintainer
+   approves the run once; the build also writes and signs `release.json` and `UPGRADE_PATH.json`,
+   and attach publishes them with the run's token and no secret. The notes get a macOS section with the links.
 3. With `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` and the
    notarisation secrets in `signing` (below), the app and the disk image are signed with the Developer
    ID, notarised and stapled, and a build that is not fails. Without them the build is ad-hoc signed
@@ -43,7 +46,8 @@ the tag eligible for in-app updates (ADR 0229, ADR 0291).
    again: `gh workflow run release-macos -f tag=v0.1.0 -f artifacts-from=<run id>`. The gate takes
    only a release-macos run on `main` that started after the release was published and still holds
    its packages (seven days); `verify` checks each disk image's and app's code signature,
-   notarisation and staple, and the updates' signatures, before attach.
+   notarisation and staple (a Developer ID build only), and the updates' signatures, before attach.
+   That run needs no approval: it publishes what an approved build signed.
 
 For in-app upgrades, set the repository variable `ENDUE_UPDATER_PUBLIC_KEY` and its matching signing
 key in the protected environment. The release then includes the signed updater archives,
