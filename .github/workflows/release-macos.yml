@@ -40,7 +40,7 @@ jobs:
       - id: version
         name: The tag's version and commit
         env:
-          HAS_UPDATER_KEY: ${{ vars.DESK_UPDATER_PUBKEY != '' }}
+          HAS_UPDATER_KEY: ${{ vars.ENDUE_UPDATER_PUBLIC_KEY != '' }}
         run: |
           version="$(node scripts/release-assets.mjs version "$TAG")"
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
@@ -58,7 +58,7 @@ jobs:
           cli=false
           if [ "$author" != Bot ] && git cat-file -e "$commit:scripts/package-cli.py" 2>/dev/null; then
             if [ "$HAS_UPDATER_KEY" != true ]; then
-              echo "::error::Configure the protected CLI signing key and DESK_UPDATER_PUBKEY before attaching downloads"
+              echo "::error::Configure ENDUE_UPDATER_PRIVATE_KEY and ENDUE_UPDATER_PUBLIC_KEY before attaching downloads"
               exit 1
             fi
             cli=true
@@ -122,12 +122,12 @@ jobs:
           python3 -B scripts/package-cli.py target/x86_64-unknown-linux-gnu/release/endue "$VERSION" --out dist
       - name: Sign the CLI archive
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
       - name: Download and install on minimal Debian
         env:
-          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          DESK_UPDATER_PUBKEY: ${{ vars.ENDUE_UPDATER_PUBLIC_KEY }}
         run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
       - uses: actions/attest-build-provenance@v3
         with:
@@ -192,8 +192,8 @@ jobs:
         env:
           COMMIT: ${{ needs.gate.outputs.commit }}
           MIN_FROM: ${{ inputs.min-from || vars.DESK_UPDATE_MIN_FROM }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: bash scripts/publish-upgrade-path.sh manual dist "$VERSION" "$COMMIT" "$MIN_FROM"
       - name: Say in the notes where they are and whether Apple knows the build
         run: |
