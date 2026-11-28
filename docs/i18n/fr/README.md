@@ -35,8 +35,8 @@ autrement, réécrire ou retirer pendant que l'app tourne, jusqu'à ce qu'il ne 
 besoin. Le code est sous licence Apache-2.0, il n'y a aucune télémétrie, et l'app fonctionne sans compte.
 
 > [!NOTE]
-> endue est jeune et change vite. À partir de la version 0.5.0, l'app macOS est signée, notariée et se met à
-> jour elle-même. Les paquets de bureau pour Windows et Linux ne sont pas encore publiés ; sous Linux, il y a
+> endue est jeune et change vite. À partir de la version 0.5.0, l'app macOS, pour puce Apple, est signée,
+> notariée et se met à jour elle-même. Les paquets de bureau pour Windows et Linux ne sont pas encore publiés ; sous Linux, il y a
 > l'outil en ligne de commande.
 
 ## Pourquoi UI Less
@@ -119,7 +119,7 @@ s'il se lit comme le veut sa spécification.
 | Plateforme | Où l'obtenir |
 | --- | --- |
 | macOS, puce Apple | L'image disque `darwin-aarch64` de la [dernière version](https://github.com/endue-ai/endue/releases/latest) |
-| macOS, processeur Intel | L'image disque `darwin-x86_64` de la [dernière version](https://github.com/endue-ai/endue/releases/latest) |
+| macOS, processeur Intel | Plus publiée à partir de la version 0.5.0. La [version v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) contient la dernière image disque `darwin-x86_64` ; pour une version plus récente, [compilez depuis les sources](#build-from-source) |
 | Linux x86_64, ligne de commande | `endue-cli_0.4.0_linux-x86_64.tar.gz` depuis la [version v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) |
 | Windows, Linux (app de bureau) | Pas encore publié : [compilez depuis les sources](#build-from-source) |
 

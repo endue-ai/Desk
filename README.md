@@ -34,8 +34,9 @@ them. Every screen is a plugin you can restyle, rewrite or remove while the app 
 you need is left. The code is Apache-2.0, there is no telemetry, and it works without an account.
 
 > [!NOTE]
-> endue is young and changes quickly. The macOS app is signed, notarised and updates itself from 0.5.0.
-> Windows and Linux desktop packages are not published yet; on Linux there is the command-line tool.
+> endue is young and changes quickly. The macOS app, for Apple silicon, is signed, notarised and updates
+> itself from 0.5.0. Windows and Linux desktop packages are not published yet; on Linux there is the
+> command-line tool.
 
 ## Why UI Less
 
@@ -104,7 +105,7 @@ as its spec says.
 | Platform | Get it |
 | --- | --- |
 | macOS, Apple silicon | The `darwin-aarch64` disk image from the [latest release](https://github.com/endue-ai/endue/releases/latest) |
-| macOS, Intel | The `darwin-x86_64` disk image from the [latest release](https://github.com/endue-ai/endue/releases/latest) |
+| macOS, Intel | Not published from 0.5.0 on. The [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) has the last `darwin-x86_64` disk image; for a newer version, [build from source](#build-from-source) |
 | Linux x86_64, command line | `endue-cli_0.4.0_linux-x86_64.tar.gz` from the [v0.4.0 release](https://github.com/endue-ai/endue/releases/tag/v0.4.0) |
 | Windows, Linux desktop | Not published yet: [build from source](#build-from-source) |
 

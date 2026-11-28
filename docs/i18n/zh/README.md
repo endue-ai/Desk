@@ -32,7 +32,7 @@ endue 是一个桌面应用，它本身就是一个操作系统：终端、浏�
 不需要账户也能使用。
 
 > [!NOTE]
-> endue 还很年轻，变化很快。macOS 应用从 0.5.0 起经过签名和公证，并会自行更新。
+> endue 还很年轻，变化很快。适用于 Apple 芯片的 macOS 应用从 0.5.0 起经过签名和公证，并会自行更新。
 > Windows 和 Linux 的桌面安装包尚未发布；Linux 上可以使用命令行工具。
 
 ## 为什么是 UI Less
@@ -101,7 +101,7 @@ endue 是一个桌面应用，它本身就是一个操作系统：终端、浏�
 | 平台 | 获取方式 |
 | --- | --- |
 | macOS，Apple 芯片 | [最新发布版](https://github.com/endue-ai/endue/releases/latest)中的 `darwin-aarch64` 磁盘映像 |
-| macOS，Intel 处理器 | [最新发布版](https://github.com/endue-ai/endue/releases/latest)中的 `darwin-x86_64` 磁盘映像 |
+| macOS，Intel 处理器 | 从 0.5.0 起不再发布。最后一个 `darwin-x86_64` 磁盘映像在 [v0.4.0 发布版](https://github.com/endue-ai/endue/releases/tag/v0.4.0)中；更新的版本请[从源码构建](#build-from-source) |
 | Linux x86_64，命令行 | [v0.4.0 发布页面](https://github.com/endue-ai/endue/releases/tag/v0.4.0)中的 `endue-cli_0.4.0_linux-x86_64.tar.gz` |
 | Windows、Linux 桌面 | 尚未发布：请[从源码构建](#build-from-source) |
 

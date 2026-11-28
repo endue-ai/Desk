@@ -28,7 +28,7 @@
 endue は、ひとつの OS であるデスクトップアプリです。ターミナル、ブラウザー、Git、データベース、ドキュメント、そしてあなたのエージェントが、ひとつのキャンバスの上のウィンドウとして開き、そこに住む秘書の Eris が、そのすべてにまたがってあなたの頼みをこなします。すべての画面はプラグインで、アプリの実行中に見た目を変え、書き換え、取り除けます。必要なものだけが残るまで。コードは Apache-2.0 で、テレメトリはなく、アカウントなしで動きます。
 
 > [!NOTE]
-> endue はまだ若く、速く変わっていきます。macOS アプリは 0.5.0 から、署名と公証を受け、自動で更新されます。Windows と Linux のデスクトップ向けパッケージはまだ公開されていません。Linux ではコマンドラインツールを使えます。
+> endue はまだ若く、速く変わっていきます。Apple シリコン向けの macOS アプリは 0.5.0 から、署名と公証を受け、自動で更新されます。Windows と Linux のデスクトップ向けパッケージはまだ公開されていません。Linux ではコマンドラインツールを使えます。
 
 ## なぜ UI Less か
 
@@ -76,7 +76,7 @@ endue は、ひとつの OS であるデスクトップアプリです。ター�
 | プラットフォーム | 入手方法 |
 | --- | --- |
 | macOS、Apple シリコン | [最新リリース](https://github.com/endue-ai/endue/releases/latest)の `darwin-aarch64` ディスクイメージ |
-| macOS、Intel | [最新リリース](https://github.com/endue-ai/endue/releases/latest)の `darwin-x86_64` ディスクイメージ |
+| macOS、Intel | 0.5.0 以降は公開されていません。最後の `darwin-x86_64` ディスクイメージは [v0.4.0 リリース](https://github.com/endue-ai/endue/releases/tag/v0.4.0)にあります。それより新しいバージョンは[ソースからビルド](#build-from-source)してください |
 | Linux x86_64、コマンドライン | [v0.4.0 リリース](https://github.com/endue-ai/endue/releases/tag/v0.4.0)の `endue-cli_0.4.0_linux-x86_64.tar.gz` |
 | Windows、Linux デスクトップ | まだ公開されていません：[ソースからビルド](#build-from-source) |
 

@@ -34,8 +34,8 @@ umschreiben oder entfernen können, bis nur noch übrig ist, was Sie brauchen. D
 Apache-2.0, es gibt keine Telemetrie, und endue funktioniert ohne Konto.
 
 > [!NOTE]
-> endue ist jung und ändert sich schnell. Ab 0.5.0 ist die macOS-App signiert und notarisiert und
-> aktualisiert sich selbst. Desktop-Pakete für Windows und Linux sind noch nicht veröffentlicht; unter Linux
+> endue ist jung und ändert sich schnell. Ab 0.5.0 ist die macOS-App für Apple-Chips signiert und
+> notarisiert und aktualisiert sich selbst. Desktop-Pakete für Windows und Linux sind noch nicht veröffentlicht; unter Linux
 > gibt es das Kommandozeilenwerkzeug.
 
 ## Warum UI Less
@@ -119,7 +119,7 @@ Zustand des Desktops, nie Geheimnisse), `endue import` holt sie zurück, ohne Ih
 | Plattform | So erhalten Sie es |
 | --- | --- |
 | macOS, Apple-Chips | Das Disk-Image `darwin-aarch64` aus dem [neuesten Release](https://github.com/endue-ai/endue/releases/latest) |
-| macOS, Intel | Das Disk-Image `darwin-x86_64` aus dem [neuesten Release](https://github.com/endue-ai/endue/releases/latest) |
+| macOS, Intel | Ab 0.5.0 nicht mehr veröffentlicht. Das [Release v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) enthält das letzte Disk-Image `darwin-x86_64`; eine neuere Version lässt sich [aus dem Quellcode bauen](#build-from-source) |
 | Linux x86_64, Kommandozeile | `endue-cli_0.4.0_linux-x86_64.tar.gz` aus dem [Release v0.4.0](https://github.com/endue-ai/endue/releases/tag/v0.4.0) |
 | Windows, Linux-Desktop | Noch nicht veröffentlicht: [aus dem Quellcode bauen](#build-from-source) |
 

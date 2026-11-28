@@ -32,7 +32,7 @@ endue는 하나의 앱이 곧 하나의 OS인 데스크톱 앱입니다. 터미�
 수 있는 플러그인입니다. 코드는 Apache-2.0이고, 텔레메트리가 없으며, 계정 없이도 동작합니다.
 
 > [!NOTE]
-> endue는 아직 초기 단계이며 빠르게 바뀝니다. macOS 앱은 0.5.0부터 서명과 공증을 받고 스스로 업데이트합니다.
+> endue는 아직 초기 단계이며 빠르게 바뀝니다. Apple silicon용 macOS 앱은 0.5.0부터 서명과 공증을 받고 스스로 업데이트합니다.
 > Windows와 Linux용 데스크톱 패키지는 아직 배포하지 않습니다. Linux에는 명령줄 도구가 있습니다.
 
 ## 왜 UI Less인가
@@ -106,7 +106,7 @@ Image Studio. 스프레드시트, 문서, 슬라이드, PDF, 전자책, 이미�
 | 플랫폼 | 받는 방법 |
 | --- | --- |
 | macOS, Apple silicon | [최신 릴리스](https://github.com/endue-ai/endue/releases/latest)의 `darwin-aarch64` 디스크 이미지 |
-| macOS, Intel | [최신 릴리스](https://github.com/endue-ai/endue/releases/latest)의 `darwin-x86_64` 디스크 이미지 |
+| macOS, Intel | 0.5.0부터는 배포하지 않습니다. 마지막 `darwin-x86_64` 디스크 이미지는 [v0.4.0 릴리스](https://github.com/endue-ai/endue/releases/tag/v0.4.0)에 있으며, 그보다 새 버전은 [소스에서 빌드](#build-from-source)하세요 |
 | Linux x86_64, 명령줄 | [v0.4.0 릴리스](https://github.com/endue-ai/endue/releases/tag/v0.4.0)의 `endue-cli_0.4.0_linux-x86_64.tar.gz` |
 | Windows, Linux 데스크톱 | 아직 배포하지 않습니다. [소스에서 빌드](#build-from-source)하세요 |
 
