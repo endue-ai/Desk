@@ -89,6 +89,22 @@ impl Desk {
         Self::open(home, data, Arc::new(FakeClock::new()), calendar, false)
     }
 
+    /// A desk whose built-in desk.agent-sessions reads `<home>/.claude` and `<home>/.codex`.
+    pub fn with_sessions(tag: &str) -> Self {
+        let root = temp(tag);
+        let (home, data) = (root.join("home"), root.join("data"));
+        fs::create_dir_all(&home).unwrap();
+        let roots = desk_sessions::Roots {
+            home: home.clone(),
+            claude: home.join(".claude"),
+            codex: home.join(".codex"),
+        };
+        let seen = data.join("agent-sessions.json");
+        Self::build(home, data, Arc::new(FakeClock::new()), |core| {
+            core.with_agent_session_roots(roots, seen)
+        })
+    }
+
     /// A desk without a calendar whose person says yes to every perm.request.
     pub fn saying_yes(tag: &str) -> Self {
         let root = temp(tag);
@@ -119,6 +135,24 @@ impl Desk {
         calendar: Option<Arc<dyn CalendarSource>>,
         yes: bool,
     ) -> Self {
+        Self::build(home, data, clock, |mut core| {
+            if let Some(calendar) = calendar {
+                core = core.with_calendar(calendar);
+            }
+            if yes {
+                core = core.with_prompter(SayYes);
+            }
+            core
+        })
+    }
+
+    /// A desk as the app builds one, `extra` adding its sources.
+    fn build(
+        home: PathBuf,
+        data: PathBuf,
+        clock: Arc<FakeClock>,
+        extra: impl FnOnce(Core) -> Core,
+    ) -> Self {
         let index = Arc::new(Index::open(data.join("index.sqlite")).unwrap());
         let shared: Arc<dyn ItemIndex> = index.clone();
         let mut core = Core::new(Roots { home: home.clone() })
@@ -127,12 +161,7 @@ impl Desk {
             .with_secrets_file(data.join("secrets.json"))
             .with_index(shared)
             .with_clock(clock.clone());
-        if let Some(calendar) = calendar {
-            core = core.with_calendar(calendar);
-        }
-        if yes {
-            core = core.with_prompter(SayYes);
-        }
+        core = extra(core);
         let core = Arc::new(core);
         let seen = core.events().subscribe_addressed();
         core.start_connectors();

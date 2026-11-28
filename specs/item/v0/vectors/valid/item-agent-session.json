@@ -1,0 +1,23 @@
+{
+  "target": "Item",
+  "description": "an agent session as a record item: the fields follow agent-session.schema.json",
+  "instance": {
+    "id": "codex:0193f6a0-0000-7000-8000-000000000001",
+    "source": { "connector": "desk.agent-sessions", "instance": "default" },
+    "kind": "record",
+    "title": "Fix the updater's staging channel",
+    "updatedAt": "2026-11-03T09:40:00Z",
+    "createdAt": "2026-11-03T09:06:46Z",
+    "deepLink": "file:///Users/me/.codex/sessions/2026/11/03/rollout-2026-11-03T18-06-46-0193f6a0-0000-7000-8000-000000000001.jsonl",
+    "body": "Fix the updater's staging channel\n\n---\n\nThe staging channel now reads its own manifest.",
+    "schema": "https://endue.ai/specs/item/v0/agent-session.schema.json",
+    "fields": {
+      "agent": "codex",
+      "sessionId": "0193f6a0-0000-7000-8000-000000000001",
+      "subagent": false,
+      "file": "~/.codex/sessions/2026/11/03/rollout-2026-11-03T18-06-46-0193f6a0-0000-7000-8000-000000000001.jsonl",
+      "turns": 1,
+      "links": []
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[package]
+name = "desk-sessions"
+description = "Local agent sessions (Claude Code, Codex) read from their own transcripts, read-only, as agent-session record items for the built-in connector desk.agent-sessions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Dependencies used only here are declared here; they move to [workspace.dependencies] when a second
+# crate needs them.
+
+[dependencies]
+desk-bridge.workspace = true
+regex = "1.13"
+ruzstd.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+# Compressed fixtures, as Codex writes its older sessions.
+ruzstd.workspace = true
+
+[lints]
+workspace = true

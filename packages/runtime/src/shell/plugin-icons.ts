@@ -29,6 +29,7 @@ const PLUGIN_ICONS: Record<string, IconName> = {
   "endue.image-studio": "image",
   "endue.images": "image",
   "desk.inspector": "eye",
+  "endue.knowledge": "link",
   "endue.local-agents": "user",
   "endue.local-models": "brain",
   "endue.mail": "mail",

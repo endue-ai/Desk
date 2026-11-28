@@ -19,6 +19,8 @@ desk-memory.workspace = true
 desk-pg.workspace = true
 # db.open's SSH tunnels (ADR 0359).
 desk-ssh.workspace = true
+# The agent sessions the knowledge base reads (ADR 0403).
+desk-sessions.workspace = true
 # studio.*: endue AI's platform API (ADR 0122).
 desk-platform = { path = "../desk-platform" }
 desk-plugin-host.workspace = true
@@ -30,7 +32,7 @@ desk-update.workspace = true
 getrandom = "0.4"
 jsonschema.workspace = true
 # Codex compresses older sessions with zstd (ADR 0110); pure Rust, decoder and a small encoder.
-ruzstd = "0.9"
+ruzstd.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # The history's content addresses (ADR 0076); already in the tree through the Wasm host.

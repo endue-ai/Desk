@@ -75,6 +75,7 @@ mod core_proc;
 mod core_prompts;
 mod core_recent;
 mod core_search;
+mod core_sessions;
 mod core_settings;
 mod core_shell;
 mod core_snapshots;

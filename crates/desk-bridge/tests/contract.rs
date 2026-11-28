@@ -6,11 +6,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    AccountSettingsGetResult, AccountStatusResult, AgentListResult, AgentRecord, AgentsAskResult,
-    AgentsImportResult, AgentsListResult, AgentsRunsResult, AgentsSessionsResult,
-    AgentsTranscriptResult, BrainDesk, BridgeEvent, BridgeRequest, BridgeResponse,
-    CatalogGetResult, CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult,
-    ComputerAxTreeResult, ComputerInputClickResult, ComputerPermissionsStatusResult,
+    AccountSettingsGetResult, AccountStatusResult, AgentListResult, AgentRecord,
+    AgentSessionFields, AgentsAskResult, AgentsImportResult, AgentsListResult, AgentsRunsResult,
+    AgentsSessionsResult, AgentsTranscriptResult, BrainDesk, BridgeEvent, BridgeRequest,
+    BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult, CmdToolsResult,
+    CmdUndoResult, ComputerAxTreeResult, ComputerInputClickResult, ComputerPermissionsStatusResult,
     ComputerScreenshotResult, ConnectorInstance, ConnectorListResult, ConnectorManifest,
     ConnectorStatus, ConnectorSyncResult, DesignSystemPackage, FsHistoryResult, FsReadResult,
     FsRestoreResult, FsStatResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
@@ -181,6 +181,7 @@ fn item_view_connector_and_memory_vectors_are_judged_as_their_folders_say() {
         for vector in all.iter().filter(|v| v.valid) {
             match vector.target.as_str() {
                 "Item" => roundtrip::<Item>(vector),
+                "AgentSessionFields" => roundtrip::<AgentSessionFields>(vector),
                 "ItemQuery" => roundtrip::<ItemQuery>(vector),
                 "ItemPage" => roundtrip::<ItemPage>(vector),
                 "ItemChange" => roundtrip::<ItemChange>(vector),

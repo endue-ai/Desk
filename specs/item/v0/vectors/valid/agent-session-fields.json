@@ -1,0 +1,30 @@
+{
+  "target": "AgentSessionFields",
+  "description": "a Claude Code subagent session with the files it edited, a ticket the person named and the pull request it opened",
+  "instance": {
+    "agent": "claude",
+    "sessionId": "agent-a1b2c3",
+    "parent": "claude:6f1c2a90-0000-4000-8000-000000000001",
+    "subagent": true,
+    "file": "~/.claude/projects/-Users-me-desk/6f1c2a90-0000-4000-8000-000000000001/subagents/agent-a1b2c3.jsonl",
+    "cwd": "~/desk/.claude/worktrees/icons",
+    "repo": "~/desk",
+    "branch": "ai/9001-icons",
+    "model": "claude-opus-5-5",
+    "startedAt": "2026-11-04T08:20:00Z",
+    "endedAt": "2026-11-04T09:12:00Z",
+    "turns": 3,
+    "toolCalls": 41,
+    "tools": { "Bash": 20, "Edit": 12, "Read": 9 },
+    "mcp": ["ccd_turn"],
+    "skills": ["run-task"],
+    "domains": ["github.com"],
+    "links": [
+      { "kind": "file", "key": "~/desk/plugins/explorer/ui/tree.js", "rel": "edited", "count": 4 },
+      { "kind": "ticket", "key": "ACME-2001", "rel": "mentioned", "where": "prompt", "count": 2 },
+      { "kind": "pr", "key": "github.com/example/desk#9001", "rel": "opened", "count": 1 },
+      { "kind": "branch", "key": "~/desk@ai/9001-icons", "rel": "on", "count": 1 },
+      { "kind": "repo", "key": "~/desk", "rel": "in", "count": 1 }
+    ]
+  }
+}

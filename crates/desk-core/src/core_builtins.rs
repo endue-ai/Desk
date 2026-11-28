@@ -1,8 +1,9 @@
 //! The built-in connectors `desk.calendar` (resource `event`) and `desk.reminders` (resource `task`)
-//! over the OS calendar (desk-sys `CalendarSource`): `auth: none`, no settings, one instance
-//! `default`, never turned off. They exist only when the core has a calendar source. Their records
-//! live in each one's store under `desk.connector/instances`, the connector host's shape. The OS is
-//! asked only on connect; a refusal leaves the instance in `error` until a sync finds access.
+//! over the OS calendar (desk-sys `CalendarSource`), and `desk.agent-sessions` (resource `record`)
+//! over the agent programs' transcripts (`core_sessions`): `auth: none`, no settings, one instance
+//! `default`, never turned off. Each exists only when the core has its source. Their records live in
+//! each one's store under `desk.connector/instances`, the connector host's shape. The OS is asked
+//! only on connect; a refusal leaves the instance in `error` until a sync finds access.
 
 use std::collections::BTreeMap;
 use std::time::{Duration, SystemTime};
@@ -18,6 +19,7 @@ use serde_json::{Value, json};
 
 use crate::calendar_items::{self, CALENDAR, INSTANCE, REMINDERS, comparable, seconds};
 use crate::core_connectors::{INSTANCES, status};
+use crate::core_sessions::{SESSIONS, SESSIONS_INTERVAL};
 use crate::handler::{Answer, Core, error, json as answer};
 use crate::time::parse_rfc3339;
 
@@ -39,16 +41,25 @@ pub(crate) struct BuiltIns(BTreeMap<String, BuiltIn>);
 impl Core {
     /// Whether `id` is a built-in connector on this desk.
     pub(crate) fn is_builtin(&self, id: &str) -> bool {
-        self.calendar.is_some() && (id == CALENDAR || id == REMINDERS)
+        self.builtin_ids().contains(&id)
+    }
+
+    /// The built-in connectors this desk has, by the sources it was given.
+    fn builtin_ids(&self) -> Vec<&'static str> {
+        let mut ids = Vec::new();
+        if self.calendar.is_some() {
+            ids.extend([CALENDAR, REMINDERS]);
+        }
+        if self.sessions.is_some() {
+            ids.push(SESSIONS);
+        }
+        ids
     }
 
     /// Bring back the instances the store records; each syncs at the next tick. Never asks the OS.
     pub(crate) fn load_builtins(&self) {
-        if self.calendar.is_none() {
-            return;
-        }
         let now = self.clock.now();
-        for id in [CALENDAR, REMINDERS] {
+        for id in self.builtin_ids() {
             let Some(Value::Array(records)) = self.stored(id, INSTANCES) else {
                 continue;
             };
@@ -57,7 +68,7 @@ impl Core {
             };
             let last = record["lastSyncAt"].as_str().map(str::to_owned);
             let synced = last.as_deref().and_then(parse_rfc3339);
-            let stale_before = seconds(now) - 2 * INTERVAL.as_secs() as i64;
+            let stale_before = seconds(now) - 2 * interval(id).as_secs() as i64;
             let state = match synced {
                 Some(at) if at < stale_before => ConnectorState::Stale,
                 _ => ConnectorState::Connected,
@@ -74,9 +85,7 @@ impl Core {
 
     /// The built-in connectors as connector.list lists them.
     pub(crate) fn builtin_infos(&self) -> Vec<ConnectorInfo> {
-        if self.calendar.is_none() {
-            return Vec::new();
-        }
+        let ids = self.builtin_ids();
         let builtins = self.builtins();
         let none = || desk_bridge::ConnectorAuth {
             kind: desk_bridge::ConnectorAuthKind::None,
@@ -85,29 +94,25 @@ impl Core {
             token_url: None,
             scopes: None,
         };
-        [
-            (CALENDAR, "Calendar", ItemKind::Event),
-            (REMINDERS, "Reminders", ItemKind::Task),
-        ]
-        .into_iter()
-        .map(|(id, title, kind)| ConnectorInfo {
-            id: id.to_owned(),
-            title: Some(title.to_owned()),
-            auth: Some(none()),
-            instance_settings: None,
-            instances: builtins
-                .0
-                .get(id)
-                .map(|b| self.listing(id, b))
-                .into_iter()
-                .collect(),
-            resources: vec![ConnectorResource {
-                kind,
-                actions: None,
-                live: None,
-            }],
-        })
-        .collect()
+        ids.into_iter()
+            .map(|id| ConnectorInfo {
+                id: id.to_owned(),
+                title: Some(title_of(id).to_owned()),
+                auth: Some(none()),
+                instance_settings: None,
+                instances: builtins
+                    .0
+                    .get(id)
+                    .map(|b| self.listing(id, b))
+                    .into_iter()
+                    .collect(),
+                resources: vec![ConnectorResource {
+                    kind: kind_of(id),
+                    actions: None,
+                    live: None,
+                }],
+            })
+            .collect()
     }
 
     /// connector.connect of a built-in: asks the OS when it never was, on this thread.
@@ -126,14 +131,20 @@ impl Core {
             let why = format!("{id} already has an instance {INSTANCE}");
             return Err(error(ErrorCode::AlreadyExists, why));
         }
-        let calendar = self.calendar.clone().ok_or_else(|| missing(id))?;
-        let mut access = calendar.authorization();
-        if access == Authorization::NotDetermined {
-            access = calendar
-                .request_access()
-                .map_err(|e| error(e.code, e.message))?;
-        }
-        let refusal = (!access.can_read()).then(|| refused(id));
+        let refusal = if id == SESSIONS {
+            // Connecting is the consent: the next sync reads every transcript from the start.
+            self.forget_sessions();
+            None
+        } else {
+            let calendar = self.calendar.clone().ok_or_else(|| missing(id))?;
+            let mut access = calendar.authorization();
+            if access == Authorization::NotDetermined {
+                access = calendar
+                    .request_access()
+                    .map_err(|e| error(e.code, e.message))?;
+            }
+            (!access.can_read()).then(|| refused(id))
+        };
         let state = match refusal {
             Some(_) => ConnectorState::Error,
             None => ConnectorState::Connected,
@@ -163,6 +174,9 @@ impl Core {
         let index = self.index()?;
         let cleared = index.clear(&calendar_items::source(id));
         cleared.map_err(crate::core_data::index_error)?;
+        if id == SESSIONS {
+            self.forget_sessions();
+        }
         self.builtins().0.remove(id);
         self.persist_builtin(id);
         self.set_title(id, INSTANCE, None);
@@ -206,7 +220,7 @@ impl Core {
                 return;
             };
             built_in.syncing = true;
-            built_in.due = self.clock.now() + INTERVAL;
+            built_in.due = self.clock.now() + interval(id);
             let last = built_in.last_sync_at.clone();
             built_in.status = status(ConnectorState::Syncing, last, None);
             built_in.status.clone()
@@ -246,6 +260,9 @@ impl Core {
 
     /// Read the OS calendar and write what changed since the index's copy.
     fn run_builtin(&self, id: &str) -> Result<(), String> {
+        if id == SESSIONS {
+            return self.run_sessions();
+        }
         let calendar = self.calendar.clone().ok_or_else(|| missing(id).message)?;
         let index = self.index().map_err(|e| e.message)?.clone();
         if !calendar.authorization().can_read() {
@@ -317,6 +334,33 @@ impl Core {
             .builtins
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// How long a built-in waits between syncs.
+fn interval(id: &str) -> Duration {
+    if id == SESSIONS {
+        SESSIONS_INTERVAL
+    } else {
+        INTERVAL
+    }
+}
+
+/// What a built-in is called where connectors are listed.
+fn title_of(id: &str) -> &'static str {
+    match id {
+        CALENDAR => "Calendar",
+        REMINDERS => "Reminders",
+        _ => "Agent sessions",
+    }
+}
+
+/// The item kind a built-in brings in.
+fn kind_of(id: &str) -> ItemKind {
+    match id {
+        CALENDAR => ItemKind::Event,
+        REMINDERS => ItemKind::Task,
+        _ => ItemKind::Record,
     }
 }
 

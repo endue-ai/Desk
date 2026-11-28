@@ -1,0 +1,234 @@
+{
+  "id": "endue.knowledge",
+  "name": "Knowledge",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "A knowledge base from the sessions Claude Code and Codex keep on this computer: the built-in connector desk.agent-sessions reads them, read-only, and this plugin links them by the files, tickets, pull requests, ADRs and branches they share, as a graph with notes and tools agents can ask.",
+  "permissions": [
+    {
+      "permission": "data:read",
+      "kinds": ["record"],
+      "sources": ["desk.agent-sessions"]
+    },
+    {
+      "permission": "connector:manage"
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["~/.desk/knowledge/**"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.open"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Knowledge",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.knowledge.open",
+        "title": "Knowledge: open",
+        "keywords": ["graph", "sessions", "claude", "codex", "kb"],
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.knowledge"
+          }
+        }
+      },
+      {
+        "id": "endue.knowledge.connect",
+        "title": "Knowledge: read agent sessions",
+        "keywords": ["connect", "claude", "codex", "transcripts"]
+      },
+      {
+        "id": "endue.knowledge.sync",
+        "title": "Knowledge: sync agent sessions now",
+        "keywords": ["refresh", "reload", "update"]
+      },
+      {
+        "id": "endue.knowledge.search",
+        "title": "Knowledge: search",
+        "keywords": ["find", "ticket", "file", "session"],
+        "description": "Search the knowledge base built from this computer's Claude Code and Codex sessions: things by name (tickets such as ACME-868, file paths, pull requests, ADRs, branches) and sessions by title or by what the person asked in them (full text). Answers the matching things with how many sessions touched each, and the matching sessions.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "Words to find, all of them: a ticket key, part of a path, words from a session."
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ticket",
+                  "requirement",
+                  "pr",
+                  "issue",
+                  "adr",
+                  "memory",
+                  "file",
+                  "branch",
+                  "repo",
+                  "session"
+                ]
+              },
+              "uniqueItems": true,
+              "description": "Only these kinds; absent means every kind and sessions."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.knowledge.related",
+        "title": "Knowledge: what is related",
+        "keywords": ["history", "who changed", "context"],
+        "description": "What earlier Claude Code and Codex sessions on this computer did with one thing: the sessions that touched a file, a ticket, a pull request or an ADR (latest first), and the other things that came up with it, strongest first (weighed by how the sessions touched them and how rare each is). Given a session id, also the sessions most alike to it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "A ticket key (ACME-868), a path (~/repo/src/a.ts or the end of one, src/a.ts), a pull request (github.com/owner/repo#12), an id the search answered, or a session id."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "together": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.knowledge.note",
+        "title": "Knowledge: the note of a thing",
+        "keywords": ["markdown", "summary", "page"],
+        "description": "The knowledge base's Markdown note of one thing or session: what it is, the sessions that touched it with their dates and agents, the files, pull requests, branches and related tickets that came up with it. Made from the sessions, the same every time.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "What the note is about, named as for endue.knowledge.related."
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "markdown": {
+              "type": "string"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.knowledge.focus",
+        "title": "Knowledge: show a thing and what lies around it",
+        "keywords": ["select", "local graph", "around"]
+      },
+      {
+        "id": "endue.knowledge.write-notes",
+        "title": "Knowledge: write notes",
+        "keywords": ["markdown", "wiki", "export", "folder"]
+      }
+    ],
+    "settings": {
+      "endue.knowledge.ignore": {
+        "kind": "string",
+        "default": "AC",
+        "description": "Prefixes of names that look like ticket keys and are not, separated by commas: AC leaves out acceptance criteria (AC-1, AC-2)."
+      },
+      "endue.knowledge.hub": {
+        "kind": "integer",
+        "default": 5,
+        "minimum": 1,
+        "maximum": 100,
+        "description": "A thing linked to more than this percentage of sessions (a repository, a main branch) is a hub: a filter rather than a node, so the graph does not knot around it."
+      },
+      "endue.knowledge.shared": {
+        "kind": "integer",
+        "default": 2,
+        "minimum": 1,
+        "maximum": 50,
+        "description": "Things drawn as nodes are linked to at least this many sessions; the rest show in each session's details."
+      }
+    }
+  }
+}

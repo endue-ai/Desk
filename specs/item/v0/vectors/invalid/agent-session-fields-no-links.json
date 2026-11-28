@@ -1,0 +1,11 @@
+{
+  "target": "AgentSessionFields",
+  "description": "links are required, empty when the session touched nothing",
+  "instance": {
+    "agent": "codex",
+    "sessionId": "x",
+    "subagent": false,
+    "file": "~/.codex/x.jsonl",
+    "turns": 0
+  }
+}
