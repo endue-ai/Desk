@@ -28,7 +28,8 @@ describe("docs-i18n", () => {
   it("offers the endue app and the Desk migration path in every README", () => {
     for (const path of ["README.md", ...LANGS.map((lang) => translationPath("README.md", lang))]) {
       const guide = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-      assert.match(guide, /^# endue$/mu, path);
+      // The title is the logo: an h1 whose image names endue.
+      assert.match(guide, /<h1 align="center">[\s\S]*?alt="endue"[\s\S]*?<\/h1>/u, path);
       for (const instruction of [
         "github.com/endue-ai/endue/releases",
         "v0.3.0",
