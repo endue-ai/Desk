@@ -1,6 +1,9 @@
 name: release-macos
 
 # Dispatch with an existing release tag to attach macOS installers and available signed updates.
+# artifacts-from names an earlier run of this workflow for the same tag whose build kept its signed
+# packages but failed a later test (#820): verify checks their code signature, notarisation and
+# staple, and attach publishes them without building again.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +13,10 @@ on:
         type: string
       min-from:
         description: Oldest installed app version that can install this tag directly
+        required: false
+        type: string
+      artifacts-from:
+        description: Run id of an earlier release-macos run for this tag whose packages to publish (no build)
         required: false
         type: string
 
@@ -26,12 +33,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: signing
+    permissions:
+      contents: read
+      actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       commit: ${{ steps.version.outputs.commit }}
       signed: ${{ steps.apple.outputs.signed }}
       updates: ${{ steps.version.outputs.updates }}
       cli: ${{ steps.version.outputs.cli }}
+      reuse: ${{ steps.reuse.outputs.reuse }}
     env:
       TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -77,9 +88,38 @@ jobs:
             echo "::warning::No Apple signing secrets in signing: $TAG gets an ad-hoc signed macOS app that Gatekeeper refuses until the person allows it (docs/releasing.md)"
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
+      - id: reuse
+        name: The earlier run whose packages to publish, if one is named
+        env:
+          FROM: ${{ inputs.artifacts-from }}
+          CLI: ${{ steps.version.outputs.cli }}
+        # Only this workflow's own run on main, started after the release was published, so its
+        # build was of this tag; and it must still hold every package attach takes.
+        run: |
+          if [ -z "$FROM" ]; then echo "reuse=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          [[ "$FROM" =~ ^[0-9]+$ ]] || { echo "::error::artifacts-from is a run id"; exit 1; }
+          api="repos/$GITHUB_REPOSITORY/actions/runs/$FROM"
+          read -r path branch event created < <(gh api "$api" --jq '[.path, .head_branch, .event, .created_at] | @tsv')
+          published="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.published_at')"
+          if [ "$path" != .github/workflows/release-macos.yml ] || [ "$branch" != main ] || [ "$event" != workflow_dispatch ]; then
+            echo "::error::Run $FROM is not a release-macos run dispatched on main"
+            exit 1
+          fi
+          if [[ "$created" < "$published" ]]; then
+            echo "::error::Run $FROM started before $TAG was published, so it did not build $TAG"
+            exit 1
+          fi
+          names="$(gh api "$api/artifacts?per_page=100" --jq '.artifacts[] | select(.expired | not) | .name')"
+          wanted=(endue-app-darwin-aarch64)
+          if [ "$CLI" = true ]; then wanted+=(endue-linux-cli); fi
+          for name in "${wanted[@]}"; do
+            grep -qx "$name" <<<"$names" || { echo "::error::Run $FROM holds no $name (expired or never uploaded)"; exit 1; }
+          done
+          echo "reuse=true" >> "$GITHUB_OUTPUT"
 
   build:
     needs: gate
+    if: needs.gate.outputs.reuse != 'true'
     uses: ./.github/workflows/release-build.yml
     with:
       version: ${{ needs.gate.outputs.version }}
@@ -91,7 +131,7 @@ jobs:
   cli:
     name: Linux x86_64 CLI
     needs: gate
-    if: needs.gate.outputs.cli == 'true'
+    if: needs.gate.outputs.cli == 'true' && needs.gate.outputs.reuse != 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:
@@ -125,10 +165,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.ENDUE_UPDATER_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @endue-ai/desk-app exec tauri signer sign --app-version "$VERSION" "$PWD/dist/endue-cli_${VERSION}_linux-x86_64.tar.gz"
-      - name: Download and install on minimal Debian
-        env:
-          DESK_UPDATER_PUBKEY: ${{ vars.ENDUE_UPDATER_PUBLIC_KEY }}
-        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
       - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-path: dist/endue-cli_*.tar.gz
@@ -137,16 +173,62 @@ jobs:
           name: endue-linux-cli
           path: dist/
           if-no-files-found: error
+      - name: Download and install on minimal Debian
+        env:
+          DESK_UPDATER_PUBKEY: ${{ vars.ENDUE_UPDATER_PUBLIC_KEY }}
+        run: e2e/smoke/cli-install-ci.sh dist "$VERSION"
+
+  verify:
+    name: verify the earlier run's packages
+    needs: gate
+    if: needs.gate.outputs.reuse == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      DESK_REQUIRE_SIGNED: ${{ needs.gate.outputs.signed == 'true' && '1' || '' }}
+      UPDATER_PUBKEY: ${{ needs.gate.outputs.updates == 'true' && vars.ENDUE_UPDATER_PUBLIC_KEY || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: endue-app-darwin-*
+          path: dist
+          merge-multiple: true
+          run-id: ${{ inputs.artifacts-from }}
+          github-token: ${{ github.token }}
+      - name: Code signature, notarisation and staple of each disk image and its app
+        run: |
+          shopt -s nullglob
+          images=(dist/*_"$VERSION"_darwin-*.dmg)
+          [ "${#images[@]}" -gt 0 ] || { echo "::error::no disk image for $VERSION"; exit 1; }
+          for dmg in "${images[@]}"; do
+            e2e/smoke/verify-signature.sh --code "$dmg"
+            mnt="$(mktemp -d)"
+            hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$mnt" "$dmg" >/dev/null
+            for app in "$mnt"/*.app; do e2e/smoke/verify-signature.sh --code "$app"; done
+            hdiutil detach "$mnt" >/dev/null
+          done
+          if [ -n "$UPDATER_PUBKEY" ]; then
+            for file in dist/*.app.tar.gz; do e2e/smoke/verify-signature.sh "$file" "$UPDATER_PUBKEY"; done
+          fi
 
   attach:
     name: attach
-    needs: [gate, build, cli]
-    if: always() && needs.gate.result == 'success' && needs.build.result == 'success' && (needs.cli.result == 'success' || needs.cli.result == 'skipped')
+    needs: [gate, build, cli, verify]
+    if: >-
+      always() && needs.gate.result == 'success'
+      && (needs.build.result == 'success' || (needs.gate.outputs.reuse == 'true' && needs.verify.result == 'success'))
+      && (needs.cli.result == 'success' || needs.cli.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: signing
     permissions:
       contents: write
+      actions: read
     env:
       TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.gate.outputs.version }}
@@ -155,16 +237,21 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # This run's packages, or with artifacts-from the earlier run's (the token reads them).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: endue-app-darwin-*
           path: dist
           merge-multiple: true
+          run-id: ${{ inputs.artifacts-from || github.run_id }}
+          github-token: ${{ github.token }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: needs.gate.outputs.cli == 'true'
         with:
           name: endue-linux-cli
           path: dist
+          run-id: ${{ inputs.artifacts-from || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Verify the release file list
         run: |
           node scripts/release-manifest.mjs check-files dist --version "$VERSION"

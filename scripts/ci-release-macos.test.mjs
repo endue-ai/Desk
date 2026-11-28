@@ -53,10 +53,15 @@ test("it builds macOS at the tag's commit, with signed packages when the updater
 
 test("it attaches the disk images and their checksums and writes the notes' macOS section", () => {
   const attach = workflow("release-macos").jobs.attach;
-  assert.deepEqual(attach.needs, ["gate", "build", "cli"]);
-  assert.deepEqual(attach.permissions, { contents: "write" }, "the only job that writes");
+  assert.deepEqual(attach.needs, ["gate", "build", "cli", "verify"]);
+  assert.deepEqual(
+    attach.permissions,
+    { contents: "write", actions: "read" },
+    "the only job that writes; it reads an earlier run's packages",
+  );
   const download = attach.steps.find((step) => String(step.uses).startsWith("actions/download-"));
   assert.equal(download.with.pattern, "endue-app-darwin-*");
+  assert.equal(download.with["run-id"], expr("inputs.artifacts-from || github.run_id"));
   const run = scripts(attach);
   assert.match(run, /sha256sum "\$DESKTOP_PREFIX"\*\.dmg > SHA256SUMS-macos/u);
   assert.match(run, /release-assets\.mjs files dist --version "\$VERSION"/u);
@@ -111,4 +116,56 @@ test("canary, a line's candidate, its final and the dry run build every target w
     assert.equal(build.with.targets, undefined, name);
     assert.equal(build.with["installers-only"], undefined, name);
   }
+});
+
+test("a build's signed packages leave the job before any test, so a failed test keeps them (#820)", () => {
+  const steps = workflow("release-build").jobs.build.steps;
+  const at = (pattern) => steps.findIndex((step) => pattern.test(step.run ?? step.uses ?? ""));
+  const upload = at(/^actions\/upload-artifact@/u);
+  assert.ok(at(/tauri signer sign --app-version/u) < upload, "the updates are signed first");
+  assert.ok(at(/release-collect\.mjs/u) < upload, "and collected");
+  for (const test of [
+    /install-and-launch\.sh/u,
+    /cli-install-ci\.sh/u,
+    /verify-signature\.sh dist/u,
+  ]) {
+    assert.ok(at(test) > upload, `${test} runs after the upload`);
+  }
+  const smoke = steps[at(/install-and-launch\.sh/u)];
+  assert.equal(smoke.env.DESK_SMOKE_READY_WITHIN, expr("runner.os == 'macOS' && '180' || ''"));
+  const cli = workflow("release-macos").jobs.cli.steps;
+  const cliAt = (pattern) => cli.findIndex((step) => pattern.test(step.run ?? step.uses ?? ""));
+  assert.ok(cliAt(/^actions\/upload-artifact@/u) < cliAt(/cli-install-ci\.sh/u));
+});
+
+test("artifacts-from publishes an earlier run's packages after verify, without building (#820)", () => {
+  const mac = workflow("release-macos");
+  assert.equal(mac.on.workflow_dispatch.inputs["artifacts-from"].required, false);
+  const reuse = mac.jobs.gate.steps.find((step) => step.id === "reuse");
+  assert.equal(reuse.env.FROM, expr("inputs.artifacts-from"));
+  assert.match(
+    reuse.run,
+    /"\$path" != \.github\/workflows\/release-macos\.yml/u,
+    "this workflow's run",
+  );
+  assert.match(reuse.run, /"\$branch" != main/u, "on main");
+  assert.match(reuse.run, /"\$created" < "\$published"/u, "after the release was published");
+  assert.match(reuse.run, /select\(\.expired \| not\)/u, "with the packages still there");
+  assert.deepEqual(mac.jobs.gate.permissions, { contents: "read", actions: "read" });
+  assert.equal(mac.jobs.build.if, "needs.gate.outputs.reuse != 'true'");
+  assert.match(mac.jobs.cli.if, /needs\.gate\.outputs\.reuse != 'true'/u);
+  const verify = mac.jobs.verify;
+  assert.equal(verify.if, "needs.gate.outputs.reuse == 'true'");
+  assert.equal(verify.environment, undefined, "verify reads no secret");
+  assert.equal(verify["runs-on"], "macos-latest");
+  assert.match(scripts(verify), /verify-signature\.sh --code "\$dmg"/u);
+  assert.match(scripts(verify), /verify-signature\.sh --code "\$app"/u);
+  assert.equal(
+    verify.env.DESK_REQUIRE_SIGNED,
+    expr("needs.gate.outputs.signed == 'true' && '1' || ''"),
+  );
+  assert.match(
+    mac.jobs.attach.if,
+    /needs\.build\.result == 'success' \|\| \(needs\.gate\.outputs\.reuse == 'true' && needs\.verify\.result == 'success'\)/u,
+  );
 });

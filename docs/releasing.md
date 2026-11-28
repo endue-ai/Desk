@@ -37,6 +37,13 @@ the tag eligible for in-app updates (ADR 0229, ADR 0291).
    Settings > Privacy & Security.
 4. To build a release again (a failed run, new secrets, a release from before this workflow):
    `gh workflow run release-macos -f tag=v0.1.0`. It replaces what the earlier run attached.
+5. A build uploads its signed packages (`endue-app-<target>`) before it tests them, so a test that
+   fails on a slow hosted runner leaves them on the run. The smoke prints the end of the app's output
+   when it fails. Read why it failed; when the packages are sound, publish them without building
+   again: `gh workflow run release-macos -f tag=v0.1.0 -f artifacts-from=<run id>`. The gate takes
+   only a release-macos run on `main` that started after the release was published and still holds
+   its packages (seven days); `verify` checks each disk image's and app's code signature,
+   notarisation and staple, and the updates' signatures, before attach.
 
 For in-app upgrades, set the repository variable `ENDUE_UPDATER_PUBLIC_KEY` and its matching signing
 key in the protected environment. The release then includes the signed updater archives,

@@ -12,7 +12,8 @@
 # (ADR 0144): the .app bundle's binary on macOS, target/debug/endue-desk(.exe) elsewhere. Nothing is
 # installed or checked then.
 # Either way the app starts with a temp HOME and e2e/fixtures/init.yaml, the script waits for the ready
-# line it prints (desk_ready) and quits it with SIGTERM. With DESK_SMOKE_POSTGRES set (a
+# line it prints (desk_ready; DESK_SMOKE_READY_WITHIN seconds, 60 by default, the end of the app's
+# stdout and stderr printed when it fails) and quits it with SIGTERM. With DESK_SMOKE_POSTGRES set (a
 # postgresql:// URI, the password in PGPASSWORD), it also opens the database plugin and runs one
 # query on that server through the desk CLI (DESK_SMOKE_CLI, else the build's `desk`) before quitting
 # (e2e/smoke/database-query.mjs; skipped with one line on Windows, which has no desk socket yet).
@@ -28,7 +29,7 @@ if [[ "${1:-}" == "--upgrade-from" ]]; then
   exec "$root/scripts/cef-package/upgrade-smoke.sh" "$@"
 fi
 package="${1:-${DESK_SMOKE_PACKAGE:-}}"
-ready_within=60
+ready_within="${DESK_SMOKE_READY_WITHIN:-60}"
 quit_within=10
 
 step="start"
@@ -44,6 +45,16 @@ if [ "$(id -u)" -ne 0 ]; then sudo="sudo"; fi
 
 fail() {
   echo "smoke: $step failed: $*" >&2
+  # What the app wrote, so a start that fails on a runner can be read from the log.
+  if [ "$step" = ready ] || [ "$step" = quit ]; then
+    local log
+    for log in "${out:-}" "${err:-}"; do
+      if [ -s "$log" ]; then
+        echo "smoke: the last lines of $(basename "$log"):" >&2
+        tail -n 40 "$log" >&2
+      fi
+    done
+  fi
   exit 1
 }
 
