@@ -43,6 +43,9 @@ const FAILURES = {
   "slow-down": "endue asked us to slow down. Give it a minute, then try again.",
   unavailable: "endue isn't answering right now. Let's try again in a moment.",
   suspended: "That account is suspended. Write to team@endue.ai, or skip for now.",
+  "pending-approval":
+    "That account is waiting for approval: sign-ups from its email domain are reviewed first. You can skip for now.",
+  "region-unavailable": "endue is not available in your region yet, so let's skip this for now.",
 };
 
 /** The page where the code is confirmed, as people read it: `auth.endue.ai/realms/endue/device`. */

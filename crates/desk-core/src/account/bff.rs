@@ -2,21 +2,26 @@
 //! refs/auth.md §2.3 cites them, and the rules for their answers. A failure other than 400, 401,
 //! 403 and 410 (a server error, 408, 429, no connection) is tried again after each wait of
 //! `retry` (400, 1200 and 3000 ms) before it counts. Errors come in the platform's envelope,
-//! `{ "error": { "code": "DEVICE_CODE_EXPIRED", ... } }`.
+//! `{ "error": { "code": "DEVICE_CODE_EXPIRED", ... } }`. A sign-in they refuse is logged with the
+//! endpoint, the status and that code, never a body, a code to confirm or a token.
 
 use std::thread;
 use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use super::{Problem, cookie};
+use super::{AccountLog, Problem, cookie};
 use crate::account_client::{Call, IdClient, Reply};
 
 pub(super) struct Bff<'a> {
     pub platform: &'a str,
     pub retry: &'a [Duration],
     pub client: &'a dyn IdClient,
+    pub log: &'a AccountLog,
 }
+
+const START: &str = "/api/v1/auth/device/start";
+const TOKEN: &str = "/api/v1/auth/device/token";
 
 /// A code from `/device/start`.
 pub(super) struct Start {
@@ -75,14 +80,30 @@ impl Bff<'_> {
         result
     }
 
+    /// Say in the log how the sign-in's call to `path` failed: its status and error code.
+    fn refused(&self, path: &str, result: &Result<Reply, String>) {
+        let line = match result {
+            Ok(reply) => {
+                let code = code_of(reply).filter(|code| plain(code));
+                let code = code.unwrap_or_else(|| "without an error code".to_owned());
+                format!("sign-in: {path} answered {} {code}", reply.status)
+            }
+            Err(error) => format!("sign-in: could not reach {path}: {error}"),
+        };
+        self.log.say(&line);
+    }
+
     /// Ask for a code with the PKCE `challenge`.
     pub fn start(&self, challenge: &str) -> Result<Start, Problem> {
         let body = json!({ "code_challenge": challenge, "code_challenge_method": "S256" });
-        let call = Call::post(self.url("/api/v1/auth/device/start"), body);
+        let call = Call::post(self.url(START), body);
         let result = self.retried(&call);
         let reply = match &result {
             Ok(reply) if reply.status == 200 => reply.json(),
-            _ => return Err(problem_of(&result)),
+            _ => {
+                self.refused(START, &result);
+                return Err(problem_of(&result));
+            }
         };
         let text = |key: &str| reply.get(key).and_then(Value::as_str).map(str::to_owned);
         let (Some(device_code), Some(user_code), Some(verification_uri)) = (
@@ -90,6 +111,8 @@ impl Bff<'_> {
             text("user_code"),
             text("verification_uri"),
         ) else {
+            self.log
+                .say(&format!("sign-in: {START} answered 200 without a code"));
             return Err(Problem::Failed);
         };
         let verification_uri_complete = text("verification_uri_complete").unwrap_or_else(|| {
@@ -115,19 +138,25 @@ impl Bff<'_> {
     pub fn poll(&self, device_code: &str, verifier: &str, interval: u64) -> Polled {
         let body = json!({ "device_code": device_code, "code_verifier": verifier,
             "interval": interval });
-        let result = self
-            .client
-            .send(&Call::post(self.url("/api/v1/auth/device/token"), body));
+        let result = self.client.send(&Call::post(self.url(TOKEN), body));
         match &result {
             Ok(reply) if reply.status == 202 => {
                 let next = reply.json().get("interval").and_then(Value::as_u64);
                 Polled::Pending(next.unwrap_or(interval).clamp(1, 600))
             }
-            Ok(reply) if reply.status == 200 => {
-                tokens_of(reply).map_or(Polled::Ended(Problem::Failed), Polled::Tokens)
-            }
+            Ok(reply) if reply.status == 200 => tokens_of(reply).map_or_else(
+                || {
+                    self.log
+                        .say(&format!("sign-in: {TOKEN} answered 200 without a token"));
+                    Polled::Ended(Problem::Failed)
+                },
+                Polled::Tokens,
+            ),
             _ if retryable(&result) => Polled::Transient(problem_of(&result)),
-            _ => Polled::Ended(problem_of(&result)),
+            _ => {
+                self.refused(TOKEN, &result);
+                Polled::Ended(problem_of(&result))
+            }
         }
     }
 
@@ -204,6 +233,15 @@ fn code_of(reply: &Reply) -> Option<String> {
     Some(code.to_owned())
 }
 
+/// Whether an error code is fit for the log as it came: `ACCOUNT_SUSPENDED`, not prose.
+fn plain(code: &str) -> bool {
+    !code.is_empty()
+        && code.len() <= 64
+        && code
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+}
+
 /// Which problem a failed result is.
 pub(super) fn problem_of(result: &Result<Reply, String>) -> Problem {
     let Ok(reply) = result else {
@@ -212,6 +250,8 @@ pub(super) fn problem_of(result: &Result<Reply, String>) -> Problem {
     match (reply.status, code_of(reply).as_deref()) {
         (429, _) => Problem::SlowDown,
         (_, Some("ACCOUNT_SUSPENDED")) => Problem::Suspended,
+        (_, Some("ACCOUNT_PENDING_APPROVAL")) => Problem::PendingApproval,
+        (_, Some("REGION_UNAVAILABLE")) => Problem::RegionUnavailable,
         (_, Some("DEVICE_LOGIN_DENIED")) => Problem::Denied,
         (410, _) | (_, Some("DEVICE_CODE_EXPIRED")) => Problem::Expired,
         (status, _) if status >= 500 || status == 408 => Problem::Unavailable,
@@ -245,6 +285,14 @@ mod tests {
             Problem::Denied
         );
         assert_eq!(
+            problem_of(&reply(403, "ACCOUNT_PENDING_APPROVAL")),
+            Problem::PendingApproval
+        );
+        assert_eq!(
+            problem_of(&reply(403, "REGION_UNAVAILABLE")),
+            Problem::RegionUnavailable
+        );
+        assert_eq!(
             problem_of(&reply(410, "DEVICE_CODE_EXPIRED")),
             Problem::Expired
         );
@@ -255,5 +303,11 @@ mod tests {
         assert_eq!(problem_of(&reply(401, "AUTH_FAILED")), Problem::Failed);
         assert!(retryable(&reply(503, "X")) && retryable(&reply(429, "X")));
         assert!(!retryable(&reply(401, "X")) && !retryable(&reply(410, "X")));
+    }
+
+    #[test]
+    fn only_a_plain_code_reaches_the_log() {
+        assert!(plain("ACCOUNT_PENDING_APPROVAL") && plain("E2"));
+        assert!(!plain("") && !plain("not a code") && !plain("A\nB") && !plain(&"A".repeat(65)));
     }
 }

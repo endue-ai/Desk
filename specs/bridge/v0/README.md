@@ -694,7 +694,8 @@ PKCE through the platform's `/api/v1/auth/device/*`, opens endue ID's page at au
 (`screen: sign-up` asks for the sign-up page) and answers `signing-in` with `signIn`; called again, it
 opens the page again. `account.changed` reports `signed-in` with the `profile` from `/api/v1/users/me`,
 or a `problem` with its `reason` (`offline`, `denied`, `expired`, `slow-down`, `unavailable`,
-`suspended`, `rejected`, `session-expired`, `failed`). `account.signOut` revokes the session
+`suspended`, `pending-approval`, `region-unavailable`, `rejected`, `session-expired`, `failed`).
+`account.signOut` revokes the session
 (`/api/v1/auth/logout`) and forgets it. The core renews the session before the access token expires
 and gives the token to the brain as its bearer token; no token crosses the bridge.
 

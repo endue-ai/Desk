@@ -53,7 +53,7 @@ pub struct AccountOptions {
     pub file: Option<PathBuf>,
     /// Where the tokens are kept; `None`, or one that does not answer, keeps them in `file`.
     pub keychain: Option<Arc<dyn Keychain>>,
-    /// Where the account says what the person should know of how it keeps the session.
+    /// Where the account says how it keeps the session, and why endue refused a sign-in.
     pub log: AccountLog,
     /// How long one second of endue's poll interval lasts; tests shorten it.
     pub interval_unit: Duration,
@@ -146,6 +146,10 @@ pub enum Problem {
     SlowDown,
     Unavailable,
     Suspended,
+    /// The account waits for endue to approve its sign-up (`ACCOUNT_PENDING_APPROVAL`).
+    PendingApproval,
+    /// endue is not offered where the person signs in from (`REGION_UNAVAILABLE`).
+    RegionUnavailable,
     Rejected,
     SessionExpired,
     Failed,
@@ -161,6 +165,11 @@ impl Problem {
             Self::SlowDown => "endue asked the desk to slow down. Wait a moment and try again.",
             Self::Unavailable => "endue is not answering right now. Try again in a moment.",
             Self::Suspended => "This endue account is suspended.",
+            Self::PendingApproval => {
+                "This endue account is awaiting approval. Sign-ups from its email domain are \
+                 reviewed first."
+            }
+            Self::RegionUnavailable => "endue is not available in your region.",
             Self::Rejected => {
                 "endue would not renew this desk's session. You stay signed in for now."
             }
@@ -293,6 +302,7 @@ impl Account {
             platform: &self.options.platform_url,
             retry: &self.options.retry,
             client: self.client.as_ref(),
+            log: &self.options.log,
         }
     }
 

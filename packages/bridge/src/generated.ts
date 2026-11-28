@@ -2220,7 +2220,7 @@ export type AccountState = "signed-out" | "signing-in" | "signed-in";
 /** Which endue ID page the person starts on: sign-in, or sign-up to create an account. Either way they end signed in. */
 export type AccountScreen = "sign-in" | "sign-up";
 
-/** Which kind of problem the last step ran into, for the runtime to word: offline (endue could not be reached), denied (turned down in the browser), expired (the code ran out), slow-down (too many attempts; endue asked the desk to wait), unavailable (endue answered with a server error), suspended (the account is suspended), rejected (endue refused to renew the session, which the desk keeps), session-expired (the session ended, so the desk signed out), failed (anything else). */
+/** Which kind of problem the last step ran into, for the runtime to word: offline (endue could not be reached), denied (turned down in the browser), expired (the code ran out), slow-down (too many attempts; endue asked the desk to wait), unavailable (endue answered with a server error), suspended (the account is suspended), pending-approval (the account waits for endue to approve its sign-up, as sign-ups from some email domains do), region-unavailable (endue is not offered where the person signs in from), rejected (endue refused to renew the session, which the desk keeps), session-expired (the session ended, so the desk signed out), failed (anything else). */
 export type AccountProblem =
   | "offline"
   | "denied"
@@ -2228,6 +2228,8 @@ export type AccountProblem =
   | "slow-down"
   | "unavailable"
   | "suspended"
+  | "pending-approval"
+  | "region-unavailable"
   | "rejected"
   | "session-expired"
   | "failed";

@@ -311,6 +311,10 @@ fn every_failure_names_its_reason() {
     assert_eq!(polled(denied), Some(Problem::Denied));
     let suspended = Poll::Fail(403, "ACCOUNT_SUSPENDED");
     assert_eq!(polled(suspended), Some(Problem::Suspended));
+    let pending = Poll::Fail(403, "ACCOUNT_PENDING_APPROVAL");
+    assert_eq!(polled(pending), Some(Problem::PendingApproval));
+    let elsewhere = Poll::Fail(403, "REGION_UNAVAILABLE");
+    assert_eq!(polled(elsewhere), Some(Problem::RegionUnavailable));
     assert_eq!(
         polled(Poll::Fail(401, "AUTH_FAILED")),
         Some(Problem::Failed)
@@ -331,6 +335,11 @@ fn every_failure_names_its_reason() {
     );
     let (status, tries) = started(vec![(503, "DEVICE_LOGIN_UNAVAILABLE"); 4]);
     assert_eq!((status.problem, tries), (Some(Problem::Unavailable), 4));
+    let (status, tries) = started(vec![(403, "REGION_UNAVAILABLE")]);
+    assert_eq!(
+        (status.problem, tries),
+        (Some(Problem::RegionUnavailable), 1)
+    );
     let (status, tries) = started(vec![(503, "DEVICE_LOGIN_UNAVAILABLE")]);
     assert!(matches!(status.state, State::SigningIn(_)) && tries == 2);
 

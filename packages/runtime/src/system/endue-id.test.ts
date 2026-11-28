@@ -108,6 +108,11 @@ describe("the desk's endue ID (ADR 0089, ADR 0111)", () => {
       ["slow-down", "Too many sign-in attempts. Wait a moment and try again."],
       ["unavailable", "Something went wrong while signing in. Please try again in a moment."],
       ["suspended", "This account is suspended. Write to team@endue.ai."],
+      [
+        "pending-approval",
+        "This account is awaiting approval. Sign-ups from its email domain are reviewed first.",
+      ],
+      ["region-unavailable", "endue is not available in your region."],
       ["failed", "Sign-in failed. Please try again."],
     ];
     for (const [reason, line] of reasons) {
