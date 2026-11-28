@@ -79,11 +79,11 @@ jobs:
         run: |
           echo "::error::Unsupported shell '$SHELL_NAME'. Set shell to cef to build endue."
           exit 1
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -92,7 +92,7 @@ jobs:
           rustup toolchain install
           rustup target add "${{ matrix.rust }}"
       # A signed build reads the cache and never writes it: what it signs leans on no cache it made.
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: release-${{ matrix.rust }}
           save-if: ${{ inputs.dry-run }}
@@ -100,7 +100,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
       - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: ${{ inputs.dry-run }}
         with:
           name: dry-run-key
@@ -115,38 +115,6 @@ jobs:
             echo "DRY_RUN_KEY<<DESK_KEY_END"; cat "$KEY_DIR/updater.key"; echo; echo "DESK_KEY_END"
             echo "DRY_RUN_PUBKEY=$(cat "$KEY_DIR/updater.key.pub")"
           } >> "$GITHUB_ENV"
-      - name: Sign and notarise on macOS when the Apple secrets are set
-        if: runner.os == 'macOS' && !inputs.dry-run
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        # Only set ones reach the build (scripts/cef-sign-macos.sh signs ad-hoc without an identity).
-        # It notarises with an App Store Connect API key when one is set (no person's Apple ID or
-        # two-factor prompt behind it), else with the Apple ID and its app password.
-        run: |
-          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
-            echo "::notice::No Apple signing secrets: the macOS build is neither signed nor notarised"
-            exit 0
-          fi
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY; do
-            if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
-          done
-          if [ -n "$APPLE_API_KEY_P8" ] && [ -n "$APPLE_API_KEY" ] && [ -n "$APPLE_API_ISSUER" ]; then
-            key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
-            printf '%s\n' "$APPLE_API_KEY_P8" > "$key"
-            { echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"; echo "APPLE_API_KEY=$APPLE_API_KEY"; echo "APPLE_API_KEY_PATH=$key"; } >> "$GITHUB_ENV"
-          else
-            for name in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-              if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
-            done
-          fi
       - name: Install CEF build tools for endue
         if: inputs.shell == 'cef' && runner.os != 'Windows'
         run: |
@@ -154,7 +122,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build libgtk-3-dev libxdo-dev libayatana-appindicator3-dev libasound2-dev libfuse2 file xvfb
       # The archive only, keyed by its pin: every run checks its hashes and unpacks it afresh.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: inputs.shell == 'cef'
         with:
           path: ${{ runner.temp }}/cef/*/*.tar.bz2
@@ -162,7 +130,7 @@ jobs:
       - name: Fetch the pinned CEF
         if: inputs.shell == 'cef'
         run: echo "CEF_PATH=$(node scripts/cef-fetch.mjs --target "${{ matrix.rust }}" --out "$RUNNER_TEMP/cef")" >> "$GITHUB_ENV"
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: inputs.shell == 'cef' && inputs.dry-run
         with:
           path: ${{ runner.temp }}/cef/*/*.tar.bz2
@@ -185,14 +153,53 @@ jobs:
             source scripts/package-cli-build-env.sh
           fi
           cargo build -p desk-cli --bins --release --target "${{ matrix.rust }}"
-      - name: Package endue with cargo-packager
+      - name: Install cargo-packager
+        if: inputs.shell == 'cef'
+        run: cargo install cargo-packager --version 0.11.8 --locked
+      # The Apple secrets reach this step only: not pnpm, the crates' build scripts or the
+      # cargo-packager install above. On macOS outside a dry run it exports the ones that are set
+      # (scripts/cef-sign-macos.sh signs ad-hoc without an identity) and notarises with an App Store
+      # Connect API key when one is set (no person's Apple ID or two-factor prompt behind it), else
+      # with the Apple ID and its app password. The key file lives for this step only.
+      - name: Package, sign and notarise endue with cargo-packager
         if: inputs.shell == 'cef'
         env:
           DESK_WINDOWS_SIGN_COMMAND: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
+          IN_APPLE_CERTIFICATE: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_CERTIFICATE || '' }}
+          IN_APPLE_CERTIFICATE_PASSWORD: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          IN_APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          IN_APPLE_API_ISSUER: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_API_ISSUER || '' }}
+          IN_APPLE_API_KEY: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_API_KEY || '' }}
+          IN_APPLE_API_KEY_P8: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_API_KEY_P8 || '' }}
+          IN_APPLE_ID: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_ID || '' }}
+          IN_APPLE_PASSWORD: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_PASSWORD || '' }}
+          IN_APPLE_TEAM_ID: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_TEAM_ID || '' }}
         run: |
-          cargo install cargo-packager --version 0.11.8 --locked
-          # With the Apple identity the .app and the .dmg must come out notarised.
-          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then export DESK_REQUIRE_NOTARISATION=1; fi
+          if [ "$RUNNER_OS" = macOS ]; then
+            if [ -n "$IN_APPLE_CERTIFICATE" ] && [ -n "$IN_APPLE_SIGNING_IDENTITY" ]; then
+              for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY; do
+                value="IN_$name"
+                if [ -n "${!value}" ]; then export "$name=${!value}"; fi
+              done
+              if [ -n "$IN_APPLE_API_KEY_P8" ] && [ -n "$IN_APPLE_API_KEY" ] && [ -n "$IN_APPLE_API_ISSUER" ]; then
+                APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey_$IN_APPLE_API_KEY.p8"
+                trap 'rm -f "$APPLE_API_KEY_PATH"' EXIT
+                (umask 077; printf '%s\n' "$IN_APPLE_API_KEY_P8" > "$APPLE_API_KEY_PATH")
+                export APPLE_API_ISSUER="$IN_APPLE_API_ISSUER" APPLE_API_KEY="$IN_APPLE_API_KEY" APPLE_API_KEY_PATH
+              else
+                for name in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+                  value="IN_$name"
+                  if [ -n "${!value}" ]; then export "$name=${!value}"; fi
+                done
+              fi
+              # With the Apple identity the .app and the .dmg must come out notarised.
+              export DESK_REQUIRE_NOTARISATION=1
+            else
+              echo "::notice::No Apple signing secrets: the macOS build is neither signed nor notarised"
+            fi
+          fi
+          unset IN_APPLE_CERTIFICATE IN_APPLE_CERTIFICATE_PASSWORD IN_APPLE_SIGNING_IDENTITY IN_APPLE_API_ISSUER \
+            IN_APPLE_API_KEY IN_APPLE_API_KEY_P8 IN_APPLE_ID IN_APPLE_PASSWORD IN_APPLE_TEAM_ID
           node scripts/cef-package.mjs --target "${{ matrix.rust }}" --version "$VERSION" --out target/packager
       - name: Sign the endue app updates
         if: inputs.shell == 'cef' && !inputs.installers-only
@@ -210,9 +217,11 @@ jobs:
           # Installers only: nothing carries an updater signature, so none is checked (empty is none).
           DESK_UPDATER_PUBKEY: ${{ !inputs.installers-only && (inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY) || '' }}
           WINDOWS_SIGNED: ${{ !inputs.dry-run && vars.DESK_WINDOWS_SIGN_COMMAND || '' }}
+          # Whether the packaging step signed with the Developer ID, without the secrets themselves.
+          APPLE_SIGNED: ${{ runner.os == 'macOS' && !inputs.dry-run && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
         run: |
           shopt -s nullglob
-          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] || [ -n "$WINDOWS_SIGNED" ]; then export DESK_REQUIRE_SIGNED=1; fi
+          if [ "$APPLE_SIGNED" = true ] || [ -n "$WINDOWS_SIGNED" ]; then export DESK_REQUIRE_SIGNED=1; fi
           display() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args="-screen 0 1280x800x24" "$@"; else "$@"; fi; }
           for package in target/packager/bundle/*/*; do
             if [[ "$package" == *.sig ]]; then continue; fi
@@ -247,7 +256,7 @@ jobs:
         env:
           UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.ENDUE_UPDATER_PUBLIC_KEY }}
         run: e2e/smoke/verify-signature.sh dist/*_"${VERSION}"_linux-x86_64.deb "$UPDATER_PUBKEY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: endue-app-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
           path: dist/
