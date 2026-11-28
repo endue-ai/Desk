@@ -20,9 +20,9 @@ export function cefBinary(root: string, platform = process.platform): string {
 
 /** The desk's data folder under `home`, as the desk names it (apps/desk/shell/src/paths.rs). */
 export function dataDir(home: string, platform = process.platform): string {
-  if (platform === "darwin") return join(home, "Library/Application Support/ai.endue.desk");
-  if (platform === "win32") return join(home, "AppData/Roaming/ai.endue.desk");
-  return join(home, ".local/share/ai.endue.desk");
+  if (platform === "darwin") return join(home, "Library/Application Support/ai.endue.desktop");
+  if (platform === "win32") return join(home, "AppData/Roaming/ai.endue.desktop");
+  return join(home, ".local/share/ai.endue.desktop");
 }
 
 /** A port nothing listens on now. */

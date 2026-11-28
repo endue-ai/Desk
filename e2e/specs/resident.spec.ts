@@ -153,7 +153,7 @@ describe("endue with every window closed", () => {
 
   it("writes the login item the setting asks for, which starts this desk in the background", async () => {
     const home = process.env[HOME_VAR] ?? "";
-    const plist = join(loginItems(home), "ai.endue.desk.plist");
+    const plist = join(loginItems(home), "ai.endue.desktop.plist");
     await browser.waitUntil(() => existsSync(plist), {
       timeoutMsg: `no login item at ${plist}`,
     });

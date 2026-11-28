@@ -37,7 +37,7 @@ fn an_archive_that_is_not_this_desk_whole_is_refused_and_nothing_moves() {
         (whole[..whole.len() * 2 / 3].to_vec(), "did not unpack"),
         (
             app_tar_gz("endue-desk", "ai.other.app", "x"),
-            "not this desk (ai.endue.desk)",
+            "not this desk (ai.endue.desktop)",
         ),
         (
             tar_gz(&[Entry("README", b"no app".to_vec(), 0o644)]),

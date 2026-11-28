@@ -75,7 +75,7 @@ impl PortService {
     pub fn check_in() -> io::Result<PortService> {
         static NEXT: AtomicU64 = AtomicU64::new(1);
         let n = NEXT.fetch_add(1, Ordering::SeqCst);
-        let name = format!("ai.endue.desk.surface.{}.{n}", std::process::id());
+        let name = format!("ai.endue.desktop.surface.{}.{n}", std::process::id());
         let c_name = CString::new(name.clone()).map_err(io::Error::other)?;
         let mut port: mach_port_t = MACH_PORT_NULL;
         // SAFETY: a NUL-terminated name and a place for the port the call makes.

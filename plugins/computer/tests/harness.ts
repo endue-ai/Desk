@@ -29,7 +29,7 @@ export function computerHandlers(calls: Call[], over: Handlers = {}): Handlers {
     "computer.permissions.status": () => ({
       accessibility: true,
       screenRecording: false,
-      bundleId: "ai.endue.desk",
+      bundleId: "ai.endue.desktop",
       stopped: false,
     }),
     "computer.permissions.request": () => ({ granted: false }),

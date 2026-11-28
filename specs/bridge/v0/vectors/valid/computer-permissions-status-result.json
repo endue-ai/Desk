@@ -4,7 +4,7 @@
   "instance": {
     "accessibility": true,
     "screenRecording": false,
-    "bundleId": "ai.endue.desk",
+    "bundleId": "ai.endue.desktop",
     "stopped": false,
     "allowedApps": ["com.apple.Safari"]
   }

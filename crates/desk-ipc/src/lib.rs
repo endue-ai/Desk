@@ -44,7 +44,7 @@ pub use unsupported::{Client, Listener};
 pub const CALLER: &str = "cli";
 
 /// The app's identifier: the shell names the data folder after it (`apps/desk/shell/src/paths.rs`).
-pub const APP_ID: &str = "ai.endue.desk";
+pub const APP_ID: &str = "ai.endue.desktop";
 
 /// The socket's file name in the data folder.
 pub const SOCKET_FILE: &str = "desk.sock";
@@ -56,8 +56,8 @@ pub const SOCKET_ENV: &str = "DESK_SOCKET";
 pub const UNSUPPORTED: &str = "the desk socket is not available on Windows yet";
 
 /// Where the desk socket lives: `DESK_SOCKET`, or `desk.sock` in the desk's data folder (macOS
-/// `~/Library/Application Support/ai.endue.desk`, Linux `$XDG_DATA_HOME/ai.endue.desk` or
-/// `~/.local/share/ai.endue.desk`). `None` when there is no data folder (no home).
+/// `~/Library/Application Support/ai.endue.desktop`, Linux `$XDG_DATA_HOME/ai.endue.desktop` or
+/// `~/.local/share/ai.endue.desktop`). `None` when there is no data folder (no home).
 pub fn socket_path() -> Option<PathBuf> {
     match std::env::var_os(SOCKET_ENV) {
         Some(path) if !path.is_empty() => Some(PathBuf::from(path)),
@@ -66,8 +66,8 @@ pub fn socket_path() -> Option<PathBuf> {
 }
 
 /// The desk's data folder, where the app keeps its state files (macOS
-/// `~/Library/Application Support/ai.endue.desk`, Linux `$XDG_DATA_HOME/ai.endue.desk` or
-/// `~/.local/share/ai.endue.desk`). `None` when there is no home.
+/// `~/Library/Application Support/ai.endue.desktop`, Linux `$XDG_DATA_HOME/ai.endue.desktop` or
+/// `~/.local/share/ai.endue.desktop`). `None` when there is no home.
 pub fn data_dir() -> Option<PathBuf> {
     dirs::data_dir().map(|data| data.join(APP_ID))
 }

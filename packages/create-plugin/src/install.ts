@@ -22,7 +22,7 @@ export function localPluginsDir(): string {
       : process.platform === "win32"
         ? (process.env.APPDATA ?? join(home, "AppData", "Roaming"))
         : (process.env.XDG_DATA_HOME ?? join(home, ".local", "share"));
-  return join(base, "ai.endue.desk", "plugins");
+  return join(base, "ai.endue.desktop", "plugins");
 }
 
 const omitted = new Set([".git", ".env", "node_modules"]);

@@ -1,7 +1,7 @@
 //! Kept passwords (ADR 0311) against what a unit test cannot reach. `ENDUE_DB_TEST_POSTGRES` names
 //! a real server (a `postgresql://user:password@host:port/database` URI): a kept password signs in
 //! to it by `passwordRef`, and a wrong one is the server's refusal. `ENDUE_KEYCHAIN_TEST=1` on macOS
-//! lets a test write the login Keychain, under the throwaway service `ai.endue.desk.test` and a name
+//! lets a test write the login Keychain, under the throwaway service `ai.endue.desktop.test` and a name
 //! of its own, and delete it again. Each test skips when its variable is unset.
 
 mod support;
@@ -107,7 +107,7 @@ fn the_os_keychain_keeps_uses_and_forgets_a_database_password() {
         eprintln!("skipped: ENDUE_KEYCHAIN_TEST=1 on macOS reaches the login Keychain");
         return;
     }
-    let service = "ai.endue.desk.test";
+    let service = "ai.endue.desktop.test";
     let os: Arc<dyn Keychain> = Arc::new(desk_sys::keychain::os(service).unwrap());
     let core = core(Arc::clone(&os));
     let name = throwaway();

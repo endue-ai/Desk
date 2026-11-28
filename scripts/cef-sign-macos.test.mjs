@@ -34,7 +34,7 @@ function bundle(helpers = 5) {
     join(contents, "Info.plist"),
     plist({
       CFBundleExecutable: "endue-desk",
-      CFBundleIdentifier: "ai.endue.desk.test",
+      CFBundleIdentifier: "ai.endue.desktop.test",
       CFBundlePackageType: "APPL",
     }),
   );
@@ -54,7 +54,7 @@ function bundle(helpers = 5) {
   copyFileSync("/usr/bin/true", join(cef, "Libraries/libvulkan.dylib"));
   copyFileSync("/usr/bin/true", join(cef, "Libraries/libcef_sandbox.dylib"));
   const template = readFileSync(join(ROOT, "apps/desk/shell/packager/macos/helper.plist"), "utf8");
-  for (const helper of helperApps("ai.endue.desk.test").slice(0, helpers)) {
+  for (const helper of helperApps("ai.endue.desktop.test").slice(0, helpers)) {
     const own = join(contents, "Frameworks", `${helper.name}.app`, "Contents");
     mkdirSync(join(own, "MacOS"), { recursive: true });
     writeFileSync(

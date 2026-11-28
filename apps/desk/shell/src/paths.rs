@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 /// The app identifier: the data folder's name, the Tauri desk's too, so an updated desk keeps
 /// its data.
-pub const IDENTIFIER: &str = "ai.endue.desk";
+pub const IDENTIFIER: &str = "ai.endue.desktop";
 
 /// The page the main window opens unless `DESK_SHELL_URL` names another.
 pub const START_URL: &str = "desk-app://app/index.html";

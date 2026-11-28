@@ -25,7 +25,7 @@ export const EXTENSIONS = [
   "html",
 ];
 export const SCHEME = "endue";
-export const PROGID = "ai.endue.desk.file";
+export const PROGID = "ai.endue.desktop.file";
 /** The WiX ComponentGroup registrations.wxs defines. */
 export const WIX_GROUP = "DeskRegistrations";
 

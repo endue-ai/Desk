@@ -35,10 +35,10 @@ test("the server comes from the URI, the password from PGPASSWORD before the URI
 });
 
 test("the data folder is the desk's on each OS", () => {
-  assert.equal(dataDir("darwin", "/h", {}), "/h/Library/Application Support/ai.endue.desk");
-  assert.equal(dataDir("linux", "/h", {}), "/h/.local/share/ai.endue.desk");
-  assert.equal(dataDir("linux", "/h", { XDG_DATA_HOME: "/x" }), "/x/ai.endue.desk");
-  assert.match(dataDir("win32", "/h", { APPDATA: "/r" }), /^\/r.ai\.endue\.desk$/u);
+  assert.equal(dataDir("darwin", "/h", {}), "/h/Library/Application Support/ai.endue.desktop");
+  assert.equal(dataDir("linux", "/h", {}), "/h/.local/share/ai.endue.desktop");
+  assert.equal(dataDir("linux", "/h", { XDG_DATA_HOME: "/x" }), "/x/ai.endue.desktop");
+  assert.match(dataDir("win32", "/h", { APPDATA: "/r" }), /^\/r.ai\.endue\.desktop$/u);
 });
 
 test("the seed holds the plugin's connection, a lasting db:connect grant and an escaped password line", () => {
@@ -78,7 +78,7 @@ test("the seed writes its files where the desk reads them, the password file for
   const home = mkdtempSync(join(tmpdir(), "desk-smoke-db-"));
   try {
     const pgpass = seed(home, SERVER, "linux");
-    const data = join(home, ".local", "share", "ai.endue.desk");
+    const data = join(home, ".local", "share", "ai.endue.desktop");
     assert.ok(JSON.parse(readFileSync(join(data, "store.json"), "utf8"))[PLUGIN]);
     assert.ok(JSON.parse(readFileSync(join(data, "grants.json"), "utf8")).grants);
     if (process.platform !== "win32") assert.equal(statSync(pgpass).mode & 0o077, 0);

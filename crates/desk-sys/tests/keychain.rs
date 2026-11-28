@@ -35,7 +35,7 @@ fn the_fake_keychain_stores_reads_and_deletes() {
 
 #[test]
 fn the_os_keychain_is_named_for_the_desk() {
-    assert_eq!(SERVICE, "ai.endue.desk");
+    assert_eq!(SERVICE, "ai.endue.desktop");
     // Named, never called: a test must not reach the person's keychain.
     let _os: fn(&str) -> Result<OsKeychain, desk_sys::Error> = desk_sys::keychain::os;
 }
@@ -45,7 +45,7 @@ fn the_os_keychain_is_named_for_the_desk() {
 #[test]
 #[ignore = "reaches the OS keychain"]
 fn the_os_keychain_round_trips() {
-    let keychain = desk_sys::keychain::os("ai.endue.desk.test").unwrap();
+    let keychain = desk_sys::keychain::os("ai.endue.desktop.test").unwrap();
     let account = format!("round-trip-{}", std::process::id());
     assert_eq!(keychain.get(&account).unwrap(), None);
     keychain.set(&account, "one").unwrap();

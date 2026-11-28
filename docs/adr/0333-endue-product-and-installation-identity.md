@@ -31,6 +31,8 @@ Adopt the second option. The current GUI is the **endue app**. The public `crate
 | `endue://v1/…` links, `desk.*` commands and existing plugin IDs | Continue to dispatch existing links and commands under their published names. | Desktop and CLI (#582, #585). Open an existing link and invoke an installed plugin by its original command ID. |
 | `endue-ai/Desk` and its signed release URLs | Rename the existing repository to `endue-ai/endue`. A transition release reads the exact old and new release paths. Keep tag indexes readable by a client that missed the transition. | Release (#581, #584). Test both hops with both tags already visible, and test the documented manual path for installer-only builds. |
 
+[ADR 0401](0401-the-app-identifier-is-ai-endue-desktop.md) replaces the identifier `ai.endue.desk` in the first two rows with `ai.endue.desktop`, before the first signed release.
+
 Keep the `desk` entry point throughout the current major release line. Removing it requires a separately announced major release after at least one stable release has shipped both names and migration instructions.
 
 ### Installation paths

@@ -13,26 +13,26 @@
         </RegistryKey>
       </Component>
       <Component Id="DeskOpenWith" Directory="INSTALLDIR" Guid="*">
-        <RegistryKey Root="HKCR" Key="ai.endue.desk.file">
+        <RegistryKey Root="HKCR" Key="ai.endue.desktop.file">
           <RegistryValue Type="string" Value="endue document" KeyPath="yes" />
           <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLDIR]endue-desk.exe&quot; --single-argument %1" />
         </RegistryKey>
-          <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".txt\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".csv\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".xlsx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".docx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".pptx\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".pdf\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".png\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".jpg\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".jpeg\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".gif\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".webp\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".mp3\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".mp4\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".zip\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
-          <RegistryValue Root="HKCR" Key=".html\OpenWithProgids" Name="ai.endue.desk.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".txt\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".csv\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".xlsx\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".docx\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".pptx\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".pdf\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".png\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".jpg\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".jpeg\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".gif\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".webp\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".mp3\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".mp4\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".zip\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
+          <RegistryValue Root="HKCR" Key=".html\OpenWithProgids" Name="ai.endue.desktop.file" Type="string" Value="" />
       </Component>
     </ComponentGroup>
   </Fragment>

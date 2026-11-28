@@ -14,7 +14,7 @@ use crate::{Error, ErrorCode};
 pub mod fake;
 
 /// The service the desk's secrets are kept under: the app identifier.
-pub const SERVICE: &str = "ai.endue.desk";
+pub const SERVICE: &str = "ai.endue.desktop";
 
 /// A keychain for one service. A missing secret is `Ok(None)` and deleting one is fine.
 pub trait Keychain: Send + Sync + fmt::Debug {

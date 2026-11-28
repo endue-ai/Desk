@@ -201,7 +201,7 @@ mod tests {
             pid: 4242,
             elevated,
             outcome: Path::new(
-                r"C:\endue\fixture's\AppData\Roaming\ai.endue.desk\updates\0.6.0\install.outcome",
+                r"C:\endue\fixture's\AppData\Roaming\ai.endue.desktop\updates\0.6.0\install.outcome",
             ),
         }
     }
@@ -210,7 +210,7 @@ mod tests {
     fn the_script_waits_installs_silently_and_starts_the_desk() {
         let exe = Path::new(r"C:\endue\fixture's\AppData\Local\endue Desk\endue-desk.exe");
         let setup = Path::new(
-            r"C:\endue\fixture's\AppData\Roaming\ai.endue.desk\updates\0.6.0\install.exe",
+            r"C:\endue\fixture's\AppData\Roaming\ai.endue.desktop\updates\0.6.0\install.exe",
         );
         let nsis = script(&run(Kind::Nsis, setup, exe, false));
         let lines: Vec<&str> = nsis.lines().collect();
@@ -220,7 +220,7 @@ mod tests {
         );
         assert_eq!(
             lines[3],
-            r"$run = Start-Process -FilePath 'C:\endue\fixture''s\AppData\Roaming\ai.endue.desk\updates\0.6.0\install.exe' -ArgumentList '/S','/D=C:\endue\fixture''s\AppData\Local\endue Desk' -Wait -PassThru -ErrorAction Stop"
+            r"$run = Start-Process -FilePath 'C:\endue\fixture''s\AppData\Roaming\ai.endue.desktop\updates\0.6.0\install.exe' -ArgumentList '/S','/D=C:\endue\fixture''s\AppData\Local\endue Desk' -Wait -PassThru -ErrorAction Stop"
         );
         assert_eq!(
             lines.last().unwrap(),
@@ -241,7 +241,7 @@ mod tests {
         assert!(nsis.contains(
             r"-ArgumentList '/S','/D=C:\Program Files\endue Desk' -Verb RunAs -Wait -PassThru"
         ));
-        let note = r"Set-Content -LiteralPath 'C:\endue\fixture''s\AppData\Roaming\ai.endue.desk\updates\0.6.0\install.outcome' -Encoding UTF8";
+        let note = r"Set-Content -LiteralPath 'C:\endue\fixture''s\AppData\Roaming\ai.endue.desktop\updates\0.6.0\install.outcome' -Encoding UTF8";
         assert!(
             nsis.contains(&format!("{note} -Value \"failed $($run.ExitCode)\"")),
             "{nsis}"

@@ -32,7 +32,7 @@ pub type Attach = Box<dyn FnOnce(&Arc<Core>)>;
 
 /// What a shell hands the boot.
 pub struct BootInput {
-    /// The app's data folder (`ai.endue.desk` under the OS's per-user data folder).
+    /// The app's data folder (`ai.endue.desktop` under the OS's per-user data folder).
     pub data: PathBuf,
     /// The person's home folder.
     pub home: PathBuf,

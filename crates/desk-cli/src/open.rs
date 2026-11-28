@@ -52,7 +52,7 @@ fn command(target: &str) -> Result<Command, String> {
 #[cfg(target_os = "macos")]
 fn installed(_target: &str) -> Result<Command, String> {
     let mut command = Command::new("/usr/bin/open");
-    command.args(["-b", "ai.endue.desk"]);
+    command.args(["-b", "ai.endue.desktop"]);
     Ok(command)
 }
 
