@@ -42,6 +42,7 @@ const PLUGIN_ICONS: Record<string, IconName> = {
   "endue.sheets": "table",
   "endue.sidebar": "panel",
   "endue.slides": "slides",
+  "endue.system-map": "branch",
   "endue.terminal": "terminal",
   "endue.toolbar": "list",
   "endue.web": "compass",

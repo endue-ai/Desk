@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System map</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+  </head>
+  <body>
+    <header class="desk-header">
+      <div class="desk-header-text">
+        <h1 class="desk-header-title" id="title"></h1>
+        <p id="status" class="desk-header-desc" role="status"></p>
+      </div>
+      <button id="refresh" class="desk-btn desk-btn-primary" type="button"></button>
+    </header>
+    <main id="map" hidden>
+      <nav id="hierarchy"></nav>
+      <section id="details" aria-labelledby="detail-title"></section>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
