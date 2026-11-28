@@ -157,6 +157,9 @@ pub fn boot(input: BootInput) -> Booted {
     // from their own folders, imported ones kept in <data>/agents.
     let agents = LocalAgentsOptions::new(&home, Some(data.join("agents")));
     core = core.with_local_agents(LocalAgents::new(agents));
+    // Their sessions as items of the built-in connector desk.agent-sessions, for the knowledge base
+    // (ADR 0403); nothing is read until the person connects it.
+    core = core.with_agent_sessions(data.join("agent-sessions.json"));
     // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the local brain
     // stands in while a remote one cannot be reached (ADR 0094).
     core = core.with_brains(brains::brains(&data, &home, account));

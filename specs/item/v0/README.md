@@ -37,4 +37,8 @@ binding), `text` (full-text search) and `where` conditions, all of which must ho
 first when absent. A page holds `limit` items, 50 by default and 500 at most; its opaque `cursor` asks
 for the next. `ItemChange` is `upserted` with the item, or `removed` with its source and id.
 
+`agent-session.schema.json` holds the fields of one `record` schema the desk itself writes: a session of
+an agent program on this computer (`AgentSessionFields`, its `links` to files, tickets, pull requests,
+ADRs, branches and repositories), from the built-in connector `desk.agent-sessions` (ADR 0403).
+
 `vectors/` holds valid and invalid items, queries, pages and changes for the contract tests.

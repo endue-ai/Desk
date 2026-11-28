@@ -1,0 +1,5 @@
+{
+  "target": "AgentSessionLink",
+  "description": "a link kind outside the list (a domain is a field of the session, not a link)",
+  "instance": { "kind": "domain", "key": "github.com", "rel": "mentioned", "count": 1 }
+}

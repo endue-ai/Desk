@@ -1884,6 +1884,131 @@ pub enum ThemeMotionPersonality {
     Calm,
 }
 
+/// The program that ran the session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AgentProgram {
+    #[serde(rename = "claude")]
+    Claude,
+    #[serde(rename = "codex")]
+    Codex,
+    #[serde(rename = "hermes")]
+    Hermes,
+}
+
+/// One session: who ran it, where, and the things it touched (its links).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentSessionFields {
+    pub agent: AgentProgram,
+    /// The program's own id for the session.
+    #[serde(rename = "sessionId")]
+    pub session_id: String,
+    /// The item id of the session that started this one, for a subagent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    /// Whether another session started this one.
+    pub subagent: bool,
+    /// The transcript the session was read from, ~ for the home folder.
+    pub file: String,
+    /// The folder the session worked in, ~ for the home folder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    /// cwd with a .claude/worktrees/<name> or .worktrees/<name> folder folded away, so every worktree of a repository is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(rename = "startedAt", default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<Timestamp>,
+    #[serde(rename = "endedAt", default, skip_serializing_if = "Option::is_none")]
+    pub ended_at: Option<Timestamp>,
+    /// The prompts the person wrote, injected context left out.
+    pub turns: u64,
+    #[serde(rename = "toolCalls", default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<u64>,
+    /// The most used tools by name, with how often each was called (20 at most).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<BTreeMap<String, u64>>,
+    /// The MCP servers whose tools the session called.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skills: Option<Vec<String>>,
+    /// Hosts of the URLs in the prompts, answers and commands (30 at most).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domains: Option<Vec<String>>,
+    pub links: Vec<AgentSessionLink>,
+}
+
+/// One thing the session touched, the knowledge base's edge from the session to it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentSessionLink {
+    pub kind: AgentLinkKind,
+    /// Stable across sessions: a file's path (~ for home, worktrees folded), a ticket key (ACME-868), a pull request as host/path#number, an ADR as ADR-0088@repo, a branch as repo@branch, a repository's folder.
+    pub key: String,
+    pub rel: AgentLinkRel,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#where: Option<AgentLinkPlace>,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AgentLinkKind {
+    #[serde(rename = "file")]
+    File,
+    #[serde(rename = "memory")]
+    Memory,
+    #[serde(rename = "ticket")]
+    Ticket,
+    #[serde(rename = "pr")]
+    Pr,
+    #[serde(rename = "issue")]
+    Issue,
+    #[serde(rename = "adr")]
+    Adr,
+    #[serde(rename = "branch")]
+    Branch,
+    #[serde(rename = "repo")]
+    Repo,
+}
+
+/// edited and read: a tool changed or read the file; wrote: a memory note; mentioned: named in text; opened: the session opened the pull request; cites: an ADR named or opened; on: the branch the session ran on; in: the repository it ran in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AgentLinkRel {
+    #[serde(rename = "edited")]
+    Edited,
+    #[serde(rename = "read")]
+    Read,
+    #[serde(rename = "wrote")]
+    Wrote,
+    #[serde(rename = "mentioned")]
+    Mentioned,
+    #[serde(rename = "opened")]
+    Opened,
+    #[serde(rename = "cites")]
+    Cites,
+    #[serde(rename = "on")]
+    On,
+    #[serde(rename = "in")]
+    In,
+}
+
+/// Where a mention was found: the person's prompt, an answer, a tool call's input, the branch name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AgentLinkPlace {
+    #[serde(rename = "prompt")]
+    Prompt,
+    #[serde(rename = "answer")]
+    Answer,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "branch")]
+    Branch,
+}
+
 /// What an item is. run is one piece of an agent's work (ADR 0100). record is any other shape, described by the JSON Schema it names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ItemKind {
@@ -15541,6 +15666,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/theme.schema.json",
         include_str!("../../../specs/plugin/v0/theme.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/item/v0/agent-session.schema.json",
+        include_str!("../../../specs/item/v0/agent-session.schema.json"),
     ),
     (
         "https://endue.ai/specs/item/v0/item.schema.json",

@@ -1,0 +1,335 @@
+/* endue.knowledge: layout only. Colours, type and sizes are the desk's tokens (/_desk/tokens.css),
+   the controls the base sheet's kit (/_desk/base.css), so the theme and design system in force
+   restyle the page. Wide: filters | graph | details. Narrow (the desk first opens a window at
+   400×263): the graph alone, the filters and the details over it. */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+.kb {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.top {
+  flex-wrap: wrap;
+  padding-block: var(--desk-space-1);
+}
+.top .desk-field {
+  flex: 1 1 10rem;
+  min-width: 0;
+  max-width: 18rem;
+}
+.filters,
+.panel .close {
+  display: none;
+}
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr) 18rem;
+}
+.rail,
+.panel {
+  overflow-y: auto;
+  padding: var(--desk-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-4);
+  min-width: 0;
+  background: var(--desk-background);
+}
+.rail {
+  border-right: var(--desk-border-width) solid var(--desk-border);
+}
+.panel {
+  border-left: var(--desk-border-width) solid var(--desk-border);
+  background: var(--desk-card);
+}
+h1 {
+  font-size: var(--desk-text-lg);
+  margin: 0;
+}
+h2 {
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--desk-text-muted);
+  margin: 0 0 var(--desk-space-1);
+}
+section {
+  display: flex;
+  flex-direction: column;
+}
+.check,
+.facet,
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+/* Rows are buttons in the kit's row style, without the button's own box. */
+.facet,
+.row {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+.check {
+  padding: var(--desk-space-1);
+  cursor: pointer;
+}
+.check.off {
+  opacity: 0.55;
+  cursor: default;
+}
+.check .shared {
+  flex: none;
+  width: 3.5rem;
+  min-width: 0;
+  margin-left: auto;
+}
+.lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.n {
+  margin-left: auto;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.dot {
+  width: var(--desk-space-2);
+  height: var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  flex: none;
+  display: inline-block;
+}
+.center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.legend {
+  position: absolute;
+  left: var(--desk-space-3);
+  bottom: var(--desk-space-2);
+  display: flex;
+  gap: var(--desk-space-3);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+  pointer-events: none;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+}
+.note-box,
+.empty {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--desk-background);
+  padding: var(--desk-space-4) var(--desk-space-6);
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--desk-space-3);
+}
+.empty p {
+  max-width: 40rem;
+  margin: 0;
+}
+.empty[hidden],
+.note-box[hidden],
+.top .count[hidden] {
+  display: none;
+}
+/* Before the first read: the words and the button alone. */
+.kb.is-empty .body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.kb.is-empty .rail,
+.kb.is-empty .panel,
+.kb.is-empty .days,
+.kb.is-empty .top .desk-tabs,
+.kb.is-empty .top .desk-field,
+.kb.is-empty .top .filters {
+  display: none;
+}
+.days {
+  border-top: var(--desk-border-width) solid var(--desk-border);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  height: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+.bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+.bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  min-width: 0;
+}
+.bar i {
+  display: block;
+}
+.bar.dim i {
+  opacity: 0.3;
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+  font-family: var(--desk-font-mono);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--desk-space-2);
+}
+.title {
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+  word-break: break-word;
+}
+.muted {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  word-break: break-word;
+  margin: 0;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--desk-space-2);
+}
+.stat {
+  background: var(--desk-background);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  padding: var(--desk-space-1) var(--desk-space-2);
+}
+.stat b {
+  display: block;
+  font-size: var(--desk-text-base);
+  font-variant-numeric: tabular-nums;
+}
+.stat span {
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+.split {
+  display: flex;
+  height: var(--desk-space-1);
+  border-radius: var(--desk-radius-full);
+  overflow: hidden;
+  background: var(--desk-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-2);
+}
+
+/* Narrow: the graph alone; the filters when asked and the details while something is picked lie
+   over it, from their own sides. */
+@media (max-width: 760px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .filters,
+  .panel .close {
+    display: inline-flex;
+  }
+  .rail,
+  .panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    display: none;
+    box-shadow: var(--desk-shadow-md);
+  }
+  .rail {
+    left: 0;
+    width: min(15rem, 85%);
+  }
+  .panel {
+    right: 0;
+    width: min(19rem, 90%);
+  }
+  .kb.show-filters .rail,
+  .kb.has-selection .panel {
+    display: flex;
+  }
+  .top .count {
+    display: none;
+  }
+}
+/* A phone-narrow window keeps the bar to one row: sync and notes stay in the palette. */
+@media (max-width: 480px) {
+  .top .desk-bar-title,
+  .top .sync,
+  .top .notes {
+    display: none;
+  }
+  .top {
+    gap: var(--desk-space-1);
+    padding-inline: var(--desk-space-2);
+  }
+  .top .desk-field {
+    flex-basis: 4rem;
+  }
+}
+/* A short window keeps its height for the graph. */
+@media (max-height: 420px) {
+  .days,
+  .legend {
+    display: none;
+  }
+}

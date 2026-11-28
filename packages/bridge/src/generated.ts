@@ -1115,6 +1115,75 @@ export interface ThemeMotion {
 /** snappy (short, sharp), smooth (the default) or calm (long, gentle). */
 export type ThemeMotionPersonality = "snappy" | "smooth" | "calm";
 
+/** The program that ran the session. */
+export type AgentProgram = "claude" | "codex" | "hermes";
+
+/** One session: who ran it, where, and the things it touched (its links). */
+export interface AgentSessionFields {
+  agent: AgentProgram;
+  /** The program's own id for the session. */
+  sessionId: string;
+  /** The item id of the session that started this one, for a subagent. */
+  parent?: string;
+  /** Whether another session started this one. */
+  subagent: boolean;
+  /** The transcript the session was read from, ~ for the home folder. */
+  file: string;
+  /** The folder the session worked in, ~ for the home folder. */
+  cwd?: string;
+  /** cwd with a .claude/worktrees/<name> or .worktrees/<name> folder folded away, so every worktree of a repository is one. */
+  repo?: string;
+  branch?: string;
+  model?: string;
+  startedAt?: Timestamp;
+  endedAt?: Timestamp;
+  /** The prompts the person wrote, injected context left out. */
+  turns: number;
+  toolCalls?: number;
+  /** The most used tools by name, with how often each was called (20 at most). */
+  tools?: Record<string, number>;
+  /** The MCP servers whose tools the session called. */
+  mcp?: string[];
+  skills?: string[];
+  /** Hosts of the URLs in the prompts, answers and commands (30 at most). */
+  domains?: string[];
+  links: AgentSessionLink[];
+}
+
+/** One thing the session touched, the knowledge base's edge from the session to it. */
+export interface AgentSessionLink {
+  kind: AgentLinkKind;
+  /** Stable across sessions: a file's path (~ for home, worktrees folded), a ticket key (ACME-868), a pull request as host/path#number, an ADR as ADR-0088@repo, a branch as repo@branch, a repository's folder. */
+  key: string;
+  rel: AgentLinkRel;
+  where?: AgentLinkPlace;
+  count: number;
+}
+
+export type AgentLinkKind =
+  | "file"
+  | "memory"
+  | "ticket"
+  | "pr"
+  | "issue"
+  | "adr"
+  | "branch"
+  | "repo";
+
+/** edited and read: a tool changed or read the file; wrote: a memory note; mentioned: named in text; opened: the session opened the pull request; cites: an ADR named or opened; on: the branch the session ran on; in: the repository it ran in. */
+export type AgentLinkRel =
+  | "edited"
+  | "read"
+  | "wrote"
+  | "mentioned"
+  | "opened"
+  | "cites"
+  | "on"
+  | "in";
+
+/** Where a mention was found: the person's prompt, an answer, a tool call's input, the branch name. */
+export type AgentLinkPlace = "prompt" | "answer" | "tool" | "branch";
+
 /** What an item is. run is one piece of an agent's work (ADR 0100). record is any other shape, described by the JSON Schema it names. */
 export type ItemKind =
   | "event"

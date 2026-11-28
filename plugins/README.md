@@ -72,6 +72,13 @@ it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
 | `local-agents/` (`endue.local-agents`) | Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent and OpenCode, found by their versions and asked through their non-interactive modes, read-only by default: the agents found, a chat with one, answers compared side by side, a kanban board of tasks they work through, the activity; every operation a command. The card Home of `agents/` shows the agents the core finds beside the endue ones (ADR 0112); this plugin stays for its compare, board and tools |
 | `local-models/` (`endue.local-models`) | A client for the language models that run on this computer: the Ollama, llama.cpp and OpenAI-compatible servers found or added, their models with what each can do, and chat in threads kept as files, streamed as markdown with reasoning, speed and every version of an answer (ADR 0267) |
 
+The knowledge base over those programs' own sessions (ADR 0403, ADR 0404), off until the person opens it
+and presses Read agent sessions:
+
+| Plugin | Role |
+| --- | --- |
+| `knowledge/` (`endue.knowledge`) | The sessions Claude Code and Codex keep on this computer (the folders the core's local agents read, ADR 0110), read by the built-in connector `desk.agent-sessions`, as a graph of the files, tickets, pull requests, ADRs and branches they share (weighed by relation and rarity, hubs as filters), what lies around a node, notes in `~/.desk/knowledge` linked as `[[name]]`, and the agent tools `endue.knowledge.search`, `related` and `note` |
+
 The file plugins: one plugin per thing a person does with a file, every format of that kind in one
 interface (ADR 0045). Each reads; none edits yet. Each autoloads: off at start, on when a file it
 claims opens, off when its last buffer closes (ADR 0046). A file a plugin cannot draw opens as its

@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/item/v0/agent-session.schema.json",
+  "title": "endue item v0: agent sessions",
+  "description": "The fields of a record item whose schema is this document's $id: one session of an agent program on this computer (Claude Code, Codex, Hermes), as the built-in connector desk.agent-sessions reads it from the program's own transcripts, read-only (ADR 0403). The item's body holds what the person asked and the last answer, secrets masked; tool output and reasoning are never kept.",
+  "$defs": {
+    "AgentProgram": {
+      "description": "The program that ran the session.",
+      "type": "string",
+      "enum": ["claude", "codex", "hermes"]
+    },
+    "AgentSessionFields": {
+      "description": "One session: who ran it, where, and the things it touched (its links).",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/AgentProgram"
+        },
+        "sessionId": {
+          "description": "The program's own id for the session.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "parent": {
+          "description": "The item id of the session that started this one, for a subagent.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "subagent": {
+          "description": "Whether another session started this one.",
+          "type": "boolean"
+        },
+        "file": {
+          "description": "The transcript the session was read from, ~ for the home folder.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "cwd": {
+          "description": "The folder the session worked in, ~ for the home folder.",
+          "type": "string",
+          "maxLength": 1000
+        },
+        "repo": {
+          "description": "cwd with a .claude/worktrees/<name> or .worktrees/<name> folder folded away, so every worktree of a repository is one.",
+          "type": "string",
+          "maxLength": 1000
+        },
+        "branch": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "startedAt": {
+          "$ref": "item.schema.json#/$defs/Timestamp"
+        },
+        "endedAt": {
+          "$ref": "item.schema.json#/$defs/Timestamp"
+        },
+        "turns": {
+          "description": "The prompts the person wrote, injected context left out.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "toolCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tools": {
+          "description": "The most used tools by name, with how often each was called (20 at most).",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "maxProperties": 20
+        },
+        "mcp": {
+          "description": "The MCP servers whose tools the session called.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 50,
+          "uniqueItems": true
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 50,
+          "uniqueItems": true
+        },
+        "domains": {
+          "description": "Hosts of the URLs in the prompts, answers and commands (30 at most).",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253
+          },
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentSessionLink"
+          },
+          "maxItems": 800
+        }
+      },
+      "required": ["agent", "sessionId", "subagent", "file", "turns", "links"],
+      "additionalProperties": false
+    },
+    "AgentSessionLink": {
+      "description": "One thing the session touched, the knowledge base's edge from the session to it.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AgentLinkKind"
+        },
+        "key": {
+          "description": "Stable across sessions: a file's path (~ for home, worktrees folded), a ticket key (ACME-868), a pull request as host/path#number, an ADR as ADR-0088@repo, a branch as repo@branch, a repository's folder.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "rel": {
+          "$ref": "#/$defs/AgentLinkRel"
+        },
+        "where": {
+          "$ref": "#/$defs/AgentLinkPlace"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["kind", "key", "rel", "count"],
+      "additionalProperties": false
+    },
+    "AgentLinkKind": {
+      "type": "string",
+      "enum": ["file", "memory", "ticket", "pr", "issue", "adr", "branch", "repo"]
+    },
+    "AgentLinkRel": {
+      "description": "edited and read: a tool changed or read the file; wrote: a memory note; mentioned: named in text; opened: the session opened the pull request; cites: an ADR named or opened; on: the branch the session ran on; in: the repository it ran in.",
+      "type": "string",
+      "enum": ["edited", "read", "wrote", "mentioned", "opened", "cites", "on", "in"]
+    },
+    "AgentLinkPlace": {
+      "description": "Where a mention was found: the person's prompt, an answer, a tool call's input, the branch name.",
+      "type": "string",
+      "enum": ["prompt", "answer", "tool", "branch"]
+    }
+  }
+}
