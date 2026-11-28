@@ -65,7 +65,7 @@ jobs:
             echo "::error::$LINE has no final:$missing not set (docs/releasing.md)"
             exit 1
           fi
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: pick
@@ -151,19 +151,19 @@ jobs:
             echo "::error::RELEASE_APP_ID or RELEASE_APP_KEY is not set in stable: nothing can tag v$VERSION (docs/releasing.md)"
             exit 1
           fi
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_KEY }}
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: endue-app-*
           path: dist
@@ -173,7 +173,7 @@ jobs:
           node scripts/release-manifest.mjs check-files dist --version "$VERSION"
           prefix="$(node scripts/release-assets.mjs desktop-prefix "$VERSION")"
           echo "DESKTOP_PREFIX=$prefix" >> "$GITHUB_ENV"
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-path: |
             dist/${{ env.DESKTOP_PREFIX }}*
